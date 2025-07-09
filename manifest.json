@@ -1,0 +1,12 @@
+{
+  "domain": "thesslagreen",
+  "name": "Thessla Green Rekuperator",
+  "version": "1.0.0",
+  "documentation": "https://github.com/blakinio/thesslagreen",
+  "requirements": [
+    "pymodbus>=3.5.2"
+  ],
+  "codeowners": ["@blakinio"],
+  "config_flow": true,
+  "iot_class": "local_polling"
+}
