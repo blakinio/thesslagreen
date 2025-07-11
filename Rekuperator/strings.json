@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja TeslaGreen Modbus",
+        "description": "Wprowadź dane połączenia z urządzeniem TeslaGreen",
+        "data": {
+          "host": "Adres IP",
+          "port": "Port Modbus",
+          "slave_id": "ID Slave"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z urządzeniem",
+      "invalid_host": "Nieprawidłowy adres hosta",
+      "unknown": "Nieoczekiwany błąd"
+    },
+    "abort": {
+      "already_configured": "Urządzenie jest już skonfigurowane"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje TeslaGreen",
+        "data": {
+          "scan_interval": "Interwał skanowania (sekundy)"
+        }
+      }
+    }
+  }
+}
