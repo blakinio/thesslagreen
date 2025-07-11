@@ -1,34 +1,82 @@
-from homeassistant.components.select import SelectEntity
-from .modbus_map import MODBUS_MAP
+"""Select platform for TeslaGreen Modbus Integration."""
+from __future__ import annotations
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data["thesslagreen"][entry.entry_id]
-    selects = [
-        ThesslaGreenSelect(coordinator, ent["key"], ent["name"], ent["options"], ent["reg"])
-        for ent in MODBUS_MAP if ent["type"] == "select"
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from .const import DOMAIN
+from .coordinator import TeslaGreenCoordinator
+from .entity import TeslaGreenEntity
+
+SELECT_DESCRIPTIONS: tuple[SelectEntityDescription, ...] = (
+    SelectEntityDescription(
+        key="mode_selection",
+        name="Tryb pracy",
+        icon="mdi:cog",
+        options=["Wyłączony", "Wentylacja", "Auto", "Nocny", "Boost", "Nieobecność"],
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up TeslaGreen select entities."""
+    coordinator: TeslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
+
+    entities = [
+        TeslaGreenSelect(coordinator, description)
+        for description in SELECT_DESCRIPTIONS
     ]
-    async_add_entities(selects)
 
-class ThesslaGreenSelect(SelectEntity):
-    def __init__(self, coordinator, key, name, options, reg):
-        self._coordinator = coordinator
-        self._key = key
-        self._attr_name = name
-        self._attr_options = list(options.values())
-        self._map = {v: k for k, v in options.items()}
-        self._reg = reg
+    async_add_entities(entities)
+
+
+class TeslaGreenSelect(TeslaGreenEntity, SelectEntity):
+    """TeslaGreen select entity."""
+
+    def __init__(
+        self,
+        coordinator: TeslaGreenCoordinator,
+        description: SelectEntityDescription,
+    ) -> None:
+        """Initialize the select entity."""
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
+        self._attr_name = description.name
 
     @property
-    def current_option(self):
-        val = self._coordinator.data.get(self._key)
-        for k, v in self._map.items():
-            if v == val:
-                return k
+    def current_option(self) -> str | None:
+        """Return current option."""
+        value = self.coordinator.data.get(self._key, 0)
+        
+        if self._key == "mode_selection":
+            mode_map = {
+                0: "Wyłączony",
+                1: "Wentylacja",
+                2: "Auto",
+                3: "Nocny",
+                4: "Boost",
+                5: "Nieobecność",
+            }
+            return mode_map.get(value, "Wyłączony")
+        
         return None
 
-    async def async_select_option(self, option):
-        value = self._map.get(option, 0)
-        await self._coordinator.hass.async_add_executor_job(
-            self._coordinator._client.write_register, self._reg, value
-        )
-        await self._coordinator.async_request_refresh()
+    async def async_select_option(self, option: str) -> None:
+        """Select an option."""
+        if self._key == "mode_selection":
+            option_map = {
+                "Wyłączony": 0,
+                "Wentylacja": 1,
+                "Auto": 2,
+                "Nocny": 3,
+                "Boost": 4,
+                "Nieobecność": 5,
+            }
+            if option in option_map:
+                await self.coordinator.async_write_register(self._key, option_map[option])
