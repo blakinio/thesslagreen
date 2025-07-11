@@ -1,0 +1,44 @@
+set_mode:
+  name: Ustaw tryb pracy
+  description: Ustawia tryb pracy rekuperatora
+  target:
+    entity:
+      integration: thessla_green_modbus
+      domain: climate
+  fields:
+    mode:
+      name: Tryb
+      description: Tryb pracy rekuperatora
+      required: true
+      selector:
+        select:
+          options:
+            - "auto"
+            - "night"
+            - "boost"
+            - "away"
+
+set_fan_speed:
+  name: Ustaw prędkość wentylatorów
+  description: Ustawia prędkość wentylatorów
+  target:
+    entity:
+      integration: thessla_green_modbus
+      domain: fan
+  fields:
+    percentage:
+      name: Prędkość (%)
+      description: Prędkość wentylatorów w procentach
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+
+reset_filter_alarm:
+  name: Resetuj alarm filtra
+  description: Resetuje alarm wymiany filtra
+  target:
+    entity:
+      integration: thessla_green_modbus
