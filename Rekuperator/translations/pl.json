@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja TeslaGreen Modbus",
+        "description": "Wprowadź dane połączenia z urządzeniem TeslaGreen",
+        "data": {
+          "host": "Adres IP",
+          "port": "Port Modbus",
+          "slave_id": "ID Slave"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z urządzeniem",
+      "invalid_host": "Nieprawidłowy adres hosta",
+      "unknown": "Nieoczekiwany błąd"
+    },
+    "abort": {
+      "already_configured": "Urządzenie jest już skonfigurowane"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje TeslaGreen",
+        "data": {
+          "scan_interval": "Interwał skanowania (sekundy)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temp_supply": {
+        "name": "Temperatura powietrza doprowadzanego"
+      },
+      "temp_extract": {
+        "name": "Temperatura powietrza wyciąganego"
+      },
+      "temp_outdoor": {
+        "name": "Temperatura zewnętrzna"
+      },
+      "temp_exhaust": {
+        "name": "Temperatura powietrza wywiewanego"
+      },
+      "fan_supply_speed": {
+        "name": "Prędkość wentylatora nawiewu"
+      },
+      "fan_extract_speed": {
+        "name": "Prędkość wentylatora wyciągu"
+      },
+      "co2_level": {
+        "name": "Poziom CO2"
+      },
+      "humidity": {
+        "name": "Wilgotność"
+      },
+      "air_quality_index": {
+        "name": "Indeks jakości powietrza"
+      }
+    },
+    "climate": {
+      "thessla_green_modbus": {
+        "name": "Rekuperator TeslaGreen"
+      }
+    },
+    "fan": {
+      "thessla_green_modbus": {
+        "name": "Wentylator"
+      }
+    },
+    "switch": {
+      "bypass_control": {
+        "name": "Bypass letni"
+      }
+    },
+    "binary_sensor": {
+      "system_status": {
+        "name": "Status systemu"
+      },
+      "filter_status": {
+        "name": "Stan filtra"
+      },
+      "bypass_status": {
+        "name": "Status bypass"
+      }
+    }
+  }
+}
