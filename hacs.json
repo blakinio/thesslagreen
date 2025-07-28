@@ -1,0 +1,7 @@
+{
+  "name": "TeslaGreen Modbus Integration",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": ["sensor", "climate", "fan", "switch", "number", "select", "binary_sensor"],
+  "homeassistant": "2025.7.0"
+}
