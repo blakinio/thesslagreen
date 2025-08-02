@@ -1,162 +1,166 @@
-# TeslaGreen Modbus Integration dla Home Assistant
+# ThesslaGreen Modbus Integration for Home Assistant
 
-Kompletna integracja Home Assistant dla rekuperatorów TeslaGreen z komunikacją Modbus TCP.
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![GitHub release](https://img.shields.io/github/release/YOUR_USERNAME/thessla_green_modbus.svg)](https://github.com/YOUR_USERNAME/thessla_green_modbus/releases)
 
-## Funkcje
+Inteligentna integracja dla Home Assistant umożliwiająca kontrolę rekuperatorów ThesslaGreen AirPack przez protokół Modbus RTU/TCP.
 
-- 🌡️ **Monitorowanie temperatury** - 4 czujniki temperatury (nawiew, wyciąg, zewnętrzna, wywiew)
-- 🌬️ **Kontrola wentylacji** - Sterowanie prędkością wentylatorów i trybami pracy
-- 🏠 **Kontrola klimatu** - Pełna integracja z systemem klimatyzacji Home Assistant
-- 📊 **Jakość powietrza** - Monitorowanie CO2, wilgotności i indeksu jakości powietrza
-- 🔄 **Bypass letni** - Kontrola bypass'u letnego
-- ⚠️ **Alarmy i status** - Monitorowanie stanu systemu i filtrów
-- 🔧 **Usługi niestandardowe** - Dodatkowe usługi do zaawansowanego sterowania
+## ✨ Kluczowe funkcje
 
-## Wymagania
+- **🔍 Inteligentne skanowanie urządzenia** - automatycznie wykrywa dostępne funkcje
+- **📱 Tylko aktywne entycje** - tworzy tylko te entycje, które są rzeczywiście dostępne
+- **🏠 Pełna kontrola rekuperatora** - tryby pracy, intensywność, temperatury
+- **📊 Kompletny monitoring** - wszystkie czujniki, statusy, alarmy
+- **🌡️ Entycja Climate** - łatwa kontrola z interfejsu HA
+- **⚡ Funkcje specjalne** - okap, kominek, wietrzenie, pusty dom
+- **🌿 Systemy GWC i Bypass** - pełna kontrola systemów dodatkowych
 
-- Home Assistant 2025.7+
-- Urządzenie TeslaGreen z interfejsem Modbus TCP
-- Python 3.11+
-- pymodbus >= 3.0.0
+## 🚀 Instalacja
 
-## Instalacja
+### HACS (Rekomendowane)
 
-### Metoda 1: HACS (Rekomendowana)
+1. Dodaj to repozytorium jako custom repository w HACS:
+   - HACS → Integrations → ⋮ → Custom repositories
+   - URL: `https://github.com/YOUR_USERNAME/thessla_green_modbus`
+   - Category: Integration
 
-1. Otwórz HACS w Home Assistant
-2. Przejdź do "Integrations"
-3. Kliknij menu (⋮) i wybierz "Custom repositories"
-4. Dodaj URL: `https://github.com/yourusername/thessla_green_modbus`
-5. Wybierz kategorię "Integration"
-6. Kliknij "Add"
-7. Znajdź "TeslaGreen Modbus" i kliknij "Install"
+2. Znajdź "ThesslaGreen Modbus" w HACS i zainstaluj
 
-### Metoda 2: Instalacja manualna
+3. Zrestartuj Home Assistant
 
-1. Skopiuj katalog `custom_components/thessla_green_modbus` do katalogu `config/custom_components/` w Home Assistant
-2. Uruchom ponownie Home Assistant
-3. Przejdź do Configuration > Integrations
-4. Kliknij "Add Integration" i wyszukaj "TeslaGreen Modbus"
+### Manualna instalacja
 
-## Konfiguracja
+1. Pobierz najnowszą wersję z [Releases](https://github.com/YOUR_USERNAME/thessla_green_modbus/releases)
+2. Wypakuj do `custom_components/thessla_green_modbus/`
+3. Zrestartuj Home Assistant
 
-1. Po instalacji przejdź do **Configuration** > **Integrations**
-2. Kliknij **"Add Integration"** i wyszukaj **"TeslaGreen Modbus"**
-3. Wprowadź dane połączenia:
-   - **IP Address**: Adres IP urządzenia TeslaGreen
-   - **Port**: Port Modbus (domyślnie 502)
-   - **Slave ID**: ID urządzenia Modbus (domyślnie 1)
-4. Kliknij **"Submit"**
+## ⚙️ Konfiguracja
 
-## Dostępne encje
+1. Przejdź do **Ustawienia** → **Integracje**
+2. Kliknij **+ DODAJ INTEGRACJĘ**
+3. Wyszukaj **ThesslaGreen Modbus**
+4. Podaj dane połączenia:
+   - **Host**: IP rekuperatora
+   - **Port**: 502 (domyślny Modbus TCP)
+   - **Slave ID**: 10 (domyślny)
+5. Kliknij **DODAJ**
 
-### Sensory (sensor)
-- `sensor.thessla_green_temp_supply` - Temperatura powietrza doprowadzanego
-- `sensor.thessla_green_temp_extract` - Temperatura powietrza wyciąganego
-- `sensor.thessla_green_temp_outdoor` - Temperatura zewnętrzna
-- `sensor.thessla_green_temp_exhaust` - Temperatura powietrza wywiewanego
-- `sensor.thessla_green_fan_supply_speed` - Prędkość wentylatora nawiewu
-- `sensor.thessla_green_fan_extract_speed` - Prędkość wentylatora wyciągu
-- `sensor.thessla_green_co2_level` - Poziom CO2
-- `sensor.thessla_green_humidity` - Wilgotność
-- `sensor.thessla_green_air_quality_index` - Indeks jakości powietrza
+Integracja automatycznie przeskanuje urządzenie i utworzy tylko dostępne entycje.
 
-### Klimatyzacja (climate)
-- `climate.thessla_green_rekuperator` - Główna kontrola klimatu
+## 📋 Obsługiwane urządzenia
 
-### Wentylator (fan)
-- `fan.thessla_green_wentylator` - Kontrola wentylatorów
+- AirPack Home (wszystkie warianty: h/v/f, Energy/Energy+)
+- AirPack Home 200f-850h
+- Wszystkie modele z protokołem Modbus RTU/TCP
 
-### Przełączniki (switch)
-- `switch.thessla_green_bypass_control` - Bypass letni
+## 🌡️ Entycje
 
-### Kontrola liczbowa (number)
-- `number.thessla_green_target_temperature` - Temperatura docelowa
-- `number.thessla_green_fan_speed_setting` - Prędkość wentylatorów
+### Sensory temperatury
+- Temperatura zewnętrzna (TZ1)
+- Temperatura nawiewu (TN1)
+- Temperatura wywiewu (TP)
+- Temperatura FPX (TZ2)
+- Temperatura kanałowa (TN2)
+- Temperatura GWC (TZ3)
+- Temperatura otoczenia (TO)
 
-### Wybór opcji (select)
-- `select.thessla_green_mode_selection` - Tryb pracy
+### Sensory przepływu
+- Strumień nawiewu (m³/h)
+- Strumień wywiewu (m³/h)
+- Intensywność nawiewu (%)
+- Intensywność wywiewu (%)
 
-### Sensory binarne (binary_sensor)
-- `binary_sensor.thessla_green_system_status` - Status systemu
-- `binary_sensor.thessla_green_filter_status` - Stan filtra
-- `binary_sensor.thessla_green_bypass_status` - Status bypass
+### Kontrola
+- **Tryby pracy**: Automatyczny, Manualny, Chwilowy
+- **Intensywność wentylacji**: 10-150%
+- **Temperatura nawiewu**: 20-45°C (tryb KOMFORT)
+- **Funkcje specjalne**: OKAP, KOMINEK, WIETRZENIE, PUSTY DOM
 
-## Usługi
+### Systemy dodatkowe
+- **GWC (Gruntowy Wymiennik Ciepła)**
+  - Tryb: Zima/Lato/Nieaktywny
+  - Regeneracja: Dobowa/Temperaturowa
+  - Progi temperatur
+- **Bypass**
+  - Tryb: FreeHeating/FreeCooling/Nieaktywny
+  - Różne sposoby pracy
+- **Constant Flow**
+  - Status aktywności
+  - Rzeczywiste przepływy
 
-### thessla_green_modbus.set_mode
-Ustawia tryb pracy rekuperatora.
+### Alarmy i diagnostyka
+- **Alarmy typu S** (błędy zatrzymujące)
+- **Alarmy typu E** (ostrzeżenia)
+- Statusy czujników
+- Zabezpieczenia termiczne
+- Kontrola filtrów
 
-```yaml
-service: thessla_green_modbus.set_mode
-target:
-  entity_id: climate.thessla_green_rekuperator
-data:
-  mode: "auto"  # auto, night, boost, away
-```
+## 🔧 Zaawansowana konfiguracja
 
-### thessla_green_modbus.set_fan_speed
-Ustawia prędkość wentylatorów.
+### Opcje konfiguracyjne
+- **Częstotliwość odczytu**: 10-300 sekund
+- **Timeout**: 5-60 sekund
+- **Retry**: 1-5 prób
+- **Skanowanie urządzenia**: włącz/wyłącz
 
-```yaml
-service: thessla_green_modbus.set_fan_speed
-target:
-  entity_id: fan.thessla_green_wentylator
-data:
-  percentage: 75
-```
-
-## Przykładowa automatyzacja
+### Automatyzacje
 
 ```yaml
+# Przykład: Włącz funkcję OKAP gdy gotujemy
 automation:
-  - alias: "TeslaGreen - Tryb nocny"
+  - alias: "Okap podczas gotowania"
     trigger:
-      platform: time
-      at: "22:00:00"
+      - platform: state
+        entity_id: input_boolean.gotowanie
+        to: 'on'
     action:
       - service: select.select_option
         target:
-          entity_id: select.thessla_green_mode_selection
+          entity_id: select.thessla_special_mode
         data:
-          option: "Nocny"
-
-  - alias: "TeslaGreen - Boost przy wysokim CO2"
-    trigger:
-      platform: numeric_state
-      entity_id: sensor.thessla_green_co2_level
-      above: 1000
-    action:
-      - service: select.select_option
-        target:
-          entity_id: select.thessla_green_mode_selection
-        data:
-          option: "Boost"
+          option: "OKAP"
 ```
 
-## Troubleshooting
+## 🐛 Rozwiązywanie problemów
 
-### Nie można połączyć się z urządzeniem
-1. Sprawdź czy urządzenie TeslaGreen jest podłączone do sieci
-2. Sprawdź adres IP i port Modbus
-3. Sprawdź czy Modbus TCP jest włączony w urządzeniu
-4. Sprawdź logi Home Assistant w Configuration > Logs
+### Połączenie
+- Sprawdź IP i port urządzenia
+- Upewnij się, że Modbus TCP jest włączony
+- Sprawdź konfigurację sieci
 
-### Brak danych z sensorów
-1. Sprawdź połączenie sieciowe
-2. Sprawdź czy Slave ID jest prawidłowy
-3. Sprawdź rejestry Modbus w dokumentacji urządzenia
+### Brak entycji
+- Uruchom **Ponowne skanowanie** w opcjach integracji
+- Sprawdź logi HA: `custom_components.thessla_green_modbus`
+- Niektóre funkcje mogą nie być dostępne w Twoim modelu
 
-### Debug
-Włącz logowanie debug w `configuration.yaml`:
+### Wydajność
+- Zwiększ **Częstotliwość odczytu** jeśli HA jest wolny
+- Zmniejsz **Retry** dla szybszego timeout
+
+## 📝 Logi
+
+Włącz szczegółowe logi w `configuration.yaml`:
 
 ```yaml
 logger:
   default: warning
   logs:
     custom_components.thessla_green_modbus: debug
+    pymodbus: debug
 ```
 
-##
-        
-    
+## 🤝 Wsparcie
+
+- [Issues](https://github.com/YOUR_USERNAME/thessla_green_modbus/issues)
+- [Discussions](https://github.com/YOUR_USERNAME/thessla_green_modbus/discussions)
+- [Wiki](https://github.com/YOUR_USERNAME/thessla_green_modbus/wiki)
+
+## 📄 Licencja
+
+MIT License - zobacz [LICENSE](LICENSE)
+
+## 🙏 Podziękowania
+
+- [ThesslaGreen](https://thesslagreen.com) za dokumentację Modbus
+- Home Assistant Community
+- Wszyscy testerzy i kontrybutorzy

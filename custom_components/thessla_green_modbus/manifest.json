@@ -1,16 +1,13 @@
 {
   "domain": "thessla_green_modbus",
-  "name": "TeslaGreen Modbus Integration",
-  "version": "1.0.0",
-  "documentation": "https://github.com/yourusername/thessla_green_modbus",
-  "issue_tracker": "https://github.com/yourusername/thessla_green_modbus/issues",
-  "dependencies": ["modbus"],
-  "codeowners": ["@yourusername"],
+  "name": "ThesslaGreen Modbus",
+  "codeowners": ["@YOUR_USERNAME"],
   "config_flow": true,
-  "dhcp": [],
-  "homekit": {},
+  "dependencies": [],
+  "documentation": "https://github.com/YOUR_USERNAME/thessla_green_modbus",
+  "integration_type": "hub",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/YOUR_USERNAME/thessla_green_modbus/issues",
   "requirements": ["pymodbus>=3.0.0"],
-  "ssdp": [],
-  "zeroconf": []
+  "version": "1.0.0"
 }
