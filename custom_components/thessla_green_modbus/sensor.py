@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, GWC_MODES, BYPASS_MODES, COMFORT_MODES
 from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ async def async_setup_entry(
     
     entities = []
     available_regs = coordinator.available_registers.get("input_registers", set())
+    holding_regs = coordinator.available_registers.get("holding_registers", set())
 
     # Temperature sensors
     temp_sensors = [
@@ -130,6 +131,18 @@ async def async_setup_entry(
         entities.append(
             ThesslaGreenSerialSensor(coordinator)
         )
+
+    # Mode status sensors from holding registers
+    mode_sensors = [
+        ("gwc_mode", "Tryb GWC", "mdi:heat-pump", GWC_MODES),
+        ("bypass_mode", "Tryb Bypass", "mdi:valve", BYPASS_MODES),
+        ("comfort_mode", "Tryb KOMFORT", "mdi:home-thermometer", COMFORT_MODES),
+    ]
+    for sensor_key, name, icon, modes in mode_sensors:
+        if sensor_key in holding_regs:
+            entities.append(
+                ThesslaGreenEnumSensor(coordinator, sensor_key, name, icon, modes)
+            )
 
     _LOGGER.debug("Adding %d sensor entities", len(entities))
     async_add_entities(entities)
@@ -240,6 +253,30 @@ class ThesslaGreenVoltageSensor(ThesslaGreenSensorBase):
         self._attr_suggested_display_precision = 2
 
 
+class ThesslaGreenEnumSensor(ThesslaGreenSensorBase):
+    """Enumeration sensor for ThesslaGreen modes."""
+
+    def __init__(
+        self,
+        coordinator: ThesslaGreenCoordinator,
+        sensor_key: str,
+        name: str,
+        icon: str,
+        modes: dict[int, str],
+    ) -> None:
+        """Initialize the enum sensor."""
+        super().__init__(coordinator, sensor_key, name, icon)
+        self._modes = modes
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the state mapped to string."""
+        value = self.coordinator.data.get(self._sensor_key)
+        if value is None:
+            return None
+        return self._modes.get(value, "Unknown")
+
+
 class ThesslaGreenStatusSensor(ThesslaGreenSensorBase):
     """Status sensor for ThesslaGreen."""
 
@@ -292,5 +329,10 @@ class ThesslaGreenSerialSensor(ThesslaGreenSensorBase):
                 return None
         
         if len(serial_parts) == 6:
-            return f"S/N: {serial_parts[0]}{serial_parts[1]} {serial_parts[2]}{serial_parts[3]} {serial_parts[4]}{serial_parts[5]}"
+            return (
+                f"S/N: {serial_parts[0]}{serial_parts[1]} "
+                f"{serial_parts[2]}{serial_parts[3]} "
+                f"{serial_parts[4]}{serial_parts[5]}"
+            )
         return None
+

@@ -58,6 +58,15 @@
       },
       "air_quality_index": {
         "name": "Air Quality Index"
+      },
+      "gwc_mode": {
+        "name": "GWC mode"
+      },
+      "bypass_mode": {
+        "name": "Bypass mode"
+      },
+      "comfort_mode": {
+        "name": "Comfort mode"
       }
     },
     "climate": {
@@ -88,3 +97,4 @@
     }
   }
 }
+

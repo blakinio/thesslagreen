@@ -14,9 +14,6 @@ from .const import (
     OPERATING_MODES,
     SEASON_MODES,
     SPECIAL_MODES,
-    GWC_MODES,
-    BYPASS_MODES,
-    COMFORT_MODES,
 )
 from .coordinator import ThesslaGreenCoordinator
 
@@ -70,42 +67,6 @@ async def async_setup_entry(
             )
         )
 
-    # GWC mode
-    if "gwc_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenSelect(
-                coordinator,
-                "gwc_mode",
-                "Tryb GWC",
-                list(GWC_MODES.values()),
-                "mdi:heat-pump",
-            )
-        )
-
-    # Bypass mode
-    if "bypass_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenSelect(
-                coordinator,
-                "bypass_mode",
-                "Tryb Bypass",
-                list(BYPASS_MODES.values()),
-                "mdi:valve",
-            )
-        )
-
-    # Comfort mode
-    if "comfort_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenSelect(
-                coordinator,
-                "comfort_mode",
-                "Tryb KOMFORT",
-                list(COMFORT_MODES.values()),
-                "mdi:home-thermometer",
-            )
-        )
-
     if entities:
         _LOGGER.debug("Adding %d select entities", len(entities))
         async_add_entities(entities)
@@ -150,17 +111,10 @@ class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
 
         if self._key == "mode":
             return OPERATING_MODES.get(value, "Unknown")
-        elif self._key == "season_mode":
+        if self._key == "season_mode":
             return SEASON_MODES.get(value, "Unknown")
-        elif self._key == "special_mode":
+        if self._key == "special_mode":
             return SPECIAL_MODES.get(value, "Unknown")
-        elif self._key == "gwc_mode":
-            return GWC_MODES.get(value, "Unknown")
-        elif self._key == "bypass_mode":
-            return BYPASS_MODES.get(value, "Unknown")
-        elif self._key == "comfort_mode":
-            return COMFORT_MODES.get(value, "Unknown")
-
         return None
 
     async def async_select_option(self, option: str) -> None:
@@ -173,21 +127,11 @@ class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
             value_map = {v: k for k, v in SEASON_MODES.items()}
         elif self._key == "special_mode":
             value_map = {v: k for k, v in SPECIAL_MODES.items()}
-        elif self._key == "gwc_mode":
-            # GWC mode jest read-only, nie można go ustawiać
-            _LOGGER.warning("Cannot set read-only GWC mode")
-            return
-        elif self._key == "bypass_mode":
-            # Bypass mode jest read-only, nie można go ustawiać
-            _LOGGER.warning("Cannot set read-only bypass mode")
-            return
-        elif self._key == "comfort_mode":
-            # Comfort mode jest read-only, nie można go ustawiać
-            _LOGGER.warning("Cannot set read-only comfort mode")
-            return
 
         if option in value_map:
-            success = await self.coordinator.async_write_register(self._key, value_map[option])
+            success = await self.coordinator.async_write_register(
+                self._key, value_map[option]
+            )
             if success:
                 await self.coordinator.async_request_refresh()
             else:
