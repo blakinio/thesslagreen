@@ -1,28 +1,28 @@
-"""Custom exceptions for TeslaGreen Modbus Integration."""
+"""Custom exceptions for ThesslaGreen Modbus Integration."""
 from __future__ import annotations
 
 from homeassistant.exceptions import HomeAssistantError
 
 
-class TeslaGreenError(HomeAssistantError):
-    """Base exception for TeslaGreen integration."""
+class ThesslaGreenError(HomeAssistantError):
+    """Base exception for ThesslaGreen integration."""
 
 
-class TeslaGreenConnectionError(TeslaGreenError):
+class ThesslaGreenConnectionError(ThesslaGreenError):
     """Exception for connection errors."""
 
 
-class TeslaGreenTimeoutError(TeslaGreenError):
+class ThesslaGreenTimeoutError(ThesslaGreenError):
     """Exception for timeout errors."""
 
 
-class TeslaGreenAuthenticationError(TeslaGreenError):
+class ThesslaGreenAuthenticationError(ThesslaGreenError):
     """Exception for authentication errors."""
 
 
-class TeslaGreenDataError(TeslaGreenError):
+class ThesslaGreenDataError(ThesslaGreenError):
     """Exception for data parsing errors."""
 
 
-class TeslaGreenModbusError(TeslaGreenError):
+class ThesslaGreenModbusError(ThesslaGreenError):
     """Exception for Modbus communication errors."""

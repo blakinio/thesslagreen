@@ -1,4 +1,4 @@
-"""Modbus client for TeslaGreen Integration."""
+"""Modbus client for ThesslaGreen Integration."""
 from __future__ import annotations
 
 import asyncio
@@ -11,8 +11,8 @@ from pymodbus.exceptions import ModbusException
 _LOGGER = logging.getLogger(__name__)
 
 
-class TeslaGreenModbusClient:
-    """TeslaGreen Modbus TCP client."""
+class ThesslaGreenModbusClient:
+    """ThesslaGreen Modbus TCP client."""
 
     def __init__(self, host: str, port: int, slave_id: int, timeout: int = 10) -> None:
         """Initialize the Modbus client."""

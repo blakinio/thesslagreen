@@ -14,6 +14,7 @@ DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
 
 # Configuration keys
+CONF_SLAVE_ID = "slave_id"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TIMEOUT = "timeout"
 CONF_RETRY = "retry"

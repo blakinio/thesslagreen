@@ -1,36 +1,19 @@
-"""Number platform for TeslaGreen Modbus Integration."""
+"""Number platform for ThesslaGreen Modbus Integration."""
 from __future__ import annotations
 
-from homeassistant.components.number import NumberEntity, NumberEntityDescription
+import logging
+
+from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import TeslaGreenCoordinator
-from .entity import TeslaGreenEntity
+from .coordinator import ThesslaGreenCoordinator
 
-NUMBER_DESCRIPTIONS: tuple[NumberEntityDescription, ...] = (
-    NumberEntityDescription(
-        key="target_temperature",
-        name="Temperatura docelowa",
-        icon="mdi:thermometer",
-        native_min_value=10,
-        native_max_value=30,
-        native_step=0.5,
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-    ),
-    NumberEntityDescription(
-        key="fan_speed_setting",
-        name="Prędkość wentylatorów",
-        icon="mdi:fan",
-        native_min_value=0,
-        native_max_value=100,
-        native_step=1,
-        native_unit_of_measurement=PERCENTAGE,
-    ),
-)
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -38,29 +21,178 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up TeslaGreen number entities."""
-    coordinator: TeslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up ThesslaGreen number entities."""
+    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [
-        TeslaGreenNumber(coordinator, description)
-        for description in NUMBER_DESCRIPTIONS
+    entities = []
+    holding_regs = coordinator.available_registers.get("holding_registers", set())
+
+    # Air flow rate controls
+    if "air_flow_rate_manual" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "air_flow_rate_manual",
+                "Intensywność manualny",
+                "mdi:fan",
+                10,
+                100,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    if "air_flow_rate_temporary" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "air_flow_rate_temporary",
+                "Intensywność chwilowy",
+                "mdi:fan-speed-3",
+                10,
+                100,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    # Temperature controls
+    if "supply_air_temperature_manual" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "supply_air_temperature_manual",
+                "Temperatura nawiewu manualny",
+                "mdi:thermometer",
+                20,
+                45,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    if "supply_air_temperature_temporary" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "supply_air_temperature_temporary",
+                "Temperatura nawiewu chwilowy",
+                "mdi:thermometer-lines",
+                20,
+                45,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # AirS panel settings
+    if "fan_speed_1_coef" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "fan_speed_1_coef",
+                "AirS 1 bieg",
+                "mdi:fan-speed-1",
+                10,
+                45,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    if "fan_speed_2_coef" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "fan_speed_2_coef",
+                "AirS 2 bieg",
+                "mdi:fan-speed-2",
+                46,
+                75,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    if "fan_speed_3_coef" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "fan_speed_3_coef",
+                "AirS 3 bieg",
+                "mdi:fan-speed-3",
+                76,
+                100,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    # Special function coefficients
+    special_coeffs = [
+        ("hood_supply_coef", "Intensywność OKAP nawiew", "mdi:kitchen", 100, 150),
+        ("hood_exhaust_coef", "Intensywność OKAP wywiew", "mdi:kitchen", 100, 150),
+        ("fireplace_supply_coef", "Różnicowanie KOMINEK", "mdi:fireplace", 5, 50),
+        ("airing_coef", "Intensywność WIETRZENIE", "mdi:fan-auto", 100, 150),
+        ("contamination_coef", "Intensywność czujnik jakości", "mdi:air-filter", 100, 150),
+        ("empty_house_coef", "Intensywność PUSTY DOM", "mdi:home-minus", 10, 50),
     ]
 
-    async_add_entities(entities)
+    for reg_name, name, icon, min_val, max_val in special_coeffs:
+        if reg_name in holding_regs:
+            entities.append(
+                ThesslaGreenNumber(
+                    coordinator,
+                    reg_name,
+                    name,
+                    icon,
+                    min_val,
+                    max_val,
+                    1,
+                    PERCENTAGE,
+                )
+            )
+
+    if entities:
+        _LOGGER.debug("Adding %d number entities", len(entities))
+        async_add_entities(entities)
 
 
-class TeslaGreenNumber(TeslaGreenEntity, NumberEntity):
-    """TeslaGreen number entity."""
+class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
+    """ThesslaGreen number entity."""
 
     def __init__(
         self,
-        coordinator: TeslaGreenCoordinator,
-        description: NumberEntityDescription,
+        coordinator: ThesslaGreenCoordinator,
+        key: str,
+        name: str,
+        icon: str,
+        min_value: float,
+        max_value: float,
+        step: float,
+        unit: str,
     ) -> None:
         """Initialize the number entity."""
-        super().__init__(coordinator, description.key)
-        self.entity_description = description
-        self._attr_name = description.name
+        super().__init__(coordinator)
+        self._key = key
+        self._attr_name = name
+        self._attr_icon = icon
+        self._attr_native_min_value = min_value
+        self._attr_native_max_value = max_value
+        self._attr_native_step = step
+        self._attr_native_unit_of_measurement = unit
+
+        device_info = coordinator.device_info
+        device_name = device_info.get("device_name", "ThesslaGreen")
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
+
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
+            "name": device_name,
+            "manufacturer": "ThesslaGreen",
+            "model": "AirPack",
+            "sw_version": device_info.get("firmware", "Unknown"),
+        }
 
     @property
     def native_value(self) -> float | None:
@@ -68,18 +200,24 @@ class TeslaGreenNumber(TeslaGreenEntity, NumberEntity):
         value = self.coordinator.data.get(self._key)
         if value is None:
             return None
-            
-        # Temperature values are stored as int * 10 in Modbus
-        if self._key == "target_temperature":
-            return value / 10.0
+
+        # Temperature values are stored with 0.5°C resolution
+        if "temperature" in self._key:
+            return value * 0.5
+
+        # Direct values for percentages and other numbers
         return float(value)
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
-        # Temperature values need to be multiplied by 10 for Modbus
-        if self._key == "target_temperature":
-            modbus_value = int(value * 10)
+        # Temperature values need to be converted (x2 for 0.5°C resolution)
+        if "temperature" in self._key:
+            modbus_value = int(value * 2)
         else:
             modbus_value = int(value)
-            
-        await self.coordinator.async_write_register(self._key, modbus_value)
+
+        success = await self.coordinator.async_write_register(self._key, modbus_value)
+        if success:
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to set %s to %s", self._key, value)

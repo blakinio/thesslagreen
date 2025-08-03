@@ -1,4 +1,4 @@
-"""Diagnostics support for TeslaGreen Modbus Integration."""
+"""Diagnostics support for ThesslaGreen Modbus Integration."""
 from __future__ import annotations
 
 from typing import Any
@@ -7,14 +7,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
-from .coordinator import TeslaGreenCoordinator
+from .coordinator import ThesslaGreenCoordinator
 
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator: TeslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     return {
         "entry": {
@@ -33,5 +33,10 @@ async def async_get_config_entry_diagnostics(
             "update_interval": coordinator.update_interval.total_seconds(),
             "data_keys": list(coordinator.data.keys()) if coordinator.data else [],
         },
-        "device_data": coordinator.data if coordinator.data else {},
+        "device_info": coordinator.device_info,
+        "capabilities": coordinator.capabilities,
+        "available_registers": {
+            register_type: list(registers) 
+            for register_type, registers in coordinator.available_registers.items()
+        },
     }
