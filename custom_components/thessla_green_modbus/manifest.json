@@ -3,11 +3,24 @@
   "name": "ThesslaGreen Modbus",
   "codeowners": ["@YOUR_USERNAME"],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["modbus"],
   "documentation": "https://github.com/YOUR_USERNAME/thessla_green_modbus",
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/YOUR_USERNAME/thessla_green_modbus/issues",
   "requirements": ["pymodbus>=3.0.0"],
-  "version": "1.0.0"
+  "version": "2.0.0",
+  "quality_scale": "silver",
+  "dhcp": [
+    {
+      "hostname": "thesslagreen*",
+      "macaddress": "00:*"
+    }
+  ],
+  "zeroconf": [
+    {
+      "type": "_modbus._tcp.local.",
+      "name": "thesslagreen*"
+    }
+  ]
 }

@@ -1,300 +1,314 @@
-"""Binary sensor platform for ThesslaGreen Modbus integration."""
+"""Optimized config flow for ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
+import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import FlowResult
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
+
+from .const import (
+    CONF_RETRY,
+    CONF_SLAVE_ID,
+    CONF_TIMEOUT,
+    DEFAULT_NAME,
+    DEFAULT_PORT,
+    DEFAULT_RETRY,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SLAVE_ID,
+    DEFAULT_TIMEOUT,
+    DOMAIN,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
-from .const import DOMAIN
-from .coordinator import ThesslaGreenCoordinator
+from .device_scanner import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
+# Enhanced schema with better validation
+STEP_USER_DATA_SCHEMA = vol.Schema({
+    vol.Required(CONF_HOST): cv.string,
+    vol.Optional(CONF_PORT, default=DEFAULT_PORT): vol.All(int, vol.Range(min=1, max=65535)),
+    vol.Optional(CONF_SLAVE_ID, default=DEFAULT_SLAVE_ID): vol.All(int, vol.Range(min=1, max=247)),
+    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+})
 
-class DeviceStatusDetector:
-    """Smart device status detection using multiple indicators."""
-    
-    def __init__(self, coordinator_data: dict[str, Any]):
-        self.data = coordinator_data
-    
-    def detect_device_status(self) -> Optional[bool]:
-        """Detect device status using multiple methods with smart logic."""
-        indicators = []
-        
-        # Method 1: Official panel register
-        panel_mode = self.data.get("on_off_panel_mode")
-        if panel_mode is not None:
-            indicators.append(("panel_register", bool(panel_mode)))
-        
-        # Method 2: Fan power coil
-        fan_power = self.data.get("power_supply_fans")
-        if fan_power is not None:
-            indicators.append(("fan_power", bool(fan_power)))
-        
-        # Method 3: Ventilation activity
-        supply_pct = self.data.get("supply_percentage")
-        if supply_pct is not None and supply_pct > 0:
-            indicators.append(("ventilation_active", True))
-        elif supply_pct is not None:
-            indicators.append(("ventilation_active", False))
-        
-        # Method 4: Air flow measurement
-        flows = [
-            self.data.get("supply_flowrate"),
-            self.data.get("exhaust_flowrate"),
-            self.data.get("supply_air_flow"),
-            self.data.get("exhaust_air_flow")
-        ]
-        active_flows = [f for f in flows if f is not None and f > 10]
-        if active_flows:
-            indicators.append(("air_flow", True))
-        elif any(f is not None for f in flows):
-            indicators.append(("air_flow", False))
-        
-        # Method 5: DAC voltages
-        dac_supply = self.data.get("dac_supply")
-        dac_exhaust = self.data.get("dac_exhaust")
-        if (dac_supply is not None and dac_supply > 0.5) or (dac_exhaust is not None and dac_exhaust > 0.5):
-            indicators.append(("dac_voltages", True))
-        elif dac_supply is not None or dac_exhaust is not None:
-            indicators.append(("dac_voltages", False))
-        
-        # Method 6: Constant Flow
-        cf_active = self.data.get("constant_flow_active")
-        if cf_active is not None:
-            indicators.append(("constant_flow", bool(cf_active)))
-        
-        # Analyze indicators
-        on_indicators = [name for name, status in indicators if status is True]
-        off_indicators = [name for name, status in indicators if status is False]
-        
-        _LOGGER.debug("Device status indicators - ON: %s, OFF: %s", on_indicators, off_indicators)
-        
-        # Decision logic
-        if on_indicators:
-            # If any indicator shows activity, device is likely ON
-            _LOGGER.info("Device detected as ON based on: %s", ", ".join(on_indicators))
-            return True
-        elif off_indicators:
-            # If all indicators show no activity, device is OFF
-            _LOGGER.info("Device detected as OFF - no activity detected")
-            return False
-        else:
-            # Cannot determine
-            _LOGGER.warning("Cannot determine device status - insufficient data")
-            return None
+OPTIONS_SCHEMA = vol.Schema({
+    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+        int, vol.Range(min=10, max=300)
+    ),
+    vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.All(
+        int, vol.Range(min=5, max=60)
+    ),
+    vol.Optional(CONF_RETRY, default=DEFAULT_RETRY): vol.All(
+        int, vol.Range(min=1, max=5)
+    ),
+})
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up binary sensor platform."""
-    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+    """Validate the user input allows us to connect - OPTIMIZED VERSION."""
+    host = data[CONF_HOST]
+    port = data[CONF_PORT]
+    slave_id = data[CONF_SLAVE_ID]
+
+    _LOGGER.info("Validating connection to %s:%s (slave_id=%s)", host, port, slave_id)
     
-    entities = []
+    scanner = ThesslaGreenDeviceScanner(host, port, slave_id)
     
-    # Coil registers (outputs)
-    coil_regs = coordinator.available_registers.get("coil_registers", set())
-    
-    coil_sensors = [
-        ("power_supply_fans", "Zasilanie wentylatorów", "mdi:fan", BinarySensorDeviceClass.RUNNING),
-        ("bypass", "Bypass", "mdi:valve", None),
-        ("gwc", "GWC", "mdi:heat-pump", BinarySensorDeviceClass.RUNNING),
-        ("hood", "Okap", "mdi:kitchen", BinarySensorDeviceClass.RUNNING),
-        ("heating_cable", "Kabel grzejny", "mdi:cable-data", BinarySensorDeviceClass.HEAT),
-        ("work_permit", "Pozwolenie pracy", "mdi:check-circle", None),
-        ("info", "Potwierdzenie pracy", "mdi:information", None),
-        ("duct_water_heater_pump", "Pompa nagrzewnicy", "mdi:pump", BinarySensorDeviceClass.RUNNING),
-    ]
-    
-    for sensor_key, name, icon, device_class in coil_sensors:
-        if sensor_key in coil_regs:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class
-                )
-            )
-    
-    # Discrete input registers
-    discrete_regs = coordinator.available_registers.get("discrete_inputs", set())
-    
-    discrete_sensors = [
-        ("expansion", "Moduł Expansion", "mdi:expansion-card", BinarySensorDeviceClass.CONNECTIVITY),
-        ("duct_heater_protection", "Zabezpieczenie nagrzewnicy", "mdi:shield-alert", BinarySensorDeviceClass.SAFETY),
-        ("dp_ahu_filter_overflow", "Przepełnienie filtra", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
-        ("dp_duct_filter_overflow", "Przepełnienie filtra kanałowego", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
-        ("ahu_filter_protection", "Zabezpieczenie FPX", "mdi:shield-alert", BinarySensorDeviceClass.SAFETY),
-        ("hood_input", "Wejście okap", "mdi:kitchen", None),
-        ("contamination_sensor", "Czujnik jakości powietrza", "mdi:air-filter", None),
-        ("airing_sensor", "Czujnik wilgotności", "mdi:water-percent", BinarySensorDeviceClass.MOISTURE),
-        ("airing_switch", "Przełącznik wietrzenia", "mdi:toggle-switch", None),
-        ("fireplace", "Kominek", "mdi:fireplace", None),
-        ("fire_alarm", "Alarm pożarowy", "mdi:fire-alert", BinarySensorDeviceClass.SAFETY),
-        ("empty_house", "Pusty dom", "mdi:home-minus", None),
-        ("airing_mini", "Wietrzenie AirS", "mdi:fan-auto", None),
-        ("fan_speed_1", "1 bieg AirS", "mdi:fan-speed-1", None),
-        ("fan_speed_2", "2 bieg AirS", "mdi:fan-speed-2", None),
-        ("fan_speed_3", "3 bieg AirS", "mdi:fan-speed-3", None),
-    ]
-    
-    for sensor_key, name, icon, device_class in discrete_sensors:
-        if sensor_key in discrete_regs:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class
-                )
-            )
-    
-    # System status from input/holding registers
-    input_regs = coordinator.available_registers.get("input_registers", set())
-    holding_regs = coordinator.available_registers.get("holding_registers", set())
-    
-    # Constant Flow status
-    if "constant_flow_active" in input_regs:
-        entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "constant_flow_active", "Constant Flow", "mdi:fan-auto", BinarySensorDeviceClass.RUNNING
-            )
+    try:
+        # OPTIMIZATION: Test connection with timeout
+        device_info = await asyncio.wait_for(
+            scanner.scan_device(), 
+            timeout=30.0  # 30 second timeout for initial scan
         )
-    
-    # Water removal status
-    if "water_removal_active" in input_regs:
-        entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "water_removal_active", "HEWR", "mdi:water-pump", BinarySensorDeviceClass.RUNNING
-            )
+        
+        if not device_info:
+            raise CannotConnect("Device scan returned no data")
+        
+        # Extract device information for better user experience
+        device_name = device_info.get("device_info", {}).get("device_name", "ThesslaGreen")
+        firmware = device_info.get("device_info", {}).get("firmware", "Unknown")
+        capabilities = device_info.get("capabilities", {})
+        
+        # Count detected capabilities
+        active_capabilities = len([k for k, v in capabilities.items() if v])
+        
+        _LOGGER.info(
+            "Successfully validated device: %s (firmware %s, %d capabilities)",
+            device_name, firmware, active_capabilities
         )
-    
-    # FPX status
-    if "antifreeze_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "antifreeze_mode", "System FPX", "mdi:snowflake-alert", BinarySensorDeviceClass.RUNNING
-            )
-        )
-    
-    # GWC regeneration
-    if "gwc_regen_flag" in holding_regs:
-        entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "gwc_regen_flag", "Regeneracja GWC", "mdi:refresh", BinarySensorDeviceClass.RUNNING
-            )
-        )
-    
-    # SMART Device status - this replaces the simple on_off_panel_mode sensor
-    entities.append(
-        ThesslaGreenSmartDeviceStatus(coordinator)
-    )
-    
-    # Alarm sensors
-    alarm_sensors = [
-        ("alarm_flag", "Alarmy ostrzeżeń (E)", "mdi:alert", BinarySensorDeviceClass.PROBLEM),
-        ("error_flag", "Alarmy błędów (S)", "mdi:alert-circle", BinarySensorDeviceClass.PROBLEM),
-    ]
-    
-    for sensor_key, name, icon, device_class in alarm_sensors:
-        if sensor_key in holding_regs:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class
-                )
-            )
-
-    _LOGGER.debug("Adding %d binary sensor entities", len(entities))
-    async_add_entities(entities)
-
-
-class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Standard ThesslaGreen binary sensor."""
-
-    def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        sensor_key: str,
-        name: str,
-        icon: str,
-        device_class: BinarySensorDeviceClass | None = None,
-    ) -> None:
-        """Initialize the binary sensor."""
-        super().__init__(coordinator)
-        self._sensor_key = sensor_key
-        self._attr_name = name
-        self._attr_icon = icon
-        self._attr_device_class = device_class
         
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{sensor_key}"
-        
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        value = self.coordinator.data.get(self._sensor_key)
-        if value is None:
-            return None
-        return bool(value)
-
-
-class ThesslaGreenSmartDeviceStatus(CoordinatorEntity, BinarySensorEntity):
-    """Smart device status sensor using multiple indicators."""
-
-    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
-        """Initialize the smart device status sensor."""
-        super().__init__(coordinator)
-        self._attr_name = "Urządzenie włączone"
-        self._attr_icon = "mdi:power"
-        self._attr_device_class = BinarySensorDeviceClass.POWER
-        
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_device_status_smart"
-        
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the device is on using smart detection."""
-        detector = DeviceStatusDetector(self.coordinator.data)
-        return detector.detect_device_status()
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes for debugging."""
-        data = self.coordinator.data
+        # Enhanced title with device info
+        title = f"{device_name} ({host})"
+        if firmware != "Unknown":
+            title += f" - FW {firmware}"
+            
         return {
-            "panel_register": data.get("on_off_panel_mode"),
-            "fan_power_coil": data.get("power_supply_fans"),
-            "supply_percentage": data.get("supply_percentage"),
-            "exhaust_percentage": data.get("exhaust_percentage"),
-            "supply_flowrate": data.get("supply_flowrate"),
-            "exhaust_flowrate": data.get("exhaust_flowrate"),
-            "dac_supply_voltage": data.get("dac_supply"),
-            "dac_exhaust_voltage": data.get("dac_exhaust"),
-            "constant_flow_active": data.get("constant_flow_active"),
-            "operating_mode": data.get("mode"),
-            "detection_method": "smart_multi_indicator",
+            "title": title,
+            "device_info": device_info,
+            "detected_slave_id": scanner.slave_id,  # May be auto-detected
+            "capabilities_count": active_capabilities,
         }
+        
+    except asyncio.TimeoutError as exc:
+        _LOGGER.error("Connection timeout to %s:%s", host, port)
+        raise CannotConnect("Connection timeout - device may be unreachable") from exc
+    except Exception as exc:
+        _LOGGER.exception("Unexpected exception during device validation")
+        raise CannotConnect(f"Connection failed: {exc}") from exc
+
+
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for ThesslaGreen Modbus - OPTIMIZED VERSION."""
+
+    VERSION = 2  # Increased version for enhanced features
+
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self.discovered_info: dict[str, Any] = {}
+        self._detected_slave_id: int | None = None
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step - ENHANCED."""
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
+        
+        if user_input is not None:
+            try:
+                info = await validate_input(self.hass, user_input)
+                
+                # OPTIMIZATION: Update slave ID if auto-detected
+                detected_slave_id = info.get("detected_slave_id")
+                if detected_slave_id and detected_slave_id != user_input[CONF_SLAVE_ID]:
+                    _LOGGER.info(
+                        "Auto-detected slave ID %d (user provided %d)",
+                        detected_slave_id, user_input[CONF_SLAVE_ID]
+                    )
+                    user_input[CONF_SLAVE_ID] = detected_slave_id
+                    self._detected_slave_id = detected_slave_id
+                
+                # Create unique ID based on host and detected slave_id
+                unique_id = f"{user_input[CONF_HOST]}_{user_input[CONF_SLAVE_ID]}"
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured()
+                
+                # Store additional info for later use
+                self.discovered_info = info
+                
+                return self.async_create_entry(
+                    title=info["title"],
+                    data=user_input,
+                    description_placeholders={
+                        "capabilities": str(info.get("capabilities_count", 0)),
+                        "firmware": info.get("device_info", {}).get("firmware", "Unknown"),
+                    },
+                )
+                
+            except CannotConnect as exc:
+                errors["base"] = "cannot_connect"
+                description_placeholders["error_detail"] = str(exc)
+                _LOGGER.warning("Cannot connect: %s", exc)
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+
+        # Enhanced form with better user guidance
+        return self.async_show_form(
+            step_id="user",
+            data_schema=STEP_USER_DATA_SCHEMA,
+            errors=errors,
+            description_placeholders={
+                "default_port": str(DEFAULT_PORT),
+                "default_slave_id": str(DEFAULT_SLAVE_ID),
+                "auto_detect_note": "Slave ID will be auto-detected if the default doesn't work",
+                **description_placeholders,
+            },
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reconfiguration of the integration."""
+        errors: dict[str, str] = {}
+        
+        if user_input is not None:
+            try:
+                info = await validate_input(self.hass, user_input)
+                
+                # Update the config entry
+                return self.async_update_reload_and_abort(
+                    self._get_reconfigure_entry(),
+                    data=user_input,
+                    reason="reconfigure_successful",
+                )
+                
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception during reconfiguration")
+                errors["base"] = "unknown"
+
+        # Pre-fill form with current values
+        config_entry = self._get_reconfigure_entry()
+        suggested_values = config_entry.data.copy()
+        
+        reconfigure_schema = vol.Schema({
+            vol.Required(CONF_HOST, default=suggested_values.get(CONF_HOST)): cv.string,
+            vol.Optional(CONF_PORT, default=suggested_values.get(CONF_PORT, DEFAULT_PORT)): vol.All(
+                int, vol.Range(min=1, max=65535)
+            ),
+            vol.Optional(CONF_SLAVE_ID, default=suggested_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)): vol.All(
+                int, vol.Range(min=1, max=247)
+            ),
+        })
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=reconfigure_schema,
+            errors=errors,
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for ThesslaGreen Modbus - ENHANCED."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self._config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options - ENHANCED."""
+        errors: dict[str, str] = {}
+        
+        if user_input is not None:
+            # Validate scan interval doesn't conflict with device capabilities
+            scan_interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            timeout = user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+            
+            if scan_interval < timeout + 5:
+                errors[CONF_SCAN_INTERVAL] = "scan_interval_too_short"
+            else:
+                return self.async_create_entry(title="", data=user_input)
+
+        # Enhanced options schema with current values as defaults
+        current_options = self._config_entry.options
+        
+        enhanced_options_schema = vol.Schema({
+            vol.Optional(
+                CONF_SCAN_INTERVAL,
+                default=current_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+            ): vol.All(int, vol.Range(min=10, max=300)),
+            vol.Optional(
+                CONF_TIMEOUT,
+                default=current_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
+            ): vol.All(int, vol.Range(min=5, max=60)),
+            vol.Optional(
+                CONF_RETRY,
+                default=current_options.get(CONF_RETRY, DEFAULT_RETRY),
+            ): vol.All(int, vol.Range(min=1, max=5)),
+        })
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=enhanced_options_schema,
+            errors=errors,
+            description_placeholders={
+                "current_scan_interval": str(current_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                "recommended_scan_interval": "30 seconds for most setups",
+                "performance_note": "Lower scan intervals provide faster updates but may impact performance",
+            },
+        )
+
+    async def async_step_advanced(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle advanced options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        # Advanced options for power users
+        advanced_schema = vol.Schema({
+            vol.Optional("enable_debug_logging", default=False): bool,
+            vol.Optional("register_scan_on_startup", default=True): bool,
+            vol.Optional("adaptive_polling", default=True): bool,
+        })
+
+        return self.async_show_form(
+            step_id="advanced",
+            data_schema=advanced_schema,
+            description_placeholders={
+                "debug_warning": "Debug logging may generate large log files",
+                "adaptive_polling_info": "Adjusts polling based on device response times",
+            },
+        )
+
+
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate there is invalid auth."""
+
+
+class DeviceNotSupported(HomeAssistantError):
+    """Error to indicate device is not supported."""
