@@ -229,86 +229,84 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for ThesslaGreen Modbus - ENHANCED."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self._config_entry = config_entry
-
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Manage the options - ENHANCED."""
-        errors: dict[str, str] = {}
+    def __init__(
+        self,
+        coordinator: ThesslaGreenCoordinator,
+        sensor_key: str,
+        name: str,
+        icon: str,
+        device_class: BinarySensorDeviceClass | None = None,
+    ) -> None:
+        """Initialize the binary sensor."""
+        super().__init__(coordinator)
+        self._sensor_key = sensor_key
+        self._attr_name = name
+        self._attr_icon = icon
+        self._attr_device_class = device_class
         
-        if user_input is not None:
-            # Validate scan interval doesn't conflict with device capabilities
-            scan_interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-            timeout = user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-            
-            if scan_interval < timeout + 5:
-                errors[CONF_SCAN_INTERVAL] = "scan_interval_too_short"
-            else:
-                return self.async_create_entry(title="", data=user_input)
-
-        # Enhanced options schema with current values as defaults
-        current_options = self._config_entry.options
+        device_info = coordinator.device_info
+        device_name = device_info.get("device_name", "ThesslaGreen")
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{sensor_key}"
         
-        enhanced_options_schema = vol.Schema({
-            vol.Optional(
-                CONF_SCAN_INTERVAL,
-                default=current_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-            ): vol.All(int, vol.Range(min=10, max=300)),
-            vol.Optional(
-                CONF_TIMEOUT,
-                default=current_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
-            ): vol.All(int, vol.Range(min=5, max=60)),
-            vol.Optional(
-                CONF_RETRY,
-                default=current_options.get(CONF_RETRY, DEFAULT_RETRY),
-            ): vol.All(int, vol.Range(min=1, max=5)),
-        })
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
+            "name": device_name,
+            "manufacturer": "ThesslaGreen",
+            "model": "AirPack",
+            "sw_version": device_info.get("firmware", "Unknown"),
+        }
 
-        return self.async_show_form(
-            step_id="init",
-            data_schema=enhanced_options_schema,
-            errors=errors,
-            description_placeholders={
-                "current_scan_interval": str(current_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
-                "recommended_scan_interval": "30 seconds for most setups",
-                "performance_note": "Lower scan intervals provide faster updates but may impact performance",
-            },
-        )
-
-    async def async_step_advanced(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle advanced options."""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        # Advanced options for power users
-        advanced_schema = vol.Schema({
-            vol.Optional("enable_debug_logging", default=False): bool,
-            vol.Optional("register_scan_on_startup", default=True): bool,
-            vol.Optional("adaptive_polling", default=True): bool,
-        })
-
-        return self.async_show_form(
-            step_id="advanced",
-            data_schema=advanced_schema,
-            description_placeholders={
-                "debug_warning": "Debug logging may generate large log files",
-                "adaptive_polling_info": "Adjusts polling based on device response times",
-            },
-        )
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        value = self.coordinator.data.get(self._sensor_key)
+        if value is None:
+            return None
+        return bool(value)
 
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
+class ThesslaGreenSmartDeviceStatus(CoordinatorEntity, BinarySensorEntity):
+    """Smart device status sensor using multiple indicators."""
 
+    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
+        """Initialize the smart device status sensor."""
+        super().__init__(coordinator)
+        self._attr_name = "Urządzenie włączone"
+        self._attr_icon = "mdi:power"
+        self._attr_device_class = BinarySensorDeviceClass.POWER
+        
+        device_info = coordinator.device_info
+        device_name = device_info.get("device_name", "ThesslaGreen")
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_device_status_smart"
+        
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
+            "name": device_name,
+            "manufacturer": "ThesslaGreen",
+            "model": "AirPack",
+            "sw_version": device_info.get("firmware", "Unknown"),
+        }
 
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the device is on using smart detection."""
+        detector = DeviceStatusDetector(self.coordinator.data)
+        return detector.detect_device_status()
 
-
-class DeviceNotSupported(HomeAssistantError):
-    """Error to indicate device is not supported."""
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes for debugging."""
+        data = self.coordinator.data
+        return {
+            "panel_register": data.get("on_off_panel_mode"),
+            "fan_power_coil": data.get("power_supply_fans"),
+            "supply_percentage": data.get("supply_percentage"),
+            "exhaust_percentage": data.get("exhaust_percentage"),
+            "supply_flowrate": data.get("supply_flowrate"),
+            "exhaust_flowrate": data.get("exhaust_flowrate"),
+            "dac_supply_voltage": data.get("dac_supply"),
+            "dac_exhaust_voltage": data.get("dac_exhaust"),
+            "constant_flow_active": data.get("constant_flow_active"),
+            "operating_mode": data.get("mode"),
+            "detection_method": "smart_multi_indicator",
+        }
