@@ -139,7 +139,7 @@ automation:
 
 ## 📝 Logi
 
-Włącz szczegółowe logi w `configuration.yaml`:
+Domyślnie integracja zapisuje tylko podstawowe ostrzeżenia. Aby włączyć rozszerzone logowanie diagnostyczne, w tym szczegółowe informacje o statusie urządzenia, dodaj w `configuration.yaml`:
 
 ```yaml
 logger:
