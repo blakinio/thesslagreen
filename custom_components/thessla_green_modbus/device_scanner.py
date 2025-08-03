@@ -13,6 +13,8 @@ from .const import (
     INPUT_REGISTERS,
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
+    INVALID_TEMPERATURE,
+    INVALID_FLOW,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,13 +39,16 @@ class ThesslaGreenDeviceScanner:
 
     def _scan_device_sync(self) -> Dict[str, Any]:
         """Synchronous device scanning."""
-        _LOGGER.info("Starting device capability scan...")
+        _LOGGER.info("Starting device capability scan for %s:%s slave_id=%s", 
+                    self.host, self.port, self.slave_id)
         
         client = ModbusTcpClient(host=self.host, port=self.port)
         
         try:
             if not client.connect():
                 raise Exception("Failed to connect to device")
+            
+            _LOGGER.debug("Connected to device successfully")
             
             # First, read basic device info to identify model/capabilities
             self._scan_device_info(client)
@@ -82,7 +87,8 @@ class ThesslaGreenDeviceScanner:
         """Scan basic device information."""
         try:
             # Read firmware version (always available)
-            result = client.read_input_registers(0x0000, 5, slave=self.slave_id)
+            _LOGGER.debug("Reading firmware version...")
+            result = client.read_input_registers(0x0000, count=5, slave=self.slave_id)
             if not result.isError():
                 major = result.registers[0]
                 minor = result.registers[1]
@@ -90,6 +96,7 @@ class ThesslaGreenDeviceScanner:
                 
                 self.device_info["firmware"] = f"{major}.{minor}.{patch}"
                 self.device_info["firmware_major"] = major
+                _LOGGER.debug("Firmware version: %s", self.device_info["firmware"])
                 
                 # Determine processor type based on firmware
                 if major == 3:
@@ -98,12 +105,18 @@ class ThesslaGreenDeviceScanner:
                     self.device_info["processor"] = "ATmega2561"
                 else:
                     self.device_info["processor"] = "Unknown"
+            else:
+                _LOGGER.warning("Failed to read firmware version: %s", result)
             
             # Try to read serial number
-            result = client.read_input_registers(0x0018, 6, slave=self.slave_id)
+            _LOGGER.debug("Reading serial number...")
+            result = client.read_input_registers(0x0018, count=6, slave=self.slave_id)
             if not result.isError():
                 serial_parts = [f"{reg:04x}" for reg in result.registers]
                 self.device_info["serial_number"] = f"S/N: {serial_parts[0]}{serial_parts[1]} {serial_parts[2]}{serial_parts[3]} {serial_parts[4]}{serial_parts[5]}"
+                _LOGGER.debug("Serial number: %s", self.device_info["serial_number"])
+            else:
+                _LOGGER.debug("Serial number not available: %s", result)
             
             # Set device name based on firmware version
             if "firmware" in self.device_info:
@@ -119,16 +132,20 @@ class ThesslaGreenDeviceScanner:
         """Scan available input registers."""
         available = set()
         
+        _LOGGER.debug("Scanning input registers...")
+        
         for name, address in INPUT_REGISTERS.items():
             try:
-                result = client.read_input_registers(address, 1, slave=self.slave_id)
+                result = client.read_input_registers(address, count=1, slave=self.slave_id)
                 if not result.isError():
-                    # Check if register returns valid data (not 0xFFFF or error values)
                     value = result.registers[0]
                     if self._is_valid_register_value(name, value):
                         available.add(name)
                         _LOGGER.debug("Found input register %s (0x%04X) = %s", name, address, value)
-            except Exception:
+                else:
+                    _LOGGER.debug("Input register %s (0x%04X) error: %s", name, address, result)
+            except Exception as exc:
+                _LOGGER.debug("Exception reading input register %s: %s", name, exc)
                 continue
         
         return available
@@ -137,14 +154,19 @@ class ThesslaGreenDeviceScanner:
         """Scan available holding registers."""
         available = set()
         
+        _LOGGER.debug("Scanning holding registers...")
+        
         for name, address in HOLDING_REGISTERS.items():
             try:
-                result = client.read_holding_registers(address, 1, slave=self.slave_id)
+                result = client.read_holding_registers(address, count=1, slave=self.slave_id)
                 if not result.isError():
                     value = result.registers[0]
                     available.add(name)
                     _LOGGER.debug("Found holding register %s (0x%04X) = %s", name, address, value)
-            except Exception:
+                else:
+                    _LOGGER.debug("Holding register %s (0x%04X) error: %s", name, address, result)
+            except Exception as exc:
+                _LOGGER.debug("Exception reading holding register %s: %s", name, exc)
                 continue
         
         return available
@@ -156,13 +178,19 @@ class ThesslaGreenDeviceScanner:
         if not COIL_REGISTERS:
             return available
         
+        _LOGGER.debug("Scanning coil registers...")
+        
         for name, address in COIL_REGISTERS.items():
             try:
-                result = client.read_coils(address, 1, slave=self.slave_id)
+                result = client.read_coils(address, count=1, slave=self.slave_id)
                 if not result.isError():
                     available.add(name)
-                    _LOGGER.debug("Found coil %s (0x%04X) = %s", name, address, result.bits[0] if result.bits else False)
-            except Exception:
+                    value = result.bits[0] if result.bits else False
+                    _LOGGER.debug("Found coil %s (0x%04X) = %s", name, address, value)
+                else:
+                    _LOGGER.debug("Coil %s (0x%04X) error: %s", name, address, result)
+            except Exception as exc:
+                _LOGGER.debug("Exception reading coil %s: %s", name, exc)
                 continue
         
         return available
@@ -174,70 +202,100 @@ class ThesslaGreenDeviceScanner:
         if not DISCRETE_INPUT_REGISTERS:
             return available
         
+        _LOGGER.debug("Scanning discrete input registers...")
+        
         for name, address in DISCRETE_INPUT_REGISTERS.items():
             try:
-                result = client.read_discrete_inputs(address, 1, slave=self.slave_id)
+                result = client.read_discrete_inputs(address, count=1, slave=self.slave_id)
                 if not result.isError():
                     available.add(name)
-                    _LOGGER.debug("Found discrete input %s (0x%04X) = %s", name, address, result.bits[0] if result.bits else False)
-            except Exception:
+                    value = result.bits[0] if result.bits else False
+                    _LOGGER.debug("Found discrete input %s (0x%04X) = %s", name, address, value)
+                else:
+                    _LOGGER.debug("Discrete input %s (0x%04X) error: %s", name, address, result)
+            except Exception as exc:
+                _LOGGER.debug("Exception reading discrete input %s: %s", name, exc)
                 continue
         
         return available
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value indicates the register is available."""
-        # Some registers return specific values when not available
-        if value == 0xFFFF or value == 65535:
-            # Temperature sensors return 0x8000 (32768) when not connected
-            if "temperature" in register_name and value == 32768:
-                return False
-            # Air flow sensors return 65535 when CF is not active
-            if "air_flow" in register_name and value == 65535:
-                return False
+        # Temperature sensors return 0x8000 (32768) when not connected
+        if "temperature" in register_name and value == INVALID_TEMPERATURE:
+            return False
+        
+        # Air flow sensors return 0xFFFF when CF is not active
+        if "air_flow" in register_name and value == INVALID_FLOW:
+            return False
+        
+        # General check for obvious invalid values
+        if value == 0xFFFF or value == 0x8000:
+            return False
         
         return True
 
-    def _analyze_capabilities(self) -> Dict[str, bool]:
+    def _analyze_capabilities(self) -> Dict[str, Any]:
         """Analyze device capabilities based on available registers."""
         capabilities = {}
         
-        # Check for major system capabilities
-        capabilities["constant_flow"] = "constant_flow_active" in self.available_registers.get("input_registers", set())
-        capabilities["gwc_system"] = "gwc_mode" in self.available_registers.get("holding_registers", set())
-        capabilities["bypass_system"] = "bypass_mode" in self.available_registers.get("holding_registers", set())
-        capabilities["comfort_mode"] = "comfort_temperature_winter" in self.available_registers.get("holding_registers", set())
-        capabilities["expansion_module"] = "expansion" in self.available_registers.get("discrete_inputs", set())
-        capabilities["cf_module"] = "cf_version" in self.available_registers.get("holding_registers", set())
+        input_regs = self.available_registers.get("input_registers", set())
+        holding_regs = self.available_registers.get("holding_registers", set())
+        coil_regs = self.available_registers.get("coil_registers", set())
+        discrete_regs = self.available_registers.get("discrete_inputs", set())
         
-        # Check for temperature sensors
-        temp_sensors = ["outside_temperature", "supply_temperature", "exhaust_temperature", 
-                       "fpx_temperature", "duct_supply_temperature", "gwc_temperature", "ambient_temperature"]
-        for sensor in temp_sensors:
-            capabilities[f"sensor_{sensor}"] = sensor in self.available_registers.get("input_registers", set())
+        # Basic device capabilities
+        capabilities["constant_flow"] = "constant_flow_active" in input_regs
+        capabilities["gwc_system"] = "gwc_mode" in holding_regs or "gwc" in coil_regs
+        capabilities["bypass_system"] = "bypass_mode" in holding_regs or "bypass" in coil_regs
+        capabilities["expansion_module"] = "expansion" in discrete_regs
         
-        # Check for special functions
-        special_functions = ["hood_supply_coef", "fireplace_supply_coef", "airing_coef", 
-                           "contamination_coef", "empty_house_coef"]
-        for func in special_functions:
-            capabilities[f"function_{func.replace('_coef', '')}"] = func in self.available_registers.get("holding_registers", set())
+        # Available sensors
+        capabilities["sensor_outside_temperature"] = "outside_temperature" in input_regs
+        capabilities["sensor_supply_temperature"] = "supply_temperature" in input_regs
+        capabilities["sensor_exhaust_temperature"] = "exhaust_temperature" in input_regs
+        capabilities["sensor_fpx_temperature"] = "fpx_temperature" in input_regs
+        capabilities["sensor_ambient_temperature"] = "ambient_temperature" in input_regs
+        capabilities["sensor_duct_temperature"] = "duct_temperature" in input_regs
+        capabilities["sensor_gwc_temperature"] = "gwc_temperature" in input_regs
         
-        # Check for control outputs
-        outputs = ["power_supply_fans", "heating_cable", "gwc", "hood", "bypass"]
-        for output in outputs:
-            capabilities[f"output_{output}"] = output in self.available_registers.get("coil_registers", set())
+        # Air flow measurement
+        capabilities["air_flow_measurement"] = (
+            "supply_air_flow" in input_regs or
+            "exhaust_air_flow" in input_regs or
+            "constant_flow_active" in input_regs
+        )
         
-        # Check for inputs
-        inputs = ["contamination_sensor", "airing_sensor", "fireplace", "empty_house"]
-        for input_reg in inputs:
-            capabilities[f"input_{input_reg}"] = input_reg in self.available_registers.get("discrete_inputs", set())
+        # Control capabilities
+        capabilities["manual_control"] = "air_flow_rate_manual" in holding_regs
+        capabilities["temperature_control"] = "supply_air_temperature_manual" in holding_regs
+        capabilities["special_functions"] = "special_mode" in holding_regs
         
-        # Check for heating/cooling systems
-        capabilities["heating_system"] = "heating_enable" in self.available_registers.get("holding_registers", set())
-        capabilities["cooling_system"] = "cooling_enable" in self.available_registers.get("holding_registers", set())
-        
-        # Check for advanced features
-        capabilities["airs_system"] = "airs_enable" in self.available_registers.get("holding_registers", set())
-        capabilities["modbus_config"] = "modbus_address" in self.available_registers.get("holding_registers", set())
+        # Air quality sensors
+        capabilities["contamination_sensor"] = "contamination_sensor" in discrete_regs
+        capabilities["humidity_sensor"] = "airing_sensor" in discrete_regs
         
         return capabilities
+
+    def _group_registers_by_range(self, registers: Dict[str, int], max_gap: int = 10) -> Dict[int, Dict[str, int]]:
+        """Group registers by address ranges for efficient bulk reading."""
+        if not registers:
+            return {}
+        
+        sorted_regs = sorted(registers.items(), key=lambda x: x[1])
+        chunks = {}
+        current_chunk_start = sorted_regs[0][1]
+        current_chunk = {}
+        
+        for name, address in sorted_regs:
+            if address - current_chunk_start > max_gap and current_chunk:
+                chunks[current_chunk_start] = current_chunk
+                current_chunk_start = address
+                current_chunk = {}
+            
+            current_chunk[name] = address
+        
+        if current_chunk:
+            chunks[current_chunk_start] = current_chunk
+        
+        return chunks

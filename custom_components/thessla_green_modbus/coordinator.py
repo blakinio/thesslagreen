@@ -40,29 +40,28 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         retry: int,
     ) -> None:
         """Initialize the coordinator."""
-        self.host = host
-        self.port = port
-        self.slave_id = slave_id
-        self.timeout = timeout
-        self.retry = retry
-        
-        self.available_registers: dict[str, set[str]] = {}
-        self.device_info: dict[str, Any] = {}
-        self.capabilities: dict[str, bool] = {}
-        
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval),
         )
+        self.host = host
+        self.port = port
+        self.slave_id = slave_id
+        self.timeout = timeout
+        self.retry = retry
+        self.available_registers: dict[str, set[str]] = {}
+        self.device_info: dict[str, Any] = {}
+        self.capabilities: dict[str, Any] = {}
 
     async def async_config_entry_first_refresh(self) -> None:
-        """Perform first refresh and device scanning."""
-        _LOGGER.debug("Performing initial device scan...")
+        """Perform initial refresh including device scanning."""
+        _LOGGER.info("Starting initial device scan...")
         
-        # First scan the device to determine available registers
+        # Scan device capabilities first
         scanner = ThesslaGreenDeviceScanner(self.host, self.port, self.slave_id)
+        
         try:
             scan_result = await scanner.scan_device()
             self.available_registers = scan_result["available_registers"]
@@ -70,22 +69,16 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.capabilities = scan_result["capabilities"]
             
             _LOGGER.info(
-                "Device scan complete. Found %d total registers, device: %s",
-                sum(len(regs) for regs in self.available_registers.values()),
-                self.device_info.get("device_name", "Unknown"),
+                "Device scan successful. Found %d register types with capabilities: %s",
+                len(self.available_registers),
+                list(self.capabilities.keys())
             )
+            
         except Exception as exc:
-            _LOGGER.error("Device scanning failed: %s", exc)
-            # Continue without scanning - use all registers
-            self.available_registers = {
-                "input_registers": set(INPUT_REGISTERS.keys()),
-                "holding_registers": set(HOLDING_REGISTERS.keys()),
-                "coil_registers": set(COIL_REGISTERS.keys()),
-                "discrete_inputs": set(DISCRETE_INPUT_REGISTERS.keys()),
-            }
-            self.capabilities = {}
-
-        # Now perform the first data refresh
+            _LOGGER.error("Device scan failed: %s", exc)
+            raise
+        
+        # Perform initial data refresh
         await super().async_config_entry_first_refresh()
 
     async def _async_update_data(self) -> dict[str, Any]:
@@ -156,7 +149,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if count > 125:  # Modbus limit
                     continue
 
-                result = client.read_input_registers(chunk_start, count, slave=self.slave_id)
+                result = client.read_input_registers(chunk_start, count=count, slave=self.slave_id)
                 if result.isError():
                     _LOGGER.warning("Error reading input registers at 0x%04X", chunk_start)
                     continue
@@ -195,7 +188,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if count > 125:  # Modbus limit
                     continue
 
-                result = client.read_holding_registers(chunk_start, count, slave=self.slave_id)
+                result = client.read_holding_registers(chunk_start, count=count, slave=self.slave_id)
                 if result.isError():
                     _LOGGER.warning("Error reading holding registers at 0x%04X", chunk_start)
                     continue
@@ -230,7 +223,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         count = max_addr - min_addr + 1
 
         try:
-            result = client.read_coils(min_addr, count, slave=self.slave_id)
+            result = client.read_coils(min_addr, count=count, slave=self.slave_id)
             if not result.isError():
                 for name, address in available_coils.items():
                     idx = address - min_addr
@@ -258,7 +251,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         count = max_addr - min_addr + 1
 
         try:
-            result = client.read_discrete_inputs(min_addr, count, slave=self.slave_id)
+            result = client.read_discrete_inputs(min_addr, count=count, slave=self.slave_id)
             if not result.isError():
                 for name, address in available_inputs.items():
                     idx = address - min_addr
@@ -298,118 +291,88 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _process_input_register_value(self, name: str, raw_value: int) -> Any:
         """Process input register value based on register type."""
-        # Temperature registers (x0.1°C, 0x8000 = invalid)
+        # Temperature values (16-bit signed, 0.5°C resolution)
         if "temperature" in name:
             if raw_value == INVALID_TEMPERATURE:
                 return None
-            return raw_value * 0.1 if raw_value < INVALID_TEMPERATURE else raw_value * 0.1 - 6553.6
+            # Convert to signed 16-bit
+            if raw_value > 32767:
+                signed_value = raw_value - 65536
+            else:
+                signed_value = raw_value
+            return signed_value * 0.5
 
-        # Flow registers
-        if "flowrate" in name or "air_flow" in name:
+        # Air flow values
+        if "air_flow" in name:
             if raw_value == INVALID_FLOW:
                 return None
             return raw_value
 
-        # Percentage registers
+        # Percentage values
         if "percentage" in name:
             return raw_value
 
-        # Version registers
-        if name in ["firmware_major", "firmware_minor", "firmware_patch"]:
-            return raw_value
+        # DAC outputs (0-10V)
+        if "dac_" in name:
+            return round(raw_value * 10.0 / 1000.0, 2)  # Convert to volts
 
-        # DAC registers (voltage)
-        if name.startswith("dac_"):
-            return raw_value * 0.00244  # 0-4095 -> 0-10V
-
-        # Default
+        # Default: return raw value
         return raw_value
 
     def _process_holding_register_value(self, name: str, raw_value: int) -> Any:
         """Process holding register value based on register type."""
-        # Temperature registers (x0.5°C)
-        if any(temp_key in name for temp_key in ["temperature", "temp"]):
+        # Temperature setpoints (0.5°C resolution)
+        if "temperature" in name:
             return raw_value * 0.5
 
-        # BCD time registers [GGMM]
-        if "time" in name and ("summer" in name or "winter" in name or "airing" in name):
-            if raw_value == 0xA200 or raw_value == 41472:  # Disabled
-                return None
+        # Time values in BCD format [GGMM]
+        if "time" in name:
             hour = (raw_value >> 8) & 0xFF
             minute = raw_value & 0xFF
             return f"{hour:02d}:{minute:02d}"
 
-        # Setting registers [AATT] - airflow% and temperature
-        if "setting" in name and ("summer" in name or "winter" in name):
-            airflow = (raw_value >> 8) & 0xFF
-            temp_raw = raw_value & 0xFF
-            temperature = temp_raw * 0.5
-            return {"airflow": airflow, "temperature": temperature}
-
-        # Date/time registers
-        if name == "datetime_year_month":
-            year = (raw_value >> 8) & 0xFF
-            month = raw_value & 0xFF
-            return {"year": 2000 + year, "month": month}
-        
-        if name == "datetime_day_dow":
-            day = (raw_value >> 8) & 0xFF
-            dow = raw_value & 0xFF
-            return {"day": day, "day_of_week": dow}
-
-        if name == "datetime_hour_minute":
-            hour = (raw_value >> 8) & 0xFF
-            minute = raw_value & 0xFF
-            return {"hour": hour, "minute": minute}
-
-        # Default
+        # Default: return raw value
         return raw_value
 
-    async def async_write_register(self, register_name: str, value: Any) -> bool:
-        """Write to a holding register."""
-        if register_name not in HOLDING_REGISTERS:
-            _LOGGER.error("Unknown register: %s", register_name)
+    async def async_write_register(self, key: str, value: int) -> bool:
+        """Write single register value."""
+        register_address = None
+        
+        # Find register address
+        if key in HOLDING_REGISTERS:
+            register_address = HOLDING_REGISTERS[key]
+        else:
+            _LOGGER.error("Unknown register key: %s", key)
             return False
 
-        address = HOLDING_REGISTERS[register_name]
-        processed_value = self._process_write_value(register_name, value)
-
         return await asyncio.get_event_loop().run_in_executor(
-            None, self._write_register_sync, address, processed_value
+            None, self._write_register_sync, register_address, value
         )
 
     def _write_register_sync(self, address: int, value: int) -> bool:
-        """Synchronously write to a register."""
+        """Synchronously write register value."""
         client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
         
         try:
             if not client.connect():
+                _LOGGER.error("Failed to connect for writing register 0x%04X", address)
                 return False
 
             result = client.write_register(address, value, slave=self.slave_id)
-            return not result.isError()
+            if result.isError():
+                _LOGGER.error("Error writing register 0x%04X: %s", address, result)
+                return False
+
+            _LOGGER.debug("Successfully wrote value %s to register 0x%04X", value, address)
+            return True
 
         except Exception as exc:
-            _LOGGER.error("Error writing register 0x%04X: %s", address, exc)
+            _LOGGER.error("Exception writing register 0x%04X: %s", address, exc)
             return False
         finally:
             client.close()
 
-    def _process_write_value(self, register_name: str, value: Any) -> int:
-        """Process value for writing based on register type."""
-        # Temperature registers (x0.5°C)
-        if any(temp_key in register_name for temp_key in ["temperature", "temp"]):
-            return int(value * 2)
-
-        # Time registers [GGMM]
-        if "time" in register_name and isinstance(value, str):
-            if ":" in value:
-                hour, minute = map(int, value.split(":"))
-                return (hour << 8) | minute
-
-        # Direct integer values
-        return int(value)
-
     async def async_shutdown(self) -> None:
         """Shutdown the coordinator."""
-        _LOGGER.debug("Shutting down ThesslaGreen coordinator")
+        _LOGGER.debug("Shutting down coordinator")
+        # No persistent connections to close

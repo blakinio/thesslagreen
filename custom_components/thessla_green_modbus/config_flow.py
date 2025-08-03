@@ -14,6 +14,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     CONF_RETRY,
+    CONF_SLAVE_ID,
     CONF_TIMEOUT,
     DEFAULT_NAME,
     DEFAULT_PORT,
@@ -30,7 +31,7 @@ _LOGGER = logging.getLogger(__name__)
 STEP_USER_DATA_SCHEMA = vol.Schema({
     vol.Required(CONF_HOST): str,
     vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-    vol.Required("slave_id", default=DEFAULT_SLAVE_ID): vol.All(int, vol.Range(min=1, max=247)),
+    vol.Required(CONF_SLAVE_ID, default=DEFAULT_SLAVE_ID): vol.All(int, vol.Range(min=1, max=247)),
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
 })
 
@@ -39,7 +40,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     """Validate the user input allows us to connect."""
     host = data[CONF_HOST]
     port = data[CONF_PORT]
-    slave_id = data["slave_id"]
+    slave_id = data[CONF_SLAVE_ID]
 
     scanner = ThesslaGreenDeviceScanner(host, port, slave_id)
     
@@ -88,7 +89,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
             else:
                 # Create unique ID based on host and slave_id
-                unique_id = f"{user_input[CONF_HOST]}_{user_input['slave_id']}"
+                unique_id = f"{user_input[CONF_HOST]}_{user_input[CONF_SLAVE_ID]}"
                 await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
                 
@@ -121,7 +122,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -133,15 +134,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         options_schema = vol.Schema({
             vol.Optional(
                 CONF_SCAN_INTERVAL,
-                default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                default=self._config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
             ): vol.All(int, vol.Range(min=10, max=300)),
             vol.Optional(
                 CONF_TIMEOUT,
-                default=self.config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
+                default=self._config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
             ): vol.All(int, vol.Range(min=5, max=60)),
             vol.Optional(
                 CONF_RETRY,
-                default=self.config_entry.options.get(CONF_RETRY, DEFAULT_RETRY),
+                default=self._config_entry.options.get(CONF_RETRY, DEFAULT_RETRY),
             ): vol.All(int, vol.Range(min=1, max=5)),
         })
 
