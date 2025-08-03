@@ -1,8 +1,91 @@
 """Test configuration for ThesslaGreen Modbus integration."""
+import sys
+import types
+import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
+
+# Provide minimal Home Assistant stubs if the real package is not installed
+try:  # pragma: no cover - we only execute the fallback when HA isn't available
+    from homeassistant.core import HomeAssistant
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.helpers.update_coordinator import (
+        DataUpdateCoordinator,
+        UpdateFailed,
+    )
+except ModuleNotFoundError:  # pragma: no cover - executed in CI tests
+    ha = types.ModuleType("homeassistant")
+    core = types.ModuleType("homeassistant.core")
+    config_entries = types.ModuleType("homeassistant.config_entries")
+    helpers = types.ModuleType("homeassistant.helpers.update_coordinator")
+    const = types.ModuleType("homeassistant.const")
+    exceptions = types.ModuleType("homeassistant.exceptions")
+
+    class HomeAssistant:  # type: ignore
+        pass
+
+    class ConfigEntry:  # type: ignore
+        pass
+
+    class DataUpdateCoordinator:  # type: ignore
+        def __init__(self, hass, logger, name=None, update_interval=None):
+            self.hass = hass
+            self.logger = logger
+            self.name = name
+            self.update_interval = update_interval
+
+        async def async_request_refresh(self) -> None:  # pragma: no cover - stub
+            pass
+
+        def __class_getitem__(cls, item):  # pragma: no cover - stub
+            return cls
+
+    class UpdateFailed(Exception):  # type: ignore
+        pass
+
+    core.HomeAssistant = HomeAssistant
+    config_entries.ConfigEntry = ConfigEntry
+    helpers.DataUpdateCoordinator = DataUpdateCoordinator
+    helpers.UpdateFailed = UpdateFailed
+
+    # Minimal constants required by the integration
+    const.CONF_HOST = "host"
+    const.CONF_PORT = "port"
+    const.CONF_SCAN_INTERVAL = "scan_interval"
+
+    class Platform(str):  # type: ignore
+        SENSOR = "sensor"
+        BINARY_SENSOR = "binary_sensor"
+        SELECT = "select"
+        NUMBER = "number"
+        SWITCH = "switch"
+        CLIMATE = "climate"
+
+    const.Platform = Platform
+
+    class ConfigEntryNotReady(Exception):  # type: ignore
+        pass
+
+    exceptions.ConfigEntryNotReady = ConfigEntryNotReady
+
+    sys.modules.setdefault("homeassistant", ha)
+    sys.modules.setdefault("homeassistant.core", core)
+    sys.modules.setdefault("homeassistant.config_entries", config_entries)
+    sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
+    sys.modules.setdefault(
+        "homeassistant.helpers.update_coordinator", helpers
+    )
+    sys.modules.setdefault("homeassistant.const", const)
+    sys.modules.setdefault("homeassistant.exceptions", exceptions)
+
+    from homeassistant.core import HomeAssistant  # type: ignore
+    from homeassistant.config_entries import ConfigEntry  # type: ignore
+    from homeassistant.helpers.update_coordinator import (  # type: ignore
+        DataUpdateCoordinator,
+        UpdateFailed,
+    )
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenCoordinator
