@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "TeslaGreen Modbus Configuration",
-        "description": "Enter connection details for TeslaGreen device",
+        "title": "ThesslaGreen Modbus Configuration",
+        "description": "Enter connection details for ThesslaGreen device",
         "data": {
           "host": "IP Address",
           "port": "Modbus Port",
@@ -23,7 +23,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "TeslaGreen Options",
+        "title": "ThesslaGreen Options",
         "data": {
           "scan_interval": "Scan interval (seconds)"
         }
@@ -62,7 +62,7 @@
     },
     "climate": {
       "thessla_green_modbus": {
-        "name": "TeslaGreen Heat Recovery Unit"
+        "name": "ThesslaGreen Heat Recovery Unit"
       }
     },
     "fan": {
