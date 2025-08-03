@@ -19,7 +19,7 @@ CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TIMEOUT = "timeout"
 CONF_RETRY = "retry"
 
-# Temperature sensor invalid value
+# Temperature sensor invalid value (according to documentation)
 INVALID_TEMPERATURE = 0x8000  # 32768 decimal - indicates sensor not connected
 
 # Air flow invalid value  
@@ -52,161 +52,153 @@ DISCRETE_INPUT_REGISTERS: Final[dict[str, int]] = {
     "fan_speed_1": 0x000D,                  # Przełącznik AirS - 1 bieg
     "fireplace": 0x000E,                    # Włącznik KOMINEK
     "fire_alarm": 0x000F,                   # Alarm pożarowy (P.POZ.)
-    "empty_house": 0x0010,                  # Włącznik PUSTY DOM
-    "dp_ahu_filter_overflow": 0x0011,       # Presostat filtra centrali
-    "ahu_filter_protection": 0x0012,        # Zabezpieczenie termiczne nagrzewnicy centrali
+    "dp_ahu_filter_overflow": 0x0012,       # Presostat filtrów rekuperatora (DP1)
+    "ahu_filter_protection": 0x0013,        # Zabezpieczenie termiczne FPX
+    "empty_house": 0x0015,                  # Sygnał PUSTY DOM
 }
 
-# INPUT REGISTERS (04 - READ INPUT REGISTERS)
+# INPUT REGISTERS (04 - READ INPUT REGISTERS) - CORRECTED according to documentation
 INPUT_REGISTERS: Final[dict[str, int]] = {
     # Firmware version
-    "firmware_major": 0x0000,               # Wersja firmware - major
-    "firmware_minor": 0x0001,               # Wersja firmware - minor
-    "firmware_type": 0x0002,                # Typ firmware (1=release, 2=beta)
-    "firmware_patch": 0x0004,               # Wersja firmware - patch
+    "firmware_major": 0x0000,               # Wersja główna oprogramowania
+    "firmware_minor": 0x0001,               # Wersja poboczna oprogramowania
+    "day_of_week": 0x0002,                  # Bieżący dzień tygodnia
+    "period": 0x0003,                       # Bieżący odcinek czasowy
+    "firmware_patch": 0x0004,               # Patch wersji oprogramowania
+    "compilation_days": 0x000E,             # Data kompilacji (dni od 2000-01-01)
+    "compilation_seconds": 0x000F,          # Godzina kompilacji (sekundy od 00:00)
     
-    # Device identification
-    "device_id_1": 0x0008,                  # Identyfikator urządzenia część 1
-    "device_id_2": 0x0009,                  # Identyfikator urządzenia część 2
-    "device_id_3": 0x000A,                  # Identyfikator urządzenia część 3
-    "device_id_4": 0x000B,                  # Identyfikator urządzenia część 4
+    # Temperature sensors (multiplier 0.1°C, 0x8000 = invalid)
+    "outside_temperature": 0x0010,          # Temperatura zewnętrzna (TZ1)
+    "supply_temperature": 0x0011,           # Temperatura nawiewu (TN1)
+    "exhaust_temperature": 0x0012,          # Temperatura wywiewu (TP)
+    "fpx_temperature": 0x0013,              # Temperatura FPX (TZ2)
+    "duct_supply_temperature": 0x0014,      # Temperatura kanałowa (TN2)
+    "gwc_temperature": 0x0015,              # Temperatura GWC (TZ3)
+    "ambient_temperature": 0x0016,          # Temperatura otoczenia (TO)
     
     # Serial number
-    "serial_number_1": 0x0018,              # Numer seryjny część 1
-    "serial_number_2": 0x0019,              # Numer seryjny część 2
-    "serial_number_3": 0x001A,              # Numer seryjny część 3
-    "serial_number_4": 0x001B,              # Numer seryjny część 4
-    "serial_number_5": 0x001C,              # Numer seryjny część 5
-    "serial_number_6": 0x001D,              # Numer seryjny część 6
+    "serial_number_1": 0x0018,
+    "serial_number_2": 0x0019,
+    "serial_number_3": 0x001A,
+    "serial_number_4": 0x001B,
+    "serial_number_5": 0x001C,
+    "serial_number_6": 0x001D,
     
-    # Temperature sensors
-    "outside_temperature": 0x0010,          # Temperatura zewnętrzna (TZ1)
-    "supply_temperature": 0x0011,           # Temperatura powietrza nawiewanego (TN1)
-    "exhaust_temperature": 0x0012,          # Temperatura powietrza wywiewanego (TP)
-    "fpx_temperature": 0x0013,              # Temperatura FPX (TZ2)
-    "ambient_temperature": 0x0014,          # Temperatura otoczenia (TO)
-    "duct_temperature": 0x0015,             # Temperatura kanałowa (TN2)
-    "gwc_temperature": 0x0016,              # Temperatura GWC (TZ3)
+    # Constant Flow system
+    "constant_flow_active": 0x010F,         # Status aktywności CF
+    "supply_percentage": 0x0110,            # Intensywność nawiewu (%)
+    "exhaust_percentage": 0x0111,           # Intensywność wywiewu (%)
+    "supply_flowrate": 0x0112,              # Przepływ nawiewu (m³/h)
+    "exhaust_flowrate": 0x0113,             # Przepływ wywiewu (m³/h)
+    "min_percentage": 0x0114,               # Minimalna intensywność (%)
+    "max_percentage": 0x0115,               # Maksymalna intensywność (%)
+    "water_removal_active": 0x012A,         # Status procedury HEWR
     
-    # Air flow measurements
-    "supply_air_flow": 0x0020,              # Strumień nawiewu [m³/h]
-    "exhaust_air_flow": 0x0021,             # Strumień wywiewu [m³/h]
-    "supply_percentage": 0x0022,            # Intensywność nawiewu [%]
-    "exhaust_percentage": 0x0023,           # Intensywność wywiewu [%]
-    "min_percentage": 0x0024,               # Minimalna intensywność [%]
-    "max_percentage": 0x0025,               # Maksymalna intensywność [%]
+    # Air flow values (CF system)
+    "supply_air_flow": 0x0100,              # Strumień nawiewu CF
+    "exhaust_air_flow": 0x0101,             # Strumień wywiewu CF
     
-    # Constant Flow system status
-    "constant_flow_active": 0x0030,         # Status Constant Flow (0=nieaktywny, 1=aktywny)
-    "water_removal_active": 0x0031,         # Status HEWR (0=nieaktywny, 1=aktywny)
-    
-    # DAC outputs (0-10V)
-    "dac_supply": 0x0040,                   # Napięcie wentylatora nawiewnego [mV]
-    "dac_exhaust": 0x0041,                  # Napięcie wentylatora wywiewnego [mV]
-    "dac_heater": 0x0042,                   # Napięcie nagrzewnicy [mV]
-    "dac_cooler": 0x0043,                   # Napięcie chłodnicy [mV]
-    
-    # Alarms - Type S (critical errors that stop operation)
-    "s01_product_key": 0x2001,              # S01: Brak klucza produktu
-    "s02_fpx_no_function": 0x2002,          # S02: FPX bez funkcji
-    "s03_fpx_overheating": 0x2003,          # S03: Przegrzanie FPX
-    "s04_fpx_underheating": 0x2004,         # S04: Niedogrzanie FPX
-    "s05_supply_air_sensor": 0x2005,        # S05: Uszkodzony czujnik nawiewu
-    "s06_exhaust_air_sensor": 0x2006,       # S06: Uszkodzony czujnik wywiewu
-    "s07_water_heater_sensor": 0x2007,      # S07: Uszkodzony czujnik nagrzewnicy wodnej
-    "s08_fpx_sensor": 0x2008,               # S08: Uszkodzony czujnik FPX
-    "s09_ambient_sensor": 0x2009,           # S09: Uszkodzony czujnik otoczenia
-    "s10_fpx_heater_damaged": 0x200A,       # S10: Uszkodzona nagrzewnica FPX
-    "s11_fpx_heater_protection": 0x200B,    # S11: Zabezpieczenie termiczne FPX
-    "s12_fpx_with_heater_protection": 0x200C, # S12: Zabezpieczenie termiczne FPX z nagrzewnicą
-    "s13_duct_sensor_damaged": 0x200D,      # S13: Uszkodzony czujnik kanałowy
-    "s25_outside_sensor_damaged": 0x2019,   # S25: Uszkodzony czujnik zewnętrzny
-    "s26_gwc_sensor_damaged": 0x201A,       # S26: Uszkodzony czujnik GWC
-    "s29_high_temperature": 0x201D,         # S29: Wysoka temperatura
-    "s30_supply_fan_failure": 0x201E,       # S30: Awaria wentylatora nawiewnego
-    "s31_exhaust_fan_failure": 0x201F,      # S31: Awaria wentylatora wywiewnego
-    "s32_tg02_communication": 0x2020,       # S32: Komunikacja z TG-02
-    
-    # Alarms - Type E (warnings)
-    "e99_product_key_warning": 0x2063,      # E99: Ostrzeżenie klucz produktu
-    "e100_outside_temp_sensor": 0x2064,     # E100: Czujnik temperatury zewnętrznej
-    "e101_supply_temp_sensor": 0x2065,      # E101: Czujnik temperatury nawiewu
-    "e102_exhaust_temp_sensor": 0x2066,     # E102: Czujnik temperatury wywiewu
-    "e103_fpx_temp_sensor": 0x2067,         # E103: Czujnik temperatury FPX
-    "e104_ambient_temp_sensor": 0x2068,     # E104: Czujnik temperatury otoczenia
-    "e105_duct_temp_sensor": 0x2069,        # E105: Czujnik temperatury kanałowy
-    "e106_gwc_temp_sensor": 0x206A,         # E106: Czujnik temperatury GWC
-    "e138_cf_supply_sensor": 0x208A,        # E138: Czujnik CF nawiewu
-    "e139_cf_exhaust_sensor": 0x208B,       # E139: Czujnik CF wywiewu
-    "e152_high_exhaust_temp": 0x2098,       # E152: Wysoka temperatura wywiewu
-    "e196_regulation_not_done": 0x20C6,     # E196: Regulacja nie wykonana
-    "e197_regulation_interrupted": 0x20C7,  # E197: Regulacja przerwana
-    "e198_cf2_communication": 0x20C8,       # E198: Komunikacja CF2
-    "e199_cf_communication": 0x20C9,        # E199: Komunikacja CF
-    "e200_electric_heater_ahu": 0x20CA,     # E200: Nagrzewnica elektryczna centrali
-    "e201_electric_heater_duct": 0x20CB,    # E201: Nagrzewnica elektryczna kanałowa
-    "e249_expansion_communication": 0x20F9, # E249: Komunikacja Expansion
-    "e250_filter_change_no_pres": 0x20FA,   # E250: Wymiana filtrów (bez presostatu)
-    "e251_duct_filter_change": 0x20FB,      # E251: Wymiana filtra kanałowego
-    "e252_filter_change_pres": 0x20FC,      # E252: Wymiana filtrów (presostat)
+    # DAC outputs (voltage control 0-10V, multiplier 0.00244)
+    "dac_supply": 0x0500,                   # Napięcie wentylatora nawiewnego [mV]
+    "dac_exhaust": 0x0501,                  # Napięcie wentylatora wywiewnego [mV]
+    "dac_heater": 0x0502,                   # Napięcie nagrzewnicy kanałowej [mV]
+    "dac_cooler": 0x0503,                   # Napięcie chłodnicy kanałowej [mV]
 }
 
 # HOLDING REGISTERS (03 - READ HOLDING REGISTERS)
 HOLDING_REGISTERS: Final[dict[str, int]] = {
-    # Basic control
-    "on_off_panel_mode": 0x1000,            # Tryb panelu ON/OFF
+    # Date and time
+    "datetime_year_month": 0x0000,          # Rok i miesiąc [RRMM]
+    "datetime_day_dow": 0x0001,             # Dzień i dzień tygodnia [DDTT]
+    "datetime_hour_minute": 0x0002,         # Godzina i minuta [GGmm]
+    "datetime_second_cs": 0x0003,           # Sekunda i setne części [sscc]
+    
+    # Lock date
+    "lock_date_year": 0x0007,               # Rok blokady
+    "lock_date_month": 0x0008,              # Miesiąc blokady
+    "lock_date_day": 0x0009,                # Dzień blokady
+    
+    # Configuration
+    "configuration_mode": 0x000D,           # Tryby specjalne pracy
+    "access_level": 0x000F,                 # Poziom dostępu
+    
+    # Basic operation control
     "mode": 0x1070,                         # Tryb pracy (0=auto, 1=manual, 2=temp)
     "season_mode": 0x1071,                  # Sezon (0=lato, 1=zima)
-    "special_mode": 0x1072,                 # Funkcja specjalna
+    "air_flow_rate_manual": 0x1072,         # Intensywność - tryb manualny
+    "air_flow_rate_temporary": 0x1073,      # Intensywność - tryb chwilowy
+    "supply_air_temperature_manual": 0x1074, # Temperatura - tryb manualny (×0.5°C)
+    "supply_air_temperature_temporary": 0x1075, # Temperatura - tryb chwilowy (×0.5°C)
     
-    # Manual control
-    "air_flow_rate_manual": 0x1073,         # Intensywność w trybie manualnym [%]
-    "supply_air_temperature_manual": 0x1074, # Temperatura nawiewu manualny [0.5°C]
+    # Device control
+    "on_off_panel_mode": 0x1123,            # ON/OFF urządzenia
     
-    # Temporary control
-    "air_flow_rate_temporary": 0x1075,      # Intensywność w trybie chwilowym [%]
-    "supply_air_temperature_temporary": 0x1076, # Temperatura nawiewu chwilowy [0.5°C]
-    "temporary_mode_time": 0x1077,          # Czas trybu chwilowego [min]
+    # Special functions
+    "special_mode": 0x1080,                 # Funkcje specjalne (0-11)
+    "hood_supply_coef": 0x1082,             # Intensywność OKAP nawiew (%)
+    "hood_exhaust_coef": 0x1083,            # Intensywność OKAP wywiew (%)
+    "fireplace_supply_coef": 0x1084,        # Różnicowanie KOMINEK (%)
+    "airing_bathroom_coef": 0x1085,         # Intensywność WIETRZENIE łazienka (%)
+    "airing_coef": 0x1086,                  # Intensywność WIETRZENIE pokoje (%)
+    "contamination_coef": 0x1087,           # Intensywność czujnik jakości (%)
+    "empty_house_coef": 0x1088,             # Intensywność PUSTY DOM (%)
     
-    # Comfort mode
-    "comfort_mode_panel": 0x1078,           # Panel trybu KOMFORT
-    "comfort_mode": 0x1079,                 # Tryb KOMFORT (read-only)
-    
-    # Special function coefficients
-    "hood_supply_coef": 0x1080,             # Współczynnik OKAP nawiew [%]
-    "hood_exhaust_coef": 0x1081,            # Współczynnik OKAP wywiew [%]
-    "fireplace_supply_coef": 0x1082,        # Różnicowanie KOMINEK [%]
-    "airing_coef": 0x1083,                  # Współczynnik WIETRZENIE [%]
-    "contamination_coef": 0x1084,           # Współczynnik czujnik jakości [%]
-    "empty_house_coef": 0x1085,             # Współczynnik PUSTY DOM [%]
-    
-    # AirS panel configuration
-    "fan_speed_1_coef": 0x1090,             # AirS 1 bieg [%]
-    "fan_speed_2_coef": 0x1091,             # AirS 2 bieg [%]
-    "fan_speed_3_coef": 0x1092,             # AirS 3 bieg [%]
+    # AirS panel settings
+    "fan_speed_1_coef": 0x1078,             # Intensywność 1 bieg (%)
+    "fan_speed_2_coef": 0x1079,             # Intensywność 2 bieg (%)
+    "fan_speed_3_coef": 0x107A,             # Intensywność 3 bieg (%)
     
     # GWC system
-    "gwc_mode": 0x10A0,                     # Tryb GWC (read-only)
-    "gwc_off": 0x10A1,                      # Dezaktywacja GWC (0=aktywny, 1=nieaktywny)
-    "gwc_regen_mode": 0x10A2,               # Tryb regeneracji GWC
-    "gwc_winter_threshold": 0x10A3,         # Próg zimowy GWC [0.5°C]
-    "gwc_summer_threshold": 0x10A4,         # Próg letni GWC [0.5°C]
+    "gwc_off": 0x10A0,                      # Dezaktywacja GWC
+    "min_gwc_air_temperature": 0x10A1,      # Dolny próg GWC (×0.5°C)
+    "max_gwc_air_temperature": 0x10A2,      # Górny próg GWC (×0.5°C)
+    "gwc_regen": 0x10A6,                    # Typ regeneracji GWC
+    "gwc_mode": 0x10A7,                     # Status GWC (read-only)
+    "gwc_regen_period": 0x10A8,             # Czas regeneracji (h)
+    "delta_t_gwc": 0x10AA,                  # Różnica temperatur regeneracji (×0.5°C)
+    "gwc_regen_flag": 0x10AF,               # Flaga regeneracji GWC
+    
+    # Comfort mode
+    "comfort_mode_panel": 0x10D0,           # Wybór EKO/KOMFORT
+    "comfort_mode": 0x10D1,                 # Status KOMFORT (read-only)
     
     # Bypass system
-    "bypass_mode": 0x10B0,                  # Tryb Bypass (read-only)
-    "bypass_off": 0x10B1,                   # Dezaktywacja Bypass (0=aktywny, 1=nieaktywny)
-    "bypass_threshold_temp": 0x10B2,        # Próg temperatury Bypass [0.5°C]
-    "bypass_threshold_diff": 0x10B3,        # Próg różnicy Bypass [0.5°C]
+    "bypass_off": 0x10E0,                   # Dezaktywacja bypass
+    "min_bypass_temperature": 0x10E1,       # Minimalna temperatura bypass (×0.5°C)
+    "air_temperature_summer_free_heating": 0x10E2, # Temperatura FreeHeating (×0.5°C)
+    "air_temperature_summer_free_cooling": 0x10E3, # Temperatura FreeCooling (×0.5°C)
+    "bypass_mode": 0x10EA,                  # Status bypass (read-only)
+    "bypass_user_mode": 0x10EB,             # Sposób realizacji bypass (1-3)
+    "bypass_coef1": 0x10EC,                 # Różnicowanie bypass (%)
+    "bypass_coef2": 0x10ED,                 # Intensywność bypass (%)
     
-    # Device name (8 registers = 16 characters)
-    "device_name_1": 0x1FD0,                # Nazwa urządzenia część 1
-    "device_name_2": 0x1FD1,                # Nazwa urządzenia część 2
-    "device_name_3": 0x1FD2,                # Nazwa urządzenia część 3
-    "device_name_4": 0x1FD3,                # Nazwa urządzenia część 4
-    "device_name_5": 0x1FD4,                # Nazwa urządzenia część 5
-    "device_name_6": 0x1FD5,                # Nazwa urządzenia część 6
-    "device_name_7": 0x1FD6,                # Nazwa urządzenia część 7
-    "device_name_8": 0x1FD7,                # Nazwa urządzenia część 8
+    # System control
+    "antifreeze_mode": 0x1060,              # Flaga uruchomienia FPX
+    "antifreeze_stage": 0x1066,             # Tryb działania FPX
+    "stop_ahu_code": 0x1120,                # Kod alarmu zatrzymującego
+    "language": 0x112F,                     # Język panelu
+    
+    # Device name (8 registers ASCII)
+    "device_name_1": 0x1FD0,
+    "device_name_2": 0x1FD1,
+    "device_name_3": 0x1FD2,
+    "device_name_4": 0x1FD3,
+    "device_name_5": 0x1FD4,
+    "device_name_6": 0x1FD5,
+    "device_name_7": 0x1FD6,
+    "device_name_8": 0x1FD7,
+    
+    # Product key
+    "lock_pass_1": 0x1FFB,                  # Klucz produktu słowo młodsze
+    "lock_pass_2": 0x1FFC,                  # Klucz produktu słowo starsze
+    "lock_flag": 0x1FFD,                    # Aktywacja blokady
+    "required_temp": 0x1FFE,                # Temperatura zadana KOMFORT (×0.5°C)
+    "filter_change": 0x1FFF,                # System kontroli filtrów
+    
+    # Alarm flags
+    "alarm_flag": 0x2000,                   # Flaga alarmów E
+    "error_flag": 0x2001,                   # Flaga błędów S
 }
 
 # Operating modes
@@ -228,27 +220,40 @@ SPECIAL_MODES = {
     1: "OKAP (wejście sygnałowe)",
     2: "KOMINEK (ręczne/wejście sygnałowe)",
     3: "WIETRZENIE (przełącznik dzwonkowy)",
-    4: "CZUJNIK JAKOŚCI (automatyczny)",
-    5: "PUSTY DOM (przełącznik dzwonkowy)",
+    4: "WIETRZENIE (przełącznik ON/OFF)",
+    5: "H2O/WIETRZENIE (higrostat)",
+    6: "JP/WIETRZENIE (czujnik jakości)",
+    7: "WIETRZENIE (aktywacja ręczna)",
+    8: "WIETRZENIE (tryb automatyczny)",
+    9: "WIETRZENIE (tryb manualny)",
+    10: "OTWARTE OKNA (ręczne)",
+    11: "PUSTY DOM (ręczne/wejście sygnałowe)"
 }
 
-# GWC modes (read-only)
+# GWC modes
 GWC_MODES = {
-    0: "Nieaktywny",
-    1: "Zima",
-    2: "Lato",
-    3: "Regeneracja"
+    0: "GWC nieaktywny",
+    1: "Tryb zima",
+    2: "Tryb lato"
 }
 
-# Bypass modes (read-only)
+# Bypass modes
 BYPASS_MODES = {
-    0: "Nieaktywny",
-    1: "FreeHeating",
-    2: "FreeCooling"
+    0: "Bypass nieaktywny",
+    1: "Funkcja grzania (FreeHeating)",
+    2: "Funkcja chłodzenia (FreeCooling)"
 }
 
-# Comfort modes (read-only)
+# Comfort modes
 COMFORT_MODES = {
-    0: "Nieaktywny",
-    1: "Aktywny"
+    0: "KOMFORT nieaktywny",
+    1: "Funkcja grzania",
+    2: "Funkcja chłodzenia"
+}
+
+# FPX modes
+FPX_MODES = {
+    0: "FPX OFF",
+    1: "Tryb FPX1",
+    2: "Tryb FPX2"
 }

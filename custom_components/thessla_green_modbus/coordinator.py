@@ -291,19 +291,20 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _process_input_register_value(self, name: str, raw_value: int) -> Any:
         """Process input register value based on register type."""
-        # Temperature values (16-bit signed, 0.5°C resolution)
+        # Temperature registers (×0.1°C, 0x8000 = invalid)
         if "temperature" in name:
             if raw_value == INVALID_TEMPERATURE:
                 return None
-            # Convert to signed 16-bit
+            # Handle signed 16-bit values
             if raw_value > 32767:
                 signed_value = raw_value - 65536
             else:
                 signed_value = raw_value
-            return signed_value * 0.5
+            # Apply correct multiplier: 0.1 according to documentation
+            return round(signed_value * 0.1, 1)
 
         # Air flow values
-        if "air_flow" in name:
+        if "air_flow" in name or "flowrate" in name:
             if raw_value == INVALID_FLOW:
                 return None
             return raw_value
@@ -312,24 +313,33 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "percentage" in name:
             return raw_value
 
-        # DAC outputs (0-10V)
+        # DAC outputs (0-10V) - multiplier 0.00244
         if "dac_" in name:
-            return round(raw_value * 10.0 / 1000.0, 2)  # Convert to volts
+            return round(raw_value * 0.00244, 2)
 
         # Default: return raw value
         return raw_value
 
     def _process_holding_register_value(self, name: str, raw_value: int) -> Any:
         """Process holding register value based on register type."""
-        # Temperature setpoints (0.5°C resolution)
+        # Temperature setpoints (×0.5°C for holding registers)
         if "temperature" in name:
-            return raw_value * 0.5
+            return round(raw_value * 0.5, 1)
 
         # Time values in BCD format [GGMM]
-        if "time" in name:
+        if "time" in name and any(x in name for x in ["summer", "winter", "airing", "start", "stop"]):
+            if raw_value == 0xA200 or raw_value == 41472:  # Disabled
+                return None
             hour = (raw_value >> 8) & 0xFF
             minute = raw_value & 0xFF
             return f"{hour:02d}:{minute:02d}"
+
+        # Setting registers [AATT] - airflow% and temperature
+        if "setting" in name and ("summer" in name or "winter" in name):
+            airflow = (raw_value >> 8) & 0xFF
+            temp_raw = raw_value & 0xFF
+            temperature = temp_raw * 0.5
+            return {"airflow": airflow, "temperature": temperature}
 
         # Default: return raw value
         return raw_value
