@@ -13,7 +13,7 @@ Inteligentna integracja dla Home Assistant umożliwiająca kontrolę rekuperator
 - **📊 Kompletny monitoring** - wszystkie czujniki, statusy, alarmy
 - **🌡️ Entycja Climate** - łatwa kontrola z interfejsu HA
 - **⚡ Funkcje specjalne** - okap, kominek, wietrzenie, pusty dom
-- **🌿 Systemy GWC i Bypass** - pełna kontrola systemów dodatkowych
+- **🌿 Systemy GWC i Bypass** - monitorowanie trybów GWC, Bypass i KOMFORT
 
 ## 🚀 Instalacja
 
@@ -78,15 +78,17 @@ Integracja automatycznie przeskanuje urządzenie i utworzy tylko dostępne entyc
 
 ### Systemy dodatkowe
 - **GWC (Gruntowy Wymiennik Ciepła)**
-  - Tryb: Zima/Lato/Nieaktywny
+  - Tryb (tylko odczyt): Zima/Lato/Nieaktywny
   - Regeneracja: Dobowa/Temperaturowa
   - Progi temperatur
 - **Bypass**
-  - Tryb: FreeHeating/FreeCooling/Nieaktywny
+  - Tryb (tylko odczyt): FreeHeating/FreeCooling/Nieaktywny
   - Różne sposoby pracy
 - **Constant Flow**
   - Status aktywności
   - Rzeczywiste przepływy
+- **Tryb KOMFORT**
+  - Status (tylko odczyt): Funkcja grzania/Funkcja chłodzenia/Nieaktywny
 
 ### Alarmy i diagnostyka
 - **Alarmy typu S** (błędy zatrzymujące)

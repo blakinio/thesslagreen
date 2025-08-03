@@ -58,6 +58,15 @@
       },
       "air_quality_index": {
         "name": "Indeks jakości powietrza"
+      },
+      "gwc_mode": {
+        "name": "Tryb GWC"
+      },
+      "bypass_mode": {
+        "name": "Tryb bypass"
+      },
+      "comfort_mode": {
+        "name": "Tryb KOMFORT"
       }
     },
     "climate": {
@@ -88,3 +97,4 @@
     }
   }
 }
+
