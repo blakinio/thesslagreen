@@ -75,7 +75,7 @@ def coordinator():
         const_module.CONF_SLAVE_ID: 1,
     })
     hass = MagicMock()
-    coord = module.TeslaGreenCoordinator(hass, entry)
+    coord = module.ThesslaGreenCoordinator(hass, entry)
     coord._client = MagicMock()
     return coord
 

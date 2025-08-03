@@ -1,6 +1,6 @@
-# TeslaGreen Modbus Integration
+# ThesslaGreen Modbus Integration
 
-Integracja Home Assistant dla rekuperatorów TeslaGreen z komunikacją Modbus TCP.
+Integracja Home Assistant dla rekuperatorów ThesslaGreen z komunikacją Modbus TCP.
 
 ## Funkcje
 - Monitorowanie temperatury (4 czujniki)
