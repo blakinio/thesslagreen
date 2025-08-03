@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Optional
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -16,6 +17,80 @@ from .const import DOMAIN
 from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class DeviceStatusDetector:
+    """Smart device status detection using multiple indicators."""
+    
+    def __init__(self, coordinator_data: dict[str, Any]):
+        self.data = coordinator_data
+    
+    def detect_device_status(self) -> Optional[bool]:
+        """Detect device status using multiple methods with smart logic."""
+        indicators = []
+        
+        # Method 1: Official panel register
+        panel_mode = self.data.get("on_off_panel_mode")
+        if panel_mode is not None:
+            indicators.append(("panel_register", bool(panel_mode)))
+        
+        # Method 2: Fan power coil
+        fan_power = self.data.get("power_supply_fans")
+        if fan_power is not None:
+            indicators.append(("fan_power", bool(fan_power)))
+        
+        # Method 3: Ventilation activity
+        supply_pct = self.data.get("supply_percentage")
+        if supply_pct is not None and supply_pct > 0:
+            indicators.append(("ventilation_active", True))
+        elif supply_pct is not None:
+            indicators.append(("ventilation_active", False))
+        
+        # Method 4: Air flow measurement
+        flows = [
+            self.data.get("supply_flowrate"),
+            self.data.get("exhaust_flowrate"),
+            self.data.get("supply_air_flow"),
+            self.data.get("exhaust_air_flow")
+        ]
+        active_flows = [f for f in flows if f is not None and f > 10]
+        if active_flows:
+            indicators.append(("air_flow", True))
+        elif any(f is not None for f in flows):
+            indicators.append(("air_flow", False))
+        
+        # Method 5: DAC voltages
+        dac_supply = self.data.get("dac_supply")
+        dac_exhaust = self.data.get("dac_exhaust")
+        if (dac_supply is not None and dac_supply > 0.5) or (dac_exhaust is not None and dac_exhaust > 0.5):
+            indicators.append(("dac_voltages", True))
+        elif dac_supply is not None or dac_exhaust is not None:
+            indicators.append(("dac_voltages", False))
+        
+        # Method 6: Constant Flow
+        cf_active = self.data.get("constant_flow_active")
+        if cf_active is not None:
+            indicators.append(("constant_flow", bool(cf_active)))
+        
+        # Analyze indicators
+        on_indicators = [name for name, status in indicators if status is True]
+        off_indicators = [name for name, status in indicators if status is False]
+        
+        _LOGGER.debug("Device status indicators - ON: %s, OFF: %s", on_indicators, off_indicators)
+        
+        # Decision logic
+        if on_indicators:
+            # If any indicator shows activity, device is likely ON
+            _LOGGER.info("Device detected as ON based on: %s", ", ".join(on_indicators))
+            return True
+        elif off_indicators:
+            # If all indicators show no activity, device is OFF
+            _LOGGER.info("Device detected as OFF - no activity detected")
+            return False
+        else:
+            # Cannot determine
+            _LOGGER.warning("Cannot determine device status - insufficient data")
+            return None
 
 
 async def async_setup_entry(
@@ -116,13 +191,10 @@ async def async_setup_entry(
             )
         )
     
-    # Device on/off status
-    if "on_off_panel_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "on_off_panel_mode", "Urządzenie włączone", "mdi:power", BinarySensorDeviceClass.POWER
-            )
-        )
+    # SMART Device status - this replaces the simple on_off_panel_mode sensor
+    entities.append(
+        ThesslaGreenSmartDeviceStatus(coordinator)
+    )
     
     # Alarm sensors
     alarm_sensors = [
@@ -143,7 +215,7 @@ async def async_setup_entry(
 
 
 class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """ThesslaGreen binary sensor."""
+    """Standard ThesslaGreen binary sensor."""
 
     def __init__(
         self,
@@ -179,3 +251,50 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
         if value is None:
             return None
         return bool(value)
+
+
+class ThesslaGreenSmartDeviceStatus(CoordinatorEntity, BinarySensorEntity):
+    """Smart device status sensor using multiple indicators."""
+
+    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
+        """Initialize the smart device status sensor."""
+        super().__init__(coordinator)
+        self._attr_name = "Urządzenie włączone"
+        self._attr_icon = "mdi:power"
+        self._attr_device_class = BinarySensorDeviceClass.POWER
+        
+        device_info = coordinator.device_info
+        device_name = device_info.get("device_name", "ThesslaGreen")
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_device_status_smart"
+        
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
+            "name": device_name,
+            "manufacturer": "ThesslaGreen",
+            "model": "AirPack",
+            "sw_version": device_info.get("firmware", "Unknown"),
+        }
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the device is on using smart detection."""
+        detector = DeviceStatusDetector(self.coordinator.data)
+        return detector.detect_device_status()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes for debugging."""
+        data = self.coordinator.data
+        return {
+            "panel_register": data.get("on_off_panel_mode"),
+            "fan_power_coil": data.get("power_supply_fans"),
+            "supply_percentage": data.get("supply_percentage"),
+            "exhaust_percentage": data.get("exhaust_percentage"),
+            "supply_flowrate": data.get("supply_flowrate"),
+            "exhaust_flowrate": data.get("exhaust_flowrate"),
+            "dac_supply_voltage": data.get("dac_supply"),
+            "dac_exhaust_voltage": data.get("dac_exhaust"),
+            "constant_flow_active": data.get("constant_flow_active"),
+            "operating_mode": data.get("mode"),
+            "detection_method": "smart_multi_indicator",
+        }
