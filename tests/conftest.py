@@ -1,6 +1,6 @@
 """Test configuration for ThesslaGreen Modbus integration."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
@@ -68,14 +68,3 @@ def mock_coordinator():
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     return coordinator
-
-
-@pytest.fixture
-def mock_modbus_client():
-    """Return a mock Modbus client."""
-    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock:
-        client = MagicMock()
-        client.connect.return_value = True
-        client.connected = True
-        mock.return_value = client
-        yield client
