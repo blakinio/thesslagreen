@@ -14,3 +14,13 @@ Integracja Home Assistant dla rekuperatorów ThesslaGreen z komunikacją Modbus 
 2. Zainstaluj integrację
 3. Uruchom ponownie Home Assistant
 4. Dodaj integrację przez UI
+
+## Logi
+Aby włączyć rozszerzone logowanie, dodaj do `configuration.yaml`:
+
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.thessla_green_modbus: debug
+```

@@ -117,7 +117,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data.update(discrete_data)
 
             # Add debug info about device status
-            self._debug_device_status(data)
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                self._debug_device_status(data)
 
             return data
 
@@ -168,9 +169,9 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         status_indicators.append(f"Operating mode: {mode} ({mode_name})")
         
         # Log all indicators
-        _LOGGER.warning("=== DEVICE STATUS INVESTIGATION ===")
+        _LOGGER.debug("=== DEVICE STATUS INVESTIGATION ===")
         for indicator in status_indicators:
-            _LOGGER.warning("  %s", indicator)
+            _LOGGER.debug("  %s", indicator)
         
         # Make a decision
         device_on_indicators = []
@@ -187,11 +188,14 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             device_on_indicators.append("Fan voltages present")
         
         if device_on_indicators:
-            _LOGGER.warning("  DECISION: Device appears ON based on: %s", ", ".join(device_on_indicators))
+            _LOGGER.debug(
+                "  DECISION: Device appears ON based on: %s",
+                ", ".join(device_on_indicators),
+            )
         else:
-            _LOGGER.warning("  DECISION: Device appears OFF - no activity detected")
-        
-        _LOGGER.warning("=== END INVESTIGATION ===")
+            _LOGGER.debug("  DECISION: Device appears OFF - no activity detected")
+
+        _LOGGER.debug("=== END INVESTIGATION ===")
 
     def _read_input_registers(self, client: ModbusTcpClient) -> dict[str, Any]:
         """Read input registers efficiently."""
