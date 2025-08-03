@@ -128,7 +128,150 @@ async def async_setup_entry(
             )
         )
 
-    # Special function coefficients
+    # ========================================
+    # BYPASS SYSTEM PARAMETERS (NOWE!)
+    # ========================================
+    
+    # Minimalna temperatura bypass
+    if "min_bypass_temperature" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "min_bypass_temperature",
+                "Bypass - Min. temperatura zewn.",
+                "mdi:thermometer-low",
+                10,
+                40,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # Temperatura FreeHeating
+    if "air_temperature_summer_free_heating" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "air_temperature_summer_free_heating",
+                "Bypass - Temperatura FreeHeating",
+                "mdi:thermometer-plus",
+                30,
+                60,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # Temperatura FreeCooling  
+    if "air_temperature_summer_free_cooling" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "air_temperature_summer_free_cooling", 
+                "Bypass - Temperatura FreeCooling",
+                "mdi:thermometer-minus",
+                30,
+                60,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # Różnicowanie strumieni bypass
+    if "bypass_coef1" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "bypass_coef1",
+                "Bypass - Różnicowanie strumieni",
+                "mdi:valve",
+                10,
+                100,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    # Intensywność bypass
+    if "bypass_coef2" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "bypass_coef2",
+                "Bypass - Intensywność nawiewu",
+                "mdi:valve-open",
+                10,
+                150,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    # ========================================
+    # GWC SYSTEM PARAMETERS (BONUS)
+    # ========================================
+    
+    # Min temperatura GWC (zima)
+    if "min_gwc_air_temperature" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "min_gwc_air_temperature",
+                "GWC - Min. temperatura (zima)",
+                "mdi:heat-pump",
+                0,
+                20,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # Max temperatura GWC (lato)
+    if "max_gwc_air_temperature" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "max_gwc_air_temperature",
+                "GWC - Max. temperatura (lato)",
+                "mdi:heat-pump",
+                30,
+                80,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # Różnica temperatur GWC regeneracji
+    if "delta_t_gwc" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "delta_t_gwc",
+                "GWC - Różnica temp. regeneracji",
+                "mdi:thermometer-chevron-up",
+                0,
+                10,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # Czas regeneracji GWC
+    if "gwc_regen_period" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "gwc_regen_period",
+                "GWC - Czas regeneracji",
+                "mdi:timer",
+                4,
+                8,
+                1,
+                "h",  # godziny
+            )
+        )
+
+    # Special function coefficients (pozostałe bez zmian)
     special_coeffs = [
         ("hood_supply_coef", "Intensywność OKAP nawiew", "mdi:kitchen", 100, 150),
         ("hood_exhaust_coef", "Intensywność OKAP wywiew", "mdi:kitchen", 100, 150),
