@@ -22,7 +22,7 @@ from .const import (
     INVALID_FLOW,
     OPERATING_MODES,
 )
-from .device_registry import ThesslaGreenDeviceScanner
+from .device_scanner import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
