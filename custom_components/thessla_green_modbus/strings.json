@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Konfiguracja TeslaGreen Modbus",
-        "description": "Wprowadź dane połączenia z urządzeniem TeslaGreen",
+        "title": "Konfiguracja ThesslaGreen Modbus",
+        "description": "Wprowadź dane połączenia z urządzeniem ThesslaGreen",
         "data": {
           "host": "Adres IP",
           "port": "Port Modbus",
@@ -23,7 +23,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Opcje TeslaGreen",
+        "title": "Opcje ThesslaGreen",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)"
         }
