@@ -33,7 +33,7 @@ async def async_setup_entry(
             ThesslaGreenNumber(
                 coordinator,
                 "air_flow_rate_manual",
-                "Intensywność manualny",
+                "Rekuperator prędkość",
                 "mdi:fan",
                 10,
                 100,
