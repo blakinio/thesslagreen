@@ -1,13 +1,11 @@
 """Data coordinator for ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
 
 from pymodbus.client import ModbusTcpClient
-from pymodbus.exceptions import ModbusException
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -83,9 +81,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the device."""
-        return await asyncio.get_event_loop().run_in_executor(
-            None, self._update_data_sync
-        )
+        return await self.hass.async_add_executor_job(self._update_data_sync)
 
     def _update_data_sync(self) -> dict[str, Any]:
         """Synchronously fetch data from the device."""
@@ -490,8 +486,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return False
 
         register_address = HOLDING_REGISTERS[key]
-        return await asyncio.get_event_loop().run_in_executor(
-            None, self._write_register_sync, register_address, value
+        return await self.hass.async_add_executor_job(
+            self._write_register_sync, register_address, value
         )
 
     def _write_register_sync(self, address: int, value: int) -> bool:
