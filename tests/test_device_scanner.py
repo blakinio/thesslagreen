@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.device_registry import ThesslaGreenDeviceScanner
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ async def test_scan_device_success(mock_modbus_response):
     """Test successful device scan."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
     
-    with patch("pymodbus.client.ModbusTcpClient") as mock_client_class:
+    with patch("custom_components.thessla_green_modbus.device_registry.ModbusTcpClient") as mock_client_class:
         mock_client = MagicMock()
         mock_client.connect.return_value = True
         mock_client.read_input_registers.return_value = mock_modbus_response
@@ -49,7 +49,7 @@ async def test_scan_device_connection_failure():
     """Test device scan with connection failure."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
     
-    with patch("pymodbus.client.ModbusTcpClient") as mock_client_class:
+    with patch("custom_components.thessla_green_modbus.device_registry.ModbusTcpClient") as mock_client_class:
         mock_client = MagicMock()
         mock_client.connect.return_value = False
         mock_client_class.return_value = mock_client

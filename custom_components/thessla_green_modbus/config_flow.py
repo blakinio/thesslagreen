@@ -24,7 +24,7 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
 )
-from .device_scanner import ThesslaGreenDeviceScanner
+from .device_registry import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
