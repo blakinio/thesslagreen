@@ -221,15 +221,18 @@ class ThesslaGreenDeviceScanner:
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value indicates the register is available."""
-        # Some registers return specific values when not available
-        if value == 0xFFFF or value == 65535:
-            # Temperature sensors return 0x8000 (32768) when not connected
-            if "temperature" in register_name and value == 32768:
-                return False
-            # Air flow sensors return 65535 when CF is not active
-            if "air_flow" in register_name and value == 65535:
-                return False
-        
+        # Temperature sensors return 0x8000 (32768) when not connected
+        if "temperature" in register_name and value == 32768:
+            return False
+
+        # Air flow sensors return 0xFFFF/65535 when CF is not active
+        if "air_flow" in register_name and value == 65535:
+            return False
+
+        # Generic values indicating unavailable registers
+        if value in (0xFFFF, 65535):
+            return False
+
         return True
 
     def _group_registers_by_range(self, registers: Dict[str, int], max_gap: int = 10) -> Dict[int, Dict[str, int]]:

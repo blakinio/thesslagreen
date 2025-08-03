@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Final
 
+from homeassistant.const import CONF_HOST, CONF_PORT
+
 DOMAIN: Final = "thessla_green_modbus"
 
 # Default values

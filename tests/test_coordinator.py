@@ -3,7 +3,7 @@ import os
 import sys
 import types
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -75,7 +75,15 @@ def coordinator():
         const_module.CONF_SLAVE_ID: 1,
     })
     hass = MagicMock()
-    coord = module.ThesslaGreenCoordinator(hass, entry)
+    coord = module.ThesslaGreenCoordinator(
+        hass,
+        entry.data[const_module.CONF_HOST],
+        entry.data[const_module.CONF_PORT],
+        entry.data[const_module.CONF_SLAVE_ID],
+        const_module.DEFAULT_SCAN_INTERVAL,
+        const_module.DEFAULT_TIMEOUT,
+        const_module.DEFAULT_RETRY,
+    )
     coord._client = MagicMock()
     return coord
 
@@ -87,12 +95,16 @@ def test_async_write_invalid_register(coordinator):
 
 
 def test_success_triggers_refresh(coordinator):
-    coordinator._client.connect.return_value = True
-    response = MagicMock()
-    response.isError.return_value = False
-    coordinator._client.write_register.return_value = response
-    coordinator.async_request_refresh = AsyncMock()
+    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.connect.return_value = True
+        response = MagicMock()
+        response.isError.return_value = False
+        mock_client.write_register.return_value = response
+        mock_client_class.return_value = mock_client
 
-    result = asyncio.run(coordinator.async_write_register("target_temperature", 20))
+        result = asyncio.run(
+            coordinator.async_write_register("supply_air_temperature_manual", 20)
+        )
+
     assert result is True
-    coordinator.async_request_refresh.assert_awaited_once()

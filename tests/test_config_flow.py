@@ -99,7 +99,7 @@ async def test_validate_input_success():
     }
     
     with patch(
-        "custom_components.thessla_green_modbus.device_scanner.ThesslaGreenDeviceScanner.scan_device",
+        "custom_components.thessla_green_modbus.device_registry.ThesslaGreenDeviceScanner.scan_device",
         return_value={
             "available_registers": {},
             "device_info": {"device_name": "ThesslaGreen AirPack"},
@@ -124,7 +124,7 @@ async def test_validate_input_no_data():
     }
     
     with patch(
-        "custom_components.thessla_green_modbus.device_scanner.ThesslaGreenDeviceScanner.scan_device",
+        "custom_components.thessla_green_modbus.device_registry.ThesslaGreenDeviceScanner.scan_device",
         return_value=None
     ):
         with pytest.raises(CannotConnect):
