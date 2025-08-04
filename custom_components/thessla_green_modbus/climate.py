@@ -1,4 +1,4 @@
-"""Climate platform for ThesslaGreen Modbus integration."""
+"""Enhanced climate platform for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
 from __future__ import annotations
 
 import logging
@@ -8,6 +8,11 @@ from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
+    PRESET_AWAY,
+    PRESET_BOOST,
+    PRESET_COMFORT,
+    PRESET_ECO,
+    PRESET_SLEEP,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
@@ -15,11 +20,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, OPERATING_MODES, SEASON_MODES
+from .const import DOMAIN, OPERATING_MODES, SEASON_MODES, SPECIAL_MODES
 from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# Enhanced HVAC mode mapping
 HVAC_MODE_MAP = {
     0: HVACMode.AUTO,      # Automatyczny
     1: HVACMode.FAN_ONLY,  # Manualny
@@ -32,13 +38,31 @@ HVAC_MODE_REVERSE_MAP = {
     HVACMode.OFF: 0,  # Map OFF to AUTO for simplicity
 }
 
+# ThesslaGreen preset modes mapping
+PRESET_MODE_MAP = {
+    PRESET_ECO: {"mode": 0, "intensity": 25, "special": 0},      # Auto mode, low intensity
+    PRESET_COMFORT: {"mode": 0, "intensity": 50, "special": 0},  # Auto mode, medium intensity  
+    PRESET_BOOST: {"mode": 1, "intensity": 100, "special": 0},   # Manual mode, high intensity
+    PRESET_SLEEP: {"mode": 1, "intensity": 15, "special": 0},    # Manual mode, very low intensity
+    PRESET_AWAY: {"mode": 1, "intensity": 20, "special": 11},    # Manual mode, low intensity, empty house
+}
+
+# Custom preset modes specific to ThesslaGreen
+CUSTOM_PRESETS = {
+    "okap": {"mode": 1, "special": 1, "name": "OKAP"},           # Hood mode
+    "kominek": {"mode": 1, "special": 2, "name": "KOMINEK"},     # Fireplace mode  
+    "wietrzenie": {"mode": 1, "special": 7, "name": "WIETRZENIE"}, # Airing mode
+}
+
+ALL_PRESET_MODES = [PRESET_ECO, PRESET_COMFORT, PRESET_BOOST, PRESET_SLEEP, PRESET_AWAY] + list(CUSTOM_PRESETS.keys())
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up climate platform."""
+    """Set up enhanced climate platform."""
     coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     
     entities = []
@@ -49,15 +73,15 @@ async def async_setup_entry(
         entities.append(ThesslaGreenClimate(coordinator))
     
     if entities:
-        _LOGGER.debug("Adding %d climate entities", len(entities))
+        _LOGGER.debug("Adding %d enhanced climate entities", len(entities))
         async_add_entities(entities)
 
 
 class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
-    """ThesslaGreen climate entity."""
+    """Enhanced ThesslaGreen climate entity with preset modes."""
 
     def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
-        """Initialize the climate entity."""
+        """Initialize the enhanced climate entity."""
         super().__init__(coordinator)
         
         device_info = coordinator.device_info
@@ -74,10 +98,13 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
             "sw_version": device_info.get("firmware", "Unknown"),
         }
         
-        # Supported features
+        # Enhanced supported features
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE
             | ClimateEntityFeature.FAN_MODE
+            | ClimateEntityFeature.PRESET_MODE
+            | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TURN_OFF
         )
         
         # Temperature settings
@@ -93,10 +120,13 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
             HVACMode.OFF,
         ]
         
-        # Fan modes (intensity levels)
+        # Enhanced fan modes (intensity levels)
         self._attr_fan_modes = [
-            "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"
+            "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%", "Boost"
         ]
+        
+        # Preset modes
+        self._attr_preset_modes = ALL_PRESET_MODES
 
     @property
     def current_temperature(self) -> float | None:
@@ -144,9 +174,55 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
             intensity = None
             
         if intensity is not None:
+            # Special handling for boost mode
+            if intensity >= 100:
+                return "Boost"
             # Round to nearest 10%
             rounded_intensity = round(intensity / 10) * 10
             return f"{rounded_intensity}%"
+        return None
+
+    @property
+    def preset_mode(self) -> str | None:
+        """Return the current preset mode."""
+        mode = self.coordinator.data.get("mode", 0)
+        special_mode = self.coordinator.data.get("special_mode", 0)
+        intensity = self._get_current_intensity()
+        
+        # Check for custom presets first (special functions)
+        for preset_key, preset_config in CUSTOM_PRESETS.items():
+            if special_mode == preset_config.get("special", 0) and special_mode != 0:
+                return preset_key
+        
+        # Check for standard presets based on mode and intensity
+        if special_mode == 0:  # No special function active
+            if mode == 0:  # Auto mode
+                if intensity and intensity <= 30:
+                    return PRESET_ECO
+                elif intensity and intensity >= 40:
+                    return PRESET_COMFORT
+            elif mode == 1:  # Manual mode
+                if intensity and intensity >= 90:
+                    return PRESET_BOOST
+                elif intensity and intensity <= 20:
+                    return PRESET_SLEEP
+        
+        # Check for away mode (empty house special function)
+        if special_mode == 11:
+            return PRESET_AWAY
+            
+        return None
+
+    def _get_current_intensity(self) -> int | None:
+        """Get current intensity based on operating mode."""
+        mode = self.coordinator.data.get("mode", 0)
+        
+        if mode == 0:  # Auto mode
+            return self.coordinator.data.get("supply_percentage")
+        elif mode == 1:  # Manual mode
+            return self.coordinator.data.get("air_flow_rate_manual")
+        elif mode == 2:  # Temporary mode
+            return self.coordinator.data.get("air_flow_rate_temporary")
         return None
 
     @property
@@ -164,10 +240,10 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         if season is not None:
             attributes["season_mode"] = SEASON_MODES.get(season, "Unknown")
         
-        # Special mode
+        # Special mode with description
         special_mode = self.coordinator.data.get("special_mode")
         if special_mode is not None:
-            attributes["special_function"] = special_mode
+            attributes["special_function"] = SPECIAL_MODES.get(special_mode, f"Unknown ({special_mode})")
         
         # Comfort mode status
         comfort_mode = self.coordinator.data.get("comfort_mode")
@@ -198,6 +274,11 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         if exhaust_flow is not None:
             attributes["exhaust_flow"] = f"{exhaust_flow} m³/h"
         
+        # Enhanced diagnostics
+        attributes["current_intensity"] = self._get_current_intensity()
+        attributes["antifreeze_mode"] = self.coordinator.data.get("antifreeze_mode")
+        attributes["antifreeze_stage"] = self.coordinator.data.get("antifreeze_stage")
+        
         return attributes
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -206,9 +287,10 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         if temperature is None:
             return
         
-        # Set temperature for manual mode
+        # Set temperature for manual mode (convert to register format)
+        temp_register_value = int(temperature * 2)
         success = await self.coordinator.async_write_register(
-            "supply_air_temperature_manual", temperature
+            "supply_air_temperature_manual", temp_register_value
         )
         
         if success:
@@ -237,31 +319,72 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new fan mode (intensity)."""
-        try:
-            # Extract percentage from fan mode string (e.g., "60%" -> 60)
-            intensity = int(fan_mode.rstrip('%'))
+        if fan_mode == "Boost":
+            intensity = 150  # Maximum boost
+        else:
+            try:
+                # Extract percentage from fan mode string (e.g., "60%" -> 60)
+                intensity = int(fan_mode.rstrip('%'))
+            except ValueError:
+                _LOGGER.error("Invalid fan mode format: %s", fan_mode)
+                return
             
-            # Ensure intensity is within valid range
-            intensity = max(10, min(100, intensity))
+        # Ensure intensity is within valid range
+        intensity = max(10, min(150, intensity))
+        
+        # Set manual mode first
+        await self.coordinator.async_write_register("mode", 1)
+        
+        # Set air flow rate
+        success = await self.coordinator.async_write_register("air_flow_rate_manual", intensity)
+        
+        if success:
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to set fan mode")
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set new preset mode."""
+        _LOGGER.debug("Setting preset mode: %s", preset_mode)
+        
+        # First clear any active special functions
+        await self.coordinator.async_write_register("special_mode", 0)
+        
+        # Check if it's a custom preset
+        if preset_mode in CUSTOM_PRESETS:
+            preset_config = CUSTOM_PRESETS[preset_mode]
             
-            # Get current mode to determine which register to write
-            mode = self.coordinator.data.get("mode", 1)  # Default to manual
+            # Set mode
+            await self.coordinator.async_write_register("mode", preset_config["mode"])
             
-            if mode == 1:  # Manual mode
-                register = "air_flow_rate_manual"
-            elif mode == 2:  # Temporary mode
-                register = "air_flow_rate_temporary"
-            else:
-                # For auto mode, switch to manual mode first
-                await self.coordinator.async_write_register("mode", 1)
-                register = "air_flow_rate_manual"
-            
-            success = await self.coordinator.async_write_register(register, intensity)
-            
-            if success:
-                await self.coordinator.async_request_refresh()
-            else:
-                _LOGGER.error("Failed to set fan mode")
+            # Set special function
+            if "special" in preset_config:
+                await self.coordinator.async_write_register("special_mode", preset_config["special"])
                 
-        except ValueError:
-            _LOGGER.error("Invalid fan mode format: %s", fan_mode)
+        elif preset_mode in PRESET_MODE_MAP:
+            # Standard preset
+            preset_config = PRESET_MODE_MAP[preset_mode]
+            
+            # Set mode
+            await self.coordinator.async_write_register("mode", preset_config["mode"])
+            
+            # Set intensity
+            await self.coordinator.async_write_register("air_flow_rate_manual", preset_config["intensity"])
+            
+            # Set special function if specified
+            if preset_config["special"] != 0:
+                await self.coordinator.async_write_register("special_mode", preset_config["special"])
+        
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_on(self) -> None:
+        """Turn on the climate device."""
+        success = await self.coordinator.async_write_register("on_off_panel_mode", 1)
+        if success:
+            await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self) -> None:
+        """Turn off the climate device."""
+        success = await self.coordinator.async_write_register("on_off_panel_mode", 0)
+        if success:
+            await self.coordinator.async_request_refresh()

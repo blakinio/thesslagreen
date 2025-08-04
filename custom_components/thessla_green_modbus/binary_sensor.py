@@ -1,233 +1,179 @@
-"""Optimized config flow for ThesslaGreen Modbus integration."""
+"""Binary sensor platform for ThesslaGreen Modbus Integration - FIXED VERSION."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
-import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import config_validation as cv
-
-from .const import (
-    CONF_RETRY,
-    CONF_SLAVE_ID,
-    CONF_TIMEOUT,
-    DEFAULT_NAME,
-    DEFAULT_PORT,
-    DEFAULT_RETRY,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_SLAVE_ID,
-    DEFAULT_TIMEOUT,
-    DOMAIN,
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
 )
-from .device_scanner import ThesslaGreenDeviceScanner
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import DOMAIN
+from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Enhanced schema with better validation
-STEP_USER_DATA_SCHEMA = vol.Schema({
-    vol.Required(CONF_HOST): cv.string,
-    vol.Optional(CONF_PORT, default=DEFAULT_PORT): vol.All(int, vol.Range(min=1, max=65535)),
-    vol.Optional(CONF_SLAVE_ID, default=DEFAULT_SLAVE_ID): vol.All(int, vol.Range(min=1, max=247)),
-    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-})
 
-OPTIONS_SCHEMA = vol.Schema({
-    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
-        int, vol.Range(min=10, max=300)
-    ),
-    vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.All(
-        int, vol.Range(min=5, max=60)
-    ),
-    vol.Optional(CONF_RETRY, default=DEFAULT_RETRY): vol.All(
-        int, vol.Range(min=1, max=5)
-    ),
-})
-
-
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect - OPTIMIZED VERSION."""
-    host = data[CONF_HOST]
-    port = data[CONF_PORT]
-    slave_id = data[CONF_SLAVE_ID]
-
-    _LOGGER.info("Validating connection to %s:%s (slave_id=%s)", host, port, slave_id)
+class DeviceStatusDetector:
+    """Smart device status detection using multiple indicators."""
     
-    scanner = ThesslaGreenDeviceScanner(host, port, slave_id)
+    def __init__(self, data: dict) -> None:
+        """Initialize detector with coordinator data."""
+        self.data = data
     
-    try:
-        # OPTIMIZATION: Test connection with timeout
-        device_info = await asyncio.wait_for(
-            scanner.scan_device(), 
-            timeout=30.0  # 30 second timeout for initial scan
-        )
+    def detect_device_status(self) -> bool | None:
+        """Detect if device is actually running using multiple indicators."""
+        indicators = []
         
-        if not device_info:
-            raise CannotConnect("Device scan returned no data")
+        # Primary indicator: official panel register
+        panel_mode = self.data.get("on_off_panel_mode")
+        if panel_mode is not None:
+            indicators.append(("panel_register", bool(panel_mode), 0.4))
         
-        # Extract device information for better user experience
-        device_name = device_info.get("device_info", {}).get("device_name", "ThesslaGreen")
-        firmware = device_info.get("device_info", {}).get("firmware", "Unknown")
-        capabilities = device_info.get("capabilities", {})
+        # Secondary indicators: actual activity
+        fan_power = self.data.get("power_supply_fans")
+        if fan_power is not None:
+            indicators.append(("fan_power_coil", bool(fan_power), 0.3))
         
-        # Count detected capabilities
-        active_capabilities = len([k for k, v in capabilities.items() if v])
+        # Ventilation activity indicators
+        supply_pct = self.data.get("supply_percentage", 0)
+        exhaust_pct = self.data.get("exhaust_percentage", 0)
+        if supply_pct > 0 or exhaust_pct > 0:
+            indicators.append(("ventilation_active", True, 0.2))
         
-        _LOGGER.info(
-            "Successfully validated device: %s (firmware %s, %d capabilities)",
-            device_name, firmware, active_capabilities
-        )
+        # Air flow indicators
+        supply_flow = self.data.get("supply_flowrate", 0) 
+        exhaust_flow = self.data.get("exhaust_flowrate", 0)
+        if supply_flow > 0 or exhaust_flow > 0:
+            indicators.append(("airflow_detected", True, 0.15))
         
-        # Enhanced title with device info
-        title = f"{device_name} ({host})"
-        if firmware != "Unknown":
-            title += f" - FW {firmware}"
+        # DAC voltage indicators (fan control signals)
+        dac_supply = self.data.get("dac_supply", 0)
+        dac_exhaust = self.data.get("dac_exhaust", 0) 
+        if dac_supply > 0.5 or dac_exhaust > 0.5:  # Above 0.5V indicates active control
+            indicators.append(("fan_voltages", True, 0.1))
+        
+        if not indicators:
+            return None
             
-        return {
-            "title": title,
-            "device_info": device_info,
-            "detected_slave_id": scanner.slave_id,  # May be auto-detected
-            "capabilities_count": active_capabilities,
-        }
+        # Weighted decision
+        positive_weight = sum(weight for _, status, weight in indicators if status)
+        total_weight = sum(weight for _, _, weight in indicators)
         
-    except asyncio.TimeoutError as exc:
-        _LOGGER.error("Connection timeout to %s:%s", host, port)
-        raise CannotConnect("Connection timeout - device may be unreachable") from exc
-    except Exception as exc:
-        _LOGGER.exception("Unexpected exception during device validation")
-        raise CannotConnect(f"Connection failed: {exc}") from exc
+        if total_weight == 0:
+            return None
+            
+        confidence = positive_weight / total_weight
+        return confidence > 0.3  # Device is ON if >30% confidence
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for ThesslaGreen Modbus - OPTIMIZED VERSION."""
-
-    VERSION = 2  # Increased version for enhanced features
-
-    def __init__(self) -> None:
-        """Initialize the config flow."""
-        self.discovered_info: dict[str, Any] = {}
-        self._detected_slave_id: int | None = None
-
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle the initial step - ENHANCED."""
-        errors: dict[str, str] = {}
-        description_placeholders: dict[str, str] = {}
-        
-        if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-                
-                # OPTIMIZATION: Update slave ID if auto-detected
-                detected_slave_id = info.get("detected_slave_id")
-                if detected_slave_id and detected_slave_id != user_input[CONF_SLAVE_ID]:
-                    _LOGGER.info(
-                        "Auto-detected slave ID %d (user provided %d)",
-                        detected_slave_id, user_input[CONF_SLAVE_ID]
-                    )
-                    user_input[CONF_SLAVE_ID] = detected_slave_id
-                    self._detected_slave_id = detected_slave_id
-                
-                # Create unique ID based on host and detected slave_id
-                unique_id = f"{user_input[CONF_HOST]}_{user_input[CONF_SLAVE_ID]}"
-                await self.async_set_unique_id(unique_id)
-                self._abort_if_unique_id_configured()
-                
-                # Store additional info for later use
-                self.discovered_info = info
-                
-                return self.async_create_entry(
-                    title=info["title"],
-                    data=user_input,
-                    description_placeholders={
-                        "capabilities": str(info.get("capabilities_count", 0)),
-                        "firmware": info.get("device_info", {}).get("firmware", "Unknown"),
-                    },
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ThesslaGreen binary sensors - FIXED VERSION."""
+    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    
+    entities = []
+    
+    # Smart device status sensor (primary)
+    entities.append(ThesslaGreenSmartDeviceStatus(coordinator))
+    
+    # Discrete input sensors
+    discrete_inputs = coordinator.available_registers.get("discrete_inputs", set())
+    
+    discrete_sensors = [
+        ("expansion", "Moduł Expansion", "mdi:expansion-card", BinarySensorDeviceClass.CONNECTIVITY),
+        ("contamination_sensor", "Czujnik jakości powietrza", "mdi:air-filter", None),
+        ("airing_sensor", "Czujnik wilgotności", "mdi:water-percent", BinarySensorDeviceClass.MOISTURE),
+        ("fireplace", "Włącznik KOMINEK", "mdi:fireplace", None),
+        ("empty_house", "Sygnał PUSTY DOM", "mdi:home-minus", BinarySensorDeviceClass.PRESENCE),
+        ("hood_input", "Włącznik OKAP", "mdi:kitchen", None),
+        ("fire_alarm", "Alarm pożarowy", "mdi:fire", BinarySensorDeviceClass.SAFETY),
+        ("duct_heater_protection", "Zabezpieczenie nagrzewnicy", "mdi:shield-alert", BinarySensorDeviceClass.SAFETY),
+        ("ahu_filter_protection", "Zabezpieczenie FPX", "mdi:shield-check", BinarySensorDeviceClass.SAFETY),
+        ("dp_ahu_filter_overflow", "Presostat filtrów AHU", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
+        ("dp_duct_filter_overflow", "Presostat filtra kanałowego", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
+    ]
+    
+    for sensor_key, name, icon, device_class in discrete_sensors:
+        if sensor_key in discrete_inputs:
+            entities.append(
+                ThesslaGreenBinarySensor(
+                    coordinator, sensor_key, name, icon, device_class
                 )
-                
-            except CannotConnect as exc:
-                errors["base"] = "cannot_connect"
-                description_placeholders["error_detail"] = str(exc)
-                _LOGGER.warning("Cannot connect: %s", exc)
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
-
-        # Enhanced form with better user guidance
-        return self.async_show_form(
-            step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
-            errors=errors,
-            description_placeholders={
-                "default_port": str(DEFAULT_PORT),
-                "default_slave_id": str(DEFAULT_SLAVE_ID),
-                "auto_detect_note": "Slave ID will be auto-detected if the default doesn't work",
-                **description_placeholders,
-            },
+            )
+    
+    # System status sensors from input registers
+    input_registers = coordinator.available_registers.get("input_registers", set())
+    
+    if "constant_flow_active" in input_registers:
+        entities.append(
+            ThesslaGreenBinarySensor(
+                coordinator, "constant_flow_active", "Constant Flow aktywny", 
+                "mdi:fan-auto", BinarySensorDeviceClass.RUNNING
+            )
         )
-
-    async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle reconfiguration of the integration."""
-        errors: dict[str, str] = {}
-        
-        if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-                
-                # Update the config entry
-                return self.async_update_reload_and_abort(
-                    self._get_reconfigure_entry(),
-                    data=user_input,
-                    reason="reconfigure_successful",
+    
+    if "water_removal_active" in input_registers:
+        entities.append(
+            ThesslaGreenBinarySensor(
+                coordinator, "water_removal_active", "HEWR aktywny",
+                "mdi:water-pump", BinarySensorDeviceClass.RUNNING
+            )
+        )
+    
+    # Coil status sensors  
+    coil_registers = coordinator.available_registers.get("coil_registers", set())
+    
+    coil_sensors = [
+        ("power_supply_fans", "Zasilanie wentylatorów", "mdi:power", BinarySensorDeviceClass.POWER),
+        ("bypass", "Siłownik bypass", "mdi:valve", None),
+        ("gwc", "Przekaźnik GWC", "mdi:heat-pump", BinarySensorDeviceClass.RUNNING),
+        ("hood", "Przepustnica okapu", "mdi:kitchen", None),
+        ("heating_cable", "Kabel grzejny", "mdi:heating-coil", BinarySensorDeviceClass.HEAT),
+        ("duct_water_heater_pump", "Pompa nagrzewnicy", "mdi:pump", BinarySensorDeviceClass.RUNNING),
+    ]
+    
+    for sensor_key, name, icon, device_class in coil_sensors:
+        if sensor_key in coil_registers:
+            entities.append(
+                ThesslaGreenBinarySensor(
+                    coordinator, sensor_key, name, icon, device_class
                 )
-                
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception during reconfiguration")
-                errors["base"] = "unknown"
-
-        # Pre-fill form with current values
-        config_entry = self._get_reconfigure_entry()
-        suggested_values = config_entry.data.copy()
-        
-        reconfigure_schema = vol.Schema({
-            vol.Required(CONF_HOST, default=suggested_values.get(CONF_HOST)): cv.string,
-            vol.Optional(CONF_PORT, default=suggested_values.get(CONF_PORT, DEFAULT_PORT)): vol.All(
-                int, vol.Range(min=1, max=65535)
-            ),
-            vol.Optional(CONF_SLAVE_ID, default=suggested_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)): vol.All(
-                int, vol.Range(min=1, max=247)
-            ),
-        })
-
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=reconfigure_schema,
-            errors=errors,
+            )
+    
+    # Alarm sensors from holding registers
+    holding_registers = coordinator.available_registers.get("holding_registers", set())
+    
+    if "alarm_flag" in holding_registers:
+        entities.append(
+            ThesslaGreenBinarySensor(
+                coordinator, "alarm_flag", "Alarmy ostrzeżeń (E)",
+                "mdi:alert", BinarySensorDeviceClass.PROBLEM
+            )
         )
+    
+    if "error_flag" in holding_registers:
+        entities.append(
+            ThesslaGreenBinarySensor(
+                coordinator, "error_flag", "Błędy krytyczne (S)",
+                "mdi:alert-octagon", BinarySensorDeviceClass.PROBLEM
+            )
+        )
+    
+    _LOGGER.debug("Adding %d binary sensor entities", len(entities))
+    async_add_entities(entities)
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> config_entries.OptionsFlow:
-        """Get the options flow for this handler."""
-        return OptionsFlowHandler(config_entry)
 
-
-class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for ThesslaGreen Modbus - ENHANCED."""
+class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """ThesslaGreen binary sensor entity - FIXED."""
 
     def __init__(
         self,
@@ -266,7 +212,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
 
 class ThesslaGreenSmartDeviceStatus(CoordinatorEntity, BinarySensorEntity):
-    """Smart device status sensor using multiple indicators."""
+    """Smart device status sensor using multiple indicators - ENHANCED."""
 
     def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
         """Initialize the smart device status sensor."""

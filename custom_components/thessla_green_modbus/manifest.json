@@ -3,17 +3,22 @@
   "name": "ThesslaGreen Modbus",
   "codeowners": ["@YOUR_USERNAME"],
   "config_flow": true,
-  "dependencies": ["modbus"],
+  "dependencies": [],
   "documentation": "https://github.com/YOUR_USERNAME/thessla_green_modbus",
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/YOUR_USERNAME/thessla_green_modbus/issues",
-  "requirements": ["pymodbus>=3.0.0"],
+  "loggers": ["custom_components.thessla_green_modbus"],
+  "requirements": ["pymodbus>=3.5.0"],
   "version": "2.0.0",
   "quality_scale": "silver",
   "dhcp": [
     {
       "hostname": "thesslagreen*",
+      "macaddress": "00:*"
+    },
+    {
+      "hostname": "airpack*",
       "macaddress": "00:*"
     }
   ],
@@ -21,6 +26,17 @@
     {
       "type": "_modbus._tcp.local.",
       "name": "thesslagreen*"
+    },
+    {
+      "type": "_modbus._tcp.local.",
+      "name": "airpack*"
     }
-  ]
+  ],
+  "bluetooth": [],
+  "homekit": {},
+  "ssdp": [],
+  "usb": [],
+  "after_dependencies": ["network"],
+  "before_dependencies": [],
+  "single_config_entry": false
 }
