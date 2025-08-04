@@ -308,8 +308,12 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
                 return False
             finally:
                 client.close()
-        
-        return await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(None, _write_sync)
+        if success:
+            await self.async_request_refresh()
+        return success
 
     def _process_register_value(self, key: str, raw_value: Any) -> Any:
         """Process raw register value based on key type."""
