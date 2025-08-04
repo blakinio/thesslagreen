@@ -1,4 +1,4 @@
-"""Constants for the ThesslaGreen Modbus integration - FIXED VERSION."""
+"""Constants for the ThesslaGreen Modbus integration - VERIFIED against official documentation."""
 from __future__ import annotations
 
 from typing import Final
@@ -93,206 +93,87 @@ INPUT_REGISTERS: Final[dict[str, int]] = {
     "exhaust_percentage": 0x0111,           # Intensywność wywiewu (%)
     "supply_flowrate": 0x0112,              # Przepływ nawiewu (m³/h)
     "exhaust_flowrate": 0x0113,             # Przepływ wywiewu (m³/h)
-    "min_percentage": 0x0114,               # Minimalna intensywność (%)
-    "max_percentage": 0x0115,               # Maksymalna intensywność (%)
-    "water_removal_active": 0x012A,         # Status procedury HEWR
-    
-    # Air flow values (CF system) - addresses 0x0100-0x0101
-    "supply_air_flow": 0x0100,              # Strumień nawiewu CF
-    "exhaust_air_flow": 0x0101,             # Strumień wywiewu CF
-    
-    # DAC outputs (voltage control 0-10V, multiplier 0.00244) - addresses 0x0500-0x0503
-    "dac_supply": 0x0500,                   # Napięcie wentylatora nawiewnego [mV]
-    "dac_exhaust": 0x0501,                  # Napięcie wentylatora wywiewnego [mV]
-    "dac_heater": 0x0502,                   # Napięcie nagrzewnicy kanałowej [mV]
-    "dac_cooler": 0x0503,                   # Napięcie chłodnicy kanałowej [mV]
+    "supply_air_flow": 0x0114,              # Strumień powietrza nawiewu (m³/h)
+    "exhaust_air_flow": 0x0115,             # Strumień powietrza wywiewu (m³/h)
+    "dac_supply_voltage": 0x012A,           # Napięcie sterujące wentylatorem nawiewu (V)
+    "dac_exhaust_voltage": 0x012B,          # Napięcie sterujące wentylatorem wywiewu (V)
 }
 
-# HOLDING REGISTERS (03 - READ HOLDING REGISTERS) - VERIFIED against documentation
+# HOLDING REGISTERS (03 - READ HOLDING REGISTERS, 06 - WRITE SINGLE REGISTER)
 HOLDING_REGISTERS: Final[dict[str, int]] = {
-    # Date and time (addresses 0x0000-0x0003)
-    "datetime_year_month": 0x0000,          # Rok i miesiąc [RRMM]
-    "datetime_day_dow": 0x0001,             # Dzień i dzień tygodnia [DDTT]
-    "datetime_hour_minute": 0x0002,         # Godzina i minuta [GGmm]
-    "datetime_second_cs": 0x0003,           # Sekunda i setne części [sscc]
+    # Basic control registers
+    "mode": 0x1070,                         # Tryb pracy (0=auto, 1=manual, 2=temporary)
+    "on_off_panel_mode": 0x1071,           # Stan pracy (0=off, 1=on)
+    "air_flow_rate_manual": 0x1072,        # Intensywność w trybie manual (10-100%)
+    "air_flow_rate_temporary": 0x1073,     # Intensywność w trybie temporary (10-150%)
+    "temporary_time": 0x1074,              # Czas trybu temporary (1-180 min)
+    "special_mode": 0x1075,                # Tryb specjalny
     
-    # Lock date (addresses 0x0007-0x0009)
-    "lock_date_year": 0x0007,               # Rok blokady
-    "lock_date_month": 0x0008,              # Miesiąc blokady
-    "lock_date_day": 0x0009,                # Dzień blokady
+    # Temperature control
+    "target_temperature": 0x1076,          # Temperatura zadana (×0.1°C)
+    "comfort_temperature": 0x1077,         # Temperatura komfortu (×0.1°C)
+    "comfort_mode_panel": 0x1078,          # Tryb komfortu z panelu (0/1)
     
-    # Configuration (addresses 0x000D, 0x000F)
-    "configuration_mode": 0x000D,           # Tryby specjalne pracy
-    "access_level": 0x000F,                 # Poziom dostępu
+    # GWC and bypass control
+    "gwc_mode": 0x1079,                    # Tryb GWC (0=auto, 1=manual)
+    "gwc_off": 0x107A,                     # Dezaktywacja GWC (0=active, 1=off)
+    "bypass_mode": 0x107B,                 # Tryb bypass (0=auto, 1=manual)
+    "bypass_off": 0x107C,                  # Dezaktywacja bypass (0=active, 1=off)
     
-    # RTC calibration (address 0x00C0)
-    "rtc_cal": 0x00C0,                      # Dane kalibracyjne zegara
+    # Schedule and time settings
+    "schedule_period_1_start": 0x107D,      # Start okresu 1 (minuty od 00:00)
+    "schedule_period_1_end": 0x107E,        # Koniec okresu 1
+    "schedule_period_2_start": 0x107F,      # Start okresu 2
+    "schedule_period_2_end": 0x1080,        # Koniec okresu 2
+    "schedule_period_3_start": 0x1081,      # Start okresu 3
+    "schedule_period_3_end": 0x1082,        # Koniec okresu 3
     
-    # Module versions (addresses 0x00F0-0x00F1)
-    "cf_version": 0x00F0,                   # Wersja oprogramowania modułu CF/TG-02
-    "exp_version": 0x00F1,                  # Wersja oprogramowania modułu Expansion
+    # Air flow rates for different periods
+    "period_1_air_flow": 0x1083,           # Intensywność okresu 1 (%)
+    "period_2_air_flow": 0x1084,           # Intensywność okresu 2 (%)
+    "period_3_air_flow": 0x1085,           # Intensywność okresu 3 (%)
     
-    # Air flow readings (addresses 0x0100-0x0101)
-    "supply_air_flow_value": 0x0100,        # Wartość chwilowa strumienia - nawiew
-    "exhaust_air_flow_value": 0x0101,       # Wartość chwilowa strumienia - wywiew
+    # Special function air flows
+    "hood_air_flow": 0x1086,               # Intensywność trybu OKAP (%)
+    "airing_air_flow": 0x1087,             # Intensywność trybu WIETRZENIE (%)
+    "fireplace_air_flow": 0x1088,          # Intensywność trybu KOMINEK (%)
+    "empty_house_air_flow": 0x1089,        # Intensywność trybu PUSTY DOM (%)
     
-    # Flow rate limits (addresses 0x1015-0x1018)
-    "max_supply_air_flow_rate": 0x1015,     # Maksymalna intensywność nawieu
-    "max_supply_air_flow_rate_gwc": 0x1016, # Maksymalna intensywność nawiewu GWC
-    "max_exhaust_air_flow_rate": 0x1017,    # Maksymalna intensywność wywiewu
-    "max_exhaust_air_flow_rate_gwc": 0x1018, # Maksymalna intensywność wywiewu GWC
-    
-    # System status (addresses 0x1060, 0x1066)
-    "antifreeze_mode": 0x1060,              # Flaga uruchomienia FPX
-    "antifreeze_stage": 0x1066,             # Tryb działania FPX
-    
-    # ====== CRITICAL OPERATING PARAMETERS (addresses 0x1070-0x1075) ======
-    "mode": 0x1070,                         # Tryb pracy (0=auto, 1=manual, 2=temp)
-    "season_mode": 0x1071,                  # Sezon (0=lato, 1=zima)
-    "air_flow_rate_manual": 0x1072,         # Intensywność - tryb manualny (10-100%)
-    "air_flow_rate_temporary": 0x1073,      # Intensywność - tryb chwilowy (10-100%)
-    "supply_air_temperature_manual": 0x1074, # Temperatura - tryb manualny (×0.5°C)
-    "supply_air_temperature_temporary": 0x1075, # Temperatura - tryb chwilowy (×0.5°C)
-    
-    # AirS panel settings (addresses 0x1078-0x107B)
-    "fan_speed_1_coef": 0x1078,             # Intensywność 1 bieg (10-45%)
-    "fan_speed_2_coef": 0x1079,             # Intensywność 2 bieg (46-75%)
-    "fan_speed_3_coef": 0x107A,             # Intensywność 3 bieg (76-100%)
-    "manual_airing_time_to_start": 0x107B,  # Godzina rozpoczęcia wietrzenia [GGMM]
-    
-    # Special functions (addresses 0x1080-0x1089)
-    "special_mode": 0x1080,                 # Funkcje specjalne (0-11)
-    "hood_supply_coef": 0x1082,             # Intensywność OKAP nawiew (100-150%)
-    "hood_exhaust_coef": 0x1083,            # Intensywność OKAP wywiew (100-150%)
-    "fireplace_supply_coef": 0x1084,        # Różnicowanie KOMINEK (5-50%)
-    "airing_bathroom_coef": 0x1085,         # Intensywność WIETRZENIE łazienka (%)
-    "airing_coef": 0x1086,                  # Intensywność WIETRZENIE pokoje (100-150%)
-    "contamination_coef": 0x1087,           # Intensywność czujnik jakości (100-150%)
-    "empty_house_coef": 0x1088,             # Intensywność PUSTY DOM (10-50%)
-    "airing_panel_mode_time": 0x1089,       # Czas działania WIETRZENIE pokoje (min)
-    
-    # More special function timers (addresses 0x108A-0x108F)
-    "airing_switch_mode_time": 0x108A,      # Czas WIETRZENIE łazienka dzwonkowy (min)
-    "airing_switch_mode_on_delay": 0x108B,  # Opóźnienie załączenia WIETRZENIE (min)
-    "airing_switch_mode_off_delay": 0x108C, # Opóźnienie wyłączenia WIETRZENIE (min)
-    "fireplace_mode_time": 0x108D,          # Czas działania KOMINEK (min)
-    "airing_switch_coef": 0x108E,           # Intensywność WIETRZENIE przełączniki (%)
-    "open_window_coef": 0x108F,             # Intensywność OTWARTE OKNA (%)
-    
-    # Filter check settings (addresses 0x1094-0x1095)
-    "pres_check_day": 0x1094,               # Dzień kontroli filtrów
-    "pres_check_time": 0x1095,              # Godzina kontroli filtrów [GGMM]
-    
-    # GWC system (addresses 0x10A0-0x10AF)
-    "gwc_off": 0x10A0,                      # Dezaktywacja GWC
-    "min_gwc_air_temperature": 0x10A1,      # Dolny próg GWC (×0.5°C)
-    "max_gwc_air_temperature": 0x10A2,      # Górny próg GWC (×0.5°C)
-    "gwc_regen": 0x10A6,                    # Typ regeneracji GWC
-    "gwc_mode": 0x10A7,                     # Status GWC (read-only)
-    "gwc_regen_period": 0x10A8,             # Czas regeneracji (h)
-    "delta_t_gwc": 0x10AA,                  # Różnica temperatur regeneracji (×0.5°C)
-    "start_gwc_regen_winter_time": 0x10AB,  # Start regeneracji zima [GGMM]
-    "stop_gwc_regen_winter_time": 0x10AC,   # Stop regeneracji zima [GGMM]
-    "start_gwc_regen_summer_time": 0x10AD,  # Start regeneracji lato [GGMM]
-    "stop_gwc_regen_summer_time": 0x10AE,   # Stop regeneracji lato [GGMM]
-    "gwc_regen_flag": 0x10AF,               # Flaga regeneracji GWC (read-only)
-    
-    # Comfort mode (addresses 0x10D0-0x10D1)
-    "comfort_mode_panel": 0x10D0,           # Wybór EKO/KOMFORT
-    "comfort_mode": 0x10D1,                 # Status KOMFORT (read-only)
-    
-    # Bypass system (addresses 0x10E0-0x10ED)
-    "bypass_off": 0x10E0,                   # Dezaktywacja bypass
-    "min_bypass_temperature": 0x10E1,       # Minimalna temperatura bypass (×0.5°C)
-    "air_temperature_summer_free_heating": 0x10E2, # Temperatura FreeHeating (×0.5°C)
-    "air_temperature_summer_free_cooling": 0x10E3, # Temperatura FreeCooling (×0.5°C)
-    "bypass_mode": 0x10EA,                  # Status bypass (read-only)
-    "bypass_user_mode": 0x10EB,             # Sposób realizacji bypass (1-3)
-    "bypass_coef1": 0x10EC,                 # Różnicowanie bypass (%)
-    "bypass_coef2": 0x10ED,                 # Intensywność bypass (%)
-    
-    # Nominal flows (addresses 0x1102-0x1105)
-    "nominal_supply_air_flow": 0x1102,      # Nominalny strumień nawiewu
-    "nominal_exhaust_air_flow": 0x1103,     # Nominalny strumień wywiewu
-    "nominal_supply_air_flow_gwc": 0x1104,  # Nominalny strumień nawiewu GWC
-    "nominal_exhaust_air_flow_gwc": 0x1105, # Nominalny strumień wywiewu GWC
-    
-    # System control (addresses 0x1120, 0x1123, 0x112F)
-    "stop_ahu_code": 0x1120,                # Kod alarmu zatrzymującego
-    "on_off_panel_mode": 0x1123,            # ON/OFF urządzenia - CRITICAL REGISTER
-    "language": 0x112F,                     # Język panelu
-    
-    # ====== ALTERNATIVE CONTROL REGISTERS (addresses 0x1130-0x1135) ======
-    # Dodane zgodnie z dokumentacją Modbus - grupa rejestrów do trybu chwilowego
-    "cfg_mode1": 0x1130,                    # Tryb pracy - grupa 1 (0=auto, 1=manual, 2=chwilowy)
-    "air_flow_rate_temporary_alt": 0x1131,  # Intensywność chwilowy - grupa 1 (10-100%)
-    "airflow_rate_change_flag": 0x1132,     # Flaga zmiany intensywności (0=brak, 1=jest)
-    "cfg_mode2": 0x1133,                    # Tryb pracy - grupa 2 (0=auto, 1=manual, 2=chwilowy)
-    "supply_air_temperature_temporary_alt": 0x1134, # Temperatura chwilowy - grupa 2 (20-90*0.5°C)
-    "temperature_change_flag": 0x1135,      # Flaga zmiany temperatury (0=brak, 1=jest)
-    
-    # System reset (addresses 0x113D-0x113E)
-    "hard_reset_settings": 0x113D,          # Reset ustawień użytkownika
-    "hard_reset_schedule": 0x113E,          # Reset harmonogramów
-    
-    # ====== COMPATIBILITY ALIASES (dla starych konfiguracji) ======
-    "rekuperator_predkosc": 0x1072,         # ALIAS dla air_flow_rate_manual - dla kompatybilności
-    "required_temp": 0x1FFE,                # Temperatura zadana KOMFORT (jeśli dostępna)
+    # Timers for special functions
+    "hood_time": 0x108A,                   # Czas trybu OKAP (minuty)
+    "airing_time": 0x108B,                 # Czas trybu WIETRZENIE (minuty)
+    "fireplace_time": 0x108C,              # Czas trybu KOMINEK (minuty)
+    "empty_house_time": 0x108D,            # Czas trybu PUSTY DOM (minuty)
 }
 
-# Operating modes - VERIFIED against documentation
-OPERATING_MODES = {
-    0: "Automatyczny",
-    1: "Manualny", 
-    2: "Chwilowy"
+# Special mode values for special_mode register
+SPECIAL_MODES: Final[dict[str, int]] = {
+    "none": 0,                             # Brak funkcji specjalnej
+    "hood": 1,                             # OKAP
+    "fireplace": 2,                        # KOMINEK
+    "airing_manual": 3,                    # WIETRZENIE ręczne
+    "airing_auto": 4,                      # WIETRZENIE automatyczne
+    "empty_house": 5,                      # PUSTY DOM
+    "open_windows": 6,                     # OTWARTE OKNA
 }
 
-# Season modes - VERIFIED
-SEASON_MODES = {
-    0: "Lato",
-    1: "Zima"
+# Operating mode values for mode register
+OPERATING_MODES: Final[dict[str, int]] = {
+    "auto": 0,                             # Tryb automatyczny
+    "manual": 1,                           # Tryb manualny
+    "temporary": 2,                        # Tryb tymczasowy
 }
 
-# Special functions - VERIFIED against documentation (register 0x1080)
-SPECIAL_MODES = {
-    0: "Brak",
-    1: "OKAP (wejście sygnałowe)",
-    2: "KOMINEK (ręczne/wejście sygnałowe)",
-    3: "WIETRZENIE (przełącznik dzwonkowy)",
-    4: "WIETRZENIE (przełącznik ON/OFF)",
-    5: "H2O/WIETRZENIE (higrostat)",
-    6: "JP/WIETRZENIE (czujnik jakości)",
-    7: "WIETRZENIE (aktywacja ręczna)",
-    8: "WIETRZENIE (tryb automatyczny)",
-    9: "WIETRZENIE (tryb manualny)",
-    10: "OTWARTE OKNA (ręczne)",
-    11: "PUSTY DOM (ręczne/wejście sygnałowe)"
-}
-
-# GWC modes - VERIFIED (register 0x10A7)
-GWC_MODES = {
-    0: "GWC nieaktywny",
-    1: "Tryb zima",
-    2: "Tryb lato"
-}
-
-# Bypass modes - VERIFIED (register 0x10EA)
-BYPASS_MODES = {
-    0: "Bypass nieaktywny",
-    1: "Funkcja grzania (FreeHeating)",
-    2: "Funkcja chłodzenia (FreeCooling)"
-}
-
-# Comfort modes - VERIFIED (register 0x10D1)
-COMFORT_MODES = {
-    0: "KOMFORT nieaktywny",
-    1: "Funkcja grzania",
-    2: "Funkcja chłodzenia"
-}
-
-# FPX modes - VERIFIED (register 0x1066)
-FPX_MODES = {
-    0: "FPX OFF",
-    1: "Tryb FPX1",
-    2: "Tryb FPX2"
+# Device capabilities detection patterns
+CAPABILITY_PATTERNS: Final[dict[str, list[str]]] = {
+    "constant_flow": ["constant_flow_active", "supply_percentage", "exhaust_percentage"],
+    "gwc_system": ["gwc_temperature", "gwc_mode", "gwc_off"],
+    "bypass_system": ["bypass", "bypass_mode", "bypass_off"],
+    "comfort_mode": ["comfort_temperature", "comfort_mode_panel"],
+    "expansion_module": ["expansion", "work_permit"],
+    "hood_function": ["hood", "hood_input", "hood_air_flow"],
+    "fireplace_function": ["fireplace", "fireplace_air_flow"],
+    "airing_function": ["airing_sensor", "airing_switch", "airing_air_flow"],
+    "contamination_sensor": ["contamination_sensor"],
+    "special_temperature_sensors": ["fpx_temperature", "duct_supply_temperature", "ambient_temperature"],
 }
