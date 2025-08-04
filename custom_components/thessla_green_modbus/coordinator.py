@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Tuple
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.exceptions import ConfigEntryNotReady
 from pymodbus.client import ModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
 
- codex/rename-thesslagreendatacoordinator
 
 class ThesslaGreenCoordinator(DataUpdateCoordinator):
-    """Poprawiony coordinator z nowym API pymodbus 3.x"""
-=======
-class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
     """Coordinator handling Modbus data updates and register management."""
- main
 
     def __init__(
         self,
@@ -31,13 +26,9 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
         scan_interval: int = 30,
         timeout: int = 10,
         retry: int = 3,
- codex/rename-thesslagreendatacoordinator
-        available_registers: Dict[str, set] = None,
-=======
         available_registers: Dict[str, set] | None = None,
         device_info: Dict[str, Any] | None = None,
         capabilities: Dict[str, Any] | None = None,
- main
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -351,28 +342,10 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
                 return False
             finally:
                 client.close()
-codex/replace-executor-calls-in-async-functions
-        
- codex/rename-thesslagreendatacoordinator
-        result = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
-        if result:
-            await self.async_request_refresh()
-        return result
-=======
-        return await self.hass.async_add_executor_job(_write_sync)
-=======
-
- codex/adjust-test-fixture-for-thesslagreencoordinator
-        loop = asyncio.get_event_loop()
-        success = await loop.run_in_executor(None, _write_sync)
-=======
         success = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
- main
         if success:
             await self.async_request_refresh()
         return success
- main
- main
 
     def _process_register_value(self, key: str, raw_value: Any) -> Any:
         """Process raw register value based on key type."""
