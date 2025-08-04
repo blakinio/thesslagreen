@@ -1,0 +1,269 @@
+# Example Home Assistant configuration for ThesslaGreen Modbus Integration
+# Save this as: config/configuration.yaml (append to your existing file)
+
+# Logger configuration (optional - for debugging)
+logger:
+  default: warning
+  logs:
+    custom_components.thessla_green_modbus: info
+    pymodbus: warning
+
+# Template sensors (optional - for advanced customization)
+template:
+  - sensor:
+      - name: "ThesslaGreen Efficiency"
+        unit_of_measurement: "%"
+        state: >
+          {% set supply_flow = states('sensor.thessla_supply_flowrate') | float(0) %}
+          {% set exhaust_flow = states('sensor.thessla_exhaust_flowrate') | float(0) %}
+          {% if supply_flow > 0 and exhaust_flow > 0 %}
+            {{ ((min(supply_flow, exhaust_flow) / max(supply_flow, exhaust_flow)) * 100) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+        icon: mdi:chart-line
+
+      - name: "ThesslaGreen Power Consumption"
+        unit_of_measurement: "W"
+        device_class: power
+        state: >
+          {% set supply_voltage = states('sensor.thessla_dac_supply') | float(0) %}
+          {% set exhaust_voltage = states('sensor.thessla_dac_exhaust') | float(0) %}
+          {# Approximate power calculation based on voltage output #}
+          {{ ((supply_voltage + exhaust_voltage) * 25) | round(0) }}
+
+  - binary_sensor:
+      - name: "ThesslaGreen Winter Mode"
+        state: >
+          {{ states('sensor.thessla_outside_temperature') | float(0) < 15 }}
+        icon: mdi:snowflake
+
+# Utility meter (optional - for energy tracking)
+utility_meter:
+  thessla_daily_energy:
+    source: sensor.thessla_green_power_consumption
+    cycle: daily
+  thessla_monthly_energy:
+    source: sensor.thessla_green_power_consumption  
+    cycle: monthly
+
+# Input boolean for manual controls (optional)
+input_boolean:
+  thessla_boost_mode:
+    name: "ThesslaGreen Boost Mode"
+    icon: mdi:rocket-launch
+
+  thessla_night_mode:
+    name: "ThesslaGreen Night Mode"
+    icon: mdi:weather-night
+
+  thessla_away_mode:
+    name: "ThesslaGreen Away Mode"
+    icon: mdi:home-minus
+
+# Input number for manual intensity control (optional)
+input_number:
+  thessla_manual_intensity:
+    name: "ThesslaGreen Manual Intensity"
+    min: 10
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    icon: mdi:fan
+
+# Automations (optional examples)
+automation:
+  # Automatic boost mode when cooking
+  - alias: "ThesslaGreen: Boost when cooking"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.thessla_boost_mode
+        to: 'on'
+    action:
+      - service: select.select_option
+        target:
+          entity_id: select.thessla_special_function
+        data:
+          option: "OKAP"
+      - delay: '00:30:00'  # 30 minutes
+      - service: select.select_option
+        target:
+          entity_id: select.thessla_special_function
+        data:
+          option: "Brak"
+      - service: input_boolean.turn_off
+        entity_id: input_boolean.thessla_boost_mode
+
+  # Automatic night mode
+  - alias: "ThesslaGreen: Night mode"
+    trigger:
+      - platform: time
+        at: "22:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.thessla_night_mode
+        state: 'on'
+    action:
+      - service: climate.set_preset_mode
+        target:
+          entity_id: climate.thessla_rekuperator
+        data:
+          preset_mode: "sleep"
+
+  # Morning mode
+  - alias: "ThesslaGreen: Morning mode"
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.thessla_night_mode
+        state: 'on'
+    action:
+      - service: climate.set_preset_mode
+        target:
+          entity_id: climate.thessla_rekuperator
+        data:
+          preset_mode: "comfort"
+
+  # Away mode activation
+  - alias: "ThesslaGreen: Away mode"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.thessla_away_mode
+        to: 'on'
+    action:
+      - service: climate.set_preset_mode
+        target:
+          entity_id: climate.thessla_rekuperator
+        data:
+          preset_mode: "away"
+
+  # Manual intensity control
+  - alias: "ThesslaGreen: Manual intensity control"
+    trigger:
+      - platform: state
+        entity_id: input_number.thessla_manual_intensity
+    action:
+      - service: number.set_value
+        target:
+          entity_id: number.thessla_air_flow_rate_manual
+        data:
+          value: "{{ states('input_number.thessla_manual_intensity') | int }}"
+
+  # Seasonal mode switching
+  - alias: "ThesslaGreen: Summer mode"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.thessla_outside_temperature
+        above: 20
+        for: '02:00:00'  # 2 hours above 20°C
+    action:
+      - service: select.select_option
+        target:
+          entity_id: select.thessla_season_mode
+        data:
+          option: "Lato"
+
+  - alias: "ThesslaGreen: Winter mode"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.thessla_outside_temperature
+        below: 10
+        for: '02:00:00'  # 2 hours below 10°C
+    action:
+      - service: select.select_option
+        target:
+          entity_id: select.thessla_season_mode
+        data:
+          option: "Zima"
+
+# Scripts (optional - for complex actions)
+script:
+  thessla_morning_routine:
+    alias: "ThesslaGreen Morning Routine"
+    sequence:
+      - service: climate.set_preset_mode
+        target:
+          entity_id: climate.thessla_rekuperator
+        data:
+          preset_mode: "comfort"
+      - service: number.set_value
+        target:
+          entity_id: number.thessla_air_flow_rate_manual
+        data:
+          value: 50
+
+  thessla_evening_routine:
+    alias: "ThesslaGreen Evening Routine"
+    sequence:
+      - service: climate.set_preset_mode
+        target:
+          entity_id: climate.thessla_rekuperator
+        data:
+          preset_mode: "eco"
+      - service: number.set_value
+        target:
+          entity_id: number.thessla_air_flow_rate_manual
+        data:
+          value: 30
+
+  thessla_party_mode:
+    alias: "ThesslaGreen Party Mode"
+    sequence:
+      - service: select.select_option
+        target:
+          entity_id: select.thessla_special_function
+        data:
+          option: "WIETRZENIE (aktywacja ręczna)"
+      - service: number.set_value
+        target:
+          entity_id: number.thessla_air_flow_rate_manual
+        data:
+          value: 80
+
+# Groups (optional - for organization)
+group:
+  thessla_temperature_sensors:
+    name: "ThesslaGreen Temperature Sensors"
+    entities:
+      - sensor.thessla_outside_temperature
+      - sensor.thessla_supply_temperature
+      - sensor.thessla_exhaust_temperature
+      - sensor.thessla_fpx_temperature
+
+  thessla_controls:
+    name: "ThesslaGreen Controls"
+    entities:
+      - climate.thessla_rekuperator
+      - fan.thessla_wentylator
+      - select.thessla_mode
+      - select.thessla_special_function
+
+  thessla_status:
+    name: "ThesslaGreen Status"
+    entities:
+      - binary_sensor.thessla_device_status_smart
+      - binary_sensor.thessla_constant_flow_active
+      - binary_sensor.thessla_power_supply_fans
+
+# Lovelace dashboard card examples (copy to your dashboard)
+# type: entities
+# entities:
+#   - entity: climate.thessla_rekuperator
+#   - entity: sensor.thessla_outside_temperature
+#   - entity: sensor.thessla_supply_temperature
+#   - entity: sensor.thessla_supply_flowrate
+#   - entity: select.thessla_mode
+#   - entity: select.thessla_special_function
+# title: ThesslaGreen Control
+# show_header_toggle: false
+
+# type: history-graph
+# entities:
+#   - sensor.thessla_outside_temperature
+#   - sensor.thessla_supply_temperature
+#   - sensor.thessla_exhaust_temperature
+# hours_to_show: 24
+# refresh_interval: 60
+# title: ThesslaGreen Temperatures

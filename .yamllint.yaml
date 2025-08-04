@@ -1,0 +1,50 @@
+# yamllint configuration for ThesslaGreen Modbus Integration
+
+extends: default
+
+rules:
+  # Line length - allow longer lines for readability
+  line-length:
+    max: 120
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Comments - more flexible comment spacing
+  comments:
+    min-spaces-from-content: 1
+
+  # Document start - not required for config files
+  document-start: disable
+
+  # Truthy values - allow yes/no, on/off
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+
+  # Indentation - consistent with Home Assistant style
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Brackets - allow some flexibility
+  brackets:
+    max-spaces-inside: 1
+    max-spaces-inside-empty: 0
+
+  # Braces - allow some flexibility  
+  braces:
+    max-spaces-inside: 1
+    max-spaces-inside-empty: 0
+
+  # Empty lines
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+
+# Ignore some files
+ignore: |
+  .github/
+  venv/
+  .venv/
+  tests/fixtures/

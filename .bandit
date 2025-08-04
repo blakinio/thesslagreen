@@ -1,0 +1,198 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    name: Pre-commit checks
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pre-commit
+      - name: Run pre-commit
+        run: pre-commit run --all-files
+
+  validate:
+    runs-on: ubuntu-latest
+    name: Validate with hassfest & HACS
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        home-assistant-version: ["2023.4.0", "2024.1.0", "latest"]
+    name: Test Python ${{ matrix.python-version }} with HA ${{ matrix.home-assistant-version }}
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          if [ "${{ matrix.home-assistant-version }}" != "latest" ]; then
+            pip install homeassistant==${{ matrix.home-assistant-version }}
+          else
+            pip install homeassistant
+          fi
+      
+      - name: Run pytest
+        run: |
+          python -m pytest tests/ -v --tb=short --cov=custom_components.thessla_green_modbus --cov-report=xml
+      
+      - name: Run optimization validation
+        run: |
+          python run_optimization_tests.py
+      
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.11' && matrix.home-assistant-version == 'latest'
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  integration-test:
+    runs-on: ubuntu-latest
+    name: Integration tests
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-homeassistant-custom-component
+      
+      - name: Run integration tests
+        run: |
+          python -m pytest tests/test_optimized_integration.py -v
+      
+      - name: Validate register coverage
+        run: |
+          python -c "
+          from custom_components.thessla_green_modbus.const import *
+          print(f'Input registers: {len(INPUT_REGISTERS)}')
+          print(f'Holding registers: {len(HOLDING_REGISTERS)}')
+          print(f'Coil registers: {len(COIL_REGISTERS)}')
+          print(f'Discrete inputs: {len(DISCRETE_INPUT_REGISTERS)}')
+          assert len(INPUT_REGISTERS) > 20, 'Too few input registers'
+          assert len(HOLDING_REGISTERS) > 100, 'Too few holding registers'
+          print('✅ Register coverage validation passed')
+          "
+
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code quality checks
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort flake8 mypy
+          pip install -r requirements.txt
+      
+      - name: Check code formatting with Black
+        run: black --check --diff custom_components/
+      
+      - name: Check import sorting with isort
+        run: isort --check-only --diff custom_components/
+      
+      - name: Lint with flake8
+        run: flake8 custom_components/ --max-line-length=100 --extend-ignore=E203,W503
+      
+      - name: Type check with mypy
+        run: mypy custom_components/thessla_green_modbus/ --ignore-missing-imports
+
+  security:
+    runs-on: ubuntu-latest
+    name: Security scan
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      
+      - name: Run Bandit security scanner
+        uses: securecodewarrior/github-action-bandit-scan@v1.0.1
+        with:
+          config_file: .bandit
+      
+      - name: Check for hardcoded secrets
+        run: |
+          ! grep -r "password\|secret\|token\|key" custom_components/ --include="*.py" | grep -v "# nosec"
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [validate, test, integration-test, code-quality]
+    runs-on: ubuntu-latest
+    name: Prepare release
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Generate changelog
+        run: |
+          git log --oneline --pretty=format:"- %s" $(git describe --tags --abbrev=0)..HEAD > CHANGELOG.md || echo "- Initial release" > CHANGELOG.md
+      
+      - name: Create release draft
+        if: contains(github.event.head_commit.message, 'bump version')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body_path: CHANGELOG.md
+          draft: true

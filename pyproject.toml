@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thessla-green-modbus"
+version = "2.0.0"
+description = "ThesslaGreen Modbus integration for Home Assistant"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "ThesslaGreen Modbus Integration", email = "contact@example.com"}
+]
+keywords = ["home-assistant", "modbus", "hvac", "thesslagreen", "airpack"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11", 
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Home Automation",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "homeassistant>=2023.4.0",
+    "pymodbus>=3.5.0,<4.0.0",
+    "voluptuous>=0.13.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0", 
+    "pytest-homeassistant-custom-component>=0.13.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "flake8>=4.0.0",
+    "mypy>=0.990",
+]
+docs = [
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/YOUR_USERNAME/thessla_green_modbus"
+"Bug Reports" = "https://github.com/YOUR_USERNAME/thessla_green_modbus/issues"
+"Source" = "https://github.com/YOUR_USERNAME/thessla_green_modbus"
+"Documentation" = "https://github.com/YOUR_USERNAME/thessla_green_modbus/wiki"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["custom_components*"]
+
+[tool.black]
+target-version = ["py310"]
+line-length = 100
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+show_error_codes = true
+namespace_packages = true
+
+[[tool.mypy.overrides]]
+module = [
+    "homeassistant.*",
+    "pymodbus.*",
+    "voluptuous.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".git", "testing_config"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--disable-warnings", 
+    "--tb=short",
+    "-ra",
+    "-q",
+]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
