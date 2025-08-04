@@ -26,6 +26,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ThesslaGreenCoordinator
+from .device_scanner import ThesslaGreenDeviceScanner
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenCoordinator
@@ -80,6 +81,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         host, port, slave_id, scan_interval,
     )
 
+    # Scan device before first refresh to discover capabilities and registers
+    scanner = ThesslaGreenDeviceScanner(host, port, slave_id)
+    try:
+        scan_result = await scanner.scan_device()
+    except Exception as exc:
+        _LOGGER.error("Initial device scan failed: %s", exc)
+        raise ConfigEntryNotReady(f"Failed to scan device: {exc}") from exc
+
     coordinator = ThesslaGreenCoordinator(
         hass=hass,
         host=host,
@@ -88,7 +97,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         scan_interval=scan_interval,
         timeout=timeout,
         retry=retry,
+        available_registers=scan_result["available_registers"],
+        device_info=scan_result.get("device_info"),
+        capabilities=scan_result.get("capabilities"),
     )
+
+    # Ensure register groups are computed using initial scan results
+    coordinator.rebuild_register_groups()
 
     try:
         await coordinator.async_config_entry_first_refresh()
@@ -265,24 +280,19 @@ async def _async_register_services(hass: HomeAssistant) -> None:
         """Service to rescan device capabilities."""
         for coordinator in hass.data[DOMAIN].values():
             # Trigger a complete device rescan
-            from .device_scanner import ThesslaGreenDeviceScanner
-            
             scanner = ThesslaGreenDeviceScanner(
                 coordinator.host, coordinator.port, coordinator.slave_id
             )
-            
+
             try:
                 scan_result = await scanner.scan_device()
-                coordinator.available_registers = scan_result["available_registers"]
-                coordinator.device_info = scan_result["device_info"]
-                coordinator.capabilities = scan_result["capabilities"]
-                
-                # Re-compute register groups
-                coordinator._precompute_register_groups()
-                
+                coordinator.device_info = scan_result.get("device_info", {})
+                coordinator.capabilities = scan_result.get("capabilities", {})
+                coordinator.rebuild_register_groups(scan_result["available_registers"])
+
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Device rescan completed successfully")
-                
+
             except Exception as exc:
                 _LOGGER.error("Device rescan failed: %s", exc)
 
