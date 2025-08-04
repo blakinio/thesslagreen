@@ -306,7 +306,7 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
             try:
                 if not client.connect():
                     return False
-                
+
                 # Determine if it's a coil or holding register
                 if key in ["manual_mode", "fan_boost", "bypass_enable", "gwc_enable"]:
                     # Write coil (boolean)
@@ -322,21 +322,24 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
                         value=value,
                         slave=self.slave_id
                     )
-                    
+
                 success = result and not result.isError()
                 if success:
                     _LOGGER.debug("Successfully wrote %s=%s to 0x%04X", key, value, address)
                 else:
                     _LOGGER.error("Failed to write %s=%s to 0x%04X: %s", key, value, address, result)
                 return success
-                
+
             except Exception as exc:
                 _LOGGER.error("Exception writing register %s: %s", key, exc)
                 return False
             finally:
                 client.close()
-        
-        return await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+
+        success = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+        if success:
+            await self.async_request_refresh()
+        return success
 
     def _process_register_value(self, key: str, raw_value: Any) -> Any:
         """Process raw register value based on key type."""
@@ -378,5 +381,3 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
         return self.data.get(register_name, default)
 
 
-# Backwards compatibility
-ThesslaGreenCoordinator = ThesslaGreenDataCoordinator
