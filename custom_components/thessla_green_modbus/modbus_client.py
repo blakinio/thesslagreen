@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
-
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
@@ -31,7 +29,7 @@ class ThesslaGreenModbusClient:
                 port=self.port,
                 timeout=self.timeout,
             )
-            return self._client.connect()
+            return await asyncio.to_thread(self._client.connect)
         except Exception as ex:
             _LOGGER.error("Failed to connect to Modbus device: %s", ex)
             return False
@@ -39,7 +37,7 @@ class ThesslaGreenModbusClient:
     async def disconnect(self) -> None:
         """Disconnect from Modbus device."""
         if self._client:
-            self._client.close()
+            await asyncio.to_thread(self._client.close)
             self._client = None
 
     async def read_holding_register(self, address: int) -> int | None:
@@ -51,10 +49,11 @@ class ThesslaGreenModbusClient:
                         return None
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.read_holding_registers(
+                result = await asyncio.to_thread(
+                    self._client.read_holding_registers,
                     address=address,
                     count=1,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -81,10 +80,11 @@ class ThesslaGreenModbusClient:
                         return None
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.read_holding_registers(
+                result = await asyncio.to_thread(
+                    self._client.read_holding_registers,
                     address=address,
                     count=count,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -114,10 +114,11 @@ class ThesslaGreenModbusClient:
                         return None
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.read_input_registers(
+                result = await asyncio.to_thread(
+                    self._client.read_input_registers,
                     address=address,
                     count=count,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -145,10 +146,11 @@ class ThesslaGreenModbusClient:
                         return None
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.read_coils(
+                result = await asyncio.to_thread(
+                    self._client.read_coils,
                     address=address,
                     count=count,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -176,10 +178,11 @@ class ThesslaGreenModbusClient:
                         return None
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.read_discrete_inputs(
+                result = await asyncio.to_thread(
+                    self._client.read_discrete_inputs,
                     address=address,
                     count=count,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -207,10 +210,11 @@ class ThesslaGreenModbusClient:
                         return False
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.write_register(
+                result = await asyncio.to_thread(
+                    self._client.write_register,
                     address=address,
                     value=value,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -236,10 +240,11 @@ class ThesslaGreenModbusClient:
                         return False
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.write_registers(
+                result = await asyncio.to_thread(
+                    self._client.write_registers,
                     address=address,
                     values=values,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -269,10 +274,11 @@ class ThesslaGreenModbusClient:
                         return False
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.write_coil(
+                result = await asyncio.to_thread(
+                    self._client.write_coil,
                     address=address,
                     value=value,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
@@ -298,10 +304,11 @@ class ThesslaGreenModbusClient:
                         return False
 
                 # POPRAWIONE API: keyword arguments
-                result = self._client.write_coils(
+                result = await asyncio.to_thread(
+                    self._client.write_coils,
                     address=address,
                     values=values,
-                    slave=self.slave_id
+                    slave=self.slave_id,
                 )
                 
                 if result.isError():
