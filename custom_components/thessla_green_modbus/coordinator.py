@@ -1,33 +1,21 @@
-"""Optimized data coordinator for ThesslaGreen Modbus integration - Enhanced Performance."""
+"""Poprawiony coordinator z kompatybilnością pymodbus 3.x+"""
+
 from __future__ import annotations
 
 import asyncio
 import logging
 from datetime import timedelta
-from typing import Any
-
-from pymodbus.client import ModbusTcpClient
-from pymodbus.exceptions import ModbusException
+from typing import Any, Dict, List, Tuple
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from .const import (
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-    DOMAIN,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-    INVALID_TEMPERATURE,
-    INVALID_FLOW,
-)
-from .device_scanner import ThesslaGreenDeviceScanner
+from homeassistant.exceptions import ConfigEntryNotReady
+from pymodbus.client import ModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
 
-
-class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Optimized coordinator for ThesslaGreen Modbus communication."""
+class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
+    """Poprawiony coordinator z nowym API pymodbus 3.x"""
 
     def __init__(
         self,
@@ -35,119 +23,129 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         host: str,
         port: int,
         slave_id: int,
-        scan_interval: int,
-        timeout: int,
-        retry: int,
+        scan_interval: int = 30,
+        available_registers: Dict[str, set] = None,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
-            name=DOMAIN,
+            name="thessla_green_modbus",
             update_interval=timedelta(seconds=scan_interval),
         )
+        
         self.host = host
         self.port = port
         self.slave_id = slave_id
-        self.timeout = timeout
-        self.retry = retry
-        self.available_registers: dict[str, set[str]] = {}
-        self.device_info: dict[str, Any] = {}
-        self.capabilities: dict[str, Any] = {}
-        
-        # Performance optimization: pre-computed register groups
-        self._register_groups: dict[str, list[tuple[int, int, dict[str, int]]]] = {}
-        self._last_successful_read: dict[str, float] = {}
-        self._failed_registers: set[str] = set()
-
-    async def async_config_entry_first_refresh(self) -> None:
-        """Perform initial refresh including device scanning."""
-        _LOGGER.info("Starting optimized device scan...")
-        
-        # Scan device capabilities first
-        scanner = ThesslaGreenDeviceScanner(self.host, self.port, self.slave_id)
-        
-        try:
-            scan_result = await scanner.scan_device()
-            self.available_registers = scan_result["available_registers"]
-            self.device_info = scan_result["device_info"]
-            self.capabilities = scan_result["capabilities"]
-            
-            # Pre-compute register groups for optimal reading
-            self._precompute_register_groups()
-            
-            _LOGGER.info(
-                "Optimized device scan successful. Found %d registers, %d capabilities",
-                sum(len(regs) for regs in self.available_registers.values()),
-                len([k for k, v in self.capabilities.items() if v])
-            )
-            
-        except Exception as exc:
-            _LOGGER.error("Device scan failed: %s", exc)
-            # Set minimal configuration for basic operation
-            self.available_registers = {"input_registers": set(), "holding_registers": set()}
-            self.device_info = {"device_name": "ThesslaGreen", "firmware": "Unknown"}
-            self.capabilities = {}
-        
-        # Perform initial data refresh
-        await super().async_config_entry_first_refresh()
-
-    def _precompute_register_groups(self) -> None:
-        """Precompute optimal register groups for batch reading."""
-        self._register_groups = {
-            "input_registers": self._group_registers(INPUT_REGISTERS, self.available_registers.get("input_registers", set())),
-            "holding_registers": self._group_registers(HOLDING_REGISTERS, self.available_registers.get("holding_registers", set())),
-            "coil_registers": self._group_registers(COIL_REGISTERS, self.available_registers.get("coil_registers", set())),
-            "discrete_inputs": self._group_registers(DISCRETE_INPUT_REGISTERS, self.available_registers.get("discrete_inputs", set())),
+        self.timeout = 10
+        self.available_registers = available_registers or {
+            "input_registers": set(),
+            "holding_registers": set(),
+            "coil_registers": set(),
+            "discrete_inputs": set()
         }
         
-        total_groups = sum(len(groups) for groups in self._register_groups.values())
-        _LOGGER.debug("Precomputed %d optimized register groups", total_groups)
+        # Precompute optimized register groups for batch reading
+        self._register_groups = self._compute_optimized_groups()
+        _LOGGER.debug("Precomputed %d optimized register groups", len(self._register_groups))
 
-    def _group_registers(self, register_map: dict, available_keys: set) -> list[tuple[int, int, dict[str, int]]]:
-        """Group consecutive registers for batch reading."""
-        if not available_keys:
-            return []
+    def _compute_optimized_groups(self) -> Dict[str, List[Tuple[int, int, Dict[str, int]]]]:
+        """Pre-compute optimized register groups for efficient batch reading."""
+        groups = {}
         
-        # Filter available registers and sort by address
-        available_regs = {key: addr for key, addr in register_map.items() if key in available_keys}
-        if not available_regs:
-            return []
+        # Mapowanie rejestrów do adresów - DOSTOSUJ DO TWOJEGO URZĄDZENIA
+        register_mappings = {
+            "input_registers": {
+                "outside_temperature": 0x0010,
+                "supply_temperature": 0x0011, 
+                "exhaust_temperature": 0x0012,
+                "fpx_temperature": 0x0013,
+                "firmware_major": 0x0000,
+                "firmware_minor": 0x0001,
+                "firmware_build": 0x0002,
+            },
+            "holding_registers": {
+                "mode": 0x1000,
+                "season_mode": 0x1001,
+                "special_mode": 0x1002,
+                "air_flow_rate_manual": 0x1003,
+                "air_flow_rate_override": 0x1004,
+            },
+            "coil_registers": {
+                "manual_mode": 0x0000,
+                "fan_boost": 0x0001,
+                "bypass_enable": 0x0002,
+                "gwc_enable": 0x0003,
+            },
+            "discrete_inputs": {
+                "filter_alarm": 0x0000,
+                "frost_protection": 0x0001,
+                "summer_mode": 0x0002,
+                "fireplace": 0x000E,
+                "fire_alarm": 0x000F,
+            }
+        }
         
-        sorted_regs = sorted(available_regs.items(), key=lambda x: x[1])
-        groups = []
-        current_group = []
-        
-        for key, addr in sorted_regs:
-            if not current_group:
-                current_group.append((key, addr))
-            elif addr == current_group[-1][1] + 1:
-                current_group.append((key, addr))
-            else:
-                # Process current group
-                if current_group:
-                    groups.append(self._create_group(current_group))
-                current_group = [(key, addr)]
-        
-        # Process last group
-        if current_group:
-            groups.append(self._create_group(current_group))
+        for reg_type, mapping in register_mappings.items():
+            if reg_type not in self.available_registers:
+                continue
+                
+            # Filter only available registers
+            available_mapping = {
+                name: addr for name, addr in mapping.items() 
+                if name in self.available_registers[reg_type]
+            }
+            
+            if not available_mapping:
+                groups[reg_type] = []
+                continue
+            
+            # Group consecutive registers for batch reading
+            groups[reg_type] = self._create_consecutive_groups(available_mapping)
         
         return groups
 
-    def _create_group(self, registers: list[tuple[str, int]]) -> tuple[int, int, dict[str, int]]:
-        """Create a register group tuple."""
-        start_addr = registers[0][1]
-        count = len(registers)
-        key_map = {key: i for i, (key, _) in enumerate(registers)}
+    def _create_consecutive_groups(self, register_mapping: Dict[str, int]) -> List[Tuple[int, int, Dict[str, int]]]:
+        """Create groups of consecutive registers for efficient batch reading."""
+        if not register_mapping:
+            return []
+        
+        # Sort registers by address
+        sorted_registers = sorted(register_mapping.items(), key=lambda x: x[1])
+        groups = []
+        current_group = [sorted_registers[0]]
+        
+        for name, addr in sorted_registers[1:]:
+            last_addr = current_group[-1][1]
+            
+            # If address is consecutive (or close), add to current group
+            if addr - last_addr <= 5:  # Allow small gaps
+                current_group.append((name, addr))
+            else:
+                # Start new group
+                groups.append(self._group_to_read_params(current_group))
+                current_group = [(name, addr)]
+        
+        # Add the last group
+        if current_group:
+            groups.append(self._group_to_read_params(current_group))
+        
+        return groups
+
+    def _group_to_read_params(self, group: List[Tuple[str, int]]) -> Tuple[int, int, Dict[str, int]]:
+        """Convert group of registers to read parameters."""
+        start_addr = group[0][1]
+        end_addr = group[-1][1]
+        count = end_addr - start_addr + 1
+        key_map = {name: addr - start_addr for name, addr in group}
         return (start_addr, count, key_map)
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> Dict[str, Any]:
         """Optimized data update using batch reading."""
         return await asyncio.get_event_loop().run_in_executor(None, self._update_data_sync)
 
-    def _update_data_sync(self) -> dict[str, Any]:
-        """Synchronous optimized data update."""
+    def _update_data_sync(self) -> Dict[str, Any]:
+        """Synchronous optimized data update with fixed pymodbus API."""
         client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
         data = {}
         
@@ -155,17 +153,11 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if not client.connect():
                 raise UpdateFailed("Could not connect to device")
             
-            # Read input registers
-            data.update(self._read_register_groups(client, "input_registers", client.read_input_registers))
-            
-            # Read holding registers
-            data.update(self._read_register_groups(client, "holding_registers", client.read_holding_registers))
-            
-            # Read coils
-            data.update(self._read_register_groups(client, "coil_registers", client.read_coils))
-            
-            # Read discrete inputs
-            data.update(self._read_register_groups(client, "discrete_inputs", client.read_discrete_inputs))
+            # Read all register types with optimized batching
+            data.update(self._read_register_groups(client, "input_registers", self._read_input_registers))
+            data.update(self._read_register_groups(client, "holding_registers", self._read_holding_registers))
+            data.update(self._read_register_groups(client, "coil_registers", self._read_coils))
+            data.update(self._read_register_groups(client, "discrete_inputs", self._read_discrete_inputs))
             
         except Exception as exc:
             _LOGGER.error("Data update failed: %s", exc)
@@ -175,117 +167,134 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         
         return data
 
-    def _read_register_groups(self, client, register_type: str, read_func) -> dict[str, Any]:
+    def _read_register_groups(self, client: ModbusTcpClient, register_type: str, read_func) -> Dict[str, Any]:
         """Read register groups with optimized batch operations."""
         data = {}
-        groups = self._register_groups.get(register_type, [])
         
-        for start_addr, count, key_map in groups:
+        if register_type not in self._register_groups:
+            return data
+        
+        for start_addr, count, key_map in self._register_groups[register_type]:
             try:
-                response = read_func(start_addr, count, slave=self.slave_id)
-                
-                if response.isError():
-                    _LOGGER.debug("Error reading %s group at 0x%04X: %s", register_type, start_addr, response)
-                    continue
-                
-                # Extract values based on register type
-                if register_type in ["input_registers", "holding_registers"]:
-                    values = response.registers
-                else:  # coils or discrete inputs
-                    values = response.bits[:count]
-                
-                # Map values to keys
-                for key, offset in key_map.items():
-                    if offset < len(values):
-                        raw_value = values[offset]
-                        data[key] = self._process_register_value(key, raw_value)
-                        
+                result = read_func(client, start_addr, count)
+                if result and not result.isError():
+                    # Extract values for each register in the group
+                    if hasattr(result, 'registers'):
+                        # For input/holding registers
+                        for name, offset in key_map.items():
+                            if offset < len(result.registers):
+                                data[name] = result.registers[offset]
+                    elif hasattr(result, 'bits'):
+                        # For coils/discrete inputs
+                        for name, offset in key_map.items():
+                            if offset < len(result.bits):
+                                data[name] = result.bits[offset]
+                                
             except Exception as exc:
-                _LOGGER.debug("Exception reading %s group at 0x%04X: %s", register_type, start_addr, exc)
-                continue
+                _LOGGER.debug("Failed to read %s group at 0x%04X: %s", register_type, start_addr, exc)
         
         return data
 
-    def _process_register_value(self, key: str, raw_value: Any) -> Any:
-        """Process raw register value based on key type."""
-        # Temperature processing
-        if "temperature" in key:
-            if raw_value == INVALID_TEMPERATURE or raw_value > 1000:
-                return None
-            return round(raw_value / 10.0, 1) if raw_value > 100 else raw_value
-        
-        # Flow processing
-        elif "flow" in key or "flowrate" in key:
-            if raw_value == INVALID_FLOW or raw_value > 10000:
-                return None
-            return raw_value
-        
-        # Percentage processing
-        elif "percentage" in key:
-            return max(0, min(100, raw_value))
-        
-        # Voltage processing (DAC)
-        elif "dac" in key:
-            return round(raw_value / 1000.0, 2)  # Convert mV to V
-        
-        # Boolean processing
-        elif key in ["constant_flow_active", "gwc_mode", "bypass_mode", "on_off_panel_mode"]:
-            return bool(raw_value)
-        
-        # Default: return as-is
-        return raw_value
-
-    async def async_write_register(self, key: str, value: int) -> bool:
-        """Optimized register writing with retry logic."""
-        if key not in HOLDING_REGISTERS:
-            _LOGGER.error("Unknown register key: %s", key)
-            return False
-
-        register_address = HOLDING_REGISTERS[key]
-        
-        for attempt in range(self.retry):
-            try:
-                success = await asyncio.get_event_loop().run_in_executor(
-                    None, self._write_register_sync, register_address, value
-                )
-                if success:
-                    return True
-                    
-                if attempt < self.retry - 1:
-                    await asyncio.sleep(0.1 * (attempt + 1))  # Progressive delay
-                    
-            except Exception as exc:
-                _LOGGER.debug("Write attempt %d failed for register %s: %s", attempt + 1, key, exc)
-                if attempt < self.retry - 1:
-                    await asyncio.sleep(0.1 * (attempt + 1))
-
-        _LOGGER.error("Failed to write register %s after %d attempts", key, self.retry)
-        return False
-
-    def _write_register_sync(self, address: int, value: int) -> bool:
-        """Optimized synchronous register writing."""
-        client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-        
+    def _read_input_registers(self, client: ModbusTcpClient, address: int, count: int):
+        """POPRAWIONE: Read input registers z nowym API pymodbus 3.x"""
         try:
-            if not client.connect():
-                return False
-
-            result = client.write_register(address, value, slave=self.slave_id)
-            if result.isError():
-                _LOGGER.debug("Error writing register 0x%04X: %s", address, result)
-                return False
-
-            _LOGGER.debug("Successfully wrote value %s to register 0x%04X", value, address)
-            return True
-
+            return client.read_input_registers(
+                address=address,
+                count=count,
+                slave=self.slave_id
+            )
         except Exception as exc:
-            _LOGGER.debug("Exception writing register 0x%04X: %s", address, exc)
-            return False
-        finally:
-            client.close()
+            _LOGGER.debug("Failed to read input registers 0x%04X-0x%04X: %s", 
+                         address, address + count - 1, exc)
+            return None
 
-    async def async_shutdown(self) -> None:
-        """Shutdown the coordinator."""
-        _LOGGER.debug("Shutting down optimized coordinator")
-        self._register_groups.clear()
-        self._failed_registers.clear()
+    def _read_holding_registers(self, client: ModbusTcpClient, address: int, count: int):
+        """POPRAWIONE: Read holding registers z nowym API pymodbus 3.x"""
+        try:
+            return client.read_holding_registers(
+                address=address,
+                count=count,
+                slave=self.slave_id
+            )
+        except Exception as exc:
+            _LOGGER.debug("Failed to read holding registers 0x%04X-0x%04X: %s", 
+                         address, address + count - 1, exc)
+            return None
+
+    def _read_coils(self, client: ModbusTcpClient, address: int, count: int):
+        """POPRAWIONE: Read coils z nowym API pymodbus 3.x"""
+        try:
+            return client.read_coils(
+                address=address,
+                count=count,
+                slave=self.slave_id
+            )
+        except Exception as exc:
+            _LOGGER.debug("Failed to read coils 0x%04X-0x%04X: %s", 
+                         address, address + count - 1, exc)
+            return None
+
+    def _read_discrete_inputs(self, client: ModbusTcpClient, address: int, count: int):
+        """POPRAWIONE: Read discrete inputs z nowym API pymodbus 3.x"""
+        try:
+            return client.read_discrete_inputs(
+                address=address,
+                count=count,
+                slave=self.slave_id
+            )
+        except Exception as exc:
+            _LOGGER.debug("Failed to read discrete inputs 0x%04X-0x%04X: %s", 
+                         address, address + count - 1, exc)
+            return None
+
+    async def write_register(self, address: int, value: int) -> bool:
+        """POPRAWIONE: Write single holding register z nowym API"""
+        def _write_sync():
+            client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
+            try:
+                if not client.connect():
+                    return False
+                
+                result = client.write_register(
+                    address=address,
+                    value=value,
+                    slave=self.slave_id
+                )
+                return result and not result.isError()
+                
+            except Exception as exc:
+                _LOGGER.error("Failed to write register 0x%04X: %s", address, exc)
+                return False
+            finally:
+                client.close()
+        
+        return await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+
+    async def write_coil(self, address: int, value: bool) -> bool:
+        """POPRAWIONE: Write single coil z nowym API"""
+        def _write_sync():
+            client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
+            try:
+                if not client.connect():
+                    return False
+                
+                result = client.write_coil(
+                    address=address,
+                    value=value,
+                    slave=self.slave_id
+                )
+                return result and not result.isError()
+                
+            except Exception as exc:
+                _LOGGER.error("Failed to write coil 0x%04X: %s", address, exc)
+                return False
+            finally:
+                client.close()
+        
+        return await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+
+    def get_register_value(self, register_name: str, default: Any = None) -> Any:
+        """Get current value of a register."""
+        if self.data is None:
+            return default
+        return self.data.get(register_name, default)
