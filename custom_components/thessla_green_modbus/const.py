@@ -1,4 +1,4 @@
-"""Constants for the ThesslaGreen Modbus integration - VERIFIED against official documentation."""
+"""Constants for the ThesslaGreen Modbus integration - FIXED VERSION."""
 from __future__ import annotations
 
 from typing import Final
@@ -125,13 +125,6 @@ HOLDING_REGISTERS: Final[dict[str, int]] = {
     "configuration_mode": 0x000D,           # Tryby specjalne pracy
     "access_level": 0x000F,                 # Poziom dostępu
     
-    # Summer schedule (addresses 0x0010-0x002B) - time start registers
-    # Winter schedule (addresses 0x002C-0x0047) - time start registers
-    # Summer settings (addresses 0x0048-0x0063) - airflow & temperature [AATT]
-    # Winter settings (addresses 0x0064-0x007F) - airflow & temperature [AATT]
-    # Airing schedule summer (addresses 0x0080-0x0098)
-    # Airing schedule winter (addresses 0x009C-0x00B4)
-    
     # RTC calibration (address 0x00C0)
     "rtc_cal": 0x00C0,                      # Dane kalibracyjne zegara
     
@@ -153,29 +146,29 @@ HOLDING_REGISTERS: Final[dict[str, int]] = {
     "antifreeze_mode": 0x1060,              # Flaga uruchomienia FPX
     "antifreeze_stage": 0x1066,             # Tryb działania FPX
     
-    # MAIN OPERATING PARAMETERS (addresses 0x1070-0x1075) - CRITICAL
+    # ====== CRITICAL OPERATING PARAMETERS (addresses 0x1070-0x1075) ======
     "mode": 0x1070,                         # Tryb pracy (0=auto, 1=manual, 2=temp)
     "season_mode": 0x1071,                  # Sezon (0=lato, 1=zima)
-    "air_flow_rate_manual": 0x1072,         # Intensywność - tryb manualny
-    "air_flow_rate_temporary": 0x1073,      # Intensywność - tryb chwilowy
+    "air_flow_rate_manual": 0x1072,         # Intensywność - tryb manualny (10-100%)
+    "air_flow_rate_temporary": 0x1073,      # Intensywność - tryb chwilowy (10-100%)
     "supply_air_temperature_manual": 0x1074, # Temperatura - tryb manualny (×0.5°C)
     "supply_air_temperature_temporary": 0x1075, # Temperatura - tryb chwilowy (×0.5°C)
     
     # AirS panel settings (addresses 0x1078-0x107B)
-    "fan_speed_1_coef": 0x1078,             # Intensywność 1 bieg (%)
-    "fan_speed_2_coef": 0x1079,             # Intensywność 2 bieg (%)
-    "fan_speed_3_coef": 0x107A,             # Intensywność 3 bieg (%)
-    "manual_airing_time_to_start": 0x107B,  # Godzina rozpoczęcia wietrzenia manualnego [GGMM]
+    "fan_speed_1_coef": 0x1078,             # Intensywność 1 bieg (10-45%)
+    "fan_speed_2_coef": 0x1079,             # Intensywność 2 bieg (46-75%)
+    "fan_speed_3_coef": 0x107A,             # Intensywność 3 bieg (76-100%)
+    "manual_airing_time_to_start": 0x107B,  # Godzina rozpoczęcia wietrzenia [GGMM]
     
     # Special functions (addresses 0x1080-0x1089)
     "special_mode": 0x1080,                 # Funkcje specjalne (0-11)
-    "hood_supply_coef": 0x1082,             # Intensywność OKAP nawiew (%)
-    "hood_exhaust_coef": 0x1083,            # Intensywność OKAP wywiew (%)
-    "fireplace_supply_coef": 0x1084,        # Różnicowanie KOMINEK (%)
+    "hood_supply_coef": 0x1082,             # Intensywność OKAP nawiew (100-150%)
+    "hood_exhaust_coef": 0x1083,            # Intensywność OKAP wywiew (100-150%)
+    "fireplace_supply_coef": 0x1084,        # Różnicowanie KOMINEK (5-50%)
     "airing_bathroom_coef": 0x1085,         # Intensywność WIETRZENIE łazienka (%)
-    "airing_coef": 0x1086,                  # Intensywność WIETRZENIE pokoje (%)
-    "contamination_coef": 0x1087,           # Intensywność czujnik jakości (%)
-    "empty_house_coef": 0x1088,             # Intensywność PUSTY DOM (%)
+    "airing_coef": 0x1086,                  # Intensywność WIETRZENIE pokoje (100-150%)
+    "contamination_coef": 0x1087,           # Intensywność czujnik jakości (100-150%)
+    "empty_house_coef": 0x1088,             # Intensywność PUSTY DOM (10-50%)
     "airing_panel_mode_time": 0x1089,       # Czas działania WIETRZENIE pokoje (min)
     
     # More special function timers (addresses 0x108A-0x108F)
@@ -229,72 +222,22 @@ HOLDING_REGISTERS: Final[dict[str, int]] = {
     "on_off_panel_mode": 0x1123,            # ON/OFF urządzenia - CRITICAL REGISTER
     "language": 0x112F,                     # Język panelu
     
-    # Alternative control registers (addresses 0x1130-0x1135)
-    "cfg_mode1": 0x1130,                    # Tryb pracy - alternatywny
-    "air_flow_rate_temporary_alt": 0x1131,  # Intensywność chwilowy - alternatywny
-    "airflow_rate_change_flag": 0x1132,     # Flaga zmiany intensywności
-    "cfg_mode2": 0x1133,                    # Tryb pracy - alternatywny 2
-    "supply_air_temperature_temporary_alt": 0x1134, # Temperatura chwilowy - alternatywny
-    "temperature_change_flag": 0x1135,      # Flaga zmiany temperatury
+    # ====== ALTERNATIVE CONTROL REGISTERS (addresses 0x1130-0x1135) ======
+    # Dodane zgodnie z dokumentacją Modbus - grupa rejestrów do trybu chwilowego
+    "cfg_mode1": 0x1130,                    # Tryb pracy - grupa 1 (0=auto, 1=manual, 2=chwilowy)
+    "air_flow_rate_temporary_alt": 0x1131,  # Intensywność chwilowy - grupa 1 (10-100%)
+    "airflow_rate_change_flag": 0x1132,     # Flaga zmiany intensywności (0=brak, 1=jest)
+    "cfg_mode2": 0x1133,                    # Tryb pracy - grupa 2 (0=auto, 1=manual, 2=chwilowy)
+    "supply_air_temperature_temporary_alt": 0x1134, # Temperatura chwilowy - grupa 2 (20-90*0.5°C)
+    "temperature_change_flag": 0x1135,      # Flaga zmiany temperatury (0=brak, 1=jest)
     
     # System reset (addresses 0x113D-0x113E)
     "hard_reset_settings": 0x113D,          # Reset ustawień użytkownika
     "hard_reset_schedule": 0x113E,          # Reset harmonogramów
     
-    # Duplicate filter check (addresses 0x1150-0x1151)
-    "pres_check_day_alt": 0x1150,           # Dzień kontroli filtrów - alternatywny
-    "pres_check_time_alt": 0x1151,          # Godzina kontroli filtrów - alternatywny
-    
-    # Modbus communication settings (addresses 0x1164-0x116B)
-    "uart0_id": 0x1164,                     # Modbus ID port Air-B
-    "uart0_baud": 0x1165,                   # Modbus baud port Air-B
-    "uart0_parity": 0x1166,                 # Modbus parity port Air-B
-    "uart0_stop": 0x1167,                   # Modbus stop bits port Air-B
-    "uart1_id": 0x1168,                     # Modbus ID port Air++
-    "uart1_baud": 0x1169,                   # Modbus baud port Air++
-    "uart1_parity": 0x116A,                 # Modbus parity port Air++
-    "uart1_stop": 0x116B,                   # Modbus stop bits port Air++
-    
-    # Device name (addresses 0x1FD0-0x1FD7) - 8 registers ASCII
-    "device_name_1": 0x1FD0,
-    "device_name_2": 0x1FD1,
-    "device_name_3": 0x1FD2,
-    "device_name_4": 0x1FD3,
-    "device_name_5": 0x1FD4,
-    "device_name_6": 0x1FD5,
-    "device_name_7": 0x1FD6,
-    "device_name_8": 0x1FD7,
-    
-    # Product key and system (addresses 0x1FFB-0x1FFF)
-    "lock_pass_1": 0x1FFB,                  # Klucz produktu słowo młodsze
-    "lock_pass_2": 0x1FFC,                  # Klucz produktu słowo starsze
-    "lock_flag": 0x1FFD,                    # Aktywacja blokady
-    "required_temp": 0x1FFE,                # Temperatura zadana KOMFORT (×0.5°C)
-    "filter_change": 0x1FFF,                # System kontroli filtrów
-    
-    # Alarm flags (addresses 0x2000-0x2001)
-    "alarm_flag": 0x2000,                   # Flaga alarmów E
-    "error_flag": 0x2001,                   # Flaga błędów S
-    
-    # Individual alarm registers (addresses 0x2002+) - selected important ones
-    "s2_i2c_error": 0x2002,                 # S2: Błąd komunikacji I2C
-    "s6_fpx_protection": 0x2006,            # S6: Zabezpieczenie FPX
-    "s7_calibration_error": 0x2007,         # S7: Błąd kalibracji
-    "s8_product_key": 0x2008,               # S8: Klucz produktu
-    "s9_airs_stop": 0x2009,                 # S9: Zatrzymanie z AirS
-    "s10_fire_alarm": 0x200A,               # S10: Alarm pożarowy
-    "s13_panel_stop": 0x200D,               # S13: Zatrzymanie z panelu
-    "s17_filter_change": 0x2011,            # S17: Wymiana filtrów (presostat)
-    "s19_filter_change_timer": 0x2013,      # S19: Wymiana filtrów (timer)
-    "s20_duct_filter": 0x2014,              # S20: Filtr kanałowy
-    "e99_product_key_warning": 0x2063,      # E99: Ostrzeżenie klucz produktu
-    "e100_temp_outside": 0x2064,            # E100: Czujnik TZ1
-    "e101_temp_supply": 0x2065,             # E101: Czujnik TN1
-    "e102_temp_exhaust": 0x2066,            # E102: Czujnik TP
-    "e103_temp_fpx": 0x2067,                # E103: Czujnik TZ2
-    "e250_filter_timer": 0x20FA,            # E250: Wymiana filtrów timer
-    "e251_duct_filter_timer": 0x20FB,       # E251: Filtr kanałowy timer
-    "e252_filter_presostat": 0x20FC,        # E252: Wymiana filtrów presostat
+    # ====== COMPATIBILITY ALIASES (dla starych konfiguracji) ======
+    "rekuperator_predkosc": 0x1072,         # ALIAS dla air_flow_rate_manual - dla kompatybilności
+    "required_temp": 0x1FFE,                # Temperatura zadana KOMFORT (jeśli dostępna)
 }
 
 # Operating modes - VERIFIED against documentation

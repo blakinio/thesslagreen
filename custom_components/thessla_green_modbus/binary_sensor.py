@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
     BinarySensorEntity,
+    BinarySensorDeviceClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -19,161 +18,219 @@ from .coordinator import ThesslaGreenCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-class DeviceStatusDetector:
-    """Smart device status detection using multiple indicators."""
-    
-    def __init__(self, data: dict) -> None:
-        """Initialize detector with coordinator data."""
-        self.data = data
-    
-    def detect_device_status(self) -> bool | None:
-        """Detect if device is actually running using multiple indicators."""
-        indicators = []
-        
-        # Primary indicator: official panel register
-        panel_mode = self.data.get("on_off_panel_mode")
-        if panel_mode is not None:
-            indicators.append(("panel_register", bool(panel_mode), 0.4))
-        
-        # Secondary indicators: actual activity
-        fan_power = self.data.get("power_supply_fans")
-        if fan_power is not None:
-            indicators.append(("fan_power_coil", bool(fan_power), 0.3))
-        
-        # Ventilation activity indicators
-        supply_pct = self.data.get("supply_percentage", 0)
-        exhaust_pct = self.data.get("exhaust_percentage", 0)
-        if supply_pct > 0 or exhaust_pct > 0:
-            indicators.append(("ventilation_active", True, 0.2))
-        
-        # Air flow indicators
-        supply_flow = self.data.get("supply_flowrate", 0) 
-        exhaust_flow = self.data.get("exhaust_flowrate", 0)
-        if supply_flow > 0 or exhaust_flow > 0:
-            indicators.append(("airflow_detected", True, 0.15))
-        
-        # DAC voltage indicators (fan control signals)
-        dac_supply = self.data.get("dac_supply", 0)
-        dac_exhaust = self.data.get("dac_exhaust", 0) 
-        if dac_supply > 0.5 or dac_exhaust > 0.5:  # Above 0.5V indicates active control
-            indicators.append(("fan_voltages", True, 0.1))
-        
-        if not indicators:
-            return None
-            
-        # Weighted decision
-        positive_weight = sum(weight for _, status, weight in indicators if status)
-        total_weight = sum(weight for _, _, weight in indicators)
-        
-        if total_weight == 0:
-            return None
-            
-        confidence = positive_weight / total_weight
-        return confidence > 0.3  # Device is ON if >30% confidence
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen binary sensors - FIXED VERSION."""
-    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
-    
+    """Set up ThesslaGreen binary sensor entities."""
+    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
+
     entities = []
     
-    # Smart device status sensor (primary)
-    entities.append(ThesslaGreenSmartDeviceStatus(coordinator))
+    # Get available register sets
+    input_regs = coordinator.available_registers.get("input_registers", set())
+    holding_regs = coordinator.available_registers.get("holding_registers", set())
+    coil_regs = coordinator.available_registers.get("coil_registers", set())
+    discrete_regs = coordinator.available_registers.get("discrete_inputs", set())
+
+    # ====== MAIN DEVICE STATUS SENSOR (Enhanced) ======
+    # This will use the enhanced device status detection from coordinator
+    entities.append(
+        ThesslaGreenDeviceStatusSensor(coordinator)
+    )
+
+    # ====== SYSTEM STATUS SENSORS ======
     
-    # Discrete input sensors
-    discrete_inputs = coordinator.available_registers.get("discrete_inputs", set())
+    # Constant Flow system
+    if "constant_flow_active" in input_regs:
+        entities.append(
+            ThesslaGreenBinarySensor(
+                coordinator,
+                "constant_flow_active",
+                "Constant Flow aktywny",
+                "mdi:fan-auto",
+                BinarySensorDeviceClass.RUNNING,
+            )
+        )
+
+    # Water removal (HEWR) system
+    if "water_removal_active" in input_regs:
+        entities.append(
+            ThesslaGreenBinarySensor(
+                coordinator,
+                "water_removal_active",
+                "HEWR aktywny",
+                "mdi:water-pump",
+                BinarySensorDeviceClass.RUNNING,
+            )
+        )
+
+    # ====== COIL SENSORS (Output status) ======
+    
+    coil_sensors = [
+        ("power_supply_fans", "Zasilanie wentylatorów", "mdi:power", BinarySensorDeviceClass.POWER),
+        ("bypass", "Bypass aktywny", "mdi:valve", None),
+        ("gwc", "GWC aktywny", "mdi:heat-pump", BinarySensorDeviceClass.RUNNING),
+        ("heating_cable", "Kabel grzejny", "mdi:heating-coil", BinarySensorDeviceClass.HEAT),
+        ("duct_water_heater_pump", "Pompa nagrzewnicy", "mdi:pump", BinarySensorDeviceClass.RUNNING),
+        ("work_permit", "Pozwolenie pracy (Expansion)", "mdi:check-circle", None),
+        ("hood", "Przepustnica OKAP", "mdi:kitchen", None),
+        ("info", "Sygnał potwierdzenia pracy", "mdi:information", None),
+    ]
+
+    for sensor_key, name, icon, device_class in coil_sensors:
+        if sensor_key in coil_regs:
+            entities.append(
+                ThesslaGreenBinarySensor(
+                    coordinator, sensor_key, name, icon, device_class
+                )
+            )
+
+    # ====== DISCRETE INPUT SENSORS (Input status) ======
     
     discrete_sensors = [
         ("expansion", "Moduł Expansion", "mdi:expansion-card", BinarySensorDeviceClass.CONNECTIVITY),
         ("contamination_sensor", "Czujnik jakości powietrza", "mdi:air-filter", None),
         ("airing_sensor", "Czujnik wilgotności", "mdi:water-percent", BinarySensorDeviceClass.MOISTURE),
-        ("fireplace", "Włącznik KOMINEK", "mdi:fireplace", None),
-        ("empty_house", "Sygnał PUSTY DOM", "mdi:home-minus", BinarySensorDeviceClass.PRESENCE),
-        ("hood_input", "Włącznik OKAP", "mdi:kitchen", None),
-        ("fire_alarm", "Alarm pożarowy", "mdi:fire", BinarySensorDeviceClass.SAFETY),
-        ("duct_heater_protection", "Zabezpieczenie nagrzewnicy", "mdi:shield-alert", BinarySensorDeviceClass.SAFETY),
-        ("ahu_filter_protection", "Zabezpieczenie FPX", "mdi:shield-check", BinarySensorDeviceClass.SAFETY),
-        ("dp_ahu_filter_overflow", "Presostat filtrów AHU", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
+        ("fireplace", "Kominek", "mdi:fireplace", None),
+        ("hood_input", "Wejście OKAP", "mdi:kitchen", None),
+        ("airing_switch", "Włącznik WIETRZENIE", "mdi:light-switch", None),
+        ("airing_mini", "AirS Wietrzenie", "mdi:fan-auto", None),
+        ("fan_speed_1", "AirS 1 bieg", "mdi:fan-speed-1", None),
+        ("fan_speed_2", "AirS 2 bieg", "mdi:fan-speed-2", None),
+        ("fan_speed_3", "AirS 3 bieg", "mdi:fan-speed-3", None),
+        ("fire_alarm", "Alarm pożarowy", "mdi:fire-alert", BinarySensorDeviceClass.SAFETY),
+        ("empty_house", "Pusty dom", "mdi:home-minus", BinarySensorDeviceClass.PRESENCE),
         ("dp_duct_filter_overflow", "Presostat filtra kanałowego", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
+        ("dp_ahu_filter_overflow", "Presostat filtrów rekuperatora", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
+        ("duct_heater_protection", "Zabezpieczenie nagrzewnicy", "mdi:shield-alert", BinarySensorDeviceClass.SAFETY),
+        ("ahu_filter_protection", "Zabezpieczenie FPX", "mdi:shield-alert", BinarySensorDeviceClass.SAFETY),
     ]
-    
+
     for sensor_key, name, icon, device_class in discrete_sensors:
-        if sensor_key in discrete_inputs:
+        if sensor_key in discrete_regs:
             entities.append(
                 ThesslaGreenBinarySensor(
                     coordinator, sensor_key, name, icon, device_class
                 )
             )
+
+    # ====== SYSTEM MODE SENSORS (Based on holding registers) ======
     
-    # System status sensors from input registers
-    input_registers = coordinator.available_registers.get("input_registers", set())
-    
-    if "constant_flow_active" in input_registers:
+    # FPX Antifreeze system
+    if "antifreeze_mode" in holding_regs:
         entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "constant_flow_active", "Constant Flow aktywny", 
-                "mdi:fan-auto", BinarySensorDeviceClass.RUNNING
+            ThesslaGreenModeSensor(
+                coordinator,
+                "antifreeze_mode",
+                "System FPX aktywny",
+                "mdi:snowflake-alert",
+                BinarySensorDeviceClass.RUNNING,
             )
         )
-    
-    if "water_removal_active" in input_registers:
+
+    # GWC regeneration active
+    if "gwc_regen_flag" in holding_regs:
         entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "water_removal_active", "HEWR aktywny",
-                "mdi:water-pump", BinarySensorDeviceClass.RUNNING
+            ThesslaGreenModeSensor(
+                coordinator,
+                "gwc_regen_flag",
+                "Regeneracja GWC aktywna",
+                "mdi:refresh",
+                BinarySensorDeviceClass.RUNNING,
             )
         )
-    
-    # Coil status sensors  
-    coil_registers = coordinator.available_registers.get("coil_registers", set())
-    
-    coil_sensors = [
-        ("power_supply_fans", "Zasilanie wentylatorów", "mdi:power", BinarySensorDeviceClass.POWER),
-        ("bypass", "Siłownik bypass", "mdi:valve", None),
-        ("gwc", "Przekaźnik GWC", "mdi:heat-pump", BinarySensorDeviceClass.RUNNING),
-        ("hood", "Przepustnica okapu", "mdi:kitchen", None),
-        ("heating_cable", "Kabel grzejny", "mdi:heating-coil", BinarySensorDeviceClass.HEAT),
-        ("duct_water_heater_pump", "Pompa nagrzewnicy", "mdi:pump", BinarySensorDeviceClass.RUNNING),
-    ]
-    
-    for sensor_key, name, icon, device_class in coil_sensors:
-        if sensor_key in coil_registers:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class
-                )
-            )
-    
-    # Alarm sensors from holding registers
-    holding_registers = coordinator.available_registers.get("holding_registers", set())
-    
-    if "alarm_flag" in holding_registers:
+
+    # Comfort mode active
+    if "comfort_mode" in holding_regs:
         entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "alarm_flag", "Alarmy ostrzeżeń (E)",
-                "mdi:alert", BinarySensorDeviceClass.PROBLEM
+            ThesslaGreenModeSensor(
+                coordinator,
+                "comfort_mode",
+                "Tryb KOMFORT aktywny",
+                "mdi:home-thermometer",
+                BinarySensorDeviceClass.RUNNING,
             )
         )
-    
-    if "error_flag" in holding_registers:
-        entities.append(
-            ThesslaGreenBinarySensor(
-                coordinator, "error_flag", "Błędy krytyczne (S)",
-                "mdi:alert-octagon", BinarySensorDeviceClass.PROBLEM
-            )
-        )
-    
-    _LOGGER.debug("Adding %d binary sensor entities", len(entities))
-    async_add_entities(entities)
+
+    if entities:
+        _LOGGER.debug("Adding %d binary sensor entities", len(entities))
+        async_add_entities(entities)
+
+
+class ThesslaGreenDeviceStatusSensor(CoordinatorEntity, BinarySensorEntity):
+    """Enhanced main device status sensor using smart detection."""
+
+    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
+        """Initialize the device status sensor."""
+        super().__init__(coordinator)
+        
+        device_info = coordinator.device_info
+        device_name = device_info.get("device_name", "ThesslaGreen")
+        
+        self._attr_name = f"{device_name} Status urządzenia"
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_device_status_smart"
+        self._attr_icon = "mdi:air-conditioner"
+        self._attr_device_class = BinarySensorDeviceClass.RUNNING
+
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
+            "name": device_name,
+            "manufacturer": "ThesslaGreen",
+            "model": "AirPack",
+            "sw_version": device_info.get("firmware", "Unknown"),
+        }
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if device is on."""
+        # Use the enhanced device status from coordinator
+        return self.coordinator.data.get("device_status_smart")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, any]:
+        """Return additional state attributes."""
+        attributes = {}
+        
+        # Add diagnostic information
+        panel_mode = self.coordinator.data.get("on_off_panel_mode")
+        if panel_mode is not None:
+            attributes["panel_mode"] = "ON" if panel_mode == 1 else "OFF"
+        
+        fan_power = self.coordinator.data.get("power_supply_fans")
+        if fan_power is not None:
+            attributes["fan_power"] = "ON" if fan_power else "OFF"
+        
+        supply_pct = self.coordinator.data.get("supply_percentage")
+        exhaust_pct = self.coordinator.data.get("exhaust_percentage")
+        if supply_pct is not None and exhaust_pct is not None:
+            attributes["fan_activity"] = f"Supply: {supply_pct}%, Exhaust: {exhaust_pct}%"
+        
+        supply_flow = self.coordinator.data.get("supply_flowrate")
+        exhaust_flow = self.coordinator.data.get("exhaust_flowrate")
+        if supply_flow is not None and exhaust_flow is not None:
+            attributes["air_flows"] = f"Supply: {supply_flow}m³/h, Exhaust: {exhaust_flow}m³/h"
+        
+        mode = self.coordinator.data.get("mode")
+        if mode is not None:
+            mode_names = {0: "Automatyczny", 1: "Manualny", 2: "Chwilowy"}
+            attributes["operating_mode"] = mode_names.get(mode, f"Unknown({mode})")
+        
+        special_mode = self.coordinator.data.get("special_mode")
+        if special_mode is not None and special_mode > 0:
+            from .const import SPECIAL_MODES
+            attributes["special_function"] = SPECIAL_MODES.get(special_mode, f"Unknown({special_mode})")
+        
+        # Add last update time
+        import datetime
+        attributes["last_update"] = datetime.datetime.now().isoformat()
+        
+        return attributes
 
 
 class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """ThesslaGreen binary sensor entity - FIXED."""
+    """General ThesslaGreen binary sensor."""
 
     def __init__(
         self,
@@ -189,11 +246,11 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_name = name
         self._attr_icon = icon
         self._attr_device_class = device_class
-        
+
         device_info = coordinator.device_info
         device_name = device_info.get("device_name", "ThesslaGreen")
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{sensor_key}"
-        
+
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
             "name": device_name,
@@ -210,21 +267,80 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
             return None
         return bool(value)
 
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and 
+            self._sensor_key in self.coordinator.data
+        )
 
-class ThesslaGreenSmartDeviceStatus(CoordinatorEntity, BinarySensorEntity):
-    """Smart device status sensor using multiple indicators - ENHANCED."""
-
-    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
-        """Initialize the smart device status sensor."""
-        super().__init__(coordinator)
-        self._attr_name = "Urządzenie włączone"
-        self._attr_icon = "mdi:power"
-        self._attr_device_class = BinarySensorDeviceClass.POWER
+    @property
+    def extra_state_attributes(self) -> dict[str, any]:
+        """Return additional state attributes."""
+        attributes = {}
         
+        # Add register information for debugging
+        register_info = self._get_register_info()
+        if register_info:
+            attributes.update(register_info)
+        
+        # Add last seen timestamp if available
+        if self.is_on is not None:
+            import datetime
+            attributes["last_seen"] = datetime.datetime.now().isoformat()
+        
+        return attributes
+
+    def _get_register_info(self) -> dict[str, str]:
+        """Get register information for debugging."""
+        from .const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, INPUT_REGISTERS, HOLDING_REGISTERS
+        
+        if self._sensor_key in COIL_REGISTERS:
+            return {
+                "modbus_address": f"0x{COIL_REGISTERS[self._sensor_key]:04X}",
+                "register_type": "coil"
+            }
+        elif self._sensor_key in DISCRETE_INPUT_REGISTERS:
+            return {
+                "modbus_address": f"0x{DISCRETE_INPUT_REGISTERS[self._sensor_key]:04X}",
+                "register_type": "discrete_input"
+            }
+        elif self._sensor_key in INPUT_REGISTERS:
+            return {
+                "modbus_address": f"0x{INPUT_REGISTERS[self._sensor_key]:04X}",
+                "register_type": "input_register"
+            }
+        elif self._sensor_key in HOLDING_REGISTERS:
+            return {
+                "modbus_address": f"0x{HOLDING_REGISTERS[self._sensor_key]:04X}",
+                "register_type": "holding_register"
+            }
+        return {}
+
+
+class ThesslaGreenModeSensor(CoordinatorEntity, BinarySensorEntity):
+    """Binary sensor for mode-based states (holding registers with value interpretation)."""
+
+    def __init__(
+        self,
+        coordinator: ThesslaGreenCoordinator,
+        sensor_key: str,
+        name: str,
+        icon: str,
+        device_class: BinarySensorDeviceClass | None = None,
+    ) -> None:
+        """Initialize the mode sensor."""
+        super().__init__(coordinator)
+        self._sensor_key = sensor_key
+        self._attr_name = name
+        self._attr_icon = icon
+        self._attr_device_class = device_class
+
         device_info = coordinator.device_info
         device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_device_status_smart"
-        
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{sensor_key}"
+
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
             "name": device_name,
@@ -235,24 +351,44 @@ class ThesslaGreenSmartDeviceStatus(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if the device is on using smart detection."""
-        detector = DeviceStatusDetector(self.coordinator.data)
-        return detector.detect_device_status()
+        """Return true if the mode is active."""
+        value = self.coordinator.data.get(self._sensor_key)
+        if value is None:
+            return None
+        
+        # Interpret mode values
+        if self._sensor_key == "antifreeze_mode":
+            return value == 1  # 1 = active, 0 = inactive
+        elif self._sensor_key == "gwc_regen_flag":
+            return value == 1  # 1 = regeneration active
+        elif self._sensor_key == "comfort_mode":
+            return value > 0   # 1 = heating, 2 = cooling, 0 = inactive
+        
+        # Default: any non-zero value means active
+        return value > 0
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes for debugging."""
-        data = self.coordinator.data
-        return {
-            "panel_register": data.get("on_off_panel_mode"),
-            "fan_power_coil": data.get("power_supply_fans"),
-            "supply_percentage": data.get("supply_percentage"),
-            "exhaust_percentage": data.get("exhaust_percentage"),
-            "supply_flowrate": data.get("supply_flowrate"),
-            "exhaust_flowrate": data.get("exhaust_flowrate"),
-            "dac_supply_voltage": data.get("dac_supply"),
-            "dac_exhaust_voltage": data.get("dac_exhaust"),
-            "constant_flow_active": data.get("constant_flow_active"),
-            "operating_mode": data.get("mode"),
-            "detection_method": "smart_multi_indicator",
-        }
+    def extra_state_attributes(self) -> dict[str, any]:
+        """Return additional state attributes."""
+        attributes = {}
+        
+        value = self.coordinator.data.get(self._sensor_key)
+        if value is not None:
+            attributes["raw_value"] = value
+            
+            # Add interpretation for specific sensors
+            if self._sensor_key == "antifreeze_mode":
+                attributes["interpretation"] = "Active" if value == 1 else "Inactive"
+            elif self._sensor_key == "comfort_mode":
+                interpretations = {0: "Inactive", 1: "Heating", 2: "Cooling"}
+                attributes["interpretation"] = interpretations.get(value, f"Unknown({value})")
+            elif self._sensor_key == "gwc_regen_flag":
+                attributes["interpretation"] = "Regenerating" if value == 1 else "Normal operation"
+        
+        # Add register information
+        from .const import HOLDING_REGISTERS
+        if self._sensor_key in HOLDING_REGISTERS:
+            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._sensor_key]:04X}"
+            attributes["register_type"] = "holding_register"
+        
+        return attributes

@@ -1,4 +1,4 @@
-"""Number platform for ThesslaGreen Modbus Integration."""
+"""Number platform for ThesslaGreen Modbus Integration - FIXED VERSION."""
 from __future__ import annotations
 
 import logging
@@ -27,8 +27,10 @@ async def async_setup_entry(
     entities = []
     holding_regs = coordinator.available_registers.get("holding_registers", set())
 
-    # Air flow rate controls
+    # ====== COMPATIBILITY LAYER FOR OLD ENTITY IDs ======
+    # Dodaj stare entity ID dla kompatybilności wstecznej
     if "air_flow_rate_manual" in holding_regs:
+        # Główna entytia z nową nazwą
         entities.append(
             ThesslaGreenNumber(
                 coordinator,
@@ -41,13 +43,44 @@ async def async_setup_entry(
                 PERCENTAGE,
             )
         )
+        
+        # COMPATIBILITY: Dodaj alias z starym entity_id dla kompatybilności
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "air_flow_rate_manual",  # Ten sam rejestr
+                "Prędkość rekuperatora",  # Stara nazwa
+                "mdi:fan",
+                10,
+                100,
+                1,
+                PERCENTAGE,
+                custom_entity_id="rekuperator_predkosc"  # Wymuś stary entity_id
+            )
+        )
 
+    # Air flow rate controls
     if "air_flow_rate_temporary" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
                 coordinator,
                 "air_flow_rate_temporary",
                 "Intensywność chwilowy",
+                "mdi:fan-speed-3",
+                10,
+                100,
+                1,
+                PERCENTAGE,
+            )
+        )
+
+    # Alternative registers from documentation (0x1131, 0x1134)
+    if "air_flow_rate_temporary_alt" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "air_flow_rate_temporary_alt",
+                "Intensywność chwilowy (alt)",
                 "mdi:fan-speed-3",
                 10,
                 100,
@@ -77,6 +110,21 @@ async def async_setup_entry(
                 coordinator,
                 "supply_air_temperature_temporary",
                 "Temperatura nawiewu chwilowy",
+                "mdi:thermometer-lines",
+                20,
+                45,
+                0.5,
+                UnitOfTemperature.CELSIUS,
+            )
+        )
+
+    # Alternative temperature register (0x1134)
+    if "supply_air_temperature_temporary_alt" in holding_regs:
+        entities.append(
+            ThesslaGreenNumber(
+                coordinator,
+                "supply_air_temperature_temporary_alt",
+                "Temperatura nawiewu chwilowy (alt)",
                 "mdi:thermometer-lines",
                 20,
                 45,
@@ -129,78 +177,72 @@ async def async_setup_entry(
         )
 
     # ========================================
-    # BYPASS SYSTEM PARAMETERS (NOWE!)
+    # BYPASS SYSTEM PARAMETERS
     # ========================================
-    
-    # Minimalna temperatura bypass
     if "min_bypass_temperature" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
                 coordinator,
                 "min_bypass_temperature",
-                "Bypass - Min. temperatura zewn.",
+                "Bypass - Min. temperatura",
                 "mdi:thermometer-low",
                 10,
-                40,
+                30,
                 0.5,
                 UnitOfTemperature.CELSIUS,
             )
         )
 
-    # Temperatura FreeHeating
     if "air_temperature_summer_free_heating" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
                 coordinator,
                 "air_temperature_summer_free_heating",
                 "Bypass - Temperatura FreeHeating",
-                "mdi:thermometer-plus",
-                30,
-                60,
+                "mdi:fire",
+                15,
+                25,
                 0.5,
                 UnitOfTemperature.CELSIUS,
             )
         )
 
-    # Temperatura FreeCooling  
     if "air_temperature_summer_free_cooling" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
                 coordinator,
-                "air_temperature_summer_free_cooling", 
-                "Bypass - Temperatura FreeCooling",
-                "mdi:thermometer-minus",
-                30,
-                60,
+                "air_temperature_summer_free_cooling",
+                "Bypass - Temperatura FreeCooling", 
+                "mdi:snowflake",
+                20,
+                35,
                 0.5,
                 UnitOfTemperature.CELSIUS,
             )
         )
 
-    # Różnicowanie strumieni bypass
     if "bypass_coef1" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
                 coordinator,
                 "bypass_coef1",
-                "Bypass - Różnicowanie strumieni",
-                "mdi:valve",
-                10,
-                100,
+                "Bypass - Różnicowanie",
+                "mdi:percent",
+                0,
+                50,
                 1,
                 PERCENTAGE,
             )
         )
 
-    # Intensywność bypass
     if "bypass_coef2" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
                 coordinator,
                 "bypass_coef2",
-                "Bypass - Intensywność nawiewu",
-                "mdi:valve-open",
-                10,
+                "Bypass - Intensywność",
+                "mdi:percent",
+                50,
                 150,
                 1,
                 PERCENTAGE,
@@ -208,10 +250,8 @@ async def async_setup_entry(
         )
 
     # ========================================
-    # GWC SYSTEM PARAMETERS (BONUS)
+    # GWC SYSTEM PARAMETERS
     # ========================================
-    
-    # Min temperatura GWC (zima)
     if "min_gwc_air_temperature" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
@@ -226,7 +266,6 @@ async def async_setup_entry(
             )
         )
 
-    # Max temperatura GWC (lato)
     if "max_gwc_air_temperature" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
@@ -241,7 +280,6 @@ async def async_setup_entry(
             )
         )
 
-    # Różnica temperatur GWC regeneracji
     if "delta_t_gwc" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
@@ -256,7 +294,6 @@ async def async_setup_entry(
             )
         )
 
-    # Czas regeneracji GWC
     if "gwc_regen_period" in holding_regs:
         entities.append(
             ThesslaGreenNumber(
@@ -271,7 +308,9 @@ async def async_setup_entry(
             )
         )
 
-    # Special function coefficients (pozostałe bez zmian)
+    # ========================================
+    # SPECIAL FUNCTION COEFFICIENTS
+    # ========================================
     special_coeffs = [
         ("hood_supply_coef", "Intensywność OKAP nawiew", "mdi:kitchen", 100, 150),
         ("hood_exhaust_coef", "Intensywność OKAP wywiew", "mdi:kitchen", 100, 150),
@@ -279,6 +318,9 @@ async def async_setup_entry(
         ("airing_coef", "Intensywność WIETRZENIE", "mdi:fan-auto", 100, 150),
         ("contamination_coef", "Intensywność czujnik jakości", "mdi:air-filter", 100, 150),
         ("empty_house_coef", "Intensywność PUSTY DOM", "mdi:home-minus", 10, 50),
+        ("airing_bathroom_coef", "Intensywność WIETRZENIE łazienka", "mdi:shower", 100, 150),
+        ("airing_switch_coef", "Intensywność WIETRZENIE przełączniki", "mdi:light-switch", 100, 150),
+        ("open_window_coef", "Intensywność OTWARTE OKNA", "mdi:window-open", 50, 150),
     ]
 
     for reg_name, name, icon, min_val, max_val in special_coeffs:
@@ -296,13 +338,39 @@ async def async_setup_entry(
                 )
             )
 
+    # ========================================
+    # TIME CONTROL PARAMETERS
+    # ========================================
+    time_controls = [
+        ("airing_panel_mode_time", "Czas WIETRZENIE pokoje", "mdi:timer", 5, 180, "min"),
+        ("airing_switch_mode_time", "Czas WIETRZENIE łazienka", "mdi:timer", 5, 180, "min"),
+        ("fireplace_mode_time", "Czas działania KOMINEK", "mdi:timer", 10, 240, "min"),
+        ("airing_switch_mode_on_delay", "Opóźnienie zał. WIETRZENIE", "mdi:timer-sand", 0, 60, "min"),
+        ("airing_switch_mode_off_delay", "Opóźnienie wył. WIETRZENIE", "mdi:timer-sand", 0, 60, "min"),
+    ]
+
+    for reg_name, name, icon, min_val, max_val, unit in time_controls:
+        if reg_name in holding_regs:
+            entities.append(
+                ThesslaGreenNumber(
+                    coordinator,
+                    reg_name,
+                    name,
+                    icon,
+                    min_val,
+                    max_val,
+                    1,
+                    unit,
+                )
+            )
+
     if entities:
-        _LOGGER.debug("Adding %d number entities", len(entities))
+        _LOGGER.debug("Adding %d number entities (including compatibility aliases)", len(entities))
         async_add_entities(entities)
 
 
 class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
-    """ThesslaGreen number entity."""
+    """ThesslaGreen number entity with enhanced compatibility."""
 
     def __init__(
         self,
@@ -314,6 +382,7 @@ class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
         max_value: float,
         step: float,
         unit: str,
+        custom_entity_id: str = None,  # NEW: Allow custom entity ID
     ) -> None:
         """Initialize the number entity."""
         super().__init__(coordinator)
@@ -327,7 +396,14 @@ class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
 
         device_info = coordinator.device_info
         device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
+        
+        # Use custom entity_id if provided for backward compatibility
+        if custom_entity_id:
+            self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{custom_entity_id}"
+            # Force the entity_id pattern for compatibility
+            self._attr_entity_id = f"number.{custom_entity_id}"
+        else:
+            self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
 
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
@@ -344,23 +420,56 @@ class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
         if value is None:
             return None
 
-        # Temperature values are stored with 0.5°C resolution
-        if "temperature" in self._key:
-            return value * 0.5
+        # Temperature values are already processed in coordinator (×0.5°C)
+        if "temperature" in self._key and ("manual" in self._key or "temporary" in self._key):
+            return float(value)  # Already converted in coordinator
+
+        # Special temperature registers (bypass, GWC) are also pre-processed
+        if self._key in ["min_bypass_temperature", "air_temperature_summer_free_heating", 
+                        "air_temperature_summer_free_cooling", "min_gwc_air_temperature", 
+                        "max_gwc_air_temperature", "delta_t_gwc"]:
+            return float(value)  # Already converted in coordinator
 
         # Direct values for percentages and other numbers
         return float(value)
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
-        # Temperature values need to be converted (x2 for 0.5°C resolution)
-        if "temperature" in self._key:
-            modbus_value = int(value * 2)
+        # Temperature values need to be converted (÷0.5 for Modbus storage)
+        if "temperature" in self._key and ("manual" in self._key or "temporary" in self._key):
+            modbus_value = int(value * 2)  # Convert to 0.5°C resolution
+        elif self._key in ["min_bypass_temperature", "air_temperature_summer_free_heating", 
+                          "air_temperature_summer_free_cooling", "min_gwc_air_temperature", 
+                          "max_gwc_air_temperature", "delta_t_gwc"]:
+            modbus_value = int(value * 2)  # Convert to 0.5°C resolution
         else:
             modbus_value = int(value)
+
+        # Additional validation
+        if modbus_value < 0 or modbus_value > 65535:
+            _LOGGER.error("Value %s out of range for %s", modbus_value, self._key)
+            return
 
         success = await self.coordinator.async_write_register(self._key, modbus_value)
         if success:
             await self.coordinator.async_request_refresh()
         else:
-            _LOGGER.error("Failed to set %s to %s", self._key, value)
+            _LOGGER.error("Failed to set %s to %s (Modbus value: %s)", self._key, value, modbus_value)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, any]:
+        """Return additional state attributes."""
+        attributes = {}
+        
+        # Add register information for debugging
+        if self._key in self.coordinator.available_registers.get("holding_registers", set()):
+            from .const import HOLDING_REGISTERS
+            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._key]:04X}"
+            attributes["register_type"] = "holding"
+        
+        # Add compatibility note for old entity ID
+        if hasattr(self, '_attr_entity_id') and 'rekuperator_predkosc' in self._attr_entity_id:
+            attributes["compatibility_note"] = "Legacy entity ID for backward compatibility"
+            attributes["recommended_entity"] = "number.thessla_intensywnosc_manualny"
+        
+        return attributes

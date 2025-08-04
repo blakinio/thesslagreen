@@ -1,4 +1,4 @@
-"""Enhanced device capability scanner for ThesslaGreen Modbus - OPTIMIZED VERSION with FIXED pymodbus API."""
+"""Enhanced device capability scanner for ThesslaGreen Modbus - FIXED VERSION."""
 from __future__ import annotations
 
 import asyncio
@@ -29,12 +29,7 @@ class ThesslaGreenDeviceScanner:
         self.host = host
         self.port = port
         self.slave_id = slave_id
-        self.available_registers: Dict[str, Set[str]] = {
-            "input_registers": set(),
-            "holding_registers": set(),
-            "coil_registers": set(),
-            "discrete_inputs": set(),
-        }
+        self.available_registers: Dict[str, Set[str]] = {}
         self.device_info: Dict[str, Any] = {}
         self._scan_stats = {
             "total_attempts": 0,
@@ -50,319 +45,235 @@ class ThesslaGreenDeviceScanner:
         )
 
     def _scan_device_sync(self) -> Dict[str, Any]:
-        """Optimized synchronous device scanning with FIXED pymodbus API."""
+        """Optimized synchronous device scanning."""
         start_time = time.time()
-        
-        _LOGGER.info("Starting OPTIMIZED device capability scan for %s:%s (slave_id=%s)", 
-                    self.host, self.port, self.slave_id)
-        
         client = ModbusTcpClient(host=self.host, port=self.port, timeout=10)
-        
+
         try:
             if not client.connect():
-                raise Exception("Failed to connect to device")
-            
-            # Phase 1: Read critical device identification
-            self._scan_device_info(client)
-            
-            # Phase 2: Smart register scanning with optimized batching
-            self.available_registers["input_registers"] = self._scan_input_registers_optimized(client)
-            self.available_registers["holding_registers"] = self._scan_holding_registers_optimized(client)
-            self.available_registers["coil_registers"] = self._scan_coil_registers_batch(client)
-            self.available_registers["discrete_inputs"] = self._scan_discrete_inputs_batch(client)
-            
-            # Phase 3: Analyze capabilities based on found registers
+                raise ConnectionError(f"Cannot connect to {self.host}:{self.port}")
+
+            _LOGGER.info("Connected to %s:%d, scanning capabilities...", self.host, self.port)
+
+            # Enhanced scanning strategy
+            self.available_registers = {
+                "input_registers": self._scan_input_registers_enhanced(client),
+                "holding_registers": self._scan_holding_registers_enhanced(client),
+                "coil_registers": self._scan_coil_registers_batch(client),
+                "discrete_inputs": self._scan_discrete_inputs_batch(client),
+            }
+
+            # Extract device information from firmware registers
+            self.device_info = self._extract_device_info(client)
+
+            # Analyze capabilities based on available registers
             capabilities = self._analyze_capabilities_enhanced()
-            
-            # Phase 4: Model-specific validation
-            self._validate_model_capabilities(capabilities)
-            
-            # Performance statistics
+
             self._scan_stats["scan_duration"] = time.time() - start_time
-            success_rate = (self._scan_stats["successful_reads"] / 
-                          max(self._scan_stats["total_attempts"], 1) * 100)
             
             _LOGGER.info(
-                "OPTIMIZED scan complete: %d input, %d holding, %d coils, %d discrete (%.1f%% success, %.2fs)",
-                len(self.available_registers["input_registers"]),
-                len(self.available_registers["holding_registers"]),
-                len(self.available_registers["coil_registers"]),
-                len(self.available_registers["discrete_inputs"]),
-                success_rate,
-                self._scan_stats["scan_duration"]
+                "Device scan completed in %.2fs: %d/%d successful reads (%.1f%% success rate)",
+                self._scan_stats["scan_duration"],
+                self._scan_stats["successful_reads"],
+                self._scan_stats["total_attempts"],
+                (self._scan_stats["successful_reads"] / self._scan_stats["total_attempts"] * 100) 
+                if self._scan_stats["total_attempts"] > 0 else 0
             )
-            
+
             return {
                 "available_registers": self.available_registers,
                 "device_info": self.device_info,
                 "capabilities": capabilities,
                 "scan_stats": self._scan_stats,
             }
-            
+
         except Exception as exc:
-            _LOGGER.error("Optimized device scan failed: %s", exc)
+            _LOGGER.error("Device scan failed: %s", exc)
             raise
         finally:
             client.close()
 
-    def _scan_device_info(self, client: ModbusTcpClient) -> None:
-        """Enhanced device information scanning with error handling - FIXED API."""
-        # Initialize with defaults
-        self.device_info = {
-            "device_name": "ThesslaGreen AirPack",
-            "firmware": "Unknown",
-            "serial_number": "Unknown",
-            "processor": "ATmega2561",
-            "firmware_major": 0,
-            "firmware_minor": 0,
-            "firmware_patch": 0,
-        }
-
-        try:
-            # Priority 1: Firmware version (always present) - FIXED API
-            result = client.read_input_registers(address=0x0000, count=5, slave=self.slave_id)
-            self._scan_stats["total_attempts"] += 1
-            
-            if not result.isError():
-                self._scan_stats["successful_reads"] += 1
-                major = result.registers[0]
-                minor = result.registers[1]
-                patch = result.registers[4] if len(result.registers) > 4 else 0
-                
-                self.device_info["firmware"] = f"{major}.{minor}.{patch}"
-                self.device_info["firmware_major"] = major
-                self.device_info["firmware_minor"] = minor
-                self.device_info["firmware_patch"] = patch
-                
-                # Determine processor type and capabilities based on firmware
-                if major == 3:
-                    self.device_info["processor"] = "ATmega128"
-                    self.device_info["max_capabilities"] = "basic"
-                elif major == 4:
-                    self.device_info["processor"] = "ATmega2561"
-                    self.device_info["max_capabilities"] = "advanced"
-                else:
-                    self.device_info["processor"] = "Unknown"
-                    self.device_info["max_capabilities"] = "unknown"
-                
-                _LOGGER.debug("Detected firmware: %s, processor: %s", 
-                            self.device_info["firmware"], self.device_info["processor"])
-            else:
-                self._scan_stats["failed_reads"] += 1
-                _LOGGER.warning("Failed to read firmware version")
-            
-        except Exception as exc:
-            self._scan_stats["failed_reads"] += 1
-            _LOGGER.warning("Exception reading device info: %s", exc)
-
-        # Priority 2: Serial number - FIXED API
-        try:
-            result = client.read_input_registers(address=0x0018, count=6, slave=self.slave_id)
-            self._scan_stats["total_attempts"] += 1
-            
-            if not result.isError():
-                self._scan_stats["successful_reads"] += 1
-                serial_parts = [f"{reg:04x}" for reg in result.registers]
-                self.device_info["serial_number"] = f"S/N: {serial_parts[0]}{serial_parts[1]} {serial_parts[2]}{serial_parts[3]} {serial_parts[4]}{serial_parts[5]}"
-            else:
-                self._scan_stats["failed_reads"] += 1
-                
-        except Exception as exc:
-            self._scan_stats["failed_reads"] += 1
-            _LOGGER.debug("Could not read serial number: %s", exc)
-
-        # Priority 3: Device name - FIXED API
-        try:
-            result = client.read_holding_registers(address=0x1FD0, count=8, slave=self.slave_id)
-            self._scan_stats["total_attempts"] += 1
-            
-            if not result.isError():
-                self._scan_stats["successful_reads"] += 1
-                name_chars = []
-                for reg in result.registers:
-                    if reg != 0:
-                        char1 = (reg >> 8) & 0xFF
-                        char2 = reg & 0xFF
-                        if char1 != 0 and 32 <= char1 <= 126:
-                            name_chars.append(chr(char1))
-                        if char2 != 0 and 32 <= char2 <= 126:
-                            name_chars.append(chr(char2))
-                
-                if name_chars:
-                    device_name = ''.join(name_chars).strip()
-                    if device_name:
-                        self.device_info["device_name"] = device_name
-                    else:
-                        self.device_info["device_name"] = "ThesslaGreen AirPack"
-                else:
-                    self.device_info["device_name"] = "ThesslaGreen AirPack"
-            else:
-                self._scan_stats["failed_reads"] += 1
-                self.device_info["device_name"] = "ThesslaGreen AirPack"
-                
-        except Exception as exc:
-            self._scan_stats["failed_reads"] += 1
-            self.device_info["device_name"] = "ThesslaGreen AirPack"
-            _LOGGER.debug("Could not read device name: %s", exc)
-
-    def _scan_input_registers_optimized(self, client: ModbusTcpClient) -> Set[str]:
-        """Optimized input register scanning with intelligent batching - FIXED API."""
+    def _scan_holding_registers_enhanced(self, client: ModbusTcpClient) -> Set[str]:
+        """Enhanced holding register scanning with priority groups."""
         available = set()
         
-        # Define register groups to scan efficiently
+        # Define scan priorities - start with most critical registers
         scan_groups = [
-            # Critical sensors
-            ("critical", {
-                "outside_temperature": 0x0000, "supply_temperature": 0x0001,
-                "exhaust_temperature": 0x0002, "fpx_temperature": 0x0003,
-                "firmware_major": 0x0005, "firmware_minor": 0x0006, "firmware_patch": 0x0007,
-            }),
-            # Additional temperatures
-            ("temperatures", {
-                "duct_supply_temperature": 0x0010, "gwc_temperature": 0x0011,
-                "ambient_temperature": 0x0012,
-            }),
-            # Air flow data
-            ("airflow", {
-                "supply_flowrate": 0x0100, "exhaust_flowrate": 0x0101,
-                "supply_percentage": 0x0102, "exhaust_percentage": 0x0103,
-                "supply_air_flow": 0x0104, "exhaust_air_flow": 0x0105,
-            }),
-            # Constant Flow system
-            ("constant_flow", {
-                "constant_flow_active": 0x010F, "supply_dac_voltage": 0x012A,
-                "exhaust_dac_voltage": 0x012B, "cf_supply_air_flow": 0x012C,
-                "cf_exhaust_air_flow": 0x012D,
-            }),
-            # Extended sensors
-            ("extended", {
-                "expansion_temperature_1": 0x0500, "expansion_temperature_2": 0x0501,
-                "expansion_humidity": 0x0502, "expansion_co2": 0x0503,
-            }),
-        ]
-        
-        for group_name, registers in scan_groups:
-            _LOGGER.debug("Scanning input register group: %s", group_name)
-            group_available = self._scan_register_group_batch(client, registers, "input")
-            available.update(group_available)
-        
-        return available
-
-    def _scan_holding_registers_optimized(self, client: ModbusTcpClient) -> Set[str]:
-        """Optimized holding register scanning with intelligent batching - FIXED API."""
-        available = set()
-        
-        # Define register groups to scan efficiently  
-        scan_groups = [
-            # Critical control registers
+            # Critical control registers (MUST be present)
             ("critical_control", {
-                "mode": 0x1070, "on_off_panel_mode": 0x1071,
-                "air_flow_rate_manual": 0x1072, "season_mode": 0x1120,
+                "on_off_panel_mode": 0x1123, "mode": 0x1070, "season_mode": 0x1071,
+                "air_flow_rate_manual": 0x1072, "air_flow_rate_temporary": 0x1073,
+                "stop_ahu_code": 0x1120,
             }),
-            # Manual control
-            ("manual_control", {
-                "supply_intensity_manual": 0x1075, "exhaust_intensity_manual": 0x1076,
-                "target_temperature": 0x10D0,
+            # Basic operation parameters
+            ("basic_operation", {
+                "supply_air_temperature_manual": 0x1074, "supply_air_temperature_temporary": 0x1075,
+                "special_mode": 0x1080, "antifreeze_mode": 0x1060, "antifreeze_stage": 0x1066,
             }),
-            # Special functions
+            # Alternative control registers (new from documentation)
+            ("alternative_control", {
+                "cfg_mode1": 0x1130, "cfg_mode2": 0x1133,
+                "air_flow_rate_temporary_alt": 0x1131, "supply_air_temperature_temporary_alt": 0x1134,
+                "airflow_rate_change_flag": 0x1132, "temperature_change_flag": 0x1135,
+            }),
+            # AirS panel settings
+            ("airs_panel", {
+                "fan_speed_1_coef": 0x1078, "fan_speed_2_coef": 0x1079, "fan_speed_3_coef": 0x107A,
+            }),
+            # Special function coefficients
             ("special_functions", {
-                "special_mode": 0x1082, "special_function_timer": 0x1083,
-                "okap_timer": 0x1084, "fireplace_timer": 0x1085,
+                "hood_supply_coef": 0x1082, "hood_exhaust_coef": 0x1083,
+                "fireplace_supply_coef": 0x1084, "airing_coef": 0x1086,
+                "contamination_coef": 0x1087, "empty_house_coef": 0x1088,
+                "airing_bathroom_coef": 0x1085, "airing_switch_coef": 0x108E,
+                "open_window_coef": 0x108F,
+            }),
+            # Time controls
+            ("time_controls", {
+                "airing_panel_mode_time": 0x1089, "airing_switch_mode_time": 0x108A,
+                "fireplace_mode_time": 0x108D, "airing_switch_mode_on_delay": 0x108B,
+                "airing_switch_mode_off_delay": 0x108C,
             }),
             # GWC system
             ("gwc_system", {
-                "gwc_mode": 0x10A0, "gwc_season_mode": 0x10A1,
-                "gwc_temperature_threshold": 0x10A2,
+                "gwc_off": 0x10A0, "min_gwc_air_temperature": 0x10A1,
+                "max_gwc_air_temperature": 0x10A2, "gwc_regen": 0x10A6,
+                "gwc_mode": 0x10A7, "gwc_regen_period": 0x10A8,
+                "delta_t_gwc": 0x10AA,
             }),
-            # Bypass system
+            # Bypass system  
             ("bypass_system", {
-                "bypass_mode": 0x10E0, "bypass_temperature_threshold": 0x10E1,
+                "bypass_off": 0x10E0, "min_bypass_temperature": 0x10E1,
+                "air_temperature_summer_free_heating": 0x10E2,
+                "air_temperature_summer_free_cooling": 0x10E3,
+                "bypass_mode": 0x10EA, "bypass_user_mode": 0x10EB,
+                "bypass_coef1": 0x10EC, "bypass_coef2": 0x10ED,
             }),
-            # System flags
-            ("system_flags", {
-                "alarm_flag": 0x2000, "error_flag": 0x2001,
+            # Comfort mode
+            ("comfort_mode", {
+                "comfort_mode_panel": 0x10D0, "comfort_mode": 0x10D1,
             }),
+            # System resets
+            ("system_reset", {
+                "hard_reset_settings": 0x113D, "hard_reset_schedule": 0x113E,
+            })
         ]
         
+        # Test each group
         for group_name, registers in scan_groups:
-            _LOGGER.debug("Scanning holding register group: %s", group_name)
-            group_available = self._scan_register_group_batch(client, registers, "holding")
-            available.update(group_available)
+            group_found = 0
+            for name, address in registers.items():
+                if self._test_register_access("holding", address, name):
+                    available.add(name)
+                    group_found += 1
             
-            # Special handling: if critical control registers are missing, this might not be a compatible device
-            if group_name == "critical_control" and len(group_available) < 3:
-                _LOGGER.warning("Critical control registers missing - device may not be compatible")
-        
+            if group_found > 0:
+                _LOGGER.debug("Found %d/%d registers in group %s", group_found, len(registers), group_name)
+            
+            # If we found critical control registers, continue with all groups
+            # If not, the device might be off or misconfigured
+            if group_name == "critical_control" and group_found == 0:
+                _LOGGER.warning("No critical control registers found - device may be off or misconfigured")
+                # Continue scanning but log warning
+
         return available
 
-    def _scan_register_group_batch(self, client: ModbusTcpClient, registers: Dict[str, int], 
-                                  reg_type: str) -> Set[str]:
-        """Scan a group of registers efficiently using batch reads where possible - FIXED API."""
+    def _scan_input_registers_enhanced(self, client: ModbusTcpClient) -> Set[str]:
+        """Enhanced input register scanning with batched reads."""
         available = set()
         
-        # Group registers by proximity for batch reading
-        grouped = self._group_registers_for_batch_read(registers)
+        # Critical input registers to test first
+        critical_inputs = [
+            ("outside_temperature", 0x0010),
+            ("supply_temperature", 0x0011),
+            ("exhaust_temperature", 0x0012),
+            ("firmware_major", 0x0000),
+            ("firmware_minor", 0x0001),
+        ]
         
-        for start_addr, reg_group in grouped.items():
-            try:
-                # Calculate range
-                addresses = list(reg_group.values())
-                min_addr = min(addresses)
-                max_addr = max(addresses)
-                count = max_addr - min_addr + 1
-                
-                if count <= 16:  # Batch read for small ranges
-                    # FIXED API calls
-                    if reg_type == "input":
-                        result = client.read_input_registers(address=min_addr, count=count, slave=self.slave_id)
-                    elif reg_type == "holding":
-                        result = client.read_holding_registers(address=min_addr, count=count, slave=self.slave_id)
-                    else:
-                        continue
-                        
-                    self._scan_stats["total_attempts"] += 1
-                    
-                    if not result.isError():
-                        self._scan_stats["successful_reads"] += 1
-                        for name, address in reg_group.items():
-                            idx = address - min_addr
-                            if idx < len(result.registers):
-                                value = result.registers[idx]
-                                if self._is_valid_register_value(name, value):
-                                    available.add(name)
-                                    _LOGGER.debug("Found %s register %s (0x%04X) = %s", 
-                                                reg_type, name, address, value)
-                    else:
-                        self._scan_stats["failed_reads"] += 1
-                        # Fallback to individual reads
-                        for name, address in reg_group.items():
-                            if self._scan_single_register(client, name, address, reg_type):
-                                available.add(name)
-                else:
-                    # Individual reads for large ranges
-                    for name, address in reg_group.items():
-                        if self._scan_single_register(client, name, address, reg_type):
+        # Test critical registers individually
+        for name, address in critical_inputs:
+            if self._test_register_access("input", address, name):
+                available.add(name)
+        
+        # Batch test temperature sensors (0x0010-0x0016)
+        try:
+            result = client.read_input_registers(0x0010, 7, slave=self.slave_id)
+            self._scan_stats["total_attempts"] += 1
+            
+            if not result.isError():
+                self._scan_stats["successful_reads"] += 1
+                temp_registers = [
+                    "outside_temperature", "supply_temperature", "exhaust_temperature",
+                    "fpx_temperature", "duct_supply_temperature", "gwc_temperature", 
+                    "ambient_temperature"
+                ]
+                for i, name in enumerate(temp_registers):
+                    if i < len(result.registers):
+                        # Check if temperature value is valid
+                        raw_value = result.registers[i]
+                        if raw_value != INVALID_TEMPERATURE:
                             available.add(name)
-                            
-            except Exception as exc:
+                            _LOGGER.debug("Found temperature sensor %s = %d", name, raw_value)
+            else:
                 self._scan_stats["failed_reads"] += 1
-                _LOGGER.debug("Batch read failed for %s group at 0x%04X: %s", reg_type, start_addr, exc)
-                
-                # Fallback to individual reads
-                for name, address in reg_group.items():
-                    if self._scan_single_register(client, name, address, reg_type):
-                        available.add(name)
+        except Exception as exc:
+            self._scan_stats["failed_reads"] += 1
+            _LOGGER.debug("Failed to batch read temperature sensors: %s", exc)
         
+        # Test Constant Flow registers individually
+        cf_registers = [
+            ("constant_flow_active", 0x010F),
+            ("supply_percentage", 0x0110),
+            ("exhaust_percentage", 0x0111),
+            ("supply_flowrate", 0x0112),
+            ("exhaust_flowrate", 0x0113),
+            ("min_percentage", 0x0114),
+            ("max_percentage", 0x0115),
+            ("water_removal_active", 0x012A),
+        ]
+        
+        for name, address in cf_registers:
+            if self._test_register_access("input", address, name):
+                available.add(name)
+        
+        # Test DAC outputs
+        dac_registers = [
+            ("dac_supply", 0x0500),
+            ("dac_exhaust", 0x0501),
+            ("dac_heater", 0x0502),
+            ("dac_cooler", 0x0503),
+        ]
+        
+        for name, address in dac_registers:
+            if self._test_register_access("input", address, name):
+                available.add(name)
+        
+        # Test firmware and serial registers
+        fw_serial_registers = [
+            ("firmware_patch", 0x0004),
+            ("compilation_days", 0x000E),
+            ("compilation_seconds", 0x000F),
+        ] + [(f"serial_number_{i}", 0x0018 + i - 1) for i in range(1, 7)]
+        
+        for name, address in fw_serial_registers:
+            if self._test_register_access("input", address, name):
+                available.add(name)
+
         return available
 
-    def _scan_single_register(self, client: ModbusTcpClient, name: str, address: int, reg_type: str) -> bool:
-        """Scan a single register with validation - FIXED API."""
+    def _test_register_access(self, reg_type: str, address: int, name: str) -> bool:
+        """Test if a specific register is accessible."""
+        client = ModbusTcpClient(host=self.host, port=self.port, timeout=5)
+        
         try:
-            # FIXED API calls
+            if not client.connect():
+                return False
+            
             if reg_type == "input":
-                result = client.read_input_registers(address=address, count=1, slave=self.slave_id)
+                result = client.read_input_registers(address, 1, slave=self.slave_id)
             elif reg_type == "holding":
-                result = client.read_holding_registers(address=address, count=1, slave=self.slave_id)
+                result = client.read_holding_registers(address, 1, slave=self.slave_id)
             else:
                 return False
             
@@ -380,9 +291,35 @@ class ThesslaGreenDeviceScanner:
         except Exception:
             self._scan_stats["failed_reads"] += 1
             return False
+        finally:
+            client.close()
+
+    def _is_valid_register_value(self, name: str, value: int) -> bool:
+        """Validate if a register value seems reasonable."""
+        # Temperature sensors should not be 0x8000 (invalid)
+        if "temperature" in name:
+            return value != INVALID_TEMPERATURE
+        
+        # Flow rates should not be 65535 (invalid)
+        if "flowrate" in name or "air_flow" in name:
+            return value != INVALID_FLOW
+        
+        # Percentage values should be reasonable
+        if "percentage" in name or "coef" in name:
+            return 0 <= value <= 200  # Allow up to 200% for boost
+        
+        # Mode values should be in expected range
+        if name in ["mode", "season_mode"]:
+            return 0 <= value <= 2
+        
+        if name == "special_mode":
+            return 0 <= value <= 11
+        
+        # Default: accept any non-zero value as valid
+        return True
 
     def _scan_coil_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
-        """Efficiently scan all coil registers in minimal number of reads - FIXED API."""
+        """Efficiently scan all coil registers in minimal number of reads."""
         available = set()
         
         if not COIL_REGISTERS:
@@ -393,8 +330,7 @@ class ThesslaGreenDeviceScanner:
         count = max_addr - min_addr + 1
         
         try:
-            # FIXED API call
-            result = client.read_coils(address=min_addr, count=count, slave=self.slave_id)
+            result = client.read_coils(min_addr, count, slave=self.slave_id)
             self._scan_stats["total_attempts"] += 1
             
             if not result.isError():
@@ -414,7 +350,7 @@ class ThesslaGreenDeviceScanner:
         return available
 
     def _scan_discrete_inputs_batch(self, client: ModbusTcpClient) -> Set[str]:
-        """Efficiently scan all discrete input registers - FIXED API."""
+        """Efficiently scan all discrete input registers."""
         available = set()
         
         if not DISCRETE_INPUT_REGISTERS:
@@ -425,8 +361,7 @@ class ThesslaGreenDeviceScanner:
         count = max_addr - min_addr + 1
         
         try:
-            # FIXED API call
-            result = client.read_discrete_inputs(address=min_addr, count=count, slave=self.slave_id)
+            result = client.read_discrete_inputs(min_addr, count, slave=self.slave_id)
             self._scan_stats["total_attempts"] += 1
             
             if not result.isError():
@@ -435,8 +370,7 @@ class ThesslaGreenDeviceScanner:
                     idx = address - min_addr
                     if idx < len(result.bits):
                         available.add(name)
-                        _LOGGER.debug("Found discrete input %s (0x%04X) = %s", 
-                                    name, address, result.bits[idx])
+                        _LOGGER.debug("Found discrete input %s (0x%04X) = %s", name, address, result.bits[idx])
             else:
                 self._scan_stats["failed_reads"] += 1
                 
@@ -446,163 +380,129 @@ class ThesslaGreenDeviceScanner:
         
         return available
 
-    def _is_valid_register_value(self, register_name: str, value: int) -> bool:
-        """Enhanced register value validation with model-specific logic."""
-        # Universal invalid values
-        if value == 0xFFFF or value == 65535:
-            return False
+    def _extract_device_info(self, client: ModbusTcpClient) -> Dict[str, Any]:
+        """Extract device information from firmware registers."""
+        device_info = {
+            "device_name": "ThesslaGreen AirPack",
+            "manufacturer": "ThesslaGreen",
+            "model": "AirPack",
+            "firmware": "Unknown",
+            "serial_number": None,
+        }
         
-        # Temperature sensors return 0x8000 (32768) when not connected
-        if "temperature" in register_name and value == INVALID_TEMPERATURE:
-            return False
+        try:
+            # Read firmware version
+            result = client.read_input_registers(0x0000, 5, slave=self.slave_id)
+            if not result.isError() and len(result.registers) >= 3:
+                major = result.registers[0]
+                minor = result.registers[1] 
+                patch = result.registers[4] if len(result.registers) > 4 else 0
+                device_info["firmware"] = f"{major}.{minor}.{patch}"
+                _LOGGER.debug("Device firmware: %s", device_info["firmware"])
+        except Exception as exc:
+            _LOGGER.debug("Failed to read firmware: %s", exc)
         
-        # Air flow sensors return 65535 when CF is not active
-        if ("air_flow" in register_name or "flowrate" in register_name) and value == INVALID_FLOW:
-            return False
+        try:
+            # Read serial number
+            result = client.read_input_registers(0x0018, 6, slave=self.slave_id)
+            if not result.isError():
+                # Convert serial number parts to string
+                serial_parts = []
+                for value in result.registers:
+                    if value != 0:
+                        serial_parts.append(f"{value:04X}")
+                if serial_parts:
+                    device_info["serial_number"] = "".join(serial_parts)
+                    _LOGGER.debug("Device serial: %s", device_info["serial_number"])
+        except Exception as exc:
+            _LOGGER.debug("Failed to read serial number: %s", exc)
         
-        # Mode registers should have valid ranges
-        if register_name == "mode" and value not in [0, 1, 2]:
-            return False
-        
-        if register_name == "season_mode" and value not in [0, 1]:
-            return False
-        
-        if register_name == "special_mode" and not (0 <= value <= 11):
-            return False
-        
-        # DAC values should not exceed 10V equivalent (4095)
-        if "dac_" in register_name and value > 4095:
-            return False
-        
-        return True
-
-    def _group_registers_for_batch_read(self, registers: Dict[str, int], 
-                                       max_gap: int = 20) -> Dict[int, Dict[str, int]]:
-        """Group registers for efficient batch reading."""
-        if not registers:
-            return {}
-        
-        # Sort registers by address
-        sorted_regs = sorted(registers.items(), key=lambda x: x[1])
-        
-        groups = {}
-        current_group_start = sorted_regs[0][1]
-        current_group = {}
-        
-        for name, addr in sorted_regs:
-            if addr - current_group_start <= max_gap and len(current_group) < 16:
-                current_group[name] = addr
-            else:
-                # Start new group
-                if current_group:
-                    groups[current_group_start] = current_group
-                current_group_start = addr
-                current_group = {name: addr}
-        
-        # Add the last group
-        if current_group:
-            groups[current_group_start] = current_group
-        
-        return groups
+        return device_info
 
     def _analyze_capabilities_enhanced(self) -> Dict[str, Any]:
-        """Analyze device capabilities based on available registers."""
+        """Enhanced capability analysis based on available registers."""
         capabilities = {
+            # Basic functionality
             "basic_control": False,
+            "temperature_control": False,
+            "speed_control": False,
+            
+            # Advanced systems
             "constant_flow": False,
             "gwc_system": False,
             "bypass_system": False,
             "comfort_mode": False,
-            "expansion_module": False,
             "special_functions": False,
+            
+            # Hardware modules
+            "expansion_module": False,
+            "airs_panel": False,
+            
+            # Sensors
             "temperature_sensors_count": 0,
             "sensor_outside_temperature": False,
             "sensor_supply_temperature": False,
             "sensor_exhaust_temperature": False,
             "sensor_fpx_temperature": False,
-            "sensor_gwc_temperature": False,
-            "sensor_ambient_temperature": False,
-            "air_flow_control": False,
-            "model_type": "Unknown"
+            "contamination_sensor": False,
+            "humidity_sensor": False,
         }
         
-        input_regs = self.available_registers.get("input_registers", set())
         holding_regs = self.available_registers.get("holding_registers", set())
+        input_regs = self.available_registers.get("input_registers", set())
         coil_regs = self.available_registers.get("coil_registers", set())
         discrete_regs = self.available_registers.get("discrete_inputs", set())
         
-        # Check for basic control capabilities
-        if "mode" in holding_regs or "on_off_panel_mode" in holding_regs:
+        # Basic control capabilities
+        if "on_off_panel_mode" in holding_regs and "mode" in holding_regs:
             capabilities["basic_control"] = True
-            
-        # Check for constant flow
+        
+        if "air_flow_rate_manual" in holding_regs:
+            capabilities["speed_control"] = True
+        
+        if "supply_air_temperature_manual" in holding_regs:
+            capabilities["temperature_control"] = True
+        
+        # System capabilities
         if "constant_flow_active" in input_regs:
             capabilities["constant_flow"] = True
-            
-        # Check air flow control
-        if any(reg in input_regs for reg in ["supply_flowrate", "exhaust_flowrate", "supply_percentage"]):
-            capabilities["air_flow_control"] = True
-            
-        # Check for GWC system
-        if "gwc_mode" in holding_regs or "gwc_temperature" in input_regs or "gwc" in coil_regs:
+        
+        if "gwc_mode" in holding_regs or "gwc_off" in holding_regs:
             capabilities["gwc_system"] = True
-            
-        # Check for bypass system
-        if "bypass_mode" in holding_regs or "bypass" in coil_regs:
+        
+        if "bypass_mode" in holding_regs or "bypass_off" in holding_regs:
             capabilities["bypass_system"] = True
-            
-        # Check for comfort mode
-        if "target_temperature" in holding_regs:
+        
+        if "comfort_mode" in holding_regs:
             capabilities["comfort_mode"] = True
-            
-        # Check for special functions
+        
         if "special_mode" in holding_regs:
             capabilities["special_functions"] = True
-            
-        # Check for expansion module
+        
+        # Hardware modules
         if "expansion" in discrete_regs:
             capabilities["expansion_module"] = True
-            
-        # Count temperature sensors and check individual sensors
+        
+        if any(reg in holding_regs for reg in ["fan_speed_1_coef", "fan_speed_2_coef", "fan_speed_3_coef"]):
+            capabilities["airs_panel"] = True
+        
+        # Sensor analysis
         temp_sensors = [
-            "outside_temperature", "supply_temperature", "exhaust_temperature",
-            "fpx_temperature", "gwc_temperature", "ambient_temperature"
+            ("outside_temperature", "sensor_outside_temperature"),
+            ("supply_temperature", "sensor_supply_temperature"),
+            ("exhaust_temperature", "sensor_exhaust_temperature"),
+            ("fpx_temperature", "sensor_fpx_temperature"),
         ]
         
-        for sensor in temp_sensors:
-            if sensor in input_regs:
+        for sensor_reg, capability_key in temp_sensors:
+            if sensor_reg in input_regs:
+                capabilities[capability_key] = True
                 capabilities["temperature_sensors_count"] += 1
-                capabilities[f"sensor_{sensor}"] = True
-                
+        
+        if "contamination_sensor" in discrete_regs:
+            capabilities["contamination_sensor"] = True
+        
+        if "airing_sensor" in discrete_regs:
+            capabilities["humidity_sensor"] = True
+        
         return capabilities
-
-    def _validate_model_capabilities(self, capabilities: Dict[str, Any]) -> None:
-        """Model-specific validation and capability enhancement."""
-        # Determine model type based on capabilities
-        if capabilities["gwc_system"] and capabilities["constant_flow"]:
-            capabilities["model_type"] = "AirPack Home Energy+ with CF and GWC"
-        elif capabilities["constant_flow"]:
-            capabilities["model_type"] = "AirPack Home Energy+ with CF"
-        elif capabilities["gwc_system"]:
-            capabilities["model_type"] = "AirPack Home with GWC"
-        elif capabilities["basic_control"]:
-            capabilities["model_type"] = "AirPack Home"
-        else:
-            capabilities["model_type"] = "AirPack Unknown"
-            
-        # Update device info with model
-        self.device_info["model_type"] = capabilities["model_type"]
-        
-        # Model-specific capability validation
-        firmware_major = self.device_info.get("firmware_major", 0)
-        
-        if firmware_major >= 4:
-            # Advanced features available in firmware 4.x+
-            if not capabilities["constant_flow"]:
-                _LOGGER.debug("Firmware 4.x detected but Constant Flow not found - may be disabled")
-        elif firmware_major == 3:
-            # Basic features only in firmware 3.x
-            if capabilities["gwc_system"]:
-                _LOGGER.warning("GWC system detected with firmware 3.x - unusual configuration")
-                
-        _LOGGER.info("Detected device model: %s", capabilities["model_type"])
