@@ -168,7 +168,7 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
         return data
 
     def _read_register_groups(self, client: ModbusTcpClient, register_type: str, read_func) -> Dict[str, Any]:
-        """Read register groups with optimized batch operations."""
+        """POPRAWIONE: Read register groups with optimized batch operations."""
         data = {}
         
         if register_type not in self._register_groups:
@@ -176,6 +176,7 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
         
         for start_addr, count, key_map in self._register_groups[register_type]:
             try:
+                # POPRAWIONE: Wywołanie funkcji read z poprawnym API
                 result = read_func(client, start_addr, count)
                 if result and not result.isError():
                     # Extract values for each register in the group
@@ -183,7 +184,7 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
                         # For input/holding registers
                         for name, offset in key_map.items():
                             if offset < len(result.registers):
-                                data[name] = result.registers[offset]
+                                data[name] = self._process_register_value(name, result.registers[offset])
                     elif hasattr(result, 'bits'):
                         # For coils/discrete inputs
                         for name, offset in key_map.items():
@@ -247,51 +248,101 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
                          address, address + count - 1, exc)
             return None
 
-    async def write_register(self, address: int, value: int) -> bool:
-        """POPRAWIONE: Write single holding register z nowym API"""
+    async def async_write_register(self, key: str, value: int) -> bool:
+        """POPRAWIONE: Write register with proper address mapping."""
+        
+        # Mapowanie kluczy do adresów - DOSTOSUJ DO TWOJEGO URZĄDZENIA
+        REGISTER_ADDRESS_MAP = {
+            # Holding registers
+            "mode": 0x1000,
+            "season_mode": 0x1001,
+            "special_mode": 0x1002,
+            "air_flow_rate_manual": 0x1003,
+            "air_flow_rate_override": 0x1004,
+            "on_off_panel_mode": 0x1005,
+            
+            # Coils (dla write_coil)
+            "manual_mode": 0x0000,
+            "fan_boost": 0x0001,
+            "bypass_enable": 0x0002,
+            "gwc_enable": 0x0003,
+        }
+        
+        if key not in REGISTER_ADDRESS_MAP:
+            _LOGGER.error("Unknown register key: %s", key)
+            return False
+            
+        address = REGISTER_ADDRESS_MAP[key]
+        
         def _write_sync():
             client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
             try:
                 if not client.connect():
                     return False
                 
-                result = client.write_register(
-                    address=address,
-                    value=value,
-                    slave=self.slave_id
-                )
-                return result and not result.isError()
+                # Determine if it's a coil or holding register
+                if key in ["manual_mode", "fan_boost", "bypass_enable", "gwc_enable"]:
+                    # Write coil (boolean)
+                    result = client.write_coil(
+                        address=address,
+                        value=bool(value),
+                        slave=self.slave_id
+                    )
+                else:
+                    # Write holding register (integer)
+                    result = client.write_register(
+                        address=address,
+                        value=value,
+                        slave=self.slave_id
+                    )
+                    
+                success = result and not result.isError()
+                if success:
+                    _LOGGER.debug("Successfully wrote %s=%s to 0x%04X", key, value, address)
+                else:
+                    _LOGGER.error("Failed to write %s=%s to 0x%04X: %s", key, value, address, result)
+                return success
                 
             except Exception as exc:
-                _LOGGER.error("Failed to write register 0x%04X: %s", address, exc)
+                _LOGGER.error("Exception writing register %s: %s", key, exc)
                 return False
             finally:
                 client.close()
         
         return await asyncio.get_event_loop().run_in_executor(None, _write_sync)
 
-    async def write_coil(self, address: int, value: bool) -> bool:
-        """POPRAWIONE: Write single coil z nowym API"""
-        def _write_sync():
-            client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-            try:
-                if not client.connect():
-                    return False
-                
-                result = client.write_coil(
-                    address=address,
-                    value=value,
-                    slave=self.slave_id
-                )
-                return result and not result.isError()
-                
-            except Exception as exc:
-                _LOGGER.error("Failed to write coil 0x%04X: %s", address, exc)
-                return False
-            finally:
-                client.close()
+    def _process_register_value(self, key: str, raw_value: Any) -> Any:
+        """Process raw register value based on key type."""
+        # Invalid values
+        INVALID_TEMPERATURE = 0x8000  # 32768
+        INVALID_FLOW = 65535
         
-        return await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+        # Temperature processing
+        if "temperature" in key:
+            if raw_value == INVALID_TEMPERATURE or raw_value > 1000:
+                return None
+            return round(raw_value / 10.0, 1) if raw_value > 100 else raw_value
+        
+        # Flow processing
+        elif "flow" in key or "flowrate" in key:
+            if raw_value == INVALID_FLOW or raw_value > 10000:
+                return None
+            return raw_value
+        
+        # Percentage processing
+        elif "percentage" in key:
+            return max(0, min(100, raw_value))
+        
+        # Voltage processing (DAC)
+        elif "dac" in key:
+            return round(raw_value / 1000.0, 2)  # Convert mV to V
+        
+        # Boolean processing
+        elif key in ["constant_flow_active", "gwc_mode", "bypass_mode", "on_off_panel_mode"]:
+            return bool(raw_value)
+        
+        # Default: return as-is
+        return raw_value
 
     def get_register_value(self, register_name: str, default: Any = None) -> Any:
         """Get current value of a register."""
