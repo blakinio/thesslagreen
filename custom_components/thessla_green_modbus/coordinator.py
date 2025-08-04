@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Tuple
@@ -14,9 +13,14 @@ from pymodbus.client import ModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
 
+ codex/rename-thesslagreendatacoordinator
 
 class ThesslaGreenCoordinator(DataUpdateCoordinator):
     """Poprawiony coordinator z nowym API pymodbus 3.x"""
+=======
+class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
+    """Coordinator handling Modbus data updates and register management."""
+ main
 
     def __init__(
         self,
@@ -27,7 +31,13 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         scan_interval: int = 30,
         timeout: int = 10,
         retry: int = 3,
+ codex/rename-thesslagreendatacoordinator
         available_registers: Dict[str, set] = None,
+=======
+        available_registers: Dict[str, set] | None = None,
+        device_info: Dict[str, Any] | None = None,
+        capabilities: Dict[str, Any] | None = None,
+ main
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -36,7 +46,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             name="thessla_green_modbus",
             update_interval=timedelta(seconds=scan_interval),
         )
-        
+
         self.host = host
         self.port = port
         self.slave_id = slave_id
@@ -46,12 +56,34 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             "input_registers": set(),
             "holding_registers": set(),
             "coil_registers": set(),
-            "discrete_inputs": set()
+            "discrete_inputs": set(),
         }
-        
+        self.device_info = device_info or {}
+        self.capabilities = capabilities or {}
+
         # Precompute optimized register groups for batch reading
+        self.rebuild_register_groups()
+
+    def rebuild_register_groups(self, available_registers: Dict[str, set] | None = None) -> None:
+        """Recalculate optimized register groups.
+
+        Optionally accepts a new mapping of available registers and updates
+        the coordinator before computing the groups. This method is exposed so
+        that a full device scan can rebuild the groups without reinstantiating
+        the coordinator.
+        """
+
+        if available_registers is not None:
+            self.available_registers = available_registers
+
         self._register_groups = self._compute_optimized_groups()
-        _LOGGER.debug("Precomputed %d optimized register groups", len(self._register_groups))
+        _LOGGER.debug(
+            "Precomputed %d optimized register groups", len(self._register_groups)
+        )
+
+    # Legacy method name for backward compatibility
+    def _precompute_register_groups(self, available_registers: Dict[str, set] | None = None) -> None:
+        self.rebuild_register_groups(available_registers)
 
     def _compute_optimized_groups(self) -> Dict[str, List[Tuple[int, int, Dict[str, int]]]]:
         """Pre-compute optimized register groups for efficient batch reading."""
@@ -146,7 +178,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Optimized data update using batch reading."""
-        return await asyncio.get_event_loop().run_in_executor(None, self._update_data_sync)
+        return await self.hass.async_add_executor_job(self._update_data_sync)
 
     def _update_data_sync(self) -> Dict[str, Any]:
         """Synchronous optimized data update with retry support."""
@@ -290,7 +322,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             try:
                 if not client.connect():
                     return False
-                
+
                 # Determine if it's a coil or holding register
                 if key in ["manual_mode", "fan_boost", "bypass_enable", "gwc_enable"]:
                     # Write coil (boolean)
@@ -306,24 +338,41 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                         value=value,
                         slave=self.slave_id
                     )
-                    
+
                 success = result and not result.isError()
                 if success:
                     _LOGGER.debug("Successfully wrote %s=%s to 0x%04X", key, value, address)
                 else:
                     _LOGGER.error("Failed to write %s=%s to 0x%04X: %s", key, value, address, result)
                 return success
-                
+
             except Exception as exc:
                 _LOGGER.error("Exception writing register %s: %s", key, exc)
                 return False
             finally:
                 client.close()
+codex/replace-executor-calls-in-async-functions
         
+ codex/rename-thesslagreendatacoordinator
         result = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
         if result:
             await self.async_request_refresh()
         return result
+=======
+        return await self.hass.async_add_executor_job(_write_sync)
+=======
+
+ codex/adjust-test-fixture-for-thesslagreencoordinator
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(None, _write_sync)
+=======
+        success = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+ main
+        if success:
+            await self.async_request_refresh()
+        return success
+ main
+ main
 
     def _process_register_value(self, key: str, raw_value: Any) -> Any:
         """Process raw register value based on key type."""
@@ -368,6 +417,3 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             return default
         return self.data.get(register_name, default)
 
-
-# Backwards compatibility
-ThesslaGreenDataCoordinator = ThesslaGreenCoordinator

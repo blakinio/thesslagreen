@@ -224,19 +224,30 @@ class TestThesslaGreenCoordinator:
             "on_off_panel_mode": 1,
         }
         
-        with patch.object(coordinator_data, '_update_data_sync', return_value=mock_data):
+        with patch.object(
+            coordinator_data.hass,
+            "async_add_executor_job",
+            AsyncMock(return_value=mock_data),
+        ) as mock_executor:
             result = await coordinator_data._async_update_data()
-            
-            assert result == mock_data
-            assert "outside_temperature" in result
-            assert result["outside_temperature"] == 20.5
+
+        mock_executor.assert_awaited_once_with(coordinator_data._update_data_sync)
+        assert result == mock_data
+        assert "outside_temperature" in result
+        assert result["outside_temperature"] == 20.5
 
     @pytest.mark.asyncio
     async def test_coordinator_write_register(self, coordinator_data):
         """Test register writing functionality."""
-        with patch.object(coordinator_data, '_write_register_sync', return_value=True):
+        with patch.object(
+            coordinator_data.hass,
+            "async_add_executor_job",
+            AsyncMock(return_value=True),
+        ) as mock_executor:
             result = await coordinator_data.async_write_register("mode", 1)
-            assert result is True
+
+        mock_executor.assert_awaited_once()
+        assert result is True
 
     @pytest.mark.asyncio
     async def test_coordinator_write_invalid_register(self, coordinator_data):
