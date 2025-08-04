@@ -108,7 +108,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             input_addresses = {}
             for reg_name in input_regs:
                 if reg_name in INPUT_REGISTERS:
-                    input_addresses[reg_name] = INPUT_REGISTERS[reg_name]["address"]
+                    input_addresses[reg_name] = INPUT_REGISTERS[reg_name]
             
             if input_addresses:
                 self._register_groups["input"] = self._create_register_groups(input_addresses, "input")
@@ -119,7 +119,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             holding_addresses = {}
             for reg_name in holding_regs:
                 if reg_name in HOLDING_REGISTERS:
-                    holding_addresses[reg_name] = HOLDING_REGISTERS[reg_name]["address"]
+                    holding_addresses[reg_name] = HOLDING_REGISTERS[reg_name]
             
             if holding_addresses:
                 self._register_groups["holding"] = self._create_register_groups(holding_addresses, "holding")
@@ -280,17 +280,26 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
     def _process_register_value(self, name: str, raw_value: int) -> Any:
         """Process raw register value based on register type."""
         try:
-            # Get register config
-            reg_config = None
-            if name in INPUT_REGISTERS:
-                reg_config = INPUT_REGISTERS[name]
-            elif name in HOLDING_REGISTERS:
-                reg_config = HOLDING_REGISTERS[name]
-                
-            if not reg_config:
+            if name not in INPUT_REGISTERS and name not in HOLDING_REGISTERS:
                 return raw_value
-                
-            multiplier = reg_config.get("multiplier", 1)
+
+            multiplier = 1
+            if name.startswith("dac_"):
+                multiplier = 0.00244
+            elif name in {
+                "supply_air_temperature_manual",
+                "supply_air_temperature_temporary",
+                "min_gwc_air_temperature",
+                "max_gwc_air_temperature",
+                "delta_t_gwc",
+                "min_bypass_temperature",
+                "air_temperature_summer_free_heating",
+                "air_temperature_summer_free_cooling",
+                "required_temp",
+            }:
+                multiplier = 0.5
+            elif any(temp_key in name.lower() for temp_key in ['temp', 'temperature']):
+                multiplier = 0.1
             
             # Temperature processing (signed values)
             if any(temp_key in name.lower() for temp_key in ['temp', 'temperature']):
@@ -306,7 +315,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             # Flow rates
             elif 'flow' in name.lower():
                 return max(0, raw_value * multiplier)
-            
+
             # Default processing
             else:
                 return raw_value * multiplier
@@ -328,8 +337,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             _LOGGER.error("Register %s not found in holding registers", register_name)
             return False
 
-        reg_config = HOLDING_REGISTERS[register_name]
-        address = reg_config["address"]
+        address = HOLDING_REGISTERS[register_name]
         
         client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
         
