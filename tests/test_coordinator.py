@@ -99,6 +99,15 @@ async def test_async_write_invalid_register():
 @pytest.fixture
 def coordinator():
     module = importlib.import_module("custom_components.thessla_green_modbus.coordinator")
+ codex/replace-executor-calls-in-async-functions
+    hass = MagicMock()
+    coord = module.ThesslaGreenCoordinator(
+        hass=hass,
+        host="127.0.0.1",
+        port=502,
+        slave_id=1,
+    )
+=======
     Coordinator = getattr(module, "ThesslaGreenCoordinator", None)
     if Coordinator is None:
         Coordinator = getattr(module, "ThesslaGreenDataCoordinator")
@@ -117,6 +126,7 @@ def coordinator():
     params = inspect.signature(Coordinator.__init__).parameters
     accepted = {k: v for k, v in kwargs.items() if k in params}
     coord = Coordinator(**accepted)
+ main
     return coord
 =======
 
@@ -139,6 +149,18 @@ async def test_async_write_success_triggers_refresh():
 
  codex/adjust-test-fixture-for-thesslagreencoordinator
 def test_async_write_invalid_register(coordinator):
+ codex/replace-executor-calls-in-async-functions
+    coordinator.hass.async_add_executor_job = AsyncMock()
+    result = asyncio.run(coordinator.async_write_register("invalid", 1))
+    assert result is False
+    coordinator.hass.async_add_executor_job.assert_not_called()
+
+
+def test_success_triggers_refresh(coordinator):
+    coordinator.hass.async_add_executor_job = AsyncMock(return_value=True)
+
+    result = asyncio.run(coordinator.async_write_register("mode", 1))
+=======
     with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client:
         result = asyncio.run(coordinator.async_write_register("invalid", 1))
         assert result is False
@@ -161,5 +183,6 @@ def test_success_triggers_refresh(coordinator):
 
         result = await coordinator.async_write_register("mode", 1) main
 
+ main
     assert result is True
-    coordinator.async_request_refresh.assert_awaited_once()
+    coordinator.hass.async_add_executor_job.assert_awaited_once()
