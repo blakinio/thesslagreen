@@ -168,6 +168,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Optimized data update using batch reading."""
+        # Run the synchronous Modbus calls in the executor thread pool
         return await self.hass.async_add_executor_job(self._update_data_sync)
 
     def _update_data_sync(self) -> Dict[str, Any]:
@@ -201,7 +202,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         raise UpdateFailed(f"Error communicating with device: {last_exc}") from last_exc
 
     def _read_register_groups(self, client: ModbusTcpClient, register_type: str, read_func) -> Dict[str, Any]:
-        """POPRAWIONE: Read register groups with optimized batch operations."""
+        """Read register groups with optimized batch operations."""
         data = {}
         
         if register_type not in self._register_groups:
@@ -209,7 +210,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         
         for start_addr, count, key_map in self._register_groups[register_type]:
             try:
-                # POPRAWIONE: Wywołanie funkcji read z poprawnym API
+                # Call the provided read function using the modern pymodbus API
                 result = read_func(client, start_addr, count)
                 if result and not result.isError():
                     # Extract values for each register in the group
@@ -230,7 +231,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         return data
 
     def _read_input_registers(self, client: ModbusTcpClient, address: int, count: int):
-        """POPRAWIONE: Read input registers z nowym API pymodbus 3.x"""
+        """Read input registers with the pymodbus 3.x API."""
         try:
             return client.read_input_registers(
                 address=address,
@@ -243,7 +244,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             return None
 
     def _read_holding_registers(self, client: ModbusTcpClient, address: int, count: int):
-        """POPRAWIONE: Read holding registers z nowym API pymodbus 3.x"""
+        """Read holding registers with the pymodbus 3.x API."""
         try:
             return client.read_holding_registers(
                 address=address,
@@ -256,7 +257,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             return None
 
     def _read_coils(self, client: ModbusTcpClient, address: int, count: int):
-        """POPRAWIONE: Read coils z nowym API pymodbus 3.x"""
+        """Read coils with the pymodbus 3.x API."""
         try:
             return client.read_coils(
                 address=address,
@@ -269,7 +270,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             return None
 
     def _read_discrete_inputs(self, client: ModbusTcpClient, address: int, count: int):
-        """POPRAWIONE: Read discrete inputs z nowym API pymodbus 3.x"""
+        """Read discrete inputs with the pymodbus 3.x API."""
         try:
             return client.read_discrete_inputs(
                 address=address,
@@ -282,7 +283,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             return None
 
     async def async_write_register(self, key: str, value: int) -> bool:
-        """POPRAWIONE: Write register with proper address mapping."""
+        """Write a register with proper address mapping."""
         
         # Mapowanie kluczy do adresów - DOSTOSUJ DO TWOJEGO URZĄDZENIA
         REGISTER_ADDRESS_MAP = {
@@ -342,6 +343,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             finally:
                 client.close()
 
+        # Run the synchronous write in the executor
         success = await self.hass.async_add_executor_job(_write_sync)
         if success:
             await self.async_request_refresh()
