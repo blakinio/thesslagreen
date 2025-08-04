@@ -65,34 +65,27 @@ def stub_homeassistant():
 
 @pytest.fixture
 def coordinator():
-    const_module = importlib.import_module("custom_components.thessla_green_modbus.const")
     module = importlib.import_module("custom_components.thessla_green_modbus.coordinator")
-    ConfigEntry = sys.modules["homeassistant.config_entries"].ConfigEntry
-
-    entry = ConfigEntry({
-        const_module.CONF_HOST: "127.0.0.1",
-        const_module.CONF_PORT: 502,
-        const_module.CONF_SLAVE_ID: 1,
-    })
     hass = MagicMock()
-    coord = module.ThesslaGreenCoordinator(hass, entry)
-    coord._client = MagicMock()
+    coord = module.ThesslaGreenCoordinator(
+        hass=hass,
+        host="127.0.0.1",
+        port=502,
+        slave_id=1,
+    )
     return coord
 
 
 def test_async_write_invalid_register(coordinator):
+    coordinator.hass.async_add_executor_job = AsyncMock()
     result = asyncio.run(coordinator.async_write_register("invalid", 1))
     assert result is False
-    coordinator._client.write_register.assert_not_called()
+    coordinator.hass.async_add_executor_job.assert_not_called()
 
 
 def test_success_triggers_refresh(coordinator):
-    coordinator._client.connect.return_value = True
-    response = MagicMock()
-    response.isError.return_value = False
-    coordinator._client.write_register.return_value = response
-    coordinator.async_request_refresh = AsyncMock()
+    coordinator.hass.async_add_executor_job = AsyncMock(return_value=True)
 
-    result = asyncio.run(coordinator.async_write_register("target_temperature", 20))
+    result = asyncio.run(coordinator.async_write_register("mode", 1))
     assert result is True
-    coordinator.async_request_refresh.assert_awaited_once()
+    coordinator.hass.async_add_executor_job.assert_awaited_once()

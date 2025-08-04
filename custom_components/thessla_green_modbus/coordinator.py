@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Tuple
@@ -142,7 +141,7 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Optimized data update using batch reading."""
-        return await asyncio.get_event_loop().run_in_executor(None, self._update_data_sync)
+        return await self.hass.async_add_executor_job(self._update_data_sync)
 
     def _update_data_sync(self) -> Dict[str, Any]:
         """Synchronous optimized data update with fixed pymodbus API."""
@@ -309,7 +308,7 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
             finally:
                 client.close()
         
-        return await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+        return await self.hass.async_add_executor_job(_write_sync)
 
     def _process_register_value(self, key: str, raw_value: Any) -> Any:
         """Process raw register value based on key type."""
@@ -349,3 +348,7 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
         if self.data is None:
             return default
         return self.data.get(register_name, default)
+
+
+# Backwards compatibility
+ThesslaGreenCoordinator = ThesslaGreenDataCoordinator
