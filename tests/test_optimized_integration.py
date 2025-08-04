@@ -258,15 +258,15 @@ class TestThesslaGreenCoordinator:
     def test_temperature_value_processing(self, coordinator_data):
         """Test temperature value processing."""
         # Valid temperature (20.5°C -> raw value 205)
-        result = coordinator_data._process_input_register_value("outside_temperature", 205)
+        result = coordinator_data._process_register_value("outside_temperature", 205)
         assert result == 20.5
-        
+
         # Invalid temperature (sensor disconnected)
-        result = coordinator_data._process_input_register_value("outside_temperature", 0x8000)
+        result = coordinator_data._process_register_value("outside_temperature", 0x8000)
         assert result is None
-        
+
         # Negative temperature (-5.0°C -> raw value 65486)
-        result = coordinator_data._process_input_register_value("outside_temperature", 65486)
+        result = coordinator_data._process_register_value("outside_temperature", 65486)
         assert result == -5.0
 
     def test_register_grouping(self, coordinator_data):
@@ -278,18 +278,22 @@ class TestThesslaGreenCoordinator:
             "reg4": 0x0020,  # Gap of 14
             "reg5": 0x0021,
         }
-        
-        groups = coordinator_data._group_registers_by_range(registers, max_gap=15)
-        
+
+        groups = coordinator_data._create_consecutive_groups(registers)
+
         # Should create 2 groups
         assert len(groups) == 2
-        assert 0x0010 in groups
-        assert 0x0020 in groups
-        
-        # First group should have 3 registers
-        assert len(groups[0x0010]) == 3
-        # Second group should have 2 registers  
-        assert len(groups[0x0020]) == 2
+        start_addresses = [start for start, *_ in groups]
+        assert 0x0010 in start_addresses
+        assert 0x0020 in start_addresses
+
+        for start, count, key_map in groups:
+            if start == 0x0010:
+                assert count == 3
+                assert len(key_map) == 3
+            if start == 0x0020:
+                assert count == 2
+                assert len(key_map) == 2
 
 
 class TestThesslaGreenConfigFlow:
@@ -568,13 +572,13 @@ class TestPerformanceOptimizations:
         # Simulate many sequential registers
         test_registers = {f"reg_{i}": 0x1000 + i for i in range(50)}
         
-        groups = coordinator._group_registers_by_range(test_registers, max_gap=10)
-        
+        groups = coordinator._create_consecutive_groups(test_registers)
+
         # Should group into fewer batches than individual registers
         assert len(groups) < len(test_registers)
-        
+
         # Verify total registers are preserved
-        total_grouped = sum(len(regs) for regs in groups.values())
+        total_grouped = sum(len(key_map) for _, _, key_map in groups)
         assert total_grouped == len(test_registers)
 
     @pytest.mark.asyncio

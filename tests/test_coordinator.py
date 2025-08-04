@@ -6,8 +6,7 @@ import sys
  codex/adjust-test-fixture-for-thesslagreencoordinator
 import types
 import asyncio
-=======
- main
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -112,6 +111,28 @@ def coordinator():
     if Coordinator is None:
         Coordinator = getattr(module, "ThesslaGreenDataCoordinator")
 
+codex/rename-thesslagreendatacoordinator
+    entry = ConfigEntry({
+        "host": "127.0.0.1",
+        "port": 502,
+        "slave_id": 1,
+    })
+    hass = MagicMock()
+    coord = module.ThesslaGreenCoordinator(
+        hass=hass,
+        host=entry.data["host"],
+        port=entry.data["port"],
+        slave_id=entry.data["slave_id"],
+    )
+    client_mock = MagicMock()
+    patcher = patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient", return_value=client_mock)
+    patcher.start()
+    coord._client = client_mock
+    try:
+        yield coord
+    finally:
+        patcher.stop()
+=======
     hass = MagicMock()
     kwargs = {
         "hass": hass,
@@ -129,6 +150,7 @@ def coordinator():
  main
     return coord
 =======
+main
 
 @pytest.mark.asyncio
 async def test_async_write_success_triggers_refresh():
@@ -183,6 +205,10 @@ def test_success_triggers_refresh(coordinator):
 
         result = await coordinator.async_write_register("mode", 1) main
 
+ codex/rename-thesslagreendatacoordinator
+    result = asyncio.run(coordinator.async_write_register("mode", 1))
+=======
+ main
  main
     assert result is True
     coordinator.hass.async_add_executor_job.assert_awaited_once()

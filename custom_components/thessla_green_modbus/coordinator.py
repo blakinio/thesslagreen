@@ -13,8 +13,14 @@ from pymodbus.client import ModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
 
+ codex/rename-thesslagreendatacoordinator
+
+class ThesslaGreenCoordinator(DataUpdateCoordinator):
+    """Poprawiony coordinator z nowym API pymodbus 3.x"""
+=======
 class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
     """Coordinator handling Modbus data updates and register management."""
+ main
 
     def __init__(
         self,
@@ -25,9 +31,13 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
         scan_interval: int = 30,
         timeout: int = 10,
         retry: int = 3,
+ codex/rename-thesslagreendatacoordinator
+        available_registers: Dict[str, set] = None,
+=======
         available_registers: Dict[str, set] | None = None,
         device_info: Dict[str, Any] | None = None,
         capabilities: Dict[str, Any] | None = None,
+ main
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -171,27 +181,34 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
         return await self.hass.async_add_executor_job(self._update_data_sync)
 
     def _update_data_sync(self) -> Dict[str, Any]:
-        """Synchronous optimized data update with fixed pymodbus API."""
-        client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-        data = {}
-        
-        try:
-            if not client.connect():
-                raise UpdateFailed("Could not connect to device")
-            
-            # Read all register types with optimized batching
-            data.update(self._read_register_groups(client, "input_registers", self._read_input_registers))
-            data.update(self._read_register_groups(client, "holding_registers", self._read_holding_registers))
-            data.update(self._read_register_groups(client, "coil_registers", self._read_coils))
-            data.update(self._read_register_groups(client, "discrete_inputs", self._read_discrete_inputs))
-            
-        except Exception as exc:
-            _LOGGER.error("Data update failed: %s", exc)
-            raise UpdateFailed(f"Error communicating with device: {exc}") from exc
-        finally:
-            client.close()
-        
-        return data
+        """Synchronous optimized data update with retry support."""
+        last_exc: Exception | None = None
+
+        for attempt in range(1, self.retry + 1):
+            client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
+            try:
+                if not client.connect():
+                    raise UpdateFailed("Could not connect to device")
+
+                data: Dict[str, Any] = {}
+
+                # Read all register types with optimized batching
+                data.update(self._read_register_groups(client, "input_registers", self._read_input_registers))
+                data.update(self._read_register_groups(client, "holding_registers", self._read_holding_registers))
+                data.update(self._read_register_groups(client, "coil_registers", self._read_coils))
+                data.update(self._read_register_groups(client, "discrete_inputs", self._read_discrete_inputs))
+
+                return data
+
+            except Exception as exc:
+                last_exc = exc
+                _LOGGER.error(
+                    "Data update failed (attempt %d/%d): %s", attempt, self.retry, exc
+                )
+            finally:
+                client.close()
+
+        raise UpdateFailed(f"Error communicating with device: {last_exc}") from last_exc
 
     def _read_register_groups(self, client: ModbusTcpClient, register_type: str, read_func) -> Dict[str, Any]:
         """POPRAWIONE: Read register groups with optimized batch operations."""
@@ -336,6 +353,12 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
                 client.close()
 codex/replace-executor-calls-in-async-functions
         
+ codex/rename-thesslagreendatacoordinator
+        result = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+        if result:
+            await self.async_request_refresh()
+        return result
+=======
         return await self.hass.async_add_executor_job(_write_sync)
 =======
 
@@ -349,6 +372,7 @@ codex/replace-executor-calls-in-async-functions
             await self.async_request_refresh()
         return success
  main
+ main
 
     def _process_register_value(self, key: str, raw_value: Any) -> Any:
         """Process raw register value based on key type."""
@@ -358,9 +382,13 @@ codex/replace-executor-calls-in-async-functions
         
         # Temperature processing
         if "temperature" in key:
-            if raw_value == INVALID_TEMPERATURE or raw_value > 1000:
+            if raw_value == INVALID_TEMPERATURE:
                 return None
-            return round(raw_value / 10.0, 1) if raw_value > 100 else raw_value
+            if raw_value >= 0x8000:
+                raw_value -= 0x10000
+            if raw_value > 1000 or raw_value < -1000:
+                return None
+            return round(raw_value / 10.0, 1)
         
         # Flow processing
         elif "flow" in key or "flowrate" in key:
@@ -388,5 +416,4 @@ codex/replace-executor-calls-in-async-functions
         if self.data is None:
             return default
         return self.data.get(register_name, default)
-
 
