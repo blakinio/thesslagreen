@@ -97,6 +97,9 @@ INPUT_REGISTERS: Final[dict[str, int]] = {
     "exhaust_air_flow": 0x0115,             # Strumień powietrza wywiewu (m³/h)
     "dac_supply_voltage": 0x012A,           # Napięcie sterujące wentylatorem nawiewu (V)
     "dac_exhaust_voltage": 0x012B,          # Napięcie sterujące wentylatorem wywiewu (V)
+    
+    # System status registers (read-only)
+    "comfort_mode": 0x0130,                 # Status trybu komfort (0=nieaktywny, 1=grzanie, 2=chłodzenie)
 }
 
 # HOLDING REGISTERS (03 - READ HOLDING REGISTERS, 06 - WRITE SINGLE REGISTER)
@@ -114,40 +117,43 @@ HOLDING_REGISTERS: Final[dict[str, int]] = {
     "comfort_temperature": 0x1077,         # Temperatura komfortu (×0.1°C)
     "comfort_mode_panel": 0x1078,          # Tryb komfortu z panelu (0/1)
     
+    # Season and system modes
+    "season_mode": 0x1079,                 # Tryb sezonowy (0=lato, 1=zima)
+    
     # GWC and bypass control
-    "gwc_mode": 0x1079,                    # Tryb GWC (0=auto, 1=manual)
-    "gwc_off": 0x107A,                     # Dezaktywacja GWC (0=active, 1=off)
-    "bypass_mode": 0x107B,                 # Tryb bypass (0=auto, 1=manual)
-    "bypass_off": 0x107C,                  # Dezaktywacja bypass (0=active, 1=off)
+    "gwc_mode": 0x107A,                    # Tryb GWC (0=auto, 1=manual)
+    "gwc_off": 0x107B,                     # Dezaktywacja GWC (0=active, 1=off)
+    "bypass_mode": 0x107C,                 # Tryb bypass (0=auto, 1=manual)
+    "bypass_off": 0x107D,                  # Dezaktywacja bypass (0=active, 1=off)
     
     # Schedule and time settings
-    "schedule_period_1_start": 0x107D,      # Start okresu 1 (minuty od 00:00)
-    "schedule_period_1_end": 0x107E,        # Koniec okresu 1
-    "schedule_period_2_start": 0x107F,      # Start okresu 2
-    "schedule_period_2_end": 0x1080,        # Koniec okresu 2
-    "schedule_period_3_start": 0x1081,      # Start okresu 3
-    "schedule_period_3_end": 0x1082,        # Koniec okresu 3
+    "schedule_period_1_start": 0x107E,      # Start okresu 1 (minuty od 00:00)
+    "schedule_period_1_end": 0x107F,        # Koniec okresu 1
+    "schedule_period_2_start": 0x1080,      # Start okresu 2
+    "schedule_period_2_end": 0x1081,        # Koniec okresu 2
+    "schedule_period_3_start": 0x1082,      # Start okresu 3
+    "schedule_period_3_end": 0x1083,        # Koniec okresu 3
     
     # Air flow rates for different periods
-    "period_1_air_flow": 0x1083,           # Intensywność okresu 1 (%)
-    "period_2_air_flow": 0x1084,           # Intensywność okresu 2 (%)
-    "period_3_air_flow": 0x1085,           # Intensywność okresu 3 (%)
+    "period_1_air_flow": 0x1084,           # Intensywność okresu 1 (%)
+    "period_2_air_flow": 0x1085,           # Intensywność okresu 2 (%)
+    "period_3_air_flow": 0x1086,           # Intensywność okresu 3 (%)
     
     # Special function air flows
-    "hood_air_flow": 0x1086,               # Intensywność trybu OKAP (%)
-    "airing_air_flow": 0x1087,             # Intensywność trybu WIETRZENIE (%)
-    "fireplace_air_flow": 0x1088,          # Intensywność trybu KOMINEK (%)
-    "empty_house_air_flow": 0x1089,        # Intensywność trybu PUSTY DOM (%)
+    "hood_air_flow": 0x1087,               # Intensywność trybu OKAP (%)
+    "airing_air_flow": 0x1088,             # Intensywność trybu WIETRZENIE (%)
+    "fireplace_air_flow": 0x1089,          # Intensywność trybu KOMINEK (%)
+    "empty_house_air_flow": 0x108A,        # Intensywność trybu PUSTY DOM (%)
     
     # Timers for special functions
-    "hood_time": 0x108A,                   # Czas trybu OKAP (minuty)
-    "airing_time": 0x108B,                 # Czas trybu WIETRZENIE (minuty)
-    "fireplace_time": 0x108C,              # Czas trybu KOMINEK (minuty)
-    "empty_house_time": 0x108D,            # Czas trybu PUSTY DOM (minuty)
+    "hood_time": 0x108B,                   # Czas trybu OKAP (minuty)
+    "airing_time": 0x108C,                 # Czas trybu WIETRZENIE (minuty)
+    "fireplace_time": 0x108D,              # Czas trybu KOMINEK (minuty)
+    "empty_house_time": 0x108E,            # Czas trybu PUSTY DOM (minuty)
 }
 
-# Special mode values for special_mode register
-SPECIAL_MODES: Final[dict[str, int]] = {
+# Value mappings for special_mode register (used internally for writing)
+SPECIAL_MODE_VALUES: Final[dict[str, int]] = {
     "none": 0,                             # Brak funkcji specjalnej
     "hood": 1,                             # OKAP
     "fireplace": 2,                        # KOMINEK
@@ -157,11 +163,61 @@ SPECIAL_MODES: Final[dict[str, int]] = {
     "open_windows": 6,                     # OTWARTE OKNA
 }
 
-# Operating mode values for mode register
-OPERATING_MODES: Final[dict[str, int]] = {
+# Value mappings for mode register (used internally for writing)
+OPERATING_MODE_VALUES: Final[dict[str, int]] = {
     "auto": 0,                             # Tryb automatyczny
     "manual": 1,                           # Tryb manualny
     "temporary": 2,                        # Tryb tymczasowy
+}
+
+# Operating mode values for mode register
+OPERATING_MODES: Final[dict[int, str]] = {
+    0: "Automatyczny",
+    1: "Manualny", 
+    2: "Chwilowy"
+}
+
+# Season modes
+SEASON_MODES: Final[dict[int, str]] = {
+    0: "Lato",
+    1: "Zima"
+}
+
+# Special functions - VERIFIED against documentation (register 0x1075)
+SPECIAL_MODES: Final[dict[int, str]] = {
+    0: "Brak",
+    1: "OKAP (wejście sygnałowe)",
+    2: "KOMINEK (ręczne/wejście sygnałowe)",
+    3: "WIETRZENIE (przełącznik dzwonkowy)",
+    4: "WIETRZENIE (przełącznik ON/OFF)",
+    5: "H2O/WIETRZENIE (higrostat)",
+    6: "JP/WIETRZENIE (czujnik jakości)",
+    7: "WIETRZENIE (aktywacja ręczna)",
+    8: "WIETRZENIE (tryb automatyczny)",
+    9: "WIETRZENIE (tryb manualny)",
+    10: "OTWARTE OKNA (ręczne)",
+    11: "PUSTY DOM (ręczne/wejście sygnałowe)"
+}
+
+# GWC modes
+GWC_MODES: Final[dict[int, str]] = {
+    0: "GWC nieaktywny",
+    1: "Tryb zima",
+    2: "Tryb lato"
+}
+
+# Bypass modes
+BYPASS_MODES: Final[dict[int, str]] = {
+    0: "Bypass nieaktywny",
+    1: "Funkcja grzania (FreeHeating)",
+    2: "Funkcja chłodzenia (FreeCooling)"
+}
+
+# Comfort modes
+COMFORT_MODES: Final[dict[int, str]] = {
+    0: "KOMFORT nieaktywny",
+    1: "Funkcja grzania",
+    2: "Funkcja chłodzenia"
 }
 
 # Device capabilities detection patterns
