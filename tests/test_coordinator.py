@@ -3,7 +3,7 @@ import os
 import sys
 import types
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -70,14 +70,25 @@ def coordinator():
     ConfigEntry = sys.modules["homeassistant.config_entries"].ConfigEntry
 
     entry = ConfigEntry({
-        const_module.CONF_HOST: "127.0.0.1",
-        const_module.CONF_PORT: 502,
-        const_module.CONF_SLAVE_ID: 1,
+        "host": "127.0.0.1",
+        "port": 502,
+        "slave_id": 1,
     })
     hass = MagicMock()
-    coord = module.ThesslaGreenCoordinator(hass, entry)
-    coord._client = MagicMock()
-    return coord
+    coord = module.ThesslaGreenCoordinator(
+        hass=hass,
+        host=entry.data["host"],
+        port=entry.data["port"],
+        slave_id=entry.data["slave_id"],
+    )
+    client_mock = MagicMock()
+    patcher = patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient", return_value=client_mock)
+    patcher.start()
+    coord._client = client_mock
+    try:
+        yield coord
+    finally:
+        patcher.stop()
 
 
 def test_async_write_invalid_register(coordinator):
@@ -93,6 +104,6 @@ def test_success_triggers_refresh(coordinator):
     coordinator._client.write_register.return_value = response
     coordinator.async_request_refresh = AsyncMock()
 
-    result = asyncio.run(coordinator.async_write_register("target_temperature", 20))
+    result = asyncio.run(coordinator.async_write_register("mode", 1))
     assert result is True
     coordinator.async_request_refresh.assert_awaited_once()
