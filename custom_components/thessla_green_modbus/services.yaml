@@ -1,10 +1,6 @@
 set_mode:
   name: Ustaw tryb pracy
   description: Ustawia tryb pracy rekuperatora
-  target:
-    entity:
-      integration: thessla_green_modbus
-      domain: climate
   fields:
     mode:
       name: Tryb
@@ -13,32 +9,57 @@ set_mode:
       selector:
         select:
           options:
-            - "auto"
-            - "night"
-            - "boost"
-            - "away"
+            - auto
+            - manual
+            - temporary
 
-set_fan_speed:
-  name: Ustaw prędkość wentylatorów
-  description: Ustawia prędkość wentylatorów
-  target:
-    entity:
-      integration: thessla_green_modbus
-      domain: fan
+set_intensity:
+  name: Ustaw intensywność wentylacji
+  description: Ustawia intensywność wentylacji w procentach
   fields:
-    percentage:
-      name: Prędkość (%)
-      description: Prędkość wentylatorów w procentach
+    intensity:
+      name: Intensywność (%)
+      description: Intensywność przepływu powietrza (10-150)
       required: true
       selector:
         number:
-          min: 0
-          max: 100
+          min: 10
+          max: 150
           step: 1
 
-reset_filter_alarm:
-  name: Resetuj alarm filtra
-  description: Resetuje alarm wymiany filtra
-  target:
-    entity:
-      integration: thessla_green_modbus
+set_special_function:
+  name: Ustaw funkcję specjalną
+  description: Ustawia specjalną funkcję rekuperatora
+  fields:
+    function:
+      name: Funkcja
+      description: Specjalna funkcja rekuperatora
+      required: true
+      selector:
+        select:
+          options:
+            - none
+            - hood
+            - fireplace
+            - airing_manual
+            - airing_auto
+            - empty_house
+            - open_windows
+
+reset_alarms:
+  name: Resetuj alarmy
+  description: Resetuje alarmy ostrzeżeń lub błędów
+  fields:
+    alarm_type:
+      name: Typ alarmu
+      description: Typ alarmu do zresetowania
+      selector:
+        select:
+          options:
+            - warnings
+            - errors
+            - all
+
+device_rescan:
+  name: Ponownie skanuj urządzenie
+  description: Przeprowadza ponowne wykrywanie możliwości urządzenia
