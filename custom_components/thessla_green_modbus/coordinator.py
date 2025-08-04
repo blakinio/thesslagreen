@@ -336,7 +336,12 @@ class ThesslaGreenDataCoordinator(DataUpdateCoordinator):
             finally:
                 client.close()
 
+ codex/adjust-test-fixture-for-thesslagreencoordinator
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(None, _write_sync)
+=======
         success = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+ main
         if success:
             await self.async_request_refresh()
         return success
