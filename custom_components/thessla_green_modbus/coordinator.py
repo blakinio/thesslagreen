@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Tuple
@@ -342,7 +341,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                 return False
             finally:
                 client.close()
-        success = await asyncio.get_event_loop().run_in_executor(None, _write_sync)
+
+        success = await self.hass.async_add_executor_job(_write_sync)
         if success:
             await self.async_request_refresh()
         return success

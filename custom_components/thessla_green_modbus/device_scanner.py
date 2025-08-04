@@ -276,7 +276,7 @@ class ThesslaGreenDeviceScanner:
     async def scan_device(self) -> Dict[str, Any]:
         """Główna funkcja skanowania urządzenia"""
         import asyncio
-        return await asyncio.get_event_loop().run_in_executor(None, self._scan_device_sync)
+        return await asyncio.to_thread(self._scan_device_sync)
     
     def _scan_device_sync(self) -> Dict[str, Any]:
         """Synchroniczne skanowanie urządzenia"""
