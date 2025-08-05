@@ -62,7 +62,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=scan_interval),
         )
 
-    async def async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the device."""
         data: dict[str, Any] = {}
 
