@@ -78,12 +78,12 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
     def _compute_optimized_groups(self) -> Dict[str, List[Tuple[int, int, Dict[str, int]]]]:
         """Pre-compute optimized register groups for efficient batch reading."""
         groups = {}
-        
+
         # Mapowanie rejestrów do adresów - DOSTOSUJ DO TWOJEGO URZĄDZENIA
         register_mappings = {
             "input_registers": {
                 "outside_temperature": 0x0010,
-                "supply_temperature": 0x0011, 
+                "supply_temperature": 0x0011,
                 "exhaust_temperature": 0x0012,
                 "fpx_temperature": 0x0013,
                 "firmware_major": 0x0000,
@@ -111,39 +111,39 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                 "fire_alarm": 0x000F,
             }
         }
-        
+
         for reg_type, mapping in register_mappings.items():
             if reg_type not in self.available_registers:
                 continue
-                
+
             # Filter only available registers
             available_mapping = {
-                name: addr for name, addr in mapping.items() 
+                name: addr for name, addr in mapping.items()
                 if name in self.available_registers[reg_type]
             }
-            
+
             if not available_mapping:
                 groups[reg_type] = []
                 continue
-            
+
             # Group consecutive registers for batch reading
             groups[reg_type] = self._create_consecutive_groups(available_mapping)
-        
+
         return groups
 
     def _create_consecutive_groups(self, register_mapping: Dict[str, int]) -> List[Tuple[int, int, Dict[str, int]]]:
         """Create groups of consecutive registers for efficient batch reading."""
         if not register_mapping:
             return []
-        
+
         # Sort registers by address
         sorted_registers = sorted(register_mapping.items(), key=lambda x: x[1])
         groups = []
         current_group = [sorted_registers[0]]
-        
+
         for name, addr in sorted_registers[1:]:
             last_addr = current_group[-1][1]
-            
+
             # If address is consecutive (or close), add to current group
             if addr - last_addr <= 5:  # Allow small gaps
                 current_group.append((name, addr))
@@ -151,11 +151,11 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                 # Start new group
                 groups.append(self._group_to_read_params(current_group))
                 current_group = [(name, addr)]
-        
+
         # Add the last group
         if current_group:
             groups.append(self._group_to_read_params(current_group))
-        
+
         return groups
 
     def _group_to_read_params(self, group: List[Tuple[str, int]]) -> Tuple[int, int, Dict[str, int]]:
@@ -204,10 +204,10 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
     def _read_register_groups(self, client: ModbusTcpClient, register_type: str, read_func) -> Dict[str, Any]:
         """Read register groups with optimized batch operations."""
         data = {}
-        
+
         if register_type not in self._register_groups:
             return data
-        
+
         for start_addr, count, key_map in self._register_groups[register_type]:
             try:
                 # Call the provided read function using the modern pymodbus API
@@ -224,10 +224,10 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                         for name, offset in key_map.items():
                             if offset < len(result.bits):
                                 data[name] = result.bits[offset]
-                                
+
             except Exception as exc:
                 _LOGGER.debug("Failed to read %s group at 0x%04X: %s", register_type, start_addr, exc)
-        
+
         return data
 
     def _read_input_registers(self, client: ModbusTcpClient, address: int, count: int):
@@ -239,7 +239,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                 slave=self.slave_id
             )
         except Exception as exc:
-            _LOGGER.debug("Failed to read input registers 0x%04X-0x%04X: %s", 
+            _LOGGER.debug("Failed to read input registers 0x%04X-0x%04X: %s",
                          address, address + count - 1, exc)
             return None
 
@@ -252,7 +252,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                 slave=self.slave_id
             )
         except Exception as exc:
-            _LOGGER.debug("Failed to read holding registers 0x%04X-0x%04X: %s", 
+            _LOGGER.debug("Failed to read holding registers 0x%04X-0x%04X: %s",
                          address, address + count - 1, exc)
             return None
 
@@ -265,7 +265,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                 slave=self.slave_id
             )
         except Exception as exc:
-            _LOGGER.debug("Failed to read coils 0x%04X-0x%04X: %s", 
+            _LOGGER.debug("Failed to read coils 0x%04X-0x%04X: %s",
                          address, address + count - 1, exc)
             return None
 
@@ -278,13 +278,13 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                 slave=self.slave_id
             )
         except Exception as exc:
-            _LOGGER.debug("Failed to read discrete inputs 0x%04X-0x%04X: %s", 
+            _LOGGER.debug("Failed to read discrete inputs 0x%04X-0x%04X: %s",
                          address, address + count - 1, exc)
             return None
 
     async def async_write_register(self, key: str, value: int) -> bool:
         """Write a register with proper address mapping."""
-        
+
         # Mapowanie kluczy do adresów - DOSTOSUJ DO TWOJEGO URZĄDZENIA
         REGISTER_ADDRESS_MAP = {
             # Holding registers
@@ -294,20 +294,20 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             "air_flow_rate_manual": 0x1003,
             "air_flow_rate_override": 0x1004,
             "on_off_panel_mode": 0x1005,
-            
+
             # Coils (dla write_coil)
             "manual_mode": 0x0000,
             "fan_boost": 0x0001,
             "bypass_enable": 0x0002,
             "gwc_enable": 0x0003,
         }
-        
+
         if key not in REGISTER_ADDRESS_MAP:
             _LOGGER.error("Unknown register key: %s", key)
             return False
-            
+
         address = REGISTER_ADDRESS_MAP[key]
-        
+
         def _write_sync():
             client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
             try:
@@ -354,7 +354,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         # Invalid values
         INVALID_TEMPERATURE = 0x8000  # 32768
         INVALID_FLOW = 65535
-        
+
         # Temperature processing
         if "temperature" in key:
             if raw_value == INVALID_TEMPERATURE:
@@ -364,25 +364,25 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             if raw_value > 1000 or raw_value < -1000:
                 return None
             return round(raw_value / 10.0, 1)
-        
+
         # Flow processing
         elif "flow" in key or "flowrate" in key:
             if raw_value == INVALID_FLOW or raw_value > 10000:
                 return None
             return raw_value
-        
+
         # Percentage processing
         elif "percentage" in key:
             return max(0, min(100, raw_value))
-        
+
         # Voltage processing (DAC)
         elif "dac" in key:
             return round(raw_value / 1000.0, 2)  # Convert mV to V
-        
+
         # Boolean processing
         elif key in ["constant_flow_active", "gwc_mode", "bypass_mode", "on_off_panel_mode"]:
             return bool(raw_value)
-        
+
         # Default: return as-is
         return raw_value
 
@@ -391,4 +391,3 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         if self.data is None:
             return default
         return self.data.get(register_name, default)
-
