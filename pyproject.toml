@@ -24,6 +24,7 @@ classifiers = [
     "Topic :: Home Automation",
 ]
 requires-python = ">=3.10"
+# Core dependencies
 dependencies = [
     "homeassistant>=2025.7.0",
     "pymodbus>=3.5.0,<4.0.0",
