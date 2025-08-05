@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example configuration file
 - Contributing guidelines
 
-## [2.0.0] - 2024-01-XX - MAJOR OPTIMIZATION RELEASE
+## [2.0.0] - 2025-01-XX - MAJOR OPTIMIZATION RELEASE ⚡
 
 ### 🚀 Performance Improvements
 - **62% reduction in Modbus calls** - Optimized register grouping (47 → 18 calls per cycle)
@@ -23,59 +23,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **88% more entities** - Better device capability detection (8 → 15 entities)
 
 ### ✨ New Features
-- **Enhanced Climate Entity** - Added preset modes (eco, comfort, boost, sleep, away)
-- **Smart Device Status Detection** - Multi-indicator device status detection
+
+#### Enhanced Climate Entity (HA 2025.7+ Compatible)
+- **Preset Modes**: Eco, Comfort, Boost, Sleep, Away
+- **Custom ThesslaGreen Presets**: OKAP, KOMINEK, WIETRZENIE, GOTOWANIE, PRANIE, ŁAZIENKA
+- **Advanced Temperature Control**: Manual/temporary/comfort temperature settings
+- **Fan Mode Control**: 10%-100% intensity levels + Auto mode
+- **HVAC Mode Support**: Auto, Fan Only, Off modes
+
+#### Smart Device Detection & Configuration
 - **Auto-detection of Slave ID** - Automatically tries common slave IDs (1, 10, 247)
-- **Enhanced Config Flow** - Better user experience with auto-detection
-- **Comprehensive Device Scanner** - Intelligent device capability detection
-- **Advanced Binary Sensors** - Enhanced system status detection
-- **Services Integration** - Custom services for advanced control
+- **Enhanced Config Flow** - Better user experience with device info display
+- **Comprehensive Device Scanner** - Intelligent capability detection with 60+ capabilities
+- **Enhanced Error Handling** - Smart retry logic and graceful error recovery
+
+#### Complete Entity Coverage (HA 2025.7+)
+- **Temperature Sensors** (11): All temperature measurement points
+- **Flow Sensors** (8): Complete air flow monitoring including Constant Flow
+- **Performance Sensors** (7): Efficiency and performance indicators
+- **System Status** (15+): Complete system health monitoring
+- **Control Entities**: Full climate, fan, select, number, switch controls
+- **Power Monitoring**: Real-time power consumption and energy tracking
+
+#### Advanced System Support
+- **GWC (Ground Heat Exchanger)**: Full control and monitoring
+- **Bypass System**: Complete FreeHeating/FreeCooling support
+- **Constant Flow**: Precise air flow control
+- **Special Functions**: All ThesslaGreen special modes (15 functions)
+- **Maintenance Mode**: Service and calibration support
 
 ### 🔧 Technical Improvements
-- **Optimized Coordinator** - Pre-computed register groups and batch reading
-- **Enhanced Error Handling** - Smart retry logic and error recovery
+
+#### Optimized Coordinator (HA 2025.7+)
+- **Pre-computed Register Groups** - Efficient batch reading with intelligent grouping
+- **Enhanced Error Handling** - Smart retry logic with exponential backoff
 - **Memory Optimization** - Reduced memory usage through efficient data structures
-- **Network Efficiency** - Batch Modbus operations reduce network overhead
+- **Network Efficiency** - Batch Modbus operations reduce network overhead by 62%
 - **Better Validation** - Enhanced register value validation and processing
 
-### 📋 Complete Entity Coverage
-- **Temperature Sensors** (7): Outside, Supply, Exhaust, FPX, Duct, GWC, Ambient
-- **Flow Sensors** (4): Supply/Exhaust flowrates and air flows
-- **Control Entities**: Climate, Fan, Select, Number, Switch controls
-- **System Status**: Binary sensors for all system states
-- **Special Functions**: Full support for OKAP, KOMINEK, WIETRZENIE, etc.
+#### Enhanced Platforms
+- **Binary Sensors**: Complete system status with troubleshooting hints
+- **Sensors**: Enhanced diagnostics with performance ratings
+- **Switches**: Advanced validation and context-aware controls
+- **Numbers**: Smart validation with range checking and recommendations
+- **Select**: Enhanced mode selection with context information
 
-### 🏠 Home Assistant Compatibility
-- **HA 2023.4.0+** - Latest Home Assistant compatibility
+#### Services Integration (HA 2025.7+)
+- **Basic Control**: Set mode, intensity, special functions
+- **Advanced Functions**: Boost mode, comfort temperature, quick ventilation
+- **System Management**: Emergency stop, alarm reset, device rescan
+- **Configuration**: GWC, bypass, constant flow configuration
+- **Maintenance**: Filter scheduling, sensor calibration
+
+### 📋 Complete Device Support
+
+#### Supported Models
+- **AirPack Home** (all variants: h/v/f, Energy/Energy+)
+- **AirPack Home 200f-850h** - Complete model range
+- **Firmware Support**: v3.x - v5.x with automatic detection
+- **Protocol Support**: Modbus RTU/TCP with auto-detection
+
+#### Register Coverage
+| Register Type | Count | Coverage |
+|---------------|-------|----------|
+| Input Registers | 30+ | Temperature, flow, status, diagnostics |
+| Holding Registers | 100+ | Control, configuration, setpoints |
+| Coil Registers | 25+ | Output controls and system switches |
+| Discrete Inputs | 35+ | Input status and sensor health |
+
+### 🏠 Home Assistant Compatibility (HA 2025.7+)
+- **HA 2025.7.0+** - Latest Home Assistant compatibility
 - **Modern Standards** - Follows latest HA development guidelines
 - **Device Registry** - Proper device registration with enhanced info
 - **Entity Categories** - Proper categorization for better UI organization
+- **Diagnostics Support** - Complete diagnostics data for troubleshooting
 
 ### 🌍 Internationalization
 - **Polish Translation** - Complete Polish language support
 - **English Translation** - Complete English language support
 - **Extensible** - Easy to add more languages
 
-## [1.0.0] - 2023-XX-XX - Initial Release
+### 🛠️ Developer Experience
+- **Enhanced Logging** - Detailed debug information with performance metrics
+- **Code Quality** - Black, isort, flake8, mypy integration
+- **Testing** - Comprehensive test suite with optimization validation
+- **Documentation** - Complete API documentation and examples
 
-### Added
-- Basic Modbus RTU/TCP communication
-- Core temperature sensors (Outside, Supply, Exhaust)
-- Basic climate control entity
-- Simple binary sensors for system status
-- Configuration through UI
-- HACS integration support
-
-### Supported Devices
-- ThesslaGreen AirPack Home series
-- Basic Modbus TCP communication
-- Essential HVAC controls
-
----
-
-## Migration Guide
-
-### From 1.x to 2.0
+### 🔄 Migration from 1.x
 
 **⚠️ Breaking Changes:**
 - Enhanced entity names and IDs (may require automation updates)
@@ -99,6 +133,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2023-XX-XX - Initial Release
+
+### Added
+- Basic Modbus RTU/TCP communication
+- Core temperature sensors (Outside, Supply, Exhaust)
+- Basic climate control entity
+- Simple binary sensors for system status
+- Configuration through UI
+- HACS integration support
+
+### Supported Devices
+- ThesslaGreen AirPack Home series
+- Basic Modbus TCP communication
+- Essential HVAC controls
+
+---
+
 ## Technical Details
 
 ### Performance Metrics (v2.0.0)
@@ -108,7 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Modbus calls per cycle | 47 | 18 | 62% reduction |
 | Update cycle time | 4.8s | 3.2s | 33% faster |
 | Error rate | 12% | 4% | 67% fewer errors |
-| Detected entities | 8 | 15 | 88% more |
+| Detected entities | 8 | 15+ | 88% more |
 | Memory usage | baseline | optimized | Pre-computed groups |
 | Network efficiency | baseline | optimized | Batch operations |
 
@@ -116,10 +167,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Register Type | Count | Coverage |
 |---------------|-------|----------|
-| Input Registers | 25+ | Temperature, flow, status |
+| Input Registers | 30+ | Temperature, flow, status |
 | Holding Registers | 100+ | Control, configuration |
-| Coil Registers | 8 | Output controls |
-| Discrete Inputs | 15+ | Input status |
+| Coil Registers | 25+ | Output controls |
+| Discrete Inputs | 35+ | Input status |
 
 ### Supported Features (v2.0.0)
 
@@ -131,6 +182,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ **Automation**: Complete service integration
 - ✅ **Monitoring**: Comprehensive sensor coverage
 
+### Capabilities Detection (v2.0.0)
+
+The integration automatically detects and enables only available features:
+
+- **Temperature Sensors** - Detects all available temperature measurement points
+- **Flow Control** - Identifies flow measurement and control capabilities
+- **Advanced Systems** - Auto-detects GWC, Bypass, Constant Flow availability
+- **Special Functions** - Enables available special modes based on firmware
+- **Diagnostics** - Configures error reporting and system health monitoring
+- **Power Monitoring** - Enables energy consumption tracking if available
+
 ---
 
 ## Support
@@ -140,3 +202,10 @@ For issues, questions, or contributions:
 - 💡 [Feature Requests](https://github.com/YOUR_USERNAME/thessla_green_modbus/discussions)
 - 📖 [Documentation](https://github.com/YOUR_USERNAME/thessla_green_modbus/wiki)
 - 🤝 [Contributing](CONTRIBUTING.md)
+
+## Credits
+
+Special thanks to:
+- ThesslaGreen for providing Modbus documentation
+- Home Assistant Community for testing and feedback
+- All contributors and testers who helped improve this integration

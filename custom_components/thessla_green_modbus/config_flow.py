@@ -1,4 +1,4 @@
-"""Optimized config flow for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
+"""Enhanced config flow for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
 from __future__ import annotations
 
 import asyncio
@@ -94,15 +94,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     device_data = device_info.get("device_info", {})
     device_name = device_data.get("device_name", "ThesslaGreen")
     firmware = device_data.get("firmware", "Unknown")
-    capabilities = device_info.get("capabilities", set())
+    capabilities = device_info.get("capabilities", {})
     
-    # Count detected capabilities - NAPRAWKA dla set/dict compatibility
-    if isinstance(capabilities, dict):
-        active_capabilities = len([k for k, v in capabilities.items() if v])
-    elif isinstance(capabilities, set):
-        active_capabilities = len(capabilities)
-    else:
-        active_capabilities = 0
+    # Count detected capabilities
+    active_capabilities = len([k for k, v in capabilities.items() if v])
     
     _LOGGER.info(
         "Device validation successful: %s (firmware %s, %d capabilities, slave_id=%s)",
@@ -124,14 +119,6 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     }
 
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
-
-
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ThesslaGreen Modbus - HA 2025.7+ Compatible."""
 
@@ -146,132 +133,62 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step - ENHANCED with auto-detection."""
-        errors: dict[str, str] = {}
+        if user_input is None:
+            return self.async_show_form(
+                step_id="user",
+                data_schema=STEP_USER_DATA_SCHEMA,
+                description_placeholders={
+                    "default_port": str(DEFAULT_PORT),
+                    "default_slave_id": str(DEFAULT_SLAVE_ID),
+                },
+            )
 
-        if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-                
-                # Use auto-detected slave_id if different from requested
-                if info["detected_slave_id"] != user_input[CONF_SLAVE_ID]:
-                    user_input[CONF_SLAVE_ID] = info["detected_slave_id"]
-                    _LOGGER.info("Auto-corrected slave_id to %s", info["detected_slave_id"])
+        errors = {}
 
-                # Set unique ID to prevent duplicates
-                unique_id = f"{user_input[CONF_HOST]}_{user_input[CONF_SLAVE_ID]}"
-                await self.async_set_unique_id(unique_id)
-                self._abort_if_unique_id_configured()
+        try:
+            # Enhanced validation with detailed error handling
+            info = await validate_input(self.hass, user_input)
+            
+            # Store discovered information for better user experience
+            self.discovered_info = info
+            self._detected_slave_id = info["detected_slave_id"]
+            
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
+        except InvalidAuth:
+            errors["base"] = "invalid_auth"
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception during validation")
+            errors["base"] = "unknown"
 
-                return self.async_create_entry(
-                    title=info["title"],
-                    data=user_input,
-                    description_placeholders={
-                        "device_name": info["device_name"],
-                        "firmware": info["firmware"],
-                        "capabilities": str(info["capabilities_count"]),
-                    },
-                )
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+        if errors:
+            return self.async_show_form(
+                step_id="user", 
+                data_schema=STEP_USER_DATA_SCHEMA, 
+                errors=errors,
+                description_placeholders={
+                    "default_port": str(DEFAULT_PORT),
+                    "default_slave_id": str(DEFAULT_SLAVE_ID),
+                },
+            )
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
-            errors=errors,
-            description_placeholders={
-                "default_host": "192.168.1.100",
-                "default_port": str(DEFAULT_PORT),
-                "default_slave_id": str(DEFAULT_SLAVE_ID),
-            },
-        )
-
-    async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle reconfiguration of existing entry - NEW HA 2025.7+ Feature."""
-        errors: dict[str, str] = {}
-        
-        if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-                
-                # Update the config entry
-                return self.async_update_reload_and_abort(
-                    self._get_reconfigure_entry(),
-                    data=user_input,
-                    reason="reconfigure_successful",
-                )
-                
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception during reconfiguration")
-                errors["base"] = "unknown"
-
-        # Pre-fill form with current values
-        config_entry = self._get_reconfigure_entry()
-        suggested_values = config_entry.data.copy()
-        
-        reconfigure_schema = vol.Schema({
-            vol.Required(CONF_HOST, default=suggested_values.get(CONF_HOST)): cv.string,
-            vol.Optional(CONF_PORT, default=suggested_values.get(CONF_PORT, DEFAULT_PORT)): vol.All(
-                int, vol.Range(min=1, max=65535)
-            ),
-            vol.Optional(CONF_SLAVE_ID, default=suggested_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)): vol.All(
-                int, vol.Range(min=1, max=247)
-            ),
-        })
-
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=reconfigure_schema,
-            errors=errors,
-        )
-
-    async def async_step_dhcp(self, discovery_info) -> FlowResult:
-        """Handle DHCP discovery - NEW HA 2025.7+ Feature."""
-        _LOGGER.debug("DHCP discovery: %s", discovery_info)
-        
-        host = discovery_info.ip
-        hostname = discovery_info.hostname
-        
-        # Check if this looks like a ThesslaGreen device
-        if not hostname or "thesslagreen" not in hostname.lower():
-            return self.async_abort(reason="not_thesslagreen_device")
-        
-        # Set unique ID to prevent duplicates
-        unique_id = f"{host}_dhcp_discovered"
+        # Enhanced unique ID with auto-detected slave ID
+        unique_id = f"{user_input[CONF_HOST]}_{self._detected_slave_id}"
         await self.async_set_unique_id(unique_id)
-        self._abort_if_unique_id_configured({CONF_HOST: host})
-        
-        # Store discovered info for later use
-        self.discovered_info = {
-            CONF_HOST: host,
-            CONF_PORT: DEFAULT_PORT,
-            CONF_SLAVE_ID: DEFAULT_SLAVE_ID,
-            "hostname": hostname,
+        self._abort_if_unique_id_configured()
+
+        # Enhanced config entry data with discovered information
+        config_data = {
+            CONF_HOST: user_input[CONF_HOST],
+            CONF_PORT: user_input[CONF_PORT],
+            CONF_SLAVE_ID: self._detected_slave_id,  # Use auto-detected slave ID
+            CONF_NAME: user_input.get(CONF_NAME, DEFAULT_NAME),
         }
-        
-        return await self.async_step_discovery_confirm()
 
-    async def async_step_discovery_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Confirm discovery via DHCP."""
-        if user_input is not None:
-            return await self.async_step_user(self.discovered_info)
-
-        return self.async_show_form(
-            step_id="discovery_confirm",
-            description_placeholders={
-                "host": self.discovered_info[CONF_HOST],
-                "hostname": self.discovered_info.get("hostname", "Unknown"),
-            },
+        return self.async_create_entry(
+            title=self.discovered_info["title"], 
+            data=config_data,
+            description=f"Detected {self.discovered_info['capabilities_count']} capabilities"
         )
 
     @staticmethod
@@ -279,73 +196,58 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
-        """Get the options flow for this handler."""
+        """Create the options flow - ENHANCED with more options."""
         return OptionsFlowHandler(config_entry)
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for ThesslaGreen Modbus - ENHANCED."""
+    """Enhanced options flow handler - HA 2025.7+ Compatible."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self._config_entry = config_entry
+        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the options - ENHANCED with device rescan."""
+        """Manage the enhanced options."""
         if user_input is not None:
-            # Check if user requested device rescan
-            if user_input.pop("rescan_device", False):
-                return await self.async_step_rescan()
-            
             return self.async_create_entry(title="", data=user_input)
 
-        current_options = self._config_entry.options
+        # Enhanced options schema with current values
+        current_options = self.config_entry.options
         
-        options_schema = vol.Schema({
+        schema = vol.Schema({
             vol.Optional(
                 CONF_SCAN_INTERVAL,
-                default=current_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                default=current_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
             ): vol.All(int, vol.Range(min=10, max=300)),
             vol.Optional(
                 CONF_TIMEOUT,
-                default=current_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
+                default=current_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
             ): vol.All(int, vol.Range(min=5, max=60)),
             vol.Optional(
                 CONF_RETRY,
-                default=current_options.get(CONF_RETRY, DEFAULT_RETRY),
+                default=current_options.get(CONF_RETRY, DEFAULT_RETRY)
             ): vol.All(int, vol.Range(min=1, max=5)),
-            vol.Optional("rescan_device", default=False): bool,
         })
 
         return self.async_show_form(
             step_id="init",
-            data_schema=options_schema,
+            data_schema=schema,
             description_placeholders={
-                "device_name": self._config_entry.title,
+                "device_name": self.config_entry.data.get(CONF_NAME, "ThesslaGreen"),
+                "host": self.config_entry.data[CONF_HOST],
                 "current_scan_interval": str(current_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                "current_timeout": str(current_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)),
+                "current_retry": str(current_options.get(CONF_RETRY, DEFAULT_RETRY)),
             },
         )
 
-    async def async_step_rescan(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle device rescan."""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
 
-        _LOGGER.info("Starting device rescan for %s", self._config_entry.title)
-        
-        # Trigger device rescan service
-        hass = self.hass
-        await hass.services.async_call(
-            DOMAIN, "device_rescan", service_data={}, blocking=True
-        )
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
 
-        return self.async_show_form(
-            step_id="rescan",
-            description_placeholders={
-                "device_name": self._config_entry.title,
-            },
-        )
+
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate there is invalid auth."""
