@@ -1,7 +1,7 @@
 # ThesslaGreen Modbus Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/YOUR_USERNAME/thessla_green_modbus.svg)](https://github.com/YOUR_USERNAME/thessla_green_modbus/releases)
+[![GitHub release](https://img.shields.io/github/release/thesslagreen/thessla-green-modbus-ha.svg)](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
 
 Inteligentna integracja dla Home Assistant umożliwiająca kontrolę rekuperatorów ThesslaGreen AirPack przez protokół Modbus RTU/TCP.
 
@@ -21,7 +21,7 @@ Inteligentna integracja dla Home Assistant umożliwiająca kontrolę rekuperator
 
 1. Dodaj to repozytorium jako custom repository w HACS:
    - HACS → Integrations → ⋮ → Custom repositories
-   - URL: `https://github.com/YOUR_USERNAME/thessla_green_modbus`
+   - URL: `https://github.com/thesslagreen/thessla-green-modbus-ha`
    - Category: Integration
 
 2. Znajdź "ThesslaGreen Modbus" w HACS i zainstaluj
@@ -30,7 +30,7 @@ Inteligentna integracja dla Home Assistant umożliwiająca kontrolę rekuperator
 
 ### Manualna instalacja
 
-1. Pobierz najnowszą wersję z [Releases](https://github.com/YOUR_USERNAME/thessla_green_modbus/releases)
+1. Pobierz najnowszą wersję z [Releases](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
 2. Wypakuj do `custom_components/thessla_green_modbus/`
 3. Zrestartuj Home Assistant
 
@@ -151,9 +151,9 @@ logger:
 
 ## 🤝 Wsparcie
 
-- [Issues](https://github.com/YOUR_USERNAME/thessla_green_modbus/issues)
-- [Discussions](https://github.com/YOUR_USERNAME/thessla_green_modbus/discussions)
-- [Wiki](https://github.com/YOUR_USERNAME/thessla_green_modbus/wiki)
+- [Issues](https://github.com/thesslagreen/thessla-green-modbus-ha/issues)
+- [Discussions](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
+- [Wiki](https://github.com/thesslagreen/thessla-green-modbus-ha/wiki)
 
 ## 📄 Licencja
 

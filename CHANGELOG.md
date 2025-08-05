@@ -198,9 +198,9 @@ The integration automatically detects and enables only available features:
 ## Support
 
 For issues, questions, or contributions:
-- 🐛 [Bug Reports](https://github.com/YOUR_USERNAME/thessla_green_modbus/issues)
-- 💡 [Feature Requests](https://github.com/YOUR_USERNAME/thessla_green_modbus/discussions)
-- 📖 [Documentation](https://github.com/YOUR_USERNAME/thessla_green_modbus/wiki)
+- 🐛 [Bug Reports](https://github.com/thesslagreen/thessla-green-modbus-ha/issues)
+- 💡 [Feature Requests](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
+- 📖 [Documentation](https://github.com/thesslagreen/thessla-green-modbus-ha/wiki)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
 ## Credits
