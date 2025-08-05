@@ -47,10 +47,10 @@ docs = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/YOUR_USERNAME/thessla_green_modbus"
-"Bug Reports" = "https://github.com/YOUR_USERNAME/thessla_green_modbus/issues"
-"Source" = "https://github.com/YOUR_USERNAME/thessla_green_modbus"
-"Documentation" = "https://github.com/YOUR_USERNAME/thessla_green_modbus/wiki"
+"Homepage" = "https://github.com/thesslagreen/thessla-green-modbus-ha"
+"Bug Reports" = "https://github.com/thesslagreen/thessla-green-modbus-ha/issues"
+"Source" = "https://github.com/thesslagreen/thessla-green-modbus-ha"
+"Documentation" = "https://github.com/thesslagreen/thessla-green-modbus-ha/wiki"
 
 [tool.setuptools.packages.find]
 where = ["."]

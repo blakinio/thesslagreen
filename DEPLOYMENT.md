@@ -19,7 +19,7 @@
 1. **Dodaj repozytorium custom w HACS:**
    - Otwórz HACS → Integrations
    - Kliknij ⋮ → Custom repositories
-   - URL: `https://github.com/YOUR_USERNAME/thessla_green_modbus`
+   - URL: `https://github.com/thesslagreen/thessla-green-modbus-ha`
    - Category: Integration
    - Kliknij ADD
 
@@ -33,7 +33,7 @@
 1. **Pobierz pliki:**
    ```bash
    cd /config
-   git clone https://github.com/YOUR_USERNAME/thessla_green_modbus.git
+   git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
    ```
 
 2. **Skopiuj do custom_components:**
@@ -331,9 +331,9 @@ title: Temperatury
 
 ## 📞 Wsparcie
 
-- **GitHub Issues**: [Link do Issues]
-- **Community Forum**: [Link do Forum]
-- **Wiki**: [Link do Wiki]
+- **GitHub Issues**: https://github.com/thesslagreen/thessla-green-modbus-ha/issues
+- **Community Forum**: https://github.com/thesslagreen/thessla-green-modbus-ha/discussions
+- **Wiki**: https://github.com/thesslagreen/thessla-green-modbus-ha/wiki
 
 ## ⚠️ Uwagi Bezpieczeństwa
 

@@ -25,7 +25,7 @@ Before starting, make sure you have:
 ```
 1. Open HACS → Integrations
 2. Click ⋮ → Custom repositories  
-3. Add: https://github.com/YOUR_USERNAME/thessla_green_modbus
+3. Add: https://github.com/thesslagreen/thessla-green-modbus-ha
 4. Category: Integration
 5. Click ADD → Install "ThesslaGreen Modbus"
 6. Restart Home Assistant
@@ -223,8 +223,8 @@ automation:
 
 - 📖 **[Full Documentation](README.md)** - Complete setup guide
 - 🔧 **[Advanced Configuration](DEPLOYMENT.md)** - Detailed configuration options
-- 🤝 **[Get Help](https://github.com/YOUR_USERNAME/thessla_green_modbus/discussions)** - Community support
-- 🐛 **[Report Issues](https://github.com/YOUR_USERNAME/thessla_green_modbus/issues)** - Bug reports
+- 🤝 **[Get Help](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)** - Community support
+- 🐛 **[Report Issues](https://github.com/thesslagreen/thessla-green-modbus-ha/issues)** - Bug reports
 
 ---
 
