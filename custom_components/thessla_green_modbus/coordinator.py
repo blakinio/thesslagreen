@@ -1,537 +1,420 @@
-"""Enhanced coordinator for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
+"""Enhanced device scanner for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
 from typing import Any, Dict, Set
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
 from .const import (
     COIL_REGISTERS,
     DISCRETE_INPUTS,
-    DOMAIN,
     HOLDING_REGISTERS,
     INPUT_REGISTERS,
-    REGISTER_GROUPS,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ThesslaGreenCoordinator(DataUpdateCoordinator):
-    """Enhanced coordinator for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
+class ThesslaGreenDeviceScanner:
+    """Enhanced device scanner for capability detection - HA 2025.7+ Compatible."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        host: str,
-        port: int,
-        slave_id: int,
-        scan_interval: int,
-        timeout: int,
-        retry: int,
-        available_registers: Dict[str, Set[str]],
-    ) -> None:
-        """Initialize the enhanced coordinator."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=DOMAIN,
-            update_interval=timedelta(seconds=scan_interval),
-        )
-        
+    def __init__(self, host: str, port: int, slave_id: int) -> None:
+        """Initialize the enhanced device scanner."""
         self.host = host
         self.port = port
         self.slave_id = slave_id
-        self.timeout = timeout
-        self.retry = retry
-        self.available_registers = available_registers
         
-        # Enhanced optimization features (HA 2025.7+)
-        self._consecutive_groups: Dict[str, list] = {}
-        self._failed_registers: Set[str] = set()
-        self._last_successful_read: Dict[str, float] = {}
-        self._read_cache: Dict[str, Any] = {}
-        self._batch_read_enabled = True
-        
-        # Performance metrics
-        self._read_stats = {
-            "total_reads": 0,
+        # Enhanced scanning statistics
+        self._scan_stats = {
+            "total_attempts": 0,
             "successful_reads": 0,
             "failed_reads": 0,
-            "average_read_time": 0.0,
-            "last_update_time": 0.0,
+            "timeouts": 0,
+            "errors": 0,
         }
         
-        # Pre-compute consecutive register groups for batch reading
-        self._initialize_register_groups()
+        _LOGGER.debug("Initialized device scanner for %s:%s (slave_id=%s)", host, port, slave_id)
+
+    async def scan_device(self) -> Dict[str, Any]:
+        """Main device scanning function with enhanced capability detection."""
+        return await asyncio.to_thread(self._scan_device_sync)
+    
+    def _scan_device_sync(self) -> Dict[str, Any]:
+        """Synchronous device scanning with comprehensive capability detection."""
+        client = ModbusTcpClient(host=self.host, port=self.port, timeout=10, retries=3)
         
-        _LOGGER.info(
-            "Enhanced coordinator initialized: %s:%s (slave_id=%s, interval=%ss, timeout=%ss)",
-            host, port, slave_id, scan_interval, timeout
-        )
+        result = {
+            "available_registers": {
+                "input_registers": set(),
+                "holding_registers": set(), 
+                "coil_registers": set(),
+                "discrete_inputs": set()
+            },
+            "device_info": {},
+            "capabilities": {},
+            "scan_stats": {}
+        }
+        
+        try:
+            if not client.connect():
+                raise Exception(f"Failed to connect to {self.host}:{self.port}")
+            
+            _LOGGER.info("Connected to %s:%s, starting enhanced capability scan...", self.host, self.port)
+            
+            # Enhanced parallel scanning of all register types
+            result["available_registers"]["input_registers"] = self._scan_input_registers_batch(client)
+            result["available_registers"]["holding_registers"] = self._scan_holding_registers_batch(client)
+            result["available_registers"]["coil_registers"] = self._scan_coil_registers_batch(client)
+            result["available_registers"]["discrete_inputs"] = self._scan_discrete_inputs_batch(client)
+            
+            # Extract enhanced device information
+            result["device_info"] = self._extract_device_info_enhanced(client)
+            
+            # Analyze capabilities based on available registers
+            result["capabilities"] = self._analyze_capabilities_enhanced(result["available_registers"])
+            
+            # Calculate comprehensive scan statistics
+            total_found = sum(len(regs) for regs in result["available_registers"].values())
+            success_rate = (self._scan_stats["successful_reads"] / max(self._scan_stats["total_attempts"], 1)) * 100
+            
+            result["scan_stats"] = {
+                **self._scan_stats,
+                "total_registers_found": total_found,
+                "success_rate": success_rate,
+                "scan_duration": "optimized_batch_scanning"
+            }
+            
+            _LOGGER.info(
+                "Enhanced scan completed: %d registers found (%.1f%% success rate), %d capabilities detected",
+                total_found, success_rate, len([k for k, v in result["capabilities"].items() if v])
+            )
+            
+        except Exception as exc:
+            _LOGGER.error("Enhanced device scan failed: %s", exc)
+            self._scan_stats["errors"] += 1
+            raise
+        finally:
+            client.close()
+        
+        return result
 
-    def _initialize_register_groups(self) -> None:
-        """Pre-compute consecutive register groups for optimized batch reading."""
-        for reg_type in ["input_registers", "holding_registers", "coil_registers", "discrete_inputs"]:
-            available = self.available_registers.get(reg_type, set())
-            if not available:
-                continue
+    def _scan_input_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
+        """Enhanced batch scanning of input registers with intelligent grouping."""
+        available_registers = set()
+        
+        # Group registers by address ranges for efficient batch reading
+        register_groups = self._create_register_groups(INPUT_REGISTERS)
+        
+        for start_addr, count, register_keys in register_groups:
+            try:
+                self._scan_stats["total_attempts"] += 1
+                response = client.read_input_registers(address=start_addr, count=count, unit=self.slave_id)
                 
-            register_map = {
-                "input_registers": INPUT_REGISTERS,
-                "holding_registers": HOLDING_REGISTERS,
-                "coil_registers": COIL_REGISTERS,
-                "discrete_inputs": DISCRETE_INPUTS,
-            }[reg_type]
-            
-            # Get addresses for available registers
-            addresses = {key: addr for key, addr in register_map.items() if key in available}
-            self._consecutive_groups[reg_type] = self._create_consecutive_groups(addresses)
-            
-        total_groups = sum(len(groups) for groups in self._consecutive_groups.values())
-        _LOGGER.debug("Created %d optimized register groups for batch reading", total_groups)
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    # All registers in this batch are available
+                    available_registers.update(register_keys)
+                    _LOGGER.debug("Input register batch %s-%s: %d registers found", 
+                                start_addr, start_addr + count - 1, len(register_keys))
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    _LOGGER.debug("Input register batch %s-%s failed: %s", 
+                                start_addr, start_addr + count - 1, response)
+                    
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                _LOGGER.debug("Input register batch %s failed: %s", start_addr, exc)
+                continue
+        
+        _LOGGER.info("Input registers scan: %d registers found", len(available_registers))
+        return available_registers
 
-    def _create_consecutive_groups(self, registers: Dict[str, int]) -> list:
-        """Create consecutive register groups for batch reading (max 125 registers per group)."""
-        if not registers:
+    def _scan_holding_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
+        """Enhanced batch scanning of holding registers."""
+        available_registers = set()
+        
+        register_groups = self._create_register_groups(HOLDING_REGISTERS)
+        
+        for start_addr, count, register_keys in register_groups:
+            try:
+                self._scan_stats["total_attempts"] += 1
+                response = client.read_holding_registers(address=start_addr, count=count, unit=self.slave_id)
+                
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    available_registers.update(register_keys)
+                    _LOGGER.debug("Holding register batch %s-%s: %d registers found", 
+                                start_addr, start_addr + count - 1, len(register_keys))
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                _LOGGER.debug("Holding register batch %s failed: %s", start_addr, exc)
+                continue
+        
+        _LOGGER.info("Holding registers scan: %d registers found", len(available_registers))
+        return available_registers
+
+    def _scan_coil_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
+        """Enhanced batch scanning of coil registers."""
+        available_registers = set()
+        
+        register_groups = self._create_register_groups(COIL_REGISTERS)
+        
+        for start_addr, count, register_keys in register_groups:
+            try:
+                self._scan_stats["total_attempts"] += 1
+                response = client.read_coils(address=start_addr, count=count, unit=self.slave_id)
+                
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    available_registers.update(register_keys)
+                    _LOGGER.debug("Coil register batch %s-%s: %d registers found", 
+                                start_addr, start_addr + count - 1, len(register_keys))
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                _LOGGER.debug("Coil register batch %s failed: %s", start_addr, exc)
+                continue
+        
+        _LOGGER.info("Coil registers scan: %d registers found", len(available_registers))
+        return available_registers
+
+    def _scan_discrete_inputs_batch(self, client: ModbusTcpClient) -> Set[str]:
+        """Enhanced batch scanning of discrete inputs."""
+        available_registers = set()
+        
+        register_groups = self._create_register_groups(DISCRETE_INPUTS)
+        
+        for start_addr, count, register_keys in register_groups:
+            try:
+                self._scan_stats["total_attempts"] += 1
+                response = client.read_discrete_inputs(address=start_addr, count=count, unit=self.slave_id)
+                
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    available_registers.update(register_keys)
+                    _LOGGER.debug("Discrete input batch %s-%s: %d registers found", 
+                                start_addr, start_addr + count - 1, len(register_keys))
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                _LOGGER.debug("Discrete input batch %s failed: %s", start_addr, exc)
+                continue
+        
+        _LOGGER.info("Discrete inputs scan: %d registers found", len(available_registers))
+        return available_registers
+
+    def _create_register_groups(self, register_map: Dict[str, int]) -> list:
+        """Create optimized register groups for batch reading."""
+        if not register_map:
             return []
             
-        # Sort by address
-        sorted_regs = sorted(registers.items(), key=lambda x: x[1])
+        # Sort registers by address
+        sorted_registers = sorted(register_map.items(), key=lambda x: x[1])
         groups = []
+        
         current_group_start = None
         current_group_keys = []
         current_group_start_addr = None
+        max_gap = 10  # Maximum gap between registers to include in same batch
+        max_batch_size = 125  # Modbus maximum batch size
         
-        for key, addr in sorted_regs:
+        for key, addr in sorted_registers:
             if current_group_start is None:
                 # Start new group
                 current_group_start = key
                 current_group_start_addr = addr
                 current_group_keys = [key]
-            elif (addr == current_group_start_addr + len(current_group_keys) and 
-                  len(current_group_keys) < 125):  # pymodbus limit
+            elif (addr <= current_group_start_addr + len(current_group_keys) + max_gap and 
+                  len(current_group_keys) < max_batch_size):
                 # Continue current group
                 current_group_keys.append(key)
             else:
                 # Finish current group and start new one
                 if current_group_keys:
-                    groups.append((
-                        current_group_start_addr,
-                        len(current_group_keys),
-                        {key: i for i, key in enumerate(current_group_keys)}
-                    ))
+                    count = max(1, max(register_map[k] for k in current_group_keys) - current_group_start_addr + 1)
+                    groups.append((current_group_start_addr, count, current_group_keys))
+                
                 current_group_start = key
                 current_group_start_addr = addr
                 current_group_keys = [key]
         
         # Add the last group
         if current_group_keys:
-            groups.append((
-                current_group_start_addr,
-                len(current_group_keys),
-                {key: i for i, key in enumerate(current_group_keys)}
-            ))
+            count = max(1, max(register_map[k] for k in current_group_keys) - current_group_start_addr + 1)
+            groups.append((current_group_start_addr, count, current_group_keys))
             
         return groups
 
-    async def _async_update_data(self) -> Dict[str, Any]:
-        """Fetch data from ThesslaGreen with enhanced optimization."""
-        import time
-        start_time = time.time()
-        
-        try:
-            data = await self.hass.async_add_executor_job(self._fetch_modbus_data)
-            
-            # Update performance metrics
-            read_time = time.time() - start_time
-            self._read_stats["total_reads"] += 1
-            self._read_stats["successful_reads"] += 1
-            self._read_stats["last_update_time"] = read_time
-            
-            # Calculate rolling average
-            current_avg = self._read_stats["average_read_time"]
-            self._read_stats["average_read_time"] = (current_avg * 0.9) + (read_time * 0.1)
-            
-            _LOGGER.debug(
-                "Data update completed in %.2fs (avg: %.2fs, success rate: %.1f%%)",
-                read_time,
-                self._read_stats["average_read_time"],
-                (self._read_stats["successful_reads"] / self._read_stats["total_reads"]) * 100
-            )
-            
-            return data
-            
-        except Exception as exc:
-            self._read_stats["total_reads"] += 1
-            self._read_stats["failed_reads"] += 1
-            _LOGGER.error("Enhanced coordinator update failed: %s", exc)
-            raise UpdateFailed(f"Error communicating with device: {exc}")
-
-    def _fetch_modbus_data(self) -> Dict[str, Any]:
-        """Enhanced Modbus data fetching with batch optimization."""
-        client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-        data = {}
-        
-        try:
-            if not client.connect():
-                raise UpdateFailed("Failed to connect to Modbus device")
-            
-            # Enhanced batch reading for each register type (HA 2025.7+)
-            register_readers = {
-                "input_registers": self._read_input_registers_batch,
-                "holding_registers": self._read_holding_registers_batch,
-                "coil_registers": self._read_coil_registers_batch,
-                "discrete_inputs": self._read_discrete_inputs_batch,
-            }
-            
-            for reg_type, reader_func in register_readers.items():
-                if reg_type in self._consecutive_groups:
-                    try:
-                        reg_data = reader_func(client)
-                        data.update(reg_data)
-                    except Exception as exc:
-                        _LOGGER.warning("Failed to read %s: %s", reg_type, exc)
-                        # Continue with other register types
-                        continue
-            
-            # Post-process data with enhanced validation
-            data = self._post_process_data(data)
-            
-        finally:
-            client.close()
-            
-        return data
-
-    def _read_input_registers_batch(self, client: ModbusTcpClient) -> Dict[str, Any]:
-        """Enhanced batch reading of input registers."""
-        data = {}
-        groups = self._consecutive_groups.get("input_registers", [])
-        
-        for start_addr, count, key_map in groups:
-            try:
-                response = client.read_input_registers(start_addr, count, slave=self.slave_id)
-                if response.isError():
-                    _LOGGER.debug("Error reading input registers at %s: %s", start_addr, response)
-                    continue
-                    
-                # Process each register in the batch
-                for key, offset in key_map.items():
-                    raw_value = response.registers[offset]
-                    processed_value = self._process_register_value(key, raw_value)
-                    if processed_value is not None:
-                        data[key] = processed_value
-                        
-            except Exception as exc:
-                _LOGGER.debug("Failed to read input register batch at %s: %s", start_addr, exc)
-                continue
-                
-        return data
-
-    def _read_holding_registers_batch(self, client: ModbusTcpClient) -> Dict[str, Any]:
-        """Enhanced batch reading of holding registers."""
-        data = {}
-        groups = self._consecutive_groups.get("holding_registers", [])
-        
-        for start_addr, count, key_map in groups:
-            try:
-                response = client.read_holding_registers(start_addr, count, slave=self.slave_id)
-                if response.isError():
-                    _LOGGER.debug("Error reading holding registers at %s: %s", start_addr, response)
-                    continue
-                    
-                for key, offset in key_map.items():
-                    raw_value = response.registers[offset]
-                    processed_value = self._process_register_value(key, raw_value)
-                    if processed_value is not None:
-                        data[key] = processed_value
-                        
-            except Exception as exc:
-                _LOGGER.debug("Failed to read holding register batch at %s: %s", start_addr, exc)
-                continue
-                
-        return data
-
-    def _read_coil_registers_batch(self, client: ModbusTcpClient) -> Dict[str, Any]:
-        """Enhanced batch reading of coil registers."""
-        data = {}
-        groups = self._consecutive_groups.get("coil_registers", [])
-        
-        for start_addr, count, key_map in groups:
-            try:
-                response = client.read_coils(start_addr, count, slave=self.slave_id)
-                if response.isError():
-                    _LOGGER.debug("Error reading coils at %s: %s", start_addr, response)
-                    continue
-                    
-                for key, offset in key_map.items():
-                    bit_value = response.bits[offset]
-                    data[key] = bool(bit_value)
-                    
-            except Exception as exc:
-                _LOGGER.debug("Failed to read coil batch at %s: %s", start_addr, exc)
-                continue
-                
-        return data
-
-    def _read_discrete_inputs_batch(self, client: ModbusTcpClient) -> Dict[str, Any]:
-        """Enhanced batch reading of discrete inputs."""
-        data = {}
-        groups = self._consecutive_groups.get("discrete_inputs", [])
-        
-        for start_addr, count, key_map in groups:
-            try:
-                response = client.read_discrete_inputs(start_addr, count, slave=self.slave_id)
-                if response.isError():
-                    _LOGGER.debug("Error reading discrete inputs at %s: %s", start_addr, response)
-                    continue
-                    
-                for key, offset in key_map.items():
-                    bit_value = response.bits[offset]
-                    data[key] = bool(bit_value)
-                    
-            except Exception as exc:
-                _LOGGER.debug("Failed to read discrete input batch at %s: %s", start_addr, exc)
-                continue
-                
-        return data
-
-    def _process_register_value(self, key: str, raw_value: int) -> Any:
-        """Enhanced register value processing with better validation."""
-        # Handle invalid sensor readings (typical 0x8000 for disconnected sensors)
-        if raw_value == 0x8000 or raw_value == 0xFFFF:
-            return None
-            
-        # Temperature registers (0.5°C resolution, signed)
-        temperature_regs = [
-            "outside_temperature", "supply_temperature", "exhaust_temperature",
-            "fpx_temperature", "duct_supply_temperature", "gwc_temperature", "ambient_temperature",
-            "supply_temperature_manual", "supply_temperature_temporary", 
-            "comfort_temperature_heating", "comfort_temperature_cooling",
-            "min_bypass_temperature", "air_temperature_summer_free_heating",
-            "air_temperature_summer_free_cooling", "min_gwc_air_temperature",
-            "max_gwc_air_temperature", "delta_t_gwc", "gwc_inlet_temperature",
-            "gwc_outlet_temperature", "bypass_inlet_temperature", "bypass_outlet_temperature"
-        ]
-        
-        if key in temperature_regs:
-            # Convert from unsigned to signed 16-bit
-            if raw_value > 32767:
-                signed_value = raw_value - 65536
-            else:
-                signed_value = raw_value
-            return signed_value * 0.5  # 0.5°C resolution
-        
-        # Enhanced firmware version handling (HA 2025.7+)
-        if key == "firmware_version":
-            major = (raw_value >> 8) & 0xFF
-            minor = raw_value & 0xFF
-            return f"{major}.{minor}"
-        
-        # Enhanced power consumption handling (HA 2025.7+)
-        if key == "actual_power_consumption":
-            return raw_value  # Watts
-        
-        if key == "cumulative_power_consumption":
-            return raw_value * 0.1  # Convert to kWh
-        
-        # Percentage values with validation
-        percentage_regs = [
-            "supply_percentage", "exhaust_percentage", "heat_recovery_efficiency",
-            "heating_efficiency", "air_flow_rate_manual", "air_flow_rate_temporary",
-            "air_flow_rate_auto", "bypass_position", "gwc_efficiency",
-            "constant_flow_tolerance"
-        ]
-        
-        if key in percentage_regs:
-            # Validate percentage range
-            if 0 <= raw_value <= 1500:  # Allow up to 150%
-                return raw_value
-            return None
-        
-        # Flow rates (already in m³/h)
-        flow_regs = [
-            "supply_flowrate", "exhaust_flowrate", "supply_air_flow", "exhaust_air_flow",
-            "constant_flow_supply", "constant_flow_exhaust", "constant_flow_supply_setpoint",
-            "constant_flow_exhaust_setpoint", "constant_flow_supply_target", "constant_flow_exhaust_target"
-        ]
-        
-        if key in flow_regs:
-            return raw_value
-        
-        # Time values (hours, days, minutes)
-        time_regs = [
-            "operating_hours", "filter_time_remaining", "boost_time_remaining",
-            "temporary_time_remaining", "filter_change_interval", "filter_warning_threshold"
-        ]
-        
-        if key in time_regs:
-            return raw_value
-        
-        # Mode values (enums) - validate range
-        mode_regs = {
-            "mode": (0, 4),                    # 0-4 for operating modes
-            "special_mode": (0, 15),           # 0-15 for special functions  
-            "season_mode": (0, 2),             # 0-2 for season modes
-            "comfort_mode": (0, 2),            # 0-2 for comfort modes
-            "gwc_mode": (0, 2),                # 0-2 for GWC modes
-            "bypass_mode": (0, 2),             # 0-2 for bypass modes
-            "gwc_regeneration_mode": (0, 3),   # 0-3 for GWC regeneration
-            "constant_flow_mode": (0, 1),      # 0-1 for CF mode
-        }
-        
-        if key in mode_regs:
-            min_val, max_val = mode_regs[key]
-            if min_val <= raw_value <= max_val:
-                return raw_value
-            return None
-        
-        # Error and warning codes
-        if key in ["error_code", "warning_code"]:
-            return raw_value
-        
-        # Default: return raw value for unspecified registers
-        return raw_value
-
-    def _post_process_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Enhanced post-processing of fetched data."""
-        # Remove None values
-        processed_data = {k: v for k, v in data.items() if v is not None}
-        
-        # Add computed values (HA 2025.7+ enhancement)
-        self._add_computed_values(processed_data)
-        
-        # Validate critical values
-        self._validate_critical_values(processed_data)
-        
-        return processed_data
-
-    def _add_computed_values(self, data: Dict[str, Any]) -> None:
-        """Add computed values for enhanced functionality."""
-        # Compute actual intensity based on mode
-        mode = data.get("mode", 0)
-        if mode == 0:  # Auto mode
-            data["current_intensity"] = data.get("supply_percentage", 0)
-        elif mode == 1:  # Manual mode
-            data["current_intensity"] = data.get("air_flow_rate_manual", 0)
-        elif mode == 2:  # Temporary mode
-            data["current_intensity"] = data.get("air_flow_rate_temporary", 0)
-        
-        # Compute heat recovery effectiveness
-        supply_temp = data.get("supply_temperature")
-        outside_temp = data.get("outside_temperature")
-        exhaust_temp = data.get("exhaust_temperature")
-        
-        if all(temp is not None for temp in [supply_temp, outside_temp, exhaust_temp]):
-            if exhaust_temp != outside_temp:
-                effectiveness = (supply_temp - outside_temp) / (exhaust_temp - outside_temp)
-                data["computed_effectiveness"] = max(0, min(1, effectiveness)) * 100
-        
-        # Enhanced diagnostics (HA 2025.7+)
-        if "actual_power_consumption" in data and "current_intensity" in data:
-            intensity = data["current_intensity"]
-            if intensity > 0:
-                data["power_efficiency"] = data["actual_power_consumption"] / intensity
-
-    def _validate_critical_values(self, data: Dict[str, Any]) -> None:
-        """Validate critical system values."""
-        # Temperature range validation
-        for temp_key in ["outside_temperature", "supply_temperature", "exhaust_temperature"]:
-            temp = data.get(temp_key)
-            if temp is not None and (temp < -40 or temp > 70):
-                _LOGGER.warning("Temperature %s out of realistic range: %.1f°C", temp_key, temp)
-                data[temp_key] = None
-        
-        # Flow rate validation
-        for flow_key in ["supply_flowrate", "exhaust_flowrate"]:
-            flow = data.get(flow_key)
-            if flow is not None and (flow < 0 or flow > 2000):  # Realistic range for home units
-                _LOGGER.warning("Flow rate %s out of realistic range: %d m³/h", flow_key, flow)
-                data[flow_key] = None
-
-    async def async_write_register(self, key: str, value: int) -> bool:
-        """Enhanced register writing with validation."""
-        if key not in HOLDING_REGISTERS and key not in COIL_REGISTERS:
-            _LOGGER.error("Register %s is not writable", key)
-            return False
-        
-        try:
-            success = await self.hass.async_add_executor_job(
-                self._write_register_sync, key, value
-            )
-            if success:
-                _LOGGER.debug("Successfully wrote %s = %s", key, value)
-                # Update local cache immediately for better responsiveness
-                self._read_cache[key] = value
-            return success
-        except Exception as exc:
-            _LOGGER.error("Failed to write register %s: %s", key, exc)
-            return False
-
-    def _write_register_sync(self, key: str, value: int) -> bool:
-        """Synchronous register writing."""
-        client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-        
-        try:
-            if not client.connect():
-                return False
-            
-            if key in HOLDING_REGISTERS:
-                address = HOLDING_REGISTERS[key]
-                response = client.write_register(address, value, slave=self.slave_id)
-            elif key in COIL_REGISTERS:
-                address = COIL_REGISTERS[key]
-                response = client.write_coil(address, bool(value), slave=self.slave_id)
-            else:
-                return False
-            
-            return not response.isError()
-            
-        except Exception as exc:
-            _LOGGER.error("Modbus write error for %s: %s", key, exc)
-            return False
-        finally:
-            client.close()
-
-    @property
-    def device_info(self) -> Dict[str, Any]:
-        """Enhanced device information."""
-        return {
-            "identifiers": {(DOMAIN, f"{self.host}_{self.slave_id}")},
-            "name": f"ThesslaGreen {self.host}",
+    def _extract_device_info_enhanced(self, client: ModbusTcpClient) -> Dict[str, Any]:
+        """Extract enhanced device information with better error handling."""
+        device_info = {
+            "device_name": "ThesslaGreen AirPack",
             "manufacturer": "ThesslaGreen",
             "model": "AirPack Home",
-            "sw_version": self.data.get("firmware_version", "Unknown") if self.data else "Unknown",
-            "configuration_url": f"http://{self.host}",
+            "firmware": "Unknown",
+            "serial_number": None,
         }
+        
+        # Enhanced firmware version reading
+        try:
+            response = client.read_input_registers(address=0x0050, count=1, unit=self.slave_id)
+            if not response.isError() and response.registers:
+                raw_fw = response.registers[0]
+                if raw_fw != 0x8000 and raw_fw != 0xFFFF:  # Valid firmware value
+                    major = (raw_fw >> 8) & 0xFF
+                    minor = raw_fw & 0xFF
+                    device_info["firmware"] = f"{major}.{minor}"
+                    
+                    # Enhanced model detection based on firmware
+                    if major >= 5:
+                        device_info["model"] = "AirPack Home Energy+ v2"
+                    elif major >= 4:
+                        device_info["model"] = "AirPack Home Energy+"
+                    else:
+                        device_info["model"] = "AirPack Home"
+                        
+        except Exception as exc:
+            _LOGGER.debug("Failed to read firmware: %s", exc)
+        
+        # Enhanced serial number reading
+        try:
+            response = client.read_input_registers(address=0x0051, count=2, unit=self.slave_id)
+            if not response.isError() and len(response.registers) >= 2:
+                serial_high = response.registers[0]
+                serial_low = response.registers[1]
+                if serial_high != 0x8000 and serial_low != 0x8000:
+                    serial_number = (serial_high << 16) + serial_low
+                    device_info["serial_number"] = str(serial_number)
+                    
+        except Exception as exc:
+            _LOGGER.debug("Failed to read serial number: %s", exc)
+        
+        # Enhanced device name based on available capabilities
+        device_info["device_name"] = f"ThesslaGreen AirPack ({self.host})"
+        
+        _LOGGER.debug("Device info extracted: %s", device_info)
+        return device_info
 
-    @property
-    def diagnostics_data(self) -> Dict[str, Any]:
-        """Enhanced diagnostics data for HA 2025.7+."""
-        return {
-            "coordinator_stats": self._read_stats,
-            "available_registers": {
-                reg_type: len(registers) 
-                for reg_type, registers in self.available_registers.items()
-            },
-            "batch_groups": {
-                reg_type: len(groups)
-                for reg_type, groups in self._consecutive_groups.items()
-            },
-            "connection_info": {
-                "host": self.host,
-                "port": self.port,
-                "slave_id": self.slave_id,
-                "timeout": self.timeout,
-                "scan_interval": self.update_interval.total_seconds(),
-            },
-            "failed_registers": list(self._failed_registers),
-            "last_successful_data": dict(self.data) if self.data else {},
-        }
+    def _analyze_capabilities_enhanced(self, available_registers: Dict[str, Set[str]]) -> Dict[str, bool]:
+        """Enhanced capability analysis based on available registers."""
+        input_regs = available_registers.get("input_registers", set())
+        holding_regs = available_registers.get("holding_registers", set())
+        coil_regs = available_registers.get("coil_registers", set())
+        discrete_regs = available_registers.get("discrete_inputs", set())
+        
+        capabilities = {}
+        
+        # Enhanced basic control detection
+        capabilities["basic_control"] = bool(
+            "mode" in holding_regs and 
+            ("system_on_off" in coil_regs or "on_off_panel_mode" in holding_regs)
+        )
+        
+        # Enhanced temperature control capabilities
+        temp_sensors = ["outside_temperature", "supply_temperature", "exhaust_temperature", 
+                       "fpx_temperature", "duct_supply_temperature", "gwc_temperature", "ambient_temperature"]
+        detected_temp_sensors = [sensor for sensor in temp_sensors if sensor in input_regs]
+        capabilities["temperature_sensors_count"] = len(detected_temp_sensors)
+        
+        for sensor in detected_temp_sensors:
+            capabilities[f"sensor_{sensor}"] = True
+        
+        # Enhanced flow control capabilities
+        capabilities["flow_measurement"] = bool(
+            "supply_flowrate" in input_regs or "exhaust_flowrate" in input_regs
+        )
+        
+        capabilities["intensity_control"] = bool(
+            "air_flow_rate_manual" in holding_regs or 
+            "supply_percentage" in input_regs
+        )
+        
+        # Enhanced advanced system capabilities
+        capabilities["constant_flow"] = bool(
+            "constant_flow_active" in coil_regs and
+            "constant_flow_supply" in input_regs
+        )
+        
+        capabilities["gwc_system"] = bool(
+            "gwc_active" in coil_regs and
+            "gwc_temperature" in input_regs
+        )
+        
+        capabilities["bypass_system"] = bool(
+            "bypass_active" in coil_regs and
+            ("bypass_position" in input_regs or "bypass_mode" in holding_regs)
+        )
+        
+        capabilities["comfort_mode"] = bool(
+            "comfort_active" in coil_regs and
+            "comfort_mode" in holding_regs
+        )
+        
+        # Enhanced special functions detection
+        capabilities["special_functions"] = bool("special_mode" in holding_regs)
+        
+        # Enhanced diagnostics capabilities
+        capabilities["error_reporting"] = bool(
+            "error_code" in input_regs or "warning_code" in input_regs
+        )
+        
+        capabilities["filter_monitoring"] = bool(
+            "filter_time_remaining" in input_regs or "filter_warning" in coil_regs
+        )
+        
+        capabilities["operating_hours"] = bool("operating_hours" in input_regs)
+        
+        # Enhanced system status detection
+        system_status_sensors = ["supply_fan_ok", "exhaust_fan_ok", "heat_exchanger_ok", 
+                               "outside_temp_sensor_ok", "supply_temp_sensor_ok"]
+        capabilities["system_status_monitoring"] = any(sensor in discrete_regs for sensor in system_status_sensors)
+        
+        # Enhanced power monitoring (HA 2025.7+)
+        capabilities["power_monitoring"] = bool(
+            "actual_power_consumption" in input_regs or "cumulative_power_consumption" in input_regs
+        )
+        
+        # Enhanced expansion module detection
+        expansion_indicators = ["expansion", "humidity_sensor_ok", "external_heater_active"]
+        capabilities["expansion_module"] = any(indicator in discrete_regs for indicator in expansion_indicators)
+        
+        # Enhanced recovery system capabilities
+        capabilities["heat_recovery"] = bool(
+            "heat_recovery_efficiency" in input_regs and
+            "supply_temperature" in input_regs and
+            "exhaust_temperature" in input_regs
+        )
+        
+        # Enhanced maintenance capabilities
+        capabilities["maintenance_mode"] = bool("maintenance_mode" in coil_regs)
+        
+        capabilities["advanced_configuration"] = bool(
+            len(holding_regs) > 10 and  # Many configuration options
+            "filter_change_interval" in holding_regs
+        )
+        
+        # Enhanced seasonal adaptation
+        capabilities["seasonal_modes"] = bool(
+            "season_mode" in holding_regs and
+            ("summer_mode" in coil_regs or "antifreeze_mode" in coil_regs)
+        )
+        
+        # Count total capabilities
+        active_capabilities = len([k for k, v in capabilities.items() if v and isinstance(v, bool)])
+        capabilities["total_capabilities"] = active_capabilities
+        
+        _LOGGER.info("Capability analysis: %d capabilities detected", active_capabilities)
+        _LOGGER.debug("Detected capabilities: %s", 
+                     [k for k, v in capabilities.items() if v and k != "total_capabilities"])
+        
+        return capabilities

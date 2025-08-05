@@ -188,9 +188,6 @@ class ThesslaGreenModeSelect(CoordinatorEntity, SelectEntity):
         self._attr_options = list(mode_map.values())
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
         
-        # Enhanced entity description for HA 2025.7+
-        self._attr_entity_description = description
-        
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
             "name": device_name,

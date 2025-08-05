@@ -16,7 +16,6 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv, device_registry as dr
-from homeassistant.helpers.service import async_register_admin_service
 
 from .const import (
     CONF_RETRY,

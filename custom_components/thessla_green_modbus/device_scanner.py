@@ -78,8 +78,7 @@ class ThesslaGreenDeviceScanner:
             
             # Calculate comprehensive scan statistics
             total_found = sum(len(regs) for regs in result["available_registers"].values())
-            total_attempts = max(self._scan_stats["total_attempts"], 1)
-            success_rate = (self._scan_stats["successful_reads"] / total_attempts) * 100
+            success_rate = (self._scan_stats["successful_reads"] / max(self._scan_stats["total_attempts"], 1)) * 100
             
             result["scan_stats"] = {
                 **self._scan_stats,
@@ -88,11 +87,9 @@ class ThesslaGreenDeviceScanner:
                 "scan_duration": "optimized_batch_scanning"
             }
             
-            capability_count = len([k for k, v in result["capabilities"].items() if v and isinstance(v, bool)])
-            
             _LOGGER.info(
                 "Enhanced scan completed: %d registers found (%.1f%% success rate), %d capabilities detected",
-                total_found, success_rate, capability_count
+                total_found, success_rate, len([k for k, v in result["capabilities"].items() if v])
             )
             
         except Exception as exc:
@@ -114,7 +111,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_input_registers(start_addr, count, slave=self.slave_id)
+                response = client.read_input_registers(address=start_addr, count=count, unit=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -144,7 +141,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_holding_registers(start_addr, count, slave=self.slave_id)
+                response = client.read_holding_registers(address=start_addr, count=count, unit=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -171,7 +168,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_coils(start_addr, count, slave=self.slave_id)
+                response = client.read_coils(address=start_addr, count=count, unit=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -198,7 +195,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_discrete_inputs(start_addr, count, slave=self.slave_id)
+                response = client.read_discrete_inputs(address=start_addr, count=count, unit=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -244,8 +241,7 @@ class ThesslaGreenDeviceScanner:
             else:
                 # Finish current group and start new one
                 if current_group_keys:
-                    addresses = [register_map[k] for k in current_group_keys]
-                    count = max(addresses) - current_group_start_addr + 1
+                    count = max(1, max(register_map[k] for k in current_group_keys) - current_group_start_addr + 1)
                     groups.append((current_group_start_addr, count, current_group_keys))
                 
                 current_group_start = key
@@ -254,8 +250,7 @@ class ThesslaGreenDeviceScanner:
         
         # Add the last group
         if current_group_keys:
-            addresses = [register_map[k] for k in current_group_keys]
-            count = max(addresses) - current_group_start_addr + 1
+            count = max(1, max(register_map[k] for k in current_group_keys) - current_group_start_addr + 1)
             groups.append((current_group_start_addr, count, current_group_keys))
             
         return groups
@@ -272,7 +267,7 @@ class ThesslaGreenDeviceScanner:
         
         # Enhanced firmware version reading
         try:
-            response = client.read_input_registers(0x0050, 1, slave=self.slave_id)
+            response = client.read_input_registers(address=0x0050, count=1, unit=self.slave_id)
             if not response.isError() and response.registers:
                 raw_fw = response.registers[0]
                 if raw_fw != 0x8000 and raw_fw != 0xFFFF:  # Valid firmware value
@@ -293,7 +288,7 @@ class ThesslaGreenDeviceScanner:
         
         # Enhanced serial number reading
         try:
-            response = client.read_input_registers(0x0051, 2, slave=self.slave_id)
+            response = client.read_input_registers(address=0x0051, count=2, unit=self.slave_id)
             if not response.isError() and len(response.registers) >= 2:
                 serial_high = response.registers[0]
                 serial_low = response.registers[1]
@@ -310,7 +305,7 @@ class ThesslaGreenDeviceScanner:
         _LOGGER.debug("Device info extracted: %s", device_info)
         return device_info
 
-    def _analyze_capabilities_enhanced(self, available_registers: Dict[str, Set[str]]) -> Dict[str, Any]:
+    def _analyze_capabilities_enhanced(self, available_registers: Dict[str, Set[str]]) -> Dict[str, bool]:
         """Enhanced capability analysis based on available registers."""
         input_regs = available_registers.get("input_registers", set())
         holding_regs = available_registers.get("holding_registers", set())
@@ -382,12 +377,7 @@ class ThesslaGreenDeviceScanner:
         # Enhanced system status detection
         system_status_sensors = ["supply_fan_ok", "exhaust_fan_ok", "heat_exchanger_ok", 
                                "outside_temp_sensor_ok", "supply_temp_sensor_ok"]
-        has_status_monitoring = False
-        for sensor in system_status_sensors:
-            if sensor in discrete_regs:
-                has_status_monitoring = True
-                break
-        capabilities["system_status_monitoring"] = has_status_monitoring
+        capabilities["system_status_monitoring"] = any(sensor in discrete_regs for sensor in system_status_sensors)
         
         # Enhanced power monitoring (HA 2025.7+)
         capabilities["power_monitoring"] = bool(
@@ -396,12 +386,7 @@ class ThesslaGreenDeviceScanner:
         
         # Enhanced expansion module detection
         expansion_indicators = ["expansion", "humidity_sensor_ok", "external_heater_active"]
-        has_expansion = False
-        for indicator in expansion_indicators:
-            if indicator in discrete_regs:
-                has_expansion = True
-                break
-        capabilities["expansion_module"] = has_expansion
+        capabilities["expansion_module"] = any(indicator in discrete_regs for indicator in expansion_indicators)
         
         # Enhanced recovery system capabilities
         capabilities["heat_recovery"] = bool(
@@ -424,13 +409,12 @@ class ThesslaGreenDeviceScanner:
             ("summer_mode" in coil_regs or "antifreeze_mode" in coil_regs)
         )
         
-        # Count total capabilities (only boolean True values)
-        boolean_capabilities = [k for k, v in capabilities.items() 
-                              if isinstance(v, bool) and v and k != "total_capabilities"]
-        active_capabilities = len(boolean_capabilities)
+        # Count total capabilities
+        active_capabilities = len([k for k, v in capabilities.items() if v and isinstance(v, bool)])
         capabilities["total_capabilities"] = active_capabilities
         
         _LOGGER.info("Capability analysis: %d capabilities detected", active_capabilities)
-        _LOGGER.debug("Detected capabilities: %s", boolean_capabilities)
+        _LOGGER.debug("Detected capabilities: %s", 
+                     [k for k, v in capabilities.items() if v and k != "total_capabilities"])
         
         return capabilities

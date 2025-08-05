@@ -107,9 +107,6 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
         self._attr_device_class = device_class
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
         
-        # Enhanced entity description for HA 2025.7+
-        self._attr_entity_description = description
-        
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
             "name": device_name,
@@ -297,7 +294,6 @@ class ThesslaGreenMaintenanceSwitch(CoordinatorEntity, SwitchEntity):
         self._attr_icon = "mdi:wrench"
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_maintenance_mode"
-        self._attr_entity_description = "Enable maintenance mode for service operations"
         
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},

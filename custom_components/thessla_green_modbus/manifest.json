@@ -2,10 +2,10 @@
   "domain": "thessla_green_modbus",
   "name": "ThesslaGreen Modbus",
   "version": "2.0.0",
-  "documentation": "https://github.com/YOUR_USERNAME/thessla_green_modbus",
-  "issue_tracker": "https://github.com/YOUR_USERNAME/thessla_green_modbus/issues",
+  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha",
+  "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
   "dependencies": [],
-  "codeowners": ["@YOUR_USERNAME"],
+  "codeowners": ["@thesslagreen"],
   "config_flow": true,
   "dhcp": [],
   "homekit": {},
@@ -17,5 +17,6 @@
   "integration_type": "device",
   "loggers": ["custom_components.thessla_green_modbus", "pymodbus"],
   "after_dependencies": ["modbus"],
-  "zeroconf": []
+  "zeroconf": [],
+  "homeassistant": "2025.7.0"
 }

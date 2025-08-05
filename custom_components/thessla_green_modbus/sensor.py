@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -186,8 +187,12 @@ class ThesslaGreenBaseSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = icon
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
         
-        # Enhanced entity description for HA 2025.7+
-        self._attr_entity_description = description
+        # Enhanced entity description for HA 2025.7+ - using SensorEntityDescription
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+        )
         
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
@@ -238,9 +243,16 @@ class ThesslaGreenTemperatureSensor(ThesslaGreenBaseSensor):
     ) -> None:
         """Initialize the enhanced temperature sensor."""
         super().__init__(coordinator, key, name, icon, description)
-        self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        
+        # Enhanced entity description for temperature sensors
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            state_class=SensorStateClass.MEASUREMENT,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -295,9 +307,15 @@ class ThesslaGreenFlowSensor(ThesslaGreenBaseSensor):
     ) -> None:
         """Initialize the enhanced flow sensor."""
         super().__init__(coordinator, key, name, icon, description)
-        self._attr_device_class = None  # No standard device class for flow rate
-        self._attr_native_unit_of_measurement = unit
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        
+        # Enhanced entity description for flow sensors
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+            native_unit_of_measurement=unit,
+            state_class=SensorStateClass.MEASUREMENT,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -347,8 +365,15 @@ class ThesslaGreenPerformanceSensor(ThesslaGreenBaseSensor):
     ) -> None:
         """Initialize the enhanced performance sensor."""
         super().__init__(coordinator, key, name, icon, description)
-        self._attr_native_unit_of_measurement = unit
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        
+        # Enhanced entity description for performance sensors
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+            native_unit_of_measurement=unit,
+            state_class=SensorStateClass.MEASUREMENT,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -398,16 +423,27 @@ class ThesslaGreenStatusSensor(ThesslaGreenBaseSensor):
     ) -> None:
         """Initialize the enhanced status sensor."""
         super().__init__(coordinator, key, name, icon, description)
-        self._attr_native_unit_of_measurement = unit
         
         # Set appropriate device class based on unit
-        if unit == UnitOfTime.HOURS:
-            self._attr_device_class = SensorDeviceClass.DURATION
-        elif unit in [UnitOfTime.DAYS, UnitOfTime.MINUTES]:
-            self._attr_device_class = SensorDeviceClass.DURATION
+        device_class = None
+        state_class = None
         
-        if unit:
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING if self._key == "operating_hours" else SensorStateClass.MEASUREMENT
+        if unit == UnitOfTime.HOURS:
+            device_class = SensorDeviceClass.DURATION
+            state_class = SensorStateClass.TOTAL_INCREASING if key == "operating_hours" else SensorStateClass.MEASUREMENT
+        elif unit in [UnitOfTime.DAYS, UnitOfTime.MINUTES]:
+            device_class = SensorDeviceClass.DURATION
+            state_class = SensorStateClass.MEASUREMENT
+        
+        # Enhanced entity description for status sensors
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+            device_class=device_class,
+            native_unit_of_measurement=unit,
+            state_class=state_class,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -467,15 +503,27 @@ class ThesslaGreenPowerSensor(ThesslaGreenBaseSensor):
     ) -> None:
         """Initialize the enhanced power sensor."""
         super().__init__(coordinator, key, name, icon, description)
-        self._attr_native_unit_of_measurement = unit
         
         # Set device class and state class based on measurement type
+        device_class = None
+        state_class = None
+        
         if unit == UnitOfPower.WATT:
-            self._attr_device_class = SensorDeviceClass.POWER
-            self._attr_state_class = SensorStateClass.MEASUREMENT
+            device_class = SensorDeviceClass.POWER
+            state_class = SensorStateClass.MEASUREMENT
         elif unit == UnitOfEnergy.KILO_WATT_HOUR:
-            self._attr_device_class = SensorDeviceClass.ENERGY
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+            device_class = SensorDeviceClass.ENERGY
+            state_class = SensorStateClass.TOTAL_INCREASING
+        
+        # Enhanced entity description for power sensors
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+            device_class=device_class,
+            native_unit_of_measurement=unit,
+            state_class=state_class,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -528,6 +576,13 @@ class ThesslaGreenErrorSensor(ThesslaGreenBaseSensor):
     ) -> None:
         """Initialize the enhanced error sensor."""
         super().__init__(coordinator, key, name, icon, f"Current {name.lower()}")
+        
+        # Enhanced entity description for error sensors
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -580,10 +635,15 @@ class ThesslaGreenDeviceSensor(ThesslaGreenBaseSensor):
     ) -> None:
         """Initialize the enhanced device sensor."""
         super().__init__(coordinator, key, name, icon, description)
-        self._attr_native_unit_of_measurement = unit
         
-        # These are typically diagnostic sensors
-        self._attr_entity_category = "diagnostic"
+        # Enhanced entity description for device sensors
+        self.entity_description = SensorEntityDescription(
+            key=key,
+            name=name,
+            icon=icon,
+            native_unit_of_measurement=unit,
+            entity_category="diagnostic",
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
