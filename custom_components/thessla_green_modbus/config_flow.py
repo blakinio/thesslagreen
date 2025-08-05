@@ -96,8 +96,11 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     firmware = device_data.get("firmware", "Unknown")
     capabilities = device_info.get("capabilities", {})
     
-    # Count detected capabilities
-    active_capabilities = len([k for k, v in capabilities.items() if v])
+    # Count detected capabilities - handle both dict and set
+    if isinstance(capabilities, dict):
+        active_capabilities = len([k for k, v in capabilities.items() if v])
+    else:
+        active_capabilities = len(capabilities) if capabilities else 0
     
     _LOGGER.info(
         "Device validation successful: %s (firmware %s, %d capabilities, slave_id=%s)",

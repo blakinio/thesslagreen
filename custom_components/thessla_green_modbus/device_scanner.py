@@ -1,333 +1,257 @@
-"""Poprawiony device scanner z kompatybilnością pymodbus 3.x+"""
+"""Device scanner for ThesslaGreen Modbus integration."""
+from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Dict, Set, Any, List, Tuple
+from typing import Any, Dict, Set
+
 from pymodbus.client import ModbusTcpClient
+
+from .const import (
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+    INVALID_TEMPERATURE,
+    INVALID_FLOW,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class ThesslaGreenDeviceScanner:
-    """Skanowanie urządzenia ThesslaGreen z poprawnym API pymodbus 3.x"""
-    
-    def __init__(self, host: str, port: int, slave_id: int):
+    """Scanner for ThesslaGreen device capabilities and available registers."""
+
+    def __init__(self, host: str, port: int, slave_id: int) -> None:
+        """Initialize device scanner."""
         self.host = host
         self.port = port
         self.slave_id = slave_id
-        self._scan_stats = {
-            "total_attempts": 0,
-            "successful_reads": 0,
-            "failed_reads": 0
+        self.available_registers: Dict[str, Set[str]] = {
+            "input_registers": set(),
+            "holding_registers": set(),
+            "coil_registers": set(),
+            "discrete_inputs": set(),
         }
 
-    def _scan_coil_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
-        """POPRAWIONE: Skanowanie rejestrów coil z nowym API"""
-        available = set()
-        
-        # Przykładowe rejestry coil - dostosuj do swojego urządzenia
-        COIL_REGISTERS = {
-            "manual_mode": 0x0000,
-            "fan_boost": 0x0001,
-            "bypass_enable": 0x0002,
-            "gwc_enable": 0x0003,
-        }
-        
-        if not COIL_REGISTERS:
-            return available
-        
-        min_addr = min(COIL_REGISTERS.values())
-        max_addr = max(COIL_REGISTERS.values())
-        count = max_addr - min_addr + 1
-        
-        try:
-            # POPRAWIONE API: użyj address= i count= jako keyword arguments
-            result = client.read_coils(
-                address=min_addr,
-                count=count,
-                slave=self.slave_id
-            )
-            self._scan_stats["total_attempts"] += 1
-            
-            if not result.isError():
-                self._scan_stats["successful_reads"] += 1
-                for name, address in COIL_REGISTERS.items():
-                    idx = address - min_addr
-                    if idx < len(result.bits):
-                        available.add(name)
-                        _LOGGER.debug("Found coil %s (0x%04X) = %s", name, address, result.bits[idx])
-            else:
-                self._scan_stats["failed_reads"] += 1
-                
-        except Exception as exc:
-            self._scan_stats["failed_reads"] += 1
-            _LOGGER.debug("Failed to read coils: %s", exc)
-        
-        return available
-
-    def _scan_discrete_inputs_batch(self, client: ModbusTcpClient) -> Set[str]:
-        """POPRAWIONE: Skanowanie discrete inputs z nowym API"""
-        available = set()
-        
-        # Przykładowe rejestry discrete input 
-        DISCRETE_INPUT_REGISTERS = {
-            "filter_alarm": 0x0000,
-            "frost_protection": 0x0001,
-            "summer_mode": 0x0002,
-            "fireplace": 0x000E,
-            "fire_alarm": 0x000F,
-        }
-        
-        if not DISCRETE_INPUT_REGISTERS:
-            return available
-        
-        min_addr = min(DISCRETE_INPUT_REGISTERS.values())
-        max_addr = max(DISCRETE_INPUT_REGISTERS.values())
-        count = max_addr - min_addr + 1
-        
-        try:
-            # POPRAWIONE API: keyword arguments
-            result = client.read_discrete_inputs(
-                address=min_addr,
-                count=count,
-                slave=self.slave_id
-            )
-            self._scan_stats["total_attempts"] += 1
-            
-            if not result.isError():
-                self._scan_stats["successful_reads"] += 1
-                for name, address in DISCRETE_INPUT_REGISTERS.items():
-                    idx = address - min_addr
-                    if idx < len(result.bits):
-                        available.add(name)
-                        _LOGGER.debug("Found discrete input %s (0x%04X) = %s", name, address, result.bits[idx])
-            else:
-                self._scan_stats["failed_reads"] += 1
-                
-        except Exception as exc:
-            self._scan_stats["failed_reads"] += 1
-            _LOGGER.debug("Failed to read discrete inputs: %s", exc)
-        
-        return available
-
-    def _scan_input_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
-        """POPRAWIONE: Skanowanie input registers z batch reading"""
-        available = set()
-        
-        # Grupowanie rejestrów po zakresach dla efektywności
-        register_groups = [
-            # Temperatury (0x0010-0x0016)
-            {
-                "start": 0x0010,
-                "count": 7,
-                "registers": {
-                    "outside_temperature": 0x0010,
-                    "supply_temperature": 0x0011,
-                    "exhaust_temperature": 0x0012,
-                    "fpx_temperature": 0x0013,
-                    "duct_supply_temperature": 0x0014,
-                    "gwc_temperature": 0x0015,
-                    "ambient_temperature": 0x0016,
-                }
-            },
-            # Firmware info (0x0000-0x0002)
-            {
-                "start": 0x0000,
-                "count": 3,
-                "registers": {
-                    "firmware_major": 0x0000,
-                    "firmware_minor": 0x0001,
-                    "firmware_build": 0x0002,
-                }
-            }
-        ]
-        
-        for group in register_groups:
+    async def scan_device(self) -> Dict[str, Any] | None:
+        """Scan device and return available registers and capabilities."""
+        def _scan_sync():
+            client = ModbusTcpClient(host=self.host, port=self.port, timeout=10)
             try:
-                # POPRAWIONE API: keyword arguments
-                result = client.read_input_registers(
-                    address=group["start"],
-                    count=group["count"],
-                    slave=self.slave_id
-                )
-                self._scan_stats["total_attempts"] += 1
+                _LOGGER.info("Connected to %s:%s, scanning capabilities...", self.host, self.port)
                 
-                if not result.isError():
-                    self._scan_stats["successful_reads"] += 1
-                    
-                    for name, address in group["registers"].items():
-                        idx = address - group["start"]
-                        if idx < len(result.registers):
-                            value = result.registers[idx]
-                            if self._is_valid_register_value(name, value):
-                                available.add(name)
-                                _LOGGER.debug("Found input register %s (0x%04X) = %s", name, address, value)
-                else:
-                    self._scan_stats["failed_reads"] += 1
-                    
-            except Exception as exc:
-                self._scan_stats["failed_reads"] += 1
-                _LOGGER.debug("Failed to read input register group %s: %s", group["start"], exc)
-        
-        return available
+                if not client.connect():
+                    raise Exception("Failed to connect to device")
 
-    def _scan_holding_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
-        """POPRAWIONE: Skanowanie holding registers z nowym API"""
-        available = set()
-        
-        register_groups = [
-            # Kontrola podstawowa (0x1000-0x1010)
-            {
-                "start": 0x1000,
-                "count": 16,
-                "registers": {
-                    "mode": 0x1000,
-                    "season_mode": 0x1001,
-                    "special_mode": 0x1002,
-                    "air_flow_rate_manual": 0x1003,
-                    "air_flow_rate_override": 0x1004,
+                # Scan all register types
+                self._scan_input_registers(client)
+                self._scan_holding_registers(client)
+                self._scan_coil_registers(client)
+                self._scan_discrete_inputs(client)
+
+                # Get device info
+                device_info = self._get_device_info()
+                capabilities = self._analyze_capabilities()
+
+                success_rate = self._calculate_success_rate()
+                _LOGGER.info(
+                    "Scan completed: %d registers found, %.1f%% success rate",
+                    sum(len(regs) for regs in self.available_registers.values()),
+                    success_rate
+                )
+
+                return {
+                    "available_registers": dict(self.available_registers),
+                    "device_info": device_info,
+                    "capabilities": capabilities,
                 }
-            }
-        ]
-        
-        for group in register_groups:
-            try:
-                # POPRAWIONE API: keyword arguments
-                result = client.read_holding_registers(
-                    address=group["start"],
-                    count=group["count"],
-                    slave=self.slave_id
-                )
-                self._scan_stats["total_attempts"] += 1
-                
-                if not result.isError():
-                    self._scan_stats["successful_reads"] += 1
-                    
-                    for name, address in group["registers"].items():
-                        idx = address - group["start"]
-                        if idx < len(result.registers):
-                            value = result.registers[idx]
-                            if self._is_valid_register_value(name, value):
-                                available.add(name)
-                                _LOGGER.debug("Found holding register %s (0x%04X) = %s", name, address, value)
-                else:
-                    self._scan_stats["failed_reads"] += 1
-                    
-            except Exception as exc:
-                self._scan_stats["failed_reads"] += 1
-                _LOGGER.debug("Failed to read holding register group %s: %s", group["start"], exc)
-        
-        return available
 
-    def _is_valid_register_value(self, name: str, value: int) -> bool:
-        """Walidacja wartości rejestru"""
-        # Temperatury nie powinny być 0x8000 (invalid)
-        if "temperature" in name:
-            return value != 0x8000 and value != 32768
+            except Exception as exc:
+                _LOGGER.error("Device scan failed: %s", exc)
+                return None
+            finally:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+
+        return await asyncio.get_event_loop().run_in_executor(None, _scan_sync)
+
+    def _scan_input_registers(self, client: ModbusTcpClient) -> None:
+        """Scan input registers."""
+        # Check temperature sensors (0x0010-0x0020)
+        self._scan_register_range(
+            client, "input_registers", INPUT_REGISTERS, 
+            client.read_input_registers, batch_size=8
+        )
+
+        # Check firmware info (0x0000-0x0002)  
+        firmware_regs = {
+            "firmware_major": 0x0000,
+            "firmware_minor": 0x0001, 
+            "firmware_build": 0x0002,
+        }
+        self._scan_register_range(
+            client, "input_registers", firmware_regs,
+            client.read_input_registers, batch_size=3
+        )
+
+    def _scan_holding_registers(self, client: ModbusTcpClient) -> None:
+        """Scan holding registers."""
+        # Control registers (0x1000-0x1010)
+        self._scan_register_range(
+            client, "holding_registers", HOLDING_REGISTERS,
+            client.read_holding_registers, batch_size=16
+        )
+
+    def _scan_coil_registers(self, client: ModbusTcpClient) -> None:
+        """Scan coil registers."""
+        # Control coils (0x0000-0x0008)
+        self._scan_register_range(
+            client, "coil_registers", COIL_REGISTERS,
+            client.read_coils, batch_size=8
+        )
+
+    def _scan_discrete_inputs(self, client: ModbusTcpClient) -> None:
+        """Scan discrete input registers."""
+        # Status inputs (0x0000-0x000F)
+        self._scan_register_range(
+            client, "discrete_inputs", DISCRETE_INPUT_REGISTERS,
+            client.read_discrete_inputs, batch_size=16
+        )
+
+    def _scan_register_range(
+        self, 
+        client: ModbusTcpClient,
+        register_type: str,
+        register_mapping: Dict[str, int],
+        read_func,
+        batch_size: int = 8
+    ) -> None:
+        """Scan a range of registers using batch reading."""
+        if not register_mapping:
+            return
+
+        # Group registers by address for batch reading
+        sorted_regs = sorted(register_mapping.items(), key=lambda x: x[1])
         
-        # Przepływy nie powinny być 65535 (invalid)
-        if "flowrate" in name or "air_flow" in name:
-            return value != 65535
+        for i in range(0, len(sorted_regs), batch_size):
+            batch = sorted_regs[i:i + batch_size]
+            start_addr = batch[0][1]
+            end_addr = batch[-1][1]
+            count = end_addr - start_addr + 1
+
+            try:
+                response = read_func(start_addr, count, slave=self.slave_id)
+                
+                if response.isError():
+                    continue
+
+                # Extract values
+                if register_type in ["input_registers", "holding_registers"]:
+                    values = response.registers
+                else:
+                    values = response.bits
+
+                # Check each register in batch
+                for name, addr in batch:
+                    offset = addr - start_addr
+                    if offset < len(values):
+                        value = values[offset]
+                        if self._is_valid_register_value(name, value):
+                            self.available_registers[register_type].add(name)
+                            _LOGGER.debug(
+                                "Found %s %s (0x%04X) = %s",
+                                register_type[:-1], name, addr, value
+                            )
+
+            except Exception as exc:
+                _LOGGER.debug("Failed to read %s batch at 0x%04X: %s", register_type, start_addr, exc)
+                continue
+
+    def _is_valid_register_value(self, register_name: str, value: Any) -> bool:
+        """Check if register value is valid."""
+        # Temperature sensors - invalid if sensor disconnected
+        if "temperature" in register_name:
+            return value != INVALID_TEMPERATURE
         
-        # Wartości procentowe powinny być rozsądne
-        if "percentage" in name or "coef" in name:
-            return 0 <= value <= 200  # Pozwalamy do 200% dla boost
+        # Flow sensors - invalid if not active
+        elif "flow" in register_name:
+            return value != INVALID_FLOW
         
-        # Tryby powinny być w oczekiwanym zakresie
-        if name in ["mode", "season_mode"]:
-            return 0 <= value <= 2
-        
-        if name == "special_mode":
-            return 0 <= value <= 11
-        
-        # Domyślnie: akceptuj każdą wartość nie-zero jako valid
+        # Other registers are valid if readable
         return True
 
-    def _extract_device_info(self, client: ModbusTcpClient) -> Dict[str, Any]:
-        """Wyciągnij informacje o urządzeniu z firmware registers"""
+    def _get_device_info(self) -> Dict[str, Any]:
+        """Extract device information."""
         device_info = {
+            "device_name": "ThesslaGreen AirPack",
             "manufacturer": "ThesslaGreen",
             "model": "AirPack",
-            "firmware": "Unknown",
-            "serial_number": "Unknown"
         }
-        
-        try:
-            # POPRAWIONE API dla firmware
-            result = client.read_input_registers(
-                address=0x0000,
-                count=3,
-                slave=self.slave_id
-            )
-            
-            if not result.isError() and len(result.registers) >= 3:
-                major = result.registers[0]
-                minor = result.registers[1] 
-                build = result.registers[2]
-                device_info["firmware"] = f"{major}.{minor}.{build}"
-                
-                # Określ model na podstawie firmware
-                if major >= 4:
-                    device_info["model"] = "AirPack Home Energy+"
-                    
-        except Exception as exc:
-            _LOGGER.debug("Failed to read firmware: %s", exc)
-        
+
+        # Try to get firmware version
+        if all(reg in self.available_registers["input_registers"] 
+               for reg in ["firmware_major", "firmware_minor", "firmware_build"]):
+            # We have firmware info available
+            device_info["firmware"] = "Available"
+        else:
+            device_info["firmware"] = "Unknown"
+
         return device_info
 
-    async def scan_device(self) -> Dict[str, Any]:
-        """Główna funkcja skanowania urządzenia"""
-        import asyncio
-        return await asyncio.to_thread(self._scan_device_sync)
-    
-    def _scan_device_sync(self) -> Dict[str, Any]:
-        """Synchroniczne skanowanie urządzenia"""
-        client = ModbusTcpClient(host=self.host, port=self.port, timeout=5)
+    def _analyze_capabilities(self) -> Set[str]:
+        """Analyze device capabilities based on available registers."""
+        capabilities = set()
+
+        # Basic control capability
+        if "mode" in self.available_registers["holding_registers"]:
+            capabilities.add("basic_control")
+
+        # Temperature monitoring
+        temp_sensors = ["outside_temperature", "supply_temperature", "exhaust_temperature"]
+        if any(sensor in self.available_registers["input_registers"] for sensor in temp_sensors):
+            capabilities.add("temperature_monitoring")
+
+        # Flow control
+        if "air_flow_rate_manual" in self.available_registers["holding_registers"]:
+            capabilities.add("flow_control")
+
+        # Special functions
+        if "special_mode" in self.available_registers["holding_registers"]:
+            capabilities.add("special_functions")
+
+        # GWC system
+        if any(reg in self.available_registers["coil_registers"] for reg in ["gwc_enable"]):
+            capabilities.add("gwc_system")
+
+        # Bypass system
+        if any(reg in self.available_registers["coil_registers"] for reg in ["bypass_enable"]):
+            capabilities.add("bypass_system")
+
+        # Alarm monitoring
+        if any("alarm" in reg for reg in self.available_registers["discrete_inputs"]):
+            capabilities.add("alarm_monitoring")
+
+        # Expansion module
+        if "expansion" in self.available_registers["discrete_inputs"]:
+            capabilities.add("expansion_module")
+
+        return capabilities
+
+    def _calculate_success_rate(self) -> float:
+        """Calculate scan success rate."""
+        total_possible = (
+            len(INPUT_REGISTERS) + 
+            len(HOLDING_REGISTERS) + 
+            len(COIL_REGISTERS) + 
+            len(DISCRETE_INPUT_REGISTERS)
+        )
         
-        result = {
-            "available_registers": {
-                "input_registers": set(),
-                "holding_registers": set(), 
-                "coil_registers": set(),
-                "discrete_inputs": set()
-            },
-            "device_info": {},
-            "capabilities": set(),
-            "scan_stats": {}
-        }
+        total_found = sum(len(regs) for regs in self.available_registers.values())
         
-        try:
-            if not client.connect():
-                raise Exception("Failed to connect to device")
+        if total_possible == 0:
+            return 0.0
             
-            _LOGGER.info("Connected to %s:%s, scanning capabilities...", self.host, self.port)
-            
-            # Skanuj wszystkie typy rejestrów
-            result["available_registers"]["input_registers"] = self._scan_input_registers_batch(client)
-            result["available_registers"]["holding_registers"] = self._scan_holding_registers_batch(client)
-            result["available_registers"]["coil_registers"] = self._scan_coil_registers_batch(client)
-            result["available_registers"]["discrete_inputs"] = self._scan_discrete_inputs_batch(client)
-            
-            # Wyciągnij info o urządzeniu
-            result["device_info"] = self._extract_device_info(client)
-            
-            # Oblicz statystyki
-            total_found = sum(len(regs) for regs in result["available_registers"].values())
-            success_rate = (self._scan_stats["successful_reads"] / max(self._scan_stats["total_attempts"], 1)) * 100
-            
-            result["scan_stats"] = {
-                **self._scan_stats,
-                "total_registers_found": total_found,
-                "success_rate": success_rate
-            }
-            
-            _LOGGER.info(
-                "Scan completed: %d registers found, %.1f%% success rate",
-                total_found, success_rate
-            )
-            
-        except Exception as exc:
-            _LOGGER.error("Device scan failed: %s", exc)
-            raise
-        finally:
-            client.close()
-        
-        return result
+        return (total_found / total_possible) * 100.0
