@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
+from functools import partial
 from typing import Any, Dict, List, Tuple
 
 from homeassistant.core import HomeAssistant
@@ -169,26 +170,37 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Optimized data update using batch reading."""
-        # Run the synchronous Modbus calls in the executor thread pool
-        return await self.hass.async_add_executor_job(self._update_data_sync)
-
-    def _update_data_sync(self) -> Dict[str, Any]:
-        """Synchronous optimized data update with retry support."""
         last_exc: Exception | None = None
 
         for attempt in range(1, self.retry + 1):
             client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
             try:
-                if not client.connect():
+                connected = await self.hass.async_add_executor_job(client.connect)
+                if not connected:
                     raise UpdateFailed("Could not connect to device")
 
                 data: Dict[str, Any] = {}
 
-                # Read all register types with optimized batching
-                data.update(self._read_register_groups(client, "input_registers", self._read_input_registers))
-                data.update(self._read_register_groups(client, "holding_registers", self._read_holding_registers))
-                data.update(self._read_register_groups(client, "coil_registers", self._read_coils))
-                data.update(self._read_register_groups(client, "discrete_inputs", self._read_discrete_inputs))
+                data.update(
+                    await self._read_register_groups(
+                        client, "input_registers", self._read_input_registers
+                    )
+                )
+                data.update(
+                    await self._read_register_groups(
+                        client, "holding_registers", self._read_holding_registers
+                    )
+                )
+                data.update(
+                    await self._read_register_groups(
+                        client, "coil_registers", self._read_coils
+                    )
+                )
+                data.update(
+                    await self._read_register_groups(
+                        client, "discrete_inputs", self._read_discrete_inputs
+                    )
+                )
 
                 return data
 
@@ -198,11 +210,11 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                     "Data update failed (attempt %d/%d): %s", attempt, self.retry, exc
                 )
             finally:
-                client.close()
+                await self.hass.async_add_executor_job(client.close)
 
         raise UpdateFailed(f"Error communicating with device: {last_exc}") from last_exc
 
-    def _read_register_groups(self, client: ModbusTcpClient, register_type: str, read_func) -> Dict[str, Any]:
+    async def _read_register_groups(self, client: ModbusTcpClient, register_type: str, read_func) -> Dict[str, Any]:
         """Read register groups with optimized batch operations."""
         data = {}
 
@@ -211,23 +223,25 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
 
         for start_addr, count, key_map in self._register_groups[register_type]:
             try:
-                # Call the provided read function using the modern pymodbus API
-                result = read_func(client, start_addr, count)
+                result = await self.hass.async_add_executor_job(
+                    read_func, client, start_addr, count
+                )
                 if result and not result.isError():
-                    # Extract values for each register in the group
-                    if hasattr(result, 'registers'):
-                        # For input/holding registers
+                    if hasattr(result, "registers"):
                         for name, offset in key_map.items():
                             if offset < len(result.registers):
-                                data[name] = self._process_register_value(name, result.registers[offset])
-                    elif hasattr(result, 'bits'):
-                        # For coils/discrete inputs
+                                data[name] = self._process_register_value(
+                                    name, result.registers[offset]
+                                )
+                    elif hasattr(result, "bits"):
                         for name, offset in key_map.items():
                             if offset < len(result.bits):
                                 data[name] = result.bits[offset]
 
             except Exception as exc:
-                _LOGGER.debug("Failed to read %s group at 0x%04X: %s", register_type, start_addr, exc)
+                _LOGGER.debug(
+                    "Failed to read %s group at 0x%04X: %s", register_type, start_addr, exc
+                )
 
         return data
 
@@ -309,46 +323,48 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
 
         address = REGISTER_ADDRESS_MAP[key]
 
-        def _write_sync():
-            client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-            try:
-                if not client.connect():
-                    return False
+        client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
+        try:
+            connected = await self.hass.async_add_executor_job(client.connect)
+            if not connected:
+                return False
 
-                # Determine if it's a coil or holding register
-                if key in ["manual_mode", "fan_boost", "bypass_enable", "gwc_enable"]:
-                    # Write coil (boolean)
-                    result = client.write_coil(
+            if key in ["manual_mode", "fan_boost", "bypass_enable", "gwc_enable"]:
+                result = await self.hass.async_add_executor_job(
+                    partial(
+                        client.write_coil,
                         address=address,
                         value=bool(value),
-                        slave=self.slave_id
+                        slave=self.slave_id,
                     )
-                else:
-                    # Write holding register (integer)
-                    result = client.write_register(
+                )
+            else:
+                result = await self.hass.async_add_executor_job(
+                    partial(
+                        client.write_register,
                         address=address,
                         value=value,
-                        slave=self.slave_id
+                        slave=self.slave_id,
                     )
+                )
 
-                success = result and not result.isError()
-                if success:
-                    _LOGGER.debug("Successfully wrote %s=%s to 0x%04X", key, value, address)
-                else:
-                    _LOGGER.error("Failed to write %s=%s to 0x%04X: %s", key, value, address, result)
-                return success
+            success = result and not result.isError()
+            if success:
+                _LOGGER.debug("Successfully wrote %s=%s to 0x%04X", key, value, address)
+            else:
+                _LOGGER.error(
+                    "Failed to write %s=%s to 0x%04X: %s", key, value, address, result
+                )
 
-            except Exception as exc:
-                _LOGGER.error("Exception writing register %s: %s", key, exc)
-                return False
-            finally:
-                client.close()
+            if success:
+                await self.async_request_refresh()
+            return success
 
-        # Run the synchronous write in the executor
-        success = await self.hass.async_add_executor_job(_write_sync)
-        if success:
-            await self.async_request_refresh()
-        return success
+        except Exception as exc:
+            _LOGGER.error("Exception writing register %s: %s", key, exc)
+            return False
+        finally:
+            await self.hass.async_add_executor_job(client.close)
 
     def _process_register_value(self, key: str, raw_value: Any) -> Any:
         """Process raw register value based on key type."""
