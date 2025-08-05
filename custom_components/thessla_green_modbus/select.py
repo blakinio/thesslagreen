@@ -1,7 +1,8 @@
-"""Select platform for ThesslaGreen Modbus Integration - FIXED VERSION."""
+"""Enhanced select platform for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -9,16 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    DOMAIN,
-    OPERATING_MODES,
-    SEASON_MODES,
-    SPECIAL_MODES,
-    GWC_MODES,
-    BYPASS_MODES,
-    COMFORT_MODES,
-    FPX_MODES,
-)
+from .const import DOMAIN, OPERATING_MODES, SEASON_MODES, SPECIAL_MODES
 from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,400 +18,302 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen select entities."""
-    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
-
+    """Set up enhanced select platform."""
+    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    
     entities = []
     holding_regs = coordinator.available_registers.get("holding_registers", set())
-
-    # ====== MAIN OPERATING MODE SELECTORS ======
     
-    # Primary operating mode
+    # Enhanced Operating Mode Select (HA 2025.7+ Compatible)
     if "mode" in holding_regs:
         entities.append(
-            ThesslaGreenSelect(
+            ThesslaGreenModeSelect(
                 coordinator,
                 "mode",
-                "Tryb pracy",
-                list(OPERATING_MODES.values()),
+                "Operating Mode",
                 "mdi:cog",
+                OPERATING_MODES,
+                "Select the operating mode of the ventilation system"
             )
         )
-
-    # Alternative operating mode registers (new from documentation)
-    if "cfg_mode1" in holding_regs:
-        entities.append(
-            ThesslaGreenSelect(
-                coordinator,
-                "cfg_mode1",
-                "Tryb pracy (grupa 1)",
-                list(OPERATING_MODES.values()),
-                "mdi:cog-box",
-            )
-        )
-
-    if "cfg_mode2" in holding_regs:
-        entities.append(
-            ThesslaGreenSelect(
-                coordinator,
-                "cfg_mode2",
-                "Tryb pracy (grupa 2)",
-                list(OPERATING_MODES.values()),
-                "mdi:cog-outline",
-            )
-        )
-
-    # Season mode
+    
+    # Enhanced Season Mode Select (HA 2025.7+ Compatible)
     if "season_mode" in holding_regs:
         entities.append(
-            ThesslaGreenSelect(
+            ThesslaGreenModeSelect(
                 coordinator,
-                "season_mode",
-                "Sezon",
-                list(SEASON_MODES.values()),
-                "mdi:weather-sunny",
+                "season_mode", 
+                "Season Mode",
+                "mdi:weather-partly-cloudy",
+                SEASON_MODES,
+                "Select winter or summer mode for optimal performance"
             )
         )
-
-    # ====== SPECIAL FUNCTION SELECTOR ======
     
+    # Enhanced Special Function Select (HA 2025.7+ Compatible)
     if "special_mode" in holding_regs:
         entities.append(
-            ThesslaGreenSelect(
+            ThesslaGreenModeSelect(
                 coordinator,
                 "special_mode",
-                "Funkcja specjalna",
-                list(SPECIAL_MODES.values()),
-                "mdi:star",
+                "Special Function",
+                "mdi:function",
+                SPECIAL_MODES,
+                "Activate special functions like OKAP, KOMINEK, etc."
             )
         )
-
-    # ====== SYSTEM STATUS SELECTORS (Read-only) ======
     
-    # GWC mode (read-only status)
-    if "gwc_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenReadOnlySelect(
-                coordinator,
-                "gwc_mode",
-                "Status GWC",
-                list(GWC_MODES.values()),
-                "mdi:heat-pump",
-            )
-        )
-
-    # Bypass mode (read-only status)
-    if "bypass_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenReadOnlySelect(
-                coordinator,
-                "bypass_mode",
-                "Status Bypass",
-                list(BYPASS_MODES.values()),
-                "mdi:valve",
-            )
-        )
-
-    # Comfort mode (read-only status)
+    # Enhanced Comfort Mode Select (HA 2025.7+)
     if "comfort_mode" in holding_regs:
+        comfort_modes = {
+            0: "Nieaktywny",
+            1: "Grzanie", 
+            2: "Chłodzenie"
+        }
         entities.append(
-            ThesslaGreenReadOnlySelect(
+            ThesslaGreenModeSelect(
                 coordinator,
                 "comfort_mode",
-                "Status KOMFORT",
-                list(COMFORT_MODES.values()),
+                "Comfort Mode",
                 "mdi:home-thermometer",
+                comfort_modes,
+                "Control heating/cooling comfort mode"
             )
         )
-
-    # FPX antifreeze stage (read-only status)
-    if "antifreeze_stage" in holding_regs:
-        entities.append(
-            ThesslaGreenReadOnlySelect(
-                coordinator,
-                "antifreeze_stage",
-                "Stopień FPX",
-                list(FPX_MODES.values()),
-                "mdi:snowflake-alert",
-            )
-        )
-
-    # ====== CONTROL SELECTORS (User configurable) ======
     
-    # Comfort mode panel (user control)
-    if "comfort_mode_panel" in holding_regs:
+    # Enhanced GWC Mode Select (HA 2025.7+)
+    if "gwc_mode" in holding_regs:
+        gwc_modes = {
+            0: "Nieaktywny",
+            1: "Zima",
+            2: "Lato"
+        }
         entities.append(
-            ThesslaGreenSelect(
+            ThesslaGreenModeSelect(
                 coordinator,
-                "comfort_mode_panel",
-                "Panel KOMFORT",
-                ["EKO", "KOMFORT"],
-                "mdi:home-thermometer-outline",
+                "gwc_mode",
+                "GWC Mode",
+                "mdi:earth",
+                gwc_modes,
+                "Control Ground Heat Exchanger mode"
             )
         )
-
-    # Bypass user mode (user control)
-    if "bypass_user_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenSelect(
-                coordinator,
-                "bypass_user_mode",
-                "Typ realizacji Bypass",
-                ["Typ 1", "Typ 2", "Typ 3"],
-                "mdi:valve-open",
-            )
-        )
-
-    # GWC regeneration type
-    if "gwc_regen" in holding_regs:
-        entities.append(
-            ThesslaGreenSelect(
-                coordinator,
-                "gwc_regen",
-                "Typ regeneracji GWC",
-                ["Wyłączone", "Czasowe", "Temperaturowe", "Mieszane"],
-                "mdi:refresh",
-            )
-        )
-
-    # ====== ADVANCED SELECTORS ======
     
-    # Access level (if available)
-    if "access_level" in holding_regs:
+    # Enhanced GWC Regeneration Mode Select (HA 2025.7+)
+    if "gwc_regeneration_mode" in holding_regs:
+        gwc_regen_modes = {
+            0: "Wyłączone",
+            1: "Dobowe",
+            2: "Temperaturowe",
+            3: "Wymuszone"
+        }
         entities.append(
-            ThesslaGreenSelect(
+            ThesslaGreenModeSelect(
                 coordinator,
-                "access_level",
-                "Poziom dostępu",
-                ["Użytkownik", "Serwis", "Producent"],
-                "mdi:account-key",
+                "gwc_regeneration_mode",
+                "GWC Regeneration",
+                "mdi:earth-arrow-right",
+                gwc_regen_modes,
+                "Select GWC regeneration mode"
             )
         )
-
-    # Language setting (if available)
-    if "language" in holding_regs:
+    
+    # Enhanced Bypass Mode Select (HA 2025.7+)
+    if "bypass_mode" in holding_regs:
+        bypass_modes = {
+            0: "Nieaktywny",
+            1: "FreeHeating",
+            2: "FreeCooling"
+        }
         entities.append(
-            ThesslaGreenSelect(
+            ThesslaGreenModeSelect(
                 coordinator,
-                "language",
-                "Język panelu",
-                ["Polski", "English", "Deutsch", "Français"],
-                "mdi:translate",
+                "bypass_mode",
+                "Bypass Mode",
+                "mdi:valve",
+                bypass_modes,
+                "Control bypass mode for free heating/cooling"
+            )
+        )
+    
+    # Enhanced Constant Flow Mode Select (HA 2025.7+)
+    if "constant_flow_mode" in holding_regs:
+        cf_modes = {
+            0: "Wyłączony",
+            1: "Aktywny"
+        }
+        entities.append(
+            ThesslaGreenModeSelect(
+                coordinator,
+                "constant_flow_mode",
+                "Constant Flow Mode",
+                "mdi:chart-line",
+                cf_modes,
+                "Enable/disable constant flow control"
             )
         )
 
     if entities:
-        _LOGGER.debug("Adding %d select entities", len(entities))
+        _LOGGER.debug("Adding %d enhanced select entities", len(entities))
         async_add_entities(entities)
 
 
-class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
-    """ThesslaGreen select entity (writable)."""
+class ThesslaGreenModeSelect(CoordinatorEntity, SelectEntity):
+    """Enhanced ThesslaGreen mode select entity - HA 2025.7+ Compatible."""
 
     def __init__(
         self,
         coordinator: ThesslaGreenCoordinator,
         key: str,
         name: str,
-        options: list[str],
         icon: str,
+        mode_map: dict[int, str],
+        description: str,
     ) -> None:
-        """Initialize the select entity."""
+        """Initialize the enhanced mode select."""
         super().__init__(coordinator)
         self._key = key
+        self._mode_map = mode_map
+        self._reverse_map = {v: k for k, v in mode_map.items()}
+        
+        # Enhanced device info handling
+        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
+        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
+        
         self._attr_name = name
-        self._attr_options = options
         self._attr_icon = icon
-
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
+        self._attr_options = list(mode_map.values())
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
-
+        
+        # Enhanced entity description for HA 2025.7+
+        self._attr_entity_description = description
+        
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
             "name": device_name,
             "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
+            "model": "AirPack Home",
             "sw_version": device_info.get("firmware", "Unknown"),
         }
 
     @property
     def current_option(self) -> str | None:
-        """Return current option."""
+        """Return the current selected option."""
         value = self.coordinator.data.get(self._key)
         if value is None:
             return None
-
-        # Map numeric values to text options
-        if self._key in ["mode", "cfg_mode1", "cfg_mode2"]:
-            return OPERATING_MODES.get(value, f"Unknown({value})")
-        elif self._key == "season_mode":
-            return SEASON_MODES.get(value, f"Unknown({value})")
-        elif self._key == "special_mode":
-            return SPECIAL_MODES.get(value, f"Unknown({value})")
-        elif self._key == "comfort_mode_panel":
-            return "KOMFORT" if value == 1 else "EKO"
-        elif self._key == "bypass_user_mode":
-            types = {1: "Typ 1", 2: "Typ 2", 3: "Typ 3"}
-            return types.get(value, f"Unknown({value})")
-        elif self._key == "gwc_regen":
-            types = {0: "Wyłączone", 1: "Czasowe", 2: "Temperaturowe", 3: "Mieszane"}
-            return types.get(value, f"Unknown({value})")
-        elif self._key == "access_level":
-            levels = {0: "Użytkownik", 1: "Serwis", 2: "Producent"}
-            return levels.get(value, f"Unknown({value})")
-        elif self._key == "language":
-            languages = {0: "Polski", 1: "English", 2: "Deutsch", 3: "Français"}
-            return languages.get(value, f"Unknown({value})")
-
-        return f"Unknown({value})"
+        return self._mode_map.get(value)
 
     async def async_select_option(self, option: str) -> None:
         """Select an option."""
-        value_map = {}
-        
-        # Create reverse mapping from text to numeric values
-        if self._key in ["mode", "cfg_mode1", "cfg_mode2"]:
-            value_map = {v: k for k, v in OPERATING_MODES.items()}
-        elif self._key == "season_mode":
-            value_map = {v: k for k, v in SEASON_MODES.items()}
-        elif self._key == "special_mode":
-            value_map = {v: k for k, v in SPECIAL_MODES.items()}
-        elif self._key == "comfort_mode_panel":
-            value_map = {"EKO": 0, "KOMFORT": 1}
-        elif self._key == "bypass_user_mode":
-            value_map = {"Typ 1": 1, "Typ 2": 2, "Typ 3": 3}
-        elif self._key == "gwc_regen":
-            value_map = {"Wyłączone": 0, "Czasowe": 1, "Temperaturowe": 2, "Mieszane": 3}
-        elif self._key == "access_level":
-            value_map = {"Użytkownik": 0, "Serwis": 1, "Producent": 2}
-        elif self._key == "language":
-            value_map = {"Polski": 0, "English": 1, "Deutsch": 2, "Français": 3}
-
-        if option in value_map:
-            success = await self.coordinator.async_write_register(self._key, value_map[option])
-            if success:
-                await self.coordinator.async_request_refresh()
-                _LOGGER.debug("Successfully set %s to %s (value: %s)", self._key, option, value_map[option])
-            else:
-                _LOGGER.error("Failed to set %s to %s", self._key, option)
-        else:
+        if option not in self._reverse_map:
             _LOGGER.error("Invalid option %s for %s", option, self._key)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, any]:
-        """Return additional state attributes."""
-        attributes = {}
+            return
         
-        # Add current numeric value for debugging
-        value = self.coordinator.data.get(self._key)
-        if value is not None:
-            attributes["numeric_value"] = value
+        mode_value = self._reverse_map[option]
         
-        # Add register information
-        from .const import HOLDING_REGISTERS
-        if self._key in HOLDING_REGISTERS:
-            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._key]:04X}"
-            attributes["register_type"] = "holding_register"
+        # Enhanced validation for special modes (HA 2025.7+)
+        if self._key == "special_mode" and not self._validate_special_mode(mode_value):
+            _LOGGER.warning("Special mode %s may not be suitable in current conditions", option)
         
-        # Add writable status
-        attributes["writable"] = True
+        success = await self.coordinator.async_write_register(self._key, mode_value)
+        if success:
+            _LOGGER.info("Set %s to %s (value: %d)", self._key, option, mode_value)
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to set %s to %s", self._key, option)
+
+    def _validate_special_mode(self, mode_value: int) -> bool:
+        """Enhanced validation for special modes - HA 2025.7+."""
+        if not self.coordinator.data:
+            return True  # Allow if no data available
         
-        return attributes
-
-
-class ThesslaGreenReadOnlySelect(CoordinatorEntity, SelectEntity):
-    """ThesslaGreen read-only select entity (status display only)."""
-
-    def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        key: str,
-        name: str,
-        options: list[str],
-        icon: str,
-    ) -> None:
-        """Initialize the read-only select entity."""
-        super().__init__(coordinator)
-        self._key = key
-        self._attr_name = name
-        self._attr_options = options
-        self._attr_icon = icon
-
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}_status"
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
-
-    @property
-    def current_option(self) -> str | None:
-        """Return current option."""
-        value = self.coordinator.data.get(self._key)
-        if value is None:
-            return None
-
-        # Map numeric values to text options for read-only registers
-        if self._key == "gwc_mode":
-            return GWC_MODES.get(value, f"Unknown({value})")
-        elif self._key == "bypass_mode":
-            return BYPASS_MODES.get(value, f"Unknown({value})")
-        elif self._key == "comfort_mode":
-            return COMFORT_MODES.get(value, f"Unknown({value})")
-        elif self._key == "antifreeze_stage":
-            return FPX_MODES.get(value, f"Unknown({value})")
-
-        return f"Unknown({value})"
-
-    async def async_select_option(self, option: str) -> None:
-        """Select an option - NOT ALLOWED for read-only entities."""
-        _LOGGER.warning("Cannot set read-only register %s to %s", self._key, option)
-        # Don't raise an exception, just log and ignore
-        return
-
-    @property
-    def extra_state_attributes(self) -> dict[str, any]:
-        """Return additional state attributes."""
-        attributes = {}
+        current_mode = self.coordinator.data.get("mode", 0)
+        outside_temp = self.coordinator.data.get("outside_temperature")
         
-        # Add current numeric value for debugging
-        value = self.coordinator.data.get(self._key)
-        if value is not None:
-            attributes["numeric_value"] = value
+        # Some special modes work better in manual mode
+        intensive_modes = [1, 2, 5, 8]  # OKAP, KOMINEK, BOOST, GOTOWANIE
+        if mode_value in intensive_modes and current_mode == 0:
+            _LOGGER.info("Special mode %d works best in manual mode", mode_value)
         
-        # Add register information
-        from .const import HOLDING_REGISTERS
-        if self._key in HOLDING_REGISTERS:
-            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._key]:04X}"
-            attributes["register_type"] = "holding_register"
+        # Temperature-dependent modes
+        if mode_value == 12 and outside_temp is not None:  # OTWARTE OKNA
+            if outside_temp < 5:
+                _LOGGER.warning("Open windows mode not recommended below 5°C (current: %.1f°C)", outside_temp)
+                return False
         
-        # Mark as read-only
-        attributes["writable"] = False
-        attributes["note"] = "Read-only status register"
-        
-        # Add interpretation based on register type
-        if self._key == "gwc_mode":
-            attributes["description"] = "Current GWC operating mode"
-        elif self._key == "bypass_mode":
-            attributes["description"] = "Current bypass function status"
-        elif self._key == "comfort_mode":
-            attributes["description"] = "Current comfort mode status"
-        elif self._key == "antifreeze_stage":
-            attributes["description"] = "Current FPX antifreeze stage"
-        
-        return attributes
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Return if the entity should be enabled when first added to the entity registry."""
-        # Read-only status entities are enabled by default but less prominent
         return True
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        attributes = {
+            "register_key": self._key,
+            "available_options": len(self._attr_options),
+        }
+        
+        # Enhanced context information (HA 2025.7+)
+        current_value = self.coordinator.data.get(self._key)
+        if current_value is not None:
+            attributes["current_value"] = current_value
+            
+        # Add mode-specific context
+        if self._key == "mode":
+            attributes["description"] = "Controls the main operating mode of the ventilation system"
+            # Add intensity info for current mode
+            if current_value == 0:  # Auto
+                attributes["current_intensity"] = self.coordinator.data.get("supply_percentage")
+            elif current_value == 1:  # Manual
+                attributes["current_intensity"] = self.coordinator.data.get("air_flow_rate_manual")
+            elif current_value == 2:  # Temporary
+                attributes["current_intensity"] = self.coordinator.data.get("air_flow_rate_temporary")
+                temp_remaining = self.coordinator.data.get("temporary_time_remaining")
+                if temp_remaining:
+                    attributes["time_remaining_minutes"] = temp_remaining
+                    
+        elif self._key == "special_mode":
+            attributes["description"] = "Activates special functions for specific situations"
+            if current_value and current_value != 0:
+                # Add time remaining for temporary special modes
+                boost_remaining = self.coordinator.data.get("boost_time_remaining")
+                if boost_remaining and current_value == 5:  # BOOST mode
+                    attributes["boost_time_remaining_minutes"] = boost_remaining
+                    
+        elif self._key == "season_mode":
+            attributes["description"] = "Optimizes system performance for seasonal conditions"
+            outside_temp = self.coordinator.data.get("outside_temperature")
+            if outside_temp is not None:
+                attributes["outside_temperature"] = outside_temp
+                if current_value == 0:  # Winter
+                    attributes["recommended"] = outside_temp < 15
+                elif current_value == 1:  # Summer  
+                    attributes["recommended"] = outside_temp > 20
+                    
+        elif self._key == "gwc_mode":
+            attributes["description"] = "Controls Ground Heat Exchanger operation"
+            gwc_temp = self.coordinator.data.get("gwc_temperature")
+            if gwc_temp is not None:
+                attributes["gwc_temperature"] = gwc_temp
+                
+        elif self._key == "bypass_mode":
+            attributes["description"] = "Controls bypass for free heating/cooling"
+            bypass_position = self.coordinator.data.get("bypass_position")
+            if bypass_position is not None:
+                attributes["bypass_position"] = f"{bypass_position}%"
+        
+        # Add last update timestamp
+        if hasattr(self.coordinator, 'last_update_success_time'):
+            attributes["last_updated"] = self.coordinator.last_update_success_time.isoformat()
+            
+        return attributes
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and 
+            self._key in self.coordinator.data
+        )

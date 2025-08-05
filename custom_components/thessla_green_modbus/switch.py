@@ -1,10 +1,10 @@
-"""Switch platform for ThesslaGreen Modbus Integration - FIXED VERSION."""
+"""Enhanced switch platform for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity, SwitchDeviceClass
+from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -18,503 +18,349 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen switch entities."""
-    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][entry.entry_id]
-
+    """Set up enhanced switch platform."""
+    coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    
     entities = []
-    holding_regs = coordinator.available_registers.get("holding_registers", set())
-
-    # ====== MAIN DEVICE ON/OFF SWITCH ======
-    if "on_off_panel_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenMainSwitch(coordinator)
-        )
-
-    # ====== SYSTEM ENABLE/DISABLE SWITCHES ======
+    coil_regs = coordinator.available_registers.get("coil_registers", set())
     
-    # GWC system enable/disable
-    if "gwc_off" in holding_regs:
-        entities.append(
-            ThesslaGreenInvertedSwitch(
-                coordinator,
-                "gwc_off",
-                "System GWC",
-                "mdi:heat-pump",
-                SwitchDeviceClass.SWITCH,
-            )
-        )
-
-    # Bypass system enable/disable
-    if "bypass_off" in holding_regs:
-        entities.append(
-            ThesslaGreenInvertedSwitch(
-                coordinator,
-                "bypass_off",
-                "System Bypass",
-                "mdi:valve",
-                SwitchDeviceClass.SWITCH,
-            )
-        )
-
-    # Comfort mode panel switch
-    if "comfort_mode_panel" in holding_regs:
-        entities.append(
-            ThesslaGreenSwitch(
-                coordinator,
-                "comfort_mode_panel",
-                "Panel KOMFORT",
-                "mdi:home-thermometer-outline",
-                SwitchDeviceClass.SWITCH,
-            )
-        )
-
-    # ====== SYSTEM RESET SWITCHES (Special) ======
+    # Enhanced System Control Switches (HA 2025.7+ Compatible)
+    system_switches = [
+        ("system_on_off", "System Power", "mdi:power", SwitchDeviceClass.SWITCH, 
+         "Main power control for the ventilation system"),
+        ("constant_flow_active", "Constant Flow", "mdi:chart-line", SwitchDeviceClass.SWITCH,
+         "Enable constant flow control for precise air flow management"),
+        ("gwc_active", "GWC Enable", "mdi:earth", SwitchDeviceClass.SWITCH,
+         "Enable Ground Heat Exchanger for improved efficiency"),
+        ("bypass_active", "Bypass Enable", "mdi:valve", SwitchDeviceClass.SWITCH,
+         "Enable bypass for free heating and cooling"),
+        ("comfort_active", "Comfort Mode", "mdi:home-thermometer", SwitchDeviceClass.SWITCH,
+         "Enable comfort temperature control"),
+    ]
     
-    # Settings reset (momentary switch)
-    if "hard_reset_settings" in holding_regs:
-        entities.append(
-            ThesslaGreenMomentarySwitch(
-                coordinator,
-                "hard_reset_settings",
-                "Reset ustawień użytkownika",
-                "mdi:restore",
+    for switch_key, name, icon, device_class, description in system_switches:
+        if switch_key in coil_regs:
+            entities.append(
+                ThesslaGreenSwitch(
+                    coordinator, switch_key, name, icon, device_class, description
+                )
             )
-        )
-
-    # Schedule reset (momentary switch)  
-    if "hard_reset_schedule" in holding_regs:
-        entities.append(
-            ThesslaGreenMomentarySwitch(
-                coordinator,
-                "hard_reset_schedule",
-                "Reset harmonogramów",
-                "mdi:calendar-remove",
-            )
-        )
-
-    # ====== CONTROL FLAGS (Special registers) ======
     
-    # Airflow rate change flag (for temporary mode activation)
-    if "airflow_rate_change_flag" in holding_regs:
-        entities.append(
-            ThesslaGreenFlagSwitch(
-                coordinator,
-                "airflow_rate_change_flag",
-                "Flaga zmiany intensywności",
-                "mdi:flag",
+    # Enhanced Protection and Mode Switches (HA 2025.7+)
+    protection_switches = [
+        ("antifreeze_mode", "Antifreeze Protection", "mdi:snowflake-alert", SwitchDeviceClass.SWITCH,
+         "Enable antifreeze protection for cold weather operation"),
+        ("summer_mode", "Summer Mode", "mdi:weather-sunny", SwitchDeviceClass.SWITCH,
+         "Optimize system for summer operation"),
+        ("preheating_active", "Preheating", "mdi:radiator", SwitchDeviceClass.SWITCH,
+         "Enable preheating for supply air"),
+        ("cooling_active", "Cooling", "mdi:snowflake", SwitchDeviceClass.SWITCH,
+         "Enable active cooling of supply air"),
+        ("night_cooling_active", "Night Cooling", "mdi:weather-night", SwitchDeviceClass.SWITCH,
+         "Enable night cooling for energy savings"),
+    ]
+    
+    for switch_key, name, icon, device_class, description in protection_switches:
+        if switch_key in coil_regs:
+            entities.append(
+                ThesslaGreenSwitch(
+                    coordinator, switch_key, name, icon, device_class, description
+                )
             )
-        )
-
-    # Temperature change flag (for temporary mode activation)
-    if "temperature_change_flag" in holding_regs:
+    
+    # Enhanced Maintenance Mode Switch (HA 2025.7+)
+    if "maintenance_mode" in coil_regs:
         entities.append(
-            ThesslaGreenFlagSwitch(
-                coordinator,
-                "temperature_change_flag",
-                "Flaga zmiany temperatury", 
-                "mdi:flag-thermometer",
-            )
-        )
-
-    # GWC regeneration flag (if writable)
-    if "gwc_regen_flag" in holding_regs:
-        entities.append(
-            ThesslaGreenFlagSwitch(
-                coordinator,
-                "gwc_regen_flag",
-                "Wymuszenie regeneracji GWC",
-                "mdi:refresh",
-            )
+            ThesslaGreenMaintenanceSwitch(coordinator)
         )
 
     if entities:
-        _LOGGER.debug("Adding %d switch entities", len(entities))
+        _LOGGER.debug("Adding %d enhanced switch entities", len(entities))
         async_add_entities(entities)
 
 
-class ThesslaGreenMainSwitch(CoordinatorEntity, SwitchEntity):
-    """Main device ON/OFF switch."""
+class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
+    """Enhanced ThesslaGreen switch entity - HA 2025.7+ Compatible."""
+
+    def __init__(
+        self,
+        coordinator: ThesslaGreenCoordinator,
+        key: str,
+        name: str,
+        icon: str,
+        device_class: SwitchDeviceClass | None,
+        description: str,
+    ) -> None:
+        """Initialize the enhanced switch."""
+        super().__init__(coordinator)
+        self._key = key
+        
+        # Enhanced device info handling
+        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
+        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
+        
+        self._attr_name = name
+        self._attr_icon = icon
+        self._attr_device_class = device_class
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
+        
+        # Enhanced entity description for HA 2025.7+
+        self._attr_entity_description = description
+        
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
+            "name": device_name,
+            "manufacturer": "ThesslaGreen",
+            "model": "AirPack Home",
+            "sw_version": device_info.get("firmware", "Unknown"),
+        }
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if switch is on."""
+        value = self.coordinator.data.get(self._key)
+        if value is None:
+            return None
+        return bool(value)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the switch on."""
+        # Enhanced pre-conditions validation (HA 2025.7+)
+        if not self._validate_turn_on():
+            return
+            
+        success = await self.coordinator.async_write_register(self._key, 1)
+        if success:
+            _LOGGER.info("Turned on %s", self._key)
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to turn on %s", self._key)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the switch off."""
+        # Enhanced pre-conditions validation (HA 2025.7+)
+        if not self._validate_turn_off():
+            return
+            
+        success = await self.coordinator.async_write_register(self._key, 0)
+        if success:
+            _LOGGER.info("Turned off %s", self._key)
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to turn off %s", self._key)
+
+    def _validate_turn_on(self) -> bool:
+        """Enhanced validation before turning on - HA 2025.7+."""
+        if not self.coordinator.data:
+            return True  # Allow if no data available
+        
+        # System power must be on for most other switches
+        if self._key != "system_on_off":
+            system_power = self.coordinator.data.get("system_on_off", False)
+            if not system_power:
+                _LOGGER.warning("Cannot enable %s while system power is off", self._key)
+                return False
+        
+        # GWC specific validations
+        if self._key == "gwc_active":
+            outside_temp = self.coordinator.data.get("outside_temperature")
+            if outside_temp is not None and outside_temp > 30:
+                _LOGGER.warning("GWC may not be effective at high outside temperatures (%.1f°C)", outside_temp)
+        
+        # Bypass specific validations
+        if self._key == "bypass_active":
+            outside_temp = self.coordinator.data.get("outside_temperature")
+            supply_temp = self.coordinator.data.get("supply_temperature")
+            if outside_temp is not None and supply_temp is not None:
+                temp_diff = abs(outside_temp - supply_temp)
+                if temp_diff < 2:
+                    _LOGGER.info("Bypass may not be beneficial with small temperature difference (%.1f°C)", temp_diff)
+        
+        # Cooling validation
+        if self._key == "cooling_active":
+            outside_temp = self.coordinator.data.get("outside_temperature")
+            if outside_temp is not None and outside_temp < 20:
+                _LOGGER.warning("Cooling may not be needed at low outside temperatures (%.1f°C)", outside_temp)
+        
+        # Preheating validation
+        if self._key == "preheating_active":
+            outside_temp = self.coordinator.data.get("outside_temperature")
+            if outside_temp is not None and outside_temp > 25:
+                _LOGGER.warning("Preheating may not be needed at high outside temperatures (%.1f°C)", outside_temp)
+        
+        return True
+
+    def _validate_turn_off(self) -> bool:
+        """Enhanced validation before turning off - HA 2025.7+."""
+        if not self.coordinator.data:
+            return True
+        
+        # Warn about turning off critical protections
+        critical_switches = ["antifreeze_mode", "system_on_off"]
+        if self._key in critical_switches:
+            _LOGGER.info("Turning off critical system component: %s", self._key)
+        
+        # Antifreeze protection warning
+        if self._key == "antifreeze_mode":
+            outside_temp = self.coordinator.data.get("outside_temperature")
+            if outside_temp is not None and outside_temp < 0:
+                _LOGGER.warning("Disabling antifreeze protection in freezing conditions (%.1f°C)", outside_temp)
+        
+        return True
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        attributes = {
+            "register_key": self._key,
+            "description": getattr(self, '_attr_entity_description', ''),
+        }
+        
+        # Enhanced context information (HA 2025.7+)
+        if self._key == "gwc_active":
+            gwc_temp = self.coordinator.data.get("gwc_temperature")
+            gwc_efficiency = self.coordinator.data.get("gwc_efficiency")
+            if gwc_temp is not None:
+                attributes["gwc_temperature"] = gwc_temp
+            if gwc_efficiency is not None:
+                attributes["gwc_efficiency"] = f"{gwc_efficiency}%"
+                
+        elif self._key == "bypass_active":
+            bypass_position = self.coordinator.data.get("bypass_position")
+            bypass_mode = self.coordinator.data.get("bypass_mode")
+            if bypass_position is not None:
+                attributes["bypass_position"] = f"{bypass_position}%"
+            if bypass_mode is not None:
+                bypass_modes = {0: "Nieaktywny", 1: "FreeHeating", 2: "FreeCooling"}
+                attributes["bypass_mode"] = bypass_modes.get(bypass_mode, "Unknown")
+                
+        elif self._key == "constant_flow_active":
+            cf_supply = self.coordinator.data.get("constant_flow_supply")
+            cf_exhaust = self.coordinator.data.get("constant_flow_exhaust")
+            if cf_supply is not None:
+                attributes["current_supply_flow"] = f"{cf_supply} m³/h"
+            if cf_exhaust is not None:
+                attributes["current_exhaust_flow"] = f"{cf_exhaust} m³/h"
+                
+        elif self._key == "comfort_active":
+            comfort_mode = self.coordinator.data.get("comfort_mode")
+            comfort_temp_heating = self.coordinator.data.get("comfort_temperature_heating")
+            comfort_temp_cooling = self.coordinator.data.get("comfort_temperature_cooling")
+            if comfort_mode is not None:
+                modes = {0: "Nieaktywny", 1: "Grzanie", 2: "Chłodzenie"}
+                attributes["comfort_mode"] = modes.get(comfort_mode, "Unknown")
+            if comfort_temp_heating is not None:
+                attributes["heating_setpoint"] = f"{comfort_temp_heating}°C"
+            if comfort_temp_cooling is not None:
+                attributes["cooling_setpoint"] = f"{comfort_temp_cooling}°C"
+        
+        # Add system status context
+        if self._key != "system_on_off":
+            system_power = self.coordinator.data.get("system_on_off", False)
+            attributes["system_power_on"] = system_power
+        
+        # Add environmental context
+        outside_temp = self.coordinator.data.get("outside_temperature")
+        if outside_temp is not None and self._key in ["gwc_active", "bypass_active", "cooling_active", "preheating_active"]:
+            attributes["outside_temperature"] = outside_temp
+        
+        # Add last update timestamp
+        if hasattr(self.coordinator, 'last_update_success_time'):
+            attributes["last_updated"] = self.coordinator.last_update_success_time.isoformat()
+            
+        return attributes
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and 
+            self._key in self.coordinator.data
+        )
+
+
+class ThesslaGreenMaintenanceSwitch(CoordinatorEntity, SwitchEntity):
+    """Enhanced maintenance mode switch with safety features - HA 2025.7+."""
 
     def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
-        """Initialize the main switch."""
+        """Initialize the enhanced maintenance switch."""
         super().__init__(coordinator)
+        self._key = "maintenance_mode"
         
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
+        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
+        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
         
-        self._attr_name = f"{device_name} Główny przełącznik"
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_main_switch"
-        self._attr_icon = "mdi:power"
+        self._attr_name = "Maintenance Mode"
+        self._attr_icon = "mdi:wrench"
         self._attr_device_class = SwitchDeviceClass.SWITCH
-
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_maintenance_mode"
+        self._attr_entity_description = "Enable maintenance mode for service operations"
+        
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
             "name": device_name,
             "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
+            "model": "AirPack Home",
             "sw_version": device_info.get("firmware", "Unknown"),
         }
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if the switch is on."""
-        value = self.coordinator.data.get("on_off_panel_mode")
-        if value is None:
-            return None
-        return value == 1
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on."""
-        success = await self.coordinator.async_write_register("on_off_panel_mode", 1)
-        if success:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.info("Turned ON main device switch")
-        else:
-            _LOGGER.error("Failed to turn ON main device switch")
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off."""
-        success = await self.coordinator.async_write_register("on_off_panel_mode", 0)
-        if success:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.info("Turned OFF main device switch")
-        else:
-            _LOGGER.error("Failed to turn OFF main device switch")
-
-    @property
-    def extra_state_attributes(self) -> dict[str, any]:
-        """Return additional state attributes."""
-        attributes = {}
-        
-        # Add current device status info
-        device_status = self.coordinator.data.get("device_status_smart")
-        if device_status is not None:
-            attributes["device_status"] = "Running" if device_status else "Stopped"
-        
-        # Add mode information
-        mode = self.coordinator.data.get("mode")
-        if mode is not None:
-            mode_names = {0: "Automatyczny", 1: "Manualny", 2: "Chwilowy"}
-            attributes["operating_mode"] = mode_names.get(mode, f"Unknown({mode})")
-        
-        # Add register info
-        attributes["modbus_address"] = "0x1123"
-        attributes["register_type"] = "holding_register"
-        attributes["note"] = "Główny przełącznik ON/OFF urządzenia"
-        
-        return attributes
-
-
-class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
-    """General ThesslaGreen switch entity."""
-
-    def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        key: str,
-        name: str,
-        icon: str,
-        device_class: SwitchDeviceClass | None = None,
-    ) -> None:
-        """Initialize the switch."""
-        super().__init__(coordinator)
-        self._key = key
-        self._attr_name = name
-        self._attr_icon = icon
-        self._attr_device_class = device_class
-
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the switch is on."""
+        """Return true if maintenance mode is active."""
         value = self.coordinator.data.get(self._key)
         if value is None:
             return None
-        return value == 1
+        return bool(value)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on."""
+        """Turn on maintenance mode with safety confirmation."""
+        _LOGGER.warning("Activating maintenance mode - system will operate in reduced capacity")
+        
         success = await self.coordinator.async_write_register(self._key, 1)
         if success:
+            _LOGGER.info("Maintenance mode activated")
             await self.coordinator.async_request_refresh()
-            _LOGGER.debug("Turned ON switch %s", self._key)
         else:
-            _LOGGER.error("Failed to turn ON switch %s", self._key)
+            _LOGGER.error("Failed to activate maintenance mode")
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off."""
+        """Turn off maintenance mode and return to normal operation."""
         success = await self.coordinator.async_write_register(self._key, 0)
         if success:
+            _LOGGER.info("Maintenance mode deactivated - returning to normal operation")
             await self.coordinator.async_request_refresh()
-            _LOGGER.debug("Turned OFF switch %s", self._key)
         else:
-            _LOGGER.error("Failed to turn OFF switch %s", self._key)
+            _LOGGER.error("Failed to deactivate maintenance mode")
 
     @property
-    def extra_state_attributes(self) -> dict[str, any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        attributes = {}
-        
-        # Add current value
-        value = self.coordinator.data.get(self._key)
-        if value is not None:
-            attributes["raw_value"] = value
-        
-        # Add register information
-        from .const import HOLDING_REGISTERS
-        if self._key in HOLDING_REGISTERS:
-            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._key]:04X}"
-            attributes["register_type"] = "holding_register"
-        
-        return attributes
-
-
-class ThesslaGreenInvertedSwitch(CoordinatorEntity, SwitchEntity):
-    """ThesslaGreen switch with inverted logic (0=ON, 1=OFF)."""
-
-    def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        key: str,
-        name: str,
-        icon: str,
-        device_class: SwitchDeviceClass | None = None,
-    ) -> None:
-        """Initialize the inverted switch."""
-        super().__init__(coordinator)
-        self._key = key
-        self._attr_name = name
-        self._attr_icon = icon
-        self._attr_device_class = device_class
-
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
-            "sw_version": device_info.get("firmware", "Unknown"),
+        attributes = {
+            "register_key": self._key,
+            "description": "Service and maintenance mode for technical operations",
+            "warning": "Only activate during scheduled maintenance",
         }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the switch is on (inverted logic)."""
-        value = self.coordinator.data.get(self._key)
-        if value is None:
-            return None
-        # Inverted: 0 = enabled (ON), 1 = disabled (OFF)  
-        return value == 0
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on (write 0 for inverted logic)."""
-        success = await self.coordinator.async_write_register(self._key, 0)
-        if success:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.debug("Enabled system %s (wrote 0)", self._key)
-        else:
-            _LOGGER.error("Failed to enable system %s", self._key)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off (write 1 for inverted logic)."""
-        success = await self.coordinator.async_write_register(self._key, 1)
-        if success:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.debug("Disabled system %s (wrote 1)", self._key)
-        else:
-            _LOGGER.error("Failed to disable system %s", self._key)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, any]:
-        """Return additional state attributes."""
-        attributes = {}
         
-        # Add current value and interpretation
-        value = self.coordinator.data.get(self._key)
-        if value is not None:
-            attributes["raw_value"] = value
-            attributes["interpretation"] = "Enabled" if value == 0 else "Disabled"
-            attributes["logic"] = "Inverted (0=ON, 1=OFF)"
+        # Add current system status
+        system_power = self.coordinator.data.get("system_on_off", False)
+        attributes["system_power_on"] = system_power
         
-        # Add register information
-        from .const import HOLDING_REGISTERS
-        if self._key in HOLDING_REGISTERS:
-            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._key]:04X}"
-            attributes["register_type"] = "holding_register"
+        # Add active error/warning status
+        error_code = self.coordinator.data.get("error_code", 0)
+        warning_code = self.coordinator.data.get("warning_code", 0)
+        attributes["active_errors"] = error_code != 0
+        attributes["active_warnings"] = warning_code != 0
         
+        # Add service indicators
+        filter_warning = self.coordinator.data.get("filter_warning", False)
+        service_required = self.coordinator.data.get("service_required", False)
+        attributes["filter_warning_active"] = filter_warning
+        attributes["service_required"] = service_required
+        
+        if hasattr(self.coordinator, 'last_update_success_time'):
+            attributes["last_updated"] = self.coordinator.last_update_success_time.isoformat()
+            
         return attributes
-
-
-class ThesslaGreenMomentarySwitch(CoordinatorEntity, SwitchEntity):
-    """Momentary switch that automatically turns off after activation."""
-
-    def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        key: str,
-        name: str,
-        icon: str,
-    ) -> None:
-        """Initialize the momentary switch."""
-        super().__init__(coordinator)
-        self._key = key
-        self._attr_name = name
-        self._attr_icon = icon
-        self._attr_device_class = SwitchDeviceClass.SWITCH
-
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
-
-    @property
-    def is_on(self) -> bool:
-        """Momentary switches are always off."""
-        return False
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Activate the momentary function."""
-        success = await self.coordinator.async_write_register(self._key, 1)
-        if success:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.info("Activated momentary function: %s", self._key)
-        else:
-            _LOGGER.error("Failed to activate momentary function: %s", self._key)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Cannot turn off momentary switch."""
-        _LOGGER.debug("Cannot turn off momentary switch %s", self._key)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, any]:
-        """Return additional state attributes."""
-        attributes = {}
-        
-        # Add register information
-        from .const import HOLDING_REGISTERS
-        if self._key in HOLDING_REGISTERS:
-            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._key]:04X}"
-            attributes["register_type"] = "holding_register"
-        
-        attributes["switch_type"] = "Momentary"
-        attributes["note"] = "Aktywuje funkcję po naciśnięciu ON, automatycznie wraca do OFF"
-        
-        # Add specific notes for reset functions
-        if "reset" in self._key:
-            attributes["warning"] = "⚠️ Ta funkcja przywraca ustawienia fabryczne!"
-        
-        return attributes
-
-
-class ThesslaGreenFlagSwitch(CoordinatorEntity, SwitchEntity):
-    """Switch for control flags (used for temporary mode activation)."""
-
-    def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        key: str,
-        name: str,
-        icon: str,
-    ) -> None:
-        """Initialize the flag switch."""
-        super().__init__(coordinator)
-        self._key = key
-        self._attr_name = name
-        self._attr_icon = icon
-        self._attr_device_class = SwitchDeviceClass.SWITCH
-
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the flag is set."""
-        value = self.coordinator.data.get(self._key)
-        if value is None:
-            return None
-        return value == 1
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Set the flag."""
-        success = await self.coordinator.async_write_register(self._key, 1)
-        if success:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.debug("Set flag %s", self._key)
-        else:
-            _LOGGER.error("Failed to set flag %s", self._key)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Clear the flag."""
-        success = await self.coordinator.async_write_register(self._key, 0)
-        if success:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.debug("Cleared flag %s", self._key)
-        else:
-            _LOGGER.error("Failed to clear flag %s", self._key)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, any]:
-        """Return additional state attributes."""
-        attributes = {}
-        
-        # Add current value
-        value = self.coordinator.data.get(self._key)
-        if value is not None:
-            attributes["raw_value"] = value
-            attributes["flag_status"] = "Set" if value == 1 else "Clear"
-        
-        # Add register information
-        from .const import HOLDING_REGISTERS
-        if self._key in HOLDING_REGISTERS:
-            attributes["modbus_address"] = f"0x{HOLDING_REGISTERS[self._key]:04X}"
-            attributes["register_type"] = "holding_register"
-        
-        attributes["switch_type"] = "Control Flag"
-        
-        # Add specific usage notes
-        if "airflow_rate_change_flag" in self._key:
-            attributes["usage"] = "Ustaw na ON aby aktywować tryb chwilowy dla intensywności"
-        elif "temperature_change_flag" in self._key:
-            attributes["usage"] = "Ustaw na ON aby aktywować tryb chwilowy dla temperatury"
-        elif "gwc_regen_flag" in self._key:
-            attributes["usage"] = "Ustaw na ON aby wymusić regenerację GWC"
-        
-        return attributes
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Return if the entity should be enabled when first added to the entity registry."""
-        # Flag switches are more advanced, disable by default
-        return False

@@ -3,31 +3,34 @@
     "step": {
       "user": {
         "title": "Konfiguracja ThesslaGreen Modbus",
-        "description": "Wprowadź dane połączenia z urządzeniem ThesslaGreen",
+        "description": "Skonfiguruj system wentylacyjny ThesslaGreen",
         "data": {
           "host": "Adres IP",
-          "port": "Port Modbus",
-          "slave_id": "ID Slave"
+          "port": "Port",
+          "slave_id": "ID urządzenia",
+          "name": "Nazwa urządzenia"
         }
       }
     },
     "error": {
-      "cannot_connect": "Nie można połączyć się z urządzeniem",
-      "invalid_host": "Nieprawidłowy adres hosta",
-      "unknown": "Nieoczekiwany błąd"
+      "cannot_connect": "Nie udało się połączyć z urządzeniem. Sprawdź adres IP, port i połączenie sieciowe.",
+      "invalid_auth": "Nieprawidłowe dane uwierzytelniania.",
+      "unknown": "Wystąpił nieoczekiwany błąd. Sprawdź konfigurację urządzenia i sieć."
     },
     "abort": {
-      "already_configured": "Urządzenie jest już skonfigurowane"
+      "already_configured": "Urządzenie jest już skonfigurowane",
+      "invalid_host": "Nieprawidłowy format adresu IP"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen",
+        "description": "Skonfiguruj zaawansowane opcje systemu ThesslaGreen",
         "data": {
-          "scan_interval": "Interwał skanowania (sekundy)",
-          "timeout": "Timeout połączenia (sekundy)",
-          "retry": "Liczba prób połączenia"
+          "scan_interval": "Interwał aktualizacji (sekundy)",
+          "timeout": "Limit czasu połączenia (sekundy)",
+          "retry": "Liczba powtórzeń"
         }
       }
     }
@@ -47,7 +50,7 @@
         "name": "Temperatura FPX"
       },
       "duct_supply_temperature": {
-        "name": "Temperatura kanałowa nawiew"
+        "name": "Temperatura kanałowa"
       },
       "gwc_temperature": {
         "name": "Temperatura GWC"
@@ -55,142 +58,85 @@
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
       },
-      "supply_percentage": {
-        "name": "Intensywność nawiewu"
-      },
-      "exhaust_percentage": {
-        "name": "Intensywność wywiewu"
-      },
       "supply_flowrate": {
         "name": "Przepływ nawiewu"
       },
       "exhaust_flowrate": {
         "name": "Przepływ wywiewu"
       },
-      "supply_air_flow": {
-        "name": "Strumień nawiewu CF"
+      "supply_percentage": {
+        "name": "Intensywność nawiewu"
       },
-      "exhaust_air_flow": {
-        "name": "Strumień wywiewu CF"
+      "exhaust_percentage": {
+        "name": "Intensywność wywiewu"
       },
-      "dac_supply": {
-        "name": "Napięcie wentylatora nawiewu"
+      "heat_recovery_efficiency": {
+        "name": "Sprawność rekuperacji"
       },
-      "dac_exhaust": {
-        "name": "Napięcie wentylatora wywiewu"
+      "operating_hours": {
+        "name": "Godziny pracy"
       },
-      "dac_heater": {
-        "name": "Napięcie nagrzewnicy"
+      "filter_time_remaining": {
+        "name": "Czas do wymiany filtra"
       },
-      "dac_cooler": {
-        "name": "Napięcie chłodnicy"
+      "error_code": {
+        "name": "Kod błędu"
+      },
+      "warning_code": {
+        "name": "Kod ostrzeżenia"
       },
       "firmware_version": {
-        "name": "Wersja oprogramowania"
+        "name": "Wersja firmware"
       },
-      "serial_number": {
-        "name": "Numer seryjny"
+      "power_consumption": {
+        "name": "Zużycie mocy"
+      },
+      "energy_consumption": {
+        "name": "Zużycie energii"
       }
     },
-    "number": {
-      "air_flow_rate_manual": {
-        "name": "Intensywność manualny"
+    "binary_sensor": {
+      "system_on_off": {
+        "name": "Zasilanie systemu"
       },
-      "air_flow_rate_temporary": {
-        "name": "Intensywność chwilowy"
+      "constant_flow_active": {
+        "name": "Constant Flow"
       },
-      "air_flow_rate_temporary_alt": {
-        "name": "Intensywność chwilowy (alt)"
+      "gwc_active": {
+        "name": "GWC aktywny"
       },
-      "rekuperator_predkosc": {
-        "name": "Prędkość rekuperatora"
+      "bypass_active": {
+        "name": "Bypass aktywny"
       },
-      "supply_air_temperature_manual": {
-        "name": "Temperatura nawiewu manualny"
+      "filter_warning": {
+        "name": "Ostrzeżenie filtra"
       },
-      "supply_air_temperature_temporary": {
-        "name": "Temperatura nawiewu chwilowy"
+      "service_required": {
+        "name": "Wymagany serwis"
       },
-      "supply_air_temperature_temporary_alt": {
-        "name": "Temperatura nawiewu chwilowy (alt)"
+      "error_active": {
+        "name": "Aktywny błąd systemu"
       },
-      "fan_speed_1_coef": {
-        "name": "AirS 1 bieg"
+      "warning_active": {
+        "name": "Aktywne ostrzeżenie systemu"
       },
-      "fan_speed_2_coef": {
-        "name": "AirS 2 bieg"
+      "outside_temp_sensor_ok": {
+        "name": "Czujnik temperatury zewnętrznej"
       },
-      "fan_speed_3_coef": {
-        "name": "AirS 3 bieg"
+      "supply_temp_sensor_ok": {
+        "name": "Czujnik temperatury nawiewu"
       },
-      "min_bypass_temperature": {
-        "name": "Bypass - Min. temperatura"
+      "exhaust_temp_sensor_ok": {
+        "name": "Czujnik temperatury wywiewu"
       },
-      "air_temperature_summer_free_heating": {
-        "name": "Bypass - Temperatura FreeHeating"
+      "supply_fan_ok": {
+        "name": "Wentylator nawiewu"
       },
-      "air_temperature_summer_free_cooling": {
-        "name": "Bypass - Temperatura FreeCooling"
+      "exhaust_fan_ok": {
+        "name": "Wentylator wywiewu"
       },
-      "bypass_coef1": {
-        "name": "Bypass - Różnicowanie"
-      },
-      "bypass_coef2": {
-        "name": "Bypass - Intensywność"
-      },
-      "min_gwc_air_temperature": {
-        "name": "GWC - Min. temperatura (zima)"
-      },
-      "max_gwc_air_temperature": {
-        "name": "GWC - Max. temperatura (lato)"
-      },
-      "delta_t_gwc": {
-        "name": "GWC - Różnica temp. regeneracji"
-      },
-      "gwc_regen_period": {
-        "name": "GWC - Czas regeneracji"
-      },
-      "hood_supply_coef": {
-        "name": "Intensywność OKAP nawiew"
-      },
-      "hood_exhaust_coef": {
-        "name": "Intensywność OKAP wywiew"
-      },
-      "fireplace_supply_coef": {
-        "name": "Różnicowanie KOMINEK"
-      },
-      "airing_coef": {
-        "name": "Intensywność WIETRZENIE"
-      },
-      "contamination_coef": {
-        "name": "Intensywność czujnik jakości"
-      },
-      "empty_house_coef": {
-        "name": "Intensywność PUSTY DOM"
-      },
-      "airing_bathroom_coef": {
-        "name": "Intensywność WIETRZENIE łazienka"
-      },
-      "airing_switch_coef": {
-        "name": "Intensywność WIETRZENIE przełączniki"
-      },
-      "open_window_coef": {
-        "name": "Intensywność OTWARTE OKNA"
-      },
-      "airing_panel_mode_time": {
-        "name": "Czas WIETRZENIE pokoje"
-      },
-      "airing_switch_mode_time": {
-        "name": "Czas WIETRZENIE łazienka"
-      },
-      "fireplace_mode_time": {
-        "name": "Czas działania KOMINEK"
-      },
-      "airing_switch_mode_on_delay": {
-        "name": "Opóźnienie zał. WIETRZENIE"
-      },
-      "airing_switch_mode_off_delay": {
-        "name": "Opóźnienie wył. WIETRZENIE"
+      "heat_exchanger_ok": {
+        "name": "Wymiennik ciepła"
       }
     },
     "select": {
@@ -202,167 +148,224 @@
           "chwilowy": "Chwilowy"
         }
       },
-      "cfg_mode1": {
-        "name": "Tryb pracy (grupa 1)",
-        "state": {
-          "automatyczny": "Automatyczny",
-          "manualny": "Manualny",
-          "chwilowy": "Chwilowy"
-        }
-      },
-      "cfg_mode2": {
-        "name": "Tryb pracy (grupa 2)",
-        "state": {
-          "automatyczny": "Automatyczny",
-          "manualny": "Manualny",
-          "chwilowy": "Chwilowy"
-        }
-      },
       "season_mode": {
-        "name": "Sezon",
+        "name": "Tryb sezonowy",
         "state": {
+          "zima": "Zima",
           "lato": "Lato",
-          "zima": "Zima"
+          "przejściowy": "Przejściowy"
         }
       },
       "special_mode": {
         "name": "Funkcja specjalna",
         "state": {
           "brak": "Brak",
-          "okap_wejscie_sygnalowe": "OKAP (wejście sygnałowe)",
-          "kominek_reczne_wejscie_sygnalowe": "KOMINEK (ręczne/wejście sygnałowe)",
-          "wietrzenie_przelacznik_dzwonkowy": "WIETRZENIE (przełącznik dzwonkowy)",
-          "wietrzenie_przelacznik_on_off": "WIETRZENIE (przełącznik ON/OFF)",
-          "h2o_wietrzenie_higrostat": "H2O/WIETRZENIE (higrostat)",
-          "jp_wietrzenie_czujnik_jakosci": "JP/WIETRZENIE (czujnik jakości)",
-          "wietrzenie_aktywacja_reczna": "WIETRZENIE (aktywacja ręczna)",
-          "wietrzenie_tryb_automatyczny": "WIETRZENIE (tryb automatyczny)",
-          "wietrzenie_tryb_manualny": "WIETRZENIE (tryb manualny)",
-          "otwarte_okna_reczne": "OTWARTE OKNA (ręczne)",
-          "pusty_dom_reczne_wejscie_sygnalowe": "PUSTY DOM (ręczne/wejście sygnałowe)"
+          "okap": "OKAP",
+          "kominek": "KOMINEK",
+          "wietrzenie reczne": "Wietrzenie ręczne",
+          "wietrzenie auto": "Wietrzenie auto",
+          "boost": "BOOST",
+          "eco": "ECO",
+          "wietrzenie": "Wietrzenie",
+          "gotowanie": "Gotowanie",
+          "pranie": "Pranie",
+          "lazienka": "Łazienka",
+          "pusty dom": "Pusty dom",
+          "otwarte okna": "Otwarte okna",
+          "noc": "Noc",
+          "wakacje": "Wakacje",
+          "party": "Party"
         }
       },
       "gwc_mode": {
         "name": "Tryb GWC",
         "state": {
-          "gwc_nieaktywny": "GWC nieaktywny",
-          "tryb_zima": "Tryb zima",
-          "tryb_lato": "Tryb lato"
+          "nieaktywny": "Nieaktywny",
+          "zima": "Zima",
+          "lato": "Lato"
         }
       },
       "bypass_mode": {
-        "name": "Tryb Bypass",
+        "name": "Tryb bypass",
         "state": {
-          "bypass_nieaktywny": "Bypass nieaktywny",
-          "funkcja_grzania_freeheating": "Funkcja grzania (FreeHeating)",
-          "funkcja_chlodzenia_freecooling": "Funkcja chłodzenia (FreeCooling)"
+          "nieaktywny": "Nieaktywny",
+          "freeheating": "FreeHeating",
+          "freecooling": "FreeCooling"
         }
+      }
+    },
+    "number": {
+      "air_flow_rate_manual": {
+        "name": "Intensywność manualna"
       },
-      "comfort_mode": {
-        "name": "Tryb KOMFORT",
-        "state": {
-          "komfort_nieaktywny": "KOMFORT nieaktywny",
-          "funkcja_grzania": "Funkcja grzania",
-          "funkcja_chlodzenia": "Funkcja chłodzenia"
-        }
-      }
-    },
-    "climate": {
-      "thessla_green_modbus": {
-        "name": "Rekuperator ThesslaGreen"
-      }
-    },
-    "fan": {
-      "thessla_green_modbus": {
-        "name": "Wentylator"
+      "air_flow_rate_temporary": {
+        "name": "Intensywność chwilowa"
+      },
+      "air_flow_rate_auto": {
+        "name": "Intensywność auto"
+      },
+      "supply_temperature_manual": {
+        "name": "Temperatura nawiewu - tryb manualny"
+      },
+      "supply_temperature_temporary": {
+        "name": "Temperatura nawiewu - tryb chwilowy"
+      },
+      "comfort_temperature_heating": {
+        "name": "Temperatura komfortu - grzanie"
+      },
+      "comfort_temperature_cooling": {
+        "name": "Temperatura komfortu - chłodzenie"
+      },
+      "filter_change_interval": {
+        "name": "Interwał wymiany filtra"
+      },
+      "filter_warning_threshold": {
+        "name": "Próg ostrzeżenia filtra"
       }
     },
     "switch": {
-      "bypass_control": {
-        "name": "Bypass letni"
-      },
-      "gwc_control": {
-        "name": "Kontrola GWC"
-      },
-      "comfort_mode_panel": {
-        "name": "Panel KOMFORT"
-      }
-    },
-    "binary_sensor": {
-      "device_status_smart": {
-        "name": "Status urządzenia"
-      },
-      "system_status": {
-        "name": "Status systemu"
-      },
-      "filter_status": {
-        "name": "Stan filtra"
-      },
-      "bypass_status": {
-        "name": "Status bypass"
+      "system_on_off": {
+        "name": "Zasilanie systemu"
       },
       "constant_flow_active": {
-        "name": "Constant Flow aktywny"
+        "name": "Constant Flow"
       },
-      "water_removal_active": {
-        "name": "HEWR aktywny"
+      "gwc_active": {
+        "name": "Włącz GWC"
       },
-      "power_supply_fans": {
-        "name": "Zasilanie wentylatorów"
+      "bypass_active": {
+        "name": "Włącz bypass"
       },
-      "gwc": {
-        "name": "GWC aktywny"
+      "comfort_active": {
+        "name": "Tryb komfortu"
       },
-      "expansion": {
-        "name": "Moduł Expansion"
+      "antifreeze_mode": {
+        "name": "Zabezpieczenie przed zamarzaniem"
       },
-      "contamination_sensor": {
-        "name": "Czujnik jakości powietrza"
+      "summer_mode": {
+        "name": "Tryb letni"
       },
-      "airing_sensor": {
-        "name": "Czujnik wilgotności"
+      "preheating_active": {
+        "name": "Podgrzewanie"
       },
-      "fireplace": {
-        "name": "Kominek"
+      "cooling_active": {
+        "name": "Chłodzenie"
       },
-      "hood_input": {
-        "name": "Wejście OKAP"
-      },
-      "airing_switch": {
-        "name": "Włącznik WIETRZENIE"
-      },
-      "fire_alarm": {
-        "name": "Alarm pożarowy"
-      },
-      "empty_house": {
-        "name": "Pusty dom"
+      "maintenance_mode": {
+        "name": "Tryb serwisowy"
+      }
+    },
+    "climate": {
+      "thessla_green_climate": {
+        "name": "Kontrola klimatu"
+      }
+    },
+    "fan": {
+      "thessla_green_fan": {
+        "name": "Wentylacja"
       }
     }
   },
   "services": {
-    "set_mode": {
+    "set_operating_mode": {
       "name": "Ustaw tryb pracy",
-      "description": "Ustaw tryb pracy rekuperatora",
+      "description": "Ustaw główny tryb pracy systemu wentylacyjnego",
       "fields": {
         "mode": {
           "name": "Tryb",
-          "description": "Tryb pracy (0=automatyczny, 1=manualny, 2=chwilowy)"
+          "description": "Tryb pracy do ustawienia"
+        }
+      }
+    },
+    "set_intensity": {
+      "name": "Ustaw intensywność wentylacji",
+      "description": "Ustaw intensywność wentylacji w procentach",
+      "fields": {
+        "intensity": {
+          "name": "Intensywność",
+          "description": "Intensywność wentylacji (10-150%)"
         }
       }
     },
     "set_special_function": {
       "name": "Ustaw funkcję specjalną",
-      "description": "Aktywuj funkcję specjalną",
+      "description": "Aktywuj tryb funkcji specjalnej",
       "fields": {
         "function": {
           "name": "Funkcja",
-          "description": "Funkcja specjalna (0-11)"
+          "description": "Funkcja specjalna do aktywacji"
         }
       }
     },
-    "reset_settings": {
-      "name": "Reset ustawień",
-      "description": "Przywróć ustawienia fabryczne"
+    "reset_alarms": {
+      "name": "Resetuj alarmy",
+      "description": "Resetuj alarmy i ostrzeżenia systemu",
+      "fields": {
+        "alarm_type": {
+          "name": "Typ alarmu",
+          "description": "Typ alarmów do zresetowania"
+        }
+      }
+    },
+    "rescan_device": {
+      "name": "Przeskanuj urządzenie",
+      "description": "Przeskanuj urządzenie, aby wykryć nowe możliwości i rejestry"
+    },
+    "set_comfort_temperature": {
+      "name": "Ustaw temperaturę komfortu",
+      "description": "Ustaw temperatury komfortu dla grzania i chłodzenia",
+      "fields": {
+        "heating_temperature": {
+          "name": "Temperatura grzania",
+          "description": "Temperatura docelowa dla trybu grzania"
+        },
+        "cooling_temperature": {
+          "name": "Temperatura chłodzenia",
+          "description": "Temperatura docelowa dla trybu chłodzenia"
+        }
+      }
+    },
+    "activate_boost_mode": {
+      "name": "Aktywuj tryb BOOST",
+      "description": "Aktywuj tryb BOOST na określony czas",
+      "fields": {
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Czas trwania trybu BOOST w minutach"
+        },
+        "intensity": {
+          "name": "Intensywność",
+          "description": "Poziom intensywności BOOST"
+        }
+      }
+    },
+    "schedule_maintenance": {
+      "name": "Zaplanuj konserwację",
+      "description": "Zaplanuj lub skonfiguruj ustawienia konserwacji",
+      "fields": {
+        "filter_interval": {
+          "name": "Interwał wymiany filtra",
+          "description": "Dni między wymianami filtra"
+        },
+        "warning_threshold": {
+          "name": "Próg ostrzeżenia",
+          "description": "Dni przed ostrzeżeniem o wymianie filtra"
+        }
+      }
+    },
+    "quick_ventilation": {
+      "name": "Szybkie wietrzenie",
+      "description": "Rozpocznij cykl szybkiego wietrzenia",
+      "fields": {
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Czas wietrzenia w minutach"
+        },
+        "intensity": {
+          "name": "Intensywność",
+          "description": "Intensywność wietrzenia"
+        }
+      }
     }
   }
 }
