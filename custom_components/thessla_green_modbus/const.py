@@ -7,7 +7,7 @@ DOMAIN = "thessla_green_modbus"
 
 # Default configuration values
 DEFAULT_NAME = "ThesslaGreen"
-DEFAULT_PORT = 8899
+DEFAULT_PORT = 502
 DEFAULT_SLAVE_ID = 10
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
@@ -263,18 +263,23 @@ WARNING_CODES = {
     12: "Niestabilne parametry",      # Enhanced HA 2025.7+
 }
 
-# Service names
+# Service names - ALL REQUIRED FOR __init__.py
 SERVICE_SET_MODE = "set_operating_mode"
 SERVICE_SET_INTENSITY = "set_intensity"
 SERVICE_SET_SPECIAL_FUNCTION = "set_special_function"  
 SERVICE_RESET_ALARMS = "reset_alarms"
 SERVICE_DEVICE_RESCAN = "rescan_device"
 
-# Enhanced service names (HA 2025.7+)
+# Enhanced service names (HA 2025.7+) - ALL REQUIRED FOR __init__.py
 SERVICE_SET_COMFORT_TEMPERATURE = "set_comfort_temperature"
 SERVICE_ACTIVATE_BOOST = "activate_boost_mode"
 SERVICE_SCHEDULE_MAINTENANCE = "schedule_maintenance"
 SERVICE_CALIBRATE_SENSORS = "calibrate_sensors"
+SERVICE_CONFIGURE_GWC = "configure_gwc"
+SERVICE_CONFIGURE_BYPASS = "configure_bypass"
+SERVICE_CONFIGURE_CONSTANT_FLOW = "configure_constant_flow"
+SERVICE_EMERGENCY_STOP = "emergency_stop"
+SERVICE_QUICK_VENTILATION = "quick_ventilation"
 
 # Register groups for optimized batch reading
 REGISTER_GROUPS = {
