@@ -64,7 +64,7 @@ We welcome contributions in these areas:
 
 ```bash
 # Fork the repository on GitHub first, then:
-git clone https://github.com/YOUR_USERNAME/thessla_green_modbus.git
+git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
 cd thessla_green_modbus
 ```
 
