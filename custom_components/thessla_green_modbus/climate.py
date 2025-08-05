@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, OPERATING_MODES, SEASON_MODES, SPECIAL_MODES
 from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         
         # Temperature settings
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-        self._attr_min_temp = 5
+        self._attr_min_temp = 20
         self._attr_max_temp = 45
         self._attr_target_temperature_step = 0.5
         
@@ -133,11 +133,6 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         """Return the current temperature."""
         # Use supply temperature as current temperature
         temp = self.coordinator.data.get("supply_temperature")
-        if temp is not None:
-            return temp
-        
-        # Fallback to outside temperature
-        temp = self.coordinator.data.get("outside_temperature")
         return temp if temp is not None else None
 
     @property
@@ -190,37 +185,101 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
     @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode."""
+        mode = self.coordinator.data.get("mode", 0)
         special_mode = self.coordinator.data.get("special_mode", 0)
-        current_mode = self.coordinator.data.get("mode", 0)
-        intensity = self.coordinator.data.get("air_flow_rate_manual", 50)
+        intensity = self._get_current_intensity()
         
-        # Check for custom presets first (based on special function)
-        for preset_name, config in CUSTOM_PRESETS.items():
-            if special_mode == config.get("special", 0) and special_mode != 0:
-                return preset_name
+        # Check for custom presets first (special functions)
+        for preset_key, preset_config in CUSTOM_PRESETS.items():
+            if special_mode == preset_config.get("special", 0) and special_mode != 0:
+                return preset_key
         
-        # Check for standard presets (based on mode and intensity)
-        if current_mode == 0:  # Auto mode
-            if intensity <= 30:
-                return PRESET_ECO
-            elif intensity >= 70:
-                return PRESET_BOOST
-            else:
-                return PRESET_COMFORT
-        elif current_mode == 1:  # Manual mode
-            if intensity <= 20:
-                if special_mode == 11:  # Empty house
-                    return PRESET_AWAY
-                else:
+        # Check for standard presets based on mode and intensity
+        if special_mode == 0:  # No special function active
+            if mode == 0:  # Auto mode
+                if intensity and intensity <= 30:
+                    return PRESET_ECO
+                elif intensity and intensity >= 40:
+                    return PRESET_COMFORT
+            elif mode == 1:  # Manual mode
+                if intensity and intensity >= 90:
+                    return PRESET_BOOST
+                elif intensity and intensity <= 20:
                     return PRESET_SLEEP
-            elif intensity >= 90:
-                return PRESET_BOOST
-            elif intensity <= 30:
-                return PRESET_ECO
-            else:
-                return PRESET_COMFORT
         
+        # Check for away mode (empty house special function)
+        if special_mode == 11:
+            return PRESET_AWAY
+            
         return None
+
+    def _get_current_intensity(self) -> int | None:
+        """Get current intensity based on operating mode."""
+        mode = self.coordinator.data.get("mode", 0)
+        
+        if mode == 0:  # Auto mode
+            return self.coordinator.data.get("supply_percentage")
+        elif mode == 1:  # Manual mode
+            return self.coordinator.data.get("air_flow_rate_manual")
+        elif mode == 2:  # Temporary mode
+            return self.coordinator.data.get("air_flow_rate_temporary")
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        attributes = {}
+        
+        # Operating mode
+        mode = self.coordinator.data.get("mode")
+        if mode is not None:
+            attributes["operating_mode"] = OPERATING_MODES.get(mode, "Unknown")
+        
+        # Season mode
+        season = self.coordinator.data.get("season_mode")
+        if season is not None:
+            attributes["season_mode"] = SEASON_MODES.get(season, "Unknown")
+        
+        # Special mode with description
+        special_mode = self.coordinator.data.get("special_mode")
+        if special_mode is not None:
+            attributes["special_function"] = SPECIAL_MODES.get(special_mode, f"Unknown ({special_mode})")
+        
+        # Comfort mode status
+        comfort_mode = self.coordinator.data.get("comfort_mode")
+        if comfort_mode is not None:
+            comfort_status = ["Nieaktywny", "Grzanie", "Chłodzenie"]
+            attributes["comfort_mode"] = comfort_status[comfort_mode] if comfort_mode < len(comfort_status) else "Unknown"
+        
+        # System statuses  
+        if self.coordinator.data.get("constant_flow_active") is not None:
+            attributes["constant_flow"] = "Aktywny" if self.coordinator.data["constant_flow_active"] else "Nieaktywny"
+        
+        gwc_mode = self.coordinator.data.get("gwc_mode")
+        if gwc_mode is not None:
+            gwc_status = ["Nieaktywny", "Zima", "Lato"]
+            attributes["gwc_mode"] = gwc_status[gwc_mode] if gwc_mode < len(gwc_status) else "Unknown"
+        
+        bypass_mode = self.coordinator.data.get("bypass_mode")
+        if bypass_mode is not None:
+            bypass_status = ["Nieaktywny", "FreeHeating", "FreeCooling"]
+            attributes["bypass_mode"] = bypass_status[bypass_mode] if bypass_mode < len(bypass_status) else "Unknown"
+        
+        # Flow rates
+        supply_flow = self.coordinator.data.get("supply_flowrate")
+        if supply_flow is not None:
+            attributes["supply_flow"] = f"{supply_flow} m³/h"
+            
+        exhaust_flow = self.coordinator.data.get("exhaust_flowrate")
+        if exhaust_flow is not None:
+            attributes["exhaust_flow"] = f"{exhaust_flow} m³/h"
+        
+        # Enhanced diagnostics
+        attributes["current_intensity"] = self._get_current_intensity()
+        attributes["antifreeze_mode"] = self.coordinator.data.get("antifreeze_mode")
+        attributes["antifreeze_stage"] = self.coordinator.data.get("antifreeze_stage")
+        
+        return attributes
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
@@ -229,7 +288,7 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
             return
         
         # Set temperature for manual mode (convert to register format)
-        temp_register_value = int(temperature * 2)  # Assuming 0.5°C resolution
+        temp_register_value = int(temperature * 2)
         success = await self.coordinator.async_write_register(
             "supply_air_temperature_manual", temp_register_value
         )
@@ -329,56 +388,3 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         success = await self.coordinator.async_write_register("on_off_panel_mode", 0)
         if success:
             await self.coordinator.async_request_refresh()
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = {}
-        
-        # Add current device status
-        device_on = self.coordinator.data.get("on_off_panel_mode")
-        if device_on is not None:
-            attributes["device_power"] = "On" if device_on else "Off"
-        
-        # Add current mode details
-        mode = self.coordinator.data.get("mode")
-        if mode is not None:
-            mode_names = {0: "Auto", 1: "Manual", 2: "Temporary"}
-            attributes["operating_mode"] = mode_names.get(mode, "Unknown")
-        
-        # Add special function status
-        special_mode = self.coordinator.data.get("special_mode")
-        if special_mode is not None and special_mode != 0:
-            special_names = {
-                1: "Hood", 2: "Fireplace", 7: "Airing Manual", 
-                8: "Airing Auto", 11: "Empty House", 12: "Open Windows"
-            }
-            attributes["special_function"] = special_names.get(special_mode, f"Special {special_mode}")
-        
-        # Add temperature readings
-        outside_temp = self.coordinator.data.get("outside_temperature")
-        if outside_temp is not None:
-            attributes["outside_temperature"] = outside_temp
-            
-        exhaust_temp = self.coordinator.data.get("exhaust_temperature")
-        if exhaust_temp is not None:
-            attributes["exhaust_temperature"] = exhaust_temp
-        
-        # Add flow rates
-        supply_flow = self.coordinator.data.get("supply_flowrate")
-        if supply_flow is not None:
-            attributes["supply_airflow"] = f"{supply_flow} m³/h"
-            
-        exhaust_flow = self.coordinator.data.get("exhaust_flowrate")
-        if exhaust_flow is not None:
-            attributes["exhaust_airflow"] = f"{exhaust_flow} m³/h"
-        
-        return attributes
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success
-            and self.coordinator.data.get("on_off_panel_mode") is not None
-        )

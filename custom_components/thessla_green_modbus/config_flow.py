@@ -119,14 +119,6 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     }
 
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
-
-
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ThesslaGreen Modbus - HA 2025.7+ Compatible."""
 
@@ -142,53 +134,67 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle the initial step - ENHANCED with auto-detection."""
         errors: dict[str, str] = {}
-
+        description_placeholders: dict[str, str] = {}
+        
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
                 
-                # Use auto-detected slave_id if different from requested
-                if info["detected_slave_id"] != user_input[CONF_SLAVE_ID]:
-                    user_input[CONF_SLAVE_ID] = info["detected_slave_id"]
-                    _LOGGER.info("Auto-corrected slave_id to %s", info["detected_slave_id"])
-
-                # Set unique ID to prevent duplicates
+                # ENHANCEMENT: Update slave ID if auto-detected
+                detected_slave_id = info.get("detected_slave_id")
+                if detected_slave_id and detected_slave_id != user_input[CONF_SLAVE_ID]:
+                    _LOGGER.info(
+                        "Auto-detected slave ID %d (user provided %d)",
+                        detected_slave_id, user_input[CONF_SLAVE_ID]
+                    )
+                    user_input[CONF_SLAVE_ID] = detected_slave_id
+                    self._detected_slave_id = detected_slave_id
+                
+                # Create unique ID based on host and detected slave_id
                 unique_id = f"{user_input[CONF_HOST]}_{user_input[CONF_SLAVE_ID]}"
                 await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
-
+                
+                # Store additional info for later use
+                self.discovered_info = info
+                
                 return self.async_create_entry(
                     title=info["title"],
                     data=user_input,
                     description_placeholders={
-                        "device_name": info["device_name"],
-                        "firmware": info["firmware"],
-                        "capabilities": str(info["capabilities_count"]),
+                        "capabilities": str(info.get("capabilities_count", 0)),
+                        "firmware": info.get("firmware", "Unknown"),
+                        "device_name": info.get("device_name", "ThesslaGreen"),
                     },
                 )
-            except CannotConnect:
+                
+            except CannotConnect as exc:
                 errors["base"] = "cannot_connect"
+                description_placeholders["error_detail"] = str(exc)
+                _LOGGER.warning("Cannot connect: %s", exc)
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
+        # Enhanced form with better user guidance
         return self.async_show_form(
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
             description_placeholders={
-                "default_host": "192.168.1.100",
                 "default_port": str(DEFAULT_PORT),
                 "default_slave_id": str(DEFAULT_SLAVE_ID),
+                "auto_detect_note": "Slave ID will be auto-detected if the default doesn't work",
+                **description_placeholders,
             },
         )
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle reconfiguration of existing entry - NEW HA 2025.7+ Feature."""
+        """Handle reconfiguration of the integration - NEW HA 2025.7+ Feature."""
         errors: dict[str, str] = {}
         
         if user_input is not None:
@@ -328,15 +334,20 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Handle device rescan."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        _LOGGER.info("Starting device rescan for %s", self._config_entry.title)
-        
-        # Trigger device rescan service
-        hass = self.hass
-        await hass.services.async_call(
-            DOMAIN, "device_rescan", service_data={}, blocking=True
-        )
+            # User confirmed rescan, trigger coordinator refresh
+            hass = self.hass
+            coordinator = hass.data[DOMAIN][self._config_entry.entry_id]
+            
+            try:
+                await coordinator.async_request_refresh()
+                return self.async_create_entry(
+                    title="", 
+                    data=self._config_entry.options,
+                    description_placeholders={"rescan_result": "Device rescanned successfully"}
+                )
+            except Exception as exc:
+                _LOGGER.error("Failed to rescan device: %s", exc)
+                return self.async_abort(reason="rescan_failed")
 
         return self.async_show_form(
             step_id="rescan",
@@ -344,3 +355,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 "device_name": self._config_entry.title,
             },
         )
+
+
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate there is invalid auth."""
