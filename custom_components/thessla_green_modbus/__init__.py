@@ -26,7 +26,6 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ThesslaGreenCoordinator
-from .device_scanner import ThesslaGreenDeviceScanner
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenCoordinator
@@ -68,21 +67,19 @@ SERVICE_DEVICE_RESCAN_SCHEMA = vol.Schema({})
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ThesslaGreen Modbus from a config entry - ENHANCED VERSION."""
-    _LOGGER.info("Setting up ENHANCED ThesslaGreen Modbus integration")
-    
-    hass.data.setdefault(DOMAIN, {})
-
-    # Extract configuration
     host = entry.data[CONF_HOST]
     port = entry.data[CONF_PORT]
     slave_id = entry.data.get("slave_id", 10)
     
-    # Get options with defaults
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
     retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
 
-    # Create coordinator
+    _LOGGER.info(
+        "Setting up ENHANCED ThesslaGreen Modbus: %s:%s (slave_id=%s, scan=%ds)",
+        host, port, slave_id, scan_interval,
+    )
+
     coordinator = ThesslaGreenCoordinator(
         hass=hass,
         host=host,
@@ -93,33 +90,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         retry=retry,
     )
 
-    # Store coordinator
-    hass.data[DOMAIN][entry.entry_id] = coordinator
-
-    # Perform initial refresh
     try:
         await coordinator.async_config_entry_first_refresh()
+        
+        # Log optimization results
+        total_registers = sum(len(regs) for regs in coordinator.available_registers.values())
+        capabilities_count = len([k for k, v in coordinator.capabilities.items() if v])
+        
+        _LOGGER.info(
+            "ENHANCED setup successful! Device: %s, Registers: %d, Capabilities: %d",
+            coordinator.device_info.get("device_name", "ThesslaGreen"),
+            total_registers,
+            capabilities_count
+        )
+        
     except Exception as exc:
-        _LOGGER.error("Failed to perform initial device refresh: %s", exc)
-        raise ConfigEntryNotReady("Could not connect to ThesslaGreen device") from exc
+        _LOGGER.error("Failed to setup ENHANCED ThesslaGreen coordinator: %s", exc)
+        raise ConfigEntryNotReady(f"Failed to connect to device: {exc}") from exc
 
-    # Register device
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # ENHANCEMENT: Register device in device registry with enhanced info
     await _async_register_device(hass, entry, coordinator)
 
-    # Register update listener
-    entry.add_update_listener(async_update_listener)
-
-    # Setup platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Register services (only once when first integration is added)
-    if len(hass.data[DOMAIN]) == 1:
-        await _async_register_services(hass)
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    # Register shutdown handler
-    entry.async_on_unload(
-        hass.bus.async_listen_once("homeassistant_stop", coordinator.async_shutdown)
-    )
+    # ENHANCEMENT: Register services
+    await _async_register_services(hass)
 
     return True
 
@@ -144,11 +144,6 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     _LOGGER.info("Reloading ENHANCED ThesslaGreen Modbus integration")
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
-
-
-async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Update listener for config entry options changes."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -184,69 +179,72 @@ async def _async_register_device(
     device_registry = dr.async_get(hass)
     device_info = coordinator.device_info
     
+    device_name = device_info.get("device_name", "ThesslaGreen AirPack")
+    firmware_version = device_info.get("firmware", "Unknown")
+    serial_number = device_info.get("serial_number", f"modbus_{coordinator.host}_{coordinator.slave_id}")
+    
+    # Determine model based on capabilities
+    model = "AirPack"
+    if coordinator.capabilities.get("constant_flow"):
+        model += " CF"
+    if coordinator.capabilities.get("gwc_system"):
+        model += " GWC"
+    if coordinator.capabilities.get("expansion_module"):
+        model += " EXP"
+    
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
+        name=device_name,
         manufacturer="ThesslaGreen",
-        model="AirPack",
-        name=device_info.get("device_name", "ThesslaGreen AirPack"),
-        sw_version=device_info.get("firmware", "Unknown"),
+        model=model,
+        sw_version=firmware_version,
+        serial_number=serial_number,
         configuration_url=f"http://{coordinator.host}",
+        suggested_area="HVAC",
     )
 
 
 async def _async_register_services(hass: HomeAssistant) -> None:
-    """Register integration services - ENHANCED with comprehensive functionality."""
-    _LOGGER.debug("Registering ThesslaGreen services")
-
-    # Mode service mappings
-    MODE_MAP = {"auto": 0, "manual": 1, "temporary": 2}
-    SPECIAL_FUNCTION_MAP = {
-        "none": 0, "hood": 1, "fireplace": 2, "airing_manual": 7, 
-        "airing_auto": 8, "empty_house": 11, "open_windows": 12
-    }
+    """Register integration services."""
+    if hass.services.has_service(DOMAIN, "set_mode"):
+        return  # Services already registered
 
     async def async_service_set_mode(call: ServiceCall) -> None:
         """Service to set operating mode."""
-        mode = call.data["mode"]
-        mode_value = MODE_MAP.get(mode, 0)
+        mode_map = {"auto": 0, "manual": 1, "temporary": 2}
+        mode_value = mode_map[call.data["mode"]]
         
         for coordinator in hass.data[DOMAIN].values():
-            success = await coordinator.async_write_register("mode", mode_value)
-            if success:
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set mode to %s (%d)", mode, mode_value)
-            else:
-                _LOGGER.error("Failed to set mode to %s", mode)
+            await coordinator.async_write_register("mode", mode_value)
+            await coordinator.async_request_refresh()
 
     async def async_service_set_intensity(call: ServiceCall) -> None:
-        """Service to set air flow intensity."""
+        """Service to set ventilation intensity."""
         intensity = call.data["intensity"]
         
         for coordinator in hass.data[DOMAIN].values():
-            # Set manual mode first
+            # Set manual mode first, then intensity
             await coordinator.async_write_register("mode", 1)
-            
-            # Set intensity
-            success = await coordinator.async_write_register("air_flow_rate_manual", intensity)
-            if success:
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set intensity to %d%%", intensity)
-            else:
-                _LOGGER.error("Failed to set intensity to %d", intensity)
+            await coordinator.async_write_register("air_flow_rate_manual", intensity)
+            await coordinator.async_request_refresh()
 
     async def async_service_set_special_function(call: ServiceCall) -> None:
         """Service to set special function."""
-        function = call.data["function"]
-        function_value = SPECIAL_FUNCTION_MAP.get(function, 0)
+        function_map = {
+            "none": 0,
+            "hood": 1,
+            "fireplace": 2,
+            "airing_manual": 7,
+            "airing_auto": 8,
+            "empty_house": 11,
+            "open_windows": 10,
+        }
+        function_value = function_map[call.data["function"]]
         
         for coordinator in hass.data[DOMAIN].values():
-            success = await coordinator.async_write_register("special_mode", function_value)
-            if success:
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set special function to %s (%d)", function, function_value)
-            else:
-                _LOGGER.error("Failed to set special function to %s", function)
+            await coordinator.async_write_register("special_mode", function_value)
+            await coordinator.async_request_refresh()
 
     async def async_service_reset_alarms(call: ServiceCall) -> None:
         """Service to reset alarms."""
@@ -267,19 +265,24 @@ async def _async_register_services(hass: HomeAssistant) -> None:
         """Service to rescan device capabilities."""
         for coordinator in hass.data[DOMAIN].values():
             # Trigger a complete device rescan
+            from .device_scanner import ThesslaGreenDeviceScanner
+            
             scanner = ThesslaGreenDeviceScanner(
                 coordinator.host, coordinator.port, coordinator.slave_id
             )
-
+            
             try:
                 scan_result = await scanner.scan_device()
-                coordinator.device_info = scan_result.get("device_info", {})
-                coordinator.capabilities = scan_result.get("capabilities", {})
-                coordinator.rebuild_register_groups(scan_result["available_registers"])
-
+                coordinator.available_registers = scan_result["available_registers"]
+                coordinator.device_info = scan_result["device_info"]
+                coordinator.capabilities = scan_result["capabilities"]
+                
+                # Re-compute register groups
+                coordinator._precompute_register_groups()
+                
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Device rescan completed successfully")
-
+                
             except Exception as exc:
                 _LOGGER.error("Device rescan failed: %s", exc)
 

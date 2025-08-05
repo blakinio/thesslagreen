@@ -1,4 +1,5 @@
 # ThesslaGreen Modbus Integration - Python Dependencies
+# Updated core requirements
 
 # Core Home Assistant (minimum version for compatibility)
 homeassistant>=2025.7.0

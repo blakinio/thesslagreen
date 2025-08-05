@@ -1,11 +1,73 @@
 """Test configuration for ThesslaGreen Modbus integration."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
+import os
+import sys
+import types
 
-from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenCoordinator
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+try:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+    from homeassistant.exceptions import ConfigEntryNotReady
+except ModuleNotFoundError:  # pragma: no cover - simplify test environment
+    ha = types.ModuleType("homeassistant")
+    core = types.ModuleType("homeassistant.core")
+    config_entries = types.ModuleType("homeassistant.config_entries")
+    helpers = types.ModuleType("homeassistant.helpers.update_coordinator")
+    exceptions = types.ModuleType("homeassistant.exceptions")
+    const = types.ModuleType("homeassistant.const")
+
+    class HomeAssistant:  # type: ignore[override]
+        async def async_add_executor_job(self, func, *args):  # minimal stub
+            return func(*args)
+
+    class ConfigEntry:  # type: ignore[override]
+        pass
+
+    class DataUpdateCoordinator:  # type: ignore[override]
+        def __init__(self, hass, logger, name=None, update_interval=None):
+            self.hass = hass
+            self.logger = logger
+            self.name = name
+            self.update_interval = update_interval
+
+    class UpdateFailed(Exception):
+        pass
+
+    class ConfigEntryNotReady(Exception):
+        pass
+
+    core.HomeAssistant = HomeAssistant
+    config_entries.ConfigEntry = ConfigEntry
+    helpers.DataUpdateCoordinator = DataUpdateCoordinator
+    helpers.UpdateFailed = UpdateFailed
+    exceptions.ConfigEntryNotReady = ConfigEntryNotReady
+    const.CONF_HOST = "host"
+    const.CONF_PORT = "port"
+    const.CONF_SCAN_INTERVAL = "scan_interval"
+
+    class Platform:
+        SENSOR = "sensor"
+        BINARY_SENSOR = "binary_sensor"
+        SELECT = "select"
+        NUMBER = "number"
+        SWITCH = "switch"
+        CLIMATE = "climate"
+        FAN = "fan"
+
+    const.Platform = Platform
+
+    sys.modules["homeassistant"] = ha
+    sys.modules["homeassistant.core"] = core
+    sys.modules["homeassistant.config_entries"] = config_entries
+    sys.modules["homeassistant.helpers.update_coordinator"] = helpers
+    sys.modules["homeassistant.exceptions"] = exceptions
+    sys.modules["homeassistant.const"] = const
+
+DOMAIN = "thessla_green_modbus"
 
 
 @pytest.fixture
@@ -36,7 +98,7 @@ def mock_config_entry():
 @pytest.fixture
 def mock_coordinator():
     """Return a mock coordinator."""
-    coordinator = MagicMock(spec=ThesslaGreenCoordinator)
+    coordinator = MagicMock()
     coordinator.host = "192.168.1.100"
     coordinator.port = 502
     coordinator.slave_id = 10
@@ -70,12 +132,3 @@ def mock_coordinator():
     return coordinator
 
 
-@pytest.fixture
-def mock_modbus_client():
-    """Return a mock Modbus client."""
-    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock:
-        client = MagicMock()
-        client.connect.return_value = True
-        client.connected = True
-        mock.return_value = client
-        yield client
