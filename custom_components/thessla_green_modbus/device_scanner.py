@@ -111,7 +111,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_input_registers(address=start_addr, count=count, unit=self.slave_id)
+                response = client.read_input_registers(address=start_addr, count=count, slave=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -141,7 +141,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_holding_registers(address=start_addr, count=count, unit=self.slave_id)
+                response = client.read_holding_registers(address=start_addr, count=count, slave=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -168,7 +168,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_coils(address=start_addr, count=count, unit=self.slave_id)
+                response = client.read_coils(address=start_addr, count=count, slave=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -195,7 +195,7 @@ class ThesslaGreenDeviceScanner:
         for start_addr, count, register_keys in register_groups:
             try:
                 self._scan_stats["total_attempts"] += 1
-                response = client.read_discrete_inputs(address=start_addr, count=count, unit=self.slave_id)
+                response = client.read_discrete_inputs(address=start_addr, count=count, slave=self.slave_id)
                 
                 if not response.isError():
                     self._scan_stats["successful_reads"] += 1
@@ -267,7 +267,7 @@ class ThesslaGreenDeviceScanner:
         
         # Enhanced firmware version reading
         try:
-            response = client.read_input_registers(address=0x0050, count=1, unit=self.slave_id)
+            response = client.read_input_registers(address=0x0050, count=1, slave=self.slave_id)
             if not response.isError() and response.registers:
                 raw_fw = response.registers[0]
                 if raw_fw != 0x8000 and raw_fw != 0xFFFF:  # Valid firmware value
@@ -288,7 +288,7 @@ class ThesslaGreenDeviceScanner:
         
         # Enhanced serial number reading
         try:
-            response = client.read_input_registers(address=0x0051, count=2, unit=self.slave_id)
+            response = client.read_input_registers(address=0x0051, count=2, slave=self.slave_id)
             if not response.isError() and len(response.registers) >= 2:
                 serial_high = response.registers[0]
                 serial_low = response.registers[1]
