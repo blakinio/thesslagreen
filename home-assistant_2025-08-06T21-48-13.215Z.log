@@ -1,0 +1,500 @@
+[36m2025-08-06 23:43:41.131 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:43:41.617 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0xc 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:43:41.617 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:43:41.617 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:43:41.694 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0xd 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:43:41.694 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:43:41.694 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:43:41.695 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Data update completed in 12.59s (avg: 11.55s, success rate: 100.0%)[0m
+[36m2025-08-06 23:43:41.696 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Finished fetching thessla_green_modbus data in 12.592 seconds (success: True)[0m
+[33m2025-08-06 23:43:53.724 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:307]: dallas_temp.sensor cleared Warning flag[0m
+[33m2025-08-06 23:43:54.512 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:279]: dallas_temp.sensor set Warning flag: scratch pad checksum invalid[0m
+[36m2025-08-06 23:44:11.106 DEBUG (SyncWorker_1) [pymodbus.logging] Connection to Modbus server established. Socket ('192.168.1.83', 55030)[0m
+[36m2025-08-06 23:44:21.269 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x1 0x0 0x0 0x0 0x7 0xa 0x4 0x4 0x0 0x3 0x0 0xb[0m
+[36m2025-08-06 23:44:21.269 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(4 sub -1) -> ReadInputRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[3, 11], status=1) [0m
+[36m2025-08-06 23:44:21.269 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:21.468 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x2 0x0 0x0 0x0 0x11 0xa 0x4 0xe 0x0 0x8b 0x0 0x9d 0x0 0xfd 0x0 0x92 0x80 0x0 0x80 0x0 0x1 0x3[0m
+[36m2025-08-06 23:44:21.469 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(4 sub -1) -> ReadInputRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[139, 157, 253, 146, 32768, 32768, 259], status=1) [0m
+[36m2025-08-06 23:44:21.469 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:21.639 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x3 0x0 0x0 0x0 0xf 0xa 0x3 0xc 0x0 0x1 0x0 0x0 0x0 0x1e 0x0 0x50 0x0 0x2a 0x0 0x2a[0m
+[36m2025-08-06 23:44:21.640 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[1, 0, 30, 80, 42, 42], status=1) [0m
+[36m2025-08-06 23:44:21.640 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:21.835 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x4 0x0 0x0 0x0 0xb 0xa 0x3 0x8 0x0 0x1e 0x0 0x3c 0x0 0x64 0x24 0x0[0m
+[36m2025-08-06 23:44:21.836 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[30, 60, 100, 9216], status=1) [0m
+[36m2025-08-06 23:44:21.836 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:22.001 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x5 0x0 0x0 0x0 0x5 0xa 0x3 0x2 0x0 0x0[0m
+[36m2025-08-06 23:44:22.002 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[0], status=1) [0m
+[36m2025-08-06 23:44:22.002 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:22.187 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x6 0x0 0x0 0x0 0xb 0xa 0x3 0x8 0x0 0x0 0x0 0x0 0x0 0x1e 0x0 0x0[0m
+[36m2025-08-06 23:44:22.187 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[0, 0, 30, 0], status=1) [0m
+[36m2025-08-06 23:44:22.187 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:22.361 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x7 0x0 0x0 0x0 0x4 0xa 0x1 0x1 0x0[0m
+[36m2025-08-06 23:44:22.361 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(1 sub -1) -> ReadCoilsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:44:22.362 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:22.542 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x8 0x0 0x0 0x0 0x4 0xa 0x1 0x1 0x5[0m
+[36m2025-08-06 23:44:22.542 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(1 sub -1) -> ReadCoilsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[True, False, True, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:44:22.542 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:22.744 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0x9 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:44:22.745 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:44:22.745 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:22.933 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0xa 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x3[0m
+[36m2025-08-06 23:44:22.933 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[True, True, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:44:22.933 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:23.107 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0xb 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x30[0m
+[36m2025-08-06 23:44:23.108 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, True, True, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:44:23.108 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:23.306 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0xc 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:44:23.307 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:44:23.307 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:23.477 DEBUG (SyncWorker_1) [pymodbus.logging] Processing: 0x0 0xd 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:44:23.477 DEBUG (SyncWorker_1) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:44:23.477 DEBUG (SyncWorker_1) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:44:23.479 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Data update completed in 12.38s (avg: 11.57s, success rate: 100.0%)[0m
+[36m2025-08-06 23:44:23.479 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Finished fetching thessla_green_modbus data in 12.376 seconds (success: True)[0m
+[36m2025-08-06 23:44:53.108 DEBUG (SyncWorker_6) [pymodbus.logging] Connection to Modbus server established. Socket ('192.168.1.83', 51514)[0m
+[33m2025-08-06 23:44:53.751 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:307]: dallas_temp.sensor cleared Warning flag[0m
+[33m2025-08-06 23:44:54.533 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:279]: dallas_temp.sensor set Warning flag: scratch pad checksum invalid[0m
+[36m2025-08-06 23:45:03.245 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x1 0x0 0x0 0x0 0x7 0xa 0x4 0x4 0x0 0x3 0x0 0xb[0m
+[36m2025-08-06 23:45:03.245 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(4 sub -1) -> ReadInputRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[3, 11], status=1) [0m
+[36m2025-08-06 23:45:03.245 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:03.426 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x2 0x0 0x0 0x0 0x11 0xa 0x4 0xe 0x0 0x8b 0x0 0x9d 0x0 0xfd 0x0 0x92 0x80 0x0 0x80 0x0 0x1 0x3[0m
+[36m2025-08-06 23:45:03.426 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(4 sub -1) -> ReadInputRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[139, 157, 253, 146, 32768, 32768, 259], status=1) [0m
+[36m2025-08-06 23:45:03.426 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:03.606 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x3 0x0 0x0 0x0 0xf 0xa 0x3 0xc 0x0 0x1 0x0 0x0 0x0 0x1e 0x0 0x50 0x0 0x2a 0x0 0x2a[0m
+[36m2025-08-06 23:45:03.607 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[1, 0, 30, 80, 42, 42], status=1) [0m
+[36m2025-08-06 23:45:03.607 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:03.781 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x4 0x0 0x0 0x0 0xb 0xa 0x3 0x8 0x0 0x1e 0x0 0x3c 0x0 0x64 0x24 0x0[0m
+[36m2025-08-06 23:45:03.782 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[30, 60, 100, 9216], status=1) [0m
+[36m2025-08-06 23:45:03.782 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:03.956 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x5 0x0 0x0 0x0 0x5 0xa 0x3 0x2 0x0 0x0[0m
+[36m2025-08-06 23:45:03.957 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[0], status=1) [0m
+[36m2025-08-06 23:45:03.957 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:04.165 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x6 0x0 0x0 0x0 0xb 0xa 0x3 0x8 0x0 0x0 0x0 0x0 0x0 0x1e 0x0 0x0[0m
+[36m2025-08-06 23:45:04.166 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[0, 0, 30, 0], status=1) [0m
+[36m2025-08-06 23:45:04.166 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:04.347 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x7 0x0 0x0 0x0 0x4 0xa 0x1 0x1 0x0[0m
+[36m2025-08-06 23:45:04.348 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(1 sub -1) -> ReadCoilsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:04.348 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:04.520 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x8 0x0 0x0 0x0 0x4 0xa 0x1 0x1 0x5[0m
+[36m2025-08-06 23:45:04.520 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(1 sub -1) -> ReadCoilsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[True, False, True, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:04.520 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:04.720 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0x9 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:45:04.721 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:04.721 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:04.891 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0xa 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x3[0m
+[36m2025-08-06 23:45:04.892 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[True, True, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:04.892 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:05.073 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0xb 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x30[0m
+[36m2025-08-06 23:45:05.073 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, True, True, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:05.073 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:05.253 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0xc 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:45:05.253 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:05.254 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:05.434 DEBUG (SyncWorker_6) [pymodbus.logging] Processing: 0x0 0xd 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:45:05.434 DEBUG (SyncWorker_6) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:05.434 DEBUG (SyncWorker_6) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:05.438 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Data update completed in 12.33s (avg: 11.59s, success rate: 100.0%)[0m
+[36m2025-08-06 23:45:05.439 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Finished fetching thessla_green_modbus data in 12.335 seconds (success: True)[0m
+[33m2025-08-06 23:45:30.056 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration xtend_tuya which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.057 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration philips_ambilight_hue which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.058 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration waste_management which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.059 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration satel which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.060 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration xiaomi_miio_airpurifier which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.061 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration irrigationprogram which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.062 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration nodered which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.063 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration edgeos which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.064 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration hacs which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.065 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration dahua which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.066 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration smartthinq_sensors which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.067 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration hikconnect which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:30.068 WARNING (SyncWorker_1) [homeassistant.loader] We found a custom integration localtuya which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[36m2025-08-06 23:45:35.112 DEBUG (SyncWorker_2) [pymodbus.logging] Connection to Modbus server established. Socket ('192.168.1.83', 49176)[0m
+[36m2025-08-06 23:45:45.203 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x1 0x0 0x0 0x0 0x7 0xa 0x4 0x4 0x0 0x3 0x0 0xb[0m
+[36m2025-08-06 23:45:45.204 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(4 sub -1) -> ReadInputRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[3, 11], status=1) [0m
+[36m2025-08-06 23:45:45.204 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:45.382 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x2 0x0 0x0 0x0 0x11 0xa 0x4 0xe 0x0 0x8b 0x0 0x9c 0x0 0xfc 0x0 0x92 0x80 0x0 0x80 0x0 0x1 0x3[0m
+[36m2025-08-06 23:45:45.382 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(4 sub -1) -> ReadInputRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[139, 156, 252, 146, 32768, 32768, 259], status=1) [0m
+[36m2025-08-06 23:45:45.382 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:45.583 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x3 0x0 0x0 0x0 0xf 0xa 0x3 0xc 0x0 0x1 0x0 0x0 0x0 0x1e 0x0 0x50 0x0 0x2a 0x0 0x2a[0m
+[36m2025-08-06 23:45:45.583 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[1, 0, 30, 80, 42, 42], status=1) [0m
+[36m2025-08-06 23:45:45.583 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:45.770 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x4 0x0 0x0 0x0 0xb 0xa 0x3 0x8 0x0 0x1e 0x0 0x3c 0x0 0x64 0x24 0x0[0m
+[36m2025-08-06 23:45:45.771 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[30, 60, 100, 9216], status=1) [0m
+[36m2025-08-06 23:45:45.771 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:45.934 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x5 0x0 0x0 0x0 0x5 0xa 0x3 0x2 0x0 0x0[0m
+[36m2025-08-06 23:45:45.935 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[0], status=1) [0m
+[36m2025-08-06 23:45:45.935 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:46.139 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x6 0x0 0x0 0x0 0xb 0xa 0x3 0x8 0x0 0x0 0x0 0x0 0x0 0x1e 0x0 0x0[0m
+[36m2025-08-06 23:45:46.140 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(3 sub -1) -> ReadHoldingRegistersResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[], registers=[0, 0, 30, 0], status=1) [0m
+[36m2025-08-06 23:45:46.140 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:46.305 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x7 0x0 0x0 0x0 0x4 0xa 0x1 0x1 0x0[0m
+[36m2025-08-06 23:45:46.305 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(1 sub -1) -> ReadCoilsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:46.305 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:46.485 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x8 0x0 0x0 0x0 0x4 0xa 0x1 0x1 0x5[0m
+[36m2025-08-06 23:45:46.486 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(1 sub -1) -> ReadCoilsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[True, False, True, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:46.486 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:46.667 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0x9 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:45:46.668 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:46.668 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:46.854 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0xa 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x3[0m
+[36m2025-08-06 23:45:46.854 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[True, True, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:46.854 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[31m2025-08-06 23:45:46.942 ERROR (MainThread) [custom_components.hacs] Download failed - Got status code 404 when trying to download https://github.com/blakinio/thesslagreen/archive/refs/heads/b152468.zip
+Traceback (most recent call last):
+  File "/config/custom_components/hacs/base.py", line 709, in async_download_file
+    raise HacsException(
+    ...<2 lines>...
+    )
+custom_components.hacs.exceptions.HacsException: Got status code 404 when trying to download https://github.com/blakinio/thesslagreen/archive/refs/heads/b152468.zip[0m
+[31m2025-08-06 23:45:46.958 ERROR (MainThread) [custom_components.hacs] [<Integration blakinio/thesslagreen>] Failed to download zipball
+Traceback (most recent call last):
+  File "/config/custom_components/hacs/repositories/base.py", line 631, in download_content
+    await self.download_repository_zip()
+  File "/config/custom_components/hacs/repositories/base.py", line 677, in download_repository_zip
+    raise HacsException(f"[{self}] Failed to download zipball")
+custom_components.hacs.exceptions.HacsException: [<Integration blakinio/thesslagreen>] Failed to download zipball[0m
+[36m2025-08-06 23:45:47.049 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0xb 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x30[0m
+[36m2025-08-06 23:45:47.050 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, True, True, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:47.050 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:47.239 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0xc 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:45:47.239 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:47.239 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:47.413 DEBUG (SyncWorker_2) [pymodbus.logging] Processing: 0x0 0xd 0x0 0x0 0x0 0x4 0xa 0x2 0x1 0x0[0m
+[36m2025-08-06 23:45:47.413 DEBUG (SyncWorker_2) [pymodbus.logging] decoded PDU function_code(2 sub -1) -> ReadDiscreteInputsResponse(dev_id=0, transaction_id=0, address=0, count=0, bits=[False, False, False, False, False, False, False, False], registers=[], status=1) [0m
+[36m2025-08-06 23:45:47.413 DEBUG (SyncWorker_2) [pymodbus.logging] Frame advanced, resetting header!![0m
+[36m2025-08-06 23:45:47.414 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Data update completed in 12.31s (avg: 11.61s, success rate: 100.0%)[0m
+[36m2025-08-06 23:45:47.414 DEBUG (MainThread) [custom_components.thessla_green_modbus.coordinator] Finished fetching thessla_green_modbus data in 12.308 seconds (success: True)[0m
+[33m2025-08-06 23:45:50.499 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration xtend_tuya which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.500 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration philips_ambilight_hue which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.501 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration waste_management which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.503 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration thessla_green_modbus which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.504 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration satel which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.506 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration xiaomi_miio_airpurifier which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.507 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration irrigationprogram which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.508 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration nodered which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.509 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration edgeos which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.510 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration hacs which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.511 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration dahua which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.512 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration smartthinq_sensors which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.513 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration hikconnect which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:50.514 WARNING (SyncWorker_6) [homeassistant.loader] We found a custom integration localtuya which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:45:53.771 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:307]: dallas_temp.sensor cleared Warning flag[0m
+[33m2025-08-06 23:45:54.556 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:279]: dallas_temp.sensor set Warning flag: scratch pad checksum invalid[0m
+s6-rc: info: service legacy-services: stopping
+[33m2025-08-06 23:46:07.849 WARNING (MainThread) [homeassistant.core] Task <Task pending name='service call background homeassistant.restart' coro=<ServiceRegistry._run_service_call_catch_exceptions() running at /usr/src/homeassistant/homeassistant/core.py:2819> wait_for=<Task pending name='admin service homeassistant.restart' coro=<async_setup.<locals>.async_handle_core_service() running at /usr/src/homeassistant/homeassistant/components/homeassistant/__init__.py:233> wait_for=<Future pending cb=[Task.task_wakeup()]> cb=[set.remove(), Task.task_wakeup()]> cb=[set.remove()]> was still running after final writes shutdown stage; Integrations should cancel non-critical tasks when receiving the stop event to prevent delaying shutdown[0m
+Found 3 non-daemonic threads.
+[21:46:23] INFO: [32mHome Assistant Core finish process exit code 0[0m
+[21:46:23] INFO: [32mHome Assistant Core service shutdown[0m
+s6-rc: info: service legacy-services successfully stopped
+s6-rc: info: service legacy-cont-init: stopping
+s6-rc: info: service legacy-cont-init successfully stopped
+s6-rc: info: service fix-attrs: stopping
+s6-rc: info: service fix-attrs successfully stopped
+s6-rc: info: service s6rc-oneshot-runner: stopping
+s6-rc: info: service s6rc-oneshot-runner successfully stopped
+s6-rc: info: service s6rc-oneshot-runner: starting
+s6-rc: info: service s6rc-oneshot-runner successfully started
+s6-rc: info: service fix-attrs: starting
+s6-rc: info: service fix-attrs successfully started
+s6-rc: info: service legacy-cont-init: starting
+s6-rc: info: service legacy-cont-init successfully started
+s6-rc: info: service legacy-services: starting
+services-up: info: copying legacy longrun home-assistant (no readiness notification)
+s6-rc: info: service legacy-services successfully started
+[33m2025-08-06 23:46:54.630 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration xtend_tuya which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.632 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration philips_ambilight_hue which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.633 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration waste_management which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.634 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration thessla_green_modbus which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.635 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration satel which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.636 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration xiaomi_miio_airpurifier which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.637 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration irrigationprogram which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.638 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration nodered which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.640 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration edgeos which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.641 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration hacs which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.642 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration dahua which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.643 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration smartthinq_sensors which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.644 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration hikconnect which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:46:54.645 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration localtuya which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant[0m
+[33m2025-08-06 23:47:08.353 WARNING (MainThread) [py.warnings] /usr/local/lib/python3.13/site-packages/gql/transport/aiohttp.py:92: UserWarning: WARNING: By default, AIOHTTPTransport does not verify ssl certificates. This will be fixed in the next major version. You can set ssl=True to force the ssl certificate verification or ssl=False to disable this warning
+  warnings.warn(
+[0m
+[31m2025-08-06 23:47:11.066 ERROR (ImportExecutor_0) [homeassistant.loader] Unexpected exception importing component custom_components.thessla_green_modbus
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1058, in _get_component
+    ComponentProtocol, importlib.import_module(self.pkg_path)
+                       ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/src/homeassistant/homeassistant/util/loop.py", line 201, in protected_loop_func
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1160, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1090, in source_to_code
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/config/custom_components/thessla_green_modbus/__init__.py", line 372
+    codex/enhance-logging-in-device-scanner
+                                           ^
+IndentationError: unindent does not match any outer indentation level[0m
+[33m2025-08-06 23:47:11.128 WARNING (MainThread) [homeassistant.util.loop] Detected blocking call to import_module with args ('custom_components.thessla_green_modbus',) in /usr/src/homeassistant/homeassistant/loader.py, line 1058: ComponentProtocol, importlib.import_module(self.pkg_path) inside the event loop; This is causing stability issues. Please create a bug report at https://github.com/home-assistant/core/issues?q=is%3Aopen+is%3Aissue
+For developers, please see https://developers.home-assistant.io/docs/asyncio_blocking_operations/#import_module
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/usr/src/homeassistant/homeassistant/__main__.py", line 223, in <module>
+    sys.exit(main())
+  File "/usr/src/homeassistant/homeassistant/__main__.py", line 209, in main
+    exit_code = runner.run(runtime_conf)
+  File "/usr/src/homeassistant/homeassistant/runner.py", line 154, in run
+    return loop.run_until_complete(setup_and_run_hass(runtime_config))
+  File "/usr/local/lib/python3.13/asyncio/base_events.py", line 706, in run_until_complete
+    self.run_forever()
+  File "/usr/local/lib/python3.13/asyncio/base_events.py", line 677, in run_forever
+    self._run_once()
+  File "/usr/local/lib/python3.13/asyncio/base_events.py", line 2034, in _run_once
+    handle._run()
+  File "/usr/local/lib/python3.13/asyncio/events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+  File "/usr/src/homeassistant/homeassistant/setup.py", line 170, in async_setup_component
+    result = await _async_setup_component(hass, domain, config)
+  File "/usr/src/homeassistant/homeassistant/setup.py", line 343, in _async_setup_component
+    component = await integration.async_get_component()
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1010, in async_get_component
+    comp = self._get_component()
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1058, in _get_component
+    ComponentProtocol, importlib.import_module(self.pkg_path)
+[0m
+[31m2025-08-06 23:47:11.148 ERROR (MainThread) [homeassistant.loader] Unexpected exception importing component custom_components.thessla_green_modbus
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1058, in _get_component
+    ComponentProtocol, importlib.import_module(self.pkg_path)
+                       ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/src/homeassistant/homeassistant/util/loop.py", line 201, in protected_loop_func
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1160, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1090, in source_to_code
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/config/custom_components/thessla_green_modbus/__init__.py", line 372
+    codex/enhance-logging-in-device-scanner
+                                           ^
+IndentationError: unindent does not match any outer indentation level
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 998, in async_get_component
+    comp = await self.hass.async_add_import_executor_job(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self._get_component, True
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1069, in _get_component
+    raise ImportError(f"Exception importing {self.pkg_path}") from err
+ImportError: Exception importing custom_components.thessla_green_modbus
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1058, in _get_component
+    ComponentProtocol, importlib.import_module(self.pkg_path)
+                       ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/src/homeassistant/homeassistant/util/loop.py", line 201, in protected_loop_func
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1160, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1090, in source_to_code
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/config/custom_components/thessla_green_modbus/__init__.py", line 372
+    codex/enhance-logging-in-device-scanner
+                                           ^
+IndentationError: unindent does not match any outer indentation level[0m
+[31m2025-08-06 23:47:11.168 ERROR (MainThread) [homeassistant.setup] Setup failed for custom integration 'thessla_green_modbus': Unable to import component: Exception importing custom_components.thessla_green_modbus
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1058, in _get_component
+    ComponentProtocol, importlib.import_module(self.pkg_path)
+                       ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/src/homeassistant/homeassistant/util/loop.py", line 201, in protected_loop_func
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1160, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1090, in source_to_code
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/config/custom_components/thessla_green_modbus/__init__.py", line 372
+    codex/enhance-logging-in-device-scanner
+                                           ^
+IndentationError: unindent does not match any outer indentation level
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 998, in async_get_component
+    comp = await self.hass.async_add_import_executor_job(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self._get_component, True
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1069, in _get_component
+    raise ImportError(f"Exception importing {self.pkg_path}") from err
+ImportError: Exception importing custom_components.thessla_green_modbus
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1058, in _get_component
+    ComponentProtocol, importlib.import_module(self.pkg_path)
+                       ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/src/homeassistant/homeassistant/util/loop.py", line 201, in protected_loop_func
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1160, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1090, in source_to_code
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/config/custom_components/thessla_green_modbus/__init__.py", line 372
+    codex/enhance-logging-in-device-scanner
+                                           ^
+IndentationError: unindent does not match any outer indentation level
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/setup.py", line 343, in _async_setup_component
+    component = await integration.async_get_component()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1018, in async_get_component
+    self._component_future.result()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1010, in async_get_component
+    comp = self._get_component()
+  File "/usr/src/homeassistant/homeassistant/loader.py", line 1069, in _get_component
+    raise ImportError(f"Exception importing {self.pkg_path}") from err
+ImportError: Exception importing custom_components.thessla_green_modbus[0m
+[33m2025-08-06 23:47:11.737 WARNING (ImportExecutor_0) [py.warnings] /usr/local/lib/python3.13/site-packages/aiomusiccast/__init__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import DistributionNotFound, get_distribution
+[0m
+[33m2025-08-06 23:47:11.939 WARNING (MainThread) [py.warnings] /usr/local/lib/python3.13/site-packages/gql/transport/aiohttp.py:92: UserWarning: WARNING: By default, AIOHTTPTransport does not verify ssl certificates. This will be fixed in the next major version. You can set ssl=True to force the ssl certificate verification or ssl=False to disable this warning
+  warnings.warn(
+[0m
+[33m2025-08-06 23:47:14.180 WARNING (ImportExecutor_0) [py.warnings] /usr/local/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.29.5 is exactly one major version older than the runtime version 6.31.1 at api.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+[0m
+[33m2025-08-06 23:47:14.181 WARNING (ImportExecutor_0) [py.warnings] /usr/local/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.29.5 is exactly one major version older than the runtime version 6.31.1 at api_options.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+[0m
+[31m2025-08-06 23:47:17.528 ERROR (MainThread) [homeassistant.components.sensor] hikconnect: Error on device update!
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity_platform.py", line 788, in _async_add_entity
+    await entity.async_device_update(warning=False)
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-06 23:47:17.952 ERROR (MainThread) [homeassistant.components.sensor] hikconnect: Error on device update!
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity_platform.py", line 788, in _async_add_entity
+    await entity.async_device_update(warning=False)
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-06 23:47:27.091 ERROR (MainThread) [homeassistant.helpers.event] Error while processing template: Template<template=({% set t = ( states('sensor.supply_temperature')|float - states('sensor.outside_temperature')|float ) %} {% set u = ( states('sensor.exhaust_temperature')|float - states('sensor.outside_temperature')|float ) %} {{ ( t / u *100 )|round(1) }}) renders=2>
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/template.py", line 2446, in forgiving_float_filter
+    return float(value)
+ValueError: could not convert string to float: 'unavailable'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/template.py", line 641, in async_render
+    render_result = _render_with_context(self.template, compiled, **kwargs)
+  File "/usr/src/homeassistant/homeassistant/helpers/template.py", line 2977, in _render_with_context
+    return template.render(**kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<template>", line 1, in top-level template code
+  File "/usr/src/homeassistant/homeassistant/helpers/template.py", line 2449, in forgiving_float_filter
+    raise_no_default("float", value)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/usr/src/homeassistant/homeassistant/helpers/template.py", line 1975, in raise_no_default
+    raise ValueError(
+    ...<2 lines>...
+    )
+ValueError: Template error: float got invalid input 'unavailable' when rendering template '{% set t = ( states('sensor.supply_temperature')|float - states('sensor.outside_temperature')|float ) %} {% set u = ( states('sensor.exhaust_temperature')|float - states('sensor.outside_temperature')|float ) %} {{ ( t / u *100 )|round(1) }}' but no default was specified
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/template.py", line 758, in async_render_to_info
+    render_info._result = self.async_render(  # noqa: SLF001
+                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+        variables, strict=strict, log_fn=log_fn, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/src/homeassistant/homeassistant/helpers/template.py", line 643, in async_render
+    raise TemplateError(err) from err
+homeassistant.exceptions.TemplateError: ValueError: Template error: float got invalid input 'unavailable' when rendering template '{% set t = ( states('sensor.supply_temperature')|float - states('sensor.outside_temperature')|float ) %} {% set u = ( states('sensor.exhaust_temperature')|float - states('sensor.outside_temperature')|float ) %} {{ ( t / u *100 )|round(1) }}' but no default was specified[0m
+[31m2025-08-06 23:47:27.670 ERROR (MainThread) [homeassistant.components.template.template_entity] TemplateError('ValueError: Template error: float got invalid input 'unavailable' when rendering template '{% set t = ( states('sensor.supply_temperature')|float - states('sensor.outside_temperature')|float ) %} {% set u = ( states('sensor.exhaust_temperature')|float - states('sensor.outside_temperature')|float ) %} {{ ( t / u *100 )|round(1) }}' but no default was specified') while processing template 'Template<template=({% set t = ( states('sensor.supply_temperature')|float - states('sensor.outside_temperature')|float ) %} {% set u = ( states('sensor.exhaust_temperature')|float - states('sensor.outside_temperature')|float ) %} {{ ( t / u *100 )|round(1) }}) renders=4>' for attribute '_attr_native_value' in entity 'sensor.sprawnosc_rekuperatora'[0m
+[31m2025-08-06 23:47:50.685 ERROR (MainThread) [homeassistant.components.mqtt.entity] Error 'The unit of measurement `%` is not valid together with device class `temperature`' when processing MQTT discovery message topic: 'homeassistant/sensor/ebusd_bai_ModulationTempDesired_value/config', message: '{'unique_id': 'ebusd_bai_ModulationTempDesired_value', 'device': {'identifiers': 'ebusd_bai', 'manufacturer': 'ebusd.eu', 'via_device': 'ebusd', 'sw_version': '25.1', 'suggested_area': 'Heating', 'name': 'ebusd bai'}, 'value_template': '{{value_json["value"].value}}', 'state_topic': 'ebusd/bai/ModulationTempDesired', 'unit_of_measurement': '%', 'state_class': 'measurement', 'device_class': 'temperature', 'name': 'ModulationTempDesired '}'[0m
+[31m2025-08-06 23:47:51.204 ERROR (MainThread) [homeassistant.components.mqtt.entity] Error 'The unit of measurement `%` is not valid together with device class `temperature`' when processing MQTT discovery message topic: 'homeassistant/sensor/ebusd_vr_71_Mc1FlowTempDesired_mixermovement/config', message: '{'unique_id': 'ebusd_vr_71_Mc1FlowTempDesired_mixermovement', 'device': {'identifiers': 'ebusd_vr_71', 'manufacturer': 'ebusd.eu', 'via_device': 'ebusd', 'sw_version': '25.1', 'suggested_area': 'Heating', 'name': 'ebusd vr_71'}, 'value_template': '{{value_json["mixermovement"].value}}', 'state_topic': 'ebusd/vr_71/Mc1FlowTempDesired', 'unit_of_measurement': '%', 'state_class': 'measurement', 'device_class': 'temperature', 'name': 'Mc1FlowTempDesired mixermovement'}'[0m
+[31m2025-08-06 23:47:51.251 ERROR (MainThread) [homeassistant.components.mqtt.entity] Error 'The unit of measurement `%` is not valid together with device class `temperature`' when processing MQTT discovery message topic: 'homeassistant/sensor/ebusd_vr_71_Mc2FlowTempDesired_mixermovement/config', message: '{'unique_id': 'ebusd_vr_71_Mc2FlowTempDesired_mixermovement', 'device': {'identifiers': 'ebusd_vr_71', 'manufacturer': 'ebusd.eu', 'via_device': 'ebusd', 'sw_version': '25.1', 'suggested_area': 'Heating', 'name': 'ebusd vr_71'}, 'value_template': '{{value_json["mixermovement"].value}}', 'state_topic': 'ebusd/vr_71/Mc2FlowTempDesired', 'unit_of_measurement': '%', 'state_class': 'measurement', 'device_class': 'temperature', 'name': 'Mc2FlowTempDesired mixermovement'}'[0m
+[31m2025-08-06 23:47:51.279 ERROR (MainThread) [homeassistant.components.mqtt.entity] Error 'The unit of measurement `%` is not valid together with device class `temperature`' when processing MQTT discovery message topic: 'homeassistant/sensor/ebusd_vr_71_Mc3FlowTempDesired_mixermovement/config', message: '{'unique_id': 'ebusd_vr_71_Mc3FlowTempDesired_mixermovement', 'device': {'identifiers': 'ebusd_vr_71', 'manufacturer': 'ebusd.eu', 'via_device': 'ebusd', 'sw_version': '25.1', 'suggested_area': 'Heating', 'name': 'ebusd vr_71'}, 'value_template': '{{value_json["mixermovement"].value}}', 'state_topic': 'ebusd/vr_71/Mc3FlowTempDesired', 'unit_of_measurement': '%', 'state_class': 'measurement', 'device_class': 'temperature', 'name': 'Mc3FlowTempDesired mixermovement'}'[0m
+[33m2025-08-06 23:47:53.857 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:307]: dallas_temp.sensor cleared Warning flag[0m
+[33m2025-08-06 23:47:54.650 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:279]: dallas_temp.sensor set Warning flag: scratch pad checksum invalid[0m
