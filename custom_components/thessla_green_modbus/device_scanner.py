@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any, Dict, Set
 
 from pymodbus.client import ModbusTcpClient
@@ -50,15 +51,14 @@ class ThesslaGreenDeviceScanner:
             "scan_duration": 0.0,
         }
         
-        scan_start_time = asyncio.get_event_loop().time()
+        asyncio.get_running_loop()
+        scan_start_time = time.monotonic()
         
         try:
-            # Perform scanning in executor to avoid blocking
-            result = await asyncio.get_event_loop().run_in_executor(
-                None, self._perform_device_scan
-            )
-            
-            scan_duration = asyncio.get_event_loop().time() - scan_start_time
+            # Perform scanning in a background thread to avoid blocking
+            result = await asyncio.to_thread(self._perform_device_scan)
+
+            scan_duration = time.monotonic() - scan_start_time
             self._scan_stats["scan_duration"] = scan_duration
             
             success_rate = (
