@@ -51,6 +51,8 @@ Before starting, make sure you have:
 
 🎉 **Done!** Your AirPack should now be connected.
 
+6. *(Optional)* In the integration options you can enable **Full register list (no scan)** to skip scanning and load every predefined entity. Unsupported registers may appear as unavailable or cause errors.
+
 ---
 
 ## 📊 What You'll Get

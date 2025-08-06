@@ -20,6 +20,7 @@ from .const import (
     CONF_RETRY,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
+    CONF_FORCE_FULL_REGISTER_LIST,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
     DEFAULT_RETRY,
@@ -39,6 +40,10 @@ from .const import (
     SERVICE_SET_INTENSITY,
     SERVICE_SET_MODE,
     SERVICE_SET_SPECIAL_FUNCTION,
+    INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+    COIL_REGISTERS,
+    DISCRETE_INPUTS,
 )
 from .coordinator import ThesslaGreenCoordinator
 from .device_scanner import ThesslaGreenDeviceScanner
@@ -107,37 +112,65 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
     retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
-    
-    _LOGGER.debug("Configuration: host=%s, port=%s, slave_id=%s, scan_interval=%s, timeout=%s, retry=%s", 
-                 host, port, slave_id, scan_interval, timeout, retry)
-    
-    # Enhanced device scanning with timeout
-    _LOGGER.info("Scanning device capabilities...")
-    scanner = ThesslaGreenDeviceScanner(host, port, slave_id, timeout)
-    
-    try:
-        device_scan_result = await asyncio.wait_for(
-            scanner.scan_device(),
-            timeout=60.0  # 60 second timeout for device scan
+    force_full = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+
+    _LOGGER.debug(
+        "Configuration: host=%s, port=%s, slave_id=%s, scan_interval=%s, timeout=%s, retry=%s, force_full=%s",
+        host,
+        port,
+        slave_id,
+        scan_interval,
+        timeout,
+        retry,
+        force_full,
+    )
+
+    if force_full:
+        _LOGGER.warning(
+            "force_full_register_list enabled - skipping device scan; unsupported registers may cause errors"
         )
-        
-        available_registers = device_scan_result["available_registers"]
-        device_info = device_scan_result["device_info"]
-        capabilities = device_scan_result["capabilities"]
-        
-        _LOGGER.info(
-            "Device scan completed: %d input registers, %d holding registers, %d capabilities",
-            len(available_registers.get("input_registers", set())),
-            len(available_registers.get("holding_registers", set())),
-            len([k for k, v in capabilities.items() if v])
-        )
-        
-    except asyncio.TimeoutError:
-        _LOGGER.error("Device scan timed out after 60 seconds")
-        raise ConfigEntryNotReady("Device scan timeout - check network connectivity")
-    except Exception as exc:
-        _LOGGER.error("Device scan failed: %s", exc)
-        raise ConfigEntryNotReady(f"Device scan error: {exc}")
+        available_registers = {
+            "input_registers": set(INPUT_REGISTERS.keys()),
+            "holding_registers": set(HOLDING_REGISTERS.keys()),
+            "coil_registers": set(COIL_REGISTERS.keys()),
+            "discrete_inputs": set(DISCRETE_INPUTS.keys()),
+        }
+        device_info = {}
+        capabilities = {}
+    else:
+        # Enhanced device scanning with timeout
+        _LOGGER.info("Scanning device capabilities...")
+        scanner = ThesslaGreenDeviceScanner(host, port, slave_id, timeout)
+
+        try:
+            device_scan_result = await asyncio.wait_for(
+                scanner.scan_device(),
+                timeout=60.0  # 60 second timeout for device scan
+            )
+
+            available_registers = device_scan_result["available_registers"]
+            device_info = device_scan_result["device_info"]
+            capabilities = device_scan_result["capabilities"]
+
+            _LOGGER.info(
+                "Device scan completed: %d input registers, %d holding registers, %d capabilities",
+                len(available_registers.get("input_registers", set())),
+                len(available_registers.get("holding_registers", set())),
+                len([k for k, v in capabilities.items() if v])
+            )
+
+        except asyncio.TimeoutError:
+            _LOGGER.error("Device scan timed out after 60 seconds")
+            raise ConfigEntryNotReady("Device scan timeout - check network connectivity")
+        except Exception as exc:
+            _LOGGER.error("Device scan failed: %s", exc)
+            raise ConfigEntryNotReady(f"Device scan error: {exc}")
+
+    device_scan_result = {
+        "available_registers": available_registers,
+        "device_info": device_info,
+        "capabilities": capabilities,
+    }
     
     # Enhanced coordinator setup
     coordinator = ThesslaGreenCoordinator(
@@ -150,9 +183,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         retry=retry,
         available_registers=available_registers,
     )
-    
+
     # Store device info in coordinator for entities
     coordinator.device_scan_result = device_scan_result
+    coordinator.force_full_register_list = force_full
     
     # Initial data fetch with enhanced error handling
     try:
@@ -304,19 +338,39 @@ async def _async_register_services(hass: HomeAssistant, coordinator: ThesslaGree
     async def async_rescan_device(call: ServiceCall) -> None:
         """Rescan device capabilities service."""
         _LOGGER.info("Starting device rescan...")
-        
+        if getattr(coordinator, "force_full_register_list", False):
+            _LOGGER.info(
+                "force_full_register_list enabled - applying full register list without scanning"
+            )
+            coordinator.available_registers = {
+                "input_registers": set(INPUT_REGISTERS.keys()),
+                "holding_registers": set(HOLDING_REGISTERS.keys()),
+                "coil_registers": set(COIL_REGISTERS.keys()),
+                "discrete_inputs": set(DISCRETE_INPUTS.keys()),
+            }
+            coordinator.device_scan_result = {
+                "available_registers": coordinator.available_registers,
+                "device_info": {},
+                "capabilities": {},
+            }
+            await coordinator.async_request_refresh()
+            _LOGGER.info(
+                "Device rescan skipped; full register list applied"
+            )
+            return
+
         try:
             scanner = ThesslaGreenDeviceScanner(
                 coordinator.host, coordinator.port, coordinator.slave_id, coordinator.timeout
             )
             device_scan_result = await scanner.scan_device()
-            
+
             # Update coordinator with new scan results
             coordinator.available_registers = device_scan_result["available_registers"]
             coordinator.device_scan_result = device_scan_result
-            
+
             await coordinator.async_request_refresh()
-            
+
             _LOGGER.info("Device rescan completed successfully")
         except Exception as exc:
             _LOGGER.error("Device rescan failed: %s", exc)
