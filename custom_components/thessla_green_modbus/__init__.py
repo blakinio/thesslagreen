@@ -369,7 +369,6 @@ async def _async_register_services(hass: HomeAssistant, coordinator: ThesslaGree
             # Update coordinator with new scan results
             coordinator.available_registers = device_scan_result["available_registers"]
             coordinator.device_scan_result = device_scan_result
- codex/enhance-logging-in-device-scanner
             coordinator.scan_statistics = device_scan_result["scan_statistics"]
             stats = coordinator.scan_statistics
             _LOGGER.debug(
@@ -379,10 +378,6 @@ async def _async_register_services(hass: HomeAssistant, coordinator: ThesslaGree
                 stats.get("total_attempts", 0),
                 len(stats.get("failed_groups", [])),
             )
-            
-=======
-
- main
             await coordinator.async_request_refresh()
 
             _LOGGER.info("Device rescan completed successfully")
