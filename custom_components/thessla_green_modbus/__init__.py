@@ -149,6 +149,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         timeout=timeout,
         retry=retry,
         available_registers=available_registers,
+        scan_statistics=device_scan_result["scan_statistics"],
     )
     
     # Store device info in coordinator for entities
@@ -310,10 +311,19 @@ async def _async_register_services(hass: HomeAssistant, coordinator: ThesslaGree
                 coordinator.host, coordinator.port, coordinator.slave_id, coordinator.timeout
             )
             device_scan_result = await scanner.scan_device()
-            
+
             # Update coordinator with new scan results
             coordinator.available_registers = device_scan_result["available_registers"]
             coordinator.device_scan_result = device_scan_result
+            coordinator.scan_statistics = device_scan_result["scan_statistics"]
+            stats = coordinator.scan_statistics
+            _LOGGER.debug(
+                "Rescan stats: %.1f%% success (%d/%d), %d failed groups",
+                stats.get("success_rate", 0.0),
+                stats.get("successful_reads", 0),
+                stats.get("total_attempts", 0),
+                len(stats.get("failed_groups", [])),
+            )
             
             await coordinator.async_request_refresh()
             
