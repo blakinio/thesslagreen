@@ -17,6 +17,7 @@ DEFAULT_RETRY = 3
 CONF_SLAVE_ID = "slave_id"
 CONF_TIMEOUT = "timeout"
 CONF_RETRY = "retry"
+CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 
 # Platforms
 PLATFORMS = [
