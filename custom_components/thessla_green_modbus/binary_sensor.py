@@ -59,12 +59,12 @@ async def async_setup_entry(
     
     # Enhanced Status Sensors (from discrete inputs) - HA 2025.7+ Compatible
     status_sensors = [
-        ("supply_fan_status", "Supply Fan Status", "mdi:fan", BinarySensorDeviceClass.RUNNING),
-        ("exhaust_fan_status", "Exhaust Fan Status", "mdi:fan-minus", BinarySensorDeviceClass.RUNNING),
-        ("filter_status", "Filter Status", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
-        ("sensor_status", "Sensor Status", "mdi:thermometer-alert", BinarySensorDeviceClass.PROBLEM),
-        ("communication_status", "Communication Status", "mdi:wifi", BinarySensorDeviceClass.CONNECTIVITY),
-        ("maintenance_required", "Maintenance Required", "mdi:wrench", BinarySensorDeviceClass.PROBLEM),
+        ("supply_fan_ok", "Supply Fan OK", "mdi:fan", BinarySensorDeviceClass.RUNNING),
+        ("exhaust_fan_ok", "Exhaust Fan OK", "mdi:fan-minus", BinarySensorDeviceClass.RUNNING),
+        ("filter_clogged", "Filter Clogged", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
+        ("power_supply_ok", "Power Supply OK", "mdi:power-plug", BinarySensorDeviceClass.POWER),
+        ("communication_error", "Communication Error", "mdi:wifi", BinarySensorDeviceClass.CONNECTIVITY),
+        ("heat_exchanger_ok", "Heat Exchanger OK", "mdi:heat-wave", BinarySensorDeviceClass.RUNNING),
     ]
     
     for sensor_key, name, icon, device_class in status_sensors:
