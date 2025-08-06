@@ -11,7 +11,6 @@ from homeassistant.const import (
     CONF_HOST,
     CONF_PORT,
     CONF_SCAN_INTERVAL,
-    Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -25,6 +24,7 @@ from .const import (
     DEFAULT_TIMEOUT,
     DEFAULT_RETRY,
     DOMAIN,
+    PLATFORMS,
     SERVICE_ACTIVATE_BOOST,
     SERVICE_CALIBRATE_SENSORS,
     SERVICE_CONFIGURE_BYPASS,
@@ -48,15 +48,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [
-    Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-    Platform.SELECT,
-    Platform.NUMBER,
-    Platform.SWITCH,
-    Platform.CLIMATE,
-    Platform.FAN,
-]
 
 # Enhanced service schemas (HA 2025.7+ Compatible)
 SERVICE_SET_MODE_SCHEMA = vol.Schema({
