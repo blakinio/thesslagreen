@@ -166,7 +166,7 @@ class ThesslaGreenBaseSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         return {
-            "last_update": self.coordinator.last_update_success_time,
+            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
             "coordinator_update_interval": self.coordinator.update_interval.total_seconds(),
         }
 

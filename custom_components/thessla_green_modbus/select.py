@@ -303,7 +303,7 @@ class ThesslaGreenModeSelect(CoordinatorEntity, SelectEntity):
         
         # Add last update timestamp
         if hasattr(self.coordinator, 'last_update_success_time'):
-            attributes["last_updated"] = self.coordinator.last_update_success_time.isoformat()
+            attributes["last_updated"] = getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success).isoformat()
             
         return attributes
 

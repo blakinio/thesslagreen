@@ -237,7 +237,7 @@ class ThesslaGreenBaseNumber(CoordinatorEntity, NumberEntity):
             "description": self._description,
             "register_key": self._key,
             "device_value": self.coordinator.data.get(self._key),
-            "last_update": self.coordinator.last_update_success_time,
+            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
         }
 
 

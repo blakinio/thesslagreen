@@ -507,3 +507,23 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             "last_update_time": self._read_stats["last_update_time"],
             "failed_registers": len(self._failed_registers),
         }
+
+    @property
+    def last_update_success_time(self) -> Any:
+        """Return last successful update time - compatible with entity expectations."""
+        from datetime import datetime
+        
+        # Return current datetime if last update was successful
+        if self.last_update_success:
+            return datetime.now()
+        
+        # Return None if no successful update
+        return None
+
+    @property
+    def device_scan_result(self) -> Dict[str, Any]:
+        """Return device scan result - compatibility property."""
+        return {
+            "device_info": self.device_info,
+            "capabilities": self.capabilities
+        }

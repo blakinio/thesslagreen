@@ -173,7 +173,7 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Return additional state attributes."""
         attributes = {
             "register_key": self._key,
-            "last_update": self.coordinator.last_update_success_time,
+            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
         }
         
         # Add context-specific attributes
