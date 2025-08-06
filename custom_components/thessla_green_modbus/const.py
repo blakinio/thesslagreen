@@ -31,6 +31,10 @@ PLATFORMS = [
 
 # Enhanced Input Registers (Read-only values) - HA 2025.7+ Compatible
 INPUT_REGISTERS = {
+    # Firmware information
+    "firmware_major": 0x0000,                # Wersja oprogramowania - część całkowita
+    "firmware_minor": 0x0001,                # Wersja oprogramowania - część ułamkowa
+
     # Temperature sensors (0.5°C resolution, signed values)
     "outside_temperature": 0x0010,           # TZ1 - Temperatura zewnętrzna
     "supply_temperature": 0x0011,            # TN1 - Temperatura nawiewu
@@ -85,108 +89,56 @@ INPUT_REGISTERS = {
 # Enhanced Holding Registers (Read/Write control values) - HA 2025.7+ Compatible  
 HOLDING_REGISTERS = {
     # Basic control
-    "mode": 0x1000,                          # Tryb pracy (0=Auto, 1=Manual, 2=Temporary)
-    "on_off_panel_mode": 0x1001,             # Panel włączenia/wyłączenia
-    "special_mode": 0x1002,                  # Funkcja specjalna
-    "season_mode": 0x1003,                   # Tryb sezonowy (Zima/Lato)
-    
-    # Intensity control (10-150%)
-    "air_flow_rate_manual": 0x1010,          # Intensywność w trybie manualnym
-    "air_flow_rate_temporary": 0x1011,       # Intensywność w trybie chwilowym
-    "air_flow_rate_auto": 0x1012,            # Intensywność w trybie automatycznym
-    
-    # Temperature control (0.5°C resolution)
-    "supply_temperature_manual": 0x1020,     # Temperatura nawiewu - tryb manualny
-    "supply_temperature_temporary": 0x1021,  # Temperatura nawiewu - tryb chwilowy
-    "comfort_temperature_heating": 0x1022,   # Temperatura komfortu - grzanie
-    "comfort_temperature_cooling": 0x1023,   # Temperatura komfortu - chłodzenie
-    
-    # Advanced control (HA 2025.7+ Enhanced)
-    "comfort_mode": 0x1030,                  # Tryb komfortu (0=Off, 1=Heat, 2=Cool)
-    "night_mode": 0x1031,                    # Tryb nocny
-    "vacation_mode": 0x1032,                 # Tryb wakacyjny
-    "boost_time_remaining": 0x1033,          # Czas pozostały trybu BOOST (min)
-    "temporary_time_remaining": 0x1034,      # Czas pozostały trybu chwilowego (min)
-    
-    # Filter and maintenance
-    "filter_change_interval": 0x1040,        # Interwał wymiany filtra (dni)
-    "filter_warning_threshold": 0x1041,      # Próg ostrzeżenia filtra (dni)
-    "maintenance_reset": 0x1042,             # Reset ostrzeżeń serwisowych
-    
-    # GWC control
-    "gwc_mode": 0x1050,                      # Tryb GWC (0=Off, 1=Winter, 2=Summer)
-    "gwc_regeneration_mode": 0x1051,         # Tryb regeneracji GWC
-    "min_gwc_air_temperature": 0x1052,       # Min temperatura powietrza dla GWC
-    "max_gwc_air_temperature": 0x1053,       # Max temperatura powietrza dla GWC
-    "delta_t_gwc": 0x1054,                   # Delta T dla GWC
-    
-    # Bypass control (Enhanced for HA 2025.7+)
-    "bypass_mode": 0x1060,                   # Tryb bypass (0=Off, 1=FreeHeating, 2=FreeCooling)
-    "min_bypass_temperature": 0x1061,        # Min temperatura dla bypass
-    "air_temperature_summer_free_heating": 0x1062,   # Temperatura powietrza lato FreeHeating
-    "air_temperature_summer_free_cooling": 0x1063,   # Temperatura powietrza lato FreeCooling
-    
+    "mode": 0x1070,                          # Tryb pracy AirPack
+    "season_mode": 0x1071,                   # Wybór harmonogramu - tryb AUTOMATYCZNY
+    "air_flow_rate_manual": 0x1072,          # Intensywność wentylacji - tryb MANUALNY
+    "air_flow_rate_temporary": 0x1073,       # Intensywność wentylacji - tryb CHWILOWY
+    "supply_temperature_manual": 0x1074,     # Temperatura nawiewu - tryb MANUALNY
+    "supply_temperature_temporary": 0x1075,  # Temperatura nawiewu - tryb CHWILOWY
+    "fan_speed_1_coef": 0x1078,              # Współczynnik prędkości went. - bieg 1
+    "fan_speed_2_coef": 0x1079,              # Współczynnik prędkości went. - bieg 2
+    "fan_speed_3_coef": 0x107A,              # Współczynnik prędkości went. - bieg 3
+    "manual_airing_time_to_start": 0x107B,   # Czas do startu ręcznego wietrzenia
+    "special_mode": 0x1080,                  # Funkcja specjalna
+
     # Constant Flow control
-    "constant_flow_mode": 0x1070,            # Tryb Constant Flow
-    "constant_flow_supply_target": 0x1071,   # Zadany przepływ nawiewu CF
-    "constant_flow_exhaust_target": 0x1072,  # Zadany przepływ wywiewu CF
-    "constant_flow_tolerance": 0x1073,       # Tolerancja CF (%)
+    "constant_flow_mode": 0x1090,            # Tryb Constant Flow
+    "constant_flow_supply_target": 0x1091,   # Zadany przepływ nawiewu CF
+    "constant_flow_exhaust_target": 0x1092,  # Zadany przepływ wywiewu CF
+    "constant_flow_tolerance": 0x1093,       # Tolerancja CF (%)
 }
 
 # Enhanced Coil Registers (Digital inputs/outputs) - HA 2025.7+ Compatible
 COIL_REGISTERS = {
-    # System control
-    "system_on_off": 0x2000,                 # Główne włączenie/wyłączenie systemu
-    "constant_flow_active": 0x2001,          # Aktywacja Constant Flow
-    "gwc_active": 0x2002,                    # Aktywacja GWC
-    "bypass_active": 0x2003,                 # Aktywacja Bypass
-    "comfort_active": 0x2004,                # Aktywacja trybu komfortu
-    
-    # Enhanced features (HA 2025.7+)
-    "antifreeze_mode": 0x2010,               # Tryb zabezpieczenia przed zamarzaniem
-    "summer_mode": 0x2011,                   # Tryb letni
-    "preheating_active": 0x2012,             # Podgrzewanie aktywne
-    "cooling_active": 0x2013,                # Chłodzenie aktywne
-    "night_cooling_active": 0x2014,          # Nocne chłodzenie aktywne
-    
-    # Maintenance and alarms
-    "filter_warning": 0x2020,                # Ostrzeżenie wymiany filtra
-    "service_required": 0x2021,              # Wymagany serwis
-    "error_active": 0x2022,                  # Aktywny błąd
-    "warning_active": 0x2023,                # Aktywne ostrzeżenie
-    "maintenance_mode": 0x2024,              # Tryb serwisowy
+    # Digital outputs
+    "duct_warter_heater_pump": 0x0005,       # Przekaźnik pompy nagrzewnicy kanałowej
+    "bypass": 0x0009,                        # Siłownik przepustnicy bypass
+    "info": 0x000A,                          # Sygnał potwierdzenia pracy centrali (O1)
+    "power_supply_fans": 0x000B,             # Przekaźnik zasilania wentylatorów
+    "heating_cable": 0x000C,                 # Przekaźnik zasilania kabla grzejnego
+    "workt_permit": 0x000D,                  # Przekaźnik potwierdzenia pracy (Expansion)
+    "gwc": 0x000E,                           # Przekaźnik GWC
 }
 
 # Discrete Inputs (Read-only digital status) - HA 2025.7+ Compatible
 DISCRETE_INPUTS = {
-    # Sensor status
-    "outside_temp_sensor_ok": 0x3000,        # Status czujnika TZ1
-    "supply_temp_sensor_ok": 0x3001,         # Status czujnika TN1
-    "exhaust_temp_sensor_ok": 0x3002,        # Status czujnika TP
-    "fpx_temp_sensor_ok": 0x3003,            # Status czujnika TZ2
-    "duct_temp_sensor_ok": 0x3004,           # Status czujnika TN2
-    "gwc_temp_sensor_ok": 0x3005,            # Status czujnika TZ3
-    "ambient_temp_sensor_ok": 0x3006,        # Status czujnika TO
-    
-    # System status
-    "heat_exchanger_ok": 0x3010,             # Status wymiennika ciepła
-    "supply_fan_ok": 0x3011,                 # Status wentylatora nawiewu
-    "exhaust_fan_ok": 0x3012,                # Status wentylatora wywiewu
-    "preheater_ok": 0x3013,                  # Status podgrzewacza
-    "bypass_motor_ok": 0x3014,               # Status silnika bypass
-    
-    # Enhanced diagnostics (HA 2025.7+)
-    "communication_error": 0x3020,           # Błąd komunikacji
-    "overheating_protection": 0x3021,        # Zabezpieczenie przed przegrzaniem
-    "freezing_protection": 0x3022,           # Zabezpieczenie przed zamarzaniem
-    "filter_clogged": 0x3023,                # Filtr zatkany
-    "power_supply_ok": 0x3024,               # Status zasilania
-    
-    # External systems
-    "gwc_pump_running": 0x3030,              # Pompa GWC w ruchu
-    "external_heater_active": 0x3031,        # Zewnętrzny grzejnik aktywny
-    "external_cooler_active": 0x3032,        # Zewnętrzny chłodzący aktywny
-    "humidity_sensor_ok": 0x3033,            # Status czujnika wilgotności
+    # Digital inputs
+    "duct_heater_protection": 0x0000,        # Zabezpieczenie termiczne nagrzewnicy kanałowej
+    "expansion": 0x0001,                     # Komunikacja z modułem Expansion
+    "dp_duct_filter_overflow": 0x0003,       # Presostat filtra kanałowego
+    "hood": 0x0004,                          # Wejście funkcji OKAP
+    "contamination_sensor": 0x0005,          # Czujnik jakości powietrza
+    "airing_sensor": 0x0006,                 # Czujnik wilgotności dwustanowy
+    "airing_switch": 0x0007,                 # Włącznik funkcji WIETRZENIE
+    "airing_mini": 0x000A,                   # Przełącznik AirS - wietrzenie
+    "fan_speed_3": 0x000B,                   # Przełącznik AirS - 3 bieg
+    "fan_speed_2": 0x000C,                   # Przełącznik AirS - 2 bieg
+    "fan_speed_1": 0x000D,                   # Przełącznik AirS - 1 bieg
+    "fireplace": 0x000E,                     # Włącznik funkcji KOMINEK
+    "ppoz": 0x000F,                          # Alarm pożarowy (P.POZ.)
+    "dp_ahu_filter_overflow": 0x0012,        # Presostat filtrów w rekuperatorze (DP1)
+    "ahu_filter_protection": 0x0013,         # Zabezpieczenie filtrów w rekuperatorze
+    "empty_house": 0x0015,                   # Sygnał funkcji PUSTY DOM
 }
 
 # Enhanced Operating Modes - HA 2025.7+ Compatible
