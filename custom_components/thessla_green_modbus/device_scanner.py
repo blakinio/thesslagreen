@@ -35,6 +35,7 @@ class ThesslaGreenDeviceScanner:
             "successful_reads": 0,
             "failed_reads": 0,
             "scan_duration": 0.0,
+            "failed_groups": [],
         }
         
         _LOGGER.debug("Initialized device scanner for %s:%s (slave_id=%s)", host, port, slave_id)
@@ -49,6 +50,7 @@ class ThesslaGreenDeviceScanner:
             "successful_reads": 0,
             "failed_reads": 0,
             "scan_duration": 0.0,
+            "failed_groups": [],
         }
         
         asyncio.get_running_loop()
@@ -60,10 +62,11 @@ class ThesslaGreenDeviceScanner:
 
             scan_duration = time.monotonic() - scan_start_time
             self._scan_stats["scan_duration"] = scan_duration
-            
+
             success_rate = (
                 (self._scan_stats["successful_reads"] / max(1, self._scan_stats["total_attempts"])) * 100
             )
+            self._scan_stats["success_rate"] = success_rate
             
             _LOGGER.info(
                 "Enhanced scan completed: %d registers found (%.1f%% success rate), %d capabilities detected",
@@ -115,12 +118,22 @@ class ThesslaGreenDeviceScanner:
     def _scan_input_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
         """Enhanced batch scanning of input registers - pymodbus 3.5+ Compatible."""
         available_registers = set()
-        
+
         # Group registers by address ranges for efficient batch reading
         register_groups = self._create_register_groups(INPUT_REGISTERS)
 
         for start_addr, count, register_keys in register_groups:
+ codex/enhance-logging-in-device-scanner
+            end_addr = start_addr + count - 1
+            _LOGGER.debug(
+                "Scanning input register batch %s-%s containing %s",
+                start_addr,
+                end_addr,
+                register_keys,
+            )
+=======
             self._scan_stats["total_attempts"] += 1
+ main
             try:
                 # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
                 response = client.read_input_registers(
@@ -128,6 +141,61 @@ class ThesslaGreenDeviceScanner:
                     count=count,
                     slave=self.slave_id
                 )
+ codex/enhance-logging-in-device-scanner
+
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    # All registers in this batch are available
+                    available_registers.update(register_keys)
+                    _LOGGER.debug(
+                        "Input register batch %s-%s succeeded: %d registers",
+                        start_addr,
+                        end_addr,
+                        len(register_keys),
+                    )
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    reason = f"Modbus error: {response}"
+                    self._scan_stats["failed_groups"].append(
+                        {
+                            "type": "input_registers",
+                            "start": start_addr,
+                            "end": end_addr,
+                            "registers": list(register_keys),
+                            "reason": reason,
+                        }
+                    )
+                    _LOGGER.debug(
+                        "Input register batch %s-%s failed: %s; discarded %s",
+                        start_addr,
+                        end_addr,
+                        reason,
+                        register_keys,
+                    )
+
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                reason = (
+                    "timeout"
+                    if isinstance(exc, (asyncio.TimeoutError, TimeoutError))
+                    else str(exc)
+                )
+                self._scan_stats["failed_groups"].append(
+                      {
+                          "type": "input_registers",
+                          "start": start_addr,
+                          "end": end_addr,
+                          "registers": list(register_keys),
+                          "reason": reason,
+                      }
+                )
+                _LOGGER.debug(
+                    "Input register batch %s-%s failed: %s; discarded %s",
+                    start_addr,
+                    end_addr,
+                    reason,
+                    register_keys,
+=======
             except Exception as exc:
                 self._scan_stats["failed_reads"] += 1
                 _LOGGER.debug(
@@ -144,6 +212,7 @@ class ThesslaGreenDeviceScanner:
                         "read_input_registers",
                         "Input",
                     )
+ main
                 )
                 continue
 
@@ -181,11 +250,21 @@ class ThesslaGreenDeviceScanner:
     def _scan_holding_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
         """Enhanced batch scanning of holding registers - pymodbus 3.5+ Compatible."""
         available_registers = set()
-        
+
         register_groups = self._create_register_groups(HOLDING_REGISTERS)
-        
+
         for start_addr, count, register_keys in register_groups:
+ codex/enhance-logging-in-device-scanner
+            end_addr = start_addr + count - 1
+            _LOGGER.debug(
+                "Scanning holding register batch %s-%s containing %s",
+                start_addr,
+                end_addr,
+                register_keys,
+            )
+=======
             self._scan_stats["total_attempts"] += 1
+ main
             try:
                 # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
                 response = client.read_holding_registers(
@@ -193,6 +272,60 @@ class ThesslaGreenDeviceScanner:
                     count=count,
                     slave=self.slave_id
                 )
+ codex/enhance-logging-in-device-scanner
+
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    available_registers.update(register_keys)
+                    _LOGGER.debug(
+                        "Holding register batch %s-%s succeeded: %d registers",
+                        start_addr,
+                        end_addr,
+                        len(register_keys),
+                    )
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    reason = f"Modbus error: {response}"
+                    self._scan_stats["failed_groups"].append(
+                        {
+                            "type": "holding_registers",
+                            "start": start_addr,
+                            "end": end_addr,
+                            "registers": list(register_keys),
+                            "reason": reason,
+                        }
+                    )
+                    _LOGGER.debug(
+                        "Holding register batch %s-%s failed: %s; discarded %s",
+                        start_addr,
+                        end_addr,
+                        reason,
+                        register_keys,
+                    )
+
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                reason = (
+                    "timeout"
+                    if isinstance(exc, (asyncio.TimeoutError, TimeoutError))
+                    else str(exc)
+                )
+                self._scan_stats["failed_groups"].append(
+                      {
+                          "type": "holding_registers",
+                          "start": start_addr,
+                          "end": end_addr,
+                          "registers": list(register_keys),
+                          "reason": reason,
+                      }
+                )
+                _LOGGER.debug(
+                    "Holding register batch %s-%s failed: %s; discarded %s",
+                    start_addr,
+                    end_addr,
+                    reason,
+                    register_keys,
+=======
             except Exception as exc:
                 self._scan_stats["failed_reads"] += 1
                 _LOGGER.debug(
@@ -209,6 +342,7 @@ class ThesslaGreenDeviceScanner:
                         "read_holding_registers",
                         "Holding",
                     )
+ main
                 )
                 continue
 
@@ -245,11 +379,21 @@ class ThesslaGreenDeviceScanner:
     def _scan_coil_registers_batch(self, client: ModbusTcpClient) -> Set[str]:
         """Enhanced batch scanning of coil registers - pymodbus 3.5+ Compatible."""
         available_registers = set()
-        
+
         register_groups = self._create_register_groups(COIL_REGISTERS)
-        
+
         for start_addr, count, register_keys in register_groups:
+ codex/enhance-logging-in-device-scanner
+            end_addr = start_addr + count - 1
+            _LOGGER.debug(
+                "Scanning coil register batch %s-%s containing %s",
+                start_addr,
+                end_addr,
+                register_keys,
+            )
+=======
             self._scan_stats["total_attempts"] += 1
+ main
             try:
                 # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
                 response = client.read_coils(
@@ -257,6 +401,60 @@ class ThesslaGreenDeviceScanner:
                     count=count,
                     slave=self.slave_id
                 )
+ codex/enhance-logging-in-device-scanner
+
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    available_registers.update(register_keys)
+                    _LOGGER.debug(
+                        "Coil register batch %s-%s succeeded: %d registers",
+                        start_addr,
+                        end_addr,
+                        len(register_keys),
+                    )
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    reason = f"Modbus error: {response}"
+                    self._scan_stats["failed_groups"].append(
+                        {
+                            "type": "coil_registers",
+                            "start": start_addr,
+                            "end": end_addr,
+                            "registers": list(register_keys),
+                            "reason": reason,
+                        }
+                    )
+                    _LOGGER.debug(
+                        "Coil register batch %s-%s failed: %s; discarded %s",
+                        start_addr,
+                        end_addr,
+                        reason,
+                        register_keys,
+                    )
+
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                reason = (
+                    "timeout"
+                    if isinstance(exc, (asyncio.TimeoutError, TimeoutError))
+                    else str(exc)
+                )
+                self._scan_stats["failed_groups"].append(
+                      {
+                          "type": "coil_registers",
+                          "start": start_addr,
+                          "end": end_addr,
+                          "registers": list(register_keys),
+                          "reason": reason,
+                      }
+                )
+                _LOGGER.debug(
+                    "Coil register batch %s-%s failed: %s; discarded %s",
+                    start_addr,
+                    end_addr,
+                    reason,
+                    register_keys,
+=======
             except Exception as exc:
                 self._scan_stats["failed_reads"] += 1
                 _LOGGER.debug(
@@ -273,6 +471,7 @@ class ThesslaGreenDeviceScanner:
                         "read_coils",
                         "Coil",
                     )
+ main
                 )
                 continue
 
@@ -309,11 +508,21 @@ class ThesslaGreenDeviceScanner:
     def _scan_discrete_inputs_batch(self, client: ModbusTcpClient) -> Set[str]:
         """Enhanced batch scanning of discrete inputs - pymodbus 3.5+ Compatible."""
         available_registers = set()
-        
+
         register_groups = self._create_register_groups(DISCRETE_INPUTS)
-        
+
         for start_addr, count, register_keys in register_groups:
+ codex/enhance-logging-in-device-scanner
+            end_addr = start_addr + count - 1
+            _LOGGER.debug(
+                "Scanning discrete input batch %s-%s containing %s",
+                start_addr,
+                end_addr,
+                register_keys,
+            )
+=======
             self._scan_stats["total_attempts"] += 1
+ main
             try:
                 # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
                 response = client.read_discrete_inputs(
@@ -321,6 +530,65 @@ class ThesslaGreenDeviceScanner:
                     count=count,
                     slave=self.slave_id
                 )
+ codex/enhance-logging-in-device-scanner
+
+                if not response.isError():
+                    self._scan_stats["successful_reads"] += 1
+                    available_registers.update(register_keys)
+                    _LOGGER.debug(
+                        "Discrete input batch %s-%s succeeded: %d registers",
+                        start_addr,
+                        end_addr,
+                        len(register_keys),
+                    )
+                else:
+                    self._scan_stats["failed_reads"] += 1
+                    reason = f"Modbus error: {response}"
+                    self._scan_stats["failed_groups"].append(
+                        {
+                            "type": "discrete_inputs",
+                            "start": start_addr,
+                            "end": end_addr,
+                            "registers": list(register_keys),
+                            "reason": reason,
+                        }
+                    )
+                    _LOGGER.debug(
+                        "Discrete input batch %s-%s failed: %s; discarded %s",
+                        start_addr,
+                        end_addr,
+                        reason,
+                        register_keys,
+                    )
+
+            except Exception as exc:
+                self._scan_stats["failed_reads"] += 1
+                reason = (
+                    "timeout"
+                    if isinstance(exc, (asyncio.TimeoutError, TimeoutError))
+                    else str(exc)
+                )
+                self._scan_stats["failed_groups"].append(
+                      {
+                          "type": "discrete_inputs",
+                          "start": start_addr,
+                          "end": end_addr,
+                          "registers": list(register_keys),
+                          "reason": reason,
+                      }
+                )
+                _LOGGER.debug(
+                    "Discrete input batch %s-%s failed: %s; discarded %s",
+                    start_addr,
+                    end_addr,
+                    reason,
+                    register_keys,
+                )
+                continue
+        
+        _LOGGER.info("Discrete inputs scan: %d registers found", len(available_registers))
+        return available_registers
+=======
             except Exception as exc:
                 self._scan_stats["failed_reads"] += 1
                 _LOGGER.debug(
@@ -419,6 +687,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                 )
         return successful
+ main
 
     def _create_register_groups(self, register_dict: Dict[str, int]) -> list:
         """Create groups of consecutive registers for batch reading."""

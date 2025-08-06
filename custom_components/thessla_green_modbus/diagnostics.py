@@ -32,6 +32,7 @@ async def async_get_config_entry_diagnostics(
             "last_exception": str(coordinator.last_exception) if coordinator.last_exception else None,
             "update_interval": coordinator.update_interval.total_seconds(),
             "data_keys": list(coordinator.data.keys()) if coordinator.data else [],
+            "scan_statistics": coordinator.scan_statistics,
         },
         "device_info": coordinator.device_info,
         "capabilities": coordinator.capabilities,

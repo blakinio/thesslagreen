@@ -38,6 +38,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         timeout: int,
         retry: int,
         available_registers: Dict[str, Set[str]],
+        scan_statistics: Dict[str, Any] | None = None,
         device_info: Dict[str, Any] = None,
         capabilities: Set[str] = None,
     ) -> None:
@@ -55,6 +56,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         self.timeout = timeout
         self.retry = retry
         self.available_registers = available_registers
+        self.scan_statistics = scan_statistics or {}
         self.device_info = device_info or {}
         self.capabilities = capabilities or set()
         
@@ -81,6 +83,14 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
             "Enhanced coordinator initialized: %s:%s (slave_id=%s, interval=%ss, timeout=%ss)",
             host, port, slave_id, scan_interval, timeout
         )
+        if self.scan_statistics:
+            _LOGGER.debug(
+                "Initial scan stats: %.1f%% success (%d/%d), %d failed groups",
+                self.scan_statistics.get("success_rate", 0.0),
+                self.scan_statistics.get("successful_reads", 0),
+                self.scan_statistics.get("total_attempts", 0),
+                len(self.scan_statistics.get("failed_groups", [])),
+            )
 
     def _initialize_register_groups(self) -> None:
         """Pre-compute consecutive register groups for optimized batch reading."""
