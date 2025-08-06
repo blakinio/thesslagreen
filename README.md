@@ -101,7 +101,7 @@ Integracja automatycznie przeskanuje urządzenie i utworzy tylko dostępne entyc
 - **Częstotliwość odczytu**: 10-300 sekund
 - **Timeout**: 5-60 sekund
 - **Retry**: 1-5 prób
-- **Skanowanie urządzenia**: włącz/wyłącz
+- **Pełna lista rejestrów**: pomija skanowanie i tworzy wszystkie zdefiniowane rejestry (może generować nieobsługiwane encje)
 
 ### Automatyzacje
 

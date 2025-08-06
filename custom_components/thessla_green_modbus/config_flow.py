@@ -17,6 +17,7 @@ from .const import (
     CONF_RETRY,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
+    CONF_FORCE_FULL_REGISTER_LIST,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
@@ -47,6 +48,7 @@ OPTIONS_SCHEMA = vol.Schema({
     vol.Optional(CONF_RETRY, default=DEFAULT_RETRY): vol.All(
         int, vol.Range(min=1, max=5)
     ),
+    vol.Optional(CONF_FORCE_FULL_REGISTER_LIST, default=False): cv.boolean,
 })
 
 
@@ -230,6 +232,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_RETRY,
                 default=current_options.get(CONF_RETRY, DEFAULT_RETRY)
             ): vol.All(int, vol.Range(min=1, max=5)),
+            vol.Optional(
+                CONF_FORCE_FULL_REGISTER_LIST,
+                default=current_options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+            ): cv.boolean,
         })
 
         return self.async_show_form(
