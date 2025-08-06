@@ -10,6 +10,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -52,81 +53,58 @@ async def async_setup_entry(
         if sensor_key in coil_regs:
             entities.append(
                 ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, "coil"
+                    coordinator, sensor_key, name, icon, device_class
                 )
             )
     
-    # Maintenance and alarm sensors (from coil registers)
-    maintenance_sensors = [
-        ("filter_warning", "Filter Warning", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
-        ("service_required", "Service Required", "mdi:wrench-outline", BinarySensorDeviceClass.PROBLEM),
-        ("error_active", "System Error", "mdi:alert-circle", BinarySensorDeviceClass.PROBLEM),
-        ("warning_active", "System Warning", "mdi:alert", BinarySensorDeviceClass.PROBLEM),
-        ("maintenance_mode", "Maintenance Mode", "mdi:cog", BinarySensorDeviceClass.RUNNING),
+    # Enhanced Status Sensors (from discrete inputs) - HA 2025.7+ Compatible
+    status_sensors = [
+        ("supply_fan_status", "Supply Fan Status", "mdi:fan", BinarySensorDeviceClass.RUNNING),
+        ("exhaust_fan_status", "Exhaust Fan Status", "mdi:fan-minus", BinarySensorDeviceClass.RUNNING),
+        ("filter_status", "Filter Status", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
+        ("sensor_status", "Sensor Status", "mdi:thermometer-alert", BinarySensorDeviceClass.PROBLEM),
+        ("communication_status", "Communication Status", "mdi:wifi", BinarySensorDeviceClass.CONNECTIVITY),
+        ("maintenance_required", "Maintenance Required", "mdi:wrench", BinarySensorDeviceClass.PROBLEM),
     ]
     
-    for sensor_key, name, icon, device_class in maintenance_sensors:
-        if sensor_key in coil_regs:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, "coil"
-                )
-            )
-    
-    # Component status sensors (from discrete inputs)
-    component_sensors = [
-        ("outside_temp_sensor_ok", "Outside Temperature Sensor", "mdi:thermometer-check", BinarySensorDeviceClass.CONNECTIVITY),
-        ("supply_temp_sensor_ok", "Supply Temperature Sensor", "mdi:thermometer-check", BinarySensorDeviceClass.CONNECTIVITY),
-        ("exhaust_temp_sensor_ok", "Exhaust Temperature Sensor", "mdi:thermometer-check", BinarySensorDeviceClass.CONNECTIVITY),
-        ("fpx_temp_sensor_ok", "FPX Temperature Sensor", "mdi:thermometer-check", BinarySensorDeviceClass.CONNECTIVITY),
-        ("duct_temp_sensor_ok", "Duct Temperature Sensor", "mdi:thermometer-check", BinarySensorDeviceClass.CONNECTIVITY),
-        ("gwc_temp_sensor_ok", "GWC Temperature Sensor", "mdi:thermometer-check", BinarySensorDeviceClass.CONNECTIVITY),
-        ("ambient_temp_sensor_ok", "Ambient Temperature Sensor", "mdi:thermometer-check", BinarySensorDeviceClass.CONNECTIVITY),
-        ("heat_exchanger_ok", "Heat Exchanger", "mdi:hvac", BinarySensorDeviceClass.RUNNING),
-        ("supply_fan_ok", "Supply Fan", "mdi:fan-chevron-up", BinarySensorDeviceClass.RUNNING),
-        ("exhaust_fan_ok", "Exhaust Fan", "mdi:fan-chevron-down", BinarySensorDeviceClass.RUNNING),
-        ("preheater_ok", "Preheater", "mdi:radiator", BinarySensorDeviceClass.HEAT),
-        ("bypass_motor_ok", "Bypass Motor", "mdi:engine", BinarySensorDeviceClass.RUNNING),
-    ]
-    
-    for sensor_key, name, icon, device_class in component_sensors:
+    for sensor_key, name, icon, device_class in status_sensors:
         if sensor_key in discrete_regs:
             entities.append(
                 ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, "discrete"
+                    coordinator, sensor_key, name, icon, device_class, is_diagnostic=True
                 )
             )
     
-    # Enhanced diagnostics sensors (HA 2025.7+ from discrete inputs)
-    diagnostic_sensors = [
-        ("communication_error", "Communication Error", "mdi:network-off", BinarySensorDeviceClass.CONNECTIVITY),
-        ("overheating_protection", "Overheating Protection", "mdi:thermometer-alert", BinarySensorDeviceClass.SAFETY),
-        ("freezing_protection", "Freezing Protection", "mdi:snowflake-alert", BinarySensorDeviceClass.SAFETY),
-        ("filter_clogged", "Filter Clogged", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM),
-        ("power_supply_ok", "Power Supply", "mdi:power-plug", BinarySensorDeviceClass.POWER),
-        ("gwc_pump_running", "GWC Pump", "mdi:pump", BinarySensorDeviceClass.RUNNING),
-        ("external_heater_active", "External Heater", "mdi:radiator", BinarySensorDeviceClass.HEAT),
-        ("external_cooler_active", "External Cooler", "mdi:air-conditioner", BinarySensorDeviceClass.COLD),
-        ("humidity_sensor_ok", "Humidity Sensor", "mdi:water-percent", BinarySensorDeviceClass.CONNECTIVITY),
-    ]
-    
-    for sensor_key, name, icon, device_class in diagnostic_sensors:
-        if sensor_key in discrete_regs:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, "discrete"
-                )
-            )
-
-    # Enhanced error/warning binary sensors based on numeric codes (HA 2025.7+)
-    if "error_code" in input_regs:
+    # Enhanced Problem Detection Sensors (HA 2025.7+)
+    if any(reg in coordinator.available_registers.get("holding_registers", set()) 
+           for reg in ["error_code", "warning_code"]):
+        
+        # System error detection
         entities.append(
-            ThesslaGreenErrorBinarySensor(coordinator, "error_code", "System Error Active")
+            ThesslaGreenProblemSensor(
+                coordinator, "system_errors", "System Errors", "mdi:alert-circle", 
+                BinarySensorDeviceClass.PROBLEM, "error_code"
+            )
+        )
+        
+        # System warning detection
+        entities.append(
+            ThesslaGreenProblemSensor(
+                coordinator, "system_warnings", "System Warnings", "mdi:alert", 
+                BinarySensorDeviceClass.PROBLEM, "warning_code"
+            )
         )
     
-    if "warning_code" in input_regs:
+    # Enhanced GWC Status Sensors (HA 2025.7+)
+    if "gwc_active" in coil_regs:
         entities.append(
-            ThesslaGreenErrorBinarySensor(coordinator, "warning_code", "System Warning Active")
+            ThesslaGreenGWCSensor(coordinator)
+        )
+    
+    # Enhanced Filter Status Sensor (HA 2025.7+)
+    if "filter_time_remaining" in coordinator.available_registers.get("holding_registers", set()):
+        entities.append(
+            ThesslaGreenFilterSensor(coordinator)
         )
 
     if entities:
@@ -135,37 +113,36 @@ async def async_setup_entry(
 
 
 class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Enhanced ThesslaGreen binary sensor entity."""
+    """Enhanced binary sensor for ThesslaGreen devices - HA 2025.7+ Compatible."""
 
     def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        key: str,
-        name: str,
-        icon: str,
-        device_class: BinarySensorDeviceClass | None,
-        register_type: str,
+        self, 
+        coordinator: ThesslaGreenCoordinator, 
+        key: str, 
+        name: str, 
+        icon: str, 
+        device_class: BinarySensorDeviceClass,
+        is_diagnostic: bool = False
     ) -> None:
         """Initialize the enhanced binary sensor."""
         super().__init__(coordinator)
         self._key = key
-        self._register_type = register_type
-        
-        # Enhanced device info handling
-        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
-        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
-        
         self._attr_name = name
         self._attr_icon = icon
         self._attr_device_class = device_class
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
         
+        # ✅ FIXED: Use EntityCategory enum instead of string
+        if is_diagnostic:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        
+        # Enhanced device info (HA 2025.7+)
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
+            "name": f"ThesslaGreen ({coordinator.host})",
             "manufacturer": "ThesslaGreen",
             "model": "AirPack Home",
-            "sw_version": device_info.get("firmware", "Unknown"),
+            "sw_version": coordinator.device_scan_result.get("device_info", {}).get("firmware", "Unknown"),
         }
 
     @property
@@ -174,151 +151,265 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
         value = self.coordinator.data.get(self._key)
         if value is None:
             return None
-        return bool(value)
+        
+        # Handle different value types
+        if isinstance(value, bool):
+            return value
+        elif isinstance(value, int):
+            return bool(value)
+        else:
+            return False
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return (
+            self.coordinator.last_update_success and 
+            self.coordinator.data.get(self._key) is not None
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {
-            "register_type": self._register_type,
             "register_key": self._key,
+            "last_update": self.coordinator.last_update_success_time,
         }
         
-        # Add enhanced diagnostics for HA 2025.7+
-        if self._register_type == "discrete":
-            attributes["sensor_type"] = "status_input"
-        elif self._register_type == "coil":
-            attributes["sensor_type"] = "control_status"
-            
-        # Add timestamp for status changes
-        if hasattr(self.coordinator, 'last_update_success_time'):
-            attributes["last_updated"] = self.coordinator.last_update_success_time.isoformat()
-            
+        # Add context-specific attributes
+        if "fan" in self._key:
+            # Add fan speed information if available
+            if "supply" in self._key:
+                speed = self.coordinator.data.get("supply_percentage")
+                if speed is not None:
+                    attributes["fan_speed_percentage"] = speed
+            elif "exhaust" in self._key:
+                speed = self.coordinator.data.get("exhaust_percentage")
+                if speed is not None:
+                    attributes["fan_speed_percentage"] = speed
+        
+        elif "filter" in self._key:
+            # Add filter time remaining if available
+            filter_time = self.coordinator.data.get("filter_time_remaining")
+            if filter_time is not None:
+                attributes["days_remaining"] = filter_time
+                if filter_time < 30:
+                    attributes["replacement_urgency"] = "urgent"
+                elif filter_time < 60:
+                    attributes["replacement_urgency"] = "soon"
+                else:
+                    attributes["replacement_urgency"] = "normal"
+        
         return attributes
 
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success and 
-            self._key in self.coordinator.data
-        )
 
-
-class ThesslaGreenErrorBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Enhanced binary sensor for error/warning codes - HA 2025.7+ Compatible."""
+class ThesslaGreenProblemSensor(ThesslaGreenBinarySensor):
+    """Enhanced problem detection sensor - HA 2025.7+ Compatible."""
 
     def __init__(
-        self,
-        coordinator: ThesslaGreenCoordinator,
-        key: str,
-        name: str,
+        self, 
+        coordinator: ThesslaGreenCoordinator, 
+        key: str, 
+        name: str, 
+        icon: str, 
+        device_class: BinarySensorDeviceClass,
+        code_key: str
     ) -> None:
-        """Initialize the enhanced error binary sensor."""
-        super().__init__(coordinator)
-        self._key = key
-        
-        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
-        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
-        
-        self._attr_name = name
-        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}_active"
-        
-        # Enhanced icons based on error type
-        if "error" in key:
-            self._attr_icon = "mdi:alert-circle"
-        else:
-            self._attr_icon = "mdi:alert"
-        
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack Home",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
+        """Initialize the problem sensor."""
+        super().__init__(coordinator, key, name, icon, device_class, is_diagnostic=True)
+        self._code_key = code_key
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if there's an active error/warning."""
-        code = self.coordinator.data.get(self._key)
+        """Return true if there are active problems."""
+        code = self.coordinator.data.get(self._code_key)
         if code is None:
             return None
-        return code != 0  # 0 means no error/warning
+        
+        # Problem exists if code is not 0
+        return code != 0
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes with error details."""
-        attributes = {}
+        """Return additional state attributes."""
+        attributes = super().extra_state_attributes
         
-        code = self.coordinator.data.get(self._key, 0)
-        attributes["code"] = code
+        code = self.coordinator.data.get(self._code_key, 0)
+        attributes["problem_code"] = code
         
-        # Enhanced error/warning descriptions
-        if self._key == "error_code":
+        if self._code_key == "error_code":
             description = ERROR_CODES.get(code, f"Unknown error ({code})")
-            attributes["description"] = description
-            attributes["severity"] = "error" if code != 0 else "none"
-        elif self._key == "warning_code":
-            description = WARNING_CODES.get(code, f"Unknown warning ({code})")
-            attributes["description"] = description
-            attributes["severity"] = "warning" if code != 0 else "none"
-        
-        # Enhanced troubleshooting hints (HA 2025.7+)
-        if code != 0:
-            attributes["troubleshooting_hint"] = self._get_troubleshooting_hint(code)
+            attributes["problem_description"] = description
+            attributes["problem_type"] = "error"
+            attributes["severity"] = "high" if code != 0 else "none"
             
+        elif self._code_key == "warning_code":
+            description = WARNING_CODES.get(code, f"Unknown warning ({code})")
+            attributes["problem_description"] = description
+            attributes["problem_type"] = "warning"
+            attributes["severity"] = "medium" if code != 0 else "none"
+        
+        # Add troubleshooting context
+        if code != 0:
+            attributes["requires_attention"] = True
+            if code in [1, 2, 3, 4, 5, 6, 7]:  # Sensor-related
+                attributes["category"] = "sensor"
+                attributes["troubleshooting_tip"] = "Check sensor connections and calibration"
+            elif code in [8, 9]:  # Fan-related
+                attributes["category"] = "fan"
+                attributes["troubleshooting_tip"] = "Check fan operation and mechanical parts"
+            elif code == 10:  # Communication
+                attributes["category"] = "communication"
+                attributes["troubleshooting_tip"] = "Check network connection and Modbus settings"
+            else:
+                attributes["category"] = "system"
+                attributes["troubleshooting_tip"] = "Contact technical support for assistance"
+        else:
+            attributes["requires_attention"] = False
+            attributes["category"] = "none"
+        
         return attributes
 
-    def _get_troubleshooting_hint(self, code: int) -> str:
-        """Provide enhanced troubleshooting hints based on error/warning code."""
-        if self._key == "error_code":
-            hints = {
-                1: "Check outside temperature sensor wiring and connections",
-                2: "Check supply air temperature sensor wiring",
-                3: "Check exhaust air temperature sensor wiring", 
-                4: "Check FPX temperature sensor wiring",
-                5: "Check duct temperature sensor wiring",
-                6: "Check GWC temperature sensor wiring",
-                7: "Check ambient temperature sensor wiring",
-                8: "Check supply fan electrical connections and motor",
-                9: "Check exhaust fan electrical connections and motor",
-                10: "Check Modbus communication cable and settings",
-                11: "Check thermal protection and ventilation around unit",
-                12: "Check bypass motor operation and position feedback",
-                13: "Check GWC pump and water circulation",
-                14: "Check preheater electrical connections and safety switches",
-                15: "Check cooling system operation and refrigerant levels",
-                16: "Check main power supply voltage and connections",
-                17: "Unit may require factory reset or firmware update",
-                18: "Unit requires professional calibration service",
-            }
-            return hints.get(code, "Contact technical support for assistance")
-        
-        elif self._key == "warning_code":
-            hints = {
-                1: "Replace air filters - check filter access door",
-                2: "Schedule professional service inspection",  
-                3: "Normal operation in cold weather - monitor performance",
-                4: "Consider increasing ventilation or using summer mode",
-                5: "Check air filters and heat exchanger cleanliness",
-                6: "Verify ventilation duct connections and sealing",
-                7: "Check GWC water flow and heat exchanger condition",
-                8: "Verify bypass damper operation and calibration",
-                9: "Schedule preventive maintenance service",
-                10: "Replace or clean air filters - check filter quality",
-                11: "Review system settings and usage patterns",
-                12: "Check sensor calibration and system balance",
-            }
-            return hints.get(code, "Monitor system performance and schedule service if needed")
-        
-        return ""
+
+class ThesslaGreenGWCSensor(ThesslaGreenBinarySensor):
+    """Enhanced GWC (Ground Heat Exchanger) status sensor - HA 2025.7+ Compatible."""
+
+    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
+        """Initialize the GWC sensor."""
+        super().__init__(
+            coordinator, "gwc_operational", "GWC Operational", "mdi:earth-check", 
+            BinarySensorDeviceClass.RUNNING
+        )
 
     @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success and 
-            self._key in self.coordinator.data
+    def is_on(self) -> bool | None:
+        """Return true if GWC is operational."""
+        gwc_active = self.coordinator.data.get("gwc_active")
+        gwc_mode = self.coordinator.data.get("gwc_mode")
+        
+        if gwc_active is None:
+            return None
+        
+        # GWC is operational if active and in a working mode
+        if not gwc_active:
+            return False
+        
+        if gwc_mode is None:
+            return bool(gwc_active)
+        
+        # Mode 0 = Inactive, Mode 1 = Winter, Mode 2 = Summer
+        return gwc_mode in [1, 2]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        attributes = super().extra_state_attributes
+        
+        gwc_active = self.coordinator.data.get("gwc_active", False)
+        gwc_mode = self.coordinator.data.get("gwc_mode")
+        
+        attributes["gwc_enabled"] = gwc_active
+        
+        if gwc_mode is not None:
+            mode_names = {0: "Inactive", 1: "Winter", 2: "Summer"}
+            attributes["gwc_mode"] = mode_names.get(gwc_mode, "Unknown")
+            
+            if gwc_mode == 1:
+                attributes["operation_purpose"] = "Preheating incoming air"
+            elif gwc_mode == 2:
+                attributes["operation_purpose"] = "Precooling incoming air"
+            else:
+                attributes["operation_purpose"] = "Not operational"
+        
+        # Add GWC temperature information if available
+        gwc_temp = self.coordinator.data.get("gwc_temperature")
+        if gwc_temp is not None:
+            attributes["gwc_temperature"] = round(gwc_temp / 10.0, 1)
+        
+        outside_temp = self.coordinator.data.get("outside_temperature")
+        if outside_temp is not None:
+            attributes["outside_temperature"] = round(outside_temp / 10.0, 1)
+            
+            # Calculate GWC effectiveness if both temperatures available
+            if gwc_temp is not None:
+                temp_diff = abs((gwc_temp - outside_temp) / 10.0)
+                attributes["temperature_difference"] = round(temp_diff, 1)
+                
+                if temp_diff > 5:
+                    attributes["effectiveness"] = "high"
+                elif temp_diff > 2:
+                    attributes["effectiveness"] = "medium"
+                else:
+                    attributes["effectiveness"] = "low"
+        
+        return attributes
+
+
+class ThesslaGreenFilterSensor(ThesslaGreenBinarySensor):
+    """Enhanced filter status sensor - HA 2025.7+ Compatible."""
+
+    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
+        """Initialize the filter sensor."""
+        super().__init__(
+            coordinator, "filter_replacement_needed", "Filter Replacement Needed", 
+            "mdi:air-filter-outline", BinarySensorDeviceClass.PROBLEM, is_diagnostic=True
         )
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if filter replacement is needed."""
+        filter_time = self.coordinator.data.get("filter_time_remaining")
+        if filter_time is None:
+            return None
+        
+        # Filter replacement needed if less than 7 days remaining
+        return filter_time <= 7
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        attributes = super().extra_state_attributes
+        
+        filter_time = self.coordinator.data.get("filter_time_remaining")
+        if filter_time is not None:
+            attributes["days_remaining"] = filter_time
+            attributes["weeks_remaining"] = round(filter_time / 7, 1)
+            attributes["months_remaining"] = round(filter_time / 30, 1)
+            
+            # Filter status categories
+            if filter_time <= 0:
+                attributes["filter_status"] = "overdue"
+                attributes["replacement_urgency"] = "critical"
+            elif filter_time <= 7:
+                attributes["filter_status"] = "replace_now"
+                attributes["replacement_urgency"] = "urgent"
+            elif filter_time <= 30:
+                attributes["filter_status"] = "replace_soon"
+                attributes["replacement_urgency"] = "soon"
+            elif filter_time <= 60:
+                attributes["filter_status"] = "monitor"
+                attributes["replacement_urgency"] = "normal"
+            else:
+                attributes["filter_status"] = "good"
+                attributes["replacement_urgency"] = "none"
+        
+        # Add filter change interval information
+        filter_interval = self.coordinator.data.get("filter_change_interval")
+        if filter_interval is not None:
+            attributes["filter_change_interval"] = filter_interval
+            
+            # Calculate filter usage percentage
+            if filter_time is not None:
+                usage_percent = ((filter_interval - filter_time) / filter_interval) * 100
+                attributes["filter_usage_percent"] = round(max(0, min(100, usage_percent)), 1)
+        
+        # Add maintenance tips
+        if filter_time is not None:
+            if filter_time <= 7:
+                attributes["maintenance_tip"] = "Replace filter immediately to maintain air quality"
+            elif filter_time <= 30:
+                attributes["maintenance_tip"] = "Order replacement filter and schedule maintenance"
+            else:
+                attributes["maintenance_tip"] = "Filter condition is good"
+        
+        return attributes

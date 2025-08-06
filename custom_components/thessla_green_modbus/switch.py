@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -91,272 +92,209 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
         key: str,
         name: str,
         icon: str,
-        device_class: SwitchDeviceClass | None,
+        device_class: SwitchDeviceClass,
         description: str,
     ) -> None:
         """Initialize the enhanced switch."""
         super().__init__(coordinator)
         self._key = key
-        
-        # Enhanced device info handling
-        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
-        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
-        
         self._attr_name = name
         self._attr_icon = icon
         self._attr_device_class = device_class
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
+        self._description = description
         
+        # Enhanced device info (HA 2025.7+)
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
+            "name": f"ThesslaGreen ({coordinator.host})",
             "manufacturer": "ThesslaGreen",
             "model": "AirPack Home",
-            "sw_version": device_info.get("firmware", "Unknown"),
+            "sw_version": coordinator.device_scan_result.get("device_info", {}).get("firmware", "Unknown"),
         }
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if switch is on."""
+        """Return true if the switch is on."""
         value = self.coordinator.data.get(self._key)
         if value is None:
             return None
+        
         return bool(value)
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return (
+            self.coordinator.last_update_success and 
+            self.coordinator.data.get(self._key) is not None
+        )
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        # Enhanced pre-conditions validation (HA 2025.7+)
-        if not self._validate_turn_on():
-            return
-            
         success = await self.coordinator.async_write_register(self._key, 1)
         if success:
             _LOGGER.info("Turned on %s", self._key)
-            await self.coordinator.async_request_refresh()
+            # Update local state immediately for better UI responsiveness
+            self.coordinator.data[self._key] = 1
+            self.async_write_ha_state()
         else:
             _LOGGER.error("Failed to turn on %s", self._key)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        # Enhanced pre-conditions validation (HA 2025.7+)
-        if not self._validate_turn_off():
-            return
-            
         success = await self.coordinator.async_write_register(self._key, 0)
         if success:
             _LOGGER.info("Turned off %s", self._key)
-            await self.coordinator.async_request_refresh()
+            # Update local state immediately for better UI responsiveness
+            self.coordinator.data[self._key] = 0
+            self.async_write_ha_state()
         else:
             _LOGGER.error("Failed to turn off %s", self._key)
 
-    def _validate_turn_on(self) -> bool:
-        """Enhanced validation before turning on - HA 2025.7+."""
-        if not self.coordinator.data:
-            return True  # Allow if no data available
-        
-        # System power must be on for most other switches
-        if self._key != "system_on_off":
-            system_power = self.coordinator.data.get("system_on_off", False)
-            if not system_power:
-                _LOGGER.warning("Cannot enable %s while system power is off", self._key)
-                return False
-        
-        # GWC specific validations
-        if self._key == "gwc_active":
-            outside_temp = self.coordinator.data.get("outside_temperature")
-            if outside_temp is not None and outside_temp > 30:
-                _LOGGER.warning("GWC may not be effective at high outside temperatures (%.1f°C)", outside_temp)
-        
-        # Bypass specific validations
-        if self._key == "bypass_active":
-            outside_temp = self.coordinator.data.get("outside_temperature")
-            supply_temp = self.coordinator.data.get("supply_temperature")
-            if outside_temp is not None and supply_temp is not None:
-                temp_diff = abs(outside_temp - supply_temp)
-                if temp_diff < 2:
-                    _LOGGER.info("Bypass may not be beneficial with small temperature difference (%.1f°C)", temp_diff)
-        
-        # Cooling validation
-        if self._key == "cooling_active":
-            outside_temp = self.coordinator.data.get("outside_temperature")
-            if outside_temp is not None and outside_temp < 20:
-                _LOGGER.warning("Cooling may not be needed at low outside temperatures (%.1f°C)", outside_temp)
-        
-        # Preheating validation
-        if self._key == "preheating_active":
-            outside_temp = self.coordinator.data.get("outside_temperature")
-            if outside_temp is not None and outside_temp > 25:
-                _LOGGER.warning("Preheating may not be needed at high outside temperatures (%.1f°C)", outside_temp)
-        
-        return True
-
-    def _validate_turn_off(self) -> bool:
-        """Enhanced validation before turning off - HA 2025.7+."""
-        if not self.coordinator.data:
-            return True
-        
-        # Warn about turning off critical protections
-        critical_switches = ["antifreeze_mode", "system_on_off"]
-        if self._key in critical_switches:
-            _LOGGER.info("Turning off critical system component: %s", self._key)
-        
-        # Antifreeze protection warning
-        if self._key == "antifreeze_mode":
-            outside_temp = self.coordinator.data.get("outside_temperature")
-            if outside_temp is not None and outside_temp < 0:
-                _LOGGER.warning("Disabling antifreeze protection in freezing conditions (%.1f°C)", outside_temp)
-        
-        return True
-
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {
+            "description": self._description,
             "register_key": self._key,
-            "description": getattr(self, '_attr_entity_description', ''),
+            "last_update": self.coordinator.last_update_success_time,
         }
         
-        # Enhanced context information (HA 2025.7+)
-        if self._key == "gwc_active":
+        # Add context-specific attributes
+        if self._key == "system_on_off":
+            # Add system status information
+            mode = self.coordinator.data.get("mode")
+            if mode is not None:
+                mode_names = {0: "Auto", 1: "Manual", 2: "Temporary"}
+                attributes["current_mode"] = mode_names.get(mode, "Unknown")
+            
+            intensity = self.coordinator.data.get("air_flow_rate_manual", 0)
+            attributes["current_intensity"] = f"{intensity}%"
+            
+        elif self._key == "gwc_active":
+            # Add GWC information
+            gwc_mode = self.coordinator.data.get("gwc_mode")
+            if gwc_mode is not None:
+                mode_names = {0: "Inactive", 1: "Winter", 2: "Summer"}
+                attributes["gwc_mode"] = mode_names.get(gwc_mode, "Unknown")
+            
             gwc_temp = self.coordinator.data.get("gwc_temperature")
-            gwc_efficiency = self.coordinator.data.get("gwc_efficiency")
             if gwc_temp is not None:
-                attributes["gwc_temperature"] = gwc_temp
-            if gwc_efficiency is not None:
-                attributes["gwc_efficiency"] = f"{gwc_efficiency}%"
+                attributes["gwc_temperature"] = f"{gwc_temp / 10.0:.1f}°C"
                 
         elif self._key == "bypass_active":
-            bypass_position = self.coordinator.data.get("bypass_position")
+            # Add bypass information
             bypass_mode = self.coordinator.data.get("bypass_mode")
-            if bypass_position is not None:
-                attributes["bypass_position"] = f"{bypass_position}%"
             if bypass_mode is not None:
-                bypass_modes = {0: "Nieaktywny", 1: "FreeHeating", 2: "FreeCooling"}
-                attributes["bypass_mode"] = bypass_modes.get(bypass_mode, "Unknown")
+                mode_names = {0: "Inactive", 1: "FreeHeating", 2: "FreeCooling"}
+                attributes["bypass_mode"] = mode_names.get(bypass_mode, "Unknown")
                 
         elif self._key == "constant_flow_active":
-            cf_supply = self.coordinator.data.get("constant_flow_supply")
-            cf_exhaust = self.coordinator.data.get("constant_flow_exhaust")
-            if cf_supply is not None:
-                attributes["current_supply_flow"] = f"{cf_supply} m³/h"
-            if cf_exhaust is not None:
-                attributes["current_exhaust_flow"] = f"{cf_exhaust} m³/h"
+            # Add constant flow information
+            supply_target = self.coordinator.data.get("constant_flow_supply_target")
+            if supply_target is not None:
+                attributes["supply_target"] = f"{supply_target} m³/h"
+                
+            exhaust_target = self.coordinator.data.get("constant_flow_exhaust_target")
+            if exhaust_target is not None:
+                attributes["exhaust_target"] = f"{exhaust_target} m³/h"
                 
         elif self._key == "comfort_active":
+            # Add comfort mode information
             comfort_mode = self.coordinator.data.get("comfort_mode")
-            comfort_temp_heating = self.coordinator.data.get("comfort_temperature_heating")
-            comfort_temp_cooling = self.coordinator.data.get("comfort_temperature_cooling")
             if comfort_mode is not None:
-                modes = {0: "Nieaktywny", 1: "Grzanie", 2: "Chłodzenie"}
-                attributes["comfort_mode"] = modes.get(comfort_mode, "Unknown")
-            if comfort_temp_heating is not None:
-                attributes["heating_setpoint"] = f"{comfort_temp_heating}°C"
-            if comfort_temp_cooling is not None:
-                attributes["cooling_setpoint"] = f"{comfort_temp_cooling}°C"
+                mode_names = {0: "Inactive", 1: "Heating", 2: "Cooling"}
+                attributes["comfort_mode"] = mode_names.get(comfort_mode, "Unknown")
+                
+            heating_temp = self.coordinator.data.get("comfort_temperature_heating")
+            if heating_temp is not None:
+                attributes["heating_temperature"] = f"{heating_temp / 10.0:.1f}°C"
+                
+            cooling_temp = self.coordinator.data.get("comfort_temperature_cooling")
+            if cooling_temp is not None:
+                attributes["cooling_temperature"] = f"{cooling_temp / 10.0:.1f}°C"
         
-        # Add system status context
-        if self._key != "system_on_off":
-            system_power = self.coordinator.data.get("system_on_off", False)
-            attributes["system_power_on"] = system_power
-        
-        # Add environmental context
-        outside_temp = self.coordinator.data.get("outside_temperature")
-        if outside_temp is not None and self._key in ["gwc_active", "bypass_active", "cooling_active", "preheating_active"]:
-            attributes["outside_temperature"] = outside_temp
-        
-        # Add last update timestamp
-        if hasattr(self.coordinator, 'last_update_success_time'):
-            attributes["last_updated"] = self.coordinator.last_update_success_time.isoformat()
-            
         return attributes
 
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success and 
-            self._key in self.coordinator.data
-        )
 
-
-class ThesslaGreenMaintenanceSwitch(CoordinatorEntity, SwitchEntity):
-    """Enhanced maintenance mode switch with safety features - HA 2025.7+."""
+class ThesslaGreenMaintenanceSwitch(ThesslaGreenSwitch):
+    """Enhanced maintenance mode switch - HA 2025.7+ Compatible."""
 
     def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
-        """Initialize the enhanced maintenance switch."""
-        super().__init__(coordinator)
-        self._key = "maintenance_mode"
-        
-        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
-        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
-        
-        self._attr_name = "Maintenance Mode"
-        self._attr_icon = "mdi:wrench"
-        self._attr_device_class = SwitchDeviceClass.SWITCH
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_maintenance_mode"
-        
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack Home",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if maintenance mode is active."""
-        value = self.coordinator.data.get(self._key)
-        if value is None:
-            return None
-        return bool(value)
+        """Initialize the maintenance switch."""
+        super().__init__(
+            coordinator,
+            "maintenance_mode",
+            "Maintenance Mode",
+            "mdi:wrench",
+            SwitchDeviceClass.SWITCH,
+            "Enable maintenance mode for service operations"
+        )
+        # ✅ FIXED: Use EntityCategory enum instead of string
+        self._attr_entity_category = EntityCategory.CONFIG
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on maintenance mode with safety confirmation."""
-        _LOGGER.warning("Activating maintenance mode - system will operate in reduced capacity")
+        """Turn on maintenance mode with safety checks."""
+        # Safety check - ensure system is not in critical state
+        error_code = self.coordinator.data.get("error_code", 0)
+        if error_code != 0:
+            _LOGGER.warning("Cannot enable maintenance mode while system has errors (code: %d)", error_code)
+            return
         
-        success = await self.coordinator.async_write_register(self._key, 1)
-        if success:
-            _LOGGER.info("Maintenance mode activated")
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to activate maintenance mode")
+        # Warn user about maintenance mode implications
+        _LOGGER.info("Enabling maintenance mode - normal operation will be suspended")
+        
+        await super().async_turn_on(**kwargs)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off maintenance mode and return to normal operation."""
-        success = await self.coordinator.async_write_register(self._key, 0)
-        if success:
-            _LOGGER.info("Maintenance mode deactivated - returning to normal operation")
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to deactivate maintenance mode")
+        """Turn off maintenance mode."""
+        _LOGGER.info("Disabling maintenance mode - resuming normal operation")
+        await super().async_turn_off(**kwargs)
+        
+        # Request refresh to update system state after maintenance
+        await self.coordinator.async_request_refresh()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        attributes = {
-            "register_key": self._key,
-            "description": "Service and maintenance mode for technical operations",
-            "warning": "Only activate during scheduled maintenance",
-        }
+        attributes = super().extra_state_attributes
         
-        # Add current system status
-        system_power = self.coordinator.data.get("system_on_off", False)
-        attributes["system_power_on"] = system_power
+        # Add maintenance-specific information
+        if self.is_on:
+            attributes["maintenance_status"] = "active"
+            attributes["normal_operation"] = "suspended"
+            attributes["safety_notice"] = "System is in maintenance mode"
+        else:
+            attributes["maintenance_status"] = "inactive"
+            attributes["normal_operation"] = "active"
         
-        # Add active error/warning status
+        # Add system status for maintenance context
         error_code = self.coordinator.data.get("error_code", 0)
         warning_code = self.coordinator.data.get("warning_code", 0)
-        attributes["active_errors"] = error_code != 0
-        attributes["active_warnings"] = warning_code != 0
         
-        # Add service indicators
-        filter_warning = self.coordinator.data.get("filter_warning", False)
-        service_required = self.coordinator.data.get("service_required", False)
-        attributes["filter_warning_active"] = filter_warning
-        attributes["service_required"] = service_required
+        attributes["system_errors"] = error_code
+        attributes["system_warnings"] = warning_code
         
-        if hasattr(self.coordinator, 'last_update_success_time'):
-            attributes["last_updated"] = self.coordinator.last_update_success_time.isoformat()
+        if error_code == 0 and warning_code == 0:
+            attributes["system_health"] = "good"
+        elif error_code == 0:
+            attributes["system_health"] = "warnings_present"
+        else:
+            attributes["system_health"] = "errors_present"
+        
+        # Add operating hours for maintenance scheduling
+        operating_hours = self.coordinator.data.get("operating_hours")
+        if operating_hours is not None:
+            attributes["operating_hours"] = operating_hours
+            attributes["operating_days"] = round(operating_hours / 24, 1)
             
+            # Maintenance recommendations based on operating hours
+            if operating_hours > 8760:  # 1 year
+                attributes["maintenance_recommendation"] = "Annual service recommended"
+            elif operating_hours > 4380:  # 6 months
+                attributes["maintenance_recommendation"] = "Filter check recommended"
+            else:
+                attributes["maintenance_recommendation"] = "No maintenance required"
+        
         return attributes

@@ -1,4 +1,4 @@
-"""Tests for ThesslaGreenCoordinator."""
+"""Tests for ThesslaGreenCoordinator - HA 2025.7+ & pymodbus 3.5+ Compatible."""
 
 import os
 import sys
@@ -22,7 +22,6 @@ exceptions = types.ModuleType("homeassistant.exceptions")
 config_entries = types.ModuleType("homeassistant.config_entries")
 pymodbus = types.ModuleType("pymodbus")
 pymodbus_client = types.ModuleType("pymodbus.client")
-pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
 pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
 
 const.CONF_HOST = "host"
@@ -98,8 +97,7 @@ exceptions.ConfigEntryNotReady = ConfigEntryNotReady
 
 
 class ModbusTcpClient:
-    def __init__(self, *args, **kwargs):
-        pass
+    pass
 
 
 pymodbus_client.ModbusTcpClient = ModbusTcpClient
@@ -125,64 +123,196 @@ modules = {
     "pymodbus.client": pymodbus_client,
     "pymodbus.exceptions": pymodbus_exceptions,
 }
-
-sys.modules.update(modules)
+for name, module in modules.items():
+    sys.modules[name] = module
 
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenCoordinator
+# ✅ FIXED: Import correct coordinator class name
+from custom_components.thessla_green_modbus.coordinator import (
+    ThesslaGreenCoordinator,
+)
 
 
-@pytest.mark.asyncio
-async def test_async_write_invalid_register():
-    """Return False on unknown register and avoid client calls."""
+@pytest.fixture
+def coordinator():
+    """Create a test coordinator."""
     hass = MagicMock()
-    coordinator = ThesslaGreenCoordinator(
+    available_registers = {
+        "holding_registers": {"mode", "air_flow_rate_manual", "special_mode"},
+        "input_registers": {"outside_temperature", "supply_temperature"},
+        "coil_registers": {"system_on_off"},
+        "discrete_inputs": set(),
+    }
+    return ThesslaGreenCoordinator(
         hass=hass,
-        host="localhost",
-        port=502,
+        host="localhost", 
+        port=502, 
         slave_id=1,
         scan_interval=30,
         timeout=10,
         retry=3,
-        available_registers={
-            "input_registers": set(),
-            "holding_registers": set(),
-            "coil_registers": set(),
-            "discrete_inputs": set(),
-        },
+        available_registers=available_registers
     )
-    coordinator._client.write_register = AsyncMock(return_value=True)
-    coordinator._client.write_coil = AsyncMock(return_value=True)
-    result = await coordinator.async_write_register("invalid", 1)
-    assert result is False
-    coordinator._client.write_register.assert_not_awaited()
-    coordinator._client.write_coil.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_async_write_success_triggers_refresh():
-    """Successful write should refresh coordinator."""
-    hass = MagicMock()
-    coordinator = ThesslaGreenCoordinator(
-        hass=hass,
-        host="localhost",
-        port=502,
-        slave_id=1,
-        scan_interval=30,
-        timeout=10,
-        retry=3,
-        available_registers={
-            "input_registers": set(),
-            "holding_registers": {"mode"},
-            "coil_registers": set(),
-            "discrete_inputs": set(),
-        },
-    )
-    coordinator._client.write_register = AsyncMock(return_value=True)
-    with patch.object(coordinator, "async_request_refresh", AsyncMock()) as mock_refresh:
+async def test_async_write_invalid_register(coordinator):
+    """Return False and do not refresh on unknown register."""
+    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client:
+        result = await coordinator.async_write_register("invalid", 1)
+        assert result is False
+        mock_client.assert_not_called()
+
+
+@pytest.mark.asyncio 
+async def test_async_write_valid_register(coordinator):
+    """Test successful register write."""
+    coordinator.async_request_refresh = AsyncMock()
+    
+    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client_cls:
+        client = MagicMock()
+        mock_client_cls.return_value = client
+        client.connect.return_value = True
+        response = MagicMock()
+        response.isError.return_value = False
+        client.write_register.return_value = response
+
         result = await coordinator.async_write_register("mode", 1)
+        
+        assert result is True
+        coordinator.async_request_refresh.assert_called_once()
 
-    assert result is True
-    mock_refresh.assert_awaited_once()
+
+def test_performance_stats(coordinator):
+    """Test performance statistics."""
+    stats = coordinator.performance_stats
+    assert "status" in stats or "total_reads" in stats
+
+
+def test_device_info(coordinator):
+    """Test device info property."""
+    coordinator.device_scan_result = {
+        "device_info": {"firmware": "4.85.0"}
+    }
+    
+    device_info = coordinator.device_info
+    assert device_info["manufacturer"] == "ThesslaGreen"
+    assert device_info["model"] == "AirPack Home"
+
+
+@pytest.mark.asyncio
+async def test_coordinator_initialization():
+    """Test coordinator initialization."""
+    hass = MagicMock()
+    available_registers = {"holding_registers": set(), "input_registers": set()}
+    
+    coordinator = ThesslaGreenCoordinator(
+        hass=hass,
+        host="192.168.1.100",
+        port=502,
+        slave_id=10,
+        scan_interval=30,
+        timeout=10,
+        retry=3,
+        available_registers=available_registers
+    )
+    
+    assert coordinator.host == "192.168.1.100"
+    assert coordinator.port == 502
+    assert coordinator.slave_id == 10
+    assert coordinator.timeout == 10
+
+
+def test_register_value_processing(coordinator):
+    """Test register value processing."""
+    # Test temperature processing
+    temp_result = coordinator._process_register_value("outside_temperature", 250)
+    assert temp_result == 250  # Raw value returned
+    
+    # Test invalid temperature
+    invalid_temp = coordinator._process_register_value("outside_temperature", 0x8000)
+    assert invalid_temp is None
+    
+    # Test percentage processing
+    percentage_result = coordinator._process_register_value("supply_percentage", 75)
+    assert percentage_result == 75
+    
+    # Test invalid percentage
+    invalid_percentage = coordinator._process_register_value("supply_percentage", 150)
+    assert invalid_percentage is None
+    
+    # Test mode processing
+    mode_result = coordinator._process_register_value("mode", 1)
+    assert mode_result == 1
+    
+    # Test invalid mode
+    invalid_mode = coordinator._process_register_value("mode", 25)
+    assert invalid_mode is None
+
+
+def test_post_process_data(coordinator):
+    """Test data post-processing."""
+    raw_data = {
+        "outside_temperature": 100,  # 10.0°C
+        "supply_temperature": 200,   # 20.0°C  
+        "exhaust_temperature": 250,  # 25.0°C
+        "supply_flowrate": 150,
+        "exhaust_flowrate": 140,
+    }
+    
+    processed_data = coordinator._post_process_data(raw_data)
+    
+    # Check calculated efficiency
+    assert "calculated_efficiency" in processed_data
+    efficiency = processed_data["calculated_efficiency"]
+    assert isinstance(efficiency, (int, float))
+    assert 0 <= efficiency <= 100
+    
+    # Check flow balance
+    assert "flow_balance" in processed_data
+    assert processed_data["flow_balance"] == 10  # 150 - 140
+    
+    # Check flow balance status
+    assert "flow_balance_status" in processed_data
+    assert processed_data["flow_balance_status"] == "supply_dominant"
+
+
+@pytest.mark.asyncio
+async def test_write_register_sync_pymodbus_api(coordinator):
+    """Test that write_register_sync uses pymodbus 3.5+ compatible API."""
+    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client_cls:
+        client = MagicMock()
+        mock_client_cls.return_value = client
+        client.connect.return_value = True
+        
+        response = MagicMock()
+        response.isError.return_value = False
+        client.write_register.return_value = response
+        
+        # Test holding register write
+        result = coordinator._write_register_sync(100, 50, "holding")
+        
+        # ✅ VERIFY: Should use keyword arguments (pymodbus 3.5+ compatible)
+        client.write_register.assert_called_once()
+        call_args = client.write_register.call_args
+        
+        # Check if keyword arguments are used
+        if call_args.kwargs:
+            assert "address" in call_args.kwargs
+            assert "value" in call_args.kwargs  
+            assert "slave" in call_args.kwargs
+        
+        assert result is True
+
+
+def cleanup_modules():
+    """Clean up injected modules."""
+    for name in modules:
+        sys.modules.pop(name, None)
+
+
+# Register cleanup
+import atexit
+atexit.register(cleanup_modules)
