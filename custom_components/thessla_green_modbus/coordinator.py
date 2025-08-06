@@ -38,6 +38,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         timeout: int,
         retry: int,
         available_registers: Dict[str, Set[str]],
+        device_info: Dict[str, Any] = None,
+        capabilities: Set[str] = None,
     ) -> None:
         """Initialize the enhanced coordinator."""
         super().__init__(
@@ -53,6 +55,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         self.timeout = timeout
         self.retry = retry
         self.available_registers = available_registers
+        self.device_info = device_info or {}
+        self.capabilities = capabilities or set()
         
         # Enhanced optimization features (HA 2025.7+)
         self._consecutive_groups: Dict[str, list] = {}
@@ -142,67 +146,68 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         start_time = time.time()
         
         try:
-            data = await self.hass.async_add_executor_job(self._fetch_modbus_data)
+            data = await self.hass.async_add_executor_job(self._update_data_sync)
             
-            # Update performance metrics
-            read_time = time.time() - start_time
+            if data:
+                data = self._post_process_data(data)
+                self._read_stats["successful_reads"] += 1
+            else:
+                self._read_stats["failed_reads"] += 1
+                
             self._read_stats["total_reads"] += 1
-            self._read_stats["successful_reads"] += 1
-            self._read_stats["last_update_time"] = read_time
             
-            # Calculate rolling average
-            current_avg = self._read_stats["average_read_time"]
-            self._read_stats["average_read_time"] = (current_avg * 0.9) + (read_time * 0.1)
+            update_time = time.time() - start_time
+            self._read_stats["last_update_time"] = update_time
+            
+            # Update average read time
+            if self._read_stats["total_reads"] > 0:
+                self._read_stats["average_read_time"] = (
+                    self._read_stats["average_read_time"] * (self._read_stats["total_reads"] - 1) + update_time
+                ) / self._read_stats["total_reads"]
+            
+            success_rate = (self._read_stats["successful_reads"] / self._read_stats["total_reads"]) * 100
             
             _LOGGER.debug(
                 "Data update completed in %.2fs (avg: %.2fs, success rate: %.1f%%)",
-                read_time,
+                update_time,
                 self._read_stats["average_read_time"],
-                (self._read_stats["successful_reads"] / self._read_stats["total_reads"]) * 100
+                success_rate,
             )
             
-            return data
+            return data or {}
             
         except Exception as exc:
-            self._read_stats["total_reads"] += 1
             self._read_stats["failed_reads"] += 1
-            _LOGGER.error("Enhanced coordinator update failed: %s", exc)
+            self._read_stats["total_reads"] += 1
+            _LOGGER.error("Error updating data: %s", exc)
             raise UpdateFailed(f"Error communicating with device: {exc}")
 
-    def _fetch_modbus_data(self) -> Dict[str, Any]:
-        """Enhanced Modbus data fetching with batch optimization - pymodbus 3.5+ Compatible."""
-        client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-        data = {}
+    def _update_data_sync(self) -> Dict[str, Any]:
+        """Synchronous data update with enhanced batch reading and error handling."""
+        all_data = {}
         
         try:
-            if not client.connect():
-                raise UpdateFailed("Failed to connect to Modbus device")
-            
-            # Enhanced batch reading for each register type (HA 2025.7+ & pymodbus 3.5+)
-            register_readers = {
-                "input_registers": self._read_input_registers_batch,
-                "holding_registers": self._read_holding_registers_batch,
-                "coil_registers": self._read_coil_registers_batch,
-                "discrete_inputs": self._read_discrete_inputs_batch,
-            }
-            
-            for reg_type, reader_func in register_readers.items():
-                if reg_type in self._consecutive_groups:
-                    try:
-                        reg_data = reader_func(client)
-                        data.update(reg_data)
-                    except Exception as exc:
-                        _LOGGER.warning("Failed to read %s: %s", reg_type, exc)
-                        # Continue with other register types
-                        continue
-            
-            # Post-process data with enhanced validation
-            data = self._post_process_data(data)
-            
-        finally:
-            client.close()
-            
-        return data
+            with ModbusTcpClient(
+                host=self.host,
+                port=self.port,
+                timeout=self.timeout,
+            ) as client:
+                if not client.connect():
+                    _LOGGER.error("Failed to connect to %s:%s", self.host, self.port)
+                    return {}
+                
+                # Enhanced batch reading for optimal performance
+                if self._batch_read_enabled:
+                    all_data.update(self._read_input_registers_batch(client))
+                    all_data.update(self._read_holding_registers_batch(client))
+                    all_data.update(self._read_coil_registers_batch(client))
+                    all_data.update(self._read_discrete_inputs_batch(client))
+                
+                return all_data
+                
+        except Exception as exc:
+            _LOGGER.error("Modbus communication error: %s", exc)
+            return {}
 
     def _read_input_registers_batch(self, client: ModbusTcpClient) -> Dict[str, Any]:
         """Enhanced batch reading of input registers - pymodbus 3.5+ Compatible."""
@@ -221,12 +226,13 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug("Error reading input registers at %s: %s", start_addr, response)
                     continue
                     
-                # Process each register in the batch
-                for key, offset in key_map.items():
-                    raw_value = response.registers[offset]
-                    processed_value = self._process_register_value(key, raw_value)
-                    if processed_value is not None:
-                        data[key] = processed_value
+                # ✅ FIXED: Process each register in the batch with correct indexing
+                for offset, key in key_map.items():
+                    if offset < len(response.registers):
+                        raw_value = response.registers[offset]
+                        processed_value = self._process_register_value(key, raw_value)
+                        if processed_value is not None:
+                            data[key] = processed_value
                         
             except Exception as exc:
                 _LOGGER.debug("Failed to read input register batch at %s: %s", start_addr, exc)
@@ -251,11 +257,13 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug("Error reading holding registers at %s: %s", start_addr, response)
                     continue
                     
-                for key, offset in key_map.items():
-                    raw_value = response.registers[offset]
-                    processed_value = self._process_register_value(key, raw_value)
-                    if processed_value is not None:
-                        data[key] = processed_value
+                # ✅ FIXED: Process each register in the batch with correct indexing
+                for offset, key in key_map.items():
+                    if offset < len(response.registers):
+                        raw_value = response.registers[offset]
+                        processed_value = self._process_register_value(key, raw_value)
+                        if processed_value is not None:
+                            data[key] = processed_value
                         
             except Exception as exc:
                 _LOGGER.debug("Failed to read holding register batch at %s: %s", start_addr, exc)
@@ -280,9 +288,11 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug("Error reading coils at %s: %s", start_addr, response)
                     continue
                     
-                for key, offset in key_map.items():
-                    bit_value = response.bits[offset]
-                    data[key] = bool(bit_value)
+                # ✅ FIXED: Process each coil in the batch with correct indexing
+                for offset, key in key_map.items():
+                    if offset < len(response.bits):
+                        bit_value = response.bits[offset]
+                        data[key] = bool(bit_value)
                     
             except Exception as exc:
                 _LOGGER.debug("Failed to read coil batch at %s: %s", start_addr, exc)
@@ -307,9 +317,11 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug("Error reading discrete inputs at %s: %s", start_addr, response)
                     continue
                     
-                for key, offset in key_map.items():
-                    bit_value = response.bits[offset]
-                    data[key] = bool(bit_value)
+                # ✅ FIXED: Process each discrete input in the batch with correct indexing
+                for offset, key in key_map.items():
+                    if offset < len(response.bits):
+                        bit_value = response.bits[offset]
+                        data[key] = bool(bit_value)
                     
             except Exception as exc:
                 _LOGGER.debug("Failed to read discrete input batch at %s: %s", start_addr, exc)
@@ -366,144 +378,132 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
 
     def _post_process_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Enhanced post-processing with validation and derived values."""
-        # Remove None values
-        processed_data = {k: v for k, v in data.items() if v is not None}
-        
-        # Calculate derived values
+        if not data:
+            return data
+            
         try:
-            # Calculate heat recovery efficiency if we have temperatures
-            outside_temp = processed_data.get("outside_temperature")
-            supply_temp = processed_data.get("supply_temperature")
-            exhaust_temp = processed_data.get("exhaust_temperature")
-            
-            if all(t is not None for t in [outside_temp, supply_temp, exhaust_temp]):
-                try:
-                    # Convert from 0.1°C units to °C
-                    outside_c = outside_temp / 10.0
-                    supply_c = supply_temp / 10.0
-                    exhaust_c = exhaust_temp / 10.0
+            # Convert temperature values from raw to actual temperatures (0.1°C resolution)
+            for temp_key in ["outside_temperature", "supply_temperature", "exhaust_temperature", "extract_temperature"]:
+                if temp_key in data and data[temp_key] is not None:
+                    data[temp_key] = data[temp_key] / 10.0
                     
-                    if abs(outside_c - exhaust_c) > 1.0:  # Avoid division by zero
-                        efficiency = ((supply_c - outside_c) / (exhaust_c - outside_c)) * 100
-                        if 0 <= efficiency <= 100:
-                            processed_data["calculated_efficiency"] = round(efficiency, 1)
-                except (ZeroDivisionError, ValueError):
-                    pass
-            
-            # Calculate flow balance
-            supply_flow = processed_data.get("supply_flowrate")
-            exhaust_flow = processed_data.get("exhaust_flowrate")
-            
-            if supply_flow is not None and exhaust_flow is not None:
-                flow_balance = supply_flow - exhaust_flow
-                processed_data["flow_balance"] = flow_balance
+            # Calculate derived values if base values are available
+            if ("supply_temperature" in data and "exhaust_temperature" in data and 
+                "outside_temperature" in data and data["supply_temperature"] is not None and
+                data["exhaust_temperature"] is not None and data["outside_temperature"] is not None):
                 
-                # Flow balance status
-                if abs(flow_balance) < 10:
-                    processed_data["flow_balance_status"] = "balanced"
-                elif flow_balance > 0:
-                    processed_data["flow_balance_status"] = "supply_dominant"
+                supply_temp = data["supply_temperature"]
+                exhaust_temp = data["exhaust_temperature"]
+                outside_temp = data["outside_temperature"]
+                
+                # Calculate heat recovery efficiency
+                temp_diff_total = abs(outside_temp - exhaust_temp)
+                temp_diff_recovered = abs(supply_temp - outside_temp)
+                
+                if temp_diff_total > 0:
+                    efficiency = (temp_diff_recovered / temp_diff_total) * 100
+                    data["calculated_efficiency"] = min(max(efficiency, 0), 100)  # Clamp to 0-100%
+                    
+            # Calculate flow balance if both flow rates are available
+            if ("supply_flowrate" in data and "exhaust_flowrate" in data and
+                data["supply_flowrate"] is not None and data["exhaust_flowrate"] is not None):
+                
+                supply_flow = data["supply_flowrate"]
+                exhaust_flow = data["exhaust_flowrate"]
+                
+                data["flow_balance"] = supply_flow - exhaust_flow
+                
+                # Determine flow balance status
+                balance_diff = abs(data["flow_balance"])
+                if balance_diff <= 5:  # Within 5 m³/h tolerance
+                    data["flow_balance_status"] = "balanced"
+                elif data["flow_balance"] > 0:
+                    data["flow_balance_status"] = "supply_dominant"
                 else:
-                    processed_data["flow_balance_status"] = "exhaust_dominant"
-            
-        except Exception as exc:
+                    data["flow_balance_status"] = "exhaust_dominant"
+                    
+        except (ValueError, TypeError, KeyError) as exc:
             _LOGGER.debug("Error in post-processing: %s", exc)
-        
-        return processed_data
+            
+        return data
 
-    async def async_write_register(self, register_key: str, value: int) -> bool:
-        """Enhanced register writing with better error handling - pymodbus 3.5+ Compatible."""
-        # Check if register is writable (only holding registers and coils)
-        if register_key in HOLDING_REGISTERS:
-            register_address = HOLDING_REGISTERS[register_key]
-            register_type = "holding"
-        elif register_key in COIL_REGISTERS:
-            register_address = COIL_REGISTERS[register_key]
-            register_type = "coil"
-        else:
-            _LOGGER.error("Register %s is not writable", register_key)
+    async def async_write_register(self, key: str, value: Any) -> bool:
+        """Write a single register value with enhanced error handling."""
+        if key not in HOLDING_REGISTERS and key not in COIL_REGISTERS:
+            _LOGGER.error("Attempted to write to read-only or unknown register: %s", key)
             return False
-        
+            
         try:
             success = await self.hass.async_add_executor_job(
-                self._write_register_sync, register_address, value, register_type
+                self._write_register_sync, key, value
             )
             
             if success:
-                # Update local data cache for immediate UI feedback
-                self.data[register_key] = value
-                # Request refresh to get actual device state
+                # Refresh data after successful write
                 await self.async_request_refresh()
-                _LOGGER.debug("Successfully wrote %s = %d", register_key, value)
+                
+            return success
+            
+        except Exception as exc:
+            _LOGGER.error("Error writing register %s: %s", key, exc)
+            return False
+
+    def _write_register_sync(self, key: str, value: Any) -> bool:
+        """Synchronous register write operation."""
+        try:
+            with ModbusTcpClient(
+                host=self.host,
+                port=self.port,
+                timeout=self.timeout,
+            ) as client:
+                if not client.connect():
+                    _LOGGER.error("Failed to connect for register write")
+                    return False
+                    
+                if key in HOLDING_REGISTERS:
+                    address = HOLDING_REGISTERS[key]
+                    # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
+                    response = client.write_register(
+                        address=address,
+                        value=int(value),
+                        slave=self.slave_id
+                    )
+                elif key in COIL_REGISTERS:
+                    address = COIL_REGISTERS[key]
+                    # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
+                    response = client.write_coil(
+                        address=address,
+                        value=bool(value),
+                        slave=self.slave_id
+                    )
+                else:
+                    return False
+                    
+                if response.isError():
+                    _LOGGER.error("Modbus write error for %s: %s", key, response)
+                    return False
+                    
+                _LOGGER.debug("Successfully wrote %s = %s", key, value)
                 return True
-            else:
-                _LOGGER.error("Failed to write register %s", register_key)
-                return False
                 
         except Exception as exc:
-            _LOGGER.error("Exception writing register %s: %s", register_key, exc)
+            _LOGGER.error("Exception during register write: %s", exc)
             return False
-
-    def _write_register_sync(self, address: int, value: int, register_type: str) -> bool:
-        """Synchronous register writing - pymodbus 3.5+ Compatible."""
-        client = ModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
-        
-        try:
-            if not client.connect():
-                return False
-            
-            if register_type == "holding":
-                # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
-                response = client.write_register(
-                    address=address, 
-                    value=value, 
-                    slave=self.slave_id
-                )
-            elif register_type == "coil":
-                # ✅ FIXED: pymodbus 3.5+ requires keyword arguments
-                response = client.write_coil(
-                    address=address, 
-                    value=bool(value), 
-                    slave=self.slave_id
-                )
-            else:
-                return False
-            
-            return not response.isError()
-            
-        except Exception as exc:
-            _LOGGER.debug("Error writing register %d: %s", address, exc)
-            return False
-        finally:
-            client.close()
-
-    @property 
-    def device_info(self) -> Dict[str, Any]:
-        """Return device information for entity registry."""
-        return {
-            "identifiers": {(DOMAIN, f"{self.host}_{self.slave_id}")},
-            "name": f"ThesslaGreen ({self.host})",
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack Home",
-            "sw_version": self.device_scan_result.get("device_info", {}).get("firmware", "Unknown"),
-            "configuration_url": f"http://{self.host}",
-        }
 
     @property
     def performance_stats(self) -> Dict[str, Any]:
-        """Return coordinator performance statistics."""
-        total_reads = self._read_stats["total_reads"]
-        if total_reads == 0:
-            return {"status": "no_data"}
-        
-        success_rate = (self._read_stats["successful_reads"] / total_reads) * 100
-        
+        """Return performance statistics."""
+        success_rate = 0.0
+        if self._read_stats["total_reads"] > 0:
+            success_rate = (self._read_stats["successful_reads"] / self._read_stats["total_reads"]) * 100
+            
         return {
-            "total_reads": total_reads,
+            "status": "connected" if self.last_update_success else "disconnected",
+            "total_reads": self._read_stats["total_reads"],
             "successful_reads": self._read_stats["successful_reads"],
             "failed_reads": self._read_stats["failed_reads"],
-            "success_rate": round(success_rate, 1),
-            "average_read_time": round(self._read_stats["average_read_time"], 2),
-            "last_update_time": round(self._read_stats["last_update_time"], 2),
-            "batch_groups": {k: len(v) for k, v in self._consecutive_groups.items()},
+            "success_rate": success_rate,
+            "average_read_time": self._read_stats["average_read_time"],
+            "last_update_time": self._read_stats["last_update_time"],
+            "failed_registers": len(self._failed_registers),
         }
