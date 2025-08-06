@@ -70,6 +70,22 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 DOMAIN = "thessla_green_modbus"
 
 
+class CoordinatorMock(MagicMock):
+    """MagicMock subclass with device_scan_result property."""
+
+    @property
+    def device_scan_result(self):  # type: ignore[override]
+        return {
+            "device_info": getattr(self, "device_info", {}),
+            "capabilities": getattr(self, "capabilities", {}),
+        }
+
+    @device_scan_result.setter
+    def device_scan_result(self, value):  # type: ignore[override]
+        self.device_info = value.get("device_info", {})
+        self.capabilities = value.get("capabilities", {})
+
+
 @pytest.fixture
 def hass():
     """Return a mock Home Assistant instance."""
@@ -98,7 +114,7 @@ def mock_config_entry():
 @pytest.fixture
 def mock_coordinator():
     """Return a mock coordinator."""
-    coordinator = MagicMock()
+    coordinator = CoordinatorMock()
     coordinator.host = "192.168.1.100"
     coordinator.port = 502
     coordinator.slave_id = 10
@@ -111,15 +127,17 @@ def mock_coordinator():
         "on_off_panel_mode": 1,
         "supply_percentage": 50,
     }
-    coordinator.device_info = {
-        "device_name": "ThesslaGreen AirPack",
-        "firmware": "4.85.0",
-        "serial_number": "S/N: 1234 5678 9abc",
-    }
-    coordinator.capabilities = {
-        "constant_flow": True,
+    coordinator.device_scan_result = {
+        "device_info": {
+            "device_name": "ThesslaGreen AirPack",
+            "firmware": "4.85.0",
+            "serial_number": "S/N: 1234 5678 9abc",
+        },
+        "capabilities": {
+            "constant_flow": True,
         "gwc_system": True,
-        "bypass_system": True,
+            "bypass_system": True,
+        },
     }
     coordinator.available_registers = {
         "input_registers": {"outside_temperature", "supply_temperature", "exhaust_temperature"},

@@ -525,5 +525,14 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator):
         """Return device scan result - compatibility property."""
         return {
             "device_info": self.device_info,
-            "capabilities": self.capabilities
+            "capabilities": self.capabilities,
         }
+
+    @device_scan_result.setter
+    def device_scan_result(self, value: Dict[str, Any]) -> None:
+        """Update device scan result and related attributes."""
+        if not isinstance(value, dict):
+            raise ValueError("device_scan_result must be a dictionary")
+
+        self.device_info = value.get("device_info", {})
+        self.capabilities = value.get("capabilities", set())

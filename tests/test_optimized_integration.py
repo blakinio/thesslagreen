@@ -5,6 +5,8 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch, call
 from datetime import timedelta
 
+from conftest import CoordinatorMock
+
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -55,7 +57,7 @@ class TestThesslaGreenIntegration:
     @pytest.fixture
     def mock_coordinator(self):
         """Create a mock coordinator with realistic data."""
-        coordinator = MagicMock()
+        coordinator = CoordinatorMock()
         coordinator.host = "192.168.1.100"
         coordinator.port = 502
         coordinator.slave_id = 10
@@ -80,24 +82,24 @@ class TestThesslaGreenIntegration:
             "bypass_mode": 0,
         }
         
-        # Device info
-        coordinator.device_info = {
-            "device_name": "ThesslaGreen AirPack Test",
-            "firmware": "4.85.0",
-            "serial_number": "S/N: 1234 5678 9abc",
-            "processor": "ATmega2561",
-        }
-        
-        # Capabilities
-        coordinator.capabilities = {
-            "basic_control": True,
-            "constant_flow": True,
-            "gwc_system": True,
-            "bypass_system": True,
-            "comfort_mode": True,
-            "expansion_module": False,
-            "temperature_sensors_count": 7,
-            "model_type": "AirPack Home Energy+ with CF and GWC",
+        # Device scan result sets device_info and capabilities
+        coordinator.device_scan_result = {
+            "device_info": {
+                "device_name": "ThesslaGreen AirPack Test",
+                "firmware": "4.85.0",
+                "serial_number": "S/N: 1234 5678 9abc",
+                "processor": "ATmega2561",
+            },
+            "capabilities": {
+                "basic_control": True,
+                "constant_flow": True,
+                "gwc_system": True,
+                "bypass_system": True,
+                "comfort_mode": True,
+                "expansion_module": False,
+                "temperature_sensors_count": 7,
+                "model_type": "AirPack Home Energy+ with CF and GWC",
+            },
         }
         
         # Available registers
@@ -478,12 +480,14 @@ class TestThesslaGreenClimate:
     @pytest.fixture
     def mock_climate_coordinator(self):
         """Create a coordinator specifically for climate testing."""
-        coordinator = MagicMock()
+        coordinator = CoordinatorMock()
         coordinator.host = "192.168.1.100"
         coordinator.slave_id = 10
-        coordinator.device_info = {
-            "device_name": "Test AirPack",
-            "firmware": "4.85.0",
+        coordinator.device_scan_result = {
+            "device_info": {
+                "device_name": "Test AirPack",
+                "firmware": "4.85.0",
+            }
         }
         coordinator.available_registers = {
             "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"}
