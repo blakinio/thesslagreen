@@ -63,10 +63,8 @@ async def async_setup_entry(
     
     # Enhanced Flow Sensors (HA 2025.7+ Compatible)
     flow_sensors = [
-        ("supply_flowrate", "Supply Flow Rate", "mdi:fan", "Current supply air flow rate"),
+        ("supply_flowrate", "Supply Flow Rate", "mdi:fan-plus", "Current supply air flow rate"),
         ("exhaust_flowrate", "Exhaust Flow Rate", "mdi:fan-minus", "Current exhaust air flow rate"),
-        ("supply_air_flow", "Supply Air Flow", "mdi:air-filter", "Total supply air volume"),
-        ("exhaust_air_flow", "Exhaust Air Flow", "mdi:air-filter", "Total exhaust air volume"),
     ]
     
     for sensor_key, name, icon, description in flow_sensors:
@@ -77,46 +75,33 @@ async def async_setup_entry(
                 )
             )
     
-    # Enhanced Performance Sensors (HA 2025.7+ Compatible)
-    performance_sensors = [
-        ("supply_percentage", "Supply Fan Speed", "mdi:fan-speed-1", "Current supply fan speed percentage"),
-        ("exhaust_percentage", "Exhaust Fan Speed", "mdi:fan-speed-2", "Current exhaust fan speed percentage"),
-        ("heat_recovery_efficiency", "Heat Recovery Efficiency", "mdi:percent", "Current heat recovery efficiency"),
-        ("filter_efficiency", "Filter Efficiency", "mdi:air-filter-outline", "Current filter efficiency"),
-        ("actual_power_consumption", "Power Consumption", "mdi:flash", "Actual power consumption"),
+    # Enhanced System Sensors (HA 2025.7+ Compatible)
+    system_sensors = [
+        ("supply_percentage", "Supply Fan Speed", "mdi:fan", "Supply fan speed percentage", PERCENTAGE),
+        ("exhaust_percentage", "Exhaust Fan Speed", "mdi:fan", "Exhaust fan speed percentage", PERCENTAGE),
+        ("heat_recovery_efficiency", "Heat Recovery Efficiency", "mdi:percent", "Current heat recovery efficiency", PERCENTAGE),
+        ("filter_time_remaining", "Filter Time Remaining", "mdi:air-filter", "Days until filter replacement", UnitOfTime.DAYS),
+        ("error_code", "Error Code", "mdi:alert-circle", "Current error code", None),
+        ("warning_code", "Warning Code", "mdi:alert", "Current warning code", None),
     ]
     
-    for sensor_key, name, icon, description in performance_sensors:
-        if sensor_key in input_regs:
-            entities.append(
-                ThesslaGreenPerformanceSensor(
-                    coordinator, sensor_key, name, icon, description
+    for sensor_key, name, icon, description, unit in system_sensors:
+        if sensor_key in input_regs or sensor_key in holding_regs:
+            if "error" in sensor_key:
+                entities.append(
+                    ThesslaGreenErrorSensor(coordinator)
                 )
-            )
-    
-    # Enhanced System Status Sensors (HA 2025.7+ Compatible)
-    if "error_code" in holding_regs:
-        entities.append(ThesslaGreenErrorSensor(coordinator))
-    
-    if "warning_code" in holding_regs:
-        entities.append(ThesslaGreenWarningSensor(coordinator))
-    
-    # Enhanced Device Information Sensors (HA 2025.7+ Compatible) 
-    device_sensors = [
-        ("firmware_version", "Firmware Version", "mdi:chip", "Device firmware version", None),
-        ("device_serial", "Serial Number", "mdi:barcode", "Device serial number", None),
-        ("operating_hours", "Operating Hours", "mdi:clock", "Total operating hours", UnitOfTime.HOURS),
-        ("filter_time_remaining", "Filter Time Remaining", "mdi:air-filter", "Remaining filter life", UnitOfTime.DAYS),
-    ]
-    
-    for sensor_key, name, icon, description, unit in device_sensors:
-        if sensor_key in holding_regs:
-            entities.append(
-                ThesslaGreenDeviceSensor(
-                    coordinator, sensor_key, name, icon, description, unit
+            elif "warning" in sensor_key:
+                entities.append(
+                    ThesslaGreenWarningSensor(coordinator)
                 )
-            )
-
+            else:
+                entities.append(
+                    ThesslaGreenDeviceSensor(
+                        coordinator, sensor_key, name, icon, description, unit
+                    )
+                )
+    
     if entities:
         _LOGGER.debug("Adding %d enhanced sensor entities", len(entities))
         async_add_entities(entities)
@@ -124,6 +109,8 @@ async def async_setup_entry(
 
 class ThesslaGreenBaseSensor(CoordinatorEntity, SensorEntity):
     """Base sensor for ThesslaGreen devices - HA 2025.7+ Compatible."""
+    
+    _attr_has_entity_name = True  # ✅ FIX: Enable entity naming
 
     def __init__(
         self,
@@ -138,15 +125,17 @@ class ThesslaGreenBaseSensor(CoordinatorEntity, SensorEntity):
         self._key = key
         self._attr_name = name
         self._attr_icon = icon
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
+        self._attr_translation_key = key
+        self._attr_unique_id = f"thessla_{coordinator.host.replace('.','_')}_{coordinator.slave_id}_{key}"
         
         # Enhanced device info (HA 2025.7+)
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": f"ThesslaGreen ({coordinator.host})",
+            "name": f"ThesslaGreen AirPack ({coordinator.host})",
             "manufacturer": "ThesslaGreen",
             "model": "AirPack Home",
-            "sw_version": coordinator.device_scan_result.get("device_info", {}).get("firmware", "Unknown"),
+            "sw_version": coordinator.device_scan_result.get("device_info", {}).get("firmware", "Unknown")
+            if hasattr(coordinator, 'device_scan_result') else "Unknown",
         }
 
     @property
@@ -195,8 +184,8 @@ class ThesslaGreenTemperatureSensor(ThesslaGreenBaseSensor):
         if raw_value is None:
             return None
         
-        # Convert from device units (0.1°C) to Celsius
-        temp_celsius = raw_value / 10.0
+        # ✅ FIX: Value is already converted in coordinator, don't divide again
+        temp_celsius = raw_value  # Already in °C from coordinator
         
         # Validate reasonable temperature range
         if -50.0 <= temp_celsius <= 100.0:
@@ -252,22 +241,23 @@ class ThesslaGreenFlowSensor(ThesslaGreenBaseSensor):
             key=key,
             name=name,
             icon=icon,
+            device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
             native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
             state_class=SensorStateClass.MEASUREMENT,
         )
 
     @property
     def native_value(self) -> float | None:
-        """Return flow value in m³/h."""
+        """Return flow rate value."""
         raw_value = self.coordinator.data.get(self._key)
         if raw_value is None:
             return None
         
-        # Flow values are typically in m³/h, validate range
+        # Validate flow rate range
         if 0 <= raw_value <= 1000:
-            return round(float(raw_value), 1)
+            return raw_value
         
-        _LOGGER.warning("Invalid flow reading for %s: %d m³/h", self._key, raw_value)
+        _LOGGER.warning("Invalid flow rate for %s: %d m³/h", self._key, raw_value)
         return None
 
     @property
@@ -278,123 +268,18 @@ class ThesslaGreenFlowSensor(ThesslaGreenBaseSensor):
         # Enhanced flow context (HA 2025.7+)
         flow = self.native_value
         if flow is not None:
-            # Flow categories for typical home units
+            # Flow categories
             if flow < 50:
-                attributes["flow_category"] = "low"
+                attributes["flow_level"] = "low"
             elif flow < 150:
-                attributes["flow_category"] = "medium"
-            elif flow < 300:
-                attributes["flow_category"] = "high"
+                attributes["flow_level"] = "medium"
+            elif flow < 250:
+                attributes["flow_level"] = "high"
             else:
-                attributes["flow_category"] = "very_high"
-        
-        # Add ventilation context
-        if "supply" in self._key:
-            attributes["flow_type"] = "supply"
-            # Get target flow if available
-            target_flow = self.coordinator.data.get("supply_air_flow_target")
-            if target_flow is not None:
-                attributes["target_flow"] = target_flow
-                if flow is not None:
-                    attributes["flow_error"] = round(flow - target_flow, 1)
-        elif "exhaust" in self._key:
-            attributes["flow_type"] = "exhaust"
-            target_flow = self.coordinator.data.get("exhaust_air_flow_target")
-            if target_flow is not None:
-                attributes["target_flow"] = target_flow
-                if flow is not None:
-                    attributes["flow_error"] = round(flow - target_flow, 1)
-        
-        return attributes
-
-
-class ThesslaGreenPerformanceSensor(ThesslaGreenBaseSensor):
-    """Enhanced performance sensor - HA 2025.7+ Compatible."""
-
-    def __init__(self, coordinator, key, name, icon, description):
-        """Initialize the performance sensor."""
-        super().__init__(coordinator, key, name, icon, description)
-        
-        # Enhanced entity description for performance sensors (HA 2025.7+)
-        if "percentage" in key or "efficiency" in key:
-            unit = PERCENTAGE
-        elif "power" in key:
-            unit = "W"
-        else:
-            unit = None
+                attributes["flow_level"] = "very_high"
             
-        self.entity_description = SensorEntityDescription(
-            key=key,
-            name=name,
-            icon=icon,
-            native_unit_of_measurement=unit,
-            state_class=SensorStateClass.MEASUREMENT,
-        )
-
-    @property
-    def native_value(self) -> float | None:
-        """Return performance value."""
-        raw_value = self.coordinator.data.get(self._key)
-        if raw_value is None:
-            return None
-        
-        # Percentage values (0-100%)
-        if "percentage" in self._key or "efficiency" in self._key:
-            if 0 <= raw_value <= 100:
-                return round(float(raw_value), 1)
-        # Power consumption values
-        elif "power" in self._key:
-            if 0 <= raw_value <= 5000:  # Reasonable power range
-                return round(float(raw_value), 1)
-        else:
-            return round(float(raw_value), 2)
-        
-        _LOGGER.warning("Invalid performance reading for %s: %s", self._key, raw_value)
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Enhanced performance context (HA 2025.7+)
-        value = self.native_value
-        if value is not None:
-            if "percentage" in self._key:
-                if value < 25:
-                    attributes["performance_level"] = "low"
-                elif value < 50:
-                    attributes["performance_level"] = "medium"
-                elif value < 75:
-                    attributes["performance_level"] = "high" 
-                else:
-                    attributes["performance_level"] = "maximum"
-                    
-                # Add fan context
-                if "supply" in self._key:
-                    attributes["fan_type"] = "supply"
-                elif "exhaust" in self._key:
-                    attributes["fan_type"] = "exhaust"
-                    
-            elif "efficiency" in self._key:
-                if value < 50:
-                    attributes["efficiency_level"] = "poor"
-                elif value < 70:
-                    attributes["efficiency_level"] = "fair"
-                elif value < 85:
-                    attributes["efficiency_level"] = "good"
-                else:
-                    attributes["efficiency_level"] = "excellent"
-                    
-            elif "power" in self._key:
-                if value < 50:
-                    attributes["power_level"] = "low"
-                elif value < 200:
-                    attributes["power_level"] = "medium"
-                elif value < 500:
-                    attributes["power_level"] = "high"
-                else:
-                    attributes["power_level"] = "very_high"
+            # Calculate percentage of typical max (400 m³/h)
+            attributes["flow_percentage"] = round((flow / 400) * 100, 1)
         
         return attributes
 
@@ -402,7 +287,7 @@ class ThesslaGreenPerformanceSensor(ThesslaGreenBaseSensor):
 class ThesslaGreenErrorSensor(ThesslaGreenBaseSensor):
     """Enhanced error code sensor - HA 2025.7+ Compatible."""
 
-    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
+    def __init__(self, coordinator):
         """Initialize the error sensor."""
         super().__init__(coordinator, "error_code", "Error Code", "mdi:alert-circle", "Current system error code")
         
@@ -424,22 +309,25 @@ class ThesslaGreenErrorSensor(ThesslaGreenBaseSensor):
         
         description = ERROR_CODES.get(code, f"Unknown error ({code})")
         attributes["description"] = description
-        attributes["severity"] = "error" if code != 0 else "none"
+        attributes["severity"] = "critical" if code != 0 else "none"
         attributes["active"] = code != 0
         
-        # Add troubleshooting information
+        # Add maintenance recommendations
         if code != 0:
-            attributes["requires_attention"] = True
-            if code in [1, 2, 3, 4, 5, 6, 7]:  # Sensor errors
-                attributes["category"] = "sensor"
-            elif code in [8, 9]:  # Fan errors
-                attributes["category"] = "fan"
-            elif code == 10:  # Communication error
+            attributes["requires_service"] = code in [1, 2, 5, 6, 8, 9]
+            attributes["requires_reset"] = code in [3, 4, 7]
+            
+            if code in [1, 2]:
+                attributes["category"] = "sensor_failure"
+            elif code in [3, 4]:
                 attributes["category"] = "communication"
+            elif code in [5, 6, 7]:
+                attributes["category"] = "hardware"
             else:
                 attributes["category"] = "system"
         else:
-            attributes["requires_attention"] = False
+            attributes["requires_service"] = False
+            attributes["requires_reset"] = False
             attributes["category"] = "none"
         
         return attributes
@@ -448,7 +336,7 @@ class ThesslaGreenErrorSensor(ThesslaGreenBaseSensor):
 class ThesslaGreenWarningSensor(ThesslaGreenBaseSensor):
     """Enhanced warning code sensor - HA 2025.7+ Compatible."""
 
-    def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
+    def __init__(self, coordinator):
         """Initialize the warning sensor."""
         super().__init__(coordinator, "warning_code", "Warning Code", "mdi:alert", "Current system warning code")
         
@@ -521,49 +409,32 @@ class ThesslaGreenDeviceSensor(ThesslaGreenBaseSensor):
         attributes = super().extra_state_attributes
         
         # Enhanced device context (HA 2025.7+)
-        if self._key == "firmware_version":
-            fw_version = self.native_value
-            if fw_version:
-                try:
-                    # Parse version for comparison
-                    major, minor = fw_version.split('.')[:2]
-                    attributes["firmware_major"] = int(major)
-                    attributes["firmware_minor"] = int(minor)
-                    
-                    # Version recommendations
-                    if int(major) < 4:
-                        attributes["update_recommended"] = True
-                        attributes["update_reason"] = "Old firmware version"
-                    else:
-                        attributes["update_recommended"] = False
-                        
-                except (ValueError, IndexError):
-                    attributes["version_parsed"] = False
-                    
-        elif self._key == "operating_hours":
-            hours = self.native_value
-            if hours is not None:
-                attributes["operating_days"] = round(hours / 24, 1)
-                attributes["operating_years"] = round(hours / (24 * 365), 2)
-                
-                # Maintenance intervals
-                if hours > 8760:  # 1 year
-                    attributes["maintenance_due"] = True
-                else:
-                    attributes["maintenance_due"] = False
-                    
-        elif self._key == "filter_time_remaining":
+        if self._key == "filter_time_remaining":
             days = self.native_value
             if days is not None:
-                attributes["weeks_remaining"] = round(days / 7, 1)
-                attributes["months_remaining"] = round(days / 30, 1)
-                
-                # Filter replacement warnings
-                if days < 30:
-                    attributes["replacement_urgency"] = "urgent"
+                if days < 7:
+                    attributes["urgency"] = "critical"
+                    attributes["action_required"] = "Order replacement filter immediately"
+                elif days < 30:
+                    attributes["urgency"] = "high"
+                    attributes["action_required"] = "Order replacement filter soon"
                 elif days < 60:
-                    attributes["replacement_urgency"] = "soon"
+                    attributes["urgency"] = "medium"
+                    attributes["action_required"] = "Plan filter replacement"
                 else:
-                    attributes["replacement_urgency"] = "normal"
+                    attributes["urgency"] = "low"
+                    attributes["action_required"] = "No action required"
+        
+        elif self._key == "heat_recovery_efficiency":
+            efficiency = self.native_value
+            if efficiency is not None:
+                if efficiency > 85:
+                    attributes["performance"] = "excellent"
+                elif efficiency > 70:
+                    attributes["performance"] = "good"
+                elif efficiency > 50:
+                    attributes["performance"] = "moderate"
+                else:
+                    attributes["performance"] = "poor"
         
         return attributes
