@@ -1,315 +1,301 @@
-# Enhanced services for ThesslaGreen Modbus integration - HA 2025.7+ Compatible
+# Enhanced services for ThesslaGreen Modbus Integration
+# Wszystkie serwisy z kompletnej mapy rejestrów
+# Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
 
-set_operating_mode:
-  name: "Set Operating Mode"
-  description: "Set the main operating mode of the ventilation system"
+set_mode:
+  name: Set Operation Mode
+  description: Ustawia tryb pracy rekuperatora
   fields:
     mode:
-      name: "Mode"
-      description: "Operating mode to set"
+      name: Mode
+      description: Tryb pracy
       required: true
       selector:
         select:
           options:
-            - label: "Automatic"
-              value: "auto"
-            - label: "Manual"
-              value: "manual"
-            - label: "Temporary"
-              value: "temporary"
-
-set_intensity:
-  name: "Set Ventilation Intensity"
-  description: "Set the ventilation intensity percentage"
-  fields:
+            - "off"
+            - "manual"
+            - "auto"
+            - "temporary"
     intensity:
-      name: "Intensity"
-      description: "Ventilation intensity (10-150%)"
-      required: true
+      name: Intensity
+      description: Intensywność wentylacji (opcjonalne)
       selector:
         number:
           min: 10
           max: 150
-          step: 1
+          step: 5
           unit_of_measurement: "%"
 
-set_special_function:
-  name: "Set Special Function"
-  description: "Activate a special function mode"
+set_special_mode:
+  name: Set Special Mode
+  description: Ustawia tryb specjalny z intensywnością i czasem trwania
   fields:
-    function:
-      name: "Function" 
-      description: "Special function to activate"
+    special_mode:
+      name: Special Mode
+      description: Tryb specjalny
       required: true
       selector:
         select:
           options:
-            - label: "None"
-              value: "none"
-            - label: "Hood (OKAP)"
-              value: "hood"
-            - label: "Fireplace (KOMINEK)"
-              value: "fireplace"
-            - label: "Manual Airing"
-              value: "airing_manual"
-            - label: "Auto Airing"
-              value: "airing_auto"
-            - label: "Empty House"
-              value: "empty_house"
-            - label: "Open Windows"
-              value: "open_windows"
-
-reset_alarms:
-  name: "Reset Alarms"
-  description: "Reset system alarms and warnings"
-  fields:
-    alarm_type:
-      name: "Alarm Type"
-      description: "Type of alarms to reset"
-      required: false
-      default: "all"
-      selector:
-        select:
-          options:
-            - label: "All Alarms"
-              value: "all"
-            - label: "Warnings Only"
-              value: "warnings"
-            - label: "Errors Only"
-              value: "errors"
-
-rescan_device:
-  name: "Rescan Device"
-  description: "Rescan the device to detect new capabilities and registers"
-
-# Enhanced services for HA 2025.7+ compatibility
-
-set_comfort_temperature:
-  name: "Set Comfort Temperature"
-  description: "Set heating and cooling comfort temperatures"
-  fields:
-    heating_temperature:
-      name: "Heating Temperature"
-      description: "Target temperature for heating mode"
-      required: false
+            - "none"
+            - "okap"
+            - "kominek"
+            - "wietrzenie"
+            - "pusty_dom"
+            - "boost"
+            - "night"
+            - "party"
+            - "vacation"
+            - "economy"
+            - "comfort"
+    intensity:
+      name: Intensity
+      description: Intensywność wentylacji (opcjonalne)
       selector:
         number:
-          min: 18.0
-          max: 30.0
-          step: 0.5
-          unit_of_measurement: "°C"
-    cooling_temperature:
-      name: "Cooling Temperature"
-      description: "Target temperature for cooling mode"
-      required: false
-      selector:
-        number:
-          min: 20.0
-          max: 35.0
-          step: 0.5
-          unit_of_measurement: "°C"
-
-activate_boost_mode:
-  name: "Activate Boost Mode"
-  description: "Activate boost mode for specified duration"
-  fields:
+          min: 10
+          max: 150
+          step: 5
+          unit_of_measurement: "%"
     duration:
-      name: "Duration"
-      description: "Boost mode duration in minutes"
-      required: false
-      default: 30
+      name: Duration
+      description: Czas trwania w minutach (opcjonalne)
       selector:
         number:
           min: 5
-          max: 120
+          max: 1440
           step: 5
           unit_of_measurement: "min"
-    intensity:
-      name: "Intensity"
-      description: "Boost intensity level"
-      required: false
-      default: 100
+
+set_temperature:
+  name: Set Temperature
+  description: Ustawia temperaturę docelową dla wybranego trybu
+  fields:
+    temperature:
+      name: Temperature
+      description: Temperatura docelowa
+      required: true
       selector:
         number:
-          min: 50
-          max: 150
-          step: 10
+          min: 15.0
+          max: 45.0
+          step: 0.5
+          unit_of_measurement: "°C"
+    mode:
+      name: Mode
+      description: Tryb temperatury
+      selector:
+        select:
+          options:
+            - "manual"
+            - "auto"
+            - "temporary"
+            - "comfort"
+
+set_fan_speed:
+  name: Set Fan Speed
+  description: Ustawia prędkość wentylatorów i balans przepływów
+  fields:
+    supply_speed:
+      name: Supply Fan Speed
+      description: Prędkość wentylatora nawiewnego
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+    exhaust_speed:
+      name: Exhaust Fan Speed
+      description: Prędkość wentylatora wywiewnego
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+    balance:
+      name: Flow Balance
+      description: Balans przepływów
+      selector:
+        number:
+          min: -20
+          max: 20
+          step: 1
           unit_of_measurement: "%"
 
-schedule_maintenance:
-  name: "Schedule Maintenance"
-  description: "Schedule or configure maintenance settings"
-  fields:
-    filter_interval:
-      name: "Filter Change Interval"
-      description: "Days between filter changes"
-      required: false
-      selector:
-        number:
-          min: 90
-          max: 365
-          step: 7
-          unit_of_measurement: "days"
-    warning_threshold:
-      name: "Warning Threshold"
-      description: "Days before filter change warning"
-      required: false
-      selector:
-        number:
-          min: 7
-          max: 60
-          step: 1
-          unit_of_measurement: "days"
-
-calibrate_sensors:
-  name: "Calibrate Sensors"
-  description: "Initiate sensor calibration procedure"
-  fields:
-    sensor_type:
-      name: "Sensor Type"
-      description: "Type of sensors to calibrate"
-      required: false
-      default: "all"
-      selector:
-        select:
-          options:
-            - label: "All Sensors"
-              value: "all"
-            - label: "Temperature Sensors"
-              value: "temperature"
-            - label: "Flow Sensors"
-              value: "flow"
-            - label: "Pressure Sensors"
-              value: "pressure"
-
-configure_gwc:
-  name: "Configure GWC"
-  description: "Configure Ground Heat Exchanger settings"
+control_bypass:
+  name: Control Bypass
+  description: Steruje trybem pracy bypass
   fields:
     mode:
-      name: "GWC Mode"
-      description: "Ground Heat Exchanger mode"
-      required: false
+      name: Bypass Mode
+      description: Tryb pracy bypass
+      required: true
       selector:
         select:
           options:
-            - label: "Inactive"
-              value: 0
-            - label: "Winter Mode"
-              value: 1
-            - label: "Summer Mode"
-              value: 2
-    min_air_temperature:
-      name: "Minimum Air Temperature"
-      description: "Minimum air temperature for GWC activation"
-      required: false
+            - "auto"
+            - "open"
+            - "closed"
+
+control_gwc:
+  name: Control GWC
+  description: Steruje systemem GWC (Ground Water Cooler)
+  fields:
+    mode:
+      name: GWC Mode
+      description: Tryb pracy GWC
+      required: true
+      selector:
+        select:
+          options:
+            - "auto"
+            - "on"
+            - "off"
+
+reset_alarms:
+  name: Reset Alarms
+  description: Resetuje alarmy i błędy systemu
+  fields:
+    alarm_type:
+      name: Alarm Type
+      description: Typ alarmów do zresetowania
+      selector:
+        select:
+          options:
+            - "all"
+            - "errors"
+            - "warnings"
+
+set_schedule:
+  name: Set Schedule
+  description: Ustawia harmonogram pracy dla wybranego dnia i okresu
+  fields:
+    day:
+      name: Day
+      description: Dzień tygodnia
+      required: true
+      selector:
+        select:
+          options:
+            - "mon"
+            - "tue"
+            - "wed"
+            - "thu"
+            - "fri"
+            - "sat"
+            - "sun"
+    period:
+      name: Period
+      description: Okres czasowy (1-4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          step: 1
+    start_time:
+      name: Start Time
+      description: Czas rozpoczęcia (HH:MM)
+      required: true
+      selector:
+        time:
+    end_time:
+      name: End Time
+      description: Czas zakończenia (HH:MM)
+      required: true
+      selector:
+        time:
+    intensity:
+      name: Intensity
+      description: Intensywność wentylacji (opcjonalne)
+      selector:
+        number:
+          min: 10
+          max: 150
+          step: 5
+          unit_of_measurement: "%"
+    temperature:
+      name: Temperature
+      description: Temperatura docelowa (opcjonalne)
+      selector:
+        number:
+          min: 15.0
+          max: 45.0
+          step: 0.5
+          unit_of_measurement: "°C"
+
+rescan_device:
+  name: Rescan Device
+  description: Ponownie skanuje urządzenie w celu wykrycia dostępnych rejestrów
+  fields: {}
+
+get_diagnostic_info:
+  name: Get Diagnostic Info
+  description: Pobiera informacje diagnostyczne o urządzeniu i integracji
+  fields: {}
+
+backup_settings:
+  name: Backup Settings
+  description: Tworzy kopię zapasową ustawień urządzenia
+  fields:
+    include_schedule:
+      name: Include Schedule
+      description: Dołącz harmonogram do kopii zapasowej
+      selector:
+        boolean:
+    include_alarms:
+      name: Include Alarms
+      description: Dołącz ustawienia alarmów do kopii zapasowej
+      selector:
+        boolean:
+
+restore_settings:
+  name: Restore Settings
+  description: Przywraca ustawienia urządzenia z kopii zapasowej
+  fields:
+    backup_data:
+      name: Backup Data
+      description: Dane kopii zapasowej (format JSON)
+      required: true
+      selector:
+        object:
+    restore_schedule:
+      name: Restore Schedule
+      description: Przywróć harmonogram z kopii zapasowej
+      selector:
+        boolean:
+
+calibrate_sensors:
+  name: Calibrate Sensors
+  description: Kalibruje czujniki temperatury z offsetami
+  fields:
+    outside_offset:
+      name: Outside Temperature Offset
+      description: Offset dla czujnika temperatury zewnętrznej
       selector:
         number:
           min: -10.0
           max: 10.0
-          step: 0.5
+          step: 0.1
           unit_of_measurement: "°C"
-    max_air_temperature:
-      name: "Maximum Air Temperature"
-      description: "Maximum air temperature for GWC activation"
-      required: false
+    supply_offset:
+      name: Supply Temperature Offset
+      description: Offset dla czujnika temperatury nawiewu
       selector:
         number:
-          min: 20.0
-          max: 35.0
-          step: 0.5
+          min: -10.0
+          max: 10.0
+          step: 0.1
           unit_of_measurement: "°C"
-
-configure_bypass:
-  name: "Configure Bypass"
-  description: "Configure bypass system settings"
-  fields:
-    mode:
-      name: "Bypass Mode"
-      description: "Bypass operating mode"
-      required: false
-      selector:
-        select:
-          options:
-            - label: "Inactive"
-              value: 0
-            - label: "Free Heating"
-              value: 1
-            - label: "Free Cooling"
-              value: 2
-    min_temperature:
-      name: "Minimum Temperature"
-      description: "Minimum temperature for bypass activation"
-      required: false
+    exhaust_offset:
+      name: Exhaust Temperature Offset
+      description: Offset dla czujnika temperatury wywiewu
       selector:
         number:
-          min: 15.0
-          max: 25.0
-          step: 0.5
+          min: -10.0
+          max: 10.0
+          step: 0.1
           unit_of_measurement: "°C"
-
-configure_constant_flow:
-  name: "Configure Constant Flow"
-  description: "Configure Constant Flow system settings"
-  fields:
-    supply_target:
-      name: "Supply Target Flow"
-      description: "Target supply air flow rate"
-      required: false
-      selector:
-        number:
-          min: 50
-          max: 500
-          step: 5
-          unit_of_measurement: "m³/h"
-    exhaust_target:
-      name: "Exhaust Target Flow"
-      description: "Target exhaust air flow rate"
-      required: false
-      selector:
-        number:
-          min: 50
-          max: 500
-          step: 5
-          unit_of_measurement: "m³/h"
-    tolerance:
-      name: "Flow Tolerance"
-      description: "Acceptable flow rate tolerance"
-      required: false
-      selector:
-        number:
-          min: 5
-          max: 25
-          step: 1
-          unit_of_measurement: "%"
-
-emergency_stop:
-  name: "Emergency Stop"
-  description: "Emergency stop - immediately shut down all fans"
-  
-quick_ventilation:
-  name: "Quick Ventilation"
-  description: "Start quick ventilation cycle"
-  fields:
-    duration:
-      name: "Duration"
-      description: "Ventilation duration in minutes"
-      required: false
-      default: 15
-      selector:
-        number:
-          min: 5
-          max: 60
-          step: 5
-          unit_of_measurement: "min"
-    intensity:
-      name: "Intensity"
-      description: "Ventilation intensity"
-      required: false
-      default: 80
-      selector:
-        number:
-          min: 30
-          max: 120
-          step: 10
-          unit_of_measurement: "%"

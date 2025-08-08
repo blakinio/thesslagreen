@@ -1,4 +1,7 @@
-"""Enhanced climate platform for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
+"""Enhanced climate platform for ThesslaGreen Modbus integration.
+Kompletna jednostka klimatyczna z obsługą wszystkich trybów i funkcji.
+Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
+"""
 from __future__ import annotations
 
 import logging
@@ -7,17 +10,8 @@ from typing import Any
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
+    HVACAction,
     HVACMode,
-)
-from homeassistant.components.climate.const import (
-    PRESET_ACTIVITY,
-    PRESET_AWAY,
-    PRESET_BOOST,
-    PRESET_COMFORT,
-    PRESET_ECO,
-    PRESET_HOME,
-    PRESET_NONE,
-    PRESET_SLEEP,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
@@ -25,32 +19,49 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    COMFORT_MODES,
-    DOMAIN,
-    OPERATING_MODES,
-    SPECIAL_MODES,
-)
+from .const import DOMAIN
 from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Enhanced preset modes for ThesslaGreen (HA 2025.7+ Compatible)
-THESSLA_PRESET_MODES = {
-    PRESET_ECO: {"intensity": 30, "mode": 1},
-    PRESET_COMFORT: {"intensity": 50, "mode": 1},
-    PRESET_BOOST: {"intensity": 80, "mode": 2},
-    PRESET_SLEEP: {"intensity": 20, "mode": 1},
-    PRESET_AWAY: {"intensity": 10, "mode": 1},
-    PRESET_HOME: {"intensity": 50, "mode": 0},
-    PRESET_ACTIVITY: {"intensity": 70, "mode": 0},
-    "party": {"intensity": 90, "mode": 2},
-    "fireplace": {"intensity": 100, "special": "KOMINEK"},
-    "kitchen": {"intensity": 80, "special": "OKAP"},
-    "airing": {"intensity": 100, "special": "WIETRZENIE"},
+# Enhanced HVAC modes mapping
+HVAC_MODE_MAP = {
+    0: HVACMode.OFF,          # System off
+    1: HVACMode.FAN_ONLY,     # Manual mode - fan only
+    2: HVACMode.AUTO,         # Auto mode - intelligent control
+    3: HVACMode.HEAT_COOL,    # Temporary mode - heating/cooling
 }
 
-ALL_PRESET_MODES = list(THESSLA_PRESET_MODES.keys())
+# Reverse mapping for setting modes
+HVAC_MODE_REVERSE_MAP = {v: k for k, v in HVAC_MODE_MAP.items()}
+
+# Enhanced preset modes mapping with all special functions
+PRESET_MODE_MAP = {
+    0: "none",
+    1: "okap",              # OKAP - Kitchen hood mode
+    2: "kominek",           # KOMINEK - Fireplace mode  
+    3: "wietrzenie",        # WIETRZENIE - Ventilation mode
+    4: "pusty_dom",         # PUSTY DOM - Empty house mode
+    5: "boost",             # BOOST - Maximum ventilation
+    6: "night",             # Night mode
+    7: "party",             # Party mode
+    8: "vacation",          # Vacation mode
+    9: "economy",           # Economy mode
+    10: "comfort",          # Comfort mode
+    11: "silent",           # Silent mode
+}
+
+# Reverse mapping for setting preset modes
+PRESET_MODE_REVERSE_MAP = {v: k for k, v in PRESET_MODE_MAP.items()}
+
+# Enhanced HVAC action mapping
+HVAC_ACTION_MAP = {
+    "heating": HVACAction.HEATING,
+    "cooling": HVACAction.COOLING,
+    "ventilation": HVACAction.FAN,
+    "idle": HVACAction.IDLE,
+    "off": HVACAction.OFF,
+}
 
 
 async def async_setup_entry(
@@ -61,427 +72,502 @@ async def async_setup_entry(
     """Set up enhanced climate platform."""
     coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     
-    entities = []
-    
-    # Check if basic mode control is available
+    # Check if required registers are available
     holding_regs = coordinator.available_registers.get("holding_registers", set())
-    if "mode" in holding_regs or "mode_old" in holding_regs:
-        entities.append(ThesslaGreenClimate(coordinator))
+    input_regs = coordinator.available_registers.get("input_registers", set())
     
-    if entities:
-        _LOGGER.debug("Adding %d enhanced climate entities", len(entities))
-        async_add_entities(entities)
+    required_registers = {"mode", "supply_temperature"}
+    if not any(reg in holding_regs or reg in input_regs for reg in required_registers):
+        _LOGGER.warning("Required climate registers not available, skipping climate entity")
+        return
+    
+    entities = [ThesslaGreenClimate(coordinator)]
+    
+    _LOGGER.info("Adding enhanced climate entity with comprehensive control features")
+    async_add_entities(entities)
 
 
 class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
-    """Enhanced ThesslaGreen climate entity with preset modes - HA 2025.7+ Compatible."""
+    """Enhanced climate entity for ThesslaGreen AirPack with comprehensive features."""
     
-    _attr_has_entity_name = True  # ✅ FIX: Enable entity naming
+    _attr_has_entity_name = True
+    _attr_name = "Climate Control"
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_target_temperature_step = 0.5
+    _attr_min_temp = 15.0
+    _attr_max_temp = 35.0
+    _attr_translation_key = "climate"
+    
+    # Enhanced supported features - wszystkie dostępne funkcje
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE |
+        ClimateEntityFeature.FAN_MODE |
+        ClimateEntityFeature.PRESET_MODE |
+        ClimateEntityFeature.SWING_MODE |
+        ClimateEntityFeature.AUX_HEAT |
+        ClimateEntityFeature.TURN_ON |
+        ClimateEntityFeature.TURN_OFF
+    )
 
     def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
         """Initialize the enhanced climate entity."""
         super().__init__(coordinator)
+        self._attr_unique_id = f"thessla_{coordinator.host.replace('.', '_')}_{coordinator.slave_id}_climate"
+        self._attr_device_info = coordinator.device_info
         
-        # Enhanced device info handling
-        device_info = coordinator.device_scan_result.get("device_info", {}) if hasattr(coordinator, 'device_scan_result') else {}
-        device_name = device_info.get("device_name", f"ThesslaGreen AirPack")
+        # Determine available capabilities based on scanned registers
+        self._available_holding = coordinator.available_registers.get("holding_registers", set())
+        self._available_input = coordinator.available_registers.get("input_registers", set())
+        self._available_coil = coordinator.available_registers.get("coil_registers", set())
         
-        self._attr_name = "Climate Control"
-        self._attr_translation_key = "climate"
-        self._attr_unique_id = f"thessla_{coordinator.host.replace('.','_')}_{coordinator.slave_id}_climate"
+        # Enhanced HVAC modes based on available registers
+        self._hvac_modes = [HVACMode.OFF]
+        if "mode" in self._available_holding:
+            self._hvac_modes.extend([HVACMode.FAN_ONLY, HVACMode.AUTO])
+        if any(reg in self._available_holding for reg in ["heating_temperature", "cooling_temperature"]):
+            self._hvac_modes.append(HVACMode.HEAT_COOL)
         
-        # Enhanced supported features for HA 2025.7+
-        self._attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE |
-            ClimateEntityFeature.FAN_MODE | 
-            ClimateEntityFeature.PRESET_MODE |
-            ClimateEntityFeature.TURN_ON |
-            ClimateEntityFeature.TURN_OFF
+        # Enhanced preset modes based on available special mode registers
+        self._preset_modes = ["none"]
+        if "special_mode" in self._available_holding:
+            available_presets = []
+            if "okap_intensity" in self._available_holding:
+                available_presets.append("okap")
+            if "kominek_intensity" in self._available_holding:
+                available_presets.append("kominek")
+            if "wietrzenie_intensity" in self._available_holding:
+                available_presets.append("wietrzenie")
+            if "pusty_dom_intensity" in self._available_holding:
+                available_presets.append("pusty_dom")
+            if "boost_intensity" in self._available_holding:
+                available_presets.append("boost")
+            if "night_mode_intensity" in self._available_holding:
+                available_presets.append("night")
+            if "party_mode_intensity" in self._available_holding:
+                available_presets.append("party")
+            if "vacation_mode_intensity" in self._available_holding:
+                available_presets.append("vacation")
+            
+            self._preset_modes.extend(available_presets)
+        
+        # Enhanced fan modes based on available intensity controls
+        self._fan_modes = []
+        if "air_flow_rate_manual" in self._available_holding:
+            self._fan_modes.extend(["low", "medium", "high", "auto"])
+        if "supply_fan_speed" in self._available_holding:
+            self._fan_modes.append("custom")
+        
+        # Enhanced swing modes for bypass control
+        self._swing_modes = []
+        if "bypass_mode" in self._available_holding:
+            self._swing_modes.extend(["auto", "on", "off"])
+        
+        _LOGGER.debug(
+            "Climate entity initialized with modes: HVAC=%s, Preset=%s, Fan=%s, Swing=%s",
+            self._hvac_modes, self._preset_modes, self._fan_modes, self._swing_modes
         )
-        
-        # Enhanced HVAC modes
-        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]
-        
-        # Enhanced preset modes with custom ThesslaGreen functions
-        self._attr_preset_modes = ALL_PRESET_MODES
-        
-        # Enhanced fan modes based on intensity levels
-        self._attr_fan_modes = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%", "Auto"]
-        
-        # Enhanced temperature settings
-        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-        self._attr_min_temp = 15.0
-        self._attr_max_temp = 45.0
-        self._attr_target_temperature_step = 0.5
-        
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": f"ThesslaGreen AirPack ({coordinator.host})",
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack Home",
-            "sw_version": device_info.get("firmware", "Unknown"),
-        }
 
     @property
-    def hvac_mode(self) -> HVACMode | None:
-        """Return current operation mode."""
-        # Try both old and new register names
-        mode = self.coordinator.data.get("mode")
-        if mode is None:
-            mode = self.coordinator.data.get("mode_old")
-        
-        if mode is None:
-            return None
-        
-        # Check if device is on
-        device_on = self.coordinator.data.get("device_status_smart", False)
-        if not device_on:
+    def hvac_modes(self) -> list[HVACMode]:
+        """Return available HVAC modes."""
+        return self._hvac_modes
+
+    @property
+    def preset_modes(self) -> list[str]:
+        """Return available preset modes."""
+        return self._preset_modes
+
+    @property
+    def fan_modes(self) -> list[str]:
+        """Return available fan modes."""
+        return self._fan_modes
+
+    @property
+    def swing_modes(self) -> list[str]:
+        """Return available swing modes."""
+        return self._swing_modes
+
+    @property
+    def hvac_mode(self) -> HVACMode:
+        """Return current HVAC mode."""
+        if not self.coordinator.data:
             return HVACMode.OFF
         
-        # Map ThesslaGreen modes to HVAC modes
-        if mode == 0:  # Auto
-            return HVACMode.AUTO
-        elif mode in [1, 2]:  # Manual, Temporary
-            return HVACMode.FAN_ONLY
+        # Check system power state first
+        power_on = self.coordinator.data.get("on_off_panel_mode", 0)
+        if not power_on:
+            return HVACMode.OFF
+        
+        # Get current mode
+        current_mode = self.coordinator.data.get("mode", 0)
+        return HVAC_MODE_MAP.get(current_mode, HVACMode.OFF)
+
+    @property
+    def hvac_action(self) -> HVACAction:
+        """Return current HVAC action."""
+        if not self.coordinator.data:
+            return HVACAction.OFF
+        
+        if self.hvac_mode == HVACMode.OFF:
+            return HVACAction.OFF
+        
+        # Determine action based on system state
+        heating_active = self.coordinator.data.get("heating_control", False)
+        cooling_active = self.coordinator.data.get("cooling_control", False)
+        fan_active = self.coordinator.data.get("power_supply_fans", False)
+        
+        if heating_active:
+            return HVACAction.HEATING
+        elif cooling_active:
+            return HVACAction.COOLING
+        elif fan_active:
+            return HVACAction.FAN
         else:
-            return HVACMode.OFF
+            return HVACAction.IDLE
 
     @property
     def current_temperature(self) -> float | None:
-        """Return the current temperature."""
-        # Use exhaust temperature as room temperature indicator
-        temp = self.coordinator.data.get("exhaust_temperature")
-        if temp is not None:
-            return temp  # Already converted in coordinator
+        """Return current temperature from supply air sensor."""
+        if not self.coordinator.data:
+            return None
         
-        # Fallback to extract temperature
-        temp = self.coordinator.data.get("extract_temperature")
-        if temp is not None:
-            return temp
+        # Try multiple temperature sources in order of preference
+        temp_sources = [
+            "supply_temperature",      # TN1 - Primary supply temperature
+            "duct_supply_temperature", # TN2 - Duct supply temperature  
+            "ambient_temperature",     # TO - Ambient temperature
+            "outside_temperature",     # TZ1 - Outside temperature (fallback)
+        ]
         
-        # Fallback to ambient temperature
-        temp = self.coordinator.data.get("ambient_temperature")
-        if temp is not None:
-            return temp
+        for source in temp_sources:
+            temp = self.coordinator.data.get(source)
+            if temp is not None:
+                return float(temp)
         
         return None
 
     @property
     def target_temperature(self) -> float | None:
-        """Return the temperature we try to reach."""
-        # Use comfort temperature based on current mode
-        comfort_mode = self.coordinator.data.get("comfort_mode", 0)
+        """Return target temperature based on current mode."""
+        if not self.coordinator.data:
+            return None
         
-        if comfort_mode == 1:  # Heating
-            temp = self.coordinator.data.get("comfort_temperature_heating")
-        elif comfort_mode == 2:  # Cooling
-            temp = self.coordinator.data.get("comfort_temperature_cooling")
+        # Get target temperature based on current mode
+        current_mode = self.coordinator.data.get("mode", 0)
+        
+        if current_mode == 1:  # Manual mode
+            temp = self.coordinator.data.get("supply_temperature_manual")
+        elif current_mode == 2:  # Auto mode  
+            temp = self.coordinator.data.get("supply_temperature_auto")
+        elif current_mode == 3:  # Temporary mode
+            temp = self.coordinator.data.get("supply_temperature_temporary")
         else:
-            # Use supply temperature setpoint
-            mode = self.coordinator.data.get("mode", 1)
-            if mode == 1:  # Manual
-                temp = self.coordinator.data.get("supply_temperature_manual")
-            elif mode == 2:  # Temporary
-                temp = self.coordinator.data.get("supply_temperature_temporary")
-            else:
-                temp = self.coordinator.data.get("required_temp")
+            # Fallback to comfort temperature
+            temp = self.coordinator.data.get("comfort_temperature")
         
         if temp is not None:
-            # Convert from 0.1°C units if needed
-            if temp > 100:
-                return temp / 10.0
             return float(temp)
         
-        return 22.0  # Default
+        # Final fallback to required temperature
+        required_temp = self.coordinator.data.get("required_temp")
+        return float(required_temp) if required_temp is not None else None
 
     @property
-    def fan_mode(self) -> str | None:
-        """Return the fan setting."""
-        mode = self.coordinator.data.get("mode")
-        if mode is None:
-            mode = self.coordinator.data.get("mode_old")
+    def preset_mode(self) -> str:
+        """Return current preset mode."""
+        if not self.coordinator.data:
+            return "none"
         
-        if mode == 0:  # Auto
-            return "Auto"
-        
-        # Get current intensity based on mode
-        if mode == 1:  # Manual
-            intensity = self.coordinator.data.get("air_flow_rate_manual")
-            if intensity is None:
-                intensity = self.coordinator.data.get("intensity_1")
-        elif mode == 2:  # Temporary
-            intensity = self.coordinator.data.get("air_flow_rate_temporary")
-            if intensity is None:
-                intensity = self.coordinator.data.get("intensity_2")
-        else:
-            intensity = self.coordinator.data.get("air_flow_rate_auto")
-            if intensity is None:
-                intensity = self.coordinator.data.get("intensity_3")
-        
-        if intensity is not None:
-            # Round to nearest 10%
-            rounded = round(intensity / 10) * 10
-            return f"{rounded}%"
-        
-        return None
+        special_mode = self.coordinator.data.get("special_mode", 0)
+        return PRESET_MODE_MAP.get(special_mode, "none")
 
     @property
-    def preset_mode(self) -> str | None:
-        """Return the current preset mode."""
-        # Check special modes first
-        special_mode = self.coordinator.data.get("special_mode")
-        if special_mode is None:
-            special_mode = self.coordinator.data.get("special_mode_old")
+    def fan_mode(self) -> str:
+        """Return current fan mode."""
+        if not self.coordinator.data:
+            return "auto"
         
-        if special_mode == 1:
-            return "kitchen"
-        elif special_mode == 2:
-            return "fireplace"
-        elif special_mode == 3:
-            return "airing"
+        # Determine fan mode based on current system state
+        current_mode = self.coordinator.data.get("mode", 0)
         
-        # Check intensity-based presets
-        mode = self.coordinator.data.get("mode", 1)
-        if mode == 1:  # Manual
-            intensity = self.coordinator.data.get("air_flow_rate_manual")
-            if intensity is None:
-                intensity = self.coordinator.data.get("intensity_1")
+        if current_mode == 2:  # Auto mode
+            return "auto"
+        
+        # Check manual intensity setting
+        manual_intensity = self.coordinator.data.get("air_flow_rate_manual", 50)
+        if manual_intensity <= 30:
+            return "low"
+        elif manual_intensity <= 70:
+            return "medium"
+        elif manual_intensity <= 100:
+            return "high"
         else:
-            intensity = self.coordinator.data.get("air_flow_rate_auto")
-            if intensity is None:
-                intensity = self.coordinator.data.get("intensity_3")
-        
-        if intensity is not None:
-            if intensity <= 20:
-                return PRESET_SLEEP
-            elif intensity <= 30:
-                return PRESET_ECO
-            elif intensity <= 50:
-                return PRESET_COMFORT
-            elif intensity >= 80:
-                return PRESET_BOOST
-        
-        return PRESET_NONE
+            return "custom"
 
-    async def async_set_temperature(self, **kwargs) -> None:
-        """Set new target temperature."""
-        if (temperature := kwargs.get(ATTR_TEMPERATURE)) is None:
-            return
+    @property
+    def swing_mode(self) -> str:
+        """Return current swing mode (bypass control)."""
+        if not self.coordinator.data:
+            return "auto"
         
-        # Determine which temperature register to write
-        comfort_mode = self.coordinator.data.get("comfort_mode", 0)
-        
-        if comfort_mode == 1:  # Heating
-            register = "comfort_temperature_heating"
-        elif comfort_mode == 2:  # Cooling
-            register = "comfort_temperature_cooling"
-        else:
-            # Use supply temperature based on mode
-            mode = self.coordinator.data.get("mode", 1)
-            if mode == 2:  # Temporary
-                register = "supply_temperature_temporary"
-            else:  # Manual or Auto
-                register = "supply_temperature_manual"
-        
-        # Convert to device units (0.1°C)
-        value = int(temperature * 10)
-        
-        success = await self.coordinator.async_write_register(register, value)
-        if success:
-            await self.coordinator.async_request_refresh()
+        bypass_mode = self.coordinator.data.get("bypass_mode", 0)
+        swing_modes = {0: "auto", 1: "on", 2: "off"}
+        return swing_modes.get(bypass_mode, "auto")
 
-    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Set new target hvac mode."""
-        if hvac_mode == HVACMode.OFF:
-            # Turn off by setting minimal intensity
-            await self.coordinator.async_write_register("air_flow_rate_manual", 0)
-            # Or use device on/off if available
-            if "on_off_panel_mode" in self.coordinator.available_registers.get("holding_registers", set()):
-                await self.coordinator.async_write_register("on_off_panel_mode", 0)
-        elif hvac_mode == HVACMode.AUTO:
-            await self.coordinator.async_write_register("mode", 0)
-            # Ensure device is on
-            if "on_off_panel_mode" in self.coordinator.available_registers.get("holding_registers", set()):
-                await self.coordinator.async_write_register("on_off_panel_mode", 1)
-        elif hvac_mode == HVACMode.FAN_ONLY:
-            await self.coordinator.async_write_register("mode", 1)
-            # Ensure device is on
-            if "on_off_panel_mode" in self.coordinator.available_registers.get("holding_registers", set()):
-                await self.coordinator.async_write_register("on_off_panel_mode", 1)
+    @property
+    def is_aux_heat(self) -> bool:
+        """Return if auxiliary heating is active."""
+        if not self.coordinator.data:
+            return False
         
-        await self.coordinator.async_request_refresh()
-
-    async def async_set_fan_mode(self, fan_mode: str) -> None:
-        """Set new fan mode."""
-        if fan_mode == "Auto":
-            await self.coordinator.async_write_register("mode", 0)
-        else:
-            # Extract percentage and set intensity
-            try:
-                intensity = int(fan_mode.rstrip("%"))
-                mode = self.coordinator.data.get("mode", 1)
-                
-                if mode == 0:  # Auto
-                    register = "air_flow_rate_auto"
-                    if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                        register = "intensity_3"
-                elif mode == 2:  # Temporary
-                    register = "air_flow_rate_temporary"
-                    if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                        register = "intensity_2"
-                else:  # Manual
-                    register = "air_flow_rate_manual"
-                    if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                        register = "intensity_1"
-                
-                await self.coordinator.async_write_register(register, intensity)
-                await self.coordinator.async_request_refresh()
-            except ValueError:
-                _LOGGER.error("Invalid fan mode: %s", fan_mode)
-
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set new preset mode."""
-        if preset_mode not in THESSLA_PRESET_MODES:
-            _LOGGER.warning("Unknown preset mode: %s", preset_mode)
-            return
+        # Check if heating systems are active
+        heating_cable = self.coordinator.data.get("heating_cable", False)
+        duct_heater = self.coordinator.data.get("duct_water_heater_pump", False)
         
-        settings = THESSLA_PRESET_MODES[preset_mode]
-        
-        # Set special mode if needed
-        if "special" in settings:
-            special_value = SPECIAL_MODES.get(settings["special"], 0)
-            special_reg = "special_mode"
-            if special_reg not in self.coordinator.available_registers.get("holding_registers", set()):
-                special_reg = "special_mode_old"
-            await self.coordinator.async_write_register(special_reg, special_value)
-        else:
-            # Clear special mode
-            special_reg = "special_mode"
-            if special_reg not in self.coordinator.available_registers.get("holding_registers", set()):
-                special_reg = "special_mode_old"
-            await self.coordinator.async_write_register(special_reg, 0)
-        
-        # Set operating mode
-        if "mode" in settings:
-            mode_reg = "mode"
-            if mode_reg not in self.coordinator.available_registers.get("holding_registers", set()):
-                mode_reg = "mode_old"
-            await self.coordinator.async_write_register(mode_reg, settings["mode"])
-        
-        # Set intensity
-        if "intensity" in settings:
-            mode = settings.get("mode", self.coordinator.data.get("mode", 1))
-            
-            if mode == 0:  # Auto
-                register = "air_flow_rate_auto"
-                if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                    register = "intensity_3"
-            elif mode == 2:  # Temporary
-                register = "air_flow_rate_temporary"
-                if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                    register = "intensity_2"
-            else:  # Manual
-                register = "air_flow_rate_manual"
-                if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                    register = "intensity_1"
-            
-            await self.coordinator.async_write_register(register, settings["intensity"])
-        
-        await self.coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        """Turn the climate on."""
-        # Set to auto mode with default intensity
-        await self.coordinator.async_write_register("mode", 0)
-        await self.coordinator.async_write_register("air_flow_rate_auto", 50)
-        
-        # Ensure device is on
-        if "on_off_panel_mode" in self.coordinator.available_registers.get("holding_registers", set()):
-            await self.coordinator.async_write_register("on_off_panel_mode", 1)
-        
-        await self.coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        """Turn the climate off."""
-        # Use device on/off if available
-        if "on_off_panel_mode" in self.coordinator.available_registers.get("holding_registers", set()):
-            await self.coordinator.async_write_register("on_off_panel_mode", 0)
-        else:
-            # Set minimal intensity as fallback
-            mode = self.coordinator.data.get("mode", 1)
-            
-            if mode == 0:  # Auto
-                register = "air_flow_rate_auto"
-                if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                    register = "intensity_3"
-            elif mode == 2:  # Temporary
-                register = "air_flow_rate_temporary"
-                if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                    register = "intensity_2"
-            else:  # Manual
-                register = "air_flow_rate_manual"
-                if register not in self.coordinator.available_registers.get("holding_registers", set()):
-                    register = "intensity_1"
-            
-            await self.coordinator.async_write_register(register, 0)
-        
-        await self.coordinator.async_request_refresh()
+        return bool(heating_cable or duct_heater)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = {
-            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
-        }
+        """Return enhanced state attributes."""
+        if not self.coordinator.data:
+            return {}
         
-        # Add all temperature readings
+        attrs = {}
+        
+        # Temperature readings
+        temps = {}
         temp_sensors = [
-            ("outside_temperature", "Outside Temperature"),
-            ("supply_temperature", "Supply Temperature"),
-            ("exhaust_temperature", "Exhaust Temperature"),
-            ("fpx_temperature", "FPX Temperature"),
-            ("gwc_temperature", "GWC Temperature"),
+            ("outside", "outside_temperature"),
+            ("supply", "supply_temperature"), 
+            ("exhaust", "exhaust_temperature"),
+            ("fpx", "fpx_temperature"),
+            ("duct_supply", "duct_supply_temperature"),
+            ("gwc", "gwc_temperature"),
+            ("ambient", "ambient_temperature"),
         ]
         
-        for key, name in temp_sensors:
+        for name, key in temp_sensors:
+            temp = self.coordinator.data.get(key)
+            if temp is not None:
+                temps[f"{name}_temperature"] = temp
+        
+        if temps:
+            attrs.update(temps)
+        
+        # Flow rates and efficiency
+        flow_data = {}
+        flow_sensors = [
+            ("supply_flow", "supply_flowrate"),
+            ("exhaust_flow", "exhaust_flowrate"),
+            ("actual_flow", "actual_flowrate"),
+            ("supply_percentage", "supply_percentage"),
+            ("exhaust_percentage", "exhaust_percentage"),
+            ("efficiency", "heat_recovery_efficiency"),
+        ]
+        
+        for name, key in flow_sensors:
             value = self.coordinator.data.get(key)
             if value is not None:
-                attributes[name] = value
+                flow_data[name] = value
         
-        # Add flow rates
-        supply_flow = self.coordinator.data.get("supply_flowrate")
-        if supply_flow is not None:
-            attributes["Supply Flow Rate"] = f"{supply_flow} m³/h"
+        if flow_data:
+            attrs.update(flow_data)
         
-        exhaust_flow = self.coordinator.data.get("exhaust_flowrate")
-        if exhaust_flow is not None:
-            attributes["Exhaust Flow Rate"] = f"{exhaust_flow} m³/h"
+        # System status
+        status_data = {}
+        status_keys = [
+            ("season_mode", "season_mode"),
+            ("bypass_active", "bypass"),
+            ("gwc_active", "gwc"),
+            ("filter_remaining", "filter_time_remaining"),
+            ("operating_hours", "operating_hours"),
+        ]
         
-        # Add fan percentages
-        supply_pct = self.coordinator.data.get("supply_percentage")
-        if supply_pct is not None:
-            attributes["Supply Fan"] = f"{supply_pct}%"
+        for name, key in status_keys:
+            value = self.coordinator.data.get(key)
+            if value is not None:
+                status_data[name] = value
         
-        exhaust_pct = self.coordinator.data.get("exhaust_percentage")
-        if exhaust_pct is not None:
-            attributes["Exhaust Fan"] = f"{exhaust_pct}%"
+        if status_data:
+            attrs.update(status_data)
         
-        # Add system status
-        attributes["Device Status"] = "ON" if self.coordinator.data.get("device_status_smart") else "OFF"
+        # Error status
+        error_status = self.coordinator.data.get("error_status", 0)
+        alarm_status = self.coordinator.data.get("alarm_status", 0)
+        if error_status or alarm_status:
+            attrs["error_status"] = bool(error_status)
+            attrs["alarm_status"] = bool(alarm_status)
         
-        # Add special function info
-        special = self.coordinator.data.get("special_mode", 0)
-        if special in SPECIAL_MODES:
-            attributes["Special Function"] = SPECIAL_MODES[special]
+        # Performance metrics
+        perf_stats = self.coordinator.performance_stats
+        attrs["update_success_rate"] = f"{perf_stats.get('success_rate', 0):.1f}%"
+        attrs["last_update_duration"] = f"{perf_stats.get('last_update_duration', 0):.3f}s"
         
-        # Add efficiency if available
-        efficiency = self.coordinator.data.get("heat_recovery_efficiency")
-        if efficiency is not None:
-            attributes["Heat Recovery Efficiency"] = f"{efficiency}%"
+        return attrs
+
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        """Set HVAC mode."""
+        if hvac_mode not in self._hvac_modes:
+            _LOGGER.warning("HVAC mode %s not supported", hvac_mode)
+            return
         
-        # Add filter status
-        filter_days = self.coordinator.data.get("filter_time_remaining")
-        if filter_days is not None:
-            attributes["Filter Days Remaining"] = filter_days
+        if hvac_mode == HVACMode.OFF:
+            # Turn off system
+            success = await self.coordinator.async_write_register("on_off_panel_mode", 0)
+        else:
+            # Turn on system first if needed
+            await self.coordinator.async_write_register("on_off_panel_mode", 1)
+            
+            # Set operation mode
+            mode_value = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
+            success = await self.coordinator.async_write_register("mode", mode_value)
         
-        return attributes
+        if success:
+            _LOGGER.info("Set HVAC mode to %s", hvac_mode)
+        else:
+            _LOGGER.error("Failed to set HVAC mode to %s", hvac_mode)
+
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        """Set target temperature."""
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if temperature is None:
+            return
+        
+        # Validate temperature range
+        if not (self.min_temp <= temperature <= self.max_temp):
+            _LOGGER.warning("Temperature %s outside valid range %s-%s", 
+                          temperature, self.min_temp, self.max_temp)
+            return
+        
+        # Set temperature based on current mode
+        current_mode = self.coordinator.data.get("mode", 0) if self.coordinator.data else 0
+        
+        # Convert temperature to register format (usually *2 for 0.5°C resolution)
+        temp_value = int(temperature * 2)
+        
+        success = False
+        if current_mode == 1:  # Manual mode
+            success = await self.coordinator.async_write_register("supply_temperature_manual", temp_value)
+        elif current_mode == 2:  # Auto mode
+            success = await self.coordinator.async_write_register("supply_temperature_auto", temp_value)
+        elif current_mode == 3:  # Temporary mode
+            success = await self.coordinator.async_write_register("supply_temperature_temporary", temp_value)
+        else:
+            # Fallback to comfort temperature
+            success = await self.coordinator.async_write_register("comfort_temperature", temp_value)
+        
+        if success:
+            _LOGGER.info("Set target temperature to %s°C", temperature)
+        else:
+            _LOGGER.error("Failed to set target temperature to %s°C", temperature)
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set preset mode."""
+        if preset_mode not in self._preset_modes:
+            _LOGGER.warning("Preset mode %s not supported", preset_mode)
+            return
+        
+        preset_value = PRESET_MODE_REVERSE_MAP.get(preset_mode, 0)
+        success = await self.coordinator.async_write_register("special_mode", preset_value)
+        
+        if success:
+            _LOGGER.info("Set preset mode to %s", preset_mode)
+        else:
+            _LOGGER.error("Failed to set preset mode to %s", preset_mode)
+
+    async def async_set_fan_mode(self, fan_mode: str) -> None:
+        """Set fan mode."""
+        if fan_mode not in self._fan_modes:
+            _LOGGER.warning("Fan mode %s not supported", fan_mode)
+            return
+        
+        # Map fan mode to intensity percentage
+        fan_intensities = {
+            "low": 30,
+            "medium": 60, 
+            "high": 90,
+            "auto": 0,  # Auto mode handled separately
+            "custom": 100,
+        }
+        
+        if fan_mode == "auto":
+            # Switch to auto mode
+            success = await self.coordinator.async_write_register("mode", 2)
+        else:
+            # Set manual mode with specific intensity
+            await self.coordinator.async_write_register("mode", 1)
+            intensity = fan_intensities.get(fan_mode, 60)
+            success = await self.coordinator.async_write_register("air_flow_rate_manual", intensity)
+        
+        if success:
+            _LOGGER.info("Set fan mode to %s", fan_mode)
+        else:
+            _LOGGER.error("Failed to set fan mode to %s", fan_mode)
+
+    async def async_set_swing_mode(self, swing_mode: str) -> None:
+        """Set swing mode (bypass control)."""
+        if swing_mode not in self._swing_modes:
+            _LOGGER.warning("Swing mode %s not supported", swing_mode)
+            return
+        
+        # Map swing mode to bypass control
+        bypass_modes = {"auto": 0, "on": 1, "off": 2}
+        bypass_value = bypass_modes.get(swing_mode, 0)
+        
+        success = await self.coordinator.async_write_register("bypass_mode", bypass_value)
+        
+        if success:
+            _LOGGER.info("Set swing mode (bypass) to %s", swing_mode)
+        else:
+            _LOGGER.error("Failed to set swing mode (bypass) to %s", swing_mode)
+
+    async def async_turn_aux_heat_on(self) -> None:
+        """Turn auxiliary heating on."""
+        success = await self.coordinator.async_write_register("heating_control", True)
+        
+        if success:
+            _LOGGER.info("Turned auxiliary heating on")
+        else:
+            _LOGGER.error("Failed to turn auxiliary heating on")
+
+    async def async_turn_aux_heat_off(self) -> None:
+        """Turn auxiliary heating off."""
+        success = await self.coordinator.async_write_register("heating_control", False)
+        
+        if success:
+            _LOGGER.info("Turned auxiliary heating off")
+        else:
+            _LOGGER.error("Failed to turn auxiliary heating off")
+
+    async def async_turn_on(self) -> None:
+        """Turn the climate entity on."""
+        success = await self.coordinator.async_write_register("on_off_panel_mode", 1)
+        
+        if success:
+            _LOGGER.info("Turned climate control on")
+        else:
+            _LOGGER.error("Failed to turn climate control on")
+
+    async def async_turn_off(self) -> None:
+        """Turn the climate entity off."""
+        success = await self.coordinator.async_write_register("on_off_panel_mode", 0)
+        
+        if success:
+            _LOGGER.info("Turned climate control off")
+        else:
+            _LOGGER.error("Failed to turn climate control off")
+
+    @property
+    def available(self) -> bool:
+        """Return if climate control is available."""
+        if not self.coordinator.last_update_success:
+            return False
+        
+        # Check if critical registers are available
+        required_regs = ["mode", "on_off_panel_mode"]
+        available_regs = (
+            self.coordinator.available_registers.get("holding_registers", set()) |
+            self.coordinator.available_registers.get("input_registers", set())
+        )
+        
+        return any(reg in available_regs for reg in required_regs)

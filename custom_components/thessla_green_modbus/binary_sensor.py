@@ -1,4 +1,7 @@
-"""Enhanced binary sensor platform for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
+"""Enhanced binary sensor platform for ThesslaGreen Modbus integration.
+Wszystkie sensory binarne z kompletnej mapy rejestrów + autoscan.
+Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
+"""
 from __future__ import annotations
 
 import logging
@@ -25,151 +28,276 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up enhanced binary sensor platform."""
+    """Set up enhanced binary sensor platform with comprehensive register support."""
     coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     
     entities = []
-    
-    # Get available register sets
+    coil_regs = coordinator.available_registers.get("coil_registers", set())
+    discrete_regs = coordinator.available_registers.get("discrete_inputs", set())
     input_regs = coordinator.available_registers.get("input_registers", set())
     holding_regs = coordinator.available_registers.get("holding_registers", set())
-    coil_regs = coordinator.available_registers.get("coil_registers", set())
-    discrete_inputs = coordinator.available_registers.get("discrete_inputs", set())
     
-    # Enhanced Device Status Binary Sensors (HA 2025.7+ Compatible)
-    status_sensors = [
-        ("device_status_smart", "Device Status Smart", "mdi:power", BinarySensorDeviceClass.RUNNING, False),
-        ("power_supply_fans", "Power Supply Fans", "mdi:fan", BinarySensorDeviceClass.POWER, False),
-        ("constant_flow_active", "Constant Flow Active", "mdi:air-filter", BinarySensorDeviceClass.RUNNING, False),
-        ("emergency_mode", "Emergency Mode", "mdi:alert-octagon", BinarySensorDeviceClass.SAFETY, True),
-        ("alarm_active", "Alarm Active", "mdi:alarm-light", BinarySensorDeviceClass.PROBLEM, True),
-        ("service_required", "Service Required", "mdi:wrench", BinarySensorDeviceClass.PROBLEM, True),
+    # System Status Binary Sensors - wszystkie z PDF + autoscan
+    system_status_sensors = [
+        # Coil registers - outputs/actuators
+        ("duct_water_heater_pump", "Water Heater Pump", "mdi:pump", "Stan pompy obiegowej nagrzewnicy", BinarySensorDeviceClass.RUNNING),
+        ("bypass", "Bypass", "mdi:swap-horizontal", "Stan siłownika przepustnicy bypass", None),
+        ("info", "System Running", "mdi:information", "Sygnał potwierdzenia pracy centrali", BinarySensorDeviceClass.RUNNING),
+        ("power_supply_fans", "Fan Power Supply", "mdi:fan", "Stan zasilania wentylatorów", BinarySensorDeviceClass.POWER),
+        ("heating_cable", "Heating Cable", "mdi:cable-data", "Stan zasilania kabla grzejnego", BinarySensorDeviceClass.HEAT),
+        ("work_permit", "Work Permit", "mdi:check-circle", "Potwierdzenie pracy (Expansion)", None),
+        ("gwc", "GWC Active", "mdi:heat-pump", "Stan przekaźnika GWC", BinarySensorDeviceClass.RUNNING),
+        ("hood", "Hood Active", "mdi:cooktop", "Stan zasilania przepustnicy okapu", BinarySensorDeviceClass.RUNNING),
+        
+        # Extended coil registers
+        ("summer_mode", "Summer Mode", "mdi:weather-sunny", "Aktywacja trybu letniego", None),
+        ("winter_mode", "Winter Mode", "mdi:weather-snowy", "Aktywacja trybu zimowego", None),
+        ("auto_mode", "Auto Mode", "mdi:autorenew", "Aktywacja trybu automatycznego", None),
+        ("manual_mode", "Manual Mode", "mdi:hand-extended", "Aktywacja trybu manualnego", None),
+        ("temporary_mode", "Temporary Mode", "mdi:clock-fast", "Aktywacja trybu tymczasowego", None),
+        ("night_mode", "Night Mode", "mdi:weather-night", "Aktywacja trybu nocnego", None),
+        ("party_mode", "Party Mode", "mdi:party-popper", "Aktywacja trybu party", None),
+        ("vacation_mode", "Vacation Mode", "mdi:airplane", "Aktywacja trybu wakacyjnego", None),
+        ("boost_mode", "Boost Mode", "mdi:rocket-launch", "Aktywacja trybu boost", None),
+        ("economy_mode", "Economy Mode", "mdi:leaf", "Aktywacja trybu ekonomicznego", None),
+        ("comfort_mode", "Comfort Mode", "mdi:home-heart", "Aktywacja trybu komfort", None),
+        ("silent_mode", "Silent Mode", "mdi:volume-off", "Aktywacja trybu cichego", None),
+        ("fireplace_mode", "Fireplace Mode", "mdi:fireplace", "Aktywacja trybu kominkowego", None),
+        ("kitchen_hood_mode", "Kitchen Hood Mode", "mdi:cooktop", "Aktywacja trybu okapu kuchennego", None),
+        ("bathroom_mode", "Bathroom Mode", "mdi:shower", "Aktywacja trybu łazienkowego", None),
+        
+        # Control modes
+        ("co2_control", "CO2 Control", "mdi:molecule-co2", "Sterowanie na podstawie CO2", None),
+        ("humidity_control", "Humidity Control", "mdi:water-percent", "Sterowanie na podstawie wilgotności", None),
+        ("occupancy_control", "Occupancy Control", "mdi:account-check", "Sterowanie na podstawie obecności", None),
+        ("constant_flow_control", "Constant Flow Control", "mdi:fan-auto", "Sterowanie stałym przepływem", None),
+        ("pressure_control", "Pressure Control", "mdi:gauge", "Sterowanie ciśnieniem", None),
+        ("temperature_control", "Temperature Control", "mdi:thermometer", "Sterowanie temperaturą", None),
+        ("bypass_control", "Bypass Control", "mdi:swap-horizontal", "Sterowanie bypass", None),
+        ("gwc_control", "GWC Control", "mdi:heat-pump", "Sterowanie GWC", None),
+        ("heating_control", "Heating Control", "mdi:radiator", "Sterowanie grzaniem", BinarySensorDeviceClass.HEAT),
+        ("cooling_control", "Cooling Control", "mdi:snowflake", "Sterowanie chłodzeniem", BinarySensorDeviceClass.COLD),
+        
+        # Protection systems
+        ("frost_protection", "Frost Protection", "mdi:snowflake-alert", "Ochrona przeciwmrozowa", None),
+        ("overheat_protection", "Overheat Protection", "mdi:thermometer-alert", "Ochrona przed przegrzaniem", None),
+        
+        # Maintenance and alarms
+        ("filter_change_reminder", "Filter Change Reminder", "mdi:air-filter", "Przypomnienie o wymianie filtrów", None),
+        ("maintenance_reminder", "Maintenance Reminder", "mdi:wrench-clock", "Przypomnienie o serwisie", None),
+        ("alarm_output", "Alarm Output", "mdi:alarm-light", "Wyjście alarmowe", None),
+        ("status_output", "Status Output", "mdi:led-on", "Wyjście statusowe", None),
+        ("communication_ok", "Communication OK", "mdi:wifi-check", "Komunikacja OK", BinarySensorDeviceClass.CONNECTIVITY),
     ]
     
-    for sensor_key, name, icon, device_class, is_diagnostic in status_sensors:
-        if sensor_key in input_regs or sensor_key in coil_regs or sensor_key in discrete_inputs:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, is_diagnostic
-                )
-            )
-    
-    # Enhanced Problem Detection Binary Sensors (HA 2025.7+ Compatible)
-    problem_sensors = [
-        ("error_active", "Error Active", "mdi:alert-circle", BinarySensorDeviceClass.PROBLEM, "error_code"),
-        ("warning_active", "Warning Active", "mdi:alert", BinarySensorDeviceClass.PROBLEM, "warning_code"),
-        ("filter_warning", "Filter Warning", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM, "filter_time_remaining"),
-    ]
-    
-    for sensor_key, name, icon, device_class, code_key in problem_sensors:
-        if code_key in input_regs or code_key in holding_regs:
-            entities.append(
-                ThesslaGreenProblemSensor(
-                    coordinator, sensor_key, name, icon, device_class, code_key
-                )
-            )
-    
-    # Enhanced Component Status Binary Sensors (HA 2025.7+ Compatible)
-    component_sensors = [
-        ("gwc_active", "GWC System Active", "mdi:pipe", BinarySensorDeviceClass.RUNNING, False),
-        ("bypass_active", "Bypass Active", "mdi:debug-step-over", BinarySensorDeviceClass.RUNNING, False),
-        ("heater_active", "Heater Active", "mdi:radiator", BinarySensorDeviceClass.HEAT, False),
-        ("cooler_active", "Cooler Active", "mdi:snowflake", BinarySensorDeviceClass.COLD, False),
-        ("humidifier_active", "Humidifier Active", "mdi:water-percent", BinarySensorDeviceClass.MOISTURE, False),
-    ]
-    
-    for sensor_key, name, icon, device_class, is_diagnostic in component_sensors:
-        if sensor_key in input_regs or sensor_key in holding_regs or sensor_key in coil_regs:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, is_diagnostic
-                )
-            )
-    
-    # Coil status sensors
-    coil_sensors = [
-        ("duct_water_heater_pump", "Duct Water Heater Pump", "mdi:pump", BinarySensorDeviceClass.RUNNING, False),
-        ("bypass", "Bypass Damper", "mdi:debug-step-over", BinarySensorDeviceClass.OPENING, False),
-        ("info", "Info Signal", "mdi:information-outline", BinarySensorDeviceClass.RUNNING, False),
-        ("heating_cable", "Heating Cable", "mdi:heating-coil", BinarySensorDeviceClass.HEAT, False),
-        ("work_permit", "Work Permit", "mdi:check-circle", BinarySensorDeviceClass.RUNNING, False),
-        ("gwc", "GWC Relay", "mdi:pipe", BinarySensorDeviceClass.RUNNING, False),
-        ("hood", "Hood Damper", "mdi:chef-hat", BinarySensorDeviceClass.OPENING, False),
-    ]
-    
-    for sensor_key, name, icon, device_class, is_diagnostic in coil_sensors:
+    for sensor_key, name, icon, description, device_class in system_status_sensors:
         if sensor_key in coil_regs:
             entities.append(
                 ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, is_diagnostic
+                    coordinator, sensor_key, name, icon, description, device_class, "coil"
                 )
             )
     
-    # Discrete input sensors
-    discrete_sensors = [
-        ("bypass_closed", "Bypass Closed", "mdi:valve-closed", BinarySensorDeviceClass.OPENING, False),
-        ("bypass_open", "Bypass Open", "mdi:valve-open", BinarySensorDeviceClass.OPENING, False),
-        ("filter_alarm", "Filter Alarm", "mdi:air-filter", BinarySensorDeviceClass.PROBLEM, True),
-        ("frost_alarm", "Frost Alarm", "mdi:snowflake-alert", BinarySensorDeviceClass.PROBLEM, True),
-        ("fire_alarm", "Fire Alarm", "mdi:fire", BinarySensorDeviceClass.SMOKE, True),
-        ("emergency_stop", "Emergency Stop", "mdi:alert-octagon", BinarySensorDeviceClass.SAFETY, True),
-        ("external_stop", "External Stop", "mdi:stop-circle", BinarySensorDeviceClass.RUNNING, False),
-        ("expansion", "Expansion Module", "mdi:expansion-card", BinarySensorDeviceClass.CONNECTIVITY, False),
+    # Input Status Binary Sensors - wszystkie z PDF + autoscan
+    input_status_sensors = [
+        # Discrete inputs - external inputs/sensors
+        ("expansion", "Expansion Module", "mdi:expansion-card", "Stan modułu rozszerzającego", BinarySensorDeviceClass.CONNECTIVITY),
+        ("fire_alarm", "Fire Alarm", "mdi:fire-alert", "Stan sygnału pożarowego PPOŻ", BinarySensorDeviceClass.SAFETY),
+        ("external_stop", "External Stop", "mdi:stop-circle", "Stan zatrzymania zewnętrznego", None),
+        ("window_contact", "Window Contact", "mdi:window-open-variant", "Stan kontaktronu okna", BinarySensorDeviceClass.WINDOW),
+        ("door_contact", "Door Contact", "mdi:door-open", "Stan kontaktronu drzwi", BinarySensorDeviceClass.DOOR),
+        ("presence_sensor", "Presence Sensor", "mdi:motion-sensor", "Stan czujnika obecności", BinarySensorDeviceClass.OCCUPANCY),
+        ("motion_sensor", "Motion Sensor", "mdi:run", "Stan czujnika ruchu", BinarySensorDeviceClass.MOTION),
+        ("light_sensor", "Light Sensor", "mdi:brightness-6", "Stan czujnika światła", BinarySensorDeviceClass.LIGHT),
+        ("sound_sensor", "Sound Sensor", "mdi:microphone", "Stan czujnika dźwięku", BinarySensorDeviceClass.SOUND),
+        ("external_alarm", "External Alarm", "mdi:alarm", "Stan alarmu zewnętrznego", None),
+        ("maintenance_switch", "Maintenance Switch", "mdi:wrench", "Stan przełącznika serwisowego", None),
+        ("emergency_switch", "Emergency Switch", "mdi:alert-octagon", "Stan przełącznika awaryjnego", None),
+        ("filter_pressure_switch", "Filter Pressure Switch", "mdi:air-filter", "Stan przełącznika ciśnienia filtrów", None),
+        ("high_pressure_switch", "High Pressure Switch", "mdi:gauge-full", "Stan przełącznika wysokiego ciśnienia", None),
+        ("low_pressure_switch", "Low Pressure Switch", "mdi:gauge-empty", "Stan przełącznika niskiego ciśnienia", None),
+        ("temperature_switch", "Temperature Switch", "mdi:thermometer", "Stan przełącznika temperatury", BinarySensorDeviceClass.HEAT),
+        ("humidity_switch", "Humidity Switch", "mdi:water-percent", "Stan przełącznika wilgotności", BinarySensorDeviceClass.MOISTURE),
+        ("air_quality_switch", "Air Quality Switch", "mdi:air-filter", "Stan przełącznika jakości powietrza", None),
+        ("co2_switch", "CO2 Switch", "mdi:molecule-co2", "Stan przełącznika CO2", BinarySensorDeviceClass.GAS),
+        ("voc_switch", "VOC Switch", "mdi:air-purifier", "Stan przełącznika VOC", BinarySensorDeviceClass.GAS),
+        
+        # Communication and external systems
+        ("external_controller", "External Controller", "mdi:remote", "Stan kontrolera zewnętrznego", BinarySensorDeviceClass.CONNECTIVITY),
+        ("building_management", "Building Management", "mdi:office-building", "Stan systemu zarządzania budynkiem", BinarySensorDeviceClass.CONNECTIVITY),
+        ("modbus_communication", "Modbus Communication", "mdi:lan", "Stan komunikacji Modbus", BinarySensorDeviceClass.CONNECTIVITY),
+        ("ethernet_communication", "Ethernet Communication", "mdi:ethernet", "Stan komunikacji Ethernet", BinarySensorDeviceClass.CONNECTIVITY),
+        ("wifi_communication", "WiFi Communication", "mdi:wifi", "Stan komunikacji WiFi", BinarySensorDeviceClass.CONNECTIVITY),
+        ("cloud_communication", "Cloud Communication", "mdi:cloud", "Stan komunikacji z chmurą", BinarySensorDeviceClass.CONNECTIVITY),
+        ("mobile_app", "Mobile App", "mdi:cellphone", "Stan aplikacji mobilnej", BinarySensorDeviceClass.CONNECTIVITY),
+        ("web_interface", "Web Interface", "mdi:web", "Stan interfejsu webowego", BinarySensorDeviceClass.CONNECTIVITY),
+        ("remote_access", "Remote Access", "mdi:remote-desktop", "Stan dostępu zdalnego", BinarySensorDeviceClass.CONNECTIVITY),
+        
+        # Power and backup systems
+        ("backup_power", "Backup Power", "mdi:battery-backup", "Stan zasilania awaryjnego", BinarySensorDeviceClass.POWER),
+        ("battery_status", "Battery Status", "mdi:battery", "Stan baterii", BinarySensorDeviceClass.BATTERY),
+        ("power_quality", "Power Quality", "mdi:flash-alert", "Stan jakości zasilania", BinarySensorDeviceClass.POWER),
     ]
     
-    for sensor_key, name, icon, device_class, is_diagnostic in discrete_sensors:
-        if sensor_key in discrete_inputs:
+    for sensor_key, name, icon, description, device_class in input_status_sensors:
+        if sensor_key in discrete_regs:
             entities.append(
                 ThesslaGreenBinarySensor(
-                    coordinator, sensor_key, name, icon, device_class, is_diagnostic
+                    coordinator, sensor_key, name, icon, description, device_class, "discrete"
+                )
+            )
+    
+    # Status Flags from Input/Holding Registers - wszystkie z PDF + autoscan
+    status_flag_sensors = [
+        # System operational states
+        ("constant_flow_active", "Constant Flow Active", "mdi:fan-auto", "Status trybu stałego przepływu", None),
+        ("gwc_bypass_active", "GWC Bypass Active", "mdi:heat-pump", "Status GWC bypass", None),
+        ("summer_mode_active", "Summer Mode Active", "mdi:weather-sunny", "Status trybu letniego", None),
+        ("winter_mode_active", "Winter Mode Active", "mdi:weather-snowy", "Status trybu zimowego", None),
+        ("heating_season", "Heating Season", "mdi:radiator", "Sezon grzewczy aktywny", BinarySensorDeviceClass.HEAT),
+        ("cooling_season", "Cooling Season", "mdi:snowflake", "Sezon chłodzący aktywny", BinarySensorDeviceClass.COLD),
+        ("frost_protection_active", "Frost Protection Active", "mdi:snowflake-alert", "Ochrona przeciwmrozowa aktywna", None),
+        ("overheating_protection", "Overheating Protection", "mdi:thermometer-alert", "Ochrona przed przegrzaniem", None),
+        
+        # System configuration flags
+        ("auto_start", "Auto Start", "mdi:power", "Autostart po awarii zasilania", None),
+        ("summer_winter_auto", "Summer/Winter Auto", "mdi:autorenew", "Automatyczne przełączanie lato/zima", None),
+        ("daylight_saving", "Daylight Saving", "mdi:clock-fast", "Automatyczne przejście na czas letni", None),
+        ("sound_enabled", "Sound Enabled", "mdi:volume-high", "Sygnały dźwiękowe włączone", BinarySensorDeviceClass.SOUND),
+        ("led_enabled", "LED Enabled", "mdi:led-on", "Sygnalizacja LED włączona", None),
+        ("keypad_lock", "Keypad Lock", "mdi:lock", "Blokada klawiatury", None),
+        
+        # Advanced control flags
+        ("adaptive_control", "Adaptive Control", "mdi:brain", "Sterowanie adaptacyjne włączone", None),
+        ("learning_mode", "Learning Mode", "mdi:school", "Tryb uczenia się", None),
+        ("smart_recovery", "Smart Recovery", "mdi:recycle", "Inteligentny odzysk ciepła", None),
+        ("demand_control", "Demand Control", "mdi:chart-line", "Sterowanie na żądanie", None),
+        ("occupancy_detection", "Occupancy Detection", "mdi:account-search", "Wykrywanie obecności", BinarySensorDeviceClass.OCCUPANCY),
+        
+        # Network configuration
+        ("ethernet_dhcp", "Ethernet DHCP", "mdi:router", "DHCP Ethernet", BinarySensorDeviceClass.CONNECTIVITY),
+    ]
+    
+    for sensor_key, name, icon, description, device_class in status_flag_sensors:
+        if sensor_key in input_regs or sensor_key in holding_regs:
+            entities.append(
+                ThesslaGreenStatusFlagSensor(
+                    coordinator, sensor_key, name, icon, description, device_class
+                )
+            )
+    
+    # Error and Alarm Binary Sensors - wszystkie z PDF + autoscan
+    error_alarm_sensors = [
+        ("alarm_status", "General Alarm", "mdi:alarm-light", "Wystąpienie ostrzeżenia (alarm E)", None),
+        ("error_status", "General Error", "mdi:alert-circle", "Wystąpienie błędu (alarm S)", None),
+        ("error_s2", "I2C Communication Error", "mdi:wifi-alert", "S2 - Błąd komunikacji I2C", BinarySensorDeviceClass.PROBLEM),
+        ("error_s6", "FPX Thermal Protection", "mdi:thermometer-alert", "S6 - Zabezpieczenie termiczne FPX", BinarySensorDeviceClass.HEAT),
+        ("error_s7", "Calibration Error", "mdi:thermometer-minus", "S7 - Brak możliwości kalibracji", BinarySensorDeviceClass.PROBLEM),
+        ("error_s8", "Product Key Required", "mdi:key-alert", "S8 - Konieczność klucza produktu", BinarySensorDeviceClass.PROBLEM),
+        ("error_s9", "Stopped from AirS Panel", "mdi:stop-circle", "S9 - Zatrzymanie z panelu AirS", None),
+        ("error_s10", "Fire Sensor Triggered", "mdi:fire-alert", "S10 - Zadziałał czujnik PPOŻ", BinarySensorDeviceClass.SAFETY),
+        ("error_s13", "Stopped from Air+ Panel", "mdi:stop-circle", "S13 - Zatrzymanie z panelu Air+", None),
+        ("error_s14", "Antifreeze Protection", "mdi:snowflake-alert", "S14 - Zabezpieczenie przeciwzamrożeniowe", None),
+        ("error_s15", "Antifreeze No Effect", "mdi:snowflake-alert", "S15 - Zabezpieczenie nie przyniosło rezultatu", None),
+        ("error_s16", "Thermal Protection Central", "mdi:thermometer-alert", "S16 - Zabezpieczenie termiczne w centrali", BinarySensorDeviceClass.HEAT),
+        ("error_s17", "Filters Not Changed", "mdi:air-filter", "S17 - Nie wymienione filtry", None),
+        ("error_s19", "Auto Filter Procedure", "mdi:air-filter", "S19 - Nie wymienione filtry - procedura automat.", None),
+        ("error_s29", "High Temperature Before Recuperator", "mdi:thermometer-alert", "S29 - Zbyt wysoka temperatura przed rekuperatorem", BinarySensorDeviceClass.HEAT),
+        ("error_s30", "Supply Fan Failure", "mdi:fan-alert", "S30 - Nie działa wentylator nawiewny", BinarySensorDeviceClass.PROBLEM),
+        ("error_s31", "Exhaust Fan Failure", "mdi:fan-alert", "S31 - Nie działa wentylator wywiewny", BinarySensorDeviceClass.PROBLEM),
+        ("error_s32", "TG-02 Communication Error", "mdi:wifi-alert", "S32 - Brak komunikacji z modułem TG-02", BinarySensorDeviceClass.CONNECTIVITY),
+        ("error_e99", "Product Key Required Central", "mdi:key", "E99 - Konieczność klucza produktu centrali", BinarySensorDeviceClass.PROBLEM),
+        ("error_e100", "Outside Temperature Sensor", "mdi:thermometer-off", "E100 - Brak odczytu czujnika TZ1", BinarySensorDeviceClass.PROBLEM),
+        ("error_e101", "Supply Temperature Sensor", "mdi:thermometer-off", "E101 - Brak odczytu czujnika TN1", BinarySensorDeviceClass.PROBLEM),
+        ("error_e102", "Exhaust Temperature Sensor", "mdi:thermometer-off", "E102 - Brak odczytu czujnika TP", BinarySensorDeviceClass.PROBLEM),
+        ("error_e103", "FPX Temperature Sensor", "mdi:thermometer-off", "E103 - Brak odczytu czujnika TZ2", BinarySensorDeviceClass.PROBLEM),
+        ("error_e104", "Ambient Temperature Sensor", "mdi:thermometer-off", "E104 - Brak odczytu czujnika TO", BinarySensorDeviceClass.PROBLEM),
+        ("error_e105", "Duct Temperature Sensor", "mdi:thermometer-off", "E105 - Brak odczytu czujnika TN2", BinarySensorDeviceClass.PROBLEM),
+    ]
+    
+    for sensor_key, name, icon, description, device_class in error_alarm_sensors:
+        if sensor_key in input_regs or sensor_key in holding_regs:
+            entities.append(
+                ThesslaGreenErrorAlarmBinarySensor(
+                    coordinator, sensor_key, name, icon, description, device_class
+                )
+            )
+    
+    # Device Lock and Security Sensors - z PDF + autoscan
+    security_sensors = [
+        ("device_lock", "Device Lock", "mdi:lock", "Aktywacja blokady urządzenia", None),
+        ("user_key_low", "User Key Status", "mdi:key-variant", "Status klucza użytkownika", None),
+    ]
+    
+    for sensor_key, name, icon, description, device_class in security_sensors:
+        if sensor_key in holding_regs:
+            entities.append(
+                ThesslaGreenSecuritySensor(
+                    coordinator, sensor_key, name, icon, description, device_class
                 )
             )
     
     if entities:
-        _LOGGER.debug("Adding %d enhanced binary sensor entities", len(entities))
+        _LOGGER.info("Adding %d binary sensor entities (autoscan detected)", len(entities))
         async_add_entities(entities)
+    else:
+        _LOGGER.warning("No binary sensor entities created - check device connectivity and register availability")
 
 
-class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Enhanced binary sensor for ThesslaGreen devices - HA 2025.7+ Compatible."""
+class ThesslaGreenBaseBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Base binary sensor for ThesslaGreen devices with enhanced functionality."""
     
-    _attr_has_entity_name = True  # ✅ FIX: Enable entity naming
+    _attr_has_entity_name = True
 
     def __init__(
-        self, 
-        coordinator: ThesslaGreenCoordinator, 
-        key: str, 
-        name: str, 
-        icon: str, 
-        device_class: BinarySensorDeviceClass,
-        is_diagnostic: bool = False
+        self,
+        coordinator: ThesslaGreenCoordinator,
+        key: str,
+        name: str,
+        icon: str,
+        description: str,
+        device_class: BinarySensorDeviceClass | None,
+        register_type: str = "unknown",
     ) -> None:
-        """Initialize the enhanced binary sensor."""
+        """Initialize the binary sensor."""
         super().__init__(coordinator)
         self._key = key
+        self._register_type = register_type
         self._attr_name = name
         self._attr_icon = icon
         self._attr_device_class = device_class
         self._attr_translation_key = key
-        self._attr_unique_id = f"thessla_{coordinator.host.replace('.','_')}_{coordinator.slave_id}_{key}"
+        self._attr_unique_id = f"thessla_{coordinator.host.replace('.', '_')}_{coordinator.slave_id}_{key}"
+        self._attr_entity_registry_enabled_default = True
         
-        # ✅ FIX: Use EntityCategory enum instead of string
-        if is_diagnostic:
-            self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        
-        # Enhanced device info (HA 2025.7+)
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": f"ThesslaGreen AirPack ({coordinator.host})",
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack Home",
-            "sw_version": coordinator.device_scan_result.get("device_info", {}).get("firmware", "Unknown")
-            if hasattr(coordinator, 'device_scan_result') else "Unknown",
+        # Enhanced device info
+        self._attr_device_info = coordinator.device_info
+        self._attr_extra_state_attributes = {
+            "description": description,
+            "register_key": key,
+            "register_type": register_type,
+            "last_updated": None,
         }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        if not self.coordinator.last_update_success:
+            return False
+        
+        # Check if register is marked as unavailable
+        perf_stats = self.coordinator.performance_stats
+        if self._key in perf_stats.get("unavailable_registers", set()):
+            return False
+            
+        return self._key in self.coordinator.data
 
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
+        if not self.available:
+            return None
+        
         value = self.coordinator.data.get(self._key)
         if value is None:
             return None
@@ -179,146 +307,156 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
             return value
         elif isinstance(value, int):
             return bool(value)
-        else:
-            return False
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return (
-            self.coordinator.last_update_success and 
-            self.coordinator.data.get(self._key) is not None
-        )
+        elif isinstance(value, str):
+            return value.lower() in ("on", "true", "1", "active", "yes")
+        
+        return bool(value)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = {
-            "register_key": self._key,
-            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
-        }
+        """Return extra state attributes."""
+        attrs = self._attr_extra_state_attributes.copy()
         
-        # Add context-specific attributes
-        if "fan" in self._key:
-            # Add fan speed information if available
-            if "supply" in self._key:
-                speed = self.coordinator.data.get("supply_percentage")
-                if speed is not None:
-                    attributes["fan_speed_percentage"] = speed
-            elif "exhaust" in self._key:
-                speed = self.coordinator.data.get("exhaust_percentage")
-                if speed is not None:
-                    attributes["fan_speed_percentage"] = speed
+        if self.coordinator.last_update_success:
+            attrs["last_updated"] = self.coordinator.last_update_success_time
         
-        elif "filter" in self._key:
-            # Add filter time remaining if available
-            filter_time = self.coordinator.data.get("filter_time_remaining")
-            if filter_time is not None:
-                attributes["days_remaining"] = filter_time
-                if filter_time < 30:
-                    attributes["replacement_urgency"] = "urgent"
-                elif filter_time < 60:
-                    attributes["replacement_urgency"] = "soon"
-                else:
-                    attributes["replacement_urgency"] = "normal"
+        # Add register-specific diagnostic info
+        perf_stats = self.coordinator.performance_stats
+        reg_stats = perf_stats.get("register_read_stats", {}).get(self._key, {})
         
-        elif "bypass" in self._key:
-            # Add bypass position if available
-            bypass_pos = self.coordinator.data.get("bypass_position")
-            if bypass_pos is not None:
-                attributes["position_percentage"] = bypass_pos
-                if bypass_pos == 0:
-                    attributes["state"] = "closed"
-                elif bypass_pos == 100:
-                    attributes["state"] = "fully_open"
-                else:
-                    attributes["state"] = f"partially_open_{bypass_pos}%"
+        if reg_stats:
+            attrs["success_count"] = reg_stats.get("success_count", 0)
+            if "last_success" in reg_stats and reg_stats["last_success"]:
+                attrs["last_success"] = reg_stats["last_success"]
         
-        elif "gwc" in self._key:
-            # Add GWC temperature if available
-            gwc_temp = self.coordinator.data.get("gwc_temperature")
-            if gwc_temp is not None:
-                attributes["temperature"] = gwc_temp / 10.0  # Convert from 0.1°C units
+        # Add intermittent status
+        if self._key in perf_stats.get("intermittent_registers", set()):
+            attrs["status"] = "intermittent"
         
-        return attributes
+        # Add raw value for debugging
+        raw_value = self.coordinator.data.get(self._key)
+        if raw_value is not None:
+            attrs["raw_value"] = raw_value
+        
+        return attrs
 
 
-class ThesslaGreenProblemSensor(ThesslaGreenBinarySensor):
-    """Enhanced problem detection sensor - HA 2025.7+ Compatible."""
+class ThesslaGreenBinarySensor(ThesslaGreenBaseBinarySensor):
+    """Standard binary sensor for coil and discrete input registers."""
+    
+    pass
 
-    def __init__(
-        self, 
-        coordinator: ThesslaGreenCoordinator, 
-        key: str, 
-        name: str, 
-        icon: str, 
-        device_class: BinarySensorDeviceClass,
-        code_key: str
-    ) -> None:
-        """Initialize the problem sensor."""
-        super().__init__(coordinator, key, name, icon, device_class, is_diagnostic=True)
-        self._code_key = code_key
 
+class ThesslaGreenStatusFlagSensor(ThesslaGreenBaseBinarySensor):
+    """Binary sensor for status flags from input/holding registers."""
+    
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    
     @property
     def is_on(self) -> bool | None:
-        """Return true if there are active problems."""
-        if self._key == "filter_warning":
-            # Filter warning based on days remaining
-            days = self.coordinator.data.get(self._code_key)
-            if days is None:
-                return None
-            return days < 30  # Warning when less than 30 days
-        else:
-            # Error/warning based on code
-            code = self.coordinator.data.get(self._code_key)
-            if code is None:
-                return None
-            return code != 0  # Problem exists if code is not 0
+        """Return true if the status flag is active."""
+        if not self.available:
+            return None
+        
+        value = self.coordinator.data.get(self._key)
+        if value is None:
+            return None
+        
+        # Handle specific status flag logic
+        if "active" in self._key:
+            # For *_active registers, non-zero means active
+            return bool(value) if isinstance(value, (int, bool)) else None
+        
+        # For mode flags, check for specific active values
+        if "mode" in self._key:
+            return value not in [0, "Off", "off", False]
+        
+        # Default boolean handling
+        return super().is_on
+
+
+class ThesslaGreenErrorAlarmBinarySensor(ThesslaGreenBaseBinarySensor):
+    """Binary sensor for error and alarm conditions."""
+    
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if error/alarm is active."""
+        if not self.available:
+            return None
+        
+        value = self.coordinator.data.get(self._key)
+        if value is None:
+            return None
+        
+        # Error/alarm active states
+        if isinstance(value, (int, bool)):
+            return bool(value)
+        elif isinstance(value, str):
+            return value.lower() in ("active", "error", "alarm", "1", "true", "on")
+        
+        return bool(value)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Add problem details
-        if self._key == "filter_warning":
-            days = self.coordinator.data.get(self._code_key)
-            if days is not None:
-                attributes["days_remaining"] = days
-                attributes["requires_replacement"] = days < 7
-                if days < 7:
-                    attributes["urgency"] = "critical"
-                    attributes["message"] = "Filter replacement required immediately"
-                elif days < 30:
-                    attributes["urgency"] = "high"
-                    attributes["message"] = "Filter replacement required soon"
-                else:
-                    attributes["urgency"] = "normal"
-                    attributes["message"] = "Filter OK"
+    def icon(self) -> str:
+        """Return dynamic icon based on error state."""
+        if self.is_on:
+            if "fire" in self._key:
+                return "mdi:fire-alert"
+            elif "temperature" in self._key or "thermal" in self._key:
+                return "mdi:thermometer-alert"
+            elif "fan" in self._key:
+                return "mdi:fan-alert"
+            elif "communication" in self._key or "modbus" in self._key:
+                return "mdi:wifi-alert"
+            elif "sensor" in self._key:
+                return "mdi:thermometer-off"
+            else:
+                return "mdi:alert-circle"
         else:
-            code = self.coordinator.data.get(self._code_key)
-            if code is not None:
-                attributes["code"] = code
-                if self._key == "error_active":
-                    from .const import ERROR_CODES
-                    attributes["description"] = ERROR_CODES.get(code, f"Unknown error ({code})")
-                    attributes["severity"] = "critical"
-                elif self._key == "warning_active":
-                    from .const import WARNING_CODES
-                    attributes["description"] = WARNING_CODES.get(code, f"Unknown warning ({code})")
-                    attributes["severity"] = "warning"
-                
-                # Add recommended actions
-                if code != 0:
-                    if code in [1, 2, 5, 6]:  # Hardware failures
-                        attributes["action_required"] = "Contact service technician"
-                    elif code in [7]:  # Filter alarm
-                        attributes["action_required"] = "Replace filter"
-                    elif code in [8]:  # Frost protection
-                        attributes["action_required"] = "Check heater and temperature sensors"
-                    elif code in [3, 4, 11]:  # Communication errors
-                        attributes["action_required"] = "Check connections and restart device"
-                    else:
-                        attributes["action_required"] = "Check system status"
+            return "mdi:check-circle"
+
+
+class ThesslaGreenSecuritySensor(ThesslaGreenBaseBinarySensor):
+    """Binary sensor for security and access control."""
+    
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if security feature is active."""
+        if not self.available:
+            return None
         
-        return attributes
+        value = self.coordinator.data.get(self._key)
+        if value is None:
+            return None
+        
+        # Handle device lock status
+        if self._key == "device_lock":
+            return bool(value)
+        
+        # Handle user key status - non-zero means key is set
+        if "key" in self._key:
+            return value != 0 if isinstance(value, int) else bool(value)
+        
+        return bool(value)
+
+    @property
+    def icon(self) -> str:
+        """Return dynamic icon based on security state."""
+        if self.is_on:
+            if "lock" in self._key:
+                return "mdi:lock"
+            elif "key" in self._key:
+                return "mdi:key"
+            else:
+                return "mdi:shield-check"
+        else:
+            if "lock" in self._key:
+                return "mdi:lock-open"
+            elif "key" in self._key:
+                return "mdi:key-off"
+            else:
+                return "mdi:shield-off"

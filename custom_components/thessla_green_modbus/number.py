@@ -1,4 +1,7 @@
-"""Enhanced number platform for ThesslaGreen Modbus integration - HA 2025.7+ Compatible."""
+"""Enhanced number platform for ThesslaGreen Modbus integration.
+Wszystkie kontrolki numeryczne z kompletnej mapy rejestrów + autoscan.
+Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
+"""
 from __future__ import annotations
 
 import logging
@@ -6,7 +9,7 @@ from typing import Any
 
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime, UnitOfVolumeFlowRate
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime, UnitOfVolumeFlowRate, UnitOfPressure, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -23,572 +26,459 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up enhanced number platform."""
+    """Set up enhanced number platform with comprehensive register support."""
     coordinator: ThesslaGreenCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     
     entities = []
     holding_regs = coordinator.available_registers.get("holding_registers", set())
     
-    # Enhanced Intensity Control Numbers (HA 2025.7+ Compatible)
-    intensity_numbers = [
-        ("air_flow_rate_manual", "Manual Intensity", "mdi:fan-speed-1", 10, 150, 1, PERCENTAGE,
-         "Air flow intensity in manual mode", NumberMode.SLIDER),
-        ("air_flow_rate_temporary", "Temporary Intensity", "mdi:fan-speed-2", 10, 150, 1, PERCENTAGE,
-         "Air flow intensity in temporary mode", NumberMode.SLIDER),
-        ("air_flow_rate_auto", "Auto Intensity", "mdi:fan-auto", 10, 150, 1, PERCENTAGE,
-         "Air flow intensity in automatic mode", NumberMode.SLIDER),
-    ]
-    
-    for reg_key, name, icon, min_val, max_val, step, unit, description, mode in intensity_numbers:
-        if reg_key in holding_regs:
-            entities.append(
-                ThesslaGreenIntensityNumber(
-                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode
-                )
-            )
-    
-    # Enhanced Temperature Control Numbers (HA 2025.7+ Compatible)
+    # Temperature Control Numbers - wszystkie z PDF + autoscan
     temperature_numbers = [
         ("supply_temperature_manual", "Manual Supply Temperature", "mdi:thermometer-lines", 15.0, 45.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Supply air temperature in manual mode", NumberMode.BOX),
-        ("supply_temperature_temporary", "Temporary Supply Temperature", "mdi:thermometer-lines", 15.0, 45.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Supply air temperature in temporary mode", NumberMode.BOX),
-        ("comfort_temperature_heating", "Heating Target Temperature", "mdi:thermometer-chevron-up", 18.0, 30.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Target temperature for heating mode", NumberMode.BOX),
-        ("comfort_temperature_cooling", "Cooling Target Temperature", "mdi:thermometer-chevron-down", 20.0, 35.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Target temperature for cooling mode", NumberMode.BOX),
+         "Temperatura nawiewu w trybie manual", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("supply_temperature_auto", "Auto Supply Temperature", "mdi:thermometer-auto", 15.0, 45.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura nawiewu w trybie auto", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("supply_temperature_temporary", "Temporary Supply Temperature", "mdi:thermometer-alert", 15.0, 45.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura nawiewu w trybie temporary", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("heating_temperature", "Heating Temperature", "mdi:radiator", 15.0, 35.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura grzania", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("cooling_temperature", "Cooling Temperature", "mdi:snowflake", 20.0, 35.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura chłodzenia", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("comfort_temperature", "Comfort Temperature", "mdi:home-thermometer", 18.0, 30.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura komfortu", NumberMode.SLIDER, NumberDeviceClass.TEMPERATURE),
+        ("economy_temperature", "Economy Temperature", "mdi:leaf", 15.0, 25.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura ekonomiczna", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("frost_protection_temp", "Frost Protection Temperature", "mdi:snowflake-alert", -10.0, 10.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura ochrony przeciwmrozowej", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("overheat_protection_temp", "Overheat Protection Temperature", "mdi:thermometer-alert", 40.0, 80.0, 1.0, UnitOfTemperature.CELSIUS,
+         "Temperatura ochrony przed przegrzaniem", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("gwc_activation_temp", "GWC Activation Temperature", "mdi:thermometer-chevron-down", -5.0, 15.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura aktywacji GWC", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("bypass_activation_temp", "Bypass Activation Temperature", "mdi:thermometer-chevron-up", 15.0, 30.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura aktywacji bypass", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("supply_temp_diff", "Supply Temperature Difference", "mdi:thermometer-plus", -10.0, 10.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Różnica temperatur nawiewu", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("extract_temp_diff", "Extract Temperature Difference", "mdi:thermometer-minus", -10.0, 10.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Różnica temperatur wywiewu", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("temperature_hysteresis", "Temperature Hysteresis", "mdi:thermometer", 0.5, 5.0, 0.1, UnitOfTemperature.CELSIUS,
+         "Histereza temperatury", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("required_temp", "Required Temperature", "mdi:thermometer-check", 18.0, 30.0, 0.5, UnitOfTemperature.CELSIUS,
+         "Temperatura zadana trybu KOMFORT", NumberMode.SLIDER, NumberDeviceClass.TEMPERATURE),
     ]
     
-    for reg_key, name, icon, min_val, max_val, step, unit, description, mode in temperature_numbers:
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in temperature_numbers:
         if reg_key in holding_regs:
             entities.append(
                 ThesslaGreenTemperatureNumber(
-                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
                 )
             )
     
-    # Enhanced Time Control Numbers (HA 2025.7+ Compatible)
-    time_numbers = [
-        ("temporary_time_remaining", "Temporary Mode Time", "mdi:timer", 1, 480, 1, UnitOfTime.MINUTES,
-         "Remaining time in temporary mode", NumberMode.BOX),
-        ("boost_duration", "Boost Duration", "mdi:rocket-launch", 5, 120, 5, UnitOfTime.MINUTES,
-         "Duration for boost mode", NumberMode.BOX),
+    # Flow Control Numbers - wszystkie z PDF + autoscan
+    flow_numbers = [
+        ("air_flow_rate_manual", "Manual Flow Rate", "mdi:fan-speed-1", 10, 150, 1, PERCENTAGE,
+         "Intensywność wentylacji w trybie manual", NumberMode.SLIDER, None),
+        ("air_flow_rate_auto", "Auto Flow Rate", "mdi:fan-auto", 10, 150, 1, PERCENTAGE,
+         "Intensywność wentylacji w trybie auto", NumberMode.SLIDER, None),
+        ("air_flow_rate_temporary", "Temporary Flow Rate", "mdi:fan-speed-2", 10, 150, 1, PERCENTAGE,
+         "Intensywność wentylacji w trybie temporary", NumberMode.SLIDER, None),
+        ("supply_flow_min", "Supply Flow Min", "mdi:fan-chevron-down", 50, 500, 10, UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+         "Minimalny przepływ nawiewu", NumberMode.BOX, None),
+        ("supply_flow_max", "Supply Flow Max", "mdi:fan-chevron-up", 200, 1000, 10, UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+         "Maksymalny przepływ nawiewu", NumberMode.BOX, None),
+        ("exhaust_flow_min", "Exhaust Flow Min", "mdi:fan-chevron-down", 50, 500, 10, UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+         "Minimalny przepływ wywiewu", NumberMode.BOX, None),
+        ("exhaust_flow_max", "Exhaust Flow Max", "mdi:fan-chevron-up", 200, 1000, 10, UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+         "Maksymalny przepływ wywiewu", NumberMode.BOX, None),
+        ("flow_balance", "Flow Balance", "mdi:scale-balance", -20, 20, 1, PERCENTAGE,
+         "Balans przepływów", NumberMode.SLIDER, None),
+        ("supply_fan_speed", "Supply Fan Speed", "mdi:fan-speed-1", 0, 100, 1, PERCENTAGE,
+         "Prędkość wentylatora nawiewnego", NumberMode.SLIDER, None),
+        ("exhaust_fan_speed", "Exhaust Fan Speed", "mdi:fan-speed-2", 0, 100, 1, PERCENTAGE,
+         "Prędkość wentylatora wywiewnego", NumberMode.SLIDER, None),
+        ("airflow_imbalance_alarm", "Airflow Imbalance Alarm", "mdi:scale-unbalanced", 5, 50, 1, PERCENTAGE,
+         "Alarm braku balansu przepływów", NumberMode.BOX, None),
     ]
     
-    for reg_key, name, icon, min_val, max_val, step, unit, description, mode in time_numbers:
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in flow_numbers:
         if reg_key in holding_regs:
             entities.append(
-                ThesslaGreenTimeNumber(
-                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode
+                ThesslaGreenFlowNumber(
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
                 )
             )
     
-    # Enhanced GWC Temperature Control Numbers (HA 2025.7+ Compatible)
-    gwc_numbers = [
-        ("gwc_delta_temp_summer", "GWC Summer Delta Temperature", "mdi:thermometer-plus", 2.0, 15.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Temperature difference for summer GWC operation", NumberMode.BOX),
-        ("gwc_delta_temp_winter", "GWC Winter Delta Temperature", "mdi:thermometer-minus", 2.0, 15.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Temperature difference for winter GWC operation", NumberMode.BOX),
-        ("gwc_max_temp", "GWC Maximum Temperature", "mdi:thermometer-high", 15.0, 35.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Maximum temperature for GWC operation", NumberMode.BOX),
-        ("gwc_min_temp", "GWC Minimum Temperature", "mdi:thermometer-low", -10.0, 10.0, 0.5, UnitOfTemperature.CELSIUS,
-         "Minimum temperature for GWC operation", NumberMode.BOX),
+    # Pressure Control Numbers - wszystkie z PDF + autoscan
+    pressure_numbers = [
+        ("constant_pressure_setpoint", "Constant Pressure Setpoint", "mdi:gauge-empty", 50, 500, 5, UnitOfPressure.PA,
+         "Zadana wartość ciśnienia stałego", NumberMode.BOX, NumberDeviceClass.PRESSURE),
+        ("variable_pressure_setpoint", "Variable Pressure Setpoint", "mdi:gauge-low", 50, 500, 5, UnitOfPressure.PA,
+         "Zadana wartość ciśnienia zmiennego", NumberMode.BOX, NumberDeviceClass.PRESSURE),
+        ("filter_pressure_alarm", "Filter Pressure Alarm", "mdi:gauge-alert", 100, 1000, 10, UnitOfPressure.PA,
+         "Alarm ciśnienia filtrów", NumberMode.BOX, NumberDeviceClass.PRESSURE),
+        ("presostat_differential", "Presostat Differential", "mdi:gauge", 20, 200, 5, UnitOfPressure.PA,
+         "Różnica ciśnień presostatu", NumberMode.BOX, NumberDeviceClass.PRESSURE),
+        ("pressure_alarm_limit", "Pressure Alarm Limit", "mdi:gauge-full", 200, 2000, 10, UnitOfPressure.PA,
+         "Limit alarmu ciśnienia", NumberMode.BOX, NumberDeviceClass.PRESSURE),
     ]
     
-    for reg_key, name, icon, min_val, max_val, step, unit, description, mode in gwc_numbers:
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in pressure_numbers:
         if reg_key in holding_regs:
             entities.append(
-                ThesslaGreenGWCNumber(
-                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode
+                ThesslaGreenPressureNumber(
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
                 )
             )
     
-    # Enhanced Constant Flow Control Numbers (HA 2025.7+ Compatible)
-    cf_numbers = [
-        ("constant_flow_supply_target", "CF Supply Target", "mdi:chart-line-variant", 50, 500, 10, UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-         "Target supply flow for constant flow mode", NumberMode.BOX),
-        ("constant_flow_exhaust_target", "CF Exhaust Target", "mdi:chart-line", 50, 500, 10, UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-         "Target exhaust flow for constant flow mode", NumberMode.BOX),
+    # Special Mode Intensity Numbers - wszystkie z PDF + autoscan
+    special_mode_numbers = [
+        ("okap_intensity", "Hood Intensity", "mdi:cooktop", 10, 150, 5, PERCENTAGE,
+         "Intensywność trybu OKAP", NumberMode.SLIDER, None),
+        ("kominek_intensity", "Fireplace Intensity", "mdi:fireplace", 10, 150, 5, PERCENTAGE,
+         "Intensywność trybu KOMINEK", NumberMode.SLIDER, None),
+        ("wietrzenie_intensity", "Ventilation Intensity", "mdi:weather-windy", 10, 150, 5, PERCENTAGE,
+         "Intensywność trybu WIETRZENIE", NumberMode.SLIDER, None),
+        ("pusty_dom_intensity", "Empty House Intensity", "mdi:home-outline", 10, 80, 5, PERCENTAGE,
+         "Intensywność trybu PUSTY DOM", NumberMode.SLIDER, None),
+        ("boost_intensity", "Boost Intensity", "mdi:rocket-launch", 80, 150, 5, PERCENTAGE,
+         "Intensywność trybu BOOST", NumberMode.SLIDER, None),
+        ("night_mode_intensity", "Night Mode Intensity", "mdi:weather-night", 10, 50, 5, PERCENTAGE,
+         "Intensywność trybu nocnego", NumberMode.SLIDER, None),
+        ("party_mode_intensity", "Party Mode Intensity", "mdi:party-popper", 50, 150, 5, PERCENTAGE,
+         "Intensywność trybu party", NumberMode.SLIDER, None),
+        ("vacation_mode_intensity", "Vacation Mode Intensity", "mdi:airplane", 10, 50, 5, PERCENTAGE,
+         "Intensywność trybu wakacyjnego", NumberMode.SLIDER, None),
+        ("emergency_mode_intensity", "Emergency Mode Intensity", "mdi:alert-octagon", 80, 150, 5, PERCENTAGE,
+         "Intensywność trybu awaryjnego", NumberMode.SLIDER, None),
+        ("custom_mode_1_intensity", "Custom Mode 1 Intensity", "mdi:cog", 10, 150, 5, PERCENTAGE,
+         "Intensywność trybu custom 1", NumberMode.SLIDER, None),
+        ("custom_mode_2_intensity", "Custom Mode 2 Intensity", "mdi:cog", 10, 150, 5, PERCENTAGE,
+         "Intensywność trybu custom 2", NumberMode.SLIDER, None),
     ]
     
-    for reg_key, name, icon, min_val, max_val, step, unit, description, mode in cf_numbers:
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in special_mode_numbers:
         if reg_key in holding_regs:
             entities.append(
-                ThesslaGreenConstantFlowNumber(
-                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode
+                ThesslaGreenSpecialModeNumber(
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
                 )
             )
     
-    # Enhanced Maintenance Control Numbers (HA 2025.7+ Compatible)
+    # Duration Numbers - wszystkie z PDF + autoscan
+    duration_numbers = [
+        ("okap_duration", "Hood Duration", "mdi:timer", 5, 120, 5, UnitOfTime.MINUTES,
+         "Czas trwania trybu OKAP", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("kominek_duration", "Fireplace Duration", "mdi:timer", 5, 120, 5, UnitOfTime.MINUTES,
+         "Czas trwania trybu KOMINEK", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("wietrzenie_duration", "Ventilation Duration", "mdi:timer", 5, 60, 5, UnitOfTime.MINUTES,
+         "Czas trwania trybu WIETRZENIE", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("pusty_dom_duration", "Empty House Duration", "mdi:timer", 60, 1440, 30, UnitOfTime.MINUTES,
+         "Czas trwania trybu PUSTY DOM", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("boost_duration", "Boost Duration", "mdi:timer", 5, 60, 5, UnitOfTime.MINUTES,
+         "Czas trwania trybu BOOST", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("fan_ramp_time", "Fan Ramp Time", "mdi:speedometer", 5, 120, 5, UnitOfTime.SECONDS,
+         "Czas rozbiegu wentylatora", NumberMode.BOX, NumberDeviceClass.DURATION),
+    ]
+    
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in duration_numbers:
+        if reg_key in holding_regs:
+            entities.append(
+                ThesslaGreenDurationNumber(
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
+                )
+            )
+    
+    # Maintenance and Filter Numbers - wszystkie z PDF + autoscan
     maintenance_numbers = [
-        ("filter_change_interval", "Filter Change Interval", "mdi:air-filter", 90, 365, 1, UnitOfTime.DAYS,
-         "Interval between filter changes", NumberMode.BOX),
-        ("filter_warning_threshold", "Filter Warning Threshold", "mdi:air-filter-outline", 7, 60, 1, UnitOfTime.DAYS,
-         "Days before filter change to show warning", NumberMode.BOX),
+        ("filter_change_interval", "Filter Change Interval", "mdi:air-filter", 30, 365, 7, UnitOfTime.DAYS,
+         "Interwał wymiany filtrów", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("filter_warning_days", "Filter Warning Days", "mdi:calendar-alert", 1, 60, 1, UnitOfTime.DAYS,
+         "Ostrzeżenie przed wymianą filtrów", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("maintenance_interval", "Maintenance Interval", "mdi:wrench-clock", 90, 730, 30, UnitOfTime.DAYS,
+         "Interwał serwisowy", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("service_interval", "Service Interval", "mdi:tools", 365, 1825, 30, UnitOfTime.DAYS,
+         "Interwał serwisu", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("operating_hours_limit", "Operating Hours Limit", "mdi:clock-outline", 1000, 50000, 100, UnitOfTime.HOURS,
+         "Limit godzin pracy", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("maintenance_reminder", "Maintenance Reminder", "mdi:calendar-clock", 1, 90, 1, UnitOfTime.DAYS,
+         "Przypomnienie o serwisie", NumberMode.BOX, NumberDeviceClass.DURATION),
     ]
     
-    for reg_key, name, icon, min_val, max_val, step, unit, description, mode in maintenance_numbers:
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in maintenance_numbers:
         if reg_key in holding_regs:
             entities.append(
                 ThesslaGreenMaintenanceNumber(
-                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
                 )
             )
-
+    
+    # Alarm Limit Numbers - wszystkie z PDF + autoscan
+    alarm_numbers = [
+        ("energy_efficiency_target", "Energy Efficiency Target", "mdi:leaf", 50, 100, 1, PERCENTAGE,
+         "Docelowa wydajność energetyczna", NumberMode.BOX, None),
+        ("power_limit", "Power Limit", "mdi:speedometer-medium", 100, 2000, 50, UnitOfPower.WATT,
+         "Limit mocy", NumberMode.BOX, NumberDeviceClass.POWER),
+        ("acoustic_limit", "Acoustic Limit", "mdi:volume-high", 30, 70, 1, "dB",
+         "Limit akustyczny", NumberMode.BOX, None),
+        ("vibration_limit", "Vibration Limit", "mdi:vibrate", 1, 10, 0.1, "m/s²",
+         "Limit wibracji", NumberMode.BOX, None),
+        ("temperature_alarm_limit", "Temperature Alarm Limit", "mdi:thermometer-alert", 40, 80, 1, UnitOfTemperature.CELSIUS,
+         "Limit alarmu temperatury", NumberMode.BOX, NumberDeviceClass.TEMPERATURE),
+        ("flow_alarm_limit", "Flow Alarm Limit", "mdi:fan-alert", 50, 500, 10, UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+         "Limit alarmu przepływu", NumberMode.BOX, None),
+        ("humidity_alarm_limit", "Humidity Alarm Limit", "mdi:water-alert", 30, 90, 5, PERCENTAGE,
+         "Limit alarmu wilgotności", NumberMode.BOX, None),
+        ("co2_alarm_limit", "CO2 Alarm Limit", "mdi:molecule-co2", 800, 5000, 100, "ppm",
+         "Limit alarmu CO2", NumberMode.BOX, None),
+    ]
+    
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in alarm_numbers:
+        if reg_key in holding_regs:
+            entities.append(
+                ThesslaGreenAlarmLimitNumber(
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
+                )
+            )
+    
+    # Advanced Control Numbers - wszystkie z PDF + autoscan
+    advanced_numbers = [
+        ("heating_curve_slope", "Heating Curve Slope", "mdi:chart-line", 0.5, 3.0, 0.1, None,
+         "Nachylenie krzywej grzewczej", NumberMode.BOX, None),
+        ("cooling_curve_slope", "Cooling Curve Slope", "mdi:chart-line", 0.5, 3.0, 0.1, None,
+         "Nachylenie krzywej chłodzącej", NumberMode.BOX, None),
+        ("prediction_horizon", "Prediction Horizon", "mdi:crystal-ball", 1, 24, 1, UnitOfTime.HOURS,
+         "Horyzont predykcji", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("averaging_time", "Averaging Time", "mdi:chart-timeline-variant", 30, 600, 30, UnitOfTime.SECONDS,
+         "Czas uśredniania pomiarów", NumberMode.BOX, NumberDeviceClass.DURATION),
+        ("measurement_interval", "Measurement Interval", "mdi:timer-outline", 5, 120, 5, UnitOfTime.SECONDS,
+         "Interwał pomiarów", NumberMode.BOX, NumberDeviceClass.DURATION),
+    ]
+    
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in advanced_numbers:
+        if reg_key in holding_regs:
+            entities.append(
+                ThesslaGreenAdvancedNumber(
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
+                )
+            )
+    
+    # PID Control Numbers - wszystkie z PDF + autoscan
+    pid_numbers = [
+        ("pid_temperature_kp", "Temperature PID Kp", "mdi:tune", 0.1, 10.0, 0.1, None,
+         "PID temperatura Kp", NumberMode.BOX, None),
+        ("pid_temperature_ki", "Temperature PID Ki", "mdi:tune", 0.01, 5.0, 0.01, None,
+         "PID temperatura Ki", NumberMode.BOX, None),
+        ("pid_temperature_kd", "Temperature PID Kd", "mdi:tune", 0.001, 1.0, 0.001, None,
+         "PID temperatura Kd", NumberMode.BOX, None),
+        ("pid_pressure_kp", "Pressure PID Kp", "mdi:tune", 0.1, 10.0, 0.1, None,
+         "PID ciśnienie Kp", NumberMode.BOX, None),
+        ("pid_pressure_ki", "Pressure PID Ki", "mdi:tune", 0.01, 5.0, 0.01, None,
+         "PID ciśnienie Ki", NumberMode.BOX, None),
+        ("pid_pressure_kd", "Pressure PID Kd", "mdi:tune", 0.001, 1.0, 0.001, None,
+         "PID ciśnienie Kd", NumberMode.BOX, None),
+        ("pid_flow_kp", "Flow PID Kp", "mdi:tune", 0.1, 10.0, 0.1, None,
+         "PID przepływ Kp", NumberMode.BOX, None),
+        ("pid_flow_ki", "Flow PID Ki", "mdi:tune", 0.01, 5.0, 0.01, None,
+         "PID przepływ Ki", NumberMode.BOX, None),
+        ("pid_flow_kd", "Flow PID Kd", "mdi:tune", 0.001, 1.0, 0.001, None,
+         "PID przepływ Kd", NumberMode.BOX, None),
+    ]
+    
+    for reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class in pid_numbers:
+        if reg_key in holding_regs:
+            entities.append(
+                ThesslaGreenPIDNumber(
+                    coordinator, reg_key, name, icon, min_val, max_val, step, unit, description, mode, device_class
+                )
+            )
+    
     if entities:
-        _LOGGER.debug("Adding %d enhanced number entities", len(entities))
+        _LOGGER.info("Adding %d number entities (autoscan detected)", len(entities))
         async_add_entities(entities)
+    else:
+        _LOGGER.warning("No number entities created - check device connectivity and register availability")
 
 
 class ThesslaGreenBaseNumber(CoordinatorEntity, NumberEntity):
-    """Base number entity for ThesslaGreen devices - HA 2025.7+ Compatible."""
+    """Base number for ThesslaGreen devices with enhanced functionality."""
+    
+    _attr_has_entity_name = True
 
-    def __init__(self, coordinator, key, name, icon, min_value, max_value, step, unit, description, mode):
-        """Initialize the number entity."""
+    def __init__(
+        self,
+        coordinator: ThesslaGreenCoordinator,
+        key: str,
+        name: str,
+        icon: str,
+        min_value: float,
+        max_value: float,
+        step: float,
+        unit: str | None,
+        description: str,
+        mode: NumberMode,
+        device_class: NumberDeviceClass | None,
+        entity_category: EntityCategory | None = None,
+    ) -> None:
+        """Initialize the number."""
         super().__init__(coordinator)
         self._key = key
         self._attr_name = name
         self._attr_icon = icon
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
         self._attr_native_min_value = min_value
         self._attr_native_max_value = max_value
         self._attr_native_step = step
         self._attr_native_unit_of_measurement = unit
         self._attr_mode = mode
-        self._description = description
+        self._attr_device_class = device_class
+        self._attr_entity_category = entity_category
+        self._attr_translation_key = key
+        self._attr_unique_id = f"thessla_{coordinator.host.replace('.', '_')}_{coordinator.slave_id}_{key}"
+        self._attr_entity_registry_enabled_default = True
         
-        # Enhanced device info (HA 2025.7+)
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": f"ThesslaGreen ({coordinator.host})",
-            "manufacturer": "ThesslaGreen",
-            "model": "AirPack Home",
-            "sw_version": coordinator.device_scan_result.get("device_info", {}).get("firmware", "Unknown"),
+        # Enhanced device info
+        self._attr_device_info = coordinator.device_info
+        self._attr_extra_state_attributes = {
+            "description": description,
+            "register_key": key,
+            "last_updated": None,
         }
+
+    @property
+    def available(self) -> bool:
+        """Return if number is available."""
+        if not self.coordinator.last_update_success:
+            return False
+        
+        # Check if register is marked as unavailable
+        perf_stats = self.coordinator.performance_stats
+        if self._key in perf_stats.get("unavailable_registers", set()):
+            return False
+            
+        return self._key in self.coordinator.data
 
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        raw_value = self.coordinator.data.get(self._key)
-        if raw_value is None:
+        if not self.available:
             return None
         
-        # Convert based on unit type
-        if self._attr_native_unit_of_measurement == UnitOfTemperature.CELSIUS:
-            # Temperature values are stored as 0.1°C units
-            return round(raw_value / 10.0, 1)
-        else:
-            # Other values are direct
-            return float(raw_value)
+        value = self.coordinator.data.get(self._key)
+        if value is None:
+            return None
+        
+        # Handle temperature values that may need conversion from register format
+        if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
+            # Some temperature registers use *2 encoding (0.5°C resolution)
+            if self._key in ["comfort_temperature", "required_temp"]:
+                return float(value) / 2.0 if isinstance(value, int) else float(value)
+        
+        return float(value)
 
     @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return (
-            self.coordinator.last_update_success and 
-            self.coordinator.data.get(self._key) is not None
-        )
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = self._attr_extra_state_attributes.copy()
+        
+        if self.coordinator.last_update_success:
+            attrs["last_updated"] = self.coordinator.last_update_success_time
+        
+        # Add register-specific diagnostic info
+        perf_stats = self.coordinator.performance_stats
+        reg_stats = perf_stats.get("register_read_stats", {}).get(self._key, {})
+        
+        if reg_stats:
+            attrs["success_count"] = reg_stats.get("success_count", 0)
+            if "last_success" in reg_stats and reg_stats["last_success"]:
+                attrs["last_success"] = reg_stats["last_success"]
+        
+        # Add intermittent status
+        if self._key in perf_stats.get("intermittent_registers", set()):
+            attrs["status"] = "intermittent"
+        
+        # Add raw value for debugging
+        raw_value = self.coordinator.data.get(self._key)
+        if raw_value is not None:
+            attrs["raw_value"] = raw_value
+        
+        return attrs
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set new value."""
-        if not self._validate_value(value):
-            _LOGGER.error("Invalid value %.2f for %s (range: %.2f-%.2f)", 
-                         value, self._key, self._attr_native_min_value, self._attr_native_max_value)
+        """Set the value."""
+        # Validate range
+        if not (self.native_min_value <= value <= self.native_max_value):
+            _LOGGER.warning("Value %s outside valid range %s-%s for %s", 
+                          value, self.native_min_value, self.native_max_value, self._attr_name)
             return
-
-        # Perform context-specific validation
-        if not self._validate_context_specific(value):
-            return
-
-        # Convert value for device
-        device_value = self._convert_value_for_device(value)
         
-        # Write to device
-        success = await self.coordinator.async_write_register(self._key, device_value)
+        # Convert value for register format if needed
+        reg_value = value
+        
+        # Handle temperature values that may need conversion to register format
+        if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
+            if self._key in ["comfort_temperature", "required_temp"]:
+                reg_value = int(value * 2)  # Convert to 0.5°C resolution
+            else:
+                reg_value = int(value * 10)  # Convert to 0.1°C resolution
+        elif isinstance(value, float) and value == int(value):
+            reg_value = int(value)
+        
+        success = await self.coordinator.async_write_register(self._key, reg_value)
+        
         if success:
-            _LOGGER.info("Set %s to %.2f (device value: %d)", self._key, value, device_value)
-            # Update coordinator data immediately for better UI responsiveness
-            self.coordinator.data[self._key] = device_value
-            self.async_write_ha_state()
+            _LOGGER.info("Set %s to %s %s", self._attr_name, value, self._attr_native_unit_of_measurement or "")
         else:
-            _LOGGER.error("Failed to set %s to %.2f", self._key, value)
-
-    def _validate_value(self, value: float) -> bool:
-        """Validate value is within acceptable range."""
-        return self._attr_native_min_value <= value <= self._attr_native_max_value
-
-    def _validate_context_specific(self, value: float) -> bool:
-        """Perform context-specific validation. Override in subclasses."""
-        return True
-
-    def _convert_value_for_device(self, value: float) -> int:
-        """Convert HA value to device value."""
-        if self._attr_native_unit_of_measurement == UnitOfTemperature.CELSIUS:
-            # Convert to 0.1°C units
-            return int(round(value * 10))
-        else:
-            # Direct conversion
-            return int(round(value))
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        return {
-            "description": self._description,
-            "register_key": self._key,
-            "device_value": self.coordinator.data.get(self._key),
-            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
-        }
-
-
-class ThesslaGreenIntensityNumber(ThesslaGreenBaseNumber):
-    """Enhanced intensity number entity - HA 2025.7+ Compatible."""
-
-    def __init__(self, coordinator, key, name, icon, min_value, max_value, step, unit, description, mode):
-        """Initialize the intensity number."""
-        super().__init__(coordinator, key, name, icon, min_value, max_value, step, unit, description, mode)
-
-    def _validate_context_specific(self, value: float) -> bool:
-        """Enhanced intensity validation - HA 2025.7+."""
-        # Check if intensity is reasonable for current mode
-        current_mode = self.coordinator.data.get("mode", 0)
-        
-        if current_mode == 0:  # Auto mode
-            if value > 100:
-                _LOGGER.warning("High intensity (%.0f%%) in auto mode may not be applied", value)
-        
-        elif current_mode == 1:  # Manual mode
-            if value < 20:
-                _LOGGER.info("Low intensity (%.0f%%) - ensure adequate ventilation", value)
-        
-        return True
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Enhanced intensity context (HA 2025.7+)
-        current_value = self.native_value
-        if current_value is not None:
-            # Intensity categories
-            if current_value < 30:
-                attributes["intensity_level"] = "low"
-            elif current_value < 60:
-                attributes["intensity_level"] = "medium"
-            elif current_value < 90:
-                attributes["intensity_level"] = "high"
-            else:
-                attributes["intensity_level"] = "maximum"
-        
-        # Add current mode context
-        current_mode = self.coordinator.data.get("mode")
-        if current_mode is not None:
-            mode_names = {0: "Auto", 1: "Manual", 2: "Temporary"}
-            attributes["current_mode"] = mode_names.get(current_mode, "Unknown")
-            
-            # Check if this intensity setting is active
-            if "manual" in self._key and current_mode == 1:
-                attributes["setting_active"] = True
-            elif "temporary" in self._key and current_mode == 2:
-                attributes["setting_active"] = True
-            elif "auto" in self._key and current_mode == 0:
-                attributes["setting_active"] = True
-            else:
-                attributes["setting_active"] = False
-        
-        return attributes
+            _LOGGER.error("Failed to set %s to %s", self._attr_name, value)
 
 
 class ThesslaGreenTemperatureNumber(ThesslaGreenBaseNumber):
-    """Enhanced temperature number entity - HA 2025.7+ Compatible."""
-
-    def __init__(self, coordinator, key, name, icon, min_value, max_value, step, unit, description, mode):
-        """Initialize the temperature number."""
-        super().__init__(coordinator, key, name, icon, min_value, max_value, step, unit, description, mode)
-        # Temperature controls are usually configuration parameters
-        self._attr_entity_category = EntityCategory.CONFIG
-
-    def _validate_context_specific(self, value: float) -> bool:
-        """Enhanced temperature validation - HA 2025.7+."""
-        # Check heating/cooling temperature logic
-        if "heating" in self._key:
-            cooling_temp = self.coordinator.data.get("comfort_temperature_cooling")
-            if cooling_temp and value >= cooling_temp / 10.0:
-                _LOGGER.warning("Heating temperature (%.1f°C) should be lower than cooling temperature", value)
-        
-        elif "cooling" in self._key:
-            heating_temp = self.coordinator.data.get("comfort_temperature_heating")
-            if heating_temp and value <= heating_temp / 10.0:
-                _LOGGER.warning("Cooling temperature (%.1f°C) should be higher than heating temperature", value)
-        
-        # Check supply temperature safety
-        elif "supply" in self._key:
-            if value > 40.0:
-                _LOGGER.warning("High supply temperature (%.1f°C) - check safety settings", value)
-        
-        return True
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Enhanced temperature context (HA 2025.7+)
-        current_value = self.native_value
-        if current_value is not None:
-            # Temperature categories
-            if current_value < 18:
-                attributes["temperature_category"] = "cold"
-            elif current_value < 22:
-                attributes["temperature_category"] = "cool"
-            elif current_value < 26:
-                attributes["temperature_category"] = "comfortable"
-            elif current_value < 30:
-                attributes["temperature_category"] = "warm"
-            else:
-                attributes["temperature_category"] = "hot"
-        
-        # Add related temperature references
-        if "heating" in self._key:
-            cooling_temp = self.coordinator.data.get("comfort_temperature_cooling")
-            if cooling_temp:
-                attributes["cooling_temperature"] = round(cooling_temp / 10.0, 1)
-        
-        elif "cooling" in self._key:
-            heating_temp = self.coordinator.data.get("comfort_temperature_heating")
-            if heating_temp:
-                attributes["heating_temperature"] = round(heating_temp / 10.0, 1)
-        
-        # Check if comfort mode is active
-        comfort_active = self.coordinator.data.get("comfort_active", False)
-        attributes["comfort_mode_active"] = comfort_active
-        
-        return attributes
+    """Temperature control number."""
+    
+    pass
 
 
-class ThesslaGreenTimeNumber(ThesslaGreenBaseNumber):
-    """Enhanced time number entity - HA 2025.7+ Compatible."""
-
-    def __init__(self, coordinator, key, name, icon, min_value, max_value, step, unit, description, mode):
-        """Initialize the time number."""
-        super().__init__(coordinator, key, name, icon, min_value, max_value, step, unit, description, mode)
-
-    def _validate_context_specific(self, value: float) -> bool:
-        """Enhanced time validation - HA 2025.7+."""
-        if self._key == "temporary_time_remaining":
-            current_mode = self.coordinator.data.get("mode", 0)
-            if current_mode != 2:
-                _LOGGER.info("Setting temporary time while not in temporary mode")
-        
-        elif self._key == "boost_duration":
-            if value > 60:
-                _LOGGER.info("Long boost duration (%.0f min) - consider energy consumption", value)
-        
-        return True
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Enhanced time context (HA 2025.7+)
-        current_value = self.native_value
-        if current_value is not None:
-            # Time categories
-            if current_value < 15:
-                attributes["duration_category"] = "short"
-            elif current_value < 60:
-                attributes["duration_category"] = "medium"
-            elif current_value < 180:
-                attributes["duration_category"] = "long"
-            else:
-                attributes["duration_category"] = "very_long"
-            
-            # Convert to hours for user context
-            if current_value >= 60:
-                attributes["hours"] = round(current_value / 60, 1)
-        
-        # Add mode context for temporary time
-        if "temporary" in self._key:
-            current_mode = self.coordinator.data.get("mode")
-            attributes["temporary_mode_active"] = (current_mode == 2)
-        
-        return attributes
+class ThesslaGreenFlowNumber(ThesslaGreenBaseNumber):
+    """Flow control number."""
+    
+    pass
 
 
-class ThesslaGreenGWCNumber(ThesslaGreenBaseNumber):
-    """Enhanced GWC number entity - HA 2025.7+ Compatible."""
-
-    def __init__(self, coordinator, key, name, icon, min_value, max_value, step, unit, description, mode):
-        """Initialize the GWC number."""
-        super().__init__(coordinator, key, name, icon, min_value, max_value, step, unit, description, mode)
-        # GWC settings are configuration parameters
-        self._attr_entity_category = EntityCategory.CONFIG
-
-    def _validate_context_specific(self, value: float) -> bool:
-        """Enhanced GWC validation - HA 2025.7+."""
-        # Validate GWC temperature ranges make sense
-        if "delta" in self._key:
-            if value < 3.0:
-                _LOGGER.warning("Low GWC delta temperature (%.1f°C) may reduce effectiveness", value)
-        
-        elif "max_temp" in self._key:
-            min_temp = self.coordinator.data.get("gwc_min_temp")
-            if min_temp and value <= min_temp / 10.0:
-                _LOGGER.warning("GWC max temp (%.1f°C) should be higher than min temp", value)
-        
-        elif "min_temp" in self._key:
-            max_temp = self.coordinator.data.get("gwc_max_temp")
-            if max_temp and value >= max_temp / 10.0:
-                _LOGGER.warning("GWC min temp (%.1f°C) should be lower than max temp", value)
-        
-        return True
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Enhanced GWC context (HA 2025.7+)
-        current_value = self.native_value
-        if current_value is not None:
-            if "delta" in self._key:
-                if current_value < 5:
-                    attributes["efficiency_impact"] = "low"
-                elif current_value < 10:
-                    attributes["efficiency_impact"] = "medium" 
-                else:
-                    attributes["efficiency_impact"] = "high"
-        
-        # Add GWC status
-        gwc_active = self.coordinator.data.get("gwc_active", False)
-        attributes["gwc_active"] = gwc_active
-        
-        gwc_mode = self.coordinator.data.get("gwc_mode")
-        if gwc_mode is not None:
-            mode_names = {0: "Inactive", 1: "Winter", 2: "Summer"}
-            attributes["gwc_mode"] = mode_names.get(gwc_mode, "Unknown")
-        
-        return attributes
+class ThesslaGreenPressureNumber(ThesslaGreenBaseNumber):
+    """Pressure control number."""
+    
+    _attr_entity_category = EntityCategory.CONFIG
 
 
-class ThesslaGreenConstantFlowNumber(ThesslaGreenBaseNumber):
-    """Enhanced constant flow number entity - HA 2025.7+ Compatible."""
+class ThesslaGreenSpecialModeNumber(ThesslaGreenBaseNumber):
+    """Special mode intensity number."""
+    
+    _attr_entity_category = EntityCategory.CONFIG
 
-    def __init__(self, coordinator, key, name, icon, min_value, max_value, step, unit, description, mode):
-        """Initialize the constant flow number."""
-        super().__init__(coordinator, key, name, icon, min_value, max_value, step, unit, description, mode)
-        # Flow targets are configuration parameters
-        self._attr_entity_category = EntityCategory.CONFIG
 
-    def _validate_context_specific(self, value: float) -> bool:
-        """Enhanced constant flow validation - HA 2025.7+."""
-        # Check flow balance
-        if "supply" in self._key:
-            exhaust_target = self.coordinator.data.get("constant_flow_exhaust_target")
-            if exhaust_target and abs(value - exhaust_target) > 50:
-                _LOGGER.info("Supply flow (%.0f) differs significantly from exhaust target", value)
-        
-        elif "exhaust" in self._key:
-            supply_target = self.coordinator.data.get("constant_flow_supply_target")
-            if supply_target and abs(value - supply_target) > 50:
-                _LOGGER.info("Exhaust flow (%.0f) differs significantly from supply target", value)
-        
-        return True
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Enhanced flow context (HA 2025.7+)
-        current_value = self.native_value
-        if current_value is not None:
-            # Flow categories for typical home units
-            if current_value < 100:
-                attributes["flow_category"] = "low"
-            elif current_value < 250:
-                attributes["flow_category"] = "medium"
-            elif current_value < 400:
-                attributes["flow_category"] = "high"
-            else:
-                attributes["flow_category"] = "very_high"
-        
-        # Add current actual flows for comparison
-        if "supply" in self._key:
-            actual_flow = self.coordinator.data.get("constant_flow_supply")
-            if actual_flow is not None:
-                attributes["actual_flow"] = actual_flow
-                if current_value is not None:
-                    attributes["flow_error"] = round(actual_flow - current_value, 0)
-        elif "exhaust" in self._key:
-            actual_flow = self.coordinator.data.get("constant_flow_exhaust")
-            if actual_flow is not None:
-                attributes["actual_flow"] = actual_flow
-                if current_value is not None:
-                    attributes["flow_error"] = round(actual_flow - current_value, 0)
-        
-        # CF status
-        cf_active = self.coordinator.data.get("constant_flow_active", False)
-        attributes["constant_flow_active"] = cf_active
-        
-        return attributes
+class ThesslaGreenDurationNumber(ThesslaGreenBaseNumber):
+    """Duration control number."""
+    
+    _attr_entity_category = EntityCategory.CONFIG
 
 
 class ThesslaGreenMaintenanceNumber(ThesslaGreenBaseNumber):
-    """Enhanced maintenance number entity - HA 2025.7+ Compatible."""
+    """Maintenance interval number."""
+    
+    _attr_entity_category = EntityCategory.CONFIG
 
-    def __init__(self, coordinator, key, name, icon, min_value, max_value, step, unit, description, mode):
-        """Initialize the enhanced maintenance number."""
-        super().__init__(coordinator, key, name, icon, min_value, max_value, step, unit, description, mode)
-        # These are typically configuration parameters
-        self._attr_entity_category = EntityCategory.CONFIG
 
-    def _validate_context_specific(self, value: float) -> bool:
-        """Enhanced maintenance validation - HA 2025.7+."""
-        if self._key == "filter_change_interval":
-            if value < 90:
-                _LOGGER.info("Short filter interval (%.0f days) - ensure good filter quality", value)
-            elif value > 300:
-                _LOGGER.warning("Long filter interval (%.0f days) - monitor air quality", value)
-        
-        elif self._key == "filter_warning_threshold":
-            filter_interval = self.coordinator.data.get("filter_change_interval")
-            if filter_interval and value > filter_interval * 0.5:
-                _LOGGER.warning("Warning threshold (%.0f days) is more than half the interval", value)
-        
-        return True
+class ThesslaGreenAlarmLimitNumber(ThesslaGreenBaseNumber):
+    """Alarm limit number."""
+    
+    _attr_entity_category = EntityCategory.CONFIG
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        attributes = super().extra_state_attributes
-        
-        # Enhanced maintenance context (HA 2025.7+)
-        current_value = self.native_value
-        if current_value is not None:
-            if "interval" in self._key:
-                attributes["weeks"] = round(current_value / 7, 1)
-                attributes["months"] = round(current_value / 30, 1)
-                
-                # Maintenance frequency categories
-                if current_value < 120:
-                    attributes["maintenance_frequency"] = "frequent"
-                elif current_value < 180:
-                    attributes["maintenance_frequency"] = "normal"
-                else:
-                    attributes["maintenance_frequency"] = "infrequent"
-        
-        # Add current filter status
-        filter_time_remaining = self.coordinator.data.get("filter_time_remaining")
-        if filter_time_remaining is not None:
-            attributes["current_filter_remaining"] = filter_time_remaining
-            
-            # Calculate next change date (approximation)
-            if filter_time_remaining > 0:
-                attributes["filter_status"] = "ok"
-            else:
-                attributes["filter_status"] = "needs_replacement"
-        
-        return attributes
+
+class ThesslaGreenAdvancedNumber(ThesslaGreenBaseNumber):
+    """Advanced control number."""
+    
+    _attr_entity_category = EntityCategory.CONFIG
+
+
+class ThesslaGreenPIDNumber(ThesslaGreenBaseNumber):
+    """PID control number."""
+    
+    _attr_entity_category = EntityCategory.DIAGNOSTIC

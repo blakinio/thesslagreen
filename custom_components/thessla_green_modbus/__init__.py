@@ -1,109 +1,112 @@
-"""ThesslaGreen Modbus integration for Home Assistant - ENHANCED VERSION."""
+"""Enhanced ThesslaGreen Modbus Integration for Home Assistant.
+Kompletna integracja z wszystkimi rejestrami, autoscan i serwisami.
+Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
+"""
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
+from typing import Any
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONF_HOST,
-    CONF_PORT,
-    CONF_SCAN_INTERVAL,
-)
+from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import (
+    CONF_FORCE_FULL_REGISTER_LIST,
     CONF_RETRY,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
-    CONF_FORCE_FULL_REGISTER_LIST,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_TIMEOUT,
     DEFAULT_RETRY,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SLAVE_ID,
+    DEFAULT_TIMEOUT,
     DOMAIN,
-    PLATFORMS,
-    SERVICE_ACTIVATE_BOOST,
-    SERVICE_CALIBRATE_SENSORS,
-    SERVICE_CONFIGURE_BYPASS,
-    SERVICE_CONFIGURE_CONSTANT_FLOW,
-    SERVICE_CONFIGURE_GWC,
-    SERVICE_DEVICE_RESCAN,
-    SERVICE_EMERGENCY_STOP,
-    SERVICE_QUICK_VENTILATION,
-    SERVICE_RESET_ALARMS,
-    SERVICE_SCHEDULE_MAINTENANCE,
-    SERVICE_SET_COMFORT_TEMPERATURE,
-    SERVICE_SET_INTENSITY,
-    SERVICE_SET_MODE,
-    SERVICE_SET_SPECIAL_FUNCTION,
-    INPUT_REGISTERS,
     HOLDING_REGISTERS,
-    COIL_REGISTERS,
-    DISCRETE_INPUTS,
+    INPUT_REGISTERS,
+    PLATFORMS,
 )
 from .coordinator import ThesslaGreenCoordinator
 from .device_scanner import ThesslaGreenDeviceScanner
 
-if TYPE_CHECKING:
-    from .coordinator import ThesslaGreenCoordinator
-
 _LOGGER = logging.getLogger(__name__)
 
-
-# Enhanced service schemas (HA 2025.7+ Compatible)
+# Enhanced service schemas for comprehensive control
 SERVICE_SET_MODE_SCHEMA = vol.Schema({
-    vol.Required("mode"): vol.In(["auto", "manual", "temporary"]),
+    vol.Required("mode"): vol.In(["off", "manual", "auto", "temporary"]),
+    vol.Optional("intensity"): vol.All(int, vol.Range(min=10, max=150)),
 })
 
-SERVICE_SET_INTENSITY_SCHEMA = vol.Schema({
-    vol.Required("intensity"): vol.All(int, vol.Range(min=10, max=150)),
-})
-
-SERVICE_SET_SPECIAL_FUNCTION_SCHEMA = vol.Schema({
-    vol.Required("function"): vol.In([
-        "none", "hood", "fireplace", "airing_manual", "airing_auto", 
-        "empty_house", "open_windows", "boost", "eco", "cooking", 
-        "laundry", "bathroom", "night", "vacation", "party"
+SERVICE_SET_SPECIAL_MODE_SCHEMA = vol.Schema({
+    vol.Required("special_mode"): vol.In([
+        "none", "okap", "kominek", "wietrzenie", "pusty_dom", "boost", 
+        "night", "party", "vacation", "economy", "comfort"
     ]),
+    vol.Optional("intensity"): vol.All(int, vol.Range(min=10, max=150)),
+    vol.Optional("duration"): vol.All(int, vol.Range(min=5, max=1440)),
+})
+
+SERVICE_SET_TEMPERATURE_SCHEMA = vol.Schema({
+    vol.Required("temperature"): vol.All(float, vol.Range(min=15.0, max=45.0)),
+    vol.Optional("mode"): vol.In(["manual", "auto", "temporary", "comfort"]),
+})
+
+SERVICE_SET_FAN_SPEED_SCHEMA = vol.Schema({
+    vol.Optional("supply_speed"): vol.All(int, vol.Range(min=0, max=100)),
+    vol.Optional("exhaust_speed"): vol.All(int, vol.Range(min=0, max=100)),
+    vol.Optional("balance"): vol.All(int, vol.Range(min=-20, max=20)),
+})
+
+SERVICE_CONTROL_BYPASS_SCHEMA = vol.Schema({
+    vol.Required("mode"): vol.In(["auto", "open", "closed"]),
+})
+
+SERVICE_CONTROL_GWC_SCHEMA = vol.Schema({
+    vol.Required("mode"): vol.In(["auto", "on", "off"]),
 })
 
 SERVICE_RESET_ALARMS_SCHEMA = vol.Schema({
-    vol.Optional("alarm_type"): vol.In(["warnings", "errors", "all"]),
+    vol.Optional("alarm_type", default="all"): vol.In(["errors", "warnings", "all"]),
 })
 
-SERVICE_DEVICE_RESCAN_SCHEMA = vol.Schema({})
-
-# Enhanced service schemas (HA 2025.7+)
-SERVICE_SET_COMFORT_TEMPERATURE_SCHEMA = vol.Schema({
-    vol.Optional("heating_temperature"): vol.All(float, vol.Range(min=18.0, max=30.0)),
-    vol.Optional("cooling_temperature"): vol.All(float, vol.Range(min=20.0, max=35.0)),
+SERVICE_SET_SCHEDULE_SCHEMA = vol.Schema({
+    vol.Required("day"): vol.In(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]),
+    vol.Required("period"): vol.All(int, vol.Range(min=1, max=4)),
+    vol.Required("start_time"): cv.string,
+    vol.Required("end_time"): cv.string,
+    vol.Optional("intensity"): vol.All(int, vol.Range(min=10, max=150)),
+    vol.Optional("temperature"): vol.All(float, vol.Range(min=15.0, max=45.0)),
 })
 
-SERVICE_ACTIVATE_BOOST_SCHEMA = vol.Schema({
-    vol.Optional("duration", default=30): vol.All(int, vol.Range(min=5, max=120)),
-    vol.Optional("intensity", default=100): vol.All(int, vol.Range(min=50, max=150)),
+SERVICE_RESCAN_DEVICE_SCHEMA = vol.Schema({})
+
+SERVICE_GET_DIAGNOSTIC_INFO_SCHEMA = vol.Schema({})
+
+SERVICE_BACKUP_SETTINGS_SCHEMA = vol.Schema({
+    vol.Optional("include_schedule", default=True): cv.boolean,
+    vol.Optional("include_alarms", default=False): cv.boolean,
 })
 
-SERVICE_SCHEDULE_MAINTENANCE_SCHEMA = vol.Schema({
-    vol.Optional("filter_interval"): vol.All(int, vol.Range(min=90, max=365)),
-    vol.Optional("filter_warning"): vol.All(int, vol.Range(min=7, max=60)),
+SERVICE_RESTORE_SETTINGS_SCHEMA = vol.Schema({
+    vol.Required("backup_data"): dict,
+    vol.Optional("restore_schedule", default=True): cv.boolean,
 })
 
-SERVICE_EMERGENCY_STOP_SCHEMA = vol.Schema({})
-
-SERVICE_QUICK_VENTILATION_SCHEMA = vol.Schema({
-    vol.Optional("duration", default=15): vol.All(int, vol.Range(min=5, max=60)),
-    vol.Optional("intensity", default=80): vol.All(int, vol.Range(min=50, max=150)),
+SERVICE_CALIBRATE_SENSORS_SCHEMA = vol.Schema({
+    vol.Optional("outside_offset"): vol.All(float, vol.Range(min=-10.0, max=10.0)),
+    vol.Optional("supply_offset"): vol.All(float, vol.Range(min=-10.0, max=10.0)),
+    vol.Optional("exhaust_offset"): vol.All(float, vol.Range(min=-10.0, max=10.0)),
 })
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up ThesslaGreen Modbus from a config entry."""
-    _LOGGER.info("Setting up ThesslaGreen Modbus integration (Enhanced v2.0)")
+    """Set up ThesslaGreen Modbus from a config entry with enhanced features."""
+    _LOGGER.info("Setting up ThesslaGreen Modbus integration (Enhanced v2.0+)")
     
     # Extract configuration
     host = entry.data[CONF_HOST]
@@ -116,13 +119,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug(
         "Configuration: host=%s, port=%s, slave_id=%s, scan_interval=%s, timeout=%s, retry=%s, force_full=%s",
-        host,
-        port,
-        slave_id,
-        scan_interval,
-        timeout,
-        retry,
-        force_full,
+        host, port, slave_id, scan_interval, timeout, retry, force_full,
     )
 
     if force_full:
@@ -132,47 +129,48 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         available_registers = {
             "input_registers": set(INPUT_REGISTERS.keys()),
             "holding_registers": set(HOLDING_REGISTERS.keys()),
-            "coil_registers": set(COIL_REGISTERS.keys()),
-            "discrete_inputs": set(DISCRETE_INPUTS.keys()),
+            "coil_registers": set(),  # Will be filled if needed
+            "discrete_inputs": set(),  # Will be filled if needed
         }
         device_info = {}
         capabilities = {}
+        scan_statistics = {}
     else:
-        # Enhanced device scanning with timeout
-        _LOGGER.info("Scanning device capabilities...")
+        # Enhanced device scanning with comprehensive error handling
+        _LOGGER.info("Scanning device capabilities and available registers...")
         scanner = ThesslaGreenDeviceScanner(host, port, slave_id, timeout)
 
         try:
             device_scan_result = await asyncio.wait_for(
                 scanner.scan_device(),
-                timeout=60.0  # 60 second timeout for device scan
+                timeout=90.0  # Extended timeout for comprehensive scan
             )
 
             available_registers = device_scan_result["available_registers"]
             device_info = device_scan_result["device_info"]
             capabilities = device_scan_result["capabilities"]
+            scan_statistics = device_scan_result["scan_statistics"]
 
             _LOGGER.info(
-                "Device scan completed: %d input registers, %d holding registers, %d capabilities",
+                "Device scan completed: %d input, %d holding, %d coil, %d discrete registers found",
                 len(available_registers.get("input_registers", set())),
                 len(available_registers.get("holding_registers", set())),
-                len([k for k, v in capabilities.items() if v])
+                len(available_registers.get("coil_registers", set())),
+                len(available_registers.get("discrete_inputs", set()))
             )
+            
+            # Log capabilities summary
+            enabled_capabilities = [k for k, v in capabilities.items() if v]
+            _LOGGER.info("Device capabilities detected: %s", ", ".join(enabled_capabilities[:10]))  # Show first 10
 
         except asyncio.TimeoutError:
-            _LOGGER.error("Device scan timed out after 60 seconds")
-            raise ConfigEntryNotReady("Device scan timeout - check network connectivity")
+            _LOGGER.error("Device scan timed out after 90 seconds - check network connectivity")
+            raise ConfigEntryNotReady("Device scan timeout - verify device is accessible")
         except Exception as exc:
             _LOGGER.error("Device scan failed: %s", exc)
             raise ConfigEntryNotReady(f"Device scan error: {exc}")
 
-    device_scan_result = {
-        "available_registers": available_registers,
-        "device_info": device_info,
-        "capabilities": capabilities,
-    }
-    
-    # Enhanced coordinator setup
+    # Enhanced coordinator setup with comprehensive register support
     coordinator = ThesslaGreenCoordinator(
         hass=hass,
         host=host,
@@ -182,182 +180,246 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         timeout=timeout,
         retry=retry,
         available_registers=available_registers,
-        scan_statistics=device_scan_result["scan_statistics"],
+        scan_statistics=scan_statistics,
+        device_info=device_info,
+        capabilities=capabilities,
     )
 
-    # Store device info in coordinator for entities
-    coordinator.device_scan_result = device_scan_result
+    # Store comprehensive device information in coordinator
+    coordinator.device_scan_result = {
+        "available_registers": available_registers,
+        "device_info": device_info,
+        "capabilities": capabilities,
+        "scan_statistics": scan_statistics,
+    }
     coordinator.force_full_register_list = force_full
-    
-    # Initial data fetch with enhanced error handling
+
+    # Perform initial data fetch to verify connectivity
     try:
-        _LOGGER.info("Performing initial data fetch...")
         await coordinator.async_config_entry_first_refresh()
-        _LOGGER.info("Initial data fetch completed successfully")
-    except Exception as exc:
+    except UpdateFailed as exc:
         _LOGGER.error("Initial data fetch failed: %s", exc)
-        raise ConfigEntryNotReady(f"Failed to fetch initial data: {exc}")
-    
+        raise ConfigEntryNotReady(f"Cannot connect to device: {exc}")
+
     # Store coordinator in hass data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
-    
-    # Enhanced device registry entry
-    device_registry = dr.async_get(hass)
-    device_name = device_info.get("device_name", f"ThesslaGreen {host}")
-    firmware_version = device_info.get("firmware", "Unknown")
-    
-    device_registry.async_get_or_create(
-        config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, f"{host}_{slave_id}")},
-        name=device_name,
-        manufacturer="ThesslaGreen",
-        model="AirPack Home",
-        sw_version=firmware_version,
-        configuration_url=f"http://{host}",
-    )
-    
-    # Setup platforms with enhanced capability-based loading
-    _LOGGER.info("Setting up platforms...")
+
+    # Setup platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    
-    # Enhanced service registration (HA 2025.7+ Compatible)
+
+    # Register enhanced services
     await _async_register_services(hass, coordinator)
-    
-    _LOGGER.info("ThesslaGreen Modbus integration setup completed successfully")
+
+    _LOGGER.info(
+        "ThesslaGreen Modbus integration setup completed successfully - %d platforms, %d services",
+        len(PLATFORMS), 12  # Number of services we're registering
+    )
+
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    _LOGGER.info("Unloading ThesslaGreen Modbus integration")
-    
-    # Unload platforms
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    
-    if unload_ok:
-        # Remove coordinator from hass data
-        coordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
-        if coordinator:
-            _LOGGER.debug("Coordinator removed from hass data")
-            
-        # Remove domain data if no more entries
-        if not hass.data[DOMAIN]:
-            hass.data.pop(DOMAIN, None)
-            
-        # Unregister services if no more coordinators
-        if not hass.data.get(DOMAIN, {}):
-            await _async_unregister_services(hass)
-    
-    _LOGGER.info("ThesslaGreen Modbus integration unloaded successfully")
-    return unload_ok
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    _LOGGER.info("Reloading ThesslaGreen Modbus integration")
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
-
-
 async def _async_register_services(hass: HomeAssistant, coordinator: ThesslaGreenCoordinator) -> None:
-    """Register enhanced services for ThesslaGreen integration."""
-    _LOGGER.debug("Registering ThesslaGreen services")
+    """Register enhanced services for comprehensive device control."""
     
-    # Basic control services
-    async def async_set_operating_mode(call: ServiceCall) -> None:
-        """Set operating mode service."""
-        mode_map = {"auto": 0, "manual": 1, "temporary": 2}
-        mode_value = mode_map[call.data["mode"]]
+    async def async_set_mode(call: ServiceCall) -> None:
+        """Set operation mode service."""
+        mode = call.data["mode"]
+        intensity = call.data.get("intensity")
         
-        success = await coordinator.async_write_register("mode", mode_value)
+        mode_values = {"off": 0, "manual": 1, "auto": 2, "temporary": 3}
+        mode_value = mode_values.get(mode, 0)
+        
+        success = True
+        if mode == "off":
+            success = await coordinator.async_write_register("on_off_panel_mode", 0)
+        else:
+            await coordinator.async_write_register("on_off_panel_mode", 1)
+            success = await coordinator.async_write_register("mode", mode_value)
+            
+            if intensity is not None and mode in ["manual", "temporary"]:
+                intensity_reg = f"air_flow_rate_{mode}"
+                await coordinator.async_write_register(intensity_reg, intensity)
+        
         if success:
-            await coordinator.async_request_refresh()
-            _LOGGER.info("Set operating mode to %s", call.data["mode"])
+            _LOGGER.info("Set operation mode to %s", mode)
         else:
-            _LOGGER.error("Failed to set operating mode to %s", call.data["mode"])
-    
-    async def async_set_intensity(call: ServiceCall) -> None:
-        """Set ventilation intensity service."""
-        intensity = call.data["intensity"]
+            _LOGGER.error("Failed to set operation mode to %s", mode)
+
+    async def async_set_special_mode(call: ServiceCall) -> None:
+        """Set special mode service."""
+        special_mode = call.data["special_mode"]
+        intensity = call.data.get("intensity")
+        duration = call.data.get("duration")
         
-        # Determine which intensity register to write based on current mode
-        current_mode = coordinator.data.get("mode", 1)
-        
-        if current_mode == 0:  # Auto mode
-            register_key = "air_flow_rate_auto"
-        elif current_mode == 1:  # Manual mode
-            register_key = "air_flow_rate_manual"
-        elif current_mode == 2:  # Temporary mode
-            register_key = "air_flow_rate_temporary"
-        else:
-            register_key = "air_flow_rate_manual"  # Default
-        
-        success = await coordinator.async_write_register(register_key, intensity)
-        if success:
-            await coordinator.async_request_refresh()
-            _LOGGER.info("Set intensity to %d%% (%s)", intensity, register_key)
-        else:
-            _LOGGER.error("Failed to set intensity to %d%%", intensity)
-    
-    async def async_set_special_function(call: ServiceCall) -> None:
-        """Set special function service."""
-        function = call.data["function"]
-        
-        # Map function names to values
-        function_map = {
-            "none": 0, "hood": 1, "fireplace": 2, "airing_manual": 3, "airing_auto": 4,
-            "empty_house": 11, "open_windows": 7, "boost": 5, "eco": 6,
-            "cooking": 8, "laundry": 9, "bathroom": 10, "night": 13, "vacation": 12, "party": 14
+        mode_values = {
+            "none": 0, "okap": 1, "kominek": 2, "wietrzenie": 3, "pusty_dom": 4,
+            "boost": 5, "night": 6, "party": 7, "vacation": 8, "economy": 9, "comfort": 10
         }
         
-        function_value = function_map.get(function, 0)
-        success = await coordinator.async_write_register("special_mode", function_value)
+        mode_value = mode_values.get(special_mode, 0)
+        
+        if special_mode != "none":
+            # Ensure system is on and in manual mode for special modes
+            await coordinator.async_write_register("on_off_panel_mode", 1)
+            await coordinator.async_write_register("mode", 1)
+        
+        success = await coordinator.async_write_register("special_mode", mode_value)
+        
+        # Set intensity if provided
+        if intensity is not None and special_mode != "none":
+            intensity_reg = f"{special_mode}_intensity"
+            await coordinator.async_write_register(intensity_reg, intensity)
+        
+        # Set duration if provided
+        if duration is not None and special_mode != "none":
+            duration_reg = f"{special_mode}_duration"
+            await coordinator.async_write_register(duration_reg, duration)
         
         if success:
-            await coordinator.async_request_refresh()
-            _LOGGER.info("Set special function to %s", function)
+            _LOGGER.info("Set special mode to %s", special_mode)
         else:
-            _LOGGER.error("Failed to set special function to %s", function)
-    
+            _LOGGER.error("Failed to set special mode to %s", special_mode)
+
+    async def async_set_temperature(call: ServiceCall) -> None:
+        """Set temperature service."""
+        temperature = call.data["temperature"]
+        mode = call.data.get("mode", "comfort")
+        
+        # Convert temperature to register format
+        temp_value = int(temperature * 2)  # 0.5°C resolution for most registers
+        
+        mode_registers = {
+            "manual": "supply_temperature_manual",
+            "auto": "supply_temperature_auto", 
+            "temporary": "supply_temperature_temporary",
+            "comfort": "comfort_temperature",
+        }
+        
+        register = mode_registers.get(mode, "comfort_temperature")
+        success = await coordinator.async_write_register(register, temp_value)
+        
+        if success:
+            _LOGGER.info("Set %s temperature to %s°C", mode, temperature)
+        else:
+            _LOGGER.error("Failed to set %s temperature to %s°C", mode, temperature)
+
+    async def async_set_fan_speed(call: ServiceCall) -> None:
+        """Set fan speed service."""
+        supply_speed = call.data.get("supply_speed")
+        exhaust_speed = call.data.get("exhaust_speed")
+        balance = call.data.get("balance")
+        
+        success = True
+        if supply_speed is not None:
+            success &= await coordinator.async_write_register("supply_fan_speed", supply_speed)
+        
+        if exhaust_speed is not None:
+            success &= await coordinator.async_write_register("exhaust_fan_speed", exhaust_speed)
+        
+        if balance is not None:
+            success &= await coordinator.async_write_register("flow_balance", balance)
+        
+        if success:
+            _LOGGER.info("Set fan speeds: supply=%s, exhaust=%s, balance=%s", supply_speed, exhaust_speed, balance)
+        else:
+            _LOGGER.error("Failed to set fan speeds")
+
+    async def async_control_bypass(call: ServiceCall) -> None:
+        """Control bypass service."""
+        mode = call.data["mode"]
+        mode_values = {"auto": 0, "open": 1, "closed": 2}
+        mode_value = mode_values.get(mode, 0)
+        
+        success = await coordinator.async_write_register("bypass_mode", mode_value)
+        
+        if success:
+            _LOGGER.info("Set bypass mode to %s", mode)
+        else:
+            _LOGGER.error("Failed to set bypass mode to %s", mode)
+
+    async def async_control_gwc(call: ServiceCall) -> None:
+        """Control GWC service."""
+        mode = call.data["mode"]
+        mode_values = {"auto": 0, "on": 1, "off": 2}
+        mode_value = mode_values.get(mode, 0)
+        
+        success = await coordinator.async_write_register("gwc_mode", mode_value)
+        
+        if success:
+            _LOGGER.info("Set GWC mode to %s", mode)
+        else:
+            _LOGGER.error("Failed to set GWC mode to %s", mode)
+
     async def async_reset_alarms(call: ServiceCall) -> None:
         """Reset alarms service."""
         alarm_type = call.data.get("alarm_type", "all")
         
         success = True
         if alarm_type in ["errors", "all"]:
-            success &= await coordinator.async_write_register("error_code", 0)
+            success &= await coordinator.async_write_register("error_status", 0)
         if alarm_type in ["warnings", "all"]:
-            success &= await coordinator.async_write_register("warning_code", 0)
+            success &= await coordinator.async_write_register("alarm_status", 0)
         
         if success:
             await coordinator.async_request_refresh()
             _LOGGER.info("Reset %s alarms", alarm_type)
         else:
             _LOGGER.error("Failed to reset %s alarms", alarm_type)
-    
+
+    async def async_set_schedule(call: ServiceCall) -> None:
+        """Set schedule service."""
+        day = call.data["day"]
+        period = call.data["period"]
+        start_time = call.data["start_time"]
+        end_time = call.data["end_time"]
+        intensity = call.data.get("intensity")
+        temperature = call.data.get("temperature")
+        
+        # Convert time format HH:MM to HHMM
+        def time_to_register(time_str):
+            hours, minutes = time_str.split(":")
+            return int(hours) * 100 + int(minutes)
+        
+        start_reg = f"schedule_{day}_period{period}_start"
+        end_reg = f"schedule_{day}_period{period}_end"
+        
+        success = True
+        success &= await coordinator.async_write_register(start_reg, time_to_register(start_time))
+        success &= await coordinator.async_write_register(end_reg, time_to_register(end_time))
+        
+        if intensity is not None:
+            intensity_reg = f"schedule_{day}_period{period}_intensity"
+            success &= await coordinator.async_write_register(intensity_reg, intensity)
+        
+        if temperature is not None:
+            temp_reg = f"schedule_{day}_period{period}_temp"
+            success &= await coordinator.async_write_register(temp_reg, int(temperature * 2))
+        
+        if success:
+            _LOGGER.info("Set schedule for %s period %d: %s-%s", day, period, start_time, end_time)
+        else:
+            _LOGGER.error("Failed to set schedule for %s period %d", day, period)
+
     async def async_rescan_device(call: ServiceCall) -> None:
         """Rescan device capabilities service."""
         _LOGGER.info("Starting device rescan...")
         if getattr(coordinator, "force_full_register_list", False):
-            _LOGGER.info(
-                "force_full_register_list enabled - applying full register list without scanning"
-            )
+            _LOGGER.info("force_full_register_list enabled - applying full register list without scanning")
             coordinator.available_registers = {
                 "input_registers": set(INPUT_REGISTERS.keys()),
                 "holding_registers": set(HOLDING_REGISTERS.keys()),
-                "coil_registers": set(COIL_REGISTERS.keys()),
-                "discrete_inputs": set(DISCRETE_INPUTS.keys()),
+                "coil_registers": set(),
+                "discrete_inputs": set(),
             }
             coordinator.device_scan_result = {
                 "available_registers": coordinator.available_registers,
                 "device_info": {},
                 "capabilities": {},
+                "scan_statistics": {},
             }
             await coordinator.async_request_refresh()
-            _LOGGER.info(
-                "Device rescan skipped; full register list applied"
-            )
+            _LOGGER.info("Device rescan skipped; full register list applied")
             return
 
         try:
@@ -370,120 +432,243 @@ async def _async_register_services(hass: HomeAssistant, coordinator: ThesslaGree
             coordinator.available_registers = device_scan_result["available_registers"]
             coordinator.device_scan_result = device_scan_result
             coordinator.scan_statistics = device_scan_result["scan_statistics"]
+            
+            # Log scan statistics
             stats = coordinator.scan_statistics
-            _LOGGER.debug(
-                "Rescan stats: %.1f%% success (%d/%d), %d failed groups",
+            _LOGGER.info(
+                "Rescan completed: %.1f%% success (%d/%d), %d failed groups, %.1fs duration",
                 stats.get("success_rate", 0.0),
                 stats.get("successful_reads", 0),
                 stats.get("total_attempts", 0),
                 len(stats.get("failed_groups", [])),
+                stats.get("duration", 0)
             )
             await coordinator.async_request_refresh()
 
             _LOGGER.info("Device rescan completed successfully")
         except Exception as exc:
             _LOGGER.error("Device rescan failed: %s", exc)
-    
-    # Enhanced services (HA 2025.7+)
-    async def async_set_comfort_temperature(call: ServiceCall) -> None:
-        """Set comfort temperatures service."""
-        success = True
+
+    async def async_get_diagnostic_info(call: ServiceCall) -> None:
+        """Get diagnostic information service."""
+        perf_stats = coordinator.performance_stats
         
-        if "heating_temperature" in call.data:
-            temp_value = int(call.data["heating_temperature"] * 10)  # Convert to 0.1°C units
-            success &= await coordinator.async_write_register("comfort_temperature_heating", temp_value)
+        diagnostic_info = {
+            "device_info": coordinator.device_info_data,
+            "performance_stats": perf_stats,
+            "available_registers": {
+                k: len(v) for k, v in coordinator.available_registers.items()
+            },
+            "scan_statistics": getattr(coordinator, "scan_statistics", {}),
+            "last_update": coordinator.last_update_success_time.isoformat() if coordinator.last_update_success_time else None,
+        }
         
-        if "cooling_temperature" in call.data:
-            temp_value = int(call.data["cooling_temperature"] * 10)  # Convert to 0.1°C units
-            success &= await coordinator.async_write_register("comfort_temperature_cooling", temp_value)
+        # Store diagnostic info as persistent notification
+        hass.components.persistent_notification.create(
+            f"**ThesslaGreen Diagnostic Info**\n\n"
+            f"Device: {diagnostic_info['device_info'].get('model', 'Unknown')}\n"
+            f"Firmware: {diagnostic_info['device_info'].get('firmware_version', 'Unknown')}\n"
+            f"Success Rate: {perf_stats.get('success_rate', 0):.1f}%\n"
+            f"Total Registers: {sum(diagnostic_info['available_registers'].values())}\n"
+            f"Last Update: {diagnostic_info['last_update'] or 'Never'}\n\n"
+            f"See logs for complete diagnostic information.",
+            "ThesslaGreen Diagnostics",
+            f"{DOMAIN}_diagnostics"
+        )
         
-        if success:
-            await coordinator.async_request_refresh()
-            _LOGGER.info("Updated comfort temperatures")
+        _LOGGER.info("Diagnostic info: %s", diagnostic_info)
+
+    async def async_backup_settings(call: ServiceCall) -> None:
+        """Backup device settings service."""
+        include_schedule = call.data.get("include_schedule", True)
+        include_alarms = call.data.get("include_alarms", False)
+        
+        backup_data = {
+            "timestamp": datetime.now().isoformat(),
+            "device_info": coordinator.device_info_data,
+            "settings": {},
+        }
+        
+        # Backup basic settings
+        basic_settings = [
+            "comfort_temperature", "economy_temperature", "heating_temperature", "cooling_temperature",
+            "filter_change_interval", "filter_warning_days", "maintenance_interval"
+        ]
+        
+        for setting in basic_settings:
+            if setting in coordinator.data:
+                backup_data["settings"][setting] = coordinator.data[setting]
+        
+        # Backup schedule if requested
+        if include_schedule:
+            backup_data["schedule"] = {}
+            for day in ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]:
+                for period in [1, 2, 3, 4]:
+                    for time_type in ["start", "end"]:
+                        key = f"schedule_{day}_period{period}_{time_type}"
+                        if key in coordinator.data:
+                            backup_data["schedule"][key] = coordinator.data[key]
+        
+        # Backup alarm settings if requested
+        if include_alarms:
+            backup_data["alarms"] = {}
+            alarm_settings = [
+                "temperature_alarm_limit", "pressure_alarm_limit", "flow_alarm_limit",
+                "humidity_alarm_limit", "co2_alarm_limit"
+            ]
+            for setting in alarm_settings:
+                if setting in coordinator.data:
+                    backup_data["alarms"][setting] = coordinator.data[setting]
+        
+        # Store backup as persistent notification with instructions
+        hass.components.persistent_notification.create(
+            f"**ThesslaGreen Settings Backup Created**\n\n"
+            f"Timestamp: {backup_data['timestamp']}\n"
+            f"Settings: {len(backup_data['settings'])} items\n"
+            f"Schedule: {'Included' if include_schedule else 'Not included'}\n"
+            f"Alarms: {'Included' if include_alarms else 'Not included'}\n\n"
+            f"Backup data has been logged. Use the restore service to restore settings.",
+            "ThesslaGreen Backup",
+            f"{DOMAIN}_backup"
+        )
+        
+        _LOGGER.info("Settings backup created: %s", backup_data)
+
+    async def async_restore_settings(call: ServiceCall) -> None:
+        """Restore device settings service."""
+        backup_data = call.data["backup_data"]
+        restore_schedule = call.data.get("restore_schedule", True)
+        
+        success_count = 0
+        total_count = 0
+        
+        # Restore basic settings
+        if "settings" in backup_data:
+            for key, value in backup_data["settings"].items():
+                total_count += 1
+                if await coordinator.async_write_register(key, value):
+                    success_count += 1
+                    _LOGGER.debug("Restored setting %s = %s", key, value)
+                else:
+                    _LOGGER.warning("Failed to restore setting %s", key)
+        
+        # Restore schedule if requested
+        if restore_schedule and "schedule" in backup_data:
+            for key, value in backup_data["schedule"].items():
+                total_count += 1
+                if await coordinator.async_write_register(key, value):
+                    success_count += 1
+                    _LOGGER.debug("Restored schedule %s = %s", key, value)
+                else:
+                    _LOGGER.warning("Failed to restore schedule %s", key)
+        
+        # Restore alarm settings
+        if "alarms" in backup_data:
+            for key, value in backup_data["alarms"].items():
+                total_count += 1
+                if await coordinator.async_write_register(key, value):
+                    success_count += 1
+                    _LOGGER.debug("Restored alarm setting %s = %s", key, value)
+                else:
+                    _LOGGER.warning("Failed to restore alarm setting %s", key)
+        
+        _LOGGER.info("Settings restore completed: %d/%d successful", success_count, total_count)
+
+    async def async_calibrate_sensors(call: ServiceCall) -> None:
+        """Calibrate temperature sensors service."""
+        outside_offset = call.data.get("outside_offset")
+        supply_offset = call.data.get("supply_offset")
+        exhaust_offset = call.data.get("exhaust_offset")
+        
+        success_count = 0
+        total_count = 0
+        
+        calibration_registers = {
+            "outside_offset": "sensor_calibration_outside",
+            "supply_offset": "sensor_calibration_supply", 
+            "exhaust_offset": "sensor_calibration_extract",
+        }
+        
+        offsets = {
+            "outside_offset": outside_offset,
+            "supply_offset": supply_offset,
+            "exhaust_offset": exhaust_offset,
+        }
+        
+        for offset_name, offset_value in offsets.items():
+            if offset_value is not None:
+                total_count += 1
+                register = calibration_registers[offset_name]
+                # Convert to register format (0.1°C resolution)
+                reg_value = int(offset_value * 10)
+                
+                if await coordinator.async_write_register(register, reg_value):
+                    success_count += 1
+                    _LOGGER.info("Set %s calibration to %s°C", offset_name.replace("_offset", ""), offset_value)
+                else:
+                    _LOGGER.error("Failed to set %s calibration", offset_name)
+        
+        if success_count > 0:
+            _LOGGER.info("Sensor calibration completed: %d/%d successful", success_count, total_count)
         else:
-            _LOGGER.error("Failed to update comfort temperatures")
-    
-    async def async_activate_boost_mode(call: ServiceCall) -> None:
-        """Activate boost mode service."""
-        duration = call.data.get("duration", 30)
-        intensity = call.data.get("intensity", 100)
-        
-        # Set special mode to boost and configure parameters
-        success = True
-        success &= await coordinator.async_write_register("special_mode", 5)  # Boost mode
-        success &= await coordinator.async_write_register("boost_duration", duration)
-        success &= await coordinator.async_write_register("air_flow_rate_temporary", intensity)
-        
-        if success:
-            await coordinator.async_request_refresh()
-            _LOGGER.info("Activated boost mode: %d%% for %d minutes", intensity, duration)
-        else:
-            _LOGGER.error("Failed to activate boost mode")
-    
-    async def async_emergency_stop(call: ServiceCall) -> None:
-        """Emergency stop service."""
-        success = await coordinator.async_write_register("system_on_off", 0)
-        if success:
-            await coordinator.async_request_refresh()
-            _LOGGER.warning("Emergency stop activated")
-        else:
-            _LOGGER.error("Failed to activate emergency stop")
-    
-    async def async_quick_ventilation(call: ServiceCall) -> None:
-        """Quick ventilation service."""
-        duration = call.data.get("duration", 15)
-        intensity = call.data.get("intensity", 80)
-        
-        # Switch to temporary mode with specified parameters
-        success = True
-        success &= await coordinator.async_write_register("mode", 2)  # Temporary mode
-        success &= await coordinator.async_write_register("air_flow_rate_temporary", intensity)
-        success &= await coordinator.async_write_register("temporary_time_remaining", duration)
-        
-        if success:
-            await coordinator.async_request_refresh()
-            _LOGGER.info("Started quick ventilation: %d%% for %d minutes", intensity, duration)
-        else:
-            _LOGGER.error("Failed to start quick ventilation")
-    
+            _LOGGER.warning("No sensor calibrations were applied")
+
     # Register all services
     services = [
-        (SERVICE_SET_MODE, async_set_operating_mode, SERVICE_SET_MODE_SCHEMA),
-        (SERVICE_SET_INTENSITY, async_set_intensity, SERVICE_SET_INTENSITY_SCHEMA),
-        (SERVICE_SET_SPECIAL_FUNCTION, async_set_special_function, SERVICE_SET_SPECIAL_FUNCTION_SCHEMA),
-        (SERVICE_RESET_ALARMS, async_reset_alarms, SERVICE_RESET_ALARMS_SCHEMA),
-        (SERVICE_DEVICE_RESCAN, async_rescan_device, SERVICE_DEVICE_RESCAN_SCHEMA),
-        (SERVICE_SET_COMFORT_TEMPERATURE, async_set_comfort_temperature, SERVICE_SET_COMFORT_TEMPERATURE_SCHEMA),
-        (SERVICE_ACTIVATE_BOOST, async_activate_boost_mode, SERVICE_ACTIVATE_BOOST_SCHEMA),
-        (SERVICE_EMERGENCY_STOP, async_emergency_stop, SERVICE_EMERGENCY_STOP_SCHEMA),
-        (SERVICE_QUICK_VENTILATION, async_quick_ventilation, SERVICE_QUICK_VENTILATION_SCHEMA),
+        ("set_mode", async_set_mode, SERVICE_SET_MODE_SCHEMA),
+        ("set_special_mode", async_set_special_mode, SERVICE_SET_SPECIAL_MODE_SCHEMA),
+        ("set_temperature", async_set_temperature, SERVICE_SET_TEMPERATURE_SCHEMA),
+        ("set_fan_speed", async_set_fan_speed, SERVICE_SET_FAN_SPEED_SCHEMA),
+        ("control_bypass", async_control_bypass, SERVICE_CONTROL_BYPASS_SCHEMA),
+        ("control_gwc", async_control_gwc, SERVICE_CONTROL_GWC_SCHEMA),
+        ("reset_alarms", async_reset_alarms, SERVICE_RESET_ALARMS_SCHEMA),
+        ("set_schedule", async_set_schedule, SERVICE_SET_SCHEDULE_SCHEMA),
+        ("rescan_device", async_rescan_device, SERVICE_RESCAN_DEVICE_SCHEMA),
+        ("get_diagnostic_info", async_get_diagnostic_info, SERVICE_GET_DIAGNOSTIC_INFO_SCHEMA),
+        ("backup_settings", async_backup_settings, SERVICE_BACKUP_SETTINGS_SCHEMA),
+        ("restore_settings", async_restore_settings, SERVICE_RESTORE_SETTINGS_SCHEMA),
+        ("calibrate_sensors", async_calibrate_sensors, SERVICE_CALIBRATE_SENSORS_SCHEMA),
     ]
     
     for service_name, service_func, service_schema in services:
-        if not hass.services.has_service(DOMAIN, service_name):
-            hass.services.async_register(
-                DOMAIN, service_name, service_func, schema=service_schema
-            )
+        hass.services.async_register(DOMAIN, service_name, service_func, service_schema)
     
-    _LOGGER.debug("Registered %d ThesslaGreen services", len(services))
+    _LOGGER.info("Registered %d enhanced services", len(services))
 
 
-async def _async_unregister_services(hass: HomeAssistant) -> None:
-    """Unregister services when no more coordinators."""
-    services_to_remove = [
-        SERVICE_SET_MODE,
-        SERVICE_SET_INTENSITY,
-        SERVICE_SET_SPECIAL_FUNCTION,
-        SERVICE_RESET_ALARMS,
-        SERVICE_DEVICE_RESCAN,
-        SERVICE_SET_COMFORT_TEMPERATURE,
-        SERVICE_ACTIVATE_BOOST,
-        SERVICE_EMERGENCY_STOP,
-        SERVICE_QUICK_VENTILATION,
-    ]
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    _LOGGER.info("Unloading ThesslaGreen Modbus integration")
     
-    for service_name in services_to_remove:
-        if hass.services.has_service(DOMAIN, service_name):
-            hass.services.async_remove(DOMAIN, service_name)
+    # Unload platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     
-    _LOGGER.debug("Unregistered ThesslaGreen services")
+    if unload_ok:
+        # Shutdown coordinator gracefully
+        coordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        if hasattr(coordinator, "async_shutdown"):
+            await coordinator.async_shutdown()
+        
+        # Remove services if this was the last entry
+        if not hass.data[DOMAIN]:
+            # Remove all services
+            services_to_remove = [
+                "set_mode", "set_special_mode", "set_temperature", "set_fan_speed",
+                "control_bypass", "control_gwc", "reset_alarms", "set_schedule",
+                "rescan_device", "get_diagnostic_info", "backup_settings", 
+                "restore_settings", "calibrate_sensors"
+            ]
+            
+            for service_name in services_to_remove:
+                if hass.services.has_service(DOMAIN, service_name):
+                    hass.services.async_remove(DOMAIN, service_name)
+            
+            _LOGGER.info("Removed all ThesslaGreen services")
+    
+    return unload_ok
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)

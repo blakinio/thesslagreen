@@ -2,30 +2,51 @@
   "config": {
     "step": {
       "user": {
-        "title": "Konfiguracja ThesslaGreen Modbus",
-        "description": "Wprowadź dane połączenia z urządzeniem ThesslaGreen",
+        "title": "ThesslaGreen Modbus Configuration",
+        "description": "Configure connection to ThesslaGreen AirPack via Modbus TCP. The integration will automatically detect available device functions and registers.",
         "data": {
-          "host": "Adres IP",
-          "port": "Port Modbus",
-          "slave_id": "ID Slave"
+          "host": "IP Address",
+          "port": "Port",
+          "slave_id": "Slave ID",
+          "name": "Name"
+        },
+        "data_description": {
+          "host": "IP address of the AirPack device on your local network",
+          "port": "Modbus TCP port (default 502)",
+          "slave_id": "Modbus device identifier (default 10)",
+          "name": "Device name in Home Assistant"
         }
+      },
+      "confirm": {
+        "title": "Confirm Configuration",
+        "description": "ThesslaGreen device detected:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Device Name:** {device_name}\n**Firmware Version:** {firmware_version}\n**Serial Number:** {serial_number}\n\n**Scan Statistics:**\n- Registers Found: {register_count}\n- Scan Success Rate: {scan_success_rate}\n- Capabilities Detected: {capabilities_count}\n- Main Features: {capabilities_list}\n\n{auto_detected_note}\n\nDo you want to continue with this configuration?"
       }
     },
     "error": {
-      "cannot_connect": "Nie można połączyć się z urządzeniem",
-      "invalid_host": "Nieprawidłowy adres hosta",
-      "unknown": "Nieoczekiwany błąd"
+      "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
+      "invalid_auth": "Authentication error. Check Slave ID settings.", 
+      "unknown": "Unexpected error. Check logs for details."
     },
     "abort": {
-      "already_configured": "Urządzenie jest już skonfigurowane"
+      "already_configured": "Device with this IP address and Slave ID is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Opcje ThesslaGreen",
+        "title": "ThesslaGreen Modbus Options",
+        "description": "Configure advanced integration options.\n\n**Current Settings:**\n- Scan Interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry Count: {current_retry}\n- Force Full Register List: {force_full_enabled}",
         "data": {
-          "scan_interval": "Interwał skanowania (sekundy)"
+          "scan_interval": "Scan Interval (seconds)",
+          "timeout": "Connection Timeout (seconds)", 
+          "retry": "Retry Attempts",
+          "force_full_register_list": "Force Full Register List (skip scanning)"
+        },
+        "data_description": {
+          "scan_interval": "How often to read data from device (10-300 seconds)",
+          "timeout": "Maximum time to wait for response (5-60 seconds)",
+          "retry": "How many times to retry failed reads (1-5 attempts)",
+          "force_full_register_list": "Skip scanning and load all registers (may cause errors)"
         }
       }
     }
