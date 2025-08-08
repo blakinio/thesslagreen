@@ -37,7 +37,7 @@ async def async_setup_entry(
     holding_regs = coordinator.available_registers.get("holding_registers", set())
     
     # Check if basic fan control is available
-    if "mode" in holding_regs:
+    if "mode" in holding_regs or "mode_old" in holding_regs:
         entities.append(ThesslaGreenFan(coordinator))
 
     if entities:
@@ -47,20 +47,18 @@ async def async_setup_entry(
 
 class ThesslaGreenFan(CoordinatorEntity, FanEntity):
     """Enhanced ThesslaGreen fan entity - HA 2025.7+ Compatible."""
+    
+    _attr_has_entity_name = True  # ✅ FIX: Enable entity naming
 
     def __init__(self, coordinator: ThesslaGreenCoordinator) -> None:
         """Initialize the enhanced fan."""
         super().__init__(coordinator)
         
-        # Enhanced device info handling
-        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
-        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
+        self._attr_name = "Ventilation Fan"
+        self._attr_translation_key = "fan"
+        self._attr_unique_id = f"thessla_{coordinator.host.replace('.','_')}_{coordinator.slave_id}_fan"
         
-        self._attr_name = f"{device_name} Ventilation"
-        self._attr_icon = "mdi:fan"
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_fan"
-        
-        # Enhanced fan features for HA 2025.7+
+        # Enhanced supported features for HA 2025.7+
         self._attr_supported_features = (
             FanEntityFeature.SET_SPEED |
             FanEntityFeature.PRESET_MODE |
@@ -68,164 +66,107 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
             FanEntityFeature.TURN_OFF
         )
         
+        # Preset modes
         self._attr_preset_modes = PRESET_MODES
-        self._attr_speed_count = int_states_in_range(SPEED_RANGE)
         
+        # Enhanced device info
+        device_info = coordinator.device_scan_result.get("device_info", {}) if hasattr(coordinator, 'device_scan_result') else {}
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
+            "name": f"ThesslaGreen AirPack ({coordinator.host})",
             "manufacturer": "ThesslaGreen",
             "model": "AirPack Home",
             "sw_version": device_info.get("firmware", "Unknown"),
         }
 
     @property
-    def is_on(self) -> bool | None:
+    def is_on(self) -> bool:
         """Return true if the fan is on."""
-        system_power = self.coordinator.data.get("system_on_off")
-        if system_power is None:
-            return None
-        return bool(system_power)
+        # Check device status
+        device_on = self.coordinator.data.get("device_status_smart", False)
+        if not device_on:
+            return False
+        
+        # Check if intensity is greater than 0
+        mode = self.coordinator.data.get("mode")
+        if mode is None:
+            mode = self.coordinator.data.get("mode_old", 1)
+        
+        if mode == 1:  # Manual
+            intensity = self.coordinator.data.get("air_flow_rate_manual")
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_1", 0)
+        elif mode == 2:  # Temporary
+            intensity = self.coordinator.data.get("air_flow_rate_temporary")
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_2", 0)
+        else:  # Auto
+            intensity = self.coordinator.data.get("air_flow_rate_auto")
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_3", 0)
+        
+        return intensity > 0
 
     @property
     def percentage(self) -> int | None:
         """Return the current speed percentage."""
-        if not self.is_on:
-            return 0
-            
-        # Get current intensity based on mode
-        mode = self.coordinator.data.get("mode", 0)
+        mode = self.coordinator.data.get("mode")
+        if mode is None:
+            mode = self.coordinator.data.get("mode_old", 1)
         
-        if mode == 0:  # Auto mode
-            intensity = self.coordinator.data.get("supply_percentage")
-        elif mode == 1:  # Manual mode
+        if mode == 1:  # Manual
             intensity = self.coordinator.data.get("air_flow_rate_manual")
-        elif mode == 2:  # Temporary mode
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_1")
+        elif mode == 2:  # Temporary
             intensity = self.coordinator.data.get("air_flow_rate_temporary")
-        else:
-            intensity = self.coordinator.data.get("supply_percentage", 50)
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_2")
+        else:  # Auto
+            intensity = self.coordinator.data.get("air_flow_rate_auto")
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_3")
         
-        if intensity is None:
-            return None
-            
-        # Convert ThesslaGreen intensity (10-150%) to HA percentage (0-100%)
-        return ranged_value_to_percentage(SPEED_RANGE, intensity)
+        if intensity is not None:
+            # Convert ThesslaGreen intensity (10-150%) to HA percentage (0-100%)
+            return ranged_value_to_percentage(SPEED_RANGE, intensity)
+        
+        return None
+
+    @property
+    def speed_count(self) -> int:
+        """Return the number of speeds the fan supports."""
+        return int_states_in_range(SPEED_RANGE)
 
     @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode."""
-        if not self.is_on:
-            return None
-            
-        # Enhanced preset mode detection based on system state
-        mode = self.coordinator.data.get("mode", 0)
-        special_mode = self.coordinator.data.get("special_mode", 0)
-        intensity = self._get_current_intensity()
+        intensity = None
+        mode = self.coordinator.data.get("mode", 1)
         
-        # Special function takes precedence
-        if special_mode == 5:  # BOOST mode
-            return "Boost"
-        elif special_mode == 6:  # ECO mode  
-            return "Eco"
-        elif special_mode == 13:  # NOC (Night) mode
-            return "Sleep"
+        if mode == 1:  # Manual
+            intensity = self.coordinator.data.get("air_flow_rate_manual")
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_1")
+        else:
+            intensity = self.coordinator.data.get("air_flow_rate_auto")
+            if intensity is None:
+                intensity = self.coordinator.data.get("intensity_3")
         
-        # Auto mode
+        if intensity is not None:
+            if intensity <= 20:
+                return "Sleep"
+            elif intensity <= 30:
+                return "Eco"
+            elif intensity <= 50:
+                return "Comfort"
+            elif intensity >= 80:
+                return "Boost"
+        
         if mode == 0:
             return "Auto"
-            
-        # Manual/Temporary mode - determine by intensity
-        if intensity is not None:
-            if intensity <= 30:
-                return "Sleep"
-            elif intensity <= 50:
-                return "Eco"
-            elif intensity <= 80:
-                return "Comfort"
-            else:
-                return "Boost"
-                
-        return "Auto"
-
-    async def async_set_percentage(self, percentage: int) -> None:
-        """Set the speed percentage."""
-        if percentage == 0:
-            await self.async_turn_off()
-            return
-            
-        # Ensure system is on
-        if not self.is_on:
-            await self.async_turn_on()
         
-        # Convert HA percentage to ThesslaGreen intensity
-        intensity = int(percentage_to_ranged_value(SPEED_RANGE, percentage))
-        
-        # Enhanced mode logic for HA 2025.7+
-        current_mode = self.coordinator.data.get("mode", 0)
-        
-        # If in Auto mode, switch to Manual for direct control
-        if current_mode == 0:
-            _LOGGER.info("Switching from Auto to Manual mode for speed control")
-            await self.coordinator.async_write_register("mode", 1)
-            
-        # Set the appropriate intensity register
-        if current_mode == 2:  # Temporary mode
-            register_key = "air_flow_rate_temporary"
-        else:  # Manual mode (or switching to manual)
-            register_key = "air_flow_rate_manual"
-            
-        success = await self.coordinator.async_write_register(register_key, intensity)
-        if success:
-            _LOGGER.info("Set fan speed to %d%% (intensity: %d%%)", percentage, intensity)
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to set fan speed to %d%%", percentage)
-
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set the preset mode."""
-        if preset_mode not in PRESET_MODES:
-            _LOGGER.error("Invalid preset mode: %s", preset_mode)
-            return
-            
-        # Enhanced preset mode implementation for HA 2025.7+
-        preset_configs = {
-            "Eco": {"mode": 1, "intensity": 30, "special": 6},      # Manual, 30%, ECO special mode
-            "Comfort": {"mode": 1, "intensity": 60, "special": 0}, # Manual, 60%, no special mode
-            "Boost": {"mode": 1, "intensity": 100, "special": 5},  # Manual, 100%, BOOST special mode  
-            "Sleep": {"mode": 1, "intensity": 20, "special": 13},  # Manual, 20%, Night mode
-            "Auto": {"mode": 0, "intensity": None, "special": 0},  # Auto mode, system controlled
-        }
-        
-        config = preset_configs[preset_mode]
-        
-        # Ensure system is on
-        if not self.is_on:
-            await self.async_turn_on()
-        
-        # Set operating mode
-        success = await self.coordinator.async_write_register("mode", config["mode"])
-        if not success:
-            _LOGGER.error("Failed to set operating mode for preset %s", preset_mode)
-            return
-            
-        # Set special mode
-        if config["special"] != 0:
-            success = await self.coordinator.async_write_register("special_mode", config["special"])
-            if not success:
-                _LOGGER.warning("Failed to set special mode for preset %s", preset_mode)
-        
-        # Set intensity if specified
-        if config["intensity"] is not None:
-            if config["mode"] == 1:  # Manual mode
-                success = await self.coordinator.async_write_register("air_flow_rate_manual", config["intensity"])
-            elif config["mode"] == 2:  # Temporary mode
-                success = await self.coordinator.async_write_register("air_flow_rate_temporary", config["intensity"])
-                
-            if not success:
-                _LOGGER.warning("Failed to set intensity for preset %s", preset_mode)
-        
-        _LOGGER.info("Set fan preset mode to %s", preset_mode)
-        await self.coordinator.async_request_refresh()
+        return None
 
     async def async_turn_on(
         self,
@@ -234,143 +175,131 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
         **kwargs: Any,
     ) -> None:
         """Turn on the fan."""
-        # Turn on system power
-        success = await self.coordinator.async_write_register("system_on_off", 1)
-        if not success:
-            _LOGGER.error("Failed to turn on system power")
-            return
-            
-        _LOGGER.info("Turned on ventilation system")
+        # Ensure device is on
+        if "on_off_panel_mode" in self.coordinator.available_registers.get("holding_registers", set()):
+            await self.coordinator.async_write_register("on_off_panel_mode", 1)
         
-        # Set percentage if specified
-        if percentage is not None:
-            await self.async_set_percentage(percentage)
-        # Set preset mode if specified  
-        elif preset_mode is not None:
+        if preset_mode:
             await self.async_set_preset_mode(preset_mode)
+        elif percentage is not None:
+            await self.async_set_percentage(percentage)
         else:
-            # Default to Auto mode with moderate intensity
-            await self.coordinator.async_write_register("mode", 0)  # Auto mode
-            
+            # Default to 50% in manual mode
+            await self.coordinator.async_write_register("mode", 1)
+            await self.coordinator.async_write_register("air_flow_rate_manual", 50)
+        
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off the fan."""
-        success = await self.coordinator.async_write_register("system_on_off", 0)
-        if success:
-            _LOGGER.info("Turned off ventilation system")
-            await self.coordinator.async_request_refresh()
+        """Turn the fan off."""
+        # Use device on/off if available
+        if "on_off_panel_mode" in self.coordinator.available_registers.get("holding_registers", set()):
+            await self.coordinator.async_write_register("on_off_panel_mode", 0)
         else:
-            _LOGGER.error("Failed to turn off system power")
+            # Set intensity to 0 as fallback
+            mode = self.coordinator.data.get("mode", 1)
+            
+            if mode == 0:  # Auto
+                register = "air_flow_rate_auto"
+                if register not in self.coordinator.available_registers.get("holding_registers", set()):
+                    register = "intensity_3"
+            elif mode == 2:  # Temporary
+                register = "air_flow_rate_temporary"
+                if register not in self.coordinator.available_registers.get("holding_registers", set()):
+                    register = "intensity_2"
+            else:  # Manual
+                register = "air_flow_rate_manual"
+                if register not in self.coordinator.available_registers.get("holding_registers", set()):
+                    register = "intensity_1"
+            
+            await self.coordinator.async_write_register(register, 0)
+        
+        await self.coordinator.async_request_refresh()
 
-    def _get_current_intensity(self) -> int | None:
-        """Get current intensity based on operating mode."""
-        mode = self.coordinator.data.get("mode", 0)
+    async def async_set_percentage(self, percentage: int) -> None:
+        """Set the speed percentage of the fan."""
+        # Convert HA percentage (0-100%) to ThesslaGreen intensity (10-150%)
+        intensity = percentage_to_ranged_value(SPEED_RANGE, percentage)
         
-        if mode == 0:  # Auto mode
-            return self.coordinator.data.get("supply_percentage")
-        elif mode == 1:  # Manual mode
-            return self.coordinator.data.get("air_flow_rate_manual")
-        elif mode == 2:  # Temporary mode
-            return self.coordinator.data.get("air_flow_rate_temporary")
+        # Set to manual mode and apply intensity
+        await self.coordinator.async_write_register("mode", 1)
         
-        return None
+        register = "air_flow_rate_manual"
+        if register not in self.coordinator.available_registers.get("holding_registers", set()):
+            register = "intensity_1"
+        
+        await self.coordinator.async_write_register(register, int(intensity))
+        await self.coordinator.async_request_refresh()
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set the preset mode of the fan."""
+        preset_intensities = {
+            "Sleep": 20,
+            "Eco": 30,
+            "Comfort": 50,
+            "Boost": 80,
+            "Auto": None,
+        }
+        
+        if preset_mode == "Auto":
+            # Set to auto mode
+            mode_reg = "mode"
+            if mode_reg not in self.coordinator.available_registers.get("holding_registers", set()):
+                mode_reg = "mode_old"
+            await self.coordinator.async_write_register(mode_reg, 0)
+        elif preset_mode in preset_intensities:
+            # Set to manual mode with specific intensity
+            await self.coordinator.async_write_register("mode", 1)
+            
+            intensity = preset_intensities[preset_mode]
+            if intensity:
+                register = "air_flow_rate_manual"
+                if register not in self.coordinator.available_registers.get("holding_registers", set()):
+                    register = "intensity_1"
+                
+                await self.coordinator.async_write_register(register, intensity)
+        
+        await self.coordinator.async_request_refresh()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes.""" 
-        attributes = {}
+        """Return additional state attributes."""
+        attributes = {
+            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
+        }
         
-        # Enhanced operating context (HA 2025.7+)
-        mode = self.coordinator.data.get("mode")
-        if mode is not None:
-            attributes["operating_mode"] = OPERATING_MODES.get(mode, f"Mode {mode}")
+        # Add supply and exhaust percentages
+        supply_pct = self.coordinator.data.get("supply_percentage")
+        if supply_pct is not None:
+            attributes["supply_fan_percentage"] = supply_pct
         
-        special_mode = self.coordinator.data.get("special_mode")
-        if special_mode is not None and special_mode != 0:
-            attributes["special_function"] = SPECIAL_MODES.get(special_mode, f"Function {special_mode}")
+        exhaust_pct = self.coordinator.data.get("exhaust_percentage")
+        if exhaust_pct is not None:
+            attributes["exhaust_fan_percentage"] = exhaust_pct
         
-        # Current intensity in ThesslaGreen units
-        intensity = self._get_current_intensity()
-        if intensity is not None:
-            attributes["current_intensity"] = f"{intensity}%"
-        
-        # Flow rates
+        # Add flow rates
         supply_flow = self.coordinator.data.get("supply_flowrate")
-        exhaust_flow = self.coordinator.data.get("exhaust_flowrate")
         if supply_flow is not None:
             attributes["supply_flow_rate"] = f"{supply_flow} m³/h"
+        
+        exhaust_flow = self.coordinator.data.get("exhaust_flowrate")
         if exhaust_flow is not None:
             attributes["exhaust_flow_rate"] = f"{exhaust_flow} m³/h"
         
-        # Enhanced system status (HA 2025.7+)
-        heat_recovery_eff = self.coordinator.data.get("heat_recovery_efficiency")
-        if heat_recovery_eff is not None:
-            attributes["heat_recovery_efficiency"] = f"{heat_recovery_eff}%"
+        # Add operating mode
+        mode = self.coordinator.data.get("mode")
+        if mode is not None and mode in OPERATING_MODES:
+            attributes["operating_mode"] = OPERATING_MODES[mode]
         
-        # Temperature information
-        outside_temp = self.coordinator.data.get("outside_temperature")
-        supply_temp = self.coordinator.data.get("supply_temperature")
-        if outside_temp is not None:
-            attributes["outside_temperature"] = f"{outside_temp}°C"
-        if supply_temp is not None:
-            attributes["supply_temperature"] = f"{supply_temp}°C"
-            if outside_temp is not None:
-                temp_rise = supply_temp - outside_temp
-                attributes["temperature_rise"] = f"{temp_rise:.1f}°C"
+        # Add special function
+        special = self.coordinator.data.get("special_mode", 0)
+        if special in SPECIAL_MODES:
+            attributes["special_function"] = SPECIAL_MODES[special]
         
-        # System diagnostics
-        error_code = self.coordinator.data.get("error_code", 0)
-        warning_code = self.coordinator.data.get("warning_code", 0)
-        attributes["system_errors"] = error_code != 0
-        attributes["system_warnings"] = warning_code != 0
+        # Add all intensity levels for debugging
+        for i in range(1, 11):
+            intensity_key = f"intensity_{i}"
+            if intensity_key in self.coordinator.data:
+                attributes[f"intensity_level_{i}"] = self.coordinator.data[intensity_key]
         
-        # Enhanced power information (HA 2025.7+)
-        power_consumption = self.coordinator.data.get("actual_power_consumption")
-        if power_consumption is not None:
-            attributes["power_consumption"] = f"{power_consumption} W"
-            
-            # Power efficiency
-            if intensity is not None and intensity > 0:
-                efficiency = power_consumption / intensity
-                attributes["power_efficiency"] = f"{efficiency:.1f} W/%"
-        
-        # Operating time information
-        operating_hours = self.coordinator.data.get("operating_hours")
-        if operating_hours is not None:
-            attributes["operating_hours"] = operating_hours
-        
-        # Filter status
-        filter_remaining = self.coordinator.data.get("filter_time_remaining")
-        if filter_remaining is not None:
-            attributes["filter_days_remaining"] = filter_remaining
-            if filter_remaining <= 30:
-                attributes["filter_status"] = "replace_soon"
-            elif filter_remaining <= 7:
-                attributes["filter_status"] = "replace_now"
-            else:
-                attributes["filter_status"] = "ok"
-        
-        # Enhanced time remaining for temporary modes (HA 2025.7+)
-        if mode == 2:  # Temporary mode
-            temp_remaining = self.coordinator.data.get("temporary_time_remaining")
-            if temp_remaining is not None:
-                attributes["temporary_time_remaining"] = f"{temp_remaining} min"
-        
-        boost_remaining = self.coordinator.data.get("boost_time_remaining")
-        if boost_remaining is not None and boost_remaining > 0:
-            attributes["boost_time_remaining"] = f"{boost_remaining} min"
-        
-        # Add last update timestamp
-        if hasattr(self.coordinator, 'last_update_success_time'):
-            attributes["last_updated"] = getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success).isoformat()
-            
         return attributes
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success and 
-            "system_on_off" in self.coordinator.data
-        )

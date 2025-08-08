@@ -7,10 +7,18 @@ from typing import Any
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, OPERATING_MODES, SEASON_MODES, SPECIAL_MODES
+from .const import (
+    COMFORT_MODES,
+    DOMAIN,
+    FILTER_TYPES,
+    OPERATING_MODES,
+    SEASON_MODES,
+    SPECIAL_MODES,
+)
 from .coordinator import ThesslaGreenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,142 +35,50 @@ async def async_setup_entry(
     entities = []
     holding_regs = coordinator.available_registers.get("holding_registers", set())
     
-    # Enhanced Operating Mode Select (HA 2025.7+ Compatible)
-    if "mode" in holding_regs:
+    # Enhanced Select Entities (HA 2025.7+ Compatible)
+    select_entities = [
+        ("mode", "Operating Mode", "mdi:state-machine", list(OPERATING_MODES.values()), OPERATING_MODES, False),
+        ("special_mode", "Special Function", "mdi:function-variant", list(SPECIAL_MODES.values()), SPECIAL_MODES, False),
+        ("comfort_mode", "Comfort Mode", "mdi:home-thermometer", list(COMFORT_MODES.values()), COMFORT_MODES, False),
+        ("season_mode", "Season Mode", "mdi:weather-partly-cloudy", list(SEASON_MODES.values()), SEASON_MODES, False),
+        ("filter_change", "Filter Type", "mdi:air-filter", list(FILTER_TYPES.values()), FILTER_TYPES, True),
+        ("gwc_mode", "GWC Mode", "mdi:pipe", ["Off", "Auto", "On"], {0: "Off", 1: "Auto", 2: "On"}, False),
+        ("bypass_mode", "Bypass Mode", "mdi:debug-step-over", ["Off", "Auto", "On"], {0: "Off", 1: "Auto", 2: "On"}, False),
+        ("configuration_mode", "Configuration Mode", "mdi:cog", ["Normal", "Filter Control", "AFC"], {0: "Normal", 47: "Filter Control", 65: "AFC"}, True),
+    ]
+    
+    for reg_key, name, icon, options, mapping, is_config in select_entities:
+        # Check both new and old register names
+        if reg_key in holding_regs or f"{reg_key}_old" in holding_regs:
+            entities.append(
+                ThesslaGreenSelect(
+                    coordinator, reg_key, name, icon, options, mapping, is_config
+                )
+            )
+    
+    # Day of week selector for preset check
+    if "pres_check_day" in holding_regs:
         entities.append(
-            ThesslaGreenModeSelect(
+            ThesslaGreenSelect(
                 coordinator,
-                "mode",
-                "Operating Mode",
-                "mdi:cog",
-                OPERATING_MODES,
-                "Select the operating mode of the ventilation system"
+                "pres_check_day",
+                "Filter Check Day",
+                "mdi:calendar-check",
+                ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"},
+                True
             )
         )
     
-    # Enhanced Season Mode Select (HA 2025.7+ Compatible)
-    if "season_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenModeSelect(
-                coordinator,
-                "season_mode", 
-                "Season Mode",
-                "mdi:weather-partly-cloudy",
-                SEASON_MODES,
-                "Select winter or summer mode for optimal performance"
-            )
-        )
-    
-    # Enhanced Special Function Select (HA 2025.7+ Compatible)
-    if "special_mode" in holding_regs:
-        entities.append(
-            ThesslaGreenModeSelect(
-                coordinator,
-                "special_mode",
-                "Special Function",
-                "mdi:function",
-                SPECIAL_MODES,
-                "Activate special functions like OKAP, KOMINEK, etc."
-            )
-        )
-    
-    # Enhanced Comfort Mode Select (HA 2025.7+)
-    if "comfort_mode" in holding_regs:
-        comfort_modes = {
-            0: "Nieaktywny",
-            1: "Grzanie", 
-            2: "Chłodzenie"
-        }
-        entities.append(
-            ThesslaGreenModeSelect(
-                coordinator,
-                "comfort_mode",
-                "Comfort Mode",
-                "mdi:home-thermometer",
-                comfort_modes,
-                "Control heating/cooling comfort mode"
-            )
-        )
-    
-    # Enhanced GWC Mode Select (HA 2025.7+)
-    if "gwc_mode" in holding_regs:
-        gwc_modes = {
-            0: "Nieaktywny",
-            1: "Zima",
-            2: "Lato"
-        }
-        entities.append(
-            ThesslaGreenModeSelect(
-                coordinator,
-                "gwc_mode",
-                "GWC Mode",
-                "mdi:earth",
-                gwc_modes,
-                "Control Ground Heat Exchanger mode"
-            )
-        )
-    
-    # Enhanced GWC Regeneration Mode Select (HA 2025.7+)
-    if "gwc_regeneration_mode" in holding_regs:
-        gwc_regen_modes = {
-            0: "Wyłączone",
-            1: "Dobowe",
-            2: "Temperaturowe",
-            3: "Wymuszone"
-        }
-        entities.append(
-            ThesslaGreenModeSelect(
-                coordinator,
-                "gwc_regeneration_mode",
-                "GWC Regeneration",
-                "mdi:earth-arrow-right",
-                gwc_regen_modes,
-                "Select GWC regeneration mode"
-            )
-        )
-    
-    # Enhanced Bypass Mode Select (HA 2025.7+)
-    if "bypass_mode" in holding_regs:
-        bypass_modes = {
-            0: "Nieaktywny",
-            1: "FreeHeating",
-            2: "FreeCooling"
-        }
-        entities.append(
-            ThesslaGreenModeSelect(
-                coordinator,
-                "bypass_mode",
-                "Bypass Mode",
-                "mdi:valve",
-                bypass_modes,
-                "Control bypass mode for free heating/cooling"
-            )
-        )
-    
-    # Enhanced Constant Flow Mode Select (HA 2025.7+)
-    if "constant_flow_mode" in holding_regs:
-        cf_modes = {
-            0: "Wyłączony",
-            1: "Aktywny"
-        }
-        entities.append(
-            ThesslaGreenModeSelect(
-                coordinator,
-                "constant_flow_mode",
-                "Constant Flow Mode",
-                "mdi:chart-line",
-                cf_modes,
-                "Enable/disable constant flow control"
-            )
-        )
-
     if entities:
         _LOGGER.debug("Adding %d enhanced select entities", len(entities))
         async_add_entities(entities)
 
 
-class ThesslaGreenModeSelect(CoordinatorEntity, SelectEntity):
-    """Enhanced ThesslaGreen mode select entity - HA 2025.7+ Compatible."""
+class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
+    """Enhanced select entity for ThesslaGreen devices - HA 2025.7+ Compatible."""
+    
+    _attr_has_entity_name = True  # ✅ FIX: Enable entity naming
 
     def __init__(
         self,
@@ -170,27 +86,30 @@ class ThesslaGreenModeSelect(CoordinatorEntity, SelectEntity):
         key: str,
         name: str,
         icon: str,
-        mode_map: dict[int, str],
-        description: str,
+        options: list[str],
+        mapping: dict[int, str],
+        is_config: bool = False,
     ) -> None:
-        """Initialize the enhanced mode select."""
+        """Initialize the enhanced select entity."""
         super().__init__(coordinator)
         self._key = key
-        self._mode_map = mode_map
-        self._reverse_map = {v: k for k, v in mode_map.items()}
-        
-        # Enhanced device info handling
-        device_info = coordinator.data.get("device_info", {}) if coordinator.data else {}
-        device_name = device_info.get("device_name", f"ThesslaGreen {coordinator.host}")
-        
         self._attr_name = name
         self._attr_icon = icon
-        self._attr_options = list(mode_map.values())
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{key}"
+        self._attr_options = options
+        self._mapping = mapping
+        self._reverse_mapping = {v: k for k, v in mapping.items()}
+        self._attr_translation_key = key
+        self._attr_unique_id = f"thessla_{coordinator.host.replace('.','_')}_{coordinator.slave_id}_{key}"
         
+        # Set entity category
+        if is_config:
+            self._attr_entity_category = EntityCategory.CONFIG
+        
+        # Enhanced device info
+        device_info = coordinator.device_scan_result.get("device_info", {}) if hasattr(coordinator, 'device_scan_result') else {}
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            "name": device_name,
+            "name": f"ThesslaGreen AirPack ({coordinator.host})",
             "manufacturer": "ThesslaGreen",
             "model": "AirPack Home",
             "sw_version": device_info.get("firmware", "Unknown"),
@@ -198,119 +117,127 @@ class ThesslaGreenModeSelect(CoordinatorEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        """Return the current selected option."""
+        """Return the selected entity option."""
+        # Try both new and old register names
         value = self.coordinator.data.get(self._key)
+        if value is None and f"{self._key}_old" in self.coordinator.data:
+            value = self.coordinator.data.get(f"{self._key}_old")
+        
         if value is None:
             return None
-        return self._mode_map.get(value)
+        
+        return self._mapping.get(value, f"Unknown ({value})")
 
     async def async_select_option(self, option: str) -> None:
-        """Select an option."""
-        if option not in self._reverse_map:
+        """Change the selected option."""
+        if option not in self._reverse_mapping:
             _LOGGER.error("Invalid option %s for %s", option, self._key)
             return
         
-        mode_value = self._reverse_map[option]
+        value = self._reverse_mapping[option]
         
-        # Enhanced validation for special modes (HA 2025.7+)
-        if self._key == "special_mode" and not self._validate_special_mode(mode_value):
-            _LOGGER.warning("Special mode %s may not be suitable in current conditions", option)
+        # Try to write to the appropriate register
+        register = self._key
+        if register not in self.coordinator.available_registers.get("holding_registers", set()):
+            # Try old register name
+            register = f"{self._key}_old"
+            if register not in self.coordinator.available_registers.get("holding_registers", set()):
+                _LOGGER.error("Register %s not available", self._key)
+                return
         
-        success = await self.coordinator.async_write_register(self._key, mode_value)
+        success = await self.coordinator.async_write_register(register, value)
         if success:
-            _LOGGER.info("Set %s to %s (value: %d)", self._key, option, mode_value)
             await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to set %s to %s", self._key, option)
 
-    def _validate_special_mode(self, mode_value: int) -> bool:
-        """Enhanced validation for special modes - HA 2025.7+."""
-        if not self.coordinator.data:
-            return True  # Allow if no data available
-        
-        current_mode = self.coordinator.data.get("mode", 0)
-        outside_temp = self.coordinator.data.get("outside_temperature")
-        
-        # Some special modes work better in manual mode
-        intensive_modes = [1, 2, 5, 8]  # OKAP, KOMINEK, BOOST, GOTOWANIE
-        if mode_value in intensive_modes and current_mode == 0:
-            _LOGGER.info("Special mode %d works best in manual mode", mode_value)
-        
-        # Temperature-dependent modes
-        if mode_value == 12 and outside_temp is not None:  # OTWARTE OKNA
-            if outside_temp < 5:
-                _LOGGER.warning("Open windows mode not recommended below 5°C (current: %.1f°C)", outside_temp)
-                return False
-        
-        return True
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return (
+            self.coordinator.last_update_success and 
+            (self.coordinator.data.get(self._key) is not None or 
+             self.coordinator.data.get(f"{self._key}_old") is not None)
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {
             "register_key": self._key,
-            "available_options": len(self._attr_options),
+            "last_update": getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success),
         }
         
-        # Enhanced context information (HA 2025.7+)
-        current_value = self.coordinator.data.get(self._key)
-        if current_value is not None:
-            attributes["current_value"] = current_value
-            
-        # Add mode-specific context
+        # Add raw value for debugging
+        value = self.coordinator.data.get(self._key)
+        if value is None:
+            value = self.coordinator.data.get(f"{self._key}_old")
+        
+        if value is not None:
+            attributes["raw_value"] = value
+        
+        # Add context-specific attributes
         if self._key == "mode":
-            attributes["description"] = "Controls the main operating mode of the ventilation system"
-            # Add intensity info for current mode
-            if current_value == 0:  # Auto
-                attributes["current_intensity"] = self.coordinator.data.get("supply_percentage")
-            elif current_value == 1:  # Manual
-                attributes["current_intensity"] = self.coordinator.data.get("air_flow_rate_manual")
-            elif current_value == 2:  # Temporary
-                attributes["current_intensity"] = self.coordinator.data.get("air_flow_rate_temporary")
-                temp_remaining = self.coordinator.data.get("temporary_time_remaining")
-                if temp_remaining:
-                    attributes["time_remaining_minutes"] = temp_remaining
-                    
+            # Add current intensity based on mode
+            if value == 1:  # Manual
+                intensity = self.coordinator.data.get("air_flow_rate_manual")
+                if intensity is None:
+                    intensity = self.coordinator.data.get("intensity_1")
+                if intensity is not None:
+                    attributes["current_intensity"] = f"{intensity}%"
+            elif value == 2:  # Temporary
+                intensity = self.coordinator.data.get("air_flow_rate_temporary")
+                if intensity is None:
+                    intensity = self.coordinator.data.get("intensity_2")
+                if intensity is not None:
+                    attributes["current_intensity"] = f"{intensity}%"
+            elif value == 0:  # Auto
+                intensity = self.coordinator.data.get("air_flow_rate_auto")
+                if intensity is None:
+                    intensity = self.coordinator.data.get("intensity_3")
+                if intensity is not None:
+                    attributes["current_intensity"] = f"{intensity}%"
+        
         elif self._key == "special_mode":
-            attributes["description"] = "Activates special functions for specific situations"
-            if current_value and current_value != 0:
-                # Add time remaining for temporary special modes
-                boost_remaining = self.coordinator.data.get("boost_time_remaining")
-                if boost_remaining and current_value == 5:  # BOOST mode
-                    attributes["boost_time_remaining_minutes"] = boost_remaining
-                    
-        elif self._key == "season_mode":
-            attributes["description"] = "Optimizes system performance for seasonal conditions"
-            outside_temp = self.coordinator.data.get("outside_temperature")
-            if outside_temp is not None:
-                attributes["outside_temperature"] = outside_temp
-                if current_value == 0:  # Winter
-                    attributes["recommended"] = outside_temp < 15
-                elif current_value == 1:  # Summer  
-                    attributes["recommended"] = outside_temp > 20
-                    
+            # Add special mode details
+            if value == 1:  # OKAP
+                attributes["description"] = "Kitchen hood mode - increased exhaust"
+            elif value == 2:  # KOMINEK
+                attributes["description"] = "Fireplace mode - increased supply"
+            elif value == 3:  # WIETRZENIE
+                attributes["description"] = "Airing mode - maximum ventilation"
+            elif value == 4:  # PUSTY_DOM
+                attributes["description"] = "Empty house - minimal ventilation"
+        
+        elif self._key == "comfort_mode":
+            # Add temperature setpoints
+            if value == 1:  # Heating
+                temp = self.coordinator.data.get("comfort_temperature_heating")
+                if temp is not None:
+                    attributes["target_temperature"] = f"{temp / 10.0}°C"
+            elif value == 2:  # Cooling
+                temp = self.coordinator.data.get("comfort_temperature_cooling")
+                if temp is not None:
+                    attributes["target_temperature"] = f"{temp / 10.0}°C"
+        
+        elif self._key == "filter_change":
+            # Add filter status
+            days = self.coordinator.data.get("filter_time_remaining")
+            if days is not None:
+                attributes["days_remaining"] = days
+                if days < 30:
+                    attributes["status"] = "replacement_soon"
+                else:
+                    attributes["status"] = "ok"
+        
         elif self._key == "gwc_mode":
-            attributes["description"] = "Controls Ground Heat Exchanger operation"
+            # Add GWC temperature
             gwc_temp = self.coordinator.data.get("gwc_temperature")
             if gwc_temp is not None:
-                attributes["gwc_temperature"] = gwc_temp
-                
-        elif self._key == "bypass_mode":
-            attributes["description"] = "Controls bypass for free heating/cooling"
-            bypass_position = self.coordinator.data.get("bypass_position")
-            if bypass_position is not None:
-                attributes["bypass_position"] = f"{bypass_position}%"
+                attributes["gwc_temperature"] = f"{gwc_temp / 10.0}°C"
         
-        # Add last update timestamp
-        if hasattr(self.coordinator, 'last_update_success_time'):
-            attributes["last_updated"] = getattr(self.coordinator, 'last_update_success_time', self.coordinator.last_update_success).isoformat()
-            
+        elif self._key == "bypass_mode":
+            # Add bypass position
+            bypass_pos = self.coordinator.data.get("bypass_position")
+            if bypass_pos is not None:
+                attributes["bypass_position"] = f"{bypass_pos}%"
+        
         return attributes
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success and 
-            self._key in self.coordinator.data
-        )
