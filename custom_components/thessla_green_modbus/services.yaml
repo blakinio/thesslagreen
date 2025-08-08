@@ -1,195 +1,183 @@
-# Enhanced services for ThesslaGreen Modbus Integration
-# Wszystkie serwisy z kompletnej mapy rejestrów
+# Services for ThesslaGreen Modbus Integration
 # Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
+# Wszystkie modele: thessla green AirPack Home serie 4
 
 set_mode:
-  name: Set Operation Mode
-  description: Ustawia tryb pracy rekuperatora
+  name: Set Operating Mode
+  description: Set the operating mode of the ThesslaGreen AirPack device
   fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
     mode:
       name: Mode
-      description: Tryb pracy
+      description: Operating mode to set
       required: true
       selector:
         select:
           options:
-            - "off"
-            - "manual"
             - "auto"
+            - "manual"
             - "temporary"
-    intensity:
-      name: Intensity
-      description: Intensywność wentylacji (opcjonalne)
-      selector:
-        number:
-          min: 10
-          max: 150
-          step: 5
-          unit_of_measurement: "%"
-
-set_special_mode:
-  name: Set Special Mode
-  description: Ustawia tryb specjalny z intensywnością i czasem trwania
-  fields:
-    special_mode:
-      name: Special Mode
-      description: Tryb specjalny
-      required: true
-      selector:
-        select:
-          options:
-            - "none"
-            - "okap"
-            - "kominek"
-            - "wietrzenie"
-            - "pusty_dom"
-            - "boost"
-            - "night"
-            - "party"
-            - "vacation"
-            - "economy"
-            - "comfort"
-    intensity:
-      name: Intensity
-      description: Intensywność wentylacji (opcjonalne)
-      selector:
-        number:
-          min: 10
-          max: 150
-          step: 5
-          unit_of_measurement: "%"
-    duration:
-      name: Duration
-      description: Czas trwania w minutach (opcjonalne)
-      selector:
-        number:
-          min: 5
-          max: 1440
-          step: 5
-          unit_of_measurement: "min"
 
 set_temperature:
   name: Set Temperature
-  description: Ustawia temperaturę docelową dla wybranego trybu
+  description: Set target temperature for the specified mode
   fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
     temperature:
       name: Temperature
-      description: Temperatura docelowa
+      description: Target temperature in Celsius
       required: true
       selector:
         number:
-          min: 15.0
-          max: 45.0
+          min: 15
+          max: 30
           step: 0.5
           unit_of_measurement: "°C"
     mode:
-      name: Mode
-      description: Tryb temperatury
+      name: Temperature Mode
+      description: Which temperature setting to change
+      required: false
+      default: "comfort"
+      selector:
+        select:
+          options:
+            - "comfort"
+            - "heating"
+            - "cooling"
+            - "manual"
+            - "auto"
+
+set_flow_rate:
+  name: Set Flow Rate
+  description: Set air flow rate percentage
+  fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+    flow_rate:
+      name: Flow Rate
+      description: Air flow rate percentage
+      required: true
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    mode:
+      name: Flow Mode
+      description: Which flow rate setting to change
+      required: false
+      default: "manual"
       selector:
         select:
           options:
             - "manual"
             - "auto"
-            - "temporary"
-            - "comfort"
+            - "boost"
 
-set_fan_speed:
-  name: Set Fan Speed
-  description: Ustawia prędkość wentylatorów i balans przepływów
+activate_special_mode:
+  name: Activate Special Mode
+  description: Activate a special operating mode (OKAP, KOMINEK, PARTY, etc.)
   fields:
-    supply_speed:
-      name: Supply Fan Speed
-      description: Prędkość wentylatora nawiewnego
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+    special_mode:
+      name: Special Mode
+      description: Special mode to activate
+      required: true
+      selector:
+        select:
+          options:
+            - "okap"
+            - "fireplace"
+            - "party"
+            - "boost"
+            - "vacation"
+            - "eco"
+            - "night"
+    duration:
+      name: Duration
+      description: Duration in minutes (for timed modes)
+      required: false
       selector:
         number:
-          min: 0
-          max: 100
-          step: 5
-          unit_of_measurement: "%"
-    exhaust_speed:
-      name: Exhaust Fan Speed
-      description: Prędkość wentylatora wywiewnego
-      selector:
-        number:
-          min: 0
-          max: 100
-          step: 5
-          unit_of_measurement: "%"
-    balance:
-      name: Flow Balance
-      description: Balans przepływów
-      selector:
-        number:
-          min: -20
-          max: 20
+          min: 1
+          max: 480
           step: 1
+          unit_of_measurement: "min"
+    intensity:
+      name: Intensity
+      description: Intensity percentage (for modes that support it)
+      required: false
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 5
           unit_of_measurement: "%"
 
-control_bypass:
-  name: Control Bypass
-  description: Steruje trybem pracy bypass
+deactivate_special_mode:
+  name: Deactivate Special Mode
+  description: Deactivate all special modes and return to normal operation
   fields:
-    mode:
-      name: Bypass Mode
-      description: Tryb pracy bypass
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
       required: true
       selector:
-        select:
-          options:
-            - "auto"
-            - "open"
-            - "closed"
-
-control_gwc:
-  name: Control GWC
-  description: Steruje systemem GWC (Ground Water Cooler)
-  fields:
-    mode:
-      name: GWC Mode
-      description: Tryb pracy GWC
-      required: true
-      selector:
-        select:
-          options:
-            - "auto"
-            - "on"
-            - "off"
-
-reset_alarms:
-  name: Reset Alarms
-  description: Resetuje alarmy i błędy systemu
-  fields:
-    alarm_type:
-      name: Alarm Type
-      description: Typ alarmów do zresetowania
-      selector:
-        select:
-          options:
-            - "all"
-            - "errors"
-            - "warnings"
+        device:
+          integration: thessla_green_modbus
 
 set_schedule:
-  name: Set Schedule
-  description: Ustawia harmonogram pracy dla wybranego dnia i okresu
+  name: Set Weekly Schedule
+  description: Set weekly schedule for a specific day and period
   fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
     day:
-      name: Day
-      description: Dzień tygodnia
+      name: Day of Week
+      description: Day of the week to configure
       required: true
       selector:
         select:
           options:
-            - "mon"
-            - "tue"
-            - "wed"
-            - "thu"
-            - "fri"
-            - "sat"
-            - "sun"
+            - "monday"
+            - "tuesday"
+            - "wednesday"
+            - "thursday"
+            - "friday"
+            - "saturday"
+            - "sunday"
     period:
       name: Period
-      description: Okres czasowy (1-4)
+      description: Time period (1-4) for the day
       required: true
       selector:
         number:
@@ -198,104 +186,223 @@ set_schedule:
           step: 1
     start_time:
       name: Start Time
-      description: Czas rozpoczęcia (HH:MM)
+      description: Start time for this period (HH:MM)
       required: true
       selector:
         time:
     end_time:
       name: End Time
-      description: Czas zakończenia (HH:MM)
+      description: End time for this period (HH:MM)
       required: true
       selector:
         time:
     intensity:
       name: Intensity
-      description: Intensywność wentylacji (opcjonalne)
+      description: Air flow intensity for this period
+      required: true
       selector:
         number:
           min: 10
-          max: 150
+          max: 100
           step: 5
           unit_of_measurement: "%"
     temperature:
       name: Temperature
-      description: Temperatura docelowa (opcjonalne)
+      description: Target temperature for this period
+      required: true
       selector:
         number:
-          min: 15.0
-          max: 45.0
+          min: 15
+          max: 30
           step: 0.5
           unit_of_measurement: "°C"
 
-rescan_device:
-  name: Rescan Device
-  description: Ponownie skanuje urządzenie w celu wykrycia dostępnych rejestrów
-  fields: {}
-
-get_diagnostic_info:
-  name: Get Diagnostic Info
-  description: Pobiera informacje diagnostyczne o urządzeniu i integracji
-  fields: {}
-
-backup_settings:
-  name: Backup Settings
-  description: Tworzy kopię zapasową ustawień urządzenia
+reset_settings:
+  name: Reset Settings
+  description: Reset device settings to factory defaults
   fields:
-    include_schedule:
-      name: Include Schedule
-      description: Dołącz harmonogram do kopii zapasowej
-      selector:
-        boolean:
-    include_alarms:
-      name: Include Alarms
-      description: Dołącz ustawienia alarmów do kopii zapasowej
-      selector:
-        boolean:
-
-restore_settings:
-  name: Restore Settings
-  description: Przywraca ustawienia urządzenia z kopii zapasowej
-  fields:
-    backup_data:
-      name: Backup Data
-      description: Dane kopii zapasowej (format JSON)
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
       required: true
       selector:
-        object:
-    restore_schedule:
-      name: Restore Schedule
-      description: Przywróć harmonogram z kopii zapasowej
+        device:
+          integration: thessla_green_modbus
+    reset_type:
+      name: Reset Type
+      description: Type of reset to perform
+      required: true
       selector:
-        boolean:
+        select:
+          options:
+            - "user_settings"
+            - "schedule"
+            - "all"
 
-calibrate_sensors:
-  name: Calibrate Sensors
-  description: Kalibruje czujniki temperatury z offsetami
+set_gwc_mode:
+  name: Set GWC Mode
+  description: Set Ground Water Cooler (GWC) operating mode
   fields:
-    outside_offset:
-      name: Outside Temperature Offset
-      description: Offset dla czujnika temperatury zewnętrznej
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+    mode:
+      name: GWC Mode
+      description: GWC operating mode
+      required: true
+      selector:
+        select:
+          options:
+            - "off"
+            - "auto"
+            - "manual"
+    switch_temperature:
+      name: Switch Temperature
+      description: Temperature threshold for automatic GWC switching
+      required: false
       selector:
         number:
-          min: -10.0
-          max: 10.0
-          step: 0.1
+          min: -10
+          max: 30
+          step: 0.5
           unit_of_measurement: "°C"
-    supply_offset:
-      name: Supply Temperature Offset
-      description: Offset dla czujnika temperatury nawiewu
+
+set_bypass_mode:
+  name: Set Bypass Mode
+  description: Set heat recovery bypass operating mode
+  fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+    mode:
+      name: Bypass Mode
+      description: Bypass operating mode
+      required: true
+      selector:
+        select:
+          options:
+            - "off"
+            - "auto"
+            - "manual"
+
+set_filter_type:
+  name: Set Filter Type
+  description: Set the type of filters installed in the device
+  fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+    filter_type:
+      name: Filter Type
+      description: Type of filters installed
+      required: true
+      selector:
+        select:
+          options:
+            - "presostat"
+            - "flat_filters"
+            - "cleanpad"
+            - "cleanpad_pure"
+
+read_diagnostics:
+  name: Read Diagnostics
+  description: Read diagnostic information from the device
+  fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to read diagnostics from
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+
+refresh_data:
+  name: Refresh Data
+  description: Force immediate refresh of all device data
+  fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to refresh
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+
+write_register:
+  name: Write Register
+  description: Write a value directly to a Modbus register (advanced users only)
+  fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to control
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+    register_address:
+      name: Register Address
+      description: Modbus register address (decimal or hex with 0x prefix)
+      required: true
+      selector:
+        text:
+    value:
+      name: Value
+      description: Value to write to the register
+      required: true
       selector:
         number:
-          min: -10.0
-          max: 10.0
-          step: 0.1
-          unit_of_measurement: "°C"
-    exhaust_offset:
-      name: Exhaust Temperature Offset
-      description: Offset dla czujnika temperatury wywiewu
+          min: 0
+          max: 65535
+          step: 1
+    register_type:
+      name: Register Type
+      description: Type of register to write
+      required: false
+      default: "holding"
       selector:
-        number:
-          min: -10.0
-          max: 10.0
-          step: 0.1
-          unit_of_measurement: "°C"
+        select:
+          options:
+            - "holding"
+            - "coil"
+
+read_register:
+  name: Read Register
+  description: Read a value directly from a Modbus register (advanced users only)
+  fields:
+    device_id:
+      name: Device
+      description: The ThesslaGreen device to read from
+      required: true
+      selector:
+        device:
+          integration: thessla_green_modbus
+    register_address:
+      name: Register Address
+      description: Modbus register address (decimal or hex with 0x prefix)
+      required: true
+      selector:
+        text:
+    register_type:
+      name: Register Type
+      description: Type of register to read
+      required: false
+      default: "input"
+      selector:
+        select:
+          options:
+            - "input"
+            - "holding"
+            - "coil"
+            - "discrete"

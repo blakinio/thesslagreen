@@ -1,25 +1,15 @@
 {
   "domain": "thessla_green_modbus",
   "name": "ThesslaGreen Modbus",
-  "version": "2.1.0",
-  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha",
-  "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
-  "dependencies": [],
   "codeowners": ["@thesslagreen"],
   "config_flow": true,
-  "dhcp": [],
-  "homekit": {},
+  "dependencies": [],
+  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha",
+  "homeassistant": "2025.7.0",
   "iot_class": "local_polling",
-  "quality_scale": "gold",
-  "requirements": [
-    "pymodbus>=3.5.0,<4.0.0"
-  ],
-  "integration_type": "device",
-  "loggers": [
-    "custom_components.thessla_green_modbus",
-    "pymodbus"
-  ],
-  "after_dependencies": ["modbus"],
-  "zeroconf": [],
-  "homeassistant": "2025.7.0"
+  "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
+  "loggers": ["custom_components.thessla_green_modbus"],
+  "requirements": ["pymodbus>=3.5.0,<4.0.0"],
+  "version": "2.1.0",
+  "integration_type": "device"
 }
