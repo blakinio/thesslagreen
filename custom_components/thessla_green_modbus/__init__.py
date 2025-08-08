@@ -33,6 +33,7 @@ from .const import (
 )
 from .coordinator import ThesslaGreenCoordinator
 from .device_scanner import ThesslaGreenDeviceScanner
+from . import config_flow  # noqa: F401
 
 _LOGGER = logging.getLogger(__name__)
 
