@@ -197,8 +197,23 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         if "device_class" in self.entity_config:
             device_class_str = self.entity_config["device_class"]
             try:
-                # Try to get device class from SensorDeviceClass enum
-                self._attr_device_class = getattr(SensorDeviceClass, device_class_str.upper())
+                # Map device classes for HA 2025.* compatibility
+                device_class_mapping = {
+                    "carbon_dioxide": "co2",  # HA 2025.* uses 'co2' instead of 'carbon_dioxide'
+                    "temperature": "temperature",
+                    "humidity": "humidity", 
+                    "pressure": "pressure",
+                    "power": "power",
+                    "energy": "energy",
+                }
+                
+                mapped_class = device_class_mapping.get(device_class_str, device_class_str)
+                self._attr_device_class = getattr(SensorDeviceClass, mapped_class.upper(), None)
+                
+                # Fallback to string if enum doesn't exist
+                if self._attr_device_class is None:
+                    self._attr_device_class = device_class_str
+                    
             except AttributeError:
                 # Fallback to string for custom device classes
                 self._attr_device_class = device_class_str
@@ -207,15 +222,14 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         if "icon" in self.entity_config:
             self._attr_icon = self.entity_config["icon"]
         
-        # State class for statistics
+        # State class for statistics - HA 2025.* compatibility
         if self._attr_device_class in [
             SensorDeviceClass.TEMPERATURE,
             SensorDeviceClass.HUMIDITY,
             SensorDeviceClass.PRESSURE,
             SensorDeviceClass.POWER,
             SensorDeviceClass.ENERGY,
-            SensorDeviceClass.CARBON_DIOXIDE,
-        ]:
+        ] or (isinstance(self._attr_device_class, str) and self._attr_device_class in ["co2", "temperature", "humidity", "pressure", "power", "energy"]):
             self._attr_state_class = "measurement"
         elif "energy" in self.register_name or "consumption" in self.register_name:
             self._attr_state_class = "total_increasing"
@@ -267,8 +281,9 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
             if isinstance(raw_value, (int, float)):
                 return max(0, min(100, raw_value))  # Clamp to 0-100%
         
-        # Handle temperature values
-        if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+        # Handle temperature values with HA 2025.* compatibility
+        if (self._attr_device_class == SensorDeviceClass.TEMPERATURE or 
+            (isinstance(self._attr_device_class, str) and self._attr_device_class == "temperature")):
             if isinstance(raw_value, (int, float)):
                 # Check for invalid temperature readings
                 if raw_value < -50 or raw_value > 100:
@@ -280,13 +295,15 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
             if isinstance(raw_value, (int, float)):
                 return max(0, raw_value)  # Flow cannot be negative
         
-        # Handle pressure values
-        if self._attr_device_class == SensorDeviceClass.PRESSURE:
+        # Handle pressure values with HA 2025.* compatibility
+        if (self._attr_device_class == SensorDeviceClass.PRESSURE or 
+            (isinstance(self._attr_device_class, str) and self._attr_device_class == "pressure")):
             if isinstance(raw_value, (int, float)):
                 return round(raw_value, 1)
         
-        # Handle power and energy
-        if self._attr_device_class in [SensorDeviceClass.POWER, SensorDeviceClass.ENERGY]:
+        # Handle power and energy with HA 2025.* compatibility
+        if (self._attr_device_class in [SensorDeviceClass.POWER, SensorDeviceClass.ENERGY] or
+            (isinstance(self._attr_device_class, str) and self._attr_device_class in ["power", "energy"])):
             if isinstance(raw_value, (int, float)):
                 return max(0, raw_value)  # Power/energy cannot be negative
         

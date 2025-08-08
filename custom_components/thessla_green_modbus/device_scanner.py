@@ -534,9 +534,9 @@ class ThesslaGreenDeviceScanner:
                 
                 # Try some very common registers that should exist
                 test_registers = {
-                    "input": ["firmware_major", "firmware_minor", "outside_temperature", "supply_temperature"],
-                    "holding": ["mode", "comfort_temperature", "on_off_panel_mode"],
-                    "coil": ["power_supply_fans", "bypass"],
+                    "input": ["firmware_major", "firmware_minor", "outside_temperature", "supply_temperature", "exhaust_temperature", "air_flow_rate"],
+                    "holding": ["mode", "comfort_temperature", "supply_temperature_manual", "supply_temperature_auto", "air_flow_rate_manual", "on_off_panel_mode"],
+                    "coil": ["power_supply_fans", "bypass", "heating_cable"],
                 }
                 
                 additional_found = 0

@@ -137,7 +137,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             self.client = AsyncModbusTcpClient(
                 host=self.host,
                 port=self.port,
-                timeout=self.timeout
+                timeout=max(self.timeout, 10)  # Minimum 10s timeout for operations
             )
             
             # Connect with retries
@@ -309,34 +309,45 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 continue
                 
             try:
-                # Read single register - pymodbus 3.5+ compatible API
+                # Read single register - pymodbus 3.5+ compatible API with timeout
                 if register_type == "input":
-                    response = await self.client.read_input_registers(
-                        address=reg_address, count=1, slave=self.slave_id
+                    response = await asyncio.wait_for(
+                        self.client.read_input_registers(address=reg_address, count=1, slave=self.slave_id),
+                        timeout=self.timeout
                     )
                 elif register_type == "holding":
-                    response = await self.client.read_holding_registers(
-                        address=reg_address, count=1, slave=self.slave_id
+                    response = await asyncio.wait_for(
+                        self.client.read_holding_registers(address=reg_address, count=1, slave=self.slave_id),
+                        timeout=self.timeout
                     )
                 elif register_type == "coil":
-                    response = await self.client.read_coils(
-                        address=reg_address, count=1, slave=self.slave_id
+                    response = await asyncio.wait_for(
+                        self.client.read_coils(address=reg_address, count=1, slave=self.slave_id),
+                        timeout=self.timeout
                     )
                 elif register_type == "discrete":
-                    response = await self.client.read_discrete_inputs(
-                        address=reg_address, count=1, slave=self.slave_id
+                    response = await asyncio.wait_for(
+                        self.client.read_discrete_inputs(address=reg_address, count=1, slave=self.slave_id),
+                        timeout=self.timeout
                     )
 
                 if response and not response.isError():
-                    if hasattr(response, 'registers'):
+                    if hasattr(response, 'registers') and response.registers:
                         raw_value = response.registers[0]
+                    elif hasattr(response, 'bits') and response.bits:
+                        # For coil/discrete inputs, use first bit
+                        raw_value = response.bits[0] if len(response.bits) > 0 else 0
                     else:
-                        raw_value = response.bits[0]
+                        _LOGGER.debug("No valid response data for %s register %s", register_type, reg_name)
+                        continue
                         
                     # Process value according to entity mapping
                     processed_value = self._process_register_value(reg_name, raw_value)
                     data[reg_name] = processed_value
                     
+            except asyncio.TimeoutError:
+                _LOGGER.debug("Timeout reading %s register %s", register_type, reg_name)
+                continue
             except Exception as exc:
                 _LOGGER.debug("Failed to read %s register %s: %s", register_type, reg_name, exc)
                 continue
@@ -418,6 +429,60 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     def has_entities_for_platform(self, platform: str) -> bool:
         """Check if platform has any available entities."""
         if platform not in ENTITY_MAPPINGS:
+            # Special handling for platforms not in ENTITY_MAPPINGS
+            if platform == "climate":
+                # Climate needs mode and temperature control registers
+                climate_registers = ["mode", "supply_temperature_manual", "supply_temperature_auto", "comfort_temperature"]
+                for register_name in climate_registers:
+                    for register_type_regs in self.available_registers.values():
+                        if register_name in register_type_regs:
+                            _LOGGER.debug("Climate platform: found register %s", register_name)
+                            return True
+                
+                # Check force full register list
+                if self.force_full_register_list:
+                    for register_name in climate_registers:
+                        if register_name in HOLDING_REGISTERS:
+                            _LOGGER.debug("Climate platform: force full - found register %s", register_name)
+                            return True
+                            
+                return False
+                
+            elif platform == "fan":
+                # Fan needs flow rate control registers
+                fan_registers = ["air_flow_rate_manual", "air_flow_rate_auto", "supply_percentage", "air_flow_rate"]
+                for register_name in fan_registers:
+                    for register_type_regs in self.available_registers.values():
+                        if register_name in register_type_regs:
+                            _LOGGER.debug("Fan platform: found register %s", register_name)
+                            return True
+                
+                # Check force full register list  
+                if self.force_full_register_list:
+                    for register_name in fan_registers[:2]:  # Only check writable ones
+                        if register_name in HOLDING_REGISTERS:
+                            _LOGGER.debug("Fan platform: force full - found register %s", register_name)
+                            return True
+                            
+                return False
+                
+            elif platform == "switch":
+                # Switch needs some control registers
+                switch_registers = ["on_off_panel_mode", "boost_mode", "eco_mode", "night_mode"]
+                for register_name in switch_registers:
+                    if register_name in self.available_registers.get("holding", {}):
+                        _LOGGER.debug("Switch platform: found register %s", register_name)
+                        return True
+                        
+                # Check force full register list
+                if self.force_full_register_list:
+                    for register_name in switch_registers:
+                        if register_name in HOLDING_REGISTERS:
+                            _LOGGER.debug("Switch platform: force full - found register %s", register_name)
+                            return True
+                            
+                return False
+            
             return False
             
         platform_entities = ENTITY_MAPPINGS[platform]
@@ -426,6 +491,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         for entity_name in platform_entities:
             for register_type_regs in self.available_registers.values():
                 if entity_name in register_type_regs:
+                    _LOGGER.debug("Platform %s: found entity %s", platform, entity_name)
                     return True
                     
         # If force full register list, check against all possible registers
@@ -433,6 +499,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             all_registers = {**INPUT_REGISTERS, **HOLDING_REGISTERS, **COIL_REGISTERS, **DISCRETE_INPUTS}
             for entity_name in platform_entities:
                 if entity_name in all_registers:
+                    _LOGGER.debug("Platform %s: force full - found entity %s", platform, entity_name)
                     return True
                     
         return False

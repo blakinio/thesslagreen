@@ -25,7 +25,7 @@ CONF_TIMEOUT = "timeout"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 
 # Platforms
-PLATFORMS = ["sensor", "binary_sensor", "climate", "fan", "select", "number", "switch"]
+PLATFORMS = ["sensor", "binary_sensor", "climate", "fan", "select", "number", "switch", "diagnostics"]
 
 # ============================================================================
 # COMPLETE REGISTER MAPPING - Wszystkie rejestry z MODBUS_USER_AirPack_Home_08.2021.01 PDF bez wyjątku
@@ -316,7 +316,7 @@ ENTITY_MAPPINGS = {
         "heat_recovery_efficiency": {"unit": "%", "icon": "mdi:percent"},
         
         # Air quality
-        "co2_concentration": {"unit": "ppm", "device_class": "carbon_dioxide", "icon": "mdi:molecule-co2"},
+        "co2_concentration": {"unit": "ppm", "device_class": "co2", "icon": "mdi:molecule-co2"},  # HA 2025.* uses 'co2'
         "voc_level": {"unit": "ppb", "icon": "mdi:air-filter"},
         "humidity_level": {"unit": "%", "device_class": "humidity", "icon": "mdi:water-percent"},
         
