@@ -1,7 +1,8 @@
-"""ThesslaGreen Modbus Integration for Home Assistant.
+"""POPRAWIONY ThesslaGreen Modbus Integration for Home Assistant.
 Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
 Wszystkie modele: thessla green AirPack Home serie 4
 Integracja zawiera wszystkie rejestry z pliku MODBUS_USER_AirPack_Home_08.2021.01 bez wyjątku
+FIX: Poprawiony import coordinator, dodane diagnostics platform
 """
 from __future__ import annotations
 
@@ -11,11 +12,10 @@ from datetime import timedelta
 from typing import Any, Dict, Optional
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, CONF_SCAN_INTERVAL, Platform
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     DOMAIN,
@@ -23,6 +23,7 @@ from .const import (
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     CONF_RETRY,
+    CONF_SCAN_INTERVAL,
     CONF_FORCE_FULL_REGISTER_LIST,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
@@ -30,11 +31,12 @@ from .const import (
     MANUFACTURER,
     MODEL,
 )
-from .coordinator import ThesslaGreenModbusCoordinator
+from .coordinator import ThesslaGreenModbusCoordinator  # POPRAWKA: Poprawiony import
+from .services import async_setup_services, async_unload_services  # POPRAWKA: Import serwisów
 
 _LOGGER = logging.getLogger(__name__)
 
-# Define platforms this integration supports
+# Define platforms this integration supports - POPRAWKA: Dodane diagnostics
 PLATFORMS_TO_SETUP = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
@@ -43,6 +45,7 @@ PLATFORMS_TO_SETUP = [
     Platform.SELECT,
     Platform.NUMBER,
     Platform.SWITCH,
+    Platform.DIAGNOSTICS,  # POPRAWKA: Dodane diagnostics platform
 ]
 
 
@@ -78,130 +81,95 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         timeout=timeout,
         retry=retry,
         force_full_register_list=force_full_register_list,
-        entry_data=entry.data,
+        entry=entry,
     )
     
-    # Test initial connection and get device info
+    # Setup coordinator (this includes device scanning)
+    try:
+        await coordinator.async_setup()
+    except Exception as exc:
+        _LOGGER.error("Failed to setup coordinator: %s", exc)
+        raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
+    
+    # Perform first data update
     try:
         await coordinator.async_config_entry_first_refresh()
-    except ConfigEntryAuthFailed as err:
-        _LOGGER.error("Authentication failed for %s: %s", name, err)
-        raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
-    except UpdateFailed as err:
-        _LOGGER.error("Failed to connect to %s: %s", name, err)
-        raise ConfigEntryNotReady(f"Failed to connect: {err}") from err
-    except Exception as err:
-        _LOGGER.error("Unexpected error setting up %s: %s", name, err, exc_info=True)
-        raise ConfigEntryNotReady(f"Unexpected error: {err}") from err
+    except Exception as exc:
+        _LOGGER.error("Failed to perform initial data refresh: %s", exc)
+        raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
     
     # Store coordinator in hass data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
-    # Setup device registry entry
-    device_info = coordinator.get_device_info()
-    _LOGGER.info(
-        "Device setup complete: %s (firmware: %s, registers: %d, capabilities: %s)",
-        device_info.name,
-        device_info.sw_version or "Unknown",
-        coordinator.get_register_count(),
-        ", ".join(coordinator.get_capabilities_summary())
-    )
+    # Setup platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS_TO_SETUP)
     
-    # Forward setup to platforms - only setup platforms that have available entities
-    platforms_to_setup = []
-    for platform in PLATFORMS_TO_SETUP:
-        if coordinator.has_entities_for_platform(platform.value):
-            platforms_to_setup.append(platform)
-            _LOGGER.debug("Platform %s has available entities - will be setup", platform.value)
-        else:
-            _LOGGER.debug("Platform %s has no available entities - skipping", platform.value)
+    # Setup services (only once for first entry)
+    if len(hass.data[DOMAIN]) == 1:
+        await async_setup_services(hass)
     
-    if platforms_to_setup:
-        await hass.config_entries.async_forward_entry_setups(entry, platforms_to_setup)
-        _LOGGER.info("Setup complete for %d platforms: %s", len(platforms_to_setup), [p.value for p in platforms_to_setup])
-    else:
-        _LOGGER.warning("No platforms have available entities - check device connectivity")
-    
-    # Setup options update listener
+    # Setup entry update listener
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     
+    _LOGGER.info("ThesslaGreen Modbus integration setup completed successfully")
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.debug("Unloading ThesslaGreen Modbus integration for %s", entry.title)
-    
-    # Get coordinator
-    coordinator = hass.data[DOMAIN].get(entry.entry_id)
-    if not coordinator:
-        _LOGGER.warning("No coordinator found for entry %s during unload", entry.entry_id)
-        return True
-    
-    # Determine which platforms are actually setup
-    platforms_to_unload = []
-    for platform in PLATFORMS_TO_SETUP:
-        if coordinator.has_entities_for_platform(platform.value):
-            platforms_to_unload.append(platform)
+    _LOGGER.debug("Unloading ThesslaGreen Modbus integration")
     
     # Unload platforms
-    if platforms_to_unload:
-        unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms_to_unload)
-        if not unload_ok:
-            _LOGGER.warning("Failed to unload some platforms for %s", entry.title)
-            return False
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS_TO_SETUP)
     
-    # Cleanup coordinator
-    try:
-        if hasattr(coordinator, 'async_shutdown'):
-            await coordinator.async_shutdown()
-    except Exception as err:
-        _LOGGER.warning("Error during coordinator shutdown: %s", err)
+    if unload_ok:
+        # Shutdown coordinator
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.async_shutdown()
+        
+        # Remove from hass data
+        hass.data[DOMAIN].pop(entry.entry_id)
+        
+        # Clean up domain data if no more entries
+        if not hass.data[DOMAIN]:
+            hass.data.pop(DOMAIN)
+            # Unload services when last entry is removed
+            await async_unload_services(hass)
     
-    # Remove from hass data
-    hass.data[DOMAIN].pop(entry.entry_id, None)
-    
-    _LOGGER.info("Successfully unloaded ThesslaGreen Modbus integration for %s", entry.title)
-    return True
+    _LOGGER.info("ThesslaGreen Modbus integration unloaded successfully")
+    return unload_ok
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update options."""
-    _LOGGER.debug("Updating options for %s", entry.title)
+    _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate old entry."""
+    _LOGGER.debug("Migrating ThesslaGreen Modbus from version %s", config_entry.version)
     
-    # Get coordinator
-    coordinator = hass.data[DOMAIN].get(entry.entry_id)
-    if not coordinator:
-        _LOGGER.warning("No coordinator found for entry %s during options update", entry.entry_id)
-        return
-    
-    # Update coordinator settings
-    scan_interval_value = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-    timeout_value = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-    retry_value = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
-    force_full_register_list_value = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-    
-    # Update coordinator configuration if method exists
-    if hasattr(coordinator, 'async_update_options'):
-        await coordinator.async_update_options(
-            scan_interval=timedelta(seconds=scan_interval_value),
-            timeout=timeout_value,
-            retry=retry_value,
-            force_full_register_list=force_full_register_list_value,
+    if config_entry.version == 1:
+        # Migration from version 1 to 2
+        new_data = {**config_entry.data}
+        new_options = {**config_entry.options}
+        
+        # Add new fields with defaults if missing
+        if CONF_SCAN_INTERVAL not in new_options:
+            new_options[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
+        if CONF_TIMEOUT not in new_options:
+            new_options[CONF_TIMEOUT] = DEFAULT_TIMEOUT
+        if CONF_RETRY not in new_options:
+            new_options[CONF_RETRY] = DEFAULT_RETRY
+        if CONF_FORCE_FULL_REGISTER_LIST not in new_options:
+            new_options[CONF_FORCE_FULL_REGISTER_LIST] = False
+        
+        config_entry.version = 2
+        hass.config_entries.async_update_entry(
+            config_entry, data=new_data, options=new_options
         )
-    else:
-        _LOGGER.debug("Coordinator does not support async_update_options - will take effect on restart")
     
-    _LOGGER.info(
-        "Updated options for %s: scan_interval=%ds, timeout=%ds, retry=%d, force_full=%s",
-        entry.title, scan_interval_value, timeout_value, retry_value, force_full_register_list_value
-    )
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    _LOGGER.debug("Reloading ThesslaGreen Modbus integration for %s", entry.title)
-    
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    _LOGGER.info("Migration to version %s successful", config_entry.version)
+    return True

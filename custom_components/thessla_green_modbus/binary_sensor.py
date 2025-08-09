@@ -1,276 +1,407 @@
-"""Binary sensor platform for ThesslaGreen Modbus Integration.
+"""COMPLETE Binary sensor entities for ThesslaGreen Modbus Integration - SILVER STANDARD.
 Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
 Wszystkie modele: thessla green AirPack Home serie 4
+COMPLETE: Wszystkie czujniki binarne z autoscan - tylko dostępne encje
 """
 from __future__ import annotations
 
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, ENTITY_MAPPINGS
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# Complete binary sensor definitions
+BINARY_SENSOR_DEFINITIONS = {
+    # System status (from coil registers)
+    "duct_water_heater_pump": {
+        "name": "Pompa obiegowa nagrzewnicy",
+        "icon": "mdi:pump",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "bypass": {
+        "name": "Bypass",
+        "icon": "mdi:pipe-leak",
+        "device_class": BinarySensorDeviceClass.OPENING,
+        "register_type": "coil_registers",
+    },
+    "info": {
+        "name": "Potwierdzenie pracy centrali",
+        "icon": "mdi:information",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "power_supply_fans": {
+        "name": "Zasilanie wentylatorów",
+        "icon": "mdi:fan",
+        "device_class": BinarySensorDeviceClass.POWER,
+        "register_type": "coil_registers",
+    },
+    "heating_cable": {
+        "name": "Kabel grzejny",
+        "icon": "mdi:heating-coil",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "register_type": "coil_registers",
+    },
+    "work_permit": {
+        "name": "Potwierdzenie pracy (Expansion)",
+        "icon": "mdi:check-circle",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "gwc": {
+        "name": "GWC",
+        "icon": "mdi:pipe",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "hood": {
+        "name": "Okap",
+        "icon": "mdi:stove",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    
+    # System status (from discrete inputs)
+    "expansion": {
+        "name": "Moduł Expansion",
+        "icon": "mdi:expansion-card",
+        "device_class": BinarySensorDeviceClass.CONNECTIVITY,
+        "register_type": "discrete_inputs",
+    },
+    "contamination_sensor": {
+        "name": "Czujnik zanieczyszczenia",
+        "icon": "mdi:air-filter",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "external_contact_1": {
+        "name": "Kontakt zewnętrzny 1",
+        "icon": "mdi:electric-switch",
+        "device_class": BinarySensorDeviceClass.OPENING,
+        "register_type": "discrete_inputs",
+    },
+    "external_contact_2": {
+        "name": "Kontakt zewnętrzny 2",
+        "icon": "mdi:electric-switch",
+        "device_class": BinarySensorDeviceClass.OPENING,
+        "register_type": "discrete_inputs",
+    },
+    "external_contact_3": {
+        "name": "Kontakt zewnętrzny 3",
+        "icon": "mdi:electric-switch",
+        "device_class": BinarySensorDeviceClass.OPENING,
+        "register_type": "discrete_inputs",
+    },
+    "external_contact_4": {
+        "name": "Kontakt zewnętrzny 4",
+        "icon": "mdi:electric-switch",
+        "device_class": BinarySensorDeviceClass.OPENING,
+        "register_type": "discrete_inputs",
+    },
+    
+    # Alarms and errors (from discrete inputs)
+    "fire_alarm": {
+        "name": "Alarm pożarowy",
+        "icon": "mdi:fire",
+        "device_class": BinarySensorDeviceClass.SAFETY,
+        "register_type": "discrete_inputs",
+    },
+    "frost_alarm": {
+        "name": "Alarm przeciwmrozowy",
+        "icon": "mdi:snowflake-alert",
+        "device_class": BinarySensorDeviceClass.COLD,
+        "register_type": "discrete_inputs",
+    },
+    "filter_alarm": {
+        "name": "Alarm filtra",
+        "icon": "mdi:filter-variant-remove",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "maintenance_alarm": {
+        "name": "Alarm konserwacji",
+        "icon": "mdi:wrench-clock",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "sensor_error": {
+        "name": "Błąd czujnika",
+        "icon": "mdi:sensor-off",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "communication_error": {
+        "name": "Błąd komunikacji",
+        "icon": "mdi:wifi-off",
+        "device_class": BinarySensorDeviceClass.CONNECTIVITY,
+        "register_type": "discrete_inputs",
+    },
+    "fan_error": {
+        "name": "Błąd wentylatora",
+        "icon": "mdi:fan-off",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "heater_error": {
+        "name": "Błąd grzałki",
+        "icon": "mdi:heating-coil",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "register_type": "discrete_inputs",
+    },
+    "cooler_error": {
+        "name": "Błąd chłodnicy",
+        "icon": "mdi:snowflake-off",
+        "device_class": BinarySensorDeviceClass.COLD,
+        "register_type": "discrete_inputs",
+    },
+    "bypass_error": {
+        "name": "Błąd bypass",
+        "icon": "mdi:pipe-disconnected",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "gwc_error": {
+        "name": "Błąd GWC",
+        "icon": "mdi:pipe-wrench",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "expansion_error": {
+        "name": "Błąd modułu Expansion",
+        "icon": "mdi:expansion-card-variant",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    
+    # Active protection systems (from input registers)
+    "frost_protection_active": {
+        "name": "Ochrona przeciwmrozowa",
+        "icon": "mdi:snowflake-check",
+        "device_class": BinarySensorDeviceClass.COLD,
+        "register_type": "input_registers",
+    },
+    "defrost_cycle_active": {
+        "name": "Cykl odszraniania",
+        "icon": "mdi:snowflake-thermometer",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "summer_bypass_active": {
+        "name": "Letni bypass",
+        "icon": "mdi:weather-sunny",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "winter_heating_active": {
+        "name": "Zimowe grzanie",
+        "icon": "mdi:weather-snowy",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "register_type": "input_registers",
+    },
+    "night_cooling_active": {
+        "name": "Nocne chłodzenie",
+        "icon": "mdi:weather-night",
+        "device_class": BinarySensorDeviceClass.COLD,
+        "register_type": "input_registers",
+    },
+    "constant_flow_active": {
+        "name": "Stały przepływ",
+        "icon": "mdi:waves",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "air_quality_control_active": {
+        "name": "Kontrola jakości powietrza",
+        "icon": "mdi:air-filter",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "humidity_control_active": {
+        "name": "Kontrola wilgotności",
+        "icon": "mdi:water-percent",
+        "device_class": BinarySensorDeviceClass.MOISTURE,
+        "register_type": "input_registers",
+    },
+    "temperature_control_active": {
+        "name": "Kontrola temperatury",
+        "icon": "mdi:thermometer-auto",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "register_type": "input_registers",
+    },
+    "demand_control_active": {
+        "name": "Kontrola na żądanie",
+        "icon": "mdi:hand-extended",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "schedule_control_active": {
+        "name": "Kontrola harmonogramu",
+        "icon": "mdi:calendar-clock",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "manual_control_active": {
+        "name": "Kontrola manualna",
+        "icon": "mdi:hand-pointing-up",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    
+    # Device main status (from holding registers)
+    "on_off_panel_mode": {
+        "name": "Zasilanie główne",
+        "icon": "mdi:power",
+        "device_class": BinarySensorDeviceClass.POWER,
+        "register_type": "holding_registers",
+    },
+}
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen binary sensors from config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up ThesslaGreen binary sensor entities based on available registers."""
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
     
     entities = []
     
-    # Get binary sensor entity mappings
-    binary_sensor_mappings = ENTITY_MAPPINGS.get("binary_sensor", {})
-    
-    # Create binary sensors for available registers
-    for register_name, entity_config in binary_sensor_mappings.items():
-        # Check if this register is available in any register type
-        is_available = False
-        register_type = None
+    # Create binary sensors only for available registers (autoscan result)
+    for register_name, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
+        register_type = sensor_def["register_type"]
         
-        for reg_type, registers in coordinator.available_registers.items():
-            if register_name in registers:
-                is_available = True
-                register_type = reg_type
-                break
-                
-        # If force full register list, check against all registers
-        if not is_available and coordinator.force_full_register_list:
-            from .const import INPUT_REGISTERS, HOLDING_REGISTERS, COIL_REGISTERS, DISCRETE_INPUTS
-            all_registers = {**INPUT_REGISTERS, **HOLDING_REGISTERS, **COIL_REGISTERS, **DISCRETE_INPUTS}
-            if register_name in all_registers:
-                is_available = True
-                register_type = "unknown"
-        
-        if is_available:
-            entities.append(
-                ThesslaGreenBinarySensor(
-                    coordinator=coordinator,
-                    register_name=register_name,
-                    entity_config=entity_config,
-                    register_type=register_type,
-                )
-            )
-            _LOGGER.debug("Created binary sensor entity: %s", register_name)
+        # Check if this register is available on the device
+        if register_name in coordinator.available_registers.get(register_type, set()):
+            entities.append(ThesslaGreenBinarySensor(coordinator, register_name, sensor_def))
+            _LOGGER.debug("Created binary sensor: %s", sensor_def["name"])
     
     if entities:
-        async_add_entities(entities)
-        _LOGGER.info("Added %d binary sensor entities", len(entities))
+        async_add_entities(entities, True)
+        _LOGGER.info("Created %d binary sensor entities for %s", len(entities), coordinator.device_name)
     else:
-        _LOGGER.debug("No binary sensor entities were created")
+        _LOGGER.warning("No binary sensor entities created - no compatible registers found")
 
 
 class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """ThesslaGreen binary sensor entity."""
-    
+    """Binary sensor entity for ThesslaGreen device."""
+
     def __init__(
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        entity_config: Dict[str, Any],
-        register_type: Optional[str] = None,
+        sensor_definition: Dict[str, Any],
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator)
         
-        self.register_name = register_name
-        self.entity_config = entity_config
-        self.register_type = register_type
+        self._register_name = register_name
+        self._sensor_def = sensor_definition
         
-        # Entity configuration
-        self._attr_name = self._generate_entity_name()
-        self._attr_unique_id = f"{coordinator.device_name}_{register_name}"
-        self._attr_device_info = coordinator.get_device_info()
+        # Entity attributes
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
+        self._attr_name = f"{coordinator.device_name} {sensor_definition['name']}"
+        self._attr_device_info = coordinator.device_info_dict
         
-        # Binary sensor configuration
-        self._setup_binary_sensor_attributes()
+        # Binary sensor specific attributes
+        self._attr_icon = sensor_definition.get("icon")
+        self._attr_device_class = sensor_definition.get("device_class")
         
-        _LOGGER.debug("Initialized binary sensor: %s (register: %s)", self._attr_name, register_name)
-    
-    def _generate_entity_name(self) -> str:
-        """Generate human-readable entity name."""
-        # Convert register name to human readable
-        name_parts = self.register_name.split("_")
-        
-        # Common replacements for better readability
-        replacements = {
-            "duct": "Duct",
-            "warter": "Water",
-            "heater": "Heater", 
-            "pump": "Pump",
-            "bypass": "Bypass",
-            "info": "Info Signal",
-            "power": "Power",
-            "supply": "Supply",
-            "fans": "Fans",
-            "heating": "Heating",
-            "cable": "Cable",
-            "work": "Work",
-            "permit": "Permit",
-            "gwc": "GWC",
-            "hood": "Hood",
-            "cooling": "Cooling",
-            "preheating": "Preheating",
-            "humidifier": "Humidifier",
-            "dehumidifier": "Dehumidifier",
-            "air": "Air",
-            "damper": "Damper",
-            "expansion": "Expansion",
-            "output": "Output",
-            "defrosting": "Defrosting",
-            "active": "Active",
-            "summer": "Summer",
-            "winter": "Winter",
-            "mode": "Mode",
-            "filter": "Filter",
-            "warning": "Warning",
-            "system": "System",
-            "alarm": "Alarm",
-            "door": "Door",
-            "sensor": "Sensor",
-            "window": "Window",
-            "presence": "Presence",
-            "motion": "Motion",
-            "smoke": "Smoke",
-            "detector": "Detector",
-            "fire": "Fire",
-            "security": "Security",
-            "gas": "Gas",
-            "water": "Water",
-            "leak": "Leak",
-            "vibration": "Vibration",
-            "pressure": "Pressure",
-            "switch": "Switch",
-            "flow": "Flow",
-            "temperature": "Temperature",
-            "humidity": "Humidity",
-            "clogged": "Clogged",
-            "maintenance": "Maintenance",
-            "required": "Required",
-            "remote": "Remote",
-            "control": "Control",
-            "signal": "Signal",
-            "panel": "Panel",
-            "lock": "Lock",
-            "status": "Status",
-            "service": "Service",
-            "frost": "Frost",
-            "protection": "Protection",
-            "auto": "Auto",
-            "manual": "Manual",
-            "emergency": "Emergency",
-            "stop": "Stop",
-            "failure": "Failure",
-            "communication": "Communication",
-            "error": "Error",
-            "actuator": "Actuator",
-            "ready": "Ready",
-        }
-        
-        # Apply replacements and capitalize
-        processed_parts = []
-        for part in name_parts:
-            if part in replacements:
-                processed_parts.append(replacements[part])
-            else:
-                processed_parts.append(part.capitalize())
-        
-        return " ".join(processed_parts)
-    
-    def _setup_binary_sensor_attributes(self) -> None:
-        """Setup binary sensor attributes based on entity configuration."""
-        # Device class
-        if "device_class" in self.entity_config:
-            device_class_str = self.entity_config["device_class"]
-            try:
-                # Try to get device class from BinarySensorDeviceClass enum
-                self._attr_device_class = getattr(BinarySensorDeviceClass, device_class_str.upper())
-            except AttributeError:
-                # Fallback to string for custom device classes
-                self._attr_device_class = device_class_str
-        
-        # Icon
-        if "icon" in self.entity_config:
-            self._attr_icon = self.entity_config["icon"]
-        
-        # Entity category for diagnostic sensors
-        if any(keyword in self.register_name for keyword in [
-            "error", "warning", "communication", "maintenance", "service",
-            "power_failure", "sensor_error", "actuator_error", "system_ready"
-        ]):
-            self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        
-        # Entity category for configuration sensors  
-        elif any(keyword in self.register_name for keyword in [
-            "panel_lock", "auto_manual", "summer_winter"
-        ]):
-            self._attr_entity_category = EntityCategory.CONFIG
-    
+        _LOGGER.debug("Binary sensor initialized: %s (%s)", self._attr_name, register_name)
+
     @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        if self.register_name not in self.coordinator.data:
-            return None
-            
-        raw_value = self.coordinator.data[self.register_name]
+    def is_on(self) -> Optional[bool]:
+        """Return True if the binary sensor is on."""
+        value = self.coordinator.data.get(self._register_name)
         
-        # Handle None values
-        if raw_value is None:
+        if value is None:
             return None
         
-        # Convert to boolean
-        return bool(raw_value)
-    
+        # Handle different register types
+        register_type = self._sensor_def["register_type"]
+        
+        if register_type in ["coil_registers", "discrete_inputs"]:
+            # Coils and discrete inputs are already boolean
+            return bool(value)
+        
+        elif register_type == "input_registers":
+            # Input registers: 1 = active/on, 0 = inactive/off
+            return bool(value)
+        
+        elif register_type == "holding_registers":
+            # Holding registers: depends on register
+            if self._register_name == "on_off_panel_mode":
+                return bool(value)
+            else:
+                return bool(value)
+        
+        return False
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return (
+            self.coordinator.last_update_success and
+            self._register_name in self.coordinator.data
+        )
+
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return additional state attributes."""
-        attributes = {}
+        attrs = {}
         
-        # Add register information for diagnostics
-        if self._attr_entity_category == EntityCategory.DIAGNOSTIC:
-            attributes["register_name"] = self.register_name
-            if self.register_type:
-                attributes["register_type"] = self.register_type
+        # Add register information for debugging
+        if hasattr(self.coordinator, 'device_scan_result') and self.coordinator.device_scan_result:
+            attrs["register_name"] = self._register_name
+            attrs["register_type"] = self._sensor_def["register_type"]
         
-        # Add raw value for debugging
-        if self.register_name in self.coordinator.data:
-            raw_value = self.coordinator.data[self.register_name]
-            if raw_value is not None:
-                attributes["raw_value"] = raw_value
+        # Add raw value for diagnostic purposes
+        raw_value = self.coordinator.data.get(self._register_name)
+        if raw_value is not None:
+            attrs["raw_value"] = raw_value
         
-        # Add last update time
-        if self.coordinator.last_successful_update:
-            attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()
+        # Add specific information for alarm/error sensors
+        if "alarm" in self._register_name or "error" in self._register_name:
+            attrs["severity"] = "warning" if self.is_on else "normal"
         
-        # Add specific information for certain sensors
-        if "relay" in self.register_name or "output" in self.register_name:
-            attributes["type"] = "relay_output"
-        elif "sensor" in self.register_name or "detector" in self.register_name:
-            attributes["type"] = "input_sensor"
-        elif "status" in self.register_name:
-            attributes["type"] = "status_indicator"
-        
-        return attributes
-    
+        return attrs
+
     @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        # Entity is available if coordinator is available and register has valid data
-        if not self.coordinator.last_update_success:
-            return False
-            
-        # Check if register is in current data
-        if self.register_name not in self.coordinator.data:
-            return False
-            
-        return True
+    def icon(self) -> str:
+        """Return the icon for the binary sensor."""
+        base_icon = self._attr_icon
+        
+        # Dynamic icon changes for certain sensors
+        if self._register_name in ["bypass", "gwc", "power_supply_fans", "heating_cable"]:
+            if self.is_on:
+                return base_icon
+            else:
+                # Return "off" version of icon
+                if "fan" in base_icon:
+                    return base_icon.replace("fan", "fan-off")
+                elif "heating" in base_icon:
+                    return "mdi:heating-coil-off"
+                elif "pipe" in base_icon:
+                    return "mdi:pipe-disconnected"
+        
+        # Dynamic icon for alarms and errors
+        if "alarm" in self._register_name or "error" in self._register_name:
+            if self.is_on:
+                return "mdi:alert-circle"
+            else:
+                return "mdi:check-circle"
+        
+        return base_icon

@@ -1,6 +1,7 @@
-"""POPRAWIONY Sensor platform for ThesslaGreen Modbus Integration.
+"""COMPLETE Sensor entities for ThesslaGreen Modbus Integration - SILVER STANDARD.
 Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-FIX: _attr_device_class AttributeError, sensor setup errors
+Wszystkie modele: thessla green AirPack Home serie 4
+COMPLETE: Wszystkie sensory z autoscan - tylko dostępne encje
 """
 from __future__ import annotations
 
@@ -8,395 +9,655 @@ import logging
 from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import (
-    SensorEntity,
     SensorDeviceClass,
+    SensorEntity,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
-    UnitOfTemperature,
-    UnitOfTime,
-    UnitOfVolume,
-    UnitOfVolumetricFlux,
-    UnitOfPressure,
     UnitOfEnergy,
     UnitOfPower,
-    UnitOfElectricCurrent,
-    UnitOfElectricPotential,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolumeFlowRate,
+    CONCENTRATION_PARTS_PER_MILLION,
+    CONCENTRATION_PARTS_PER_BILLION,
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+    ELECTRIC_CURRENT_MILLIAMPERE,
+    ELECTRIC_POTENTIAL_VOLT,
+    ELECTRIC_POTENTIAL_MILLIVOLT,
+    REVOLUTIONS_PER_MINUTE,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, ENTITY_MAPPINGS
+from .const import (
+    DOMAIN,
+    REGISTER_UNITS,
+    DEVICE_CLASSES,
+    STATE_CLASSES,
+)
 from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Unit mappings for HA 2025.* compatibility
-UNIT_MAPPINGS = {
-    "°C": UnitOfTemperature.CELSIUS,
-    "celsius": UnitOfTemperature.CELSIUS,
-    "temperature": UnitOfTemperature.CELSIUS,
-    "%": PERCENTAGE,
-    "percent": PERCENTAGE,
-    "percentage": PERCENTAGE,
-    "m³/h": UnitOfVolumetricFlux.CUBIC_METERS_PER_HOUR,
-    "m3/h": UnitOfVolumetricFlux.CUBIC_METERS_PER_HOUR,
-    "l/s": UnitOfVolumetricFlux.LITERS_PER_SECOND,
-    "Pa": UnitOfPressure.PA,
-    "pascal": UnitOfPressure.PA,
-    "kPa": UnitOfPressure.KPA,
-    "hPa": UnitOfPressure.HPA,
-    "mbar": UnitOfPressure.MBAR,
-    "bar": UnitOfPressure.BAR,
-    "h": UnitOfTime.HOURS,
-    "hours": UnitOfTime.HOURS,
-    "min": UnitOfTime.MINUTES,
-    "minutes": UnitOfTime.MINUTES,
-    "s": UnitOfTime.SECONDS,
-    "seconds": UnitOfTime.SECONDS,
-    "kWh": UnitOfEnergy.KILO_WATT_HOUR,
-    "kwh": UnitOfEnergy.KILO_WATT_HOUR,
-    "Wh": UnitOfEnergy.WATT_HOUR,
-    "wh": UnitOfEnergy.WATT_HOUR,
-    "W": UnitOfPower.WATT,
-    "watt": UnitOfPower.WATT,
-    "kW": UnitOfPower.KILO_WATT,
-    "kilowatt": UnitOfPower.KILO_WATT,
-    "A": UnitOfElectricCurrent.AMPERE,
-    "ampere": UnitOfElectricCurrent.AMPERE,
-    "V": UnitOfElectricPotential.VOLT,
-    "volt": UnitOfElectricPotential.VOLT,
-    "ppm": "ppm",
-    "rpm": "rpm",
+# Complete sensor definitions with enhanced metadata
+SENSOR_DEFINITIONS = {
+    # Temperature sensors
+    "outside_temperature": {
+        "name": "Temperatura zewnętrzna",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "supply_temperature": {
+        "name": "Temperatura nawiewu",
+        "icon": "mdi:thermometer-plus",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "exhaust_temperature": {
+        "name": "Temperatura wywiewu",
+        "icon": "mdi:thermometer-minus",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "fpx_temperature": {
+        "name": "Temperatura FPX",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "duct_supply_temperature": {
+        "name": "Temperatura kanałowa",
+        "icon": "mdi:thermometer-lines",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "gwc_temperature": {
+        "name": "Temperatura GWC",
+        "icon": "mdi:thermometer-low",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "ambient_temperature": {
+        "name": "Temperatura otoczenia",
+        "icon": "mdi:home-thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "heating_temperature": {
+        "name": "Temperatura grzania",
+        "icon": "mdi:thermometer-high",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    
+    # Heat exchanger temperatures
+    "heat_exchanger_temperature_1": {
+        "name": "Temperatura wymiennika 1",
+        "icon": "mdi:heat-pump",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "heat_exchanger_temperature_2": {
+        "name": "Temperatura wymiennika 2",
+        "icon": "mdi:heat-pump",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "heat_exchanger_temperature_3": {
+        "name": "Temperatura wymiennika 3",
+        "icon": "mdi:heat-pump",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    "heat_exchanger_temperature_4": {
+        "name": "Temperatura wymiennika 4",
+        "icon": "mdi:heat-pump",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
+    
+    # Flow sensors
+    "supply_flowrate": {
+        "name": "Przepływ nawiewu",
+        "icon": "mdi:fan",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "exhaust_flowrate": {
+        "name": "Przepływ wywiewu",
+        "icon": "mdi:fan-clock",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "outdoor_flowrate": {
+        "name": "Przepływ zewnętrzny",
+        "icon": "mdi:weather-windy",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "inside_flowrate": {
+        "name": "Przepływ wewnętrzny",
+        "icon": "mdi:home-circle",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "gwc_flowrate": {
+        "name": "Przepływ GWC",
+        "icon": "mdi:pipe",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "heat_recovery_flowrate": {
+        "name": "Przepływ rekuperatora",
+        "icon": "mdi:heat-pump",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "bypass_flowrate": {
+        "name": "Przepływ bypass",
+        "icon": "mdi:pipe-leak",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "supply_air_flow": {
+        "name": "Strumień nawiewu",
+        "icon": "mdi:fan",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "exhaust_air_flow": {
+        "name": "Strumień wywiewu",
+        "icon": "mdi:fan-clock",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    
+    # Air quality sensors
+    "co2_level": {
+        "name": "Poziom CO2",
+        "icon": "mdi:molecule-co2",
+        "device_class": SensorDeviceClass.CO2,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": CONCENTRATION_PARTS_PER_MILLION,
+        "register_type": "input_registers",
+    },
+    "humidity_indoor": {
+        "name": "Wilgotność wewnętrzna",
+        "icon": "mdi:water-percent",
+        "device_class": SensorDeviceClass.HUMIDITY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "humidity_outdoor": {
+        "name": "Wilgotność zewnętrzna",
+        "icon": "mdi:water-percent",
+        "device_class": SensorDeviceClass.HUMIDITY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "pm1_level": {
+        "name": "PM1.0",
+        "icon": "mdi:air-filter",
+        "device_class": SensorDeviceClass.PM1,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        "register_type": "input_registers",
+    },
+    "pm25_level": {
+        "name": "PM2.5",
+        "icon": "mdi:air-filter",
+        "device_class": SensorDeviceClass.PM25,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        "register_type": "input_registers",
+    },
+    "pm10_level": {
+        "name": "PM10",
+        "icon": "mdi:air-filter",
+        "device_class": SensorDeviceClass.PM10,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        "register_type": "input_registers",
+    },
+    "voc_level": {
+        "name": "VOC",
+        "icon": "mdi:air-filter",
+        "device_class": SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": CONCENTRATION_PARTS_PER_BILLION,
+        "register_type": "input_registers",
+    },
+    "air_quality_index": {
+        "name": "Indeks jakości powietrza",
+        "icon": "mdi:air-filter",
+        "device_class": SensorDeviceClass.AQI,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": None,
+        "register_type": "input_registers",
+    },
+    
+    # System efficiency and status
+    "heat_recovery_efficiency": {
+        "name": "Sprawność rekuperacji",
+        "icon": "mdi:percent",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "filter_lifetime_remaining": {
+        "name": "Pozostały czas życia filtra",
+        "icon": "mdi:filter-variant",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTime.DAYS,
+        "register_type": "input_registers",
+    },
+    
+    # Power and energy sensors
+    "preheater_power": {
+        "name": "Moc wstępnego grzania",
+        "icon": "mdi:heating-coil",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "input_registers",
+    },
+    "main_heater_power": {
+        "name": "Moc głównego grzania",
+        "icon": "mdi:heating-coil",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "input_registers",
+    },
+    "cooler_power": {
+        "name": "Moc chłodzenia",
+        "icon": "mdi:snowflake",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "input_registers",
+    },
+    "supply_fan_power": {
+        "name": "Moc wentylatora nawiewnego",
+        "icon": "mdi:fan",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "input_registers",
+    },
+    "exhaust_fan_power": {
+        "name": "Moc wentylatora wywiewnego",
+        "icon": "mdi:fan-clock",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "input_registers",
+    },
+    "total_power_consumption": {
+        "name": "Całkowite zużycie energii",
+        "icon": "mdi:lightning-bolt",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "input_registers",
+    },
+    "daily_energy_consumption": {
+        "name": "Dzienne zużycie energii",
+        "icon": "mdi:counter",
+        "device_class": SensorDeviceClass.ENERGY,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": UnitOfEnergy.WATT_HOUR,
+        "register_type": "input_registers",
+    },
+    "annual_energy_consumption": {
+        "name": "Roczne zużycie energii",
+        "icon": "mdi:counter",
+        "device_class": SensorDeviceClass.ENERGY,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": UnitOfEnergy.KILO_WATT_HOUR,
+        "register_type": "input_registers",
+    },
+    "annual_energy_savings": {
+        "name": "Roczne oszczędności energii",
+        "icon": "mdi:leaf",
+        "device_class": SensorDeviceClass.ENERGY,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": UnitOfEnergy.KILO_WATT_HOUR,
+        "register_type": "input_registers",
+    },
+    "co2_reduction": {
+        "name": "Redukcja CO2",
+        "icon": "mdi:tree",
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": "kg/rok",
+        "register_type": "input_registers",
+    },
+    
+    # System diagnostics
+    "system_uptime": {
+        "name": "Czas pracy systemu",
+        "icon": "mdi:clock-outline",
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": UnitOfTime.HOURS,
+        "register_type": "input_registers",
+    },
+    "fault_counter": {
+        "name": "Licznik błędów",
+        "icon": "mdi:alert-circle",
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": None,
+        "register_type": "input_registers",
+    },
+    "maintenance_counter": {
+        "name": "Licznik konserwacji",
+        "icon": "mdi:wrench",
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": None,
+        "register_type": "input_registers",
+    },
+    "filter_replacement_counter": {
+        "name": "Licznik wymian filtra",
+        "icon": "mdi:filter-variant",
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": None,
+        "register_type": "input_registers",
+    },
+    
+    # Pressure sensors
+    "supply_pressure": {
+        "name": "Ciśnienie nawiewu",
+        "icon": "mdi:gauge",
+        "device_class": SensorDeviceClass.PRESSURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPressure.PA,
+        "register_type": "input_registers",
+    },
+    "exhaust_pressure": {
+        "name": "Ciśnienie wywiewu",
+        "icon": "mdi:gauge",
+        "device_class": SensorDeviceClass.PRESSURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPressure.PA,
+        "register_type": "input_registers",
+    },
+    "differential_pressure": {
+        "name": "Ciśnienie różnicowe",
+        "icon": "mdi:gauge",
+        "device_class": SensorDeviceClass.PRESSURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPressure.PA,
+        "register_type": "input_registers",
+    },
+    
+    # Motor diagnostics
+    "motor_supply_rpm": {
+        "name": "Obroty silnika nawiewnego",
+        "icon": "mdi:fan",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": REVOLUTIONS_PER_MINUTE,
+        "register_type": "input_registers",
+    },
+    "motor_exhaust_rpm": {
+        "name": "Obroty silnika wywiewnego",
+        "icon": "mdi:fan-clock",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": REVOLUTIONS_PER_MINUTE,
+        "register_type": "input_registers",
+    },
+    "motor_supply_current": {
+        "name": "Prąd silnika nawiewnego",
+        "icon": "mdi:current-ac",
+        "device_class": SensorDeviceClass.CURRENT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_CURRENT_MILLIAMPERE,
+        "register_type": "input_registers",
+    },
+    "motor_exhaust_current": {
+        "name": "Prąd silnika wywiewnego",
+        "icon": "mdi:current-ac",
+        "device_class": SensorDeviceClass.CURRENT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_CURRENT_MILLIAMPERE,
+        "register_type": "input_registers",
+    },
+    "motor_supply_voltage": {
+        "name": "Napięcie silnika nawiewnego",
+        "icon": "mdi:lightning-bolt",
+        "device_class": SensorDeviceClass.VOLTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_POTENTIAL_MILLIVOLT,
+        "register_type": "input_registers",
+    },
+    "motor_exhaust_voltage": {
+        "name": "Napięcie silnika wywiewnego",
+        "icon": "mdi:lightning-bolt",
+        "device_class": SensorDeviceClass.VOLTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_POTENTIAL_MILLIVOLT,
+        "register_type": "input_registers",
+    },
+    
+    # PWM control values
+    "dac_supply": {
+        "name": "Sterowanie wentylatorem nawiewnym",
+        "icon": "mdi:sine-wave",
+        "device_class": SensorDeviceClass.VOLTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "register_type": "input_registers",
+    },
+    "dac_exhaust": {
+        "name": "Sterowanie wentylatorem wywiewnym",
+        "icon": "mdi:sine-wave",
+        "device_class": SensorDeviceClass.VOLTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "register_type": "input_registers",
+    },
+    "dac_heater": {
+        "name": "Sterowanie nagrzewnicą",
+        "icon": "mdi:sine-wave",
+        "device_class": SensorDeviceClass.VOLTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "register_type": "input_registers",
+    },
+    "dac_cooler": {
+        "name": "Sterowanie chłodnicą",
+        "icon": "mdi:sine-wave",
+        "device_class": SensorDeviceClass.VOLTAGE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "register_type": "input_registers",
+    },
+    
+    # Damper positions
+    "damper_position_bypass": {
+        "name": "Pozycja przepustnicy bypass",
+        "icon": "mdi:valve",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "damper_position_gwc": {
+        "name": "Pozycja przepustnicy GWC",
+        "icon": "mdi:valve",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "damper_position_mix": {
+        "name": "Pozycja przepustnicy mieszającej",
+        "icon": "mdi:valve",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    
+    # Firmware and version info
+    "firmware_major": {
+        "name": "Wersja firmware (główna)",
+        "icon": "mdi:chip",
+        "unit": None,
+        "register_type": "input_registers",
+    },
+    "firmware_minor": {
+        "name": "Wersja firmware (podrzędna)",
+        "icon": "mdi:chip",
+        "unit": None,
+        "register_type": "input_registers",
+    },
+    "firmware_patch": {
+        "name": "Wersja firmware (poprawka)",
+        "icon": "mdi:chip",
+        "unit": None,
+        "register_type": "input_registers",
+    },
+    "expansion_version": {
+        "name": "Wersja modułu Expansion",
+        "icon": "mdi:expansion-card",
+        "unit": None,
+        "register_type": "input_registers",
+    },
 }
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """POPRAWIONE: Set up ThesslaGreen sensor entities."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up ThesslaGreen sensor entities based on available registers."""
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
     
     entities = []
     
-    # Get sensor entity mappings
-    sensor_mappings = ENTITY_MAPPINGS.get("sensor", {})
-    
-    # Create sensors for available registers
-    for register_name, entity_config in sensor_mappings.items():
-        # Check if this register is available in any register type
-        is_available = False
-        register_type = None
+    # Create sensors only for available registers (autoscan result)
+    for register_name, sensor_def in SENSOR_DEFINITIONS.items():
+        register_type = sensor_def["register_type"]
         
-        for reg_type, registers in coordinator.available_registers.items():
-            if register_name in registers:
-                is_available = True
-                register_type = reg_type
-                break
-                
-        # If force full register list, check against all registers
-        if not is_available and coordinator.force_full_register_list:
-            from .const import INPUT_REGISTERS, HOLDING_REGISTERS, COIL_REGISTERS, DISCRETE_INPUTS
-            all_registers = {**INPUT_REGISTERS, **HOLDING_REGISTERS, **COIL_REGISTERS, **DISCRETE_INPUTS}
-            if register_name in all_registers:
-                is_available = True
-                register_type = "unknown"  # Will be determined at runtime
-        
-        if is_available:
-            entities.append(
-                ThesslaGreenSensor(
-                    coordinator=coordinator,
-                    register_name=register_name,
-                    entity_config=entity_config,
-                    register_type=register_type,
-                )
-            )
-            _LOGGER.debug("Created sensor entity: %s", register_name)
+        # Check if this register is available on the device
+        if register_name in coordinator.available_registers.get(register_type, set()):
+            entities.append(ThesslaGreenSensor(coordinator, register_name, sensor_def))
+            _LOGGER.debug("Created sensor: %s", sensor_def["name"])
     
     if entities:
-        async_add_entities(entities)
-        _LOGGER.info("Added %d sensor entities", len(entities))
+        async_add_entities(entities, True)
+        _LOGGER.info("Created %d sensor entities for %s", len(entities), coordinator.device_name)
     else:
-        _LOGGER.warning("No sensor entities were created - check device connectivity")
+        _LOGGER.warning("No sensor entities created - no compatible registers found")
 
 
 class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
-    """POPRAWIONY ThesslaGreen sensor entity z naprawionymi atrybutami."""
-    
+    """Sensor entity for ThesslaGreen device."""
+
     def __init__(
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        entity_config: Dict[str, Any],
-        register_type: Optional[str] = None,
+        sensor_definition: Dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         
-        self.register_name = register_name
-        self.entity_config = entity_config
-        self.register_type = register_type
+        self._register_name = register_name
+        self._sensor_def = sensor_definition
         
-        # Entity configuration
-        self._attr_name = self._generate_entity_name()
-        self._attr_unique_id = f"{coordinator.device_name}_{register_name}"
-        self._attr_device_info = coordinator.device_info
+        # Entity attributes
+        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
+        self._attr_name = f"{coordinator.device_name} {sensor_definition['name']}"
+        self._attr_device_info = coordinator.device_info_dict
         
-        # POPRAWKA: Initialize attributes before setup
-        self._attr_device_class = None
-        self._attr_state_class = None
-        self._attr_native_unit_of_measurement = None
-        self._attr_icon = None
-        self._attr_entity_category = None
+        # Sensor specific attributes
+        self._attr_icon = sensor_definition.get("icon")
+        self._attr_native_unit_of_measurement = sensor_definition.get("unit")
+        self._attr_device_class = sensor_definition.get("device_class")
+        self._attr_state_class = sensor_definition.get("state_class")
         
-        # Sensor configuration
-        self._setup_sensor_attributes()
-        
-        _LOGGER.debug("Initialized sensor: %s (register: %s)", self._attr_name, register_name)
-    
-    def _generate_entity_name(self) -> str:
-        """Generate human-readable entity name."""
-        # Use configured name if available
-        if "name" in self.entity_config:
-            return self.entity_config["name"]
-        
-        # Convert register name to human readable
-        name_parts = self.register_name.split("_")
-        
-        # Common replacements for better readability
-        replacements = {
-            "temperature": "Temperature",
-            "flowrate": "Flow Rate", 
-            "percentage": "Percentage",
-            "supply": "Supply",
-            "exhaust": "Exhaust",
-            "outside": "Outside",
-            "ambient": "Ambient",
-            "fpx": "FPX",
-            "duct": "Duct",
-            "gwc": "GWC",
-            "co2": "CO2",
-            "voc": "VOC",
-            "concentration": "Concentration",
-            "level": "Level",
-            "pressure": "Pressure",
-            "difference": "Difference",
-            "drop": "Drop",
-            "efficiency": "Efficiency",
-            "recovery": "Recovery",
-            "consumption": "Consumption",
-            "current": "Current",
-            "total": "Total",
-            "energy": "Energy",
-            "operating": "Operating",
-            "hours": "Hours",
-            "filter": "Filter",
-            "error": "Error",
-            "warning": "Warning",
-            "code": "Code",
-            "firmware": "Firmware",
-            "major": "Major",
-            "minor": "Minor",
-            "patch": "Patch",
-            "serial": "Serial",
-            "number": "Number",
-            "flow": "Flow",
-            "effective": "Effective",
-            "balance": "Balance",
-            "battery": "Battery",
-            "status": "Status",
-            "power": "Power",
-            "quality": "Quality",
-            "humidity": "Humidity",
-            "heat": "Heat",
-            "maintenance": "Maintenance",
-            "counter": "Counter",
-        }
-        
-        # Apply replacements and capitalize
-        processed_parts = []
-        for part in name_parts:
-            if part in replacements:
-                processed_parts.append(replacements[part])
-            else:
-                processed_parts.append(part.capitalize())
-        
-        return " ".join(processed_parts)
-    
-    def _setup_sensor_attributes(self) -> None:
-        """POPRAWIONE: Setup sensor attributes based on entity configuration."""
-        # Unit of measurement
-        if "unit" in self.entity_config:
-            unit = self.entity_config["unit"]
-            self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(unit, unit)
-        
-        # Device class
-        if "device_class" in self.entity_config:
-            device_class_str = self.entity_config["device_class"]
-            try:
-                # Map device classes for HA 2025.* compatibility
-                device_class_mapping = {
-                    "carbon_dioxide": "co2",  # HA 2025.* uses 'co2' instead of 'carbon_dioxide'
-                    "temperature": "temperature",
-                    "humidity": "humidity", 
-                    "pressure": "pressure",
-                    "power": "power",
-                    "energy": "energy",
-                }
-                
-                mapped_class = device_class_mapping.get(device_class_str, device_class_str)
-                
-                # Try to get from SensorDeviceClass enum
-                if hasattr(SensorDeviceClass, mapped_class.upper()):
-                    self._attr_device_class = getattr(SensorDeviceClass, mapped_class.upper())
-                else:
-                    # Fallback to string for custom device classes
-                    self._attr_device_class = mapped_class
-                    
-            except AttributeError:
-                # Fallback to string for custom device classes
-                self._attr_device_class = device_class_str
-        
-        # Icon
-        if "icon" in self.entity_config:
-            self._attr_icon = self.entity_config["icon"]
-        
-        # POPRAWKA: Sprawdzenie czy _attr_device_class istnieje przed użyciem
-        # State class for statistics - HA 2025.* compatibility
-        if hasattr(self, '_attr_device_class') and self._attr_device_class is not None:
-            if (self._attr_device_class in [
-                SensorDeviceClass.TEMPERATURE,
-                SensorDeviceClass.HUMIDITY,
-                SensorDeviceClass.PRESSURE,
-                SensorDeviceClass.POWER,
-                SensorDeviceClass.ENERGY,
-            ] or (isinstance(self._attr_device_class, str) and self._attr_device_class in ["co2", "temperature", "humidity", "pressure", "power", "energy"])):
-                self._attr_state_class = SensorStateClass.MEASUREMENT
-        
-        # Additional state class checks
-        if "energy" in self.register_name or "consumption" in self.register_name:
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        elif "hours" in self.register_name or "counter" in self.register_name:
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        
-        # Entity category for diagnostic sensors
-        if any(keyword in self.register_name for keyword in [
-            "error", "warning", "firmware", "serial", "compilation", "communication",
-            "maintenance", "battery", "power_quality"
-        ]):
-            self._attr_entity_category = EntityCategory.DIAGNOSTIC
-    
+        _LOGGER.debug("Sensor initialized: %s (%s)", self._attr_name, register_name)
+
     @property
-    def native_value(self) -> Any:
+    def native_value(self) -> Optional[float | int | str]:
         """Return the state of the sensor."""
-        if self.register_name not in self.coordinator.data:
-            return None
-            
-        raw_value = self.coordinator.data[self.register_name]
+        value = self.coordinator.data.get(self._register_name)
         
-        # Handle None values (invalid/no sensor)
-        if raw_value is None:
+        if value is None:
             return None
         
-        # Apply any additional processing
-        return self._process_value(raw_value)
-    
-    def _process_value(self, raw_value: Any) -> Any:
-        """Process raw value for display."""
-        if raw_value is None:
-            return None
-            
-        # Handle firmware version formatting
-        if "firmware" in self.register_name and isinstance(raw_value, (int, float)):
-            if self.register_name == "firmware_major":
-                return f"{raw_value:02d}"
-            elif self.register_name == "firmware_minor":
-                return f"{raw_value:02d}"
-            elif self.register_name == "firmware_patch":
-                return f"{raw_value:02d}"
+        # Special handling for firmware version display
+        if self._register_name in ["firmware_major", "firmware_minor", "firmware_patch"]:
+            return value
         
-        # Handle serial number formatting
-        if "serial_number" in self.register_name and isinstance(raw_value, (int, float)):
-            return f"{raw_value:04X}"
+        # Special handling for expansion version (convert hex to decimal.decimal format)
+        if self._register_name == "expansion_version" and isinstance(value, int):
+            major = (value >> 8) & 0xFF
+            minor = value & 0xFF
+            return f"{major}.{minor:02d}"
         
-        # Handle percentage values
-        if self._attr_native_unit_of_measurement == PERCENTAGE:
-            if isinstance(raw_value, (int, float)):
-                return max(0, min(100, raw_value))  # Clamp to 0-100%
-        
-        # Handle temperature values with HA 2025.* compatibility
-        if (hasattr(self, '_attr_device_class') and 
-            (self._attr_device_class == SensorDeviceClass.TEMPERATURE or 
-             (isinstance(self._attr_device_class, str) and self._attr_device_class == "temperature"))):
-            if isinstance(raw_value, (int, float)):
-                # Check for invalid temperature readings
-                if raw_value < -50 or raw_value > 100:
-                    return None
-                return round(raw_value, 1)
-        
-        # Handle flow rates
-        if "flowrate" in self.register_name or "flow" in self.register_name:
-            if isinstance(raw_value, (int, float)):
-                return max(0, raw_value)  # Flow cannot be negative
-        
-        # Handle pressure values with HA 2025.* compatibility
-        if (hasattr(self, '_attr_device_class') and 
-            (self._attr_device_class == SensorDeviceClass.PRESSURE or 
-             (isinstance(self._attr_device_class, str) and self._attr_device_class == "pressure"))):
-            if isinstance(raw_value, (int, float)):
-                return round(raw_value, 1)
-        
-        # Handle power and energy with HA 2025.* compatibility
-        if (hasattr(self, '_attr_device_class') and 
-            (self._attr_device_class in [SensorDeviceClass.POWER, SensorDeviceClass.ENERGY] or
-             (isinstance(self._attr_device_class, str) and self._attr_device_class in ["power", "energy"]))):
-            if isinstance(raw_value, (int, float)):
-                return max(0, raw_value)  # Power/energy cannot be negative
-        
-        return raw_value
-    
+        return value
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return (
+            self.coordinator.last_update_success and
+            self._register_name in self.coordinator.data
+        )
+
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return additional state attributes."""
-        attributes = {}
+        attrs = {}
         
-        # Add register information for diagnostics
-        if hasattr(self, '_attr_entity_category') and self._attr_entity_category == EntityCategory.DIAGNOSTIC:
-            attributes["register_name"] = self.register_name
-            if self.register_type:
-                attributes["register_type"] = self.register_type
+        # Add register address for debugging
+        if hasattr(self.coordinator, 'device_scan_result') and self.coordinator.device_scan_result:
+            attrs["register_name"] = self._register_name
+            attrs["register_type"] = self._sensor_def["register_type"]
         
-        # Add data quality information
-        if self.register_name in self.coordinator.data:
-            raw_value = self.coordinator.data[self.register_name]
-            if raw_value is not None:
-                attributes["raw_value"] = raw_value
+        # Add raw value for diagnostic purposes
+        raw_value = self.coordinator.data.get(self._register_name)
+        if raw_value is not None and isinstance(raw_value, (int, float)):
+            attrs["raw_value"] = raw_value
         
-        # Add scale information if applicable
-        if "scale" in self.entity_config:
-            attributes["scale_factor"] = self.entity_config["scale"]
-        
-        # Add last update time
-        if hasattr(self.coordinator, 'last_successful_read') and self.coordinator.last_successful_read:
-            attributes["last_updated"] = self.coordinator.last_successful_read.isoformat()
-        
-        return attributes
-    
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        # Entity is available if coordinator is available and register has valid data
-        if not self.coordinator.last_update_success:
-            return False
-            
-        # Check if register is in current data
-        if self.register_name not in self.coordinator.data:
-            return False
-            
-        return True
+        return attrs

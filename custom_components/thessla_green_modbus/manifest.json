@@ -1,21 +1,31 @@
 {
   "domain": "thessla_green_modbus",
   "name": "ThesslaGreen Modbus",
-  "version": "2.1.0",
-  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha",
-  "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
-  "dependencies": [],
   "codeowners": ["@thesslagreen"],
-  "requirements": [
-    "pymodbus>=3.5.0,<4.0.0"
-  ],
   "config_flow": true,
-  "dhcp": [],
-  "homekit": {},
+  "dependencies": [],
+  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha",
+  "homeassistant": "2025.1.0",
   "iot_class": "local_polling",
-  "loggers": [
-    "custom_components.thessla_green_modbus"
-  ],
+  "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
   "quality_scale": "silver",
-  "integration_type": "device"
+  "requirements": [
+    "pymodbus>=3.5.0"
+  ],
+  "version": "2.1.0",
+  "integration_type": "device",
+  "dhcp": [
+    {
+      "hostname": "airpack*",
+      "macaddress": "00:80:F4:*"
+    }
+  ],
+  "zeroconf": [
+    {
+       "type": "_modbus._tcp.local.",
+      "properties": {
+        "model": "airpack*"
+      }
+    }
+  ]
 }

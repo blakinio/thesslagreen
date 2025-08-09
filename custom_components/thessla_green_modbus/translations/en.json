@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "ThesslaGreen Modbus",
-        "description": "Configure connection to ThesslaGreen AirPack via Modbus TCP. The integration will automatically detect available device functions.",
+        "description": "Configure connection to ThesslaGreen AirPack heat recovery unit via Modbus TCP. The integration will automatically detect available device functions.",
         "data": {
           "host": "IP Address",
           "port": "Port",
@@ -11,15 +11,15 @@
           "name": "Name"
         },
         "data_description": {
-          "host": "IP address of the AirPack device on your local network",
-          "port": "Modbus TCP port (default 502)",
-          "slave_id": "Modbus device identifier (default 10)",
+          "host": "IP address of the heat recovery unit on local network",
+          "port": "Modbus TCP port (standard 502)",
+          "slave_id": "Modbus device identifier (standard 10)",
           "name": "Device name in Home Assistant"
         }
       },
       "confirm": {
-        "title": "Confirm Configuration",
-        "description": "ThesslaGreen device detected:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Device Name:** {device_name}\n**Firmware Version:** {firmware_version}\n**Serial Number:** {serial_number}\n\n**Scan Statistics:**\n- Registers Found: {register_count}\n- Scan Success Rate: {scan_success_rate}\n- Capabilities Detected: {capabilities_count}\n- Main Features: {capabilities_list}\n\n{auto_detected_note}\n\nDo you want to continue with this configuration?"
+        "title": "Confirm configuration",
+        "description": "ThesslaGreen device detected:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Device name:** {device_name}\n**Firmware version:** {firmware_version}\n**Serial number:** {serial_number}\n\n**Scan statistics:**\n- Registers found: {register_count}\n- Scan success: {scan_success_rate}\n- Functions detected: {capabilities_count}\n- Main functions: {capabilities_list}\n\n{auto_detected_note}\n\nDo you want to continue with configuration?"
       }
     },
     "error": {
@@ -35,12 +35,12 @@
     "step": {
       "init": {
         "title": "ThesslaGreen Modbus Options",
-        "description": "Configure advanced integration options.\n\n**Current Settings:**\n- Scan Interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry Count: {current_retry}\n- Force Full Register List: {force_full_enabled}",
+        "description": "Configure advanced integration options.\n\n**Current settings:**\n- Scan interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry count: {current_retry}\n- Full register list: {force_full_enabled}",
         "data": {
-          "scan_interval": "Scan Interval (seconds)",
-          "timeout": "Connection Timeout (seconds)",
-          "retry": "Retry Attempts",
-          "force_full_register_list": "Force Full Register List (skip scanning)"
+          "scan_interval": "Scan interval (seconds)",
+          "timeout": "Connection timeout (seconds)",
+          "retry": "Retry attempts",
+          "force_full_register_list": "Force full register list (skip scanning)"
         },
         "data_description": {
           "scan_interval": "How often to read data from device (10-300 seconds)",
@@ -66,7 +66,7 @@
         "name": "FPX Temperature"
       },
       "duct_supply_temperature": {
-        "name": "Duct Supply Temperature"
+        "name": "Duct Temperature"
       },
       "gwc_temperature": {
         "name": "GWC Temperature"
@@ -74,151 +74,130 @@
       "ambient_temperature": {
         "name": "Ambient Temperature"
       },
+      "heating_temperature": {
+        "name": "Heating Temperature"
+      },
       "supply_flowrate": {
-        "name": "Supply Flow Rate"
+        "name": "Supply Airflow"
       },
       "exhaust_flowrate": {
-        "name": "Exhaust Flow Rate"
-      },
-      "supply_percentage": {
-        "name": "Supply Fan Speed"
-      },
-      "exhaust_percentage": {
-        "name": "Exhaust Fan Speed"
+        "name": "Exhaust Airflow"
       },
       "heat_recovery_efficiency": {
         "name": "Heat Recovery Efficiency"
       },
-      "filter_time_remaining": {
-        "name": "Filter Time Remaining"
+      "co2_level": {
+        "name": "CO2 Level"
       },
-      "operating_hours": {
-        "name": "Operating Hours"
+      "humidity_indoor": {
+        "name": "Indoor Humidity"
       },
-      "energy_consumption": {
-        "name": "Energy Consumption"
+      "humidity_outdoor": {
+        "name": "Outdoor Humidity"
       },
-      "error_code": {
-        "name": "Error Code"
+      "pm25_level": {
+        "name": "PM2.5"
       },
-      "warning_code": {
-        "name": "Warning Code"
+      "pm10_level": {
+        "name": "PM10"
+      },
+      "voc_level": {
+        "name": "VOC"
+      },
+      "air_quality_index": {
+        "name": "Air Quality Index"
+      },
+      "filter_lifetime_remaining": {
+        "name": "Filter Life Remaining"
+      },
+      "total_power_consumption": {
+        "name": "Total Power Consumption"
+      },
+      "daily_energy_consumption": {
+        "name": "Daily Energy Consumption"
+      },
+      "annual_energy_consumption": {
+        "name": "Annual Energy Consumption"
+      },
+      "system_uptime": {
+        "name": "System Uptime"
       }
     },
     "binary_sensor": {
       "power_supply_fans": {
-        "name": "Fan Power Supply"
+        "name": "Fan Power"
       },
       "bypass": {
         "name": "Bypass"
       },
       "gwc": {
-        "name": "GWC System"
+        "name": "GWC"
       },
       "heating_cable": {
         "name": "Heating Cable"
       },
-      "alarm_status": {
-        "name": "Alarm Status"
+      "constant_flow_active": {
+        "name": "Constant Flow"
       },
-      "error_status": {
-        "name": "Error Status"
+      "frost_protection_active": {
+        "name": "Frost Protection"
       },
-      "fire_alarm": {
-        "name": "Fire Alarm"
+      "defrost_cycle_active": {
+        "name": "Defrost Cycle"
       },
-      "expansion": {
-        "name": "Expansion Module"
+      "summer_bypass_active": {
+        "name": "Summer Bypass"
+      },
+      "winter_heating_active": {
+        "name": "Winter Heating"
+      },
+      "filter_alarm": {
+        "name": "Filter Alarm"
+      },
+      "maintenance_alarm": {
+        "name": "Maintenance Alarm"
+      },
+      "sensor_error": {
+        "name": "Sensor Error"
+      },
+      "communication_error": {
+        "name": "Communication Error"
       }
     },
     "climate": {
-      "climate": {
-        "name": "Climate Control"
-      }
-    },
-    "switch": {
-      "on_off_panel_mode": {
-        "name": "System Power"
-      },
-      "auto_mode": {
-        "name": "Auto Mode"
-      },
-      "manual_mode": {
-        "name": "Manual Mode"
-      },
-      "summer_mode": {
-        "name": "Summer Mode"
-      },
-      "winter_mode": {
-        "name": "Winter Mode"
-      },
-      "boost_mode": {
-        "name": "Boost Mode"
-      },
-      "night_mode": {
-        "name": "Night Mode"
-      },
-      "bypass_control": {
-        "name": "Bypass Control"
-      },
-      "gwc_control": {
-        "name": "GWC Control"
+      "thessla_green_climate": {
+        "name": "Heat Recovery Unit"
       }
     },
     "select": {
       "mode": {
-        "name": "Operation Mode",
+        "name": "Operating Mode",
         "state": {
-          "off": "Off",
+          "automatic": "Automatic",
           "manual": "Manual",
-          "auto": "Automatic",
           "temporary": "Temporary"
-        }
-      },
-      "season_mode": {
-        "name": "Season Mode",
-        "state": {
-          "auto": "Automatic",
-          "winter": "Winter",
-          "summer": "Summer"
-        }
-      },
-      "special_mode": {
-        "name": "Special Mode",
-        "state": {
-          "none": "None",
-          "okap": "Hood",
-          "kominek": "Fireplace",
-          "wietrzenie": "Ventilation",
-          "pusty_dom": "Empty House",
-          "boost": "Boost",
-          "night": "Night",
-          "party": "Party",
-          "vacation": "Vacation",
-          "economy": "Economy",
-          "comfort": "Comfort"
         }
       },
       "bypass_mode": {
         "name": "Bypass Mode",
         "state": {
-          "auto": "Automatic",
-          "open": "Open",
+          "auto": "Auto",
+          "open": "Open", 
           "closed": "Closed"
         }
       },
       "gwc_mode": {
         "name": "GWC Mode",
         "state": {
-          "auto": "Automatic",
-          "on": "On",
-          "off": "Off"
+          "disabled": "Disabled",
+          "auto": "Auto",
+          "forced": "Forced"
         }
       },
-      "filter_type": {
+      "filter_change": {
         "name": "Filter Type",
         "state": {
-          "presostat": "Presostat",
+          "presostat": "Pressure Switch",
           "flat_filters": "Flat Filters",
           "cleanpad": "CleanPad",
           "cleanpad_pure": "CleanPad Pure"
@@ -226,87 +205,84 @@
       }
     },
     "number": {
-      "supply_temperature_manual": {
-        "name": "Supply Temperature (Manual)"
-      },
-      "supply_temperature_auto": {
-        "name": "Supply Temperature (Auto)"
+      "air_flow_rate_manual": {
+        "name": "Ventilation Intensity"
       },
       "comfort_temperature": {
         "name": "Comfort Temperature"
       },
-      "air_flow_rate_manual": {
-        "name": "Manual Intensity"
+      "required_temperature": {
+        "name": "Target Temperature"
+      }
+    },
+    "switch": {
+      "on_off_panel_mode": {
+        "name": "Main Power"
       },
-      "air_flow_rate_auto": {
-        "name": "Auto Intensity"
+      "bypass": {
+        "name": "Bypass"
       },
-      "okap_intensity": {
-        "name": "Hood Intensity"
+      "gwc": {
+        "name": "GWC"
       },
-      "kominek_intensity": {
-        "name": "Fireplace Intensity"
-      },
-      "wietrzenie_intensity": {
-        "name": "Ventilation Intensity"
-      },
-      "filter_change_interval": {
-        "name": "Filter Change Interval"
+      "heating_cable": {
+        "name": "Heating Cable"
+      }
+    },
+    "fan": {
+      "thessla_green_fan": {
+        "name": "Ventilation"
       }
     }
   },
   "services": {
-    "set_mode": {
-      "name": "Set Operation Mode",
-      "description": "Sets the ventilation system operation mode with optional intensity."
-    },
     "set_special_mode": {
       "name": "Set Special Mode",
-      "description": "Activates a special mode with intensity and duration configuration."
+      "description": "Sets special operating mode of the heat recovery unit (BOOST, ECO, FIREPLACE, HOOD, etc.)"
     },
-    "set_temperature": {
-      "name": "Set Temperature",
-      "description": "Sets target temperature for the selected operation mode."
+    "set_airflow_schedule": {
+      "name": "Set Airflow Schedule",
+      "description": "Configures weekly airflow schedule"
     },
-    "set_fan_speed": {
-      "name": "Set Fan Speed",
-      "description": "Controls supply and exhaust fan speeds and flow balance."
+    "set_bypass_parameters": {
+      "name": "Set Bypass Parameters",
+      "description": "Configures bypass system parameters"
     },
-    "control_bypass": {
-      "name": "Control Bypass",
-      "description": "Controls the bypass system operation mode."
+    "set_gwc_parameters": {
+      "name": "Set GWC Parameters",
+      "description": "Configures ground heat exchanger parameters"
     },
-    "control_gwc": {
-      "name": "Control GWC",
-      "description": "Controls the GWC (Ground Water Cooler) system."
+    "set_air_quality_thresholds": {
+      "name": "Set Air Quality Thresholds",
+      "description": "Configures thresholds for air quality control system"
     },
-    "reset_alarms": {
-      "name": "Reset Alarms",
-      "description": "Resets system alarms and errors."
+    "set_temperature_curve": {
+      "name": "Set Heating Curve",
+      "description": "Configures heating curve for heating system"
     },
-    "set_schedule": {
-      "name": "Set Schedule",
-      "description": "Configures operation schedule for selected day and time period."
+    "reset_filters": {
+      "name": "Reset Filter Counter",
+      "description": "Resets filter lifetime counter"
     },
-    "rescan_device": {
-      "name": "Rescan Device",
-      "description": "Rescans the device to detect available functions and registers."
+    "reset_settings": {
+      "name": "Reset Settings",
+      "description": "Resets user settings to default values"
     },
-    "get_diagnostic_info": {
-      "name": "Get Diagnostic Info",
-      "description": "Displays detailed diagnostic information about device and integration."
+    "start_pressure_test": {
+      "name": "Start Pressure Test",
+      "description": "Starts automatic filter/pressure control test"
     },
-    "backup_settings": {
-      "name": "Backup Settings",
-      "description": "Creates a backup of device settings."
+    "set_modbus_parameters": {
+      "name": "Set Modbus Parameters",
+      "description": "Configures Modbus communication parameters (for advanced users only)"
     },
-    "restore_settings": {
-      "name": "Restore Settings",
-      "description": "Restores device settings from a previously created backup."
+    "set_device_name": {
+      "name": "Set Device Name",
+      "description": "Sets custom device name (max 16 ASCII characters)"
     },
-    "calibrate_sensors": {
-      "name": "Calibrate Sensors",
-      "description": "Calibrates temperature sensors with individual offsets."
+    "refresh_device_data": {
+      "name": "Refresh Device Data",
+      "description": "Forces immediate refresh of device data"
     }
   }
 }

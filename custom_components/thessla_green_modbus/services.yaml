@@ -1,312 +1,309 @@
-# Services for ThesslaGreen Modbus Integration
+# Kompletne serwisy dla ThesslaGreen Modbus Integration
 # Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
 # Wszystkie modele: thessla green AirPack Home serie 4
 
-set_mode:
-  name: Set Operating Mode
-  description: Set the operating mode of the ThesslaGreen AirPack device
+set_special_mode:
+  name: Ustaw tryb specjalny
+  description: Ustawia specjalny tryb pracy rekuperatora (BOOST, ECO, KOMINEK, OKAP, itp.)
   fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
       required: true
       selector:
-        device:
+        entity:
+          domain: climate
           integration: thessla_green_modbus
     mode:
-      name: Mode
-      description: Operating mode to set
+      name: Tryb specjalny
+      description: Typ trybu specjalnego do aktywacji
       required: true
       selector:
         select:
           options:
-            - "auto"
-            - "manual"
-            - "temporary"
-
-set_temperature:
-  name: Set Temperature
-  description: Set target temperature for the specified mode
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
-      required: true
-      selector:
-        device:
-          integration: thessla_green_modbus
-    temperature:
-      name: Temperature
-      description: Target temperature in Celsius
-      required: true
-      selector:
-        number:
-          min: 15
-          max: 30
-          step: 0.5
-          unit_of_measurement: "°C"
-    mode:
-      name: Temperature Mode
-      description: Which temperature setting to change
-      required: false
-      default: "comfort"
-      selector:
-        select:
-          options:
-            - "comfort"
-            - "heating"
-            - "cooling"
-            - "manual"
-            - "auto"
-
-set_flow_rate:
-  name: Set Flow Rate
-  description: Set air flow rate percentage
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
-      required: true
-      selector:
-        device:
-          integration: thessla_green_modbus
-    flow_rate:
-      name: Flow Rate
-      description: Air flow rate percentage
-      required: true
-      selector:
-        number:
-          min: 10
-          max: 100
-          step: 1
-          unit_of_measurement: "%"
-    mode:
-      name: Flow Mode
-      description: Which flow rate setting to change
-      required: false
-      default: "manual"
-      selector:
-        select:
-          options:
-            - "manual"
-            - "auto"
+            - "none"
             - "boost"
-
-activate_special_mode:
-  name: Activate Special Mode
-  description: Activate a special operating mode (OKAP, KOMINEK, PARTY, etc.)
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
-      required: true
-      selector:
-        device:
-          integration: thessla_green_modbus
-    special_mode:
-      name: Special Mode
-      description: Special mode to activate
-      required: true
-      selector:
-        select:
-          options:
-            - "okap"
-            - "fireplace"
-            - "party"
-            - "boost"
-            - "vacation"
             - "eco"
-            - "night"
+            - "away"
+            - "fireplace"
+            - "hood"
+            - "party"
+            - "bathroom"
+            - "kitchen"
+            - "summer"
+            - "winter"
     duration:
-      name: Duration
-      description: Duration in minutes (for timed modes)
+      name: Czas trwania (minuty)
+      description: Czas trwania trybu specjalnego w minutach (0 = bez limitu)
       required: false
+      default: 0
       selector:
         number:
-          min: 1
+          min: 0
           max: 480
-          step: 1
-          unit_of_measurement: "min"
-    intensity:
-      name: Intensity
-      description: Intensity percentage (for modes that support it)
-      required: false
-      selector:
-        number:
-          min: 10
-          max: 100
           step: 5
-          unit_of_measurement: "%"
 
-deactivate_special_mode:
-  name: Deactivate Special Mode
-  description: Deactivate all special modes and return to normal operation
+set_airflow_schedule:
+  name: Ustaw harmonogram przepływu
+  description: Konfiguruje tygodniowy harmonogram przepływu powietrza
   fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
       required: true
       selector:
-        device:
-          integration: thessla_green_modbus
-
-set_schedule:
-  name: Set Weekly Schedule
-  description: Set weekly schedule for a specific day and period
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
-      required: true
-      selector:
-        device:
+        entity:
+          domain: climate
           integration: thessla_green_modbus
     day:
-      name: Day of Week
-      description: Day of the week to configure
+      name: Dzień tygodnia
+      description: Dzień tygodnia do konfiguracji
       required: true
       selector:
         select:
           options:
             - "monday"
-            - "tuesday"
+            - "tuesday" 
             - "wednesday"
             - "thursday"
             - "friday"
             - "saturday"
             - "sunday"
     period:
-      name: Period
-      description: Time period (1-4) for the day
+      name: Okres
+      description: Okres dnia (1 lub 2)
       required: true
       selector:
-        number:
-          min: 1
-          max: 4
-          step: 1
+        select:
+          options:
+            - "1"
+            - "2"
     start_time:
-      name: Start Time
-      description: Start time for this period (HH:MM)
+      name: Czas rozpoczęcia
+      description: Czas rozpoczęcia okresu (HH:MM)
       required: true
       selector:
         time:
     end_time:
-      name: End Time
-      description: End time for this period (HH:MM)
+      name: Czas zakończenia
+      description: Czas zakończenia okresu (HH:MM)
       required: true
       selector:
         time:
-    intensity:
-      name: Intensity
-      description: Air flow intensity for this period
+    airflow_rate:
+      name: Przepływ powietrza
+      description: Intensywność przepływu powietrza w %
       required: true
       selector:
         number:
           min: 10
           max: 100
           step: 5
-          unit_of_measurement: "%"
     temperature:
-      name: Temperature
-      description: Target temperature for this period
-      required: true
-      selector:
-        number:
-          min: 15
-          max: 30
-          step: 0.5
-          unit_of_measurement: "°C"
-
-reset_settings:
-  name: Reset Settings
-  description: Reset device settings to factory defaults
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
-      required: true
-      selector:
-        device:
-          integration: thessla_green_modbus
-    reset_type:
-      name: Reset Type
-      description: Type of reset to perform
-      required: true
-      selector:
-        select:
-          options:
-            - "user_settings"
-            - "schedule"
-            - "all"
-
-set_gwc_mode:
-  name: Set GWC Mode
-  description: Set Ground Water Cooler (GWC) operating mode
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
-      required: true
-      selector:
-        device:
-          integration: thessla_green_modbus
-    mode:
-      name: GWC Mode
-      description: GWC operating mode
-      required: true
-      selector:
-        select:
-          options:
-            - "off"
-            - "auto"
-            - "manual"
-    switch_temperature:
-      name: Switch Temperature
-      description: Temperature threshold for automatic GWC switching
+      name: Temperatura
+      description: Zadana temperatura w °C
       required: false
       selector:
         number:
-          min: -10
-          max: 30
+          min: 16.0
+          max: 30.0
           step: 0.5
-          unit_of_measurement: "°C"
 
-set_bypass_mode:
-  name: Set Bypass Mode
-  description: Set heat recovery bypass operating mode
+set_bypass_parameters:
+  name: Ustaw parametry bypass
+  description: Konfiguruje parametry systemu bypass
   fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
       required: true
       selector:
-        device:
+        entity:
+          domain: climate
           integration: thessla_green_modbus
     mode:
-      name: Bypass Mode
-      description: Bypass operating mode
+      name: Tryb bypass
+      description: Tryb pracy bypass
       required: true
       selector:
         select:
           options:
-            - "off"
             - "auto"
-            - "manual"
+            - "open"
+            - "closed"
+    temperature_threshold:
+      name: Próg temperatury
+      description: Próg temperatury aktywacji bypass w °C
+      required: false
+      selector:
+        number:
+          min: 18.0
+          max: 30.0
+          step: 0.5
+    hysteresis:
+      name: Histereza
+      description: Histereza temperatury w °C
+      required: false
+      selector:
+        number:
+          min: 1.0
+          max: 5.0
+          step: 0.5
 
-set_filter_type:
-  name: Set Filter Type
-  description: Set the type of filters installed in the device
+set_gwc_parameters:
+  name: Ustaw parametry GWC
+  description: Konfiguruje parametry gruntowego wymiennika ciepła
   fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
       required: true
       selector:
-        device:
+        entity:
+          domain: climate
+          integration: thessla_green_modbus
+    mode:
+      name: Tryb GWC
+      description: Tryb pracy gruntowego wymiennika ciepła
+      required: true
+      selector:
+        select:
+          options:
+            - "disabled"
+            - "auto"
+            - "forced"
+    temperature_threshold:
+      name: Próg temperatury
+      description: Próg temperatury aktywacji GWC w °C
+      required: false
+      selector:
+        number:
+          min: -5.0
+          max: 15.0
+          step: 0.5
+    hysteresis:
+      name: Histereza
+      description: Histereza temperatury w °C
+      required: false
+      selector:
+        number:
+          min: 1.0
+          max: 5.0
+          step: 0.5
+
+set_air_quality_thresholds:
+  name: Ustaw progi jakości powietrza
+  description: Konfiguruje progi dla systemu kontroli jakości powietrza
+  fields:
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
+      required: true
+      selector:
+        entity:
+          domain: climate
+          integration: thessla_green_modbus
+    co2_low:
+      name: CO2 - próg niski
+      description: Niski próg CO2 w ppm
+      required: false
+      selector:
+        number:
+          min: 400
+          max: 800
+          step: 50
+    co2_medium:
+      name: CO2 - próg średni
+      description: Średni próg CO2 w ppm
+      required: false
+      selector:
+        number:
+          min: 600
+          max: 1200
+          step: 50
+    co2_high:
+      name: CO2 - próg wysoki
+      description: Wysoki próg CO2 w ppm
+      required: false
+      selector:
+        number:
+          min: 800
+          max: 1600
+          step: 50
+    humidity_target:
+      name: Docelowa wilgotność
+      description: Docelowa wilgotność w %
+      required: false
+      selector:
+        number:
+          min: 30
+          max: 70
+          step: 5
+
+set_temperature_curve:
+  name: Ustaw krzywą grzania
+  description: Konfiguruje krzywą grzania dla systemu ogrzewania
+  fields:
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
+      required: true
+      selector:
+        entity:
+          domain: climate
+          integration: thessla_green_modbus
+    slope:
+      name: Nachylenie krzywej
+      description: Nachylenie krzywej grzania (0.1-3.0)
+      required: true
+      selector:
+        number:
+          min: 0.1
+          max: 3.0
+          step: 0.1
+    offset:
+      name: Przesunięcie krzywej
+      description: Przesunięcie krzywej grzania w °C
+      required: true
+      selector:
+        number:
+          min: -10.0
+          max: 10.0
+          step: 0.5
+    max_supply_temp:
+      name: Max. temp. nawiewu
+      description: Maksymalna temperatura nawiewu w °C
+      required: false
+      selector:
+        number:
+          min: 25.0
+          max: 95.0
+          step: 0.5
+    min_supply_temp:
+      name: Min. temp. nawiewu
+      description: Minimalna temperatura nawiewu w °C
+      required: false
+      selector:
+        number:
+          min: 15.0
+          max: 35.0
+          step: 0.5
+
+reset_filters:
+  name: Resetuj licznik filtrów
+  description: Resetuje licznik czasu życia filtrów
+  fields:
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
+      required: true
+      selector:
+        entity:
+          domain: climate
           integration: thessla_green_modbus
     filter_type:
-      name: Filter Type
-      description: Type of filters installed
+      name: Typ filtra
+      description: Typ filtra do ustawienia
       required: true
       selector:
         select:
@@ -316,93 +313,128 @@ set_filter_type:
             - "cleanpad"
             - "cleanpad_pure"
 
-read_diagnostics:
-  name: Read Diagnostics
-  description: Read diagnostic information from the device
+reset_settings:
+  name: Resetuj ustawienia
+  description: Resetuje ustawienia użytkownika do wartości domyślnych
   fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to read diagnostics from
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
       required: true
       selector:
-        device:
+        entity:
+          domain: climate
           integration: thessla_green_modbus
-
-refresh_data:
-  name: Refresh Data
-  description: Force immediate refresh of all device data
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to refresh
+    reset_type:
+      name: Typ resetu
+      description: Typ ustawień do zresetowania
       required: true
-      selector:
-        device:
-          integration: thessla_green_modbus
-
-write_register:
-  name: Write Register
-  description: Write a value directly to a Modbus register (advanced users only)
-  fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to control
-      required: true
-      selector:
-        device:
-          integration: thessla_green_modbus
-    register_address:
-      name: Register Address
-      description: Modbus register address (decimal or hex with 0x prefix)
-      required: true
-      selector:
-        text:
-    value:
-      name: Value
-      description: Value to write to the register
-      required: true
-      selector:
-        number:
-          min: 0
-          max: 65535
-          step: 1
-    register_type:
-      name: Register Type
-      description: Type of register to write
-      required: false
-      default: "holding"
       selector:
         select:
           options:
-            - "holding"
-            - "coil"
+            - "user_settings"
+            - "schedule_settings"
+            - "all_settings"
 
-read_register:
-  name: Read Register
-  description: Read a value directly from a Modbus register (advanced users only)
+start_pressure_test:
+  name: Uruchom test ciśnienia
+  description: Uruchamia automatyczny test kontroli filtrów/ciśnienia
   fields:
-    device_id:
-      name: Device
-      description: The ThesslaGreen device to read from
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
       required: true
       selector:
-        device:
+        entity:
+          domain: climate
           integration: thessla_green_modbus
-    register_address:
-      name: Register Address
-      description: Modbus register address (decimal or hex with 0x prefix)
+
+set_modbus_parameters:
+  name: Ustaw parametry Modbus
+  description: Konfiguruje parametry komunikacji Modbus (tylko dla zaawansowanych użytkowników)
+  fields:
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
       required: true
       selector:
-        text:
-    register_type:
-      name: Register Type
-      description: Type of register to read
-      required: false
-      default: "input"
+        entity:
+          domain: climate
+          integration: thessla_green_modbus
+    port:
+      name: Port
+      description: Port Modbus (Air-B lub Air++)
+      required: true
       selector:
         select:
           options:
-            - "input"
-            - "holding"
-            - "coil"
-            - "discrete"
+            - "air_b"
+            - "air_plus"
+    baud_rate:
+      name: Szybkość transmisji
+      description: Szybkość transmisji Modbus
+      required: false
+      selector:
+        select:
+          options:
+            - "4800"
+            - "9600"
+            - "14400"
+            - "19200"
+            - "28800"
+            - "38400"
+            - "57600"
+            - "76800"
+            - "115200"
+    parity:
+      name: Parzystość
+      description: Bit parzystości
+      required: false
+      selector:
+        select:
+          options:
+            - "none"
+            - "even"
+            - "odd"
+    stop_bits:
+      name: Bity stopu
+      description: Liczba bitów stopu
+      required: false
+      selector:
+        select:
+          options:
+            - "1"
+            - "2"
+
+set_device_name:
+  name: Ustaw nazwę urządzenia
+  description: Ustawia niestandardową nazwę urządzenia (max 16 znaków ASCII)
+  fields:
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
+      required: true
+      selector:
+        entity:
+          domain: climate
+          integration: thessla_green_modbus
+    device_name:
+      name: Nazwa urządzenia
+      description: Nowa nazwa urządzenia (max 16 znaków)
+      required: true
+      selector:
+        text:
+          multiline: false
+
+refresh_device_data:
+  name: Odśwież dane urządzenia
+  description: Wymusza natychmiastowe odświeżenie danych z urządzenia
+  fields:
+    entity_id:
+      name: Encja climate
+      description: Encja climate rekuperatora
+      required: true
+      selector:
+        entity:
+          domain: climate
+          integration: thessla_green_modbus
