@@ -35,7 +35,15 @@ from .coordinator import ThesslaGreenModbusCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 # Define platforms this integration supports
-PLATFORMS_TO_SETUP = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.CLIMATE, Platform.FAN, Platform.SELECT, Platform.NUMBER, Platform.SWITCH]
+PLATFORMS_TO_SETUP = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.CLIMATE,
+    Platform.FAN,
+    Platform.SELECT,
+    Platform.NUMBER,
+    Platform.SWITCH,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -146,7 +154,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Cleanup coordinator
     try:
-        await coordinator.async_shutdown()
+        if hasattr(coordinator, 'async_shutdown'):
+            await coordinator.async_shutdown()
     except Exception as err:
         _LOGGER.warning("Error during coordinator shutdown: %s", err)
     
@@ -168,22 +177,25 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
         return
     
     # Update coordinator settings
-    scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-    timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-    retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
-    force_full_register_list = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+    scan_interval_value = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    timeout_value = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+    retry_value = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
+    force_full_register_list_value = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
     
-    # Update coordinator configuration
-    await coordinator.async_update_options(
-        scan_interval=timedelta(seconds=scan_interval),
-        timeout=timeout,
-        retry=retry,
-        force_full_register_list=force_full_register_list,
-    )
+    # Update coordinator configuration if method exists
+    if hasattr(coordinator, 'async_update_options'):
+        await coordinator.async_update_options(
+            scan_interval=timedelta(seconds=scan_interval_value),
+            timeout=timeout_value,
+            retry=retry_value,
+            force_full_register_list=force_full_register_list_value,
+        )
+    else:
+        _LOGGER.debug("Coordinator does not support async_update_options - will take effect on restart")
     
     _LOGGER.info(
         "Updated options for %s: scan_interval=%ds, timeout=%ds, retry=%d, force_full=%s",
-        entry.title, scan_interval, timeout, retry, force_full_register_list
+        entry.title, scan_interval_value, timeout_value, retry_value, force_full_register_list_value
     )
 
 
