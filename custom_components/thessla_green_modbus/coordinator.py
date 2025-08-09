@@ -136,7 +136,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             if self.client:
                 await self._async_close_client()
 
-            # POPRAWKA: Użyj nowego client API
+            # POPRAWKA: Użyj nowego client API - uproszczone bez problematycznych argumentów
             self.client = ThesslaGreenModbusClient(
                 host=self.host,
                 port=self.port,

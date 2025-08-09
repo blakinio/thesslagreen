@@ -143,14 +143,12 @@ class ThesslaGreenDeviceScanner:
                 if self.client:
                     await self.disconnect()
                     
-                # POPRAWKA: Nowe API pymodbus 3.5+
+                # POPRAWKA: Nowe API pymodbus 3.5+ - usunięto retry_on_empty, strict
                 self.client = AsyncModbusTcpClient(
                     host=self.host,
                     port=self.port,
                     timeout=self.timeout,
-                    retries=1,  # Let scanner handle retries
-                    retry_on_empty=True,
-                    strict=False,
+                    # retries handled by scanner manually
                 )
                 
                 # POPRAWKA: Nowy sposób łączenia

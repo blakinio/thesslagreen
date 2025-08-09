@@ -45,17 +45,12 @@ class ThesslaGreenModbusClient:
             if self._client:
                 await self.disconnect()
                 
-            # POPRAWKA: Nowe API pymodbus 3.5+
+            # POPRAWKA: Nowe API pymodbus 3.5+ - usunięto retry_on_empty, strict, source_address
             self._client = AsyncModbusTcpClient(
                 host=self.host,
                 port=self.port,
                 timeout=self.timeout,
-                # POPRAWKA: Stabilność połączenia
-                retries=self._connection_retries,
-                retry_on_empty=True,
-                # POPRAWKA: Transaction ID handling
-                source_address=None,
-                strict=False,
+                # POPRAWKA: retries obsługiwane manualnie przez client
             )
             
             # POPRAWKA: Nowy sposób łączenia w pymodbus 3.5+
