@@ -1,24 +1,29 @@
-"""Sensor platform for ThesslaGreen Modbus Integration.
+"""POPRAWIONY Sensor platform for ThesslaGreen Modbus Integration.
 Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
+FIX: _attr_device_class AttributeError, sensor setup errors
 """
 from __future__ import annotations
 
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorDeviceClass,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfTemperature,
-    UnitOfVolumeFlowRate,
-    UnitOfPressure,
-    UnitOfPower,
-    UnitOfEnergy,
     UnitOfTime,
-    CONCENTRATION_PARTS_PER_MILLION,
-    CONCENTRATION_PARTS_PER_BILLION,
+    UnitOfVolume,
+    UnitOfVolumetricFlux,
+    UnitOfPressure,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -30,25 +35,52 @@ from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Unit mappings for backwards compatibility
+# Unit mappings for HA 2025.* compatibility
 UNIT_MAPPINGS = {
     "°C": UnitOfTemperature.CELSIUS,
-    "m³/h": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+    "celsius": UnitOfTemperature.CELSIUS,
+    "temperature": UnitOfTemperature.CELSIUS,
     "%": PERCENTAGE,
+    "percent": PERCENTAGE,
+    "percentage": PERCENTAGE,
+    "m³/h": UnitOfVolumetricFlux.CUBIC_METERS_PER_HOUR,
+    "m3/h": UnitOfVolumetricFlux.CUBIC_METERS_PER_HOUR,
+    "l/s": UnitOfVolumetricFlux.LITERS_PER_SECOND,
     "Pa": UnitOfPressure.PA,
-    "W": UnitOfPower.WATT,
-    "kWh": UnitOfEnergy.KILO_WATT_HOUR,
+    "pascal": UnitOfPressure.PA,
+    "kPa": UnitOfPressure.KPA,
+    "hPa": UnitOfPressure.HPA,
+    "mbar": UnitOfPressure.MBAR,
+    "bar": UnitOfPressure.BAR,
     "h": UnitOfTime.HOURS,
-    "ppm": CONCENTRATION_PARTS_PER_MILLION,
-    "ppb": CONCENTRATION_PARTS_PER_BILLION,
+    "hours": UnitOfTime.HOURS,
+    "min": UnitOfTime.MINUTES,
+    "minutes": UnitOfTime.MINUTES,
+    "s": UnitOfTime.SECONDS,
+    "seconds": UnitOfTime.SECONDS,
+    "kWh": UnitOfEnergy.KILO_WATT_HOUR,
+    "kwh": UnitOfEnergy.KILO_WATT_HOUR,
+    "Wh": UnitOfEnergy.WATT_HOUR,
+    "wh": UnitOfEnergy.WATT_HOUR,
+    "W": UnitOfPower.WATT,
+    "watt": UnitOfPower.WATT,
+    "kW": UnitOfPower.KILO_WATT,
+    "kilowatt": UnitOfPower.KILO_WATT,
+    "A": UnitOfElectricCurrent.AMPERE,
+    "ampere": UnitOfElectricCurrent.AMPERE,
+    "V": UnitOfElectricPotential.VOLT,
+    "volt": UnitOfElectricPotential.VOLT,
+    "ppm": "ppm",
+    "rpm": "rpm",
 }
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen sensors from config entry."""
+    """POPRAWIONE: Set up ThesslaGreen sensor entities."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     
     entities = []
@@ -95,7 +127,7 @@ async def async_setup_entry(
 
 
 class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
-    """ThesslaGreen sensor entity."""
+    """POPRAWIONY ThesslaGreen sensor entity z naprawionymi atrybutami."""
     
     def __init__(
         self,
@@ -114,7 +146,14 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         # Entity configuration
         self._attr_name = self._generate_entity_name()
         self._attr_unique_id = f"{coordinator.device_name}_{register_name}"
-        self._attr_device_info = coordinator.get_device_info()
+        self._attr_device_info = coordinator.device_info
+        
+        # POPRAWKA: Initialize attributes before setup
+        self._attr_device_class = None
+        self._attr_state_class = None
+        self._attr_native_unit_of_measurement = None
+        self._attr_icon = None
+        self._attr_entity_category = None
         
         # Sensor configuration
         self._setup_sensor_attributes()
@@ -123,6 +162,10 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
     
     def _generate_entity_name(self) -> str:
         """Generate human-readable entity name."""
+        # Use configured name if available
+        if "name" in self.entity_config:
+            return self.entity_config["name"]
+        
         # Convert register name to human readable
         name_parts = self.register_name.split("_")
         
@@ -187,7 +230,7 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         return " ".join(processed_parts)
     
     def _setup_sensor_attributes(self) -> None:
-        """Setup sensor attributes based on entity configuration."""
+        """POPRAWIONE: Setup sensor attributes based on entity configuration."""
         # Unit of measurement
         if "unit" in self.entity_config:
             unit = self.entity_config["unit"]
@@ -208,11 +251,13 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
                 }
                 
                 mapped_class = device_class_mapping.get(device_class_str, device_class_str)
-                self._attr_device_class = getattr(SensorDeviceClass, mapped_class.upper(), None)
                 
-                # Fallback to string if enum doesn't exist
-                if self._attr_device_class is None:
-                    self._attr_device_class = device_class_str
+                # Try to get from SensorDeviceClass enum
+                if hasattr(SensorDeviceClass, mapped_class.upper()):
+                    self._attr_device_class = getattr(SensorDeviceClass, mapped_class.upper())
+                else:
+                    # Fallback to string for custom device classes
+                    self._attr_device_class = mapped_class
                     
             except AttributeError:
                 # Fallback to string for custom device classes
@@ -222,19 +267,23 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         if "icon" in self.entity_config:
             self._attr_icon = self.entity_config["icon"]
         
+        # POPRAWKA: Sprawdzenie czy _attr_device_class istnieje przed użyciem
         # State class for statistics - HA 2025.* compatibility
-        if self._attr_device_class in [
-            SensorDeviceClass.TEMPERATURE,
-            SensorDeviceClass.HUMIDITY,
-            SensorDeviceClass.PRESSURE,
-            SensorDeviceClass.POWER,
-            SensorDeviceClass.ENERGY,
-        ] or (isinstance(self._attr_device_class, str) and self._attr_device_class in ["co2", "temperature", "humidity", "pressure", "power", "energy"]):
-            self._attr_state_class = "measurement"
-        elif "energy" in self.register_name or "consumption" in self.register_name:
-            self._attr_state_class = "total_increasing"
+        if hasattr(self, '_attr_device_class') and self._attr_device_class is not None:
+            if (self._attr_device_class in [
+                SensorDeviceClass.TEMPERATURE,
+                SensorDeviceClass.HUMIDITY,
+                SensorDeviceClass.PRESSURE,
+                SensorDeviceClass.POWER,
+                SensorDeviceClass.ENERGY,
+            ] or (isinstance(self._attr_device_class, str) and self._attr_device_class in ["co2", "temperature", "humidity", "pressure", "power", "energy"])):
+                self._attr_state_class = SensorStateClass.MEASUREMENT
+        
+        # Additional state class checks
+        if "energy" in self.register_name or "consumption" in self.register_name:
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         elif "hours" in self.register_name or "counter" in self.register_name:
-            self._attr_state_class = "total_increasing"
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         
         # Entity category for diagnostic sensors
         if any(keyword in self.register_name for keyword in [
@@ -282,8 +331,9 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
                 return max(0, min(100, raw_value))  # Clamp to 0-100%
         
         # Handle temperature values with HA 2025.* compatibility
-        if (self._attr_device_class == SensorDeviceClass.TEMPERATURE or 
-            (isinstance(self._attr_device_class, str) and self._attr_device_class == "temperature")):
+        if (hasattr(self, '_attr_device_class') and 
+            (self._attr_device_class == SensorDeviceClass.TEMPERATURE or 
+             (isinstance(self._attr_device_class, str) and self._attr_device_class == "temperature"))):
             if isinstance(raw_value, (int, float)):
                 # Check for invalid temperature readings
                 if raw_value < -50 or raw_value > 100:
@@ -296,14 +346,16 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
                 return max(0, raw_value)  # Flow cannot be negative
         
         # Handle pressure values with HA 2025.* compatibility
-        if (self._attr_device_class == SensorDeviceClass.PRESSURE or 
-            (isinstance(self._attr_device_class, str) and self._attr_device_class == "pressure")):
+        if (hasattr(self, '_attr_device_class') and 
+            (self._attr_device_class == SensorDeviceClass.PRESSURE or 
+             (isinstance(self._attr_device_class, str) and self._attr_device_class == "pressure"))):
             if isinstance(raw_value, (int, float)):
                 return round(raw_value, 1)
         
         # Handle power and energy with HA 2025.* compatibility
-        if (self._attr_device_class in [SensorDeviceClass.POWER, SensorDeviceClass.ENERGY] or
-            (isinstance(self._attr_device_class, str) and self._attr_device_class in ["power", "energy"])):
+        if (hasattr(self, '_attr_device_class') and 
+            (self._attr_device_class in [SensorDeviceClass.POWER, SensorDeviceClass.ENERGY] or
+             (isinstance(self._attr_device_class, str) and self._attr_device_class in ["power", "energy"]))):
             if isinstance(raw_value, (int, float)):
                 return max(0, raw_value)  # Power/energy cannot be negative
         
@@ -315,7 +367,7 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         attributes = {}
         
         # Add register information for diagnostics
-        if self._attr_entity_category == EntityCategory.DIAGNOSTIC:
+        if hasattr(self, '_attr_entity_category') and self._attr_entity_category == EntityCategory.DIAGNOSTIC:
             attributes["register_name"] = self.register_name
             if self.register_type:
                 attributes["register_type"] = self.register_type
@@ -331,8 +383,8 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
             attributes["scale_factor"] = self.entity_config["scale"]
         
         # Add last update time
-        if self.coordinator.last_successful_update:
-            attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()
+        if hasattr(self.coordinator, 'last_successful_read') and self.coordinator.last_successful_read:
+            attributes["last_updated"] = self.coordinator.last_successful_read.isoformat()
         
         return attributes
     

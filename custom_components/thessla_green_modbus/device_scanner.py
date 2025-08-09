@@ -1,7 +1,6 @@
-"""Enhanced device scanner for ThesslaGreen Modbus Integration.
+"""POPRAWIONY Device scanner dla ThesslaGreen Modbus Integration.
 Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-Autoscan rejestrów + diagnostyka + logowanie błędów
+FIX: Exception handling, register availability detection, diagnostics
 """
 from __future__ import annotations
 
@@ -13,6 +12,7 @@ import time
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusIOException, ModbusException, ConnectionException
+from pymodbus.pdu import ExceptionResponse
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
@@ -58,9 +58,13 @@ class DeviceCapabilities:
 
 
 class ThesslaGreenDeviceScanner:
-    """Enhanced device scanner with intelligent register detection.
-    Kompatybilne z HA 2025.* + pymodbus 3.5.*+
-    Wykrywa wszystkie dostępne rejestry automatycznie.
+    """POPRAWIONY Enhanced device scanner z intelligent register detection.
+    
+    Naprawione problemy:
+    - Exception code 2 (illegal data address) handling
+    - Better register availability detection
+    - Improved diagnostics and logging
+    - pymodbus 3.5+ compatibility
     """
     
     def __init__(self, host: str, port: int, slave_id: int, timeout: int = DEFAULT_TIMEOUT, retry: int = DEFAULT_RETRY):
@@ -92,11 +96,26 @@ class ThesslaGreenDeviceScanner:
             "successful_batches": 0,
             "failed_batches": 0,
             "scan_duration": 0.0,
-            "connection_time": 0.0
+            "connection_time": 0.0,
+            "exception_count": 0,
+            "timeout_count": 0,
         }
         
         # Error tracking
         self.error_log: List[Dict[str, Any]] = []
+        
+        # POPRAWKA: Exception tracking dla diagnostyki
+        self.exception_codes = {
+            1: "Illegal Function",
+            2: "Illegal Data Address", 
+            3: "Illegal Data Value",
+            4: "Slave Device Failure",
+            5: "Acknowledge",
+            6: "Slave Device Busy",
+            8: "Memory Parity Error",
+            10: "Gateway Path Unavailable",
+            11: "Gateway Target Device Failed to Respond"
+        }
         
     def _log_error(self, error_type: str, message: str, details: Optional[Dict] = None):
         """Log error with timestamp and details."""
@@ -113,7 +132,7 @@ class ThesslaGreenDeviceScanner:
             self.error_log = self.error_log[-50:]
         
     async def connect(self) -> bool:
-        """Establish connection to device with retries."""
+        """POPRAWIONE: Establish connection to device with retries."""
         connection_start = time.time()
         
         for attempt in range(self.retry):
@@ -124,16 +143,20 @@ class ThesslaGreenDeviceScanner:
                 if self.client:
                     await self.disconnect()
                     
+                # POPRAWKA: Nowe API pymodbus 3.5+
                 self.client = AsyncModbusTcpClient(
                     host=self.host,
                     port=self.port,
-                    timeout=self.timeout
+                    timeout=self.timeout,
+                    retries=1,  # Let scanner handle retries
+                    retry_on_empty=True,
+                    strict=False,
                 )
                 
-                # Connect - pymodbus 3.5+ compatible
-                await self.client.connect()
+                # POPRAWKA: Nowy sposób łączenia
+                connected = await self.client.connect()
                 
-                if self.client.connected:
+                if connected and self.client.connected:
                     self.scan_stats["connection_time"] = time.time() - connection_start
                     _LOGGER.info("Successfully connected to ThesslaGreen device at %s:%s", self.host, self.port)
                     return True
@@ -149,13 +172,13 @@ class ThesslaGreenDeviceScanner:
         return False
         
     async def disconnect(self):
-        """Safely disconnect from device."""
+        """POPRAWIONE: Safely disconnect from device."""
         try:
-            if self.client and hasattr(self.client, 'close') and self.client.connected:
+            if self.client and hasattr(self.client, 'close'):
                 self.client.close()
         except Exception as exc:
             self._log_error("disconnect_error", f"Error during disconnect: {exc}")
-            _LOGGER.warning("Error during disconnect: %s", exc)
+            _LOGGER.debug("Error during disconnect: %s", exc)
         finally:
             self.client = None
     
@@ -174,506 +197,346 @@ class ThesslaGreenDeviceScanner:
         }
         
         for name, address in sorted_registers[1:]:
-            gap = address - current_group["addresses"][-1]
+            # Check if we can add this register to current group
+            last_address = current_group["addresses"][-1]
+            gap = address - last_address
             
-            # Start new group if gap too large or batch too big
-            if gap > max_gap or len(current_group["addresses"]) >= max_batch:
-                current_group["count"] = current_group["addresses"][-1] - current_group["start_address"] + 1
-                current_group["real_count"] = len(current_group["registers"])
+            if gap <= max_gap and len(current_group["registers"]) < max_batch:
+                # Add to current group
+                current_group["registers"].append(name)
+                current_group["addresses"].append(address)
+            else:
+                # Start new group
                 groups.append(current_group)
-                
                 current_group = {
                     "start_address": address,
                     "registers": [name],
                     "addresses": [address]
                 }
-            else:
-                current_group["registers"].append(name)
-                current_group["addresses"].append(address)
         
-        # Add final group
+        # Add last group
         if current_group["registers"]:
-            current_group["count"] = current_group["addresses"][-1] - current_group["start_address"] + 1
-            current_group["real_count"] = len(current_group["registers"])
             groups.append(current_group)
             
+        # Calculate count and real register count for each group
+        for group in groups:
+            group["count"] = group["addresses"][-1] - group["start_address"] + 1
+            group["real_count"] = len(group["registers"])
+            
         return groups
-    
-    async def _read_register_batch(self, register_type: str, group: Dict[str, Any]) -> Dict[str, int]:
-        """Read a batch of registers with pymodbus 3.5+ compatible API."""
+
+    async def _scan_register_batch(self, register_type: str, start_address: int, count: int, register_names: List[str]) -> Dict[str, int]:
+        """POPRAWIONE: Scan batch of registers with proper exception handling."""
         found_registers = {}
         
-        if not self.client or not self.client.connected:
-            return found_registers
-            
         try:
-            start_addr = group["start_address"]
-            count = group["count"]
+            self.scan_stats["total_attempted"] += 1
             
-            _LOGGER.debug(
-                "Scanning %s batch 0x%04X-0x%04X (%d registers, %d real): %s",
-                register_type, start_addr, start_addr + count - 1, count, 
-                group["real_count"], group["registers"][:5]
-            )
+            # POPRAWKA: Wybór właściwej funkcji Modbus
+            if register_type == "input":
+                result = await self.client.read_input_registers(
+                    address=start_address, count=count, slave=self.slave_id
+                )
+            elif register_type == "holding":
+                result = await self.client.read_holding_registers(
+                    address=start_address, count=count, slave=self.slave_id
+                )
+            elif register_type == "coil":
+                result = await self.client.read_coils(
+                    address=start_address, count=count, slave=self.slave_id
+                )
+            elif register_type == "discrete":
+                result = await self.client.read_discrete_inputs(
+                    address=start_address, count=count, slave=self.slave_id
+                )
+            else:
+                raise ValueError(f"Unknown register type: {register_type}")
             
-            # pymodbus 3.5+ compatible API calls with timeout
-            response = None
-            self.scan_stats["total_attempted"] += group["real_count"]
-            
-            try:
-                if register_type == "input":
-                    response = await asyncio.wait_for(
-                        self.client.read_input_registers(address=start_addr, count=count, slave=self.slave_id),
-                        timeout=self.timeout
-                    )
-                elif register_type == "holding":
-                    response = await asyncio.wait_for(
-                        self.client.read_holding_registers(address=start_addr, count=count, slave=self.slave_id),
-                        timeout=self.timeout
-                    )
-                elif register_type == "coil":
-                    response = await asyncio.wait_for(
-                        self.client.read_coils(address=start_addr, count=count, slave=self.slave_id),
-                        timeout=self.timeout
-                    )
-                elif register_type == "discrete":
-                    response = await asyncio.wait_for(
-                        self.client.read_discrete_inputs(address=start_addr, count=count, slave=self.slave_id),
-                        timeout=self.timeout
-                    )
-            except asyncio.TimeoutError:
-                _LOGGER.debug("Timeout reading %s batch 0x%04X-0x%04X", register_type, start_addr, start_addr + count - 1)
-                self.scan_stats["failed_batches"] += 1
+            # POPRAWKA: Obsługa exception responses
+            if isinstance(result, ExceptionResponse):
+                exception_code = result.exception_code
+                exception_name = self.exception_codes.get(exception_code, f"Unknown ({exception_code})")
+                
+                if exception_code == 2:  # Illegal Data Address
+                    _LOGGER.debug("Registers %s 0x%04X-0x%04X not available: %s", 
+                                register_type, start_address, start_address + count - 1, exception_name)
+                else:
+                    _LOGGER.warning("Exception reading %s registers 0x%04X-0x%04X: %s", 
+                                   register_type, start_address, start_address + count - 1, exception_name)
+                
+                self.scan_stats["exception_count"] += 1
+                self._log_error("modbus_exception", f"Exception code {exception_code}: {exception_name}", {
+                    "register_type": register_type,
+                    "start_address": f"0x{start_address:04X}",
+                    "count": count,
+                    "exception_code": exception_code
+                })
                 return found_registers
             
-            if response and not response.isError():
-                self.scan_stats["successful_batches"] += 1
-                
-                # Extract values for each register in group
-                for i, reg_name in enumerate(group["registers"]):
-                    reg_address = group["addresses"][i]
-                    value_index = reg_address - start_addr
+            # POPRAWKA: Obsługa błędów
+            if result.isError():
+                error_msg = str(result)
+                if "timeout" in error_msg.lower():
+                    self.scan_stats["timeout_count"] += 1
                     
-                    try:
-                        if hasattr(response, 'registers') and response.registers:
-                            if value_index < len(response.registers):
-                                value = response.registers[value_index]
-                                found_registers[reg_name] = reg_address
-                                self.scan_stats["total_successful"] += 1
-                        elif hasattr(response, 'bits') and response.bits:
-                            if value_index < len(response.bits):
-                                value = response.bits[value_index]
-                                found_registers[reg_name] = reg_address
-                                self.scan_stats["total_successful"] += 1
-                    except (IndexError, AttributeError) as exc:
-                        _LOGGER.debug("Error extracting register %s at index %d: %s", reg_name, value_index, exc)
-                        continue
-                        
-                _LOGGER.debug("Successfully read %d/%d registers from batch", 
-                             len(found_registers), group["real_count"])
-            else:
-                self.scan_stats["failed_batches"] += 1
-                error_msg = str(response) if response else "No response"
-                _LOGGER.debug("Failed to read %s batch 0x%04X-0x%04X: %s", register_type, start_addr, start_addr + count - 1, error_msg)
+                _LOGGER.debug("Error reading %s batch 0x%04X-0x%04X: %s", 
+                            register_type, start_address, start_address + count - 1, error_msg)
+                self._log_error("read_error", f"Read error: {error_msg}", {
+                    "register_type": register_type,
+                    "start_address": f"0x{start_address:04X}",
+                    "count": count
+                })
+                return found_registers
+            
+            # Success - mark all registers as found
+            register_map = {}
+            if register_type in ["input", "holding"]:
+                register_map = {name: start_address + i for i, name in enumerate(register_names)}
+            else:  # coil, discrete
+                register_map = {name: start_address + i for i, name in enumerate(register_names)}
                 
+            found_registers.update(register_map)
+            self.scan_stats["total_successful"] += 1
+            self.scan_stats["successful_batches"] += 1
+            
+            _LOGGER.debug("Successfully read %d/%d registers from %s batch 0x%04X-0x%04X", 
+                        len(register_names), count, register_type, start_address, start_address + count - 1)
+            
+        except asyncio.TimeoutError:
+            self.scan_stats["timeout_count"] += 1
+            self._log_error("timeout", f"Timeout reading {register_type} batch", {
+                "start_address": f"0x{start_address:04X}",
+                "count": count
+            })
+            _LOGGER.debug("Timeout reading %s batch 0x%04X-0x%04X", 
+                        register_type, start_address, start_address + count - 1)
         except Exception as exc:
             self.scan_stats["failed_batches"] += 1
-            self._log_error(f"{register_type}_read_error", f"Unexpected error reading {register_type} {start_addr:04X}-{start_addr + count - 1:04X}: {exc}")
-            _LOGGER.warning("Unexpected error reading %s 0x%04X-0x%04X: %s", 
-                           register_type, start_addr, start_addr + count - 1, exc)
+            self._log_error("scan_error", f"Unexpected error: {exc}", {
+                "register_type": register_type,
+                "start_address": f"0x{start_address:04X}",
+                "count": count
+            })
+            _LOGGER.debug("Failed to read %s batch 0x%04X-0x%04X: %s", 
+                        register_type, start_address, start_address + count - 1, exc)
             
         return found_registers
-    
-    async def _scan_register_type(self, register_type: str, register_map: Dict[str, int]) -> Dict[str, int]:
-        """Scan all registers of specific type."""
-        if not register_map:
-            _LOGGER.debug("No %s registers to scan", register_type)
-            return {}
-            
+
+    async def _scan_registers(self, register_type: str, register_map: Dict[str, int]) -> Dict[str, int]:
+        """POPRAWIONE: Scan registers of specific type with optimized batching."""
         _LOGGER.info("Scanning %s registers: %d total", register_type, len(register_map))
         
-        # Try batch reading first
-        groups = self._create_register_groups(register_map, max_gap=5, max_batch=8)  # Smaller batches
+        # Create optimized register groups
+        groups = self._create_register_groups(register_map)
         _LOGGER.debug("Created %d register groups for %s scanning", len(groups), register_type)
         
         found_registers = {}
         
-        # Scan each group
-        for group in groups:
-            batch_result = await self._read_register_batch(register_type, group)
+        for i, group in enumerate(groups):
+            # POPRAWKA: Lepsze logowanie
+            _LOGGER.debug("Scanning %s batch 0x%04X-0x%04X (%d registers, %d real): %s", 
+                        register_type, group["start_address"], 
+                        group["start_address"] + group["count"] - 1,
+                        group["count"], group["real_count"], group["registers"][:5])
+            
+            batch_result = await self._scan_register_batch(
+                register_type, group["start_address"], group["count"], group["registers"]
+            )
             found_registers.update(batch_result)
             
-            # Small delay between batches to avoid overwhelming device
-            await asyncio.sleep(0.2)
+            # Small delay between batches to prevent overwhelming device
+            if i < len(groups) - 1:
+                await asyncio.sleep(0.2)
         
-        # If batch reading found few registers, try individual reading for important ones
-        if len(found_registers) < len(register_map) * 0.3:  # Less than 30% success
-            _LOGGER.info("Batch reading had low success rate, trying individual register reads for key registers")
-            
-            # Key registers to try individually
-            key_registers = [
-                "firmware_major", "firmware_minor", "firmware_patch",
-                "outside_temperature", "supply_temperature", "exhaust_temperature",
-                "air_flow_rate", "supply_flowrate", "exhaust_flowrate",
-                "mode", "supply_temperature_manual", "comfort_temperature",
-                "on_off_panel_mode", "season_mode"
-            ]
-            
-            for reg_name in key_registers:
-                if reg_name in register_map and reg_name not in found_registers:
-                    single_result = await self._read_single_register(register_type, reg_name, register_map[reg_name])
-                    if single_result:
-                        found_registers.update(single_result)
-                    await asyncio.sleep(0.1)
-            
         _LOGGER.info("%s registers scan complete: %d/%d registers found", 
-                    register_type.capitalize(), len(found_registers), len(register_map))
+                   register_type.title(), len(found_registers), len(register_map))
         
         return found_registers
-    
-    async def _read_single_register(self, register_type: str, register_name: str, address: int) -> Dict[str, int]:
-        """Read a single register individually."""
-        if not self.client or not self.client.connected:
-            return {}
-        
-        try:
-            _LOGGER.debug("Reading single %s register %s at 0x%04X", register_type, register_name, address)
-            
-            response = None
-            if register_type == "input":
-                response = await asyncio.wait_for(
-                    self.client.read_input_registers(address=address, count=1, slave=self.slave_id),
-                    timeout=self.timeout
-                )
-            elif register_type == "holding":
-                response = await asyncio.wait_for(
-                    self.client.read_holding_registers(address=address, count=1, slave=self.slave_id),
-                    timeout=self.timeout
-                )
-            elif register_type == "coil":
-                response = await asyncio.wait_for(
-                    self.client.read_coils(address=address, count=1, slave=self.slave_id),
-                    timeout=self.timeout
-                )
-            elif register_type == "discrete":
-                response = await asyncio.wait_for(
-                    self.client.read_discrete_inputs(address=address, count=1, slave=self.slave_id),
-                    timeout=self.timeout
-                )
-            
-            if response and not response.isError():
-                _LOGGER.debug("Successfully read %s register %s", register_type, register_name)
-                self.scan_stats["total_successful"] += 1
-                return {register_name: address}
-            else:
-                _LOGGER.debug("Failed to read %s register %s: %s", register_type, register_name, response)
-                
-        except Exception as exc:
-            _LOGGER.debug("Error reading single %s register %s: %s", register_type, register_name, exc)
-        
-        return {}
-    
+
     def _analyze_capabilities(self):
-        """Analyze available registers to determine device capabilities."""
-        input_regs = set(self.available_registers["input"].keys())
-        holding_regs = set(self.available_registers["holding"].keys())
-        coil_regs = set(self.available_registers["coil"].keys())
-        discrete_regs = set(self.available_registers["discrete"].keys())
+        """POPRAWIONE: Analyze device capabilities from found registers."""
+        all_registers = set()
+        for reg_dict in self.available_registers.values():
+            all_registers.update(reg_dict.keys())
         
         _LOGGER.debug("Analyzing capabilities from registers: input=%d, holding=%d, coil=%d, discrete=%d",
-                     len(input_regs), len(holding_regs), len(coil_regs), len(discrete_regs))
+                    len(self.available_registers["input"]),
+                    len(self.available_registers["holding"]),
+                    len(self.available_registers["coil"]),
+                    len(self.available_registers["discrete"]))
         
         # Temperature sensors
-        temp_sensors = {"outside_temperature", "supply_temperature", "exhaust_temperature", 
-                       "fpx_temperature", "duct_supply_temperature", "gwc_temperature", "ambient_temperature"}
-        found_temp_sensors = temp_sensors & input_regs
-        self.capabilities.has_temperature_sensors = len(found_temp_sensors) > 0
-        _LOGGER.debug("Temperature sensors found: %s", found_temp_sensors)
+        temp_sensors = {"outside_temperature", "ambient_temperature", "exhaust_temperature", 
+                       "supply_temperature", "gwc_temperature", "heating_temperature", "fpx_temperature"}
+        found_temp = temp_sensors.intersection(all_registers)
+        self.capabilities.has_temperature_sensors = len(found_temp) > 0
+        _LOGGER.debug("Temperature sensors found: %s", found_temp)
         
         # Flow sensors
-        flow_sensors = {"supply_flowrate", "exhaust_flowrate", "air_flow_rate", "supply_percentage", "exhaust_percentage"}
-        found_flow_sensors = flow_sensors & input_regs
-        self.capabilities.has_flow_sensors = len(found_flow_sensors) > 0
-        _LOGGER.debug("Flow sensors found: %s", found_flow_sensors)
+        flow_sensors = {"supply_flowrate", "exhaust_flowrate", "night_flow_rate"}
+        found_flow = flow_sensors.intersection(all_registers)
+        self.capabilities.has_flow_sensors = len(found_flow) > 0
+        _LOGGER.debug("Flow sensors found: %s", found_flow)
         
-        # GWC system
-        gwc_indicators = {"gwc_temperature", "gwc_mode", "gwc", "gwc_status"}
-        found_gwc = gwc_indicators & (input_regs | holding_regs | coil_regs)
+        # GWC (Ground Water Cooler)
+        gwc_indicators = {"gwc_temperature", "gwc"}
+        found_gwc = gwc_indicators.intersection(all_registers)
         self.capabilities.has_gwc = len(found_gwc) > 0
         _LOGGER.debug("GWC indicators found: %s", found_gwc)
         
-        # Bypass system
-        bypass_indicators = {"bypass", "bypass_mode", "bypass_status"}
-        found_bypass = bypass_indicators & (holding_regs | coil_regs | discrete_regs)
+        # Bypass
+        bypass_indicators = {"bypass"}
+        found_bypass = bypass_indicators.intersection(all_registers)
         self.capabilities.has_bypass = len(found_bypass) > 0
         _LOGGER.debug("Bypass indicators found: %s", found_bypass)
         
-        # Heating system
-        heating_indicators = {"heating_temperature", "heating_cable", "duct_warter_heater_pump", "heating_active"}
-        found_heating = heating_indicators & (holding_regs | coil_regs)
+        # Heating
+        heating_indicators = {"heating_temperature", "duct_warter_heater_pump", "heating_cable"}
+        found_heating = heating_indicators.intersection(all_registers)
         self.capabilities.has_heating = len(found_heating) > 0
         _LOGGER.debug("Heating indicators found: %s", found_heating)
         
-        # Scheduling - check for any schedule registers
-        schedule_indicators = {key for key in holding_regs if "schedule" in key}
+        # Scheduling
+        schedule_indicators = {reg for reg in all_registers if "schedule" in reg}
         self.capabilities.has_scheduling = len(schedule_indicators) > 0
         _LOGGER.debug("Schedule indicators found: %d registers", len(schedule_indicators))
         
         # Air quality sensors
-        air_quality_sensors = {"co2_concentration", "voc_level", "humidity_level"}
-        found_air_quality = air_quality_sensors & input_regs
-        self.capabilities.has_air_quality = len(found_air_quality) > 0
-        _LOGGER.debug("Air quality sensors found: %s", found_air_quality)
+        aq_sensors = {"humidity", "co2", "voc", "pressure"}
+        found_aq = {reg for reg in all_registers if any(sensor in reg for sensor in aq_sensors)}
+        self.capabilities.has_air_quality = len(found_aq) > 0
+        _LOGGER.debug("Air quality sensors found: %s", found_aq)
         
         # Pressure sensors
-        pressure_sensors = {"pressure_difference", "filter_pressure_drop"}
-        found_pressure = pressure_sensors & input_regs
-        self.capabilities.has_pressure_sensors = len(found_pressure) > 0
-        _LOGGER.debug("Pressure sensors found: %s", found_pressure)
+        pressure_sensors = {reg for reg in all_registers if "pressure" in reg}
+        self.capabilities.has_pressure_sensors = len(pressure_sensors) > 0
+        _LOGGER.debug("Pressure sensors found: %s", pressure_sensors)
         
         # Filter monitoring
-        filter_indicators = {"filter_change", "filter_operating_hours", "filter_pressure_drop", "filter_warning"}
-        found_filter = filter_indicators & (input_regs | holding_regs | coil_regs)
+        filter_indicators = {"filter_change", "filter_monitoring"}
+        found_filter = filter_indicators.intersection(all_registers)
         self.capabilities.has_filter_monitoring = len(found_filter) > 0
         _LOGGER.debug("Filter monitoring found: %s", found_filter)
         
-        # Special functions detection
+        # Special functions
         special_functions = []
-        if {"okap_mode"} & holding_regs or {"hood"} & coil_regs:
+        if any("okap" in reg for reg in all_registers):
             special_functions.append("OKAP")
-        if {"special_mode", "fireplace_mode"} & holding_regs:
-            special_functions.append("KOMINEK")
-        if {"season_mode"} & holding_regs:
-            special_functions.append("SEASONAL")
-        if {"boost_mode"} & holding_regs:
-            special_functions.append("BOOST")
-        if {"party_mode"} & holding_regs:
-            special_functions.append("PARTY")
-        if {"vacation_mode"} & holding_regs:
+        if any("fireplace" in reg for reg in all_registers):
+            special_functions.append("FIREPLACE")
+        if any("vacation" in reg for reg in all_registers):
             special_functions.append("VACATION")
-        if {"eco_mode"} & holding_regs:
-            special_functions.append("ECO")
-        if {"night_mode"} & holding_regs:
-            special_functions.append("NIGHT")
-        
         self.capabilities.special_functions = special_functions
         _LOGGER.debug("Special functions found: %s", special_functions)
         
         # Operating modes
-        modes = []
-        if {"mode"} & holding_regs:
-            modes.extend(["AUTO", "MANUAL", "TEMPORARY"])
-        if {"on_off_panel_mode"} & holding_regs:
-            modes.append("ON_OFF")
-        if {"cfgMode2"} & holding_regs:
-            modes.append("CONFIG")
-            
-        self.capabilities.operating_modes = modes
-        _LOGGER.debug("Operating modes found: %s", modes)
-        
-        # Log capabilities summary
-        capabilities_summary = []
-        if self.capabilities.has_temperature_sensors:
-            capabilities_summary.append(f"Temperature({len(found_temp_sensors)})")
-        if self.capabilities.has_flow_sensors:
-            capabilities_summary.append(f"Flow({len(found_flow_sensors)})")
-        if self.capabilities.has_gwc:
-            capabilities_summary.append("GWC")
-        if self.capabilities.has_bypass:
-            capabilities_summary.append("Bypass")
-        if self.capabilities.has_heating:
-            capabilities_summary.append("Heating")
-        if self.capabilities.has_air_quality:
-            capabilities_summary.append(f"AirQuality({len(found_air_quality)})")
-        if self.capabilities.has_scheduling:
-            capabilities_summary.append("Scheduling")
-        if len(self.capabilities.special_functions) > 0:
-            capabilities_summary.append(f"Special({len(self.capabilities.special_functions)})")
-        
-        _LOGGER.info("Device capabilities detected: %s", ", ".join(capabilities_summary) if capabilities_summary else "Basic functions only")
-        
+        operating_modes = []
+        if any("auto" in reg for reg in all_registers):
+            operating_modes.append("AUTO")
+        if any("manual" in reg for reg in all_registers):
+            operating_modes.append("MANUAL")  
+        if any("boost" in reg for reg in all_registers):
+            operating_modes.append("BOOST")
+        self.capabilities.operating_modes = operating_modes
+        _LOGGER.debug("Operating modes found: %s", operating_modes)
+
     async def scan_device(self) -> Optional[Dict[str, Any]]:
-        """Perform comprehensive device scan with enhanced diagnostics."""
+        """POPRAWIONE: Main device scanning function with comprehensive error handling."""
         scan_start = time.time()
         
+        _LOGGER.info("Starting ThesslaGreen device scan at %s:%s (slave_id=%s)", 
+                   self.host, self.port, self.slave_id)
+        
         try:
-            _LOGGER.info("Starting comprehensive device scan for %s:%s (slave_id=%s)", 
-                        self.host, self.port, self.slave_id)
-            
             # Connect to device
             if not await self.connect():
                 return None
-                
-            # Test basic connectivity with a simple read
-            try:
-                test_response = await self.client.read_input_registers(address=0x0000, count=1, slave=self.slave_id)
-                if test_response.isError():
-                    _LOGGER.warning("Device connectivity test failed: %s", test_response)
-                else:
-                    _LOGGER.debug("Device connectivity test successful")
-            except Exception as exc:
-                _LOGGER.warning("Device connectivity test exception: %s", exc)
             
             # Scan all register types
-            self.available_registers["input"] = await self._scan_register_type("input", INPUT_REGISTERS)
-            self.available_registers["holding"] = await self._scan_register_type("holding", HOLDING_REGISTERS)  
-            self.available_registers["coil"] = await self._scan_register_type("coil", COIL_REGISTERS)
-            self.available_registers["discrete"] = await self._scan_register_type("discrete", DISCRETE_INPUTS)
+            register_types = [
+                ("input", INPUT_REGISTERS),
+                ("holding", HOLDING_REGISTERS), 
+                ("coil", COIL_REGISTERS),
+                ("discrete", DISCRETE_INPUTS)
+            ]
             
-            # Calculate total found registers
-            total_found = sum(len(regs) for regs in self.available_registers.values())
-            total_possible = len(INPUT_REGISTERS) + len(HOLDING_REGISTERS) + len(COIL_REGISTERS) + len(DISCRETE_INPUTS)
-            
-            _LOGGER.info("Initial scan results: %d/%d registers found (%.1f%% success rate)", 
-                        total_found, total_possible, (total_found / total_possible * 100) if total_possible > 0 else 0)
-            
-            # If scan found very few registers, it might be due to device-specific register mapping
-            # Try reading some common registers individually to verify connectivity
-            if total_found < 20:  # Less than 20 registers found
-                _LOGGER.warning("Low register count detected (%d), trying targeted register reads", total_found)
-                
-                # Try some very common registers that should exist
-                test_registers = {
-                    "input": ["firmware_major", "firmware_minor", "outside_temperature", "supply_temperature", "exhaust_temperature", "air_flow_rate"],
-                    "holding": ["mode", "comfort_temperature", "supply_temperature_manual", "supply_temperature_auto", "air_flow_rate_manual", "on_off_panel_mode"],
-                    "coil": ["power_supply_fans", "bypass", "heating_cable"],
-                }
-                
-                additional_found = 0
-                for reg_type, reg_names in test_registers.items():
-                    reg_map = {"input": INPUT_REGISTERS, "holding": HOLDING_REGISTERS, "coil": COIL_REGISTERS}[reg_type]
-                    for reg_name in reg_names:
-                        if reg_name in reg_map and reg_name not in self.available_registers[reg_type]:
-                            single_result = await self._read_single_register(reg_type, reg_name, reg_map[reg_name])
-                            if single_result:
-                                self.available_registers[reg_type].update(single_result)
-                                additional_found += 1
-                            await asyncio.sleep(0.1)
-                
-                if additional_found > 0:
-                    total_found += additional_found
-                    _LOGGER.info("Found %d additional registers through targeted reads", additional_found)
+            for reg_type, reg_map in register_types:
+                if reg_map:  # Only scan if registers are defined
+                    found_regs = await self._scan_registers(reg_type, reg_map)
+                    self.available_registers[reg_type] = found_regs
             
             # Analyze capabilities
             self._analyze_capabilities()
             
-            # Record scan duration
+            # Calculate scan statistics
             self.scan_stats["scan_duration"] = time.time() - scan_start
+            total_registers = sum(len(regs) for regs in self.available_registers.values())
+            total_defined = sum(len(reg_map) for _, reg_map in register_types if reg_map)
             
-            _LOGGER.info(
-                "Device scan completed in %.2fs: %d/%d registers found across %d types",
-                self.scan_stats["scan_duration"], total_found, total_possible,
-                sum(1 for regs in self.available_registers.values() if regs)
-            )
+            _LOGGER.info("Device scan completed in %.2fs: %d/%d registers found across %d types", 
+                       self.scan_stats["scan_duration"], total_registers, total_defined,
+                       sum(1 for regs in self.available_registers.values() if regs))
             
-            # Validate scan results - if still very few registers, recommend force_full_register_list
-            if total_found < 10:
-                _LOGGER.warning(
-                    "Very few registers found (%d). Device may use non-standard register mapping. "
-                    "Consider enabling 'Force Full Register List' in integration options.",
-                    total_found
-                )
-                # Still create a result but flag it
-                validation_note = "⚠️ Limited device response detected - consider enabling 'Force Full Register List' option"
-            else:
-                validation_note = "✅ Auto-detected device capabilities - only available functions will be created"
-            
-            # Validate scan results
-            if total_found == 0:
-                self._log_error("no_registers_found", "No valid registers found - device may not be ThesslaGreen AirPack or connection issue")
-                _LOGGER.error("No valid registers found - device may not be ThesslaGreen AirPack or connection issue")
-                return None
-            
-            # Extract device information
+            # Extract device info (may be limited if device doesn't fully respond)
             device_info = await self._extract_device_info()
             
-            # Add recommendation for force_full_register_list if needed
-            if total_found < 30:  # Less than 30 registers found
-                device_info["scan_recommendation"] = (
-                    f"Found only {total_found} registers. If you experience missing functionality, "
-                    "enable 'Force Full Register List' in integration options to bypass auto-detection."
-                )
-            
-            # Prepare scan result
-            scan_result = {
-                "available_registers": self.available_registers.copy(),
+            return {
+                "available_registers": self.available_registers,
                 "capabilities": self.capabilities.to_dict(),
                 "device_info": device_info,
-                "scan_statistics": self.scan_stats.copy(),
-                "diagnostics": {
-                    "error_log": self.error_log.copy(),
-                    "success_rate": self.scan_stats["total_successful"] / max(1, self.scan_stats["total_attempted"]) * 100,
-                    "batch_success_rate": self.scan_stats["successful_batches"] / max(1, self.scan_stats["successful_batches"] + self.scan_stats["failed_batches"]) * 100,
-                    "register_count": total_found,
-                    "register_success_rate": (total_found / total_possible * 100) if total_possible > 0 else 0,
-                }
+                "scan_stats": self.scan_stats,
+                "error_log": self.error_log[-10:],  # Last 10 errors for diagnostics
             }
             
-            _LOGGER.info("Device scan result: %.1f%% register success rate, %.1f%% batch success rate",
-                        scan_result["diagnostics"]["success_rate"],
-                        scan_result["diagnostics"]["batch_success_rate"])
-            
-            return scan_result
-            
         except Exception as exc:
+            _LOGGER.error("Device scan failed: %s", exc)
             self._log_error("scan_failed", f"Device scan failed: {exc}")
-            _LOGGER.error("Device scan failed: %s", exc, exc_info=True)
             return None
-            
         finally:
             await self.disconnect()
-            
+
     async def _extract_device_info(self) -> Dict[str, Any]:
-        """Extract device information from available registers."""
+        """POPRAWIONE: Extract device information with fallbacks."""
         device_info = {
-            "device_name": f"ThesslaGreen AirPack",
+            "device_name": "ThesslaGreen AirPack",
             "manufacturer": "ThesslaGreen",
-            "model": "AirPack Home Serie 4",
+            "model": "AirPack Home",
+            "firmware_version": "Unknown",
+            "serial_number": "Unknown",
         }
         
-        if not self.client:
-            return device_info
-            
         try:
-            # Try to read firmware version
-            if all(reg in self.available_registers["input"] for reg in ["firmware_major", "firmware_minor"]):
-                try:
-                    major_response = await self.client.read_input_registers(address=INPUT_REGISTERS["firmware_major"], count=1, slave=self.slave_id)
-                    minor_response = await self.client.read_input_registers(address=INPUT_REGISTERS["firmware_minor"], count=1, slave=self.slave_id)
-                    
-                    if not major_response.isError() and not minor_response.isError():
-                        major = major_response.registers[0]
-                        minor = minor_response.registers[0]
-                        
-                        # Try to read patch version if available
-                        patch = 0
-                        if "firmware_patch" in self.available_registers["input"]:
-                            patch_response = await self.client.read_input_registers(address=INPUT_REGISTERS["firmware_patch"], count=1, slave=self.slave_id)
-                            if not patch_response.isError():
-                                patch = patch_response.registers[0]
-                                
-                        device_info["firmware"] = f"{major}.{minor}.{patch}"
-                        device_info["device_name"] = f"ThesslaGreen AirPack (v{major}.{minor})"
-                        
-                except Exception as exc:
-                    _LOGGER.debug("Could not read firmware version: %s", exc)
-                    
-            # Try to read serial number
-            serial_parts = []
-            for i in range(1, 7):
-                reg_name = f"serial_number_{i}"
-                if reg_name in self.available_registers["input"]:
-                    try:
-                        response = await self.client.read_input_registers(address=INPUT_REGISTERS[reg_name], count=1, slave=self.slave_id)
-                        if not response.isError():
-                            serial_parts.append(f"{response.registers[0]:04X}")
-                    except Exception as exc:
-                        _LOGGER.debug("Could not read serial number part %d: %s", i, exc)
-                        
-            if serial_parts:
-                device_info["serial_number"] = "".join(serial_parts)
+            # Try to read device identification if available
+            if "device_name_1" in self.available_registers.get("holding", {}):
+                # Try reading device name from registers
+                result = await self.client.read_holding_registers(
+                    address=0x1FD4, count=4, slave=self.slave_id
+                )
+                if not result.isError() and not isinstance(result, ExceptionResponse):
+                    # Convert register values to string (if not zero)
+                    name_parts = []
+                    for val in result.registers:
+                        if val != 0:
+                            # Convert 16-bit value to 2 ASCII characters
+                            char1 = (val >> 8) & 0xFF
+                            char2 = val & 0xFF
+                            if char1 > 0:
+                                name_parts.append(chr(char1))
+                            if char2 > 0:
+                                name_parts.append(chr(char2))
+                    if name_parts:
+                        device_info["device_name"] = "".join(name_parts).strip()
+            
+            # Try to determine version from available features
+            total_features = sum(len(regs) for regs in self.available_registers.values())
+            if total_features > 50:
+                device_info["firmware_version"] = "v3.x+ (Advanced)"
+            elif total_features > 30:
+                device_info["firmware_version"] = "v3.x (Standard)"
+            else:
+                device_info["firmware_version"] = "v2.x or Limited"
                 
         except Exception as exc:
-            _LOGGER.debug("Error extracting device info: %s", exc)
+            _LOGGER.debug("Could not extract full device info: %s", exc)
             
         return device_info
