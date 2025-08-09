@@ -94,8 +94,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     device_info = coordinator.get_device_info()
     _LOGGER.info(
         "Device setup complete: %s (firmware: %s, registers: %d, capabilities: %s)",
-        device_info["name"],
-        device_info.get("sw_version", "Unknown"),
+        device_info.name,
+        device_info.sw_version or "Unknown",
         coordinator.get_register_count(),
         ", ".join(coordinator.get_capabilities_summary())
     )
