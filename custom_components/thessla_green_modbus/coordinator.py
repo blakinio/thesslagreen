@@ -115,15 +115,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         
         if "capabilities" in scan_result:
             capabilities_data = scan_result["capabilities"]
-            self.capabilities = DeviceCapabilities(
-                has_temperature_sensors=capabilities_data.get("has_temperature_sensors", False),
-                has_flow_sensors=capabilities_data.get("has_flow_sensors", False),
-                has_gwc=capabilities_data.get("has_gwc", False),
-                has_bypass=capabilities_data.get("has_bypass", False),
-                has_heating=capabilities_data.get("has_heating", False),
-                has_air_quality=capabilities_data.get("has_air_quality", False),
-                has_scheduling=capabilities_data.get("has_scheduling", False),
-            )
+            self.capabilities = DeviceCapabilities.from_dict(capabilities_data)
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch data from device."""
