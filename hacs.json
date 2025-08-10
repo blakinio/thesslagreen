@@ -2,6 +2,7 @@
   "name": "ThesslaGreen Modbus",
   "content_in_root": false,
   "render_readme": true,
+  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha/blob/main/README_en.md",
   "domains": [
     "climate",
     "sensor",
