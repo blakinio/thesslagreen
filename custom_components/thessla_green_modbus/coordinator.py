@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Set, List, Tuple
 import struct
 
-import pymodbus.client.tcp as ModbusTcpClient
+from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException, ConnectionException
 from pymodbus.pdu import ExceptionResponse
 
@@ -66,7 +66,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.entry = entry
         
         # Connection management
-        self.client: Optional[ModbusTcpClient.AsyncModbusTcpClient] = None
+        self.client: Optional[AsyncModbusTcpClient] = None
         self._connection_lock = asyncio.Lock()
         self._last_successful_read = datetime.now()
         
@@ -105,50 +105,66 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Set up the coordinator by scanning the device."""
         _LOGGER.info("Setting up ThesslaGreen coordinator for %s:%s", self.host, self.port)
         
-        try:
-            if not self.force_full_register_list:
-                # Scan device to detect available registers and capabilities
-                _LOGGER.info("Scanning device for available registers...")
-                scanner = ThesslaGreenDeviceScanner(self.host, self.port, self.slave_id, self.timeout)
+        # Scan device to discover available registers and capabilities
+        if not self.force_full_register_list:
+            _LOGGER.info("Scanning device for available registers...")
+            scanner = ThesslaGreenDeviceScanner(
+                host=self.host,
+                port=self.port,
+                slave_id=self.slave_id,
+                timeout=self.timeout,
+                retry=self.retry
+            )
+            
+            try:
                 self.device_scan_result = await scanner.scan_device()
-                
-                self.device_info = self.device_scan_result["device_info"]
-                self.capabilities = DeviceCapabilities(**self.device_scan_result["capabilities"])
-                self.available_registers = self.device_scan_result["available_registers"]
+                self.available_registers = self.device_scan_result.get("available_registers", {})
+                self.device_info = self.device_scan_result.get("device_info", {})
+                self.capabilities = DeviceCapabilities(**self.device_scan_result.get("capabilities", {}))
                 
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",
-                    self.device_scan_result["register_count"],
+                    self.device_scan_result.get("register_count", 0),
                     self.device_info.get("model", "Unknown"),
                     self.device_info.get("firmware", "Unknown")
                 )
-            else:
-                # Use all registers without scanning
-                _LOGGER.warning("Force full register list enabled - skipping device scan")
-                self.available_registers = {
-                    "input_registers": set(INPUT_REGISTERS.keys()),
-                    "holding_registers": set(HOLDING_REGISTERS.keys()),
-                    "coil_registers": set(COIL_REGISTERS.keys()),
-                    "discrete_inputs": set(DISCRETE_INPUT_REGISTERS.keys()),
-                }
-                self.device_info = {"device_name": self.device_name, "model": MODEL}
-                self.capabilities = DeviceCapabilities(basic_control=True)
-            
-            # Pre-compute register groups for optimized batch reading
-            self._precompute_register_groups()
-            
-            # Test initial connection
-            await self._test_connection()
-            
-            _LOGGER.info("ThesslaGreen coordinator setup completed successfully")
-            return True
-            
-        except Exception as exc:
-            _LOGGER.error("Failed to setup coordinator: %s", exc)
-            raise UpdateFailed(f"Setup failed: {exc}") from exc
+            except Exception as exc:
+                _LOGGER.error("Device scan failed: %s", exc)
+                raise
+        else:
+            _LOGGER.info("Using full register list (skipping scan)")
+            # Load all registers if forced
+            self._load_full_register_list()
+        
+        # Pre-compute register groups for batch reading
+        self._compute_register_groups()
+        
+        # Test initial connection
+        await self._test_connection()
+        
+        return True
     
-    def _precompute_register_groups(self) -> None:
-        """Pre-compute register groups for efficient batch reading."""
+    def _load_full_register_list(self) -> None:
+        """Load full register list when forced."""
+        self.available_registers = {
+            "input_registers": set(INPUT_REGISTERS.keys()),
+            "holding_registers": set(HOLDING_REGISTERS.keys()),
+            "coil_registers": set(COIL_REGISTERS.keys()),
+            "discrete_inputs": set(DISCRETE_INPUT_REGISTERS.keys()),
+        }
+        
+        self.device_info = {
+            "device_name": f"ThesslaGreen {MODEL}",
+            "model": MODEL,
+            "firmware": "Unknown",
+            "serial_number": "Unknown",
+        }
+        
+        _LOGGER.info("Loaded full register list: %d total registers",
+                    sum(len(regs) for regs in self.available_registers.values()))
+    
+    def _compute_register_groups(self) -> None:
+        """Pre-compute register groups for optimized batch reading."""
         # Group Input Registers
         if self.available_registers["input_registers"]:
             input_addrs = [INPUT_REGISTERS[reg] for reg in self.available_registers["input_registers"]]
@@ -200,7 +216,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             try:
                 await self._ensure_connection()
                 # Try to read a basic register to verify communication
-                response = await self.client.read_input_registers(0x0000, 1, slave=self.slave_id)
+                response = await self.client.read_input_registers(0x0000, 1)
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
@@ -212,10 +228,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Ensure Modbus connection is established."""
         if self.client is None or not self.client.connected:
             try:
-                self.client = ModbusTcpClient.AsyncModbusTcpClient(
+                self.client = AsyncModbusTcpClient(
                     host=self.host,
                     port=self.port,
-                    timeout=self.timeout
+                    timeout=self.timeout,
+                    slave=self.slave_id  # Set slave_id in client for pymodbus 3.5+
                 )
                 connected = await self.client.connect()
                 if not connected:
@@ -229,58 +246,60 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch data from the device with optimized batch reading."""
         start_time = datetime.now()
-        data = {}
         
-        try:
-            async with self._connection_lock:
+        async with self._connection_lock:
+            try:
                 await self._ensure_connection()
                 
-                # Read all register types efficiently
-                data.update(await self._read_input_registers_optimized())
-                data.update(await self._read_holding_registers_optimized())
-                data.update(await self._read_coil_registers_optimized())
-                data.update(await self._read_discrete_inputs_optimized())
+                # Read all register types
+                data = {}
+                
+                # Read Input Registers
+                input_data = await self._read_input_registers_optimized()
+                data.update(input_data)
+                
+                # Read Holding Registers
+                holding_data = await self._read_holding_registers_optimized()
+                data.update(holding_data)
+                
+                # Read Coil Registers
+                coil_data = await self._read_coil_registers_optimized()
+                data.update(coil_data)
+                
+                # Read Discrete Inputs
+                discrete_data = await self._read_discrete_inputs_optimized()
+                data.update(discrete_data)
+                
+                # Post-process data (calculate derived values)
+                data = self._post_process_data(data)
                 
                 # Update statistics
                 self.statistics["successful_reads"] += 1
                 self.statistics["last_successful_update"] = datetime.now()
-                self._last_successful_read = datetime.now()
                 self._consecutive_failures = 0
                 
-                # Calculate average response time
+                # Calculate response time
                 response_time = (datetime.now() - start_time).total_seconds()
-                if self.statistics["average_response_time"] == 0:
-                    self.statistics["average_response_time"] = response_time
-                else:
-                    self.statistics["average_response_time"] = (
-                        self.statistics["average_response_time"] * 0.9 + response_time * 0.1
-                    )
-                
-                _LOGGER.debug(
-                    "Update completed: %d registers, %.2fs response time",
-                    len(data), response_time
+                self.statistics["average_response_time"] = (
+                    (self.statistics["average_response_time"] * (self.statistics["successful_reads"] - 1) + response_time) 
+                    / self.statistics["successful_reads"]
                 )
                 
+                _LOGGER.debug("Data update successful: %d values read in %.2fs", len(data), response_time)
                 return data
                 
-        except Exception as exc:
-            self._consecutive_failures += 1
-            self.statistics["failed_reads"] += 1
-            self.statistics["last_error"] = str(exc)
-            
-            if isinstance(exc, (ConnectionException, TimeoutError)):
-                self.statistics["connection_errors" if isinstance(exc, ConnectionException) else "timeout_errors"] += 1
-            
-            _LOGGER.error("Update failed (attempt %d/%d): %s", 
-                         self._consecutive_failures, self._max_failures, exc)
-            
-            # If too many consecutive failures, disconnect and retry
-            if self._consecutive_failures >= self._max_failures:
-                _LOGGER.warning("Too many consecutive failures, resetting connection")
-                await self._disconnect()
-                self._consecutive_failures = 0
-            
-            raise UpdateFailed(f"Update failed: {exc}") from exc
+            except Exception as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+                
+                # Disconnect if too many failures
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    await self._disconnect()
+                
+                _LOGGER.error("Failed to update data: %s", exc)
+                raise UpdateFailed(f"Error communicating with device: {exc}") from exc
     
     async def _read_input_registers_optimized(self) -> Dict[str, Any]:
         """Read input registers using optimized batch reading."""
@@ -291,7 +310,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         
         for start_addr, count in self._register_groups["input"]:
             try:
-                response = await self.client.read_input_registers(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_input_registers(start_addr, count)
                 if response.isError():
                     _LOGGER.debug("Failed to read input registers at 0x%04X: %s", start_addr, response)
                     continue
@@ -321,7 +340,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         
         for start_addr, count in self._register_groups["holding"]:
             try:
-                response = await self.client.read_holding_registers(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_holding_registers(start_addr, count)
                 if response.isError():
                     _LOGGER.debug("Failed to read holding registers at 0x%04X: %s", start_addr, response)
                     continue
@@ -351,17 +370,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         
         for start_addr, count in self._register_groups["coil"]:
             try:
-                response = await self.client.read_coils(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_coils(start_addr, count)
                 if response.isError():
                     _LOGGER.debug("Failed to read coil registers at 0x%04X: %s", start_addr, response)
                     continue
                 
-                # Process each coil in the batch
-                for i, value in enumerate(response.bits):
+                # Process each bit in the batch
+                for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
                     register_name = self._find_register_name(COIL_REGISTERS, addr)
                     if register_name and register_name in self.available_registers["coil_registers"]:
-                        data[register_name] = bool(value)
+                        data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
                         
             except Exception as exc:
@@ -379,17 +398,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         
         for start_addr, count in self._register_groups["discrete"]:
             try:
-                response = await self.client.read_discrete_inputs(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_discrete_inputs(start_addr, count)
                 if response.isError():
                     _LOGGER.debug("Failed to read discrete inputs at 0x%04X: %s", start_addr, response)
                     continue
                 
-                # Process each discrete input in the batch
-                for i, value in enumerate(response.bits):
+                # Process each bit in the batch
+                for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
                     register_name = self._find_register_name(DISCRETE_INPUT_REGISTERS, addr)
                     if register_name and register_name in self.available_registers["discrete_inputs"]:
-                        data[register_name] = bool(value)
+                        data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
                         
             except Exception as exc:
@@ -398,132 +417,128 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         
         return data
     
-    def _find_register_name(self, register_dict: Dict[str, int], address: int) -> Optional[str]:
+    def _find_register_name(self, register_map: Dict[str, int], address: int) -> Optional[str]:
         """Find register name by address."""
-        for name, addr in register_dict.items():
+        for name, addr in register_map.items():
             if addr == address:
                 return name
         return None
     
-    def _process_register_value(self, register_name: str, raw_value: int) -> Optional[Any]:
-        """Process raw register value with appropriate conversion and validation."""
-        # Handle special invalid values
-        if "temperature" in register_name and raw_value == 0x8000:
-            return None  # No sensor connected
+    def _process_register_value(self, register_name: str, value: int) -> Any:
+        """Process register value according to its type and multiplier."""
+        # Check for sensor error values
+        if value == 0x8000 and "temperature" in register_name.lower():
+            return None  # No sensor
+        if value == 0x8000 and "flow" in register_name.lower():
+            return None  # No sensor
         
-        if "flow" in register_name and raw_value == 0x8000:
-            return None  # No sensor connected
-        
-        if raw_value == 0xFFFF:
-            return None  # Typical error value
-        
-        # Apply multiplier if defined
-        multiplier = REGISTER_MULTIPLIERS.get(register_name, 1)
-        if multiplier != 1:
-            # Handle signed/unsigned conversion for temperature sensors
-            if "temperature" in register_name and raw_value > 32767:
-                raw_value = raw_value - 65536  # Convert to signed
-            return round(raw_value * multiplier, 2)
-        
-        return raw_value
-    
-    async def async_write_register(self, register_name: str, value: Any) -> bool:
-        """Write value to a holding register."""
-        if register_name not in HOLDING_REGISTERS:
-            _LOGGER.error("Register %s is not a writable holding register", register_name)
-            return False
-        
-        address = HOLDING_REGISTERS[register_name]
-        
-        # Convert value if necessary
+        # Apply multiplier
         if register_name in REGISTER_MULTIPLIERS:
-            multiplier = REGISTER_MULTIPLIERS[register_name]
-            value = int(value / multiplier)
+            value = value * REGISTER_MULTIPLIERS[register_name]
         
-        async with self._connection_lock:
-            try:
-                await self._ensure_connection()
-                response = await self.client.write_register(address, value, slave=self.slave_id)
-                if response.isError():
-                    _LOGGER.error("Failed to write register %s: %s", register_name, response)
-                    return False
-                
-                _LOGGER.debug("Successfully wrote %s = %s", register_name, value)
-                return True
-                
-            except Exception as exc:
-                _LOGGER.error("Error writing register %s: %s", register_name, exc)
-                return False
+        return value
     
-    async def async_write_coil(self, coil_name: str, value: bool) -> bool:
-        """Write value to a coil register."""
-        if coil_name not in COIL_REGISTERS:
-            _LOGGER.error("Coil %s is not a valid coil register", coil_name)
-            return False
+    def _post_process_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Post-process data to calculate derived values."""
+        # Calculate heat recovery efficiency if temperatures available
+        if all(k in data for k in ["outside_temperature", "supply_temperature", "exhaust_temperature"]):
+            try:
+                outside = data["outside_temperature"]
+                supply = data["supply_temperature"]
+                exhaust = data["exhaust_temperature"]
+                
+                if exhaust != outside:
+                    efficiency = ((supply - outside) / (exhaust - outside)) * 100
+                    data["calculated_efficiency"] = max(0, min(100, efficiency))
+            except Exception as exc:
+                _LOGGER.debug("Could not calculate efficiency: %s", exc)
         
-        address = COIL_REGISTERS[coil_name]
+        # Calculate flow balance
+        if "supply_flowrate" in data and "exhaust_flowrate" in data:
+            data["flow_balance"] = data["supply_flowrate"] - data["exhaust_flowrate"]
+            data["flow_balance_status"] = (
+                "balanced" if abs(data["flow_balance"]) < 10
+                else "supply_dominant" if data["flow_balance"] > 0
+                else "exhaust_dominant"
+            )
         
+        return data
+    
+    async def async_write_register(self, register_name: str, value: int) -> bool:
+        """Write to a holding or coil register."""
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                response = await self.client.write_coil(address, value, slave=self.slave_id)
-                if response.isError():
-                    _LOGGER.error("Failed to write coil %s: %s", coil_name, response)
+                
+                # Determine register type and address
+                if register_name in HOLDING_REGISTERS:
+                    address = HOLDING_REGISTERS[register_name]
+                    response = await self.client.write_register(address, value)
+                elif register_name in COIL_REGISTERS:
+                    address = COIL_REGISTERS[register_name]
+                    response = await self.client.write_coil(address, bool(value))
+                else:
+                    _LOGGER.error("Unknown register for writing: %s", register_name)
                     return False
                 
-                _LOGGER.debug("Successfully wrote coil %s = %s", coil_name, value)
+                if response.isError():
+                    _LOGGER.error("Error writing to register %s: %s", register_name, response)
+                    return False
+                
+                _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
+                
+                # Request data refresh
+                await self.async_request_refresh()
                 return True
                 
             except Exception as exc:
-                _LOGGER.error("Error writing coil %s: %s", coil_name, exc)
+                _LOGGER.error("Failed to write register %s: %s", register_name, exc)
                 return False
     
     async def _disconnect(self) -> None:
-        """Disconnect from the Modbus device."""
+        """Disconnect from Modbus device."""
         if self.client:
             try:
                 self.client.close()
-                self.client = None
                 _LOGGER.debug("Disconnected from Modbus device")
             except Exception as exc:
-                _LOGGER.debug("Error during disconnect: %s", exc)
+                _LOGGER.debug("Error disconnecting: %s", exc)
+            finally:
+                self.client = None
     
     async def async_shutdown(self) -> None:
-        """Shutdown the coordinator."""
+        """Shutdown coordinator and disconnect."""
         _LOGGER.debug("Shutting down ThesslaGreen coordinator")
         await self._disconnect()
     
     @property
-    def device_info_dict(self) -> DeviceInfo:
-        """Return device information for device registry."""
+    def performance_stats(self) -> Dict[str, Any]:
+        """Get performance statistics."""
+        return {
+            "total_reads": self.statistics["successful_reads"],
+            "failed_reads": self.statistics["failed_reads"],
+            "success_rate": (
+                self.statistics["successful_reads"] / 
+                max(1, self.statistics["successful_reads"] + self.statistics["failed_reads"])
+            ) * 100,
+            "avg_response_time": self.statistics["average_response_time"],
+            "connection_errors": self.statistics["connection_errors"],
+            "last_error": self.statistics["last_error"],
+            "registers_available": sum(len(regs) for regs in self.available_registers.values()),
+            "registers_read": self.statistics["total_registers_read"],
+        }
+    
+    def get_device_info(self) -> DeviceInfo:
+        """Get device information for Home Assistant."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"{self.host}_{self.slave_id}")},
-            name=self.device_info.get("device_name", self.device_name),
+            identifiers={(DOMAIN, f"{self.host}:{self.port}:{self.slave_id}")},
+            name=self.device_name,
             manufacturer=MANUFACTURER,
             model=self.device_info.get("model", MODEL),
             sw_version=self.device_info.get("firmware", "Unknown"),
-            serial_number=self.device_info.get("serial_number"),
             configuration_url=f"http://{self.host}",
         )
-    
-    def get_diagnostics_data(self) -> Dict[str, Any]:
-        """Return diagnostic data for troubleshooting."""
-        return {
-            "device_info": self.device_info,
-            "capabilities": self.capabilities.__dict__,
-            "available_registers": {
-                k: list(v) for k, v in self.available_registers.items()
-            },
-            "register_groups": self._register_groups,
-            "statistics": self.statistics,
-            "connection_status": {
-                "connected": self.client.connected if self.client else False,
-                "host": self.host,
-                "port": self.port,
-                "slave_id": self.slave_id,
-                "last_successful_read": self._last_successful_read.isoformat(),
-                "consecutive_failures": self._consecutive_failures,
-            },
-            "failed_registers": list(self._failed_registers),
-            "scan_result": self.device_scan_result,
-        }
+
+
+# Legacy compatibility - ThesslaGreenCoordinator alias
+ThesslaGreenCoordinator = ThesslaGreenModbusCoordinator

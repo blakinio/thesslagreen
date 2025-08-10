@@ -79,7 +79,7 @@ class ThesslaGreenDeviceScanner:
     async def _read_input(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[int]]:
         """Read input registers."""
         try:
-            response = await client.read_input_registers(address, count, slave=self.slave_id)
+            response = await client.read_input_registers(address, count)
             if not response.isError():
                 return response.registers
         except Exception as e:
@@ -89,7 +89,7 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[int]]:
         """Read holding registers."""
         try:
-            response = await client.read_holding_registers(address, count, slave=self.slave_id)
+            response = await client.read_holding_registers(address, count)
             if not response.isError():
                 return response.registers
         except Exception as e:
@@ -99,7 +99,7 @@ class ThesslaGreenDeviceScanner:
     async def _read_coil(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
-            response = await client.read_coils(address, count, slave=self.slave_id)
+            response = await client.read_coils(address, count)
             if not response.isError():
                 return response.bits[:count]
         except Exception as e:
@@ -109,7 +109,7 @@ class ThesslaGreenDeviceScanner:
     async def _read_discrete(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[bool]]:
         """Read discrete input registers."""
         try:
-            response = await client.read_discrete_inputs(address, count, slave=self.slave_id)
+            response = await client.read_discrete_inputs(address, count)
             if not response.isError():
                 return response.bits[:count]
         except Exception as e:
@@ -231,7 +231,12 @@ class ThesslaGreenDeviceScanner:
 
     async def scan(self) -> Tuple[DeviceInfo, DeviceCapabilities, Dict[str, Tuple[int, int]]]:
         """Scan device and return device info, capabilities and present blocks."""
-        client = AsyncModbusTcpClient(host=self.host, port=self.port, timeout=self.timeout)
+        client = AsyncModbusTcpClient(
+            host=self.host, 
+            port=self.port, 
+            timeout=self.timeout,
+            slave=self.slave_id  # Set slave_id in client for pymodbus 3.5+
+        )
         
         try:
             _LOGGER.debug("Connecting to ThesslaGreen device at %s:%s", self.host, self.port)
