@@ -40,7 +40,6 @@ PLATFORMS_TO_SETUP = [
     Platform.SELECT,
     Platform.NUMBER,
     Platform.SWITCH,
-    Platform.DIAGNOSTICS,
 ]
 
 
