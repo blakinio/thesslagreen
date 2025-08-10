@@ -1,0 +1,200 @@
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:29.970 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:32.970 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:35.969 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[33m2025-08-10 15:00:36.774 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:307]: dallas_temp.sensor cleared Warning flag[0m
+[33m2025-08-10 15:00:37.565 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:279]: dallas_temp.sensor set Warning flag: scratch pad checksum invalid[0m
+[31m2025-08-10 15:00:38.971 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[33m2025-08-10 15:00:40.451 WARNING (MainThread) [homeassistant.helpers.service] Referenced entities number.rekuperator_predkosc are missing or not currently available[0m
+[33m2025-08-10 15:00:40.457 WARNING (MainThread) [homeassistant.helpers.service] Referenced entities number.rekuperator_predkosc are missing or not currently available[0m
+[31m2025-08-10 15:00:41.971 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:44.975 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[33m2025-08-10 15:00:47.099 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:307]: dallas_temp.sensor cleared Warning flag[0m
+[33m2025-08-10 15:00:47.891 WARNING (MainThread) [homeassistant.components.esphome.manager] Sensory: [W][component:279]: dallas_temp.sensor set Warning flag: scratch pad checksum invalid[0m
+[31m2025-08-10 15:00:47.975 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:50.976 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:53.978 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:56.981 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:00:59.980 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
+[31m2025-08-10 15:01:02.981 ERROR (MainThread) [homeassistant.helpers.entity] Update for sensor.3b1_call_status fails
+Traceback (most recent call last):
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 955, in async_update_ha_state
+    await self.async_device_update()
+  File "/usr/src/homeassistant/homeassistant/helpers/entity.py", line 1303, in async_device_update
+    await self.async_update()
+  File "/config/custom_components/hikconnect/sensor.py", line 64, in async_update
+    res = await asyncio.wait_for(get_call_status_coro, SCAN_INTERVAL_TIMEOUT.seconds)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/hikconnect/api.py", line 233, in get_call_status
+    raise DeviceOffline()
+hikconnect.exceptions.DeviceOffline[0m
