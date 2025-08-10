@@ -47,11 +47,6 @@ class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
 
 
-class ConfigFlow(ThesslaGreenModbusConfigFlow):
-    """Legacy alias for compatibility."""
-    pass
-
-
 # Schema for user input step
 USER_SCHEMA = vol.Schema({
     vol.Required(CONF_HOST): cv.string,
@@ -87,39 +82,38 @@ class ThesslaGreenModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             # Validate input
             host = user_input[CONF_HOST].strip()
+            user_input[CONF_HOST] = host
+            user_input[CONF_NAME] = user_input[CONF_NAME].strip()
             port = user_input[CONF_PORT]
             slave_id = user_input[CONF_SLAVE_ID]
-            name = user_input[CONF_NAME].strip()
 
             # Check if already configured
             await self.async_set_unique_id(f"{host}_{port}_{slave_id}")
             self._abort_if_unique_id_configured()
 
-            # Test connection and scan device
+            # Test connection using helper validation
             try:
-                _LOGGER.info("Testing connection to %s:%s (slave_id=%s)", host, port, slave_id)
-                scan_result = await scan_thessla_green_device(host, port, slave_id, timeout=10)
-                
-                self._discovered_info = scan_result
+                validation_result = await validate_input(self.hass, user_input)
+
+                self._discovered_info = validation_result["scan_result"]
                 self._user_input = user_input
-                
+
                 _LOGGER.info(
                     "Device scan successful: %s, firmware %s, %d registers found",
-                    scan_result["device_info"]["device_name"],
-                    scan_result["device_info"]["firmware"],
-                    scan_result["register_count"]
+                    self._discovered_info["device_info"].get("device_name"),
+                    self._discovered_info["device_info"].get("firmware"),
+                    self._discovered_info.get("register_count")
                 )
-                
+
                 return await self.async_step_confirm()
-                
-            except Exception as exc:
-                _LOGGER.error("Connection/scan failed for %s:%s: %s", host, port, exc)
-                if "timeout" in str(exc).lower() or "connection" in str(exc).lower():
-                    errors["base"] = "cannot_connect"
-                elif "slave" in str(exc).lower() or "invalid" in str(exc).lower():
-                    errors["base"] = "invalid_auth"
-                else:
-                    errors["base"] = "unknown"
+
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception as exc:  # pylint: disable=broad-except
+                _LOGGER.error("Unexpected error while validating input for %s:%s: %s", host, port, exc)
+                errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id="user",
@@ -184,6 +178,11 @@ class ThesslaGreenModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> ThesslaGreenModbusOptionsFlow:
         """Get the options flow for this handler."""
         return ThesslaGreenModbusOptionsFlow(config_entry)
+
+
+class ConfigFlow(ThesslaGreenModbusConfigFlow):
+    """Legacy alias for compatibility."""
+    pass
 
 
 class ThesslaGreenModbusOptionsFlow(config_entries.OptionsFlow):
@@ -254,6 +253,8 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
         if "timeout" in error_msg or "connection" in error_msg:
             raise CannotConnect(f"Cannot connect to device at {host}:{port}") from exc
         elif "slave" in error_msg or "invalid" in error_msg or "auth" in error_msg:
-            raise InvalidAuth(f"Invalid slave ID {slave_id} for device at {host}:{port}") from exc
+            raise InvalidAuth(
+                f"Invalid slave ID {slave_id} for device at {host}:{port}"
+            ) from exc
         else:
             raise CannotConnect(f"Unknown connection error: {exc}") from exc
