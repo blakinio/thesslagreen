@@ -36,11 +36,11 @@ async def validate_optimization_metrics():
     try:
         # Test 1: Register Grouping Efficiency
         print("🔍 Testing register grouping optimization...")
-        from custom_components.thessla_green_modbus.coordinator import ThesslaGreenCoordinator
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
         from unittest.mock import MagicMock
         
         hass = MagicMock()
-        coordinator = ThesslaGreenCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator(
             hass=hass, host="192.168.1.100", port=502, slave_id=10,
             scan_interval=30, timeout=10, retry=3
         )
