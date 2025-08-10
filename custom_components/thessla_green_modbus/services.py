@@ -19,6 +19,14 @@ from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
+# Map service parameters to corresponding register names
+AIR_QUALITY_REGISTER_MAP = {
+    "co2_low": "co2_low_threshold",
+    "co2_medium": "co2_medium_threshold",
+    "co2_high": "co2_high_threshold",
+    "humidity_target": "humidity_target_threshold",
+}
+
 # Service schemas
 SET_SPECIAL_MODE_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_ids,
@@ -225,7 +233,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 for param in ["co2_low", "co2_medium", "co2_high", "humidity_target"]:
                     value = call.data.get(param)
                     if value is not None:
-                        register_name = f"{param.replace('_', '_threshold_')}" if "co2" in param else param
+                        register_name = AIR_QUALITY_REGISTER_MAP[param]
                         await coordinator.async_write_register(register_name, value)
                 
                 await coordinator.async_request_refresh()
