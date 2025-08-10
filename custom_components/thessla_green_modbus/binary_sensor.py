@@ -1,8 +1,4 @@
-"""COMPLETE Binary sensor entities for ThesslaGreen Modbus Integration - SILVER STANDARD.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-COMPLETE: Wszystkie czujniki binarne z autoscan - tylko dostępne encje
-"""
+"""Binary sensors for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
 import logging

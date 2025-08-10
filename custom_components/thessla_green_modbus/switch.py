@@ -1,7 +1,4 @@
-"""Switch platform for ThesslaGreen Modbus Integration.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-"""
+"""Switch platform for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
 import logging

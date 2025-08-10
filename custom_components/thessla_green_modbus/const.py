@@ -1,9 +1,4 @@
-"""POPRAWIONY Constants and register definitions for ThesslaGreen Modbus Integration.
-COMPLETE REGISTER MAPPING - Wszystkie 200+ rejestry z MODBUS_USER_AirPack_Home_08.2021.01 BEZ WYJĄTKU
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4 (h/v/f, Energy/Energy+/Enthalpy)
-FIX: Dodana brakująca CONF_SCAN_INTERVAL i inne stałe konfiguracyjne
-"""
+"""Constants and register definitions for the ThesslaGreen Modbus integration."""
 from typing import Dict, List, Set
 
 # Integration constants
@@ -19,315 +14,315 @@ DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
 
-# Configuration options - POPRAWKA: Dodane brakujące stałe
+# Configuration options
 CONF_SLAVE_ID = "slave_id"
-CONF_SCAN_INTERVAL = "scan_interval"  # POPRAWKA: Dodane
+CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TIMEOUT = "timeout"
-CONF_RETRY = "retry" 
+CONF_RETRY = "retry"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 
 # Platforms
 PLATFORMS = ["sensor", "binary_sensor", "climate", "fan", "select", "number", "switch", "diagnostics"]
 
 # ============================================================================
-# COMPLETE REGISTER MAPPING - Wszystkie rejestry z MODBUS_USER_AirPack_Home_08.2021.01 PDF bez wyjątku
+# Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
 # ============================================================================
 
-# INPUT REGISTERS (04 - READ INPUT REGISTER) - Czujniki i wartości tylko do odczytu
+# INPUT REGISTERS (04 - READ INPUT REGISTER) - Sensors and read-only values
 INPUT_REGISTERS = {
     # Firmware version (0x0000-0x0004)
-    "firmware_major": 0x0000,                # Wersja główna (MM)
-    "firmware_minor": 0x0001,                # Wersja podrzędna (mm)  
-    "day_of_week": 0x0002,                   # Dzień tygodnia (0-6)
-    "period": 0x0003,                        # Odcinek czasowy (0-3)
-    "firmware_patch": 0x0004,                # Wersja poprawki (pp)
+    "firmware_major": 0x0000,
+    "firmware_minor": 0x0001,
+    "day_of_week": 0x0002,
+    "period": 0x0003,
+    "firmware_patch": 0x0004,
     
     # Compilation info (0x000E-0x000F)
-    "compilation_days": 0x000E,              # Data kompilacji (dni od 01.01.2000)
-    "compilation_seconds": 0x000F,           # Godzina kompilacji (sekundy od 00:00)
+    "compilation_days": 0x000E,
+    "compilation_seconds": 0x000F,
     
     # Temperature sensors (0x0010-0x0017) - 0.1°C resolution, 0x8000 = no sensor
-    "outside_temperature": 0x0010,           # TZ1 - Temperatura zewnętrzna
-    "supply_temperature": 0x0011,            # TZ2 - Temperatura nawiewu
-    "exhaust_temperature": 0x0012,           # TZ3 - Temperatura wywiewu
-    "fpx_temperature": 0x0013,               # TZ4 - Temperatura FPX
-    "duct_supply_temperature": 0x0014,       # TZ5 - Temperatura kanałowa nawiewu
-    "gwc_temperature": 0x0015,               # TZ6 - Temperatura GWC
-    "ambient_temperature": 0x0016,           # TZ7 - Temperatura pomieszczenia
-    "heating_temperature": 0x0017,           # TZ8 - Temperatura grzania
+    "outside_temperature": 0x0010,
+    "supply_temperature": 0x0011,
+    "exhaust_temperature": 0x0012,
+    "fpx_temperature": 0x0013,
+    "duct_supply_temperature": 0x0014,
+    "gwc_temperature": 0x0015,
+    "ambient_temperature": 0x0016,
+    "heating_temperature": 0x0017,
     
     # Flow sensors (0x0018-0x001E) - m³/h, 0x8000 = no sensor
-    "supply_flowrate": 0x0018,               # PZ1 - Przepływ nawiewu
-    "exhaust_flowrate": 0x0019,              # PZ2 - Przepływ wywiewu
-    "outdoor_flowrate": 0x001A,              # PZ3 - Przepływ zewnętrzny
-    "inside_flowrate": 0x001B,               # PZ4 - Przepływ wewnętrzny
-    "gwc_flowrate": 0x001C,                  # PZ5 - Przepływ GWC
-    "heat_recovery_flowrate": 0x001D,        # PZ6 - Przepływ rekuperatora
-    "bypass_flowrate": 0x001E,               # PZ7 - Przepływ bypass
+    "supply_flowrate": 0x0018,
+    "exhaust_flowrate": 0x0019,
+    "outdoor_flowrate": 0x001A,
+    "inside_flowrate": 0x001B,
+    "gwc_flowrate": 0x001C,
+    "heat_recovery_flowrate": 0x001D,
+    "bypass_flowrate": 0x001E,
     
     # Air quality sensors (0x0020-0x0027)
-    "co2_level": 0x0020,                     # Poziom CO2 w ppm
-    "humidity_indoor": 0x0021,               # Wilgotność wewnętrzna w %
-    "humidity_outdoor": 0x0022,              # Wilgotność zewnętrzna w %
-    "pm1_level": 0x0023,                     # PM1.0 w μg/m³
-    "pm25_level": 0x0024,                    # PM2.5 w μg/m³
-    "pm10_level": 0x0025,                    # PM10 w μg/m³
-    "voc_level": 0x0026,                     # VOC w ppb
-    "air_quality_index": 0x0027,             # Indeks jakości powietrza 0-500
+    "co2_level": 0x0020,
+    "humidity_indoor": 0x0021,
+    "humidity_outdoor": 0x0022,
+    "pm1_level": 0x0023,
+    "pm25_level": 0x0024,
+    "pm10_level": 0x0025,
+    "voc_level": 0x0026,
+    "air_quality_index": 0x0027,
     
     # System status registers (0x0030-0x003F)
-    "heat_recovery_efficiency": 0x0030,      # Sprawność rekuperacji %
-    "filter_lifetime_remaining": 0x0031,     # Pozostały czas życia filtra w dniach
-    "preheater_power": 0x0032,               # Moc wstępnego grzania w W
-    "main_heater_power": 0x0033,             # Moc głównego grzania w W
-    "cooler_power": 0x0034,                  # Moc chłodzenia w W
-    "supply_fan_power": 0x0035,              # Moc wentylatora nawiewnego w W
-    "exhaust_fan_power": 0x0036,             # Moc wentylatora wywiewnego w W
-    "total_power_consumption": 0x0037,       # Całkowite zużycie energii w W
-    "annual_energy_consumption": 0x0038,     # Roczne zużycie energii w kWh
-    "daily_energy_consumption": 0x0039,      # Dzienne zużycie energii w Wh
-    "annual_energy_savings": 0x003A,         # Roczne oszczędności energii w kWh
-    "co2_reduction": 0x003B,                 # Redukcja CO2 w kg/rok
-    "system_uptime": 0x003C,                 # Czas pracy systemu w godzinach
-    "fault_counter": 0x003D,                 # Licznik błędów
-    "maintenance_counter": 0x003E,           # Licznik konserwacji
-    "filter_replacement_counter": 0x003F,    # Licznik wymian filtra
+    "heat_recovery_efficiency": 0x0030,
+    "filter_lifetime_remaining": 0x0031,
+    "preheater_power": 0x0032,
+    "main_heater_power": 0x0033,
+    "cooler_power": 0x0034,
+    "supply_fan_power": 0x0035,
+    "exhaust_fan_power": 0x0036,
+    "total_power_consumption": 0x0037,
+    "annual_energy_consumption": 0x0038,
+    "daily_energy_consumption": 0x0039,
+    "annual_energy_savings": 0x003A,
+    "co2_reduction": 0x003B,
+    "system_uptime": 0x003C,
+    "fault_counter": 0x003D,
+    "maintenance_counter": 0x003E,
+    "filter_replacement_counter": 0x003F,
     
     # Expansion module version (0x00F1)
-    "expansion_version": 0x00F1,             # Wersja oprogramowania modułu Expansion
+    "expansion_version": 0x00F1,
     
     # Current airflow (0x0100-0x0101)
-    "supply_air_flow": 0x0100,               # Wartość chwilowa strumienia powietrza - nawiew
-    "exhaust_air_flow": 0x0101,              # Wartość chwilowa strumienia powietrza - wywiew
+    "supply_air_flow": 0x0100,
+    "exhaust_air_flow": 0x0101,
     
     # PWM control values (0x0500-0x0503) - 0-4095 (0-10V)
-    "dac_supply": 0x0500,                    # Napięcie sterujące wentylatorem nawiewnym
-    "dac_exhaust": 0x0501,                   # Napięcie sterujące wentylatorem wywiewnym  
-    "dac_heater": 0x0502,                    # Napięcie sterujące nagrzewnicą kanałową
-    "dac_cooler": 0x0503,                    # Napięcie sterujące chłodnicą kanałową
+    "dac_supply": 0x0500,
+    "dac_exhaust": 0x0501,
+    "dac_heater": 0x0502,
+    "dac_cooler": 0x0503,
     
     # Advanced diagnostics (0x0504-0x051F)
-    "motor_supply_rpm": 0x0504,              # Obroty silnika nawiewnego w RPM
-    "motor_exhaust_rpm": 0x0505,             # Obroty silnika wywiewnego w RPM
-    "motor_supply_current": 0x0506,          # Prąd silnika nawiewnego w mA
-    "motor_exhaust_current": 0x0507,         # Prąd silnika wywiewnego w mA
-    "motor_supply_voltage": 0x0508,          # Napięcie silnika nawiewnego w mV
-    "motor_exhaust_voltage": 0x0509,         # Napięcie silnika wywiewnego w mV
-    "supply_pressure": 0x050A,               # Ciśnienie nawiewu w Pa
-    "exhaust_pressure": 0x050B,              # Ciśnienie wywiewu w Pa
-    "differential_pressure": 0x050C,         # Ciśnienie różnicowe w Pa
-    "heat_exchanger_temperature_1": 0x050D,  # Temperatura wymiennika 1 w 0.1°C
-    "heat_exchanger_temperature_2": 0x050E,  # Temperatura wymiennika 2 w 0.1°C
-    "heat_exchanger_temperature_3": 0x050F,  # Temperatura wymiennika 3 w 0.1°C
-    "heat_exchanger_temperature_4": 0x0510,  # Temperatura wymiennika 4 w 0.1°C
-    "damper_position_bypass": 0x0511,        # Pozycja przepustnicy bypass w %
-    "damper_position_gwc": 0x0512,           # Pozycja przepustnicy GWC w %
-    "damper_position_mix": 0x0513,           # Pozycja przepustnicy mieszającej w %
-    "frost_protection_active": 0x0514,       # Aktywna ochrona przeciwmrozowa (0/1)
-    "defrost_cycle_active": 0x0515,          # Aktywny cykl odszraniania (0/1)
-    "summer_bypass_active": 0x0516,          # Aktywny letni bypass (0/1)
-    "winter_heating_active": 0x0517,         # Aktywne zimowe grzanie (0/1)
-    "night_cooling_active": 0x0518,          # Aktywne nocne chłodzenie (0/1)
-    "constant_flow_active": 0x0519,          # Aktywny stały przepływ (0/1)
-    "air_quality_control_active": 0x051A,    # Aktywna kontrola jakości powietrza (0/1)
-    "humidity_control_active": 0x051B,       # Aktywna kontrola wilgotności (0/1)
-    "temperature_control_active": 0x051C,    # Aktywna kontrola temperatury (0/1)
-    "demand_control_active": 0x051D,         # Aktywna kontrola na żądanie (0/1)
-    "schedule_control_active": 0x051E,       # Aktywna kontrola harmonogramu (0/1)
-    "manual_control_active": 0x051F,         # Aktywna kontrola manualna (0/1)
+    "motor_supply_rpm": 0x0504,
+    "motor_exhaust_rpm": 0x0505,
+    "motor_supply_current": 0x0506,
+    "motor_exhaust_current": 0x0507,
+    "motor_supply_voltage": 0x0508,
+    "motor_exhaust_voltage": 0x0509,
+    "supply_pressure": 0x050A,
+    "exhaust_pressure": 0x050B,
+    "differential_pressure": 0x050C,
+    "heat_exchanger_temperature_1": 0x050D,
+    "heat_exchanger_temperature_2": 0x050E,
+    "heat_exchanger_temperature_3": 0x050F,
+    "heat_exchanger_temperature_4": 0x0510,
+    "damper_position_bypass": 0x0511,
+    "damper_position_gwc": 0x0512,
+    "damper_position_mix": 0x0513,
+    "frost_protection_active": 0x0514,
+    "defrost_cycle_active": 0x0515,
+    "summer_bypass_active": 0x0516,
+    "winter_heating_active": 0x0517,
+    "night_cooling_active": 0x0518,
+    "constant_flow_active": 0x0519,
+    "air_quality_control_active": 0x051A,
+    "humidity_control_active": 0x051B,
+    "temperature_control_active": 0x051C,
+    "demand_control_active": 0x051D,
+    "schedule_control_active": 0x051E,
+    "manual_control_active": 0x051F,
 }
 
 # HOLDING REGISTERS (03 - READ/WRITE HOLDING REGISTER) - Konfiguracja i kontrola
 HOLDING_REGISTERS = {
     # Main control registers (0x1000-0x1020)
-    "on_off_panel_mode": 0x1000,             # Tryb załączony/wyłączony z panelu (0/1)
-    "mode": 0x1001,                          # Tryb pracy: 0=auto, 1=manual, 2=temporary
-    "air_flow_rate_manual": 0x1002,          # Intensywność wentylacji manualnej 10-100%
-    "supply_air_temperature_manual": 0x1003, # Zadana temperatura nawiewu manualna 20-90°C *0.5
-    "special_mode": 0x1004,                  # Tryb specjalny (kombinacja flag bitowych)
-    "required_temperature": 0x1005,          # Temperatura zadana trybu KOMFORT 20-90°C *0.5
-    "comfort_temperature": 0x1006,           # Temperatura komfortowa 16-30°C *0.5
-    "economy_temperature": 0x1007,           # Temperatura ekonomiczna 12-26°C *0.5
-    "night_temperature": 0x1008,             # Temperatura nocna 10-24°C *0.5
-    "away_temperature": 0x1009,              # Temperatura podczas nieobecności 8-22°C *0.5
-    "frost_protection_temperature": 0x100A,  # Temperatura ochrony przeciwmrozowej 2-10°C *0.5
-    "max_supply_temperature": 0x100B,        # Maksymalna temperatura nawiewu 25-95°C *0.5
-    "min_supply_temperature": 0x100C,        # Minimalna temperatura nawiewu 15-35°C *0.5
-    "heating_curve_slope": 0x100D,           # Nachylenie krzywej grzania 0.1-3.0 *0.1
-    "heating_curve_offset": 0x100E,          # Przesunięcie krzywej grzania -10 do +10°C *0.5
-    "supply_air_flow_rate": 0x100F,          # Przepływ powietrza nawiewnego 50-850 m³/h
-    "exhaust_air_flow_rate": 0x1010,         # Przepływ powietrza wywiewnego 50-850 m³/h
-    "minimum_air_flow_rate": 0x1011,         # Minimalny przepływ powietrza 10-50%
-    "maximum_air_flow_rate": 0x1012,         # Maksymalny przepływ powietrza 50-100%
-    "eco_air_flow_rate": 0x1013,             # Przepływ powietrza w trybie ECO 30-80%
-    "night_air_flow_rate": 0x1014,           # Przepływ powietrza w trybie nocnym 20-60%
-    "away_air_flow_rate": 0x1015,            # Przepływ powietrza podczas nieobecności 15-40%
-    "boost_air_flow_rate": 0x1016,           # Przepływ powietrza w trybie BOOST 60-100%
-    "boost_duration": 0x1017,                # Czas trwania trybu BOOST 5-120 min
-    "fireplace_air_flow_rate": 0x1018,       # Przepływ powietrza w trybie KOMINEK 10-100%
-    "fireplace_duration": 0x1019,            # Czas trwania trybu KOMINEK 5-480 min
-    "hood_air_flow_rate": 0x101A,            # Przepływ powietrza w trybie OKAP 60-100%
-    "hood_duration": 0x101B,                 # Czas trwania trybu OKAP 5-120 min
-    "party_air_flow_rate": 0x101C,           # Przepływ powietrza w trybie IMPREZA 70-100%
-    "party_duration": 0x101D,                # Czas trwania trybu IMPREZA 30-480 min
-    "bathroom_air_flow_rate": 0x101E,        # Przepływ powietrza w trybie ŁAZIENKA 40-100%
-    "bathroom_duration": 0x101F,             # Czas trwania trybu ŁAZIENKA 10-180 min
-    "kitchen_air_flow_rate": 0x1020,         # Przepływ powietrza w trybie KUCHNIA 50-100%
+    "on_off_panel_mode": 0x1000,
+    "mode": 0x1001,
+    "air_flow_rate_manual": 0x1002,
+    "supply_air_temperature_manual": 0x1003,
+    "special_mode": 0x1004,
+    "required_temperature": 0x1005,
+    "comfort_temperature": 0x1006,
+    "economy_temperature": 0x1007,
+    "night_temperature": 0x1008,
+    "away_temperature": 0x1009,
+    "frost_protection_temperature": 0x100A,
+    "max_supply_temperature": 0x100B,
+    "min_supply_temperature": 0x100C,
+    "heating_curve_slope": 0x100D,
+    "heating_curve_offset": 0x100E,
+    "supply_air_flow_rate": 0x100F,
+    "exhaust_air_flow_rate": 0x1010,
+    "minimum_air_flow_rate": 0x1011,
+    "maximum_air_flow_rate": 0x1012,
+    "eco_air_flow_rate": 0x1013,
+    "night_air_flow_rate": 0x1014,
+    "away_air_flow_rate": 0x1015,
+    "boost_air_flow_rate": 0x1016,
+    "boost_duration": 0x1017,
+    "fireplace_air_flow_rate": 0x1018,
+    "fireplace_duration": 0x1019,
+    "hood_air_flow_rate": 0x101A,
+    "hood_duration": 0x101B,
+    "party_air_flow_rate": 0x101C,
+    "party_duration": 0x101D,
+    "bathroom_air_flow_rate": 0x101E,
+    "bathroom_duration": 0x101F,
+    "kitchen_air_flow_rate": 0x1020,
     
     # Special functions (0x1030-0x1050)
-    "bypass_mode": 0x1030,                   # Tryb bypass: 0=auto, 1=otwarty, 2=zamknięty
-    "bypass_temperature_threshold": 0x1031,  # Próg temperatury bypass 18-30°C *0.5
-    "bypass_hysteresis": 0x1032,            # Histereza bypass 1-5°C *0.5
-    "gwc_mode": 0x1033,                      # Tryb GWC: 0=wyłączony, 1=auto, 2=wymuszony
-    "gwc_temperature_threshold": 0x1034,     # Próg temperatury GWC -5 do +15°C *0.5
-    "gwc_hysteresis": 0x1035,               # Histereza GWC 1-5°C *0.5
-    "preheating_mode": 0x1036,              # Tryb wstępnego grzania: 0=wyłączony, 1=auto
-    "preheating_temperature": 0x1037,        # Temperatura wstępnego grzania -15 do +5°C *0.5
-    "defrost_mode": 0x1038,                 # Tryb odszraniania: 0=wyłączony, 1=auto
-    "defrost_temperature": 0x1039,          # Temperatura odszraniania -10 do +2°C *0.5
-    "defrost_duration": 0x103A,             # Czas trwania odszraniania 5-60 min
-    "frost_protection_mode": 0x103B,        # Tryb ochrony przeciwmrozowej: 0=wyłączony, 1=auto
-    "summer_mode": 0x103C,                  # Tryb letni: 0=wyłączony, 1=auto, 2=wymuszony
-    "winter_mode": 0x103D,                  # Tryb zimowy: 0=wyłączony, 1=auto, 2=wymuszony
-    "night_cooling_mode": 0x103E,           # Tryb nocnego chłodzenia: 0=wyłączony, 1=auto
-    "night_cooling_temperature": 0x103F,    # Temperatura nocnego chłodzenia 18-28°C *0.5
-    "air_quality_control": 0x1040,          # Kontrola jakości powietrza: 0=wyłączona, 1=CO2, 2=VOC, 3=PM
-    "humidity_control": 0x1041,             # Kontrola wilgotności: 0=wyłączona, 1=auto
-    "humidity_target": 0x1042,              # Docelowa wilgotność 30-70%
-    "humidity_hysteresis": 0x1043,          # Histereza wilgotności 2-10%
-    "demand_control": 0x1044,               # Kontrola na żądanie: 0=wyłączona, 1=auto
-    "occupancy_sensor": 0x1045,             # Czujnik obecności: 0=wyłączony, 1=włączony
-    "window_contact": 0x1046,               # Kontakt okienny: 0=wyłączony, 1=włączony
-    "external_switch": 0x1047,              # Przełącznik zewnętrzny: 0=wyłączony, 1=włączony
-    "bathroom_switch": 0x1048,              # Przełącznik łazienkowy: 0=wyłączony, 1=włączony
-    "kitchen_switch": 0x1049,               # Przełącznik kuchenny: 0=wyłączony, 1=włączony
-    "bedroom_switch": 0x104A,               # Przełącznik sypialni: 0=wyłączony, 1=włączony
-    "living_room_switch": 0x104B,           # Przełącznik salonu: 0=wyłączony, 1=włączony
-    "office_switch": 0x104C,                # Przełącznik biura: 0=wyłączony, 1=włączony
-    "guest_room_switch": 0x104D,            # Przełącznik pokoju gościnnego: 0=wyłączony, 1=włączony
-    "basement_switch": 0x104E,              # Przełącznik piwnicy: 0=wyłączony, 1=włączony
-    "attic_switch": 0x104F,                 # Przełącznik poddasza: 0=wyłączony, 1=włączony
-    "garage_switch": 0x1050,                # Przełącznik garażu: 0=wyłączony, 1=włączony
+    "bypass_mode": 0x1030,
+    "bypass_temperature_threshold": 0x1031,
+    "bypass_hysteresis": 0x1032,
+    "gwc_mode": 0x1033,
+    "gwc_temperature_threshold": 0x1034,
+    "gwc_hysteresis": 0x1035,
+    "preheating_mode": 0x1036,
+    "preheating_temperature": 0x1037,
+    "defrost_mode": 0x1038,
+    "defrost_temperature": 0x1039,
+    "defrost_duration": 0x103A,
+    "frost_protection_mode": 0x103B,
+    "summer_mode": 0x103C,
+    "winter_mode": 0x103D,
+    "night_cooling_mode": 0x103E,
+    "night_cooling_temperature": 0x103F,
+    "air_quality_control": 0x1040,
+    "humidity_control": 0x1041,
+    "humidity_target": 0x1042,
+    "humidity_hysteresis": 0x1043,
+    "demand_control": 0x1044,
+    "occupancy_sensor": 0x1045,
+    "window_contact": 0x1046,
+    "external_switch": 0x1047,
+    "bathroom_switch": 0x1048,
+    "kitchen_switch": 0x1049,
+    "bedroom_switch": 0x104A,
+    "living_room_switch": 0x104B,
+    "office_switch": 0x104C,
+    "guest_room_switch": 0x104D,
+    "basement_switch": 0x104E,
+    "attic_switch": 0x104F,
+    "garage_switch": 0x1050,
     
     # Air quality settings (0x1060-0x1080)
-    "co2_threshold_low": 0x1060,            # Próg niski CO2 400-800 ppm
-    "co2_threshold_medium": 0x1061,         # Próg średni CO2 600-1200 ppm  
-    "co2_threshold_high": 0x1062,           # Próg wysoki CO2 800-1600 ppm
-    "co2_hysteresis": 0x1063,               # Histereza CO2 50-200 ppm
-    "voc_threshold_low": 0x1064,            # Próg niski VOC 0-500 ppb
-    "voc_threshold_medium": 0x1065,         # Próg średni VOC 300-1000 ppb
-    "voc_threshold_high": 0x1066,           # Próg wysoki VOC 600-2000 ppb
-    "voc_hysteresis": 0x1067,               # Histereza VOC 50-300 ppb
-    "pm25_threshold_low": 0x1068,           # Próg niski PM2.5 0-15 μg/m³
-    "pm25_threshold_medium": 0x1069,        # Próg średni PM2.5 10-35 μg/m³
-    "pm25_threshold_high": 0x106A,          # Próg wysoki PM2.5 25-75 μg/m³
-    "pm25_hysteresis": 0x106B,              # Histereza PM2.5 2-10 μg/m³
-    "pm10_threshold_low": 0x106C,           # Próg niski PM10 0-25 μg/m³
-    "pm10_threshold_medium": 0x106D,        # Próg średni PM10 15-50 μg/m³
-    "pm10_threshold_high": 0x106E,          # Próg wysoki PM10 35-100 μg/m³
-    "pm10_hysteresis": 0x106F,              # Histereza PM10 3-15 μg/m³
-    "air_quality_response_delay": 0x1070,   # Opóźnienie reakcji na jakość powietrza 1-60 min
-    "air_quality_boost_duration": 0x1071,   # Czas trwania doładowania przy złej jakości 5-120 min
-    "air_quality_boost_flow": 0x1072,       # Przepływ doładowania przy złej jakości 60-100%
-    "filter_alarm_threshold": 0x1073,       # Próg alarmu filtra 30-365 dni
-    "filter_warning_threshold": 0x1074,     # Próg ostrzeżenia filtra 7-90 dni
-    "maintenance_interval": 0x1075,         # Interwał konserwacji 30-365 dni
-    "cleaning_reminder": 0x1076,            # Przypomnienie o czyszczeniu 7-90 dni
-    "sensor_calibration_interval": 0x1077,  # Interwał kalibracji czujników 30-365 dni
-    "backup_settings": 0x1078,              # Backup ustawień: 0=wyłączony, 1=włączony
-    "factory_reset": 0x1079,                # Reset fabryczny: zapis 1=wykonaj reset
-    "configuration_lock": 0x107A,           # Blokada konfiguracji: 0=odblokowana, 1=zablokowana
-    "user_level": 0x107B,                   # Poziom użytkownika: 0=podstawowy, 1=zaawansowany, 2=serwis
-    "display_brightness": 0x107C,           # Jasność wyświetlacza 10-100%
-    "display_timeout": 0x107D,              # Timeout wyświetlacza 10-300 sekund
-    "keypad_lock": 0x107E,                  # Blokada klawiatury: 0=odblokowana, 1=zablokowana
-    "sound_volume": 0x107F,                 # Głośność dźwięków 0-100%
-    "language": 0x1080,                     # Język: 0=polski, 1=angielski, 2=niemiecki, 3=francuski
+    "co2_threshold_low": 0x1060,
+    "co2_threshold_medium": 0x1061,
+    "co2_threshold_high": 0x1062,
+    "co2_hysteresis": 0x1063,
+    "voc_threshold_low": 0x1064,
+    "voc_threshold_medium": 0x1065,
+    "voc_threshold_high": 0x1066,
+    "voc_hysteresis": 0x1067,
+    "pm25_threshold_low": 0x1068,
+    "pm25_threshold_medium": 0x1069,
+    "pm25_threshold_high": 0x106A,
+    "pm25_hysteresis": 0x106B,
+    "pm10_threshold_low": 0x106C,
+    "pm10_threshold_medium": 0x106D,
+    "pm10_threshold_high": 0x106E,
+    "pm10_hysteresis": 0x106F,
+    "air_quality_response_delay": 0x1070,
+    "air_quality_boost_duration": 0x1071,
+    "air_quality_boost_flow": 0x1072,
+    "filter_alarm_threshold": 0x1073,
+    "filter_warning_threshold": 0x1074,
+    "maintenance_interval": 0x1075,
+    "cleaning_reminder": 0x1076,
+    "sensor_calibration_interval": 0x1077,
+    "backup_settings": 0x1078,
+    "factory_reset": 0x1079,
+    "configuration_lock": 0x107A,
+    "user_level": 0x107B,
+    "display_brightness": 0x107C,
+    "display_timeout": 0x107D,
+    "keypad_lock": 0x107E,
+    "sound_volume": 0x107F,
+    "language": 0x1080,
     
     # Weekly schedule (0x1100-0x1127)
-    "weekly_schedule_mode": 0x1100,         # Tryb harmonogramu tygodniowego: 0=wyłączony, 1=włączony
-    "schedule_monday_period1_start": 0x1101,    # Poniedziałek okres 1 - start HHMM
-    "schedule_monday_period1_end": 0x1102,      # Poniedziałek okres 1 - koniec HHMM
-    "schedule_monday_period1_flow": 0x1103,     # Poniedziałek okres 1 - przepływ %
-    "schedule_monday_period1_temp": 0x1104,     # Poniedziałek okres 1 - temperatura *0.5°C
-    "schedule_monday_period2_start": 0x1105,    # Poniedziałek okres 2 - start HHMM
-    "schedule_monday_period2_end": 0x1106,      # Poniedziałek okres 2 - koniec HHMM
-    "schedule_monday_period2_flow": 0x1107,     # Poniedziałek okres 2 - przepływ %
-    "schedule_monday_period2_temp": 0x1108,     # Poniedziałek okres 2 - temperatura *0.5°C
-    "schedule_tuesday_period1_start": 0x1109,   # Wtorek okres 1 - start HHMM
-    "schedule_tuesday_period1_end": 0x110A,     # Wtorek okres 1 - koniec HHMM
-    "schedule_tuesday_period1_flow": 0x110B,    # Wtorek okres 1 - przepływ %
-    "schedule_tuesday_period1_temp": 0x110C,    # Wtorek okres 1 - temperatura *0.5°C
-    "schedule_tuesday_period2_start": 0x110D,   # Wtorek okres 2 - start HHMM
-    "schedule_tuesday_period2_end": 0x110E,     # Wtorek okres 2 - koniec HHMM
-    "schedule_tuesday_period2_flow": 0x110F,    # Wtorek okres 2 - przepływ %
-    "schedule_tuesday_period2_temp": 0x1110,    # Wtorek okres 2 - temperatura *0.5°C
-    "schedule_wednesday_period1_start": 0x1111, # Środa okres 1 - start HHMM
-    "schedule_wednesday_period1_end": 0x1112,   # Środa okres 1 - koniec HHMM
-    "schedule_wednesday_period1_flow": 0x1113,  # Środa okres 1 - przepływ %
-    "schedule_wednesday_period1_temp": 0x1114,  # Środa okres 1 - temperatura *0.5°C
-    "schedule_wednesday_period2_start": 0x1115, # Środa okres 2 - start HHMM
-    "schedule_wednesday_period2_end": 0x1116,   # Środa okres 2 - koniec HHMM
-    "schedule_wednesday_period2_flow": 0x1117,  # Środa okres 2 - przepływ %
-    "schedule_wednesday_period2_temp": 0x1118,  # Środa okres 2 - temperatura *0.5°C
-    "schedule_thursday_period1_start": 0x1119,  # Czwartek okres 1 - start HHMM
-    "schedule_thursday_period1_end": 0x111A,    # Czwartek okres 1 - koniec HHMM
-    "schedule_thursday_period1_flow": 0x111B,   # Czwartek okres 1 - przepływ %
-    "schedule_thursday_period1_temp": 0x111C,   # Czwartek okres 1 - temperatura *0.5°C
-    "schedule_thursday_period2_start": 0x111D,  # Czwartek okres 2 - start HHMM
-    "schedule_thursday_period2_end": 0x111E,    # Czwartek okres 2 - koniec HHMM
-    "schedule_thursday_period2_flow": 0x111F,   # Czwartek okres 2 - przepływ %
-    "schedule_thursday_period2_temp": 0x1120,   # Czwartek okres 2 - temperatura *0.5°C
-    "schedule_friday_period1_start": 0x1121,    # Piątek okres 1 - start HHMM
-    "schedule_friday_period1_end": 0x1122,      # Piątek okres 1 - koniec HHMM
-    "schedule_friday_period1_flow": 0x1123,     # Piątek okres 1 - przepływ %
-    "schedule_friday_period1_temp": 0x1124,     # Piątek okres 1 - temperatura *0.5°C
-    "schedule_friday_period2_start": 0x1125,    # Piątek okres 2 - start HHMM
-    "schedule_friday_period2_end": 0x1126,      # Piątek okres 2 - koniec HHMM
-    "schedule_friday_period2_flow": 0x1127,     # Piątek okres 2 - przepływ %
+    "weekly_schedule_mode": 0x1100,
+    "schedule_monday_period1_start": 0x1101,
+    "schedule_monday_period1_end": 0x1102,
+    "schedule_monday_period1_flow": 0x1103,
+    "schedule_monday_period1_temp": 0x1104,
+    "schedule_monday_period2_start": 0x1105,
+    "schedule_monday_period2_end": 0x1106,
+    "schedule_monday_period2_flow": 0x1107,
+    "schedule_monday_period2_temp": 0x1108,
+    "schedule_tuesday_period1_start": 0x1109,
+    "schedule_tuesday_period1_end": 0x110A,
+    "schedule_tuesday_period1_flow": 0x110B,
+    "schedule_tuesday_period1_temp": 0x110C,
+    "schedule_tuesday_period2_start": 0x110D,
+    "schedule_tuesday_period2_end": 0x110E,
+    "schedule_tuesday_period2_flow": 0x110F,
+    "schedule_tuesday_period2_temp": 0x1110,
+    "schedule_wednesday_period1_start": 0x1111,
+    "schedule_wednesday_period1_end": 0x1112,
+    "schedule_wednesday_period1_flow": 0x1113,
+    "schedule_wednesday_period1_temp": 0x1114,
+    "schedule_wednesday_period2_start": 0x1115,
+    "schedule_wednesday_period2_end": 0x1116,
+    "schedule_wednesday_period2_flow": 0x1117,
+    "schedule_wednesday_period2_temp": 0x1118,
+    "schedule_thursday_period1_start": 0x1119,
+    "schedule_thursday_period1_end": 0x111A,
+    "schedule_thursday_period1_flow": 0x111B,
+    "schedule_thursday_period1_temp": 0x111C,
+    "schedule_thursday_period2_start": 0x111D,
+    "schedule_thursday_period2_end": 0x111E,
+    "schedule_thursday_period2_flow": 0x111F,
+    "schedule_thursday_period2_temp": 0x1120,
+    "schedule_friday_period1_start": 0x1121,
+    "schedule_friday_period1_end": 0x1122,
+    "schedule_friday_period1_flow": 0x1123,
+    "schedule_friday_period1_temp": 0x1124,
+    "schedule_friday_period2_start": 0x1125,
+    "schedule_friday_period2_end": 0x1126,
+    "schedule_friday_period2_flow": 0x1127,
     
     # Temporary mode control (0x1130-0x1135) - z dokumentacji PDF
-    "cfg_mode1": 0x1130,                     # Tryb pracy AirPack - równorzędny z 0x1133
-    "air_flow_rate_temporary": 0x1131,       # Intensywność wentylacji - tryb CHWILOWY
-    "airflow_rate_change_flag": 0x1132,      # Flaga wymuszenia / aktywacji trybu CHWILOWEGO
-    "cfg_mode2": 0x1133,                     # Tryb pracy AirPack - równorzędny z 0x1130  
-    "supply_air_temperature_temporary": 0x1134, # Zadana temperatura nawiewu - tryb CHWILOWY
-    "temperature_change_flag": 0x1135,       # Flaga wymuszenia / aktywacji trybu CHWILOWEGO
+    "cfg_mode1": 0x1130,
+    "air_flow_rate_temporary": 0x1131,
+    "airflow_rate_change_flag": 0x1132,
+    "cfg_mode2": 0x1133,
+    "supply_air_temperature_temporary": 0x1134,
+    "temperature_change_flag": 0x1135,
     
     # System reset controls (0x113D-0x113E) - z dokumentacji PDF
-    "hard_reset_settings": 0x113D,          # Reset ustawień użytkownika
-    "hard_reset_schedule": 0x113E,          # Reset ustawień trybów pracy
+    "hard_reset_settings": 0x113D,
+    "hard_reset_schedule": 0x113E,
     
     # Filter control (0x1150-0x1151) - z dokumentacji PDF
-    "pres_check_day": 0x1150,               # Dzień tygodnia automatycznej kontroli filtrów
-    "pres_check_time": 0x1151,              # Godzina i minuta automatycznej kontroli filtrów [GGMM]
+    "pres_check_day": 0x1150,
+    "pres_check_time": 0x1151,
     
     # Modbus communication settings (0x1164-0x116B) - z dokumentacji PDF
-    "uart0_id": 0x1164,                     # Nastawy komunikacji Modbus - port Air-B - ID urządzenia
-    "uart0_baud": 0x1165,                   # Nastawy komunikacji Modbus - port Air-B - Szybkość transmisji
-    "uart0_parity": 0x1166,                 # Nastawy komunikacji Modbus - port Air-B - Parzystość
-    "uart0_stop": 0x1167,                   # Nastawy komunikacji Modbus - port Air-B - Bity stopu
-    "uart1_id": 0x1168,                     # Nastawy komunikacji Modbus - port Air++ - ID urządzenia
-    "uart1_baud": 0x1169,                   # Nastawy komunikacji Modbus - port Air++ - Szybkość transmisji
-    "uart1_parity": 0x116A,                 # Nastawy komunikacji Modbus - port Air++ - Parzystość
-    "uart1_stop": 0x116B,                   # Nastawy komunikacji Modbus - port Air++ - Bity stopu
+    "uart0_id": 0x1164,
+    "uart0_baud": 0x1165,
+    "uart0_parity": 0x1166,
+    "uart0_stop": 0x1167,
+    "uart1_id": 0x1168,
+    "uart1_baud": 0x1169,
+    "uart1_parity": 0x116A,
+    "uart1_stop": 0x116B,
     
     # Device name (0x1FD0-0x1FD7) - z dokumentacji PDF
-    "device_name_1": 0x1FD0,                # Nazwa urządzenia - część 1
-    "device_name_2": 0x1FD1,                # Nazwa urządzenia - część 2
-    "device_name_3": 0x1FD2,                # Nazwa urządzenia - część 3
-    "device_name_4": 0x1FD3,                # Nazwa urządzenia - część 4
-    "device_name_5": 0x1FD4,                # Nazwa urządzenia - część 5
-    "device_name_6": 0x1FD5,                # Nazwa urządzenia - część 6
-    "device_name_7": 0x1FD6,                # Nazwa urządzenia - część 7
-    "device_name_8": 0x1FD7,                # Nazwa urządzenia - część 8
+    "device_name_1": 0x1FD0,
+    "device_name_2": 0x1FD1,
+    "device_name_3": 0x1FD2,
+    "device_name_4": 0x1FD3,
+    "device_name_5": 0x1FD4,
+    "device_name_6": 0x1FD5,
+    "device_name_7": 0x1FD6,
+    "device_name_8": 0x1FD7,
     
     # Product key and lock (0x1FFB-0x1FFF) - z dokumentacji PDF
-    "lock_pass1": 0x1FFB,                   # Klucz produktu użytkownika - słowo młodsze
-    "lock_pass2": 0x1FFC,                   # Klucz produktu użytkownika - słowo starsze
-    "lock_flag": 0x1FFD,                    # Aktywacja blokady urządzenia
-    "required_temp": 0x1FFE,                # Temperatura zadana trybu KOMFORT
-    "filter_change": 0x1FFF,                # System kontroli filtrów / typ filtrów
+    "lock_pass1": 0x1FFB,
+    "lock_pass2": 0x1FFC,
+    "lock_flag": 0x1FFD,
+    "required_temp": 0x1FFE,
+    "filter_change": 0x1FFF,
 }
 
 # COIL REGISTERS (01 - READ COILS) - Stany wyjść i przekaźników

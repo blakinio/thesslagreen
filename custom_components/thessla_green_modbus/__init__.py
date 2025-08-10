@@ -1,9 +1,4 @@
-"""POPRAWIONY ThesslaGreen Modbus Integration for Home Assistant.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-Integracja zawiera wszystkie rejestry z pliku MODBUS_USER_AirPack_Home_08.2021.01 bez wyjątku
-FIX: Poprawiony import coordinator, dodane diagnostics platform
-"""
+"""ThesslaGreen Modbus integration for Home Assistant."""
 from __future__ import annotations
 
 import asyncio
@@ -31,12 +26,12 @@ from .const import (
     MANUFACTURER,
     MODEL,
 )
-from .coordinator import ThesslaGreenModbusCoordinator  # POPRAWKA: Poprawiony import
-from .services import async_setup_services, async_unload_services  # POPRAWKA: Import serwisów
+from .coordinator import ThesslaGreenModbusCoordinator
+from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
 
-# Define platforms this integration supports - POPRAWKA: Dodane diagnostics
+# Supported platforms
 PLATFORMS_TO_SETUP = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
@@ -45,7 +40,7 @@ PLATFORMS_TO_SETUP = [
     Platform.SELECT,
     Platform.NUMBER,
     Platform.SWITCH,
-    Platform.DIAGNOSTICS,  # POPRAWKA: Dodane diagnostics platform
+    Platform.DIAGNOSTICS,
 ]
 
 

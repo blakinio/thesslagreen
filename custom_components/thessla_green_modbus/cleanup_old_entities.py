@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Skrypt do czyszczenia starych referencji w Home Assistant - ThesslaGreen Modbus
-Usuwa stare entytie i referencje, które mogą powodować błędy.
+Script to clean up old references in Home Assistant for the ThesslaGreen Modbus
+integration. Removes outdated entities and references that may cause errors.
 
-Uruchom PRZED restartowaniem Home Assistant po aktualizacji integracji.
+Run before restarting Home Assistant after updating the integration.
 """
 
 import json
@@ -13,12 +13,12 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-# Konfiguracja
+# Configuration
 HA_CONFIG_PATHS = [
-    Path.home() / ".homeassistant",  # Standardowa ścieżka Linux
+    Path.home() / ".homeassistant",  # Standard Linux path
     Path.home() / "homeassistant",   # Docker/Container
     Path("/config"),                 # Home Assistant OS
-    Path("./config"),                # Względna ścieżka
+    Path("./config"),                # Relative path
 ]
 
 OLD_ENTITY_PATTERNS = [
@@ -31,7 +31,7 @@ BACKUP_SUFFIX = f"_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
 def find_ha_config_dir() -> Path | None:
-    """Znajdź katalog konfiguracyjny Home Assistant."""
+    """Find the Home Assistant configuration directory."""
     for path in HA_CONFIG_PATHS:
         if path.exists() and (path / "configuration.yaml").exists():
             return path
@@ -39,7 +39,7 @@ def find_ha_config_dir() -> Path | None:
 
 
 def backup_file(file_path: Path) -> Path:
-    """Utwórz backup pliku."""
+    """Create a backup of the file."""
     backup_path = file_path.with_suffix(file_path.suffix + BACKUP_SUFFIX)
     shutil.copy2(file_path, backup_path)
     print(f"✅ Backup utworzony: {backup_path}")
@@ -47,14 +47,14 @@ def backup_file(file_path: Path) -> Path:
 
 
 def cleanup_entity_registry(config_dir: Path) -> bool:
-    """Wyczyść entity registry z starych entytii."""
+    """Clean outdated entities from the entity registry."""
     registry_path = config_dir / ".storage" / "core.entity_registry"
     
     if not registry_path.exists():
-        print(f"❌ Entity registry nie znaleziony: {registry_path}")
+        print(f"❌ Entity registry not found: {registry_path}")
         return False
 
-    print(f"📁 Przetwarzam entity registry: {registry_path}")
+    print(f"📁 Processing entity registry: {registry_path}")
     
     # Backup
     backup_path = backup_file(registry_path)
@@ -63,7 +63,7 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
         with open(registry_path, 'r', encoding='utf-8') as f:
             registry = json.load(f)
         
-        # Znajdź stare entytie
+        # Find old entities
         old_entities = []
         entities = registry.get("data", {}).get("entities", [])
         
@@ -71,127 +71,127 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
             entity_id = entity.get("entity_id", "")
             platform = entity.get("platform", "")
             
-            # Sprawdź czy to stara entytia thessla_green_modbus
+            # Check if this is an old thessla_green_modbus entity
             if (platform == "thessla_green_modbus" and 
                 ("rekuperator_predkosc" in entity_id or 
                  "rekuperator_predkosc" in entity.get("unique_id", ""))):
                 old_entities.append(entity)
             
-            # Sprawdź inne problematyczne wzorce
+            # Check other problematic patterns
             for pattern in OLD_ENTITY_PATTERNS:
                 if pattern.replace("thessla.*", "thessla") in entity_id:
                     if entity not in old_entities:
                         old_entities.append(entity)
 
         if old_entities:
-            print(f"🗑️  Znaleziono {len(old_entities)} starych entytii do usunięcia:")
+            print(f"🗑️  Found {len(old_entities)} old entities to remove:")
             for entity in old_entities:
                 print(f"   - {entity['entity_id']} (platform: {entity.get('platform', 'unknown')})")
             
-            # Usuń stare entytie
+            # Remove old entities
             registry["data"]["entities"] = [
                 e for e in entities if e not in old_entities
             ]
             
-            # Zapisz
+            # Save
             with open(registry_path, 'w', encoding='utf-8') as f:
                 json.dump(registry, f, indent=2, ensure_ascii=False)
             
-            print("✅ Entity registry zaktualizowany")
+            print("✅ Entity registry updated")
             return True
         else:
-            print("✅ Nie znaleziono starych entytii do usunięcia")
-            # Usuń niepotrzebny backup
+            print("✅ No old entities found")
+            # Remove unnecessary backup
             backup_path.unlink()
             return True
             
     except Exception as exc:
-        print(f"❌ Błąd przetwarzania entity registry: {exc}")
-        # Przywróć backup
+        print(f"❌ Error processing entity registry: {exc}")
+        # Restore backup
         if backup_path.exists():
             shutil.copy2(backup_path, registry_path)
-            print(f"🔄 Przywrócono backup z: {backup_path}")
+            print(f"🔄 Restored backup from: {backup_path}")
         return False
 
 
 def cleanup_automations(config_dir: Path) -> bool:
-    """Wyczyść automatyzacje z referencjami do starych entytii."""
+    """Remove outdated entity references from automations."""
     automations_path = config_dir / "automations.yaml"
     
     if not automations_path.exists():
-        print("ℹ️  Plik automations.yaml nie istnieje - pomijam")
+        print("ℹ️  automations.yaml does not exist - skipping")
         return True
 
-    print(f"📁 Sprawdzam automatyzacje: {automations_path}")
+    print(f"📁 Checking automations: {automations_path}")
     
     try:
         with open(automations_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # Sprawdź czy są referencje do starych entytii
+        # Check for references to old entities
         problematic_refs = []
         for pattern in OLD_ENTITY_PATTERNS:
             if pattern.replace("thessla.*", "thessla") in content:
                 problematic_refs.append(pattern)
         
         if problematic_refs:
-            print(f"⚠️  Znaleziono {len(problematic_refs)} referencji do starych entytii:")
+            print(f"⚠️  Found {len(problematic_refs)} references to old entities:")
             for ref in problematic_refs:
                 print(f"   - {ref}")
-            print("❗ Sprawdź i zaktualizuj automatyzacje ręcznie")
-            print(f"   Plik: {automations_path}")
+            print("❗ Review and update automations manually")
+            print(f"   File: {automations_path}")
             return False
         else:
-            print("✅ Automatyzacje są czyste")
+            print("✅ Automations are clean")
             return True
             
     except Exception as exc:
-        print(f"❌ Błąd sprawdzania automatyzacji: {exc}")
+        print(f"❌ Error checking automations: {exc}")
         return False
 
 
 def cleanup_configuration_yaml(config_dir: Path) -> bool:
-    """Sprawdź configuration.yaml pod kątem starych referencji."""
+    """Check configuration.yaml for old references."""
     config_path = config_dir / "configuration.yaml"
     
     if not config_path.exists():
-        print("❌ configuration.yaml nie znaleziony")
+        print("❌ configuration.yaml not found")
         return False
 
-    print(f"📁 Sprawdzam konfigurację: {config_path}")
+    print(f"📁 Checking configuration: {config_path}")
     
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # Sprawdź problematyczne referencje
+        # Look for problematic references
         issues = []
         
         for pattern in OLD_ENTITY_PATTERNS:
             if pattern.replace("thessla.*", "thessla") in content:
                 issues.append(f"Referencja do {pattern}")
         
-        # Sprawdź stare konfiguracje integracji
+        # Check for old integration configuration
         if "thessla_green_modbus:" in content:
-            issues.append("Stara konfiguracja YAML integracji (użyj UI)")
+            issues.append("Old YAML configuration for integration (use UI)")
         
         if issues:
-            print(f"⚠️  Znaleziono {len(issues)} problemów w konfiguracji:")
+            print(f"⚠️  Found {len(issues)} issues in configuration:")
             for issue in issues:
                 print(f"   - {issue}")
-            print("❗ Sprawdź i zaktualizuj configuration.yaml ręcznie")
+            print("❗ Review and update configuration.yaml manually")
             return False
         else:
-            print("✅ Konfiguracja jest czysta")
+            print("✅ Configuration is clean")
             return True
             
     except Exception as exc:
-        print(f"❌ Błąd sprawdzania konfiguracji: {exc}")
+        print(f"❌ Error checking configuration: {exc}")
         return False
 
 
 def cleanup_custom_component_cache(config_dir: Path) -> bool:
-    """Wyczyść cache komponentu niestandardowego."""
+    """Clear custom component cache."""
     cache_paths = [
         config_dir / "deps",
         config_dir / ".storage" / "lovelace",
