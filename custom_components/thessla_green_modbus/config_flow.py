@@ -1,8 +1,4 @@
-"""ENHANCED Config flow for ThesslaGreen Modbus Integration - SILVER STANDARD.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-ENHANCED: Auto-scan, validation, detailed error handling
-"""
+"""Config flow for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
 import asyncio

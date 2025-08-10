@@ -1,7 +1,5 @@
-# ========== select.py ==========
-"""COMPLETE Select entities for ThesslaGreen Modbus Integration - SILVER STANDARD.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-"""
+# Select entities for the ThesslaGreen Modbus integration
+"""Select platform for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
 import logging

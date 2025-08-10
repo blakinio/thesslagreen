@@ -1,9 +1,4 @@
-"""POPRAWIONY Device Scanner for ThesslaGreen Modbus Integration.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Automatyczne skanowanie i wykrywanie dostępnych funkcji urządzenia
-Wszystkie modele: thessla green AirPack Home serie 4
-FIX: Dodana brakująca klasa ThesslaGreenDeviceScanner i DeviceCapabilities
-"""
+"""Device scanner for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
 import asyncio
@@ -50,7 +45,7 @@ class DeviceCapabilities:
 
 
 class ThesslaGreenDeviceScanner:
-    """Skanowanie urządzenia ThesslaGreen w celu wykrycia dostępnych funkcji."""
+    """Scan a ThesslaGreen device to detect available features."""
     
     def __init__(self, host: str, port: int, slave_id: int, timeout: int = 10):
         """Initialize device scanner."""

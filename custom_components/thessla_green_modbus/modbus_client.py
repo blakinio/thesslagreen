@@ -1,7 +1,4 @@
-"""POPRAWIONY Modbus client dla ThesslaGreen Integration.
-Kompatybilność: pymodbus 3.5.*+
-FIX: Transaction ID mismatch, AsyncModbusTcpClient compatibility, connection handling
-"""
+"""Modbus client for the ThesslaGreen integration."""
 from __future__ import annotations
 
 import asyncio
@@ -16,11 +13,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ThesslaGreenModbusClient:
-    """POPRAWIONY ThesslaGreen Modbus TCP client kompatybilny z pymodbus 3.5+
-    
-    Naprawione problemy:
+    """ThesslaGreen Modbus TCP client compatible with pymodbus 3.5+.
+
+    Fixed issues:
     - Transaction ID synchronization
-    - AsyncModbusTcpClient API compatibility  
+    - AsyncModbusTcpClient API compatibility
     - Connection stability
     - Error handling
     """
@@ -35,25 +32,25 @@ class ThesslaGreenModbusClient:
         self._lock = asyncio.Lock()
         self._connection_retries = 3
         
-        # POPRAWKA: Transaction ID tracking dla pymodbus 3.5+
+        # Track transaction ID for pymodbus 3.5+
         self._transaction_id = 1
 
     async def connect(self) -> bool:
-        """POPRAWIONE: Connect to Modbus device with proper error handling."""
+        """Connect to the Modbus device with proper error handling."""
         try:
             # Clean up existing connection
             if self._client:
                 await self.disconnect()
                 
-            # POPRAWKA: Nowe API pymodbus 3.5+ - usunięto retry_on_empty, strict, source_address
+            # New pymodbus 3.5+ API – removed retry_on_empty, strict, source_address
             self._client = AsyncModbusTcpClient(
                 host=self.host,
                 port=self.port,
                 timeout=self.timeout,
-                # POPRAWKA: retries obsługiwane manualnie przez client
+                # Retries handled manually by the client
             )
             
-            # POPRAWKA: Nowy sposób łączenia w pymodbus 3.5+
+            # New connection method in pymodbus 3.5+
             connected = await self._client.connect()
             
             if connected and self._client.connected:
@@ -68,7 +65,7 @@ class ThesslaGreenModbusClient:
             return False
 
     async def disconnect(self) -> None:
-        """POPRAWIONE: Safely disconnect from Modbus device."""
+        """Safely disconnect from the Modbus device."""
         try:
             if self._client and hasattr(self._client, 'close'):
                 self._client.close()
@@ -78,32 +75,32 @@ class ThesslaGreenModbusClient:
             self._client = None
 
     def _get_next_transaction_id(self) -> int:
-        """POPRAWKA: Generate consistent transaction ID."""
+        """Generate a consistent transaction ID."""
         self._transaction_id = (self._transaction_id % 65535) + 1
         return self._transaction_id
 
     async def _ensure_connected(self) -> bool:
-        """POPRAWKA: Ensure client is connected before operations."""
+        """Ensure the client is connected before operations."""
         if not self._client or not self._client.connected:
             _LOGGER.debug("Client not connected, attempting to reconnect...")
             return await self.connect()
         return True
 
     async def read_holding_register(self, address: int) -> Optional[int]:
-        """POPRAWIONE: Read single holding register."""
+        """Read a single holding register."""
         async with self._lock:
             try:
                 if not await self._ensure_connected():
                     return None
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.read_holding_registers(
                     address=address,
                     count=1,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.debug("Exception response reading register %s: code %s", address, result.exception_code)
                     return None
@@ -122,20 +119,20 @@ class ThesslaGreenModbusClient:
                 return None
 
     async def read_holding_registers(self, address: int, count: int) -> Optional[List[int]]:
-        """POPRAWIONE: Read multiple holding registers."""
+        """Read multiple holding registers."""
         async with self._lock:
             try:
                 if not await self._ensure_connected():
                     return None
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.read_holding_registers(
                     address=address,
                     count=count,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.debug("Exception response reading registers %s-%s: code %s", 
                                 address, address + count - 1, result.exception_code)
@@ -158,20 +155,20 @@ class ThesslaGreenModbusClient:
                 return None
 
     async def read_input_registers(self, address: int, count: int) -> Optional[List[int]]:
-        """POPRAWIONE: Read input registers."""
+        """Read input registers."""
         async with self._lock:
             try:
                 if not await self._ensure_connected():
                     return None
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.read_input_registers(
                     address=address,
                     count=count,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.debug("Exception response reading input registers %s-%s: code %s", 
                                 address, address + count - 1, result.exception_code)
@@ -194,20 +191,20 @@ class ThesslaGreenModbusClient:
                 return None
 
     async def read_coils(self, address: int, count: int) -> Optional[List[bool]]:
-        """POPRAWIONE: Read coils."""
+        """Read coils."""
         async with self._lock:
             try:
                 if not await self._ensure_connected():
                     return None
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.read_coils(
                     address=address,
                     count=count,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.debug("Exception response reading coils %s-%s: code %s", 
                                 address, address + count - 1, result.exception_code)
@@ -236,14 +233,14 @@ class ThesslaGreenModbusClient:
                 if not await self._ensure_connected():
                     return None
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.read_discrete_inputs(
                     address=address,
                     count=count,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.debug("Exception response reading discrete inputs %s-%s: code %s", 
                                 address, address + count - 1, result.exception_code)
@@ -272,14 +269,14 @@ class ThesslaGreenModbusClient:
                 if not await self._ensure_connected():
                     return False
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.write_register(
                     address=address,
                     value=value,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.error("Exception response writing register %s: code %s", address, result.exception_code)
                     return False
@@ -305,14 +302,14 @@ class ThesslaGreenModbusClient:
                 if not await self._ensure_connected():
                     return False
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.write_registers(
                     address=address,
                     values=values,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.error("Exception response writing registers %s-%s: code %s", 
                                 address, address + len(values) - 1, result.exception_code)
@@ -343,14 +340,14 @@ class ThesslaGreenModbusClient:
                 if not await self._ensure_connected():
                     return False
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.write_coil(
                     address=address,
                     value=value,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.error("Exception response writing coil %s: code %s", address, result.exception_code)
                     return False
@@ -376,14 +373,14 @@ class ThesslaGreenModbusClient:
                 if not await self._ensure_connected():
                     return False
 
-                # POPRAWKA: Nowe API z keyword arguments
+                # New API with keyword arguments
                 result = await self._client.write_coils(
                     address=address,
                     values=values,
                     slave=self.slave_id
                 )
                 
-                # POPRAWKA: Obsługa exception responses
+                # Handle exception responses
                 if isinstance(result, ExceptionResponse):
                     _LOGGER.error("Exception response writing coils %s-%s: code %s", 
                                 address, address + len(values) - 1, result.exception_code)

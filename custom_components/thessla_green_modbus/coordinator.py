@@ -1,9 +1,4 @@
-"""OPTIMIZED Coordinator for ThesslaGreen Modbus Integration - SILVER STANDARD.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-OPTIMIZED: Batch reading, smart error handling, enhanced diagnostics
-FIX: Poprawiony import i kompatybilność z pymodbus 3.5.*+
-"""
+"""Data coordinator for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
 import asyncio

@@ -1,8 +1,4 @@
-"""COMPLETE Sensor entities for ThesslaGreen Modbus Integration - SILVER STANDARD.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-COMPLETE: Wszystkie sensory z autoscan - tylko dostępne encje
-"""
+"""Sensors for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
 import logging
