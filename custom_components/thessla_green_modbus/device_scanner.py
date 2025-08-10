@@ -47,12 +47,15 @@ class DeviceCapabilities:
 
 
 class ThesslaDeviceScanner:
-    """Skaner rejestrów – HA 2025.*, pymodbus 3.5.*+ (bez parametrów pozycyjnych)."""
+    """Skaner rejestrów – HA 2025.*, pymodbus 3.5.*+ (bez 'slave' w __init__)."""
 
-    def __init__(self, host: str, port: int, unit: int = DEFAULT_UNIT) -> None:
+    def __init__(self, host: str, port: int, unit: int = DEFAULT_UNIT, **kwargs) -> None:
+        # legacy aliasy i zbędne parametry
+        unit = int(kwargs.get("slave_id", kwargs.get("slave", unit)))
+        # retry/timeout z legacy – ignorujemy na wejściu; timeout ustawiamy lokalnie
         self._host = host
-        self._port = port
-        self._unit = unit
+        self._port = int(port)
+        self._unit = int(unit)
 
     async def _call(
         self,
@@ -62,15 +65,10 @@ class ThesslaDeviceScanner:
         count: int,
         attr: str,
     ):
-        """
-        Wywołanie kompatybilne z pymodbus 3.5.*:
-        - zawsze keyword-only: address=, count=
-        - najpierw próbuj unit=, jeśli TypeError → slave=
-        """
+        """Wywołanie kompatybilne – najpierw unit=, fallback slave=."""
         try:
             resp = await func(address=address, count=count, unit=self._unit)
         except TypeError:
-            # starsze/nietypowe buildy mogą oczekiwać 'slave'
             resp = await func(address=address, count=count, slave=self._unit)
         if getattr(resp, "isError", lambda: False)():
             return None
@@ -113,12 +111,9 @@ class ThesslaDeviceScanner:
             if not (ok or getattr(client, "connected", False)):
                 raise ConnectionError("Unable to connect")
 
-            _LOGGER.info("Connected to ThesslaGreen device at %s:%s", self._host, self._port)
-
             caps = DeviceCapabilities()
             present_blocks: Dict[str, Tuple[int, int]] = {}
 
-            # INPUT – wersja FW (0x0000..)
             ver_major = await self._read_input(client, 0x0000, 1)
             ver_minor = await self._read_input(client, 0x0001, 1)
             ver_patch = await self._read_input(client, 0x0004, 1)
@@ -129,7 +124,6 @@ class ThesslaDeviceScanner:
                 except Exception:
                     pass
 
-            # INPUT – czujniki temperatur (0x0010..)
             if await self._read_input(client, 0x0010, 1) is not None:
                 caps.sensor_outside_temperature = True
                 caps.temperature_sensors.add("outside")
@@ -141,17 +135,14 @@ class ThesslaDeviceScanner:
                 caps.temperature_sensors.add("exhaust")
             caps.temperature_sensors_count = len(caps.temperature_sensors)
 
-            # HOLDING – tryby (0x1070..)
             if await self._read_holding(client, 0x1070, 1) is not None:
                 caps.basic_control = True
                 present_blocks["holding_core"] = (0x1070, 0x10D1)
 
-            # COILS – bypass (0x0009)
             if await self._read_coils(client, 0x0009, 1) is not None:
                 caps.bypass_system = True
                 present_blocks["coils"] = (0x0005, 0x000F)
 
-            # DISCRETE – rozszerzenia
             di = await self._read_discrete(client, 0x0001, 1)
             if di is not None and di and di[0]:
                 caps.expansion_module = True
@@ -159,8 +150,11 @@ class ThesslaDeviceScanner:
 
             info = DeviceInfo(model="AirPack Home/4", firmware=fw)
 
-            _LOGGER.info("Device scan completed: blocks=%d, active_caps=%d",
-                         len(present_blocks), sum(1 for v in caps.as_dict().values() if bool(v)))
+            _LOGGER.info(
+                "Device scan completed: blocks=%d, active_caps=%d",
+                len(present_blocks),
+                sum(1 for v in caps.as_dict().values() if bool(v)),
+            )
             return info, caps, present_blocks
 
         except Exception as e:
@@ -177,5 +171,5 @@ class ThesslaDeviceScanner:
             _LOGGER.debug("Disconnected from ThesslaGreen device")
 
 
-# Alias dla kompatybilności z kodem importującym starą nazwę klasy
+# Alias legacy
 ThesslaGreenDeviceScanner = ThesslaDeviceScanner
