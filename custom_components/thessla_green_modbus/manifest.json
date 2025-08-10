@@ -22,7 +22,7 @@
   ],
   "zeroconf": [
     {
-       "type": "_modbus._tcp.local.",
+      "type": "_modbus._tcp.local.",
       "properties": {
         "model": "airpack*"
       }

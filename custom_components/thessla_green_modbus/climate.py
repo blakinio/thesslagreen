@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,19 +55,17 @@ PRESET_MODES = [
     "winter",
 ]
 
-# Special function bit mappings
-SPECIAL_FUNCTION_MAP = {
-    "boost": 1,
-    "eco": 2,
-    "away": 4,
-    "fireplace": 8,
-    "hood": 16,
-    "sleep": 32,
-    "party": 64,
-    "bathroom": 128,
-    "kitchen": 256,
-    "summer": 512,
-    "winter": 1024,
+# HVAC mode mappings (from device mode register)
+HVAC_MODE_MAP = {
+    0: HVACMode.AUTO,      # Automatic mode
+    1: HVACMode.FAN_ONLY,  # Manual mode  
+    2: HVACMode.FAN_ONLY,  # Temporary mode
+}
+
+HVAC_MODE_REVERSE_MAP = {
+    HVACMode.AUTO: 0,
+    HVACMode.FAN_ONLY: 1,
+    HVACMode.OFF: 0,  # Will be handled by on_off_panel_mode
 }
 
 

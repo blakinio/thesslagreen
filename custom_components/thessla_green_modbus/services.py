@@ -1,7 +1,7 @@
 """COMPLETE Services implementation for ThesslaGreen Modbus Integration - SILVER STANDARD.
-Kompatybilność: Home Assistant 2025.* + pymodbus 3.5.*+
-Wszystkie modele: thessla green AirPack Home serie 4
-COMPLETE: Wszystkie 13 serwisów z dokumentacji
+Compatibility: Home Assistant 2025.* + pymodbus 3.5.*+
+All models: thessla green AirPack Home series 4
+COMPLETE: All 13 services from documentation
 """
 from __future__ import annotations
 

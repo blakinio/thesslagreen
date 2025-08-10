@@ -382,6 +382,21 @@ SPECIAL_MODES = {
     "frost_protection": 4096,
 }
 
+# Special function bit mappings for services (alias for SPECIAL_MODES)
+SPECIAL_FUNCTION_MAP = {
+    "boost": 1,
+    "eco": 2,
+    "away": 4,
+    "fireplace": 8,
+    "hood": 16,
+    "sleep": 32,  # alias for night
+    "party": 64,
+    "bathroom": 128,
+    "kitchen": 256,
+    "summer": 512,
+    "winter": 1024,
+}
+
 # Unit mappings
 REGISTER_UNITS = {
     # Temperature registers - 0.1°C resolution

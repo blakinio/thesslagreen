@@ -18,6 +18,8 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 
+from homeassistant.exceptions import HomeAssistantError
+
 from .const import (
     DOMAIN,
     DEFAULT_NAME,
@@ -35,6 +37,20 @@ from .const import (
 from .device_scanner import scan_thessla_green_device
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate there is invalid auth."""
+
+
+class ConfigFlow(ThesslaGreenModbusConfigFlow):
+    """Legacy alias for compatibility."""
+    pass
+
 
 # Schema for user input step
 USER_SCHEMA = vol.Schema({
@@ -229,8 +245,15 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
         return {
             "title": data[CONF_NAME],
             "device_info": scan_result["device_info"],
-            "capabilities": scan_result["capabilities"],
+            "scan_result": scan_result,
         }
     except Exception as exc:
-        _LOGGER.error("Validation failed: %s", exc)
-        raise exc
+        _LOGGER.error("Validation failed for %s:%s: %s", host, port, exc)
+        error_msg = str(exc).lower()
+        
+        if "timeout" in error_msg or "connection" in error_msg:
+            raise CannotConnect(f"Cannot connect to device at {host}:{port}") from exc
+        elif "slave" in error_msg or "invalid" in error_msg or "auth" in error_msg:
+            raise InvalidAuth(f"Invalid slave ID {slave_id} for device at {host}:{port}") from exc
+        else:
+            raise CannotConnect(f"Unknown connection error: {exc}") from exc
