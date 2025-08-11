@@ -32,7 +32,7 @@ Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokoł
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
 
 ### Home Assistant
-- ✅ **Home Assistant 2025.7.0+** - najnowsza kompatybilność
+- ✅ **Wymagany Home Assistant 2025.7.0 lub nowszy** - najnowsza kompatybilność
 - ✅ **pymodbus 3.5.0+** - najnowsza biblioteka Modbus
 - ✅ **Python 3.11+** - nowoczesne standardy
 - ✅ **Standardowy AsyncModbusTcpClient** – brak potrzeby własnego klienta Modbus
