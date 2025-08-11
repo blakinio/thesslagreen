@@ -223,7 +223,23 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             except Exception as exc:
                 _LOGGER.error("Connection test failed: %s", exc)
                 raise
-    
+
+    async def _async_setup_client(self) -> bool:
+        """Set up the Modbus client if needed.
+
+        Returns True on success, False otherwise.
+        """
+        try:
+            await self._ensure_connection()
+            return True
+        except Exception as exc:
+            _LOGGER.error("Failed to set up Modbus client: %s", exc)
+            return False
+
+    async def async_ensure_client(self) -> bool:
+        """Public wrapper ensuring the Modbus client is connected."""
+        return await self._async_setup_client()
+
     async def _ensure_connection(self) -> None:
         """Ensure Modbus connection is established."""
         if self.client is None or not self.client.connected:
