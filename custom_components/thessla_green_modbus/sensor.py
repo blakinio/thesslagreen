@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfEnergy,
+    UnitOfMass,
     UnitOfPower,
     UnitOfPressure,
     UnitOfTemperature,
@@ -365,8 +366,9 @@ SENSOR_DEFINITIONS = {
     "co2_reduction": {
         "translation_key": "co2_reduction",
         "icon": "mdi:tree",
+        "device_class": SensorDeviceClass.WEIGHT,
         "state_class": SensorStateClass.TOTAL_INCREASING,
-        "unit": "kg/rok",
+        "unit": UnitOfMass.KILOGRAMS,
         "register_type": "input_registers",
     },
     
