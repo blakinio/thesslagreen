@@ -1,5 +1,4 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
-from typing import Dict, List, Set
 
 # Integration constants
 DOMAIN = "thessla_green_modbus"
