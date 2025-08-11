@@ -5,11 +5,9 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Set, List, Tuple
-import struct
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ModbusException, ConnectionException
-from pymodbus.pdu import ExceptionResponse
+from pymodbus.exceptions import ConnectionException
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -23,10 +21,7 @@ from .const import (
     HOLDING_REGISTERS,
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
-    REGISTER_UNITS,
     REGISTER_MULTIPLIERS,
-    DEVICE_CLASSES,
-    STATE_CLASSES,
 )
 from .device_scanner import ThesslaGreenDeviceScanner, DeviceCapabilities
 

@@ -33,9 +33,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN,
-    REGISTER_UNITS,
-    DEVICE_CLASSES,
-    STATE_CLASSES,
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 

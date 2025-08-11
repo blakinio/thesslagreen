@@ -1,9 +1,7 @@
 """Service handlers for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, Dict
 
 import voluptuous as vol
 

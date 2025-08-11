@@ -1,16 +1,12 @@
 """ThesslaGreen Modbus integration for Home Assistant."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import timedelta
-from typing import Any, Dict, Optional
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import (
     DOMAIN,
@@ -25,8 +21,6 @@ from .const import (
     DEFAULT_RETRY,
     DEFAULT_SLAVE_ID,
     DEFAULT_NAME,
-    MANUFACTURER,
-    MODEL,
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 from .services import async_setup_services, async_unload_services

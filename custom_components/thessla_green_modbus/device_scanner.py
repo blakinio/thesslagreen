@@ -1,13 +1,12 @@
 """Device scanner for ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Tuple, Set
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ModbusIOException, ConnectionException
+from pymodbus.exceptions import ConnectionException
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -1,13 +1,10 @@
 """Comprehensive test suite for ThesslaGreen Modbus integration - OPTIMIZED VERSION."""
 import pytest
-import asyncio
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from conftest import CoordinatorMock
 
-import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
