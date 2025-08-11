@@ -515,7 +515,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Disconnect from Modbus device."""
         if self.client:
             try:
-                self.client.close()
+                await self.client.close()
                 _LOGGER.debug("Disconnected from Modbus device")
             except Exception as exc:
                 _LOGGER.debug("Error disconnecting: %s", exc)
