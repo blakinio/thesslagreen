@@ -34,14 +34,14 @@
   "options": {
     "step": {
       "init": {
-          "title": "ThesslaGreen Modbus Options",
-          "description": "Configure advanced integration options.\n\n**Current Settings:**\n- Scan Interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry Count: {current_retry}\n- Force Full Register List: {force_full_enabled}",
-          "data": {
-            "scan_interval": "Scan Interval (seconds)",
-            "timeout": "Connection Timeout (seconds)",
-            "retry": "Retry Attempts",
-            "force_full_register_list": "Force Full Register List (skip scanning)"
-          },
+        "title": "ThesslaGreen Modbus Options",
+        "description": "Configure advanced integration options.\n\n**Current Settings:**\n- Scan Interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry Count: {current_retry}\n- Force Full Register List: {force_full_enabled}",
+        "data": {
+          "scan_interval": "Scan Interval (seconds)",
+          "timeout": "Connection Timeout (seconds)",
+          "retry": "Retry Attempts",
+          "force_full_register_list": "Force Full Register List (skip scanning)"
+        },
         "data_description": {
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
@@ -366,76 +366,6 @@
       },
       "on_off_panel_mode": {
         "name": "Panel Power"
-      }
-    },
-    "climate": {
-      "thessla_green_climate": {
-        "name": "Heat Recovery Unit"
-      }
-    },
-    "select": {
-      "mode": {
-        "name": "Operating Mode",
-        "state": {
-          "automatic": "Automatic",
-          "manual": "Manual",
-          "temporary": "Temporary"
-        }
-      },
-      "bypass_mode": {
-        "name": "Bypass Mode",
-        "state": {
-          "auto": "Auto",
-          "open": "Open",
-          "closed": "Closed"
-        }
-      },
-      "gwc_mode": {
-        "name": "GWC Mode",
-        "state": {
-          "disabled": "Disabled",
-          "auto": "Auto",
-          "forced": "Forced"
-        }
-      },
-      "filter_change": {
-        "name": "Filter Type",
-        "state": {
-          "presostat": "Pressure Switch",
-          "flat_filters": "Flat Filters",
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure"
-        }
-      }
-    },
-    "number": {
-      "air_flow_rate_manual": {
-        "name": "Ventilation Intensity"
-      },
-      "comfort_temperature": {
-        "name": "Comfort Temperature"
-      },
-      "required_temperature": {
-        "name": "Target Temperature"
-      }
-    },
-    "switch": {
-      "on_off_panel_mode": {
-        "name": "Main Power"
-      },
-      "bypass": {
-        "name": "Bypass"
-      },
-      "gwc": {
-        "name": "GWC"
-      },
-      "heating_cable": {
-        "name": "Heating Cable"
-      }
-    },
-    "fan": {
-      "thessla_green_fan": {
-        "name": "Ventilation"
       }
     }
   },

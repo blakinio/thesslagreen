@@ -34,8 +34,13 @@
   "options": {
     "step": {
       "init": {
+ codex/audit-and-clean-translation-files
+        "title": "Opcje ThesslaGreen Modbus",
+        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+=======
           "title": "Opcje ThesslaGreen Modbus",
           "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Limit czasu: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+ main
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Limit czasu połączenia (sekundy)",
@@ -80,29 +85,17 @@
       "exhaust_flowrate": {
         "name": "Przepływ wywiewu"
       },
+ codex/audit-and-clean-translation-files
+=======
       "supply_percentage": {
         "name": "Prędkość wentylatora nawiewnego"
       },
       "exhaust_percentage": {
         "name": "Prędkość wentylatora wywiewnego"
       },
+main
       "heat_recovery_efficiency": {
         "name": "Sprawność rekuperacji"
-      },
-      "filter_time_remaining": {
-        "name": "Pozostały czas filtrów"
-      },
-      "operating_hours": {
-        "name": "Godziny pracy"
-      },
-      "energy_consumption": {
-        "name": "Zużycie energii"
-      },
-      "error_code": {
-        "name": "Kod błędu"
-      },
-      "warning_code": {
-        "name": "Kod ostrzeżenia"
       },
       "heating_temperature": {
         "name": "Temperatura grzania"
@@ -283,12 +276,6 @@
       "heating_cable": {
         "name": "Kabel grzejny"
       },
-      "alarm_status": {
-        "name": "Status alarmów"
-      },
-      "error_status": {
-        "name": "Status błędów"
-      },
       "fire_alarm": {
         "name": "Alarm pożarowy"
       },
@@ -394,6 +381,8 @@
       "on_off_panel_mode": {
         "name": "Zasilanie główne"
       }
+ codex/audit-and-clean-translation-files
+=======
     },
     "climate": {
       "thessla_green_climate": {
@@ -522,6 +511,7 @@
       "filter_change_interval": {
         "name": "Interwał wymiany filtrów"
       }
+ main
     }
   },
   "services": {
