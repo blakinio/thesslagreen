@@ -19,26 +19,51 @@ _LOGGER = logging.getLogger(__name__)
 SELECT_DEFINITIONS = {
     "mode": {
         "icon": "mdi:cog",
+ codex/replace-hard-coded-strings-with-translation-keys
         "options": ["auto", "manual", "temporary"],
         "values": [0, 1, 2],
+=======
+        "translation_key": "mode",
+        "states": {"auto": 0, "manual": 1, "temporary": 2},
+ main
         "register_type": "holding_registers",
     },
     "bypass_mode": {
         "icon": "mdi:pipe-leak",
+ codex/replace-hard-coded-strings-with-translation-keys
         "options": ["auto", "open", "closed"],
         "values": [0, 1, 2],
+=======
+        "translation_key": "bypass_mode",
+        "states": {"auto": 0, "open": 1, "closed": 2},
+ main
         "register_type": "holding_registers",
     },
     "gwc_mode": {
         "icon": "mdi:pipe",
+ codex/replace-hard-coded-strings-with-translation-keys
         "options": ["off", "auto", "forced"],
         "values": [0, 1, 2],
+=======
+        "translation_key": "gwc_mode",
+        "states": {"off": 0, "auto": 1, "forced": 2},
+ main
         "register_type": "holding_registers",
     },
     "filter_change": {
         "icon": "mdi:filter-variant",
+ codex/replace-hard-coded-strings-with-translation-keys
         "options": ["presostat", "flat_filters", "cleanpad", "cleanpad_pure"],
         "values": [1, 2, 3, 4],
+=======
+        "translation_key": "filter_change",
+        "states": {
+            "presostat": 1,
+            "flat_filters": 2,
+            "cleanpad": 3,
+            "cleanpad_pure": 4,
+        },
+ main
         "register_type": "holding_registers",
     },
 }
@@ -69,14 +94,15 @@ class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
     def __init__(self, coordinator, register_name, definition):
         super().__init__(coordinator)
         self._register_name = register_name
-        self._definition = definition
 
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
-        self._attr_translation_key = register_name
+        self._attr_translation_key = definition["translation_key"]
         self._attr_has_entity_name = True
         self._attr_device_info = coordinator.get_device_info()
         self._attr_icon = definition.get("icon")
-        self._attr_options = definition["options"]
+        self._states = definition["states"]
+        self._reverse_states = {v: k for k, v in self._states.items()}
+        self._attr_options = list(self._states.keys())
 
     @property
     def current_option(self) -> Optional[str]:
@@ -85,19 +111,15 @@ class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
         if value is None:
             return None
 
-        try:
-            index = self._definition["values"].index(value)
-            return self._definition["options"][index]
-        except (ValueError, IndexError):
-            return None
+        return self._reverse_states.get(value)
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        try:
-            index = self._definition["options"].index(option)
-            value = self._definition["values"][index]
-            success = await self.coordinator.async_write_register(self._register_name, value)
-            if success:
-                await self.coordinator.async_request_refresh()
-        except ValueError:
+        if option not in self._states:
             _LOGGER.error("Invalid option: %s", option)
+            return
+
+        value = self._states[option]
+        success = await self.coordinator.async_write_register(self._register_name, value)
+        if success:
+            await self.coordinator.async_request_refresh()

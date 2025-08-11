@@ -385,33 +385,15 @@
       }
     },
     "switch": {
-      "on_off_panel_mode": {
-        "name": "Główne zasilanie"
-      },
-      "auto_mode": {
-        "name": "Tryb automatyczny"
-      },
-      "manual_mode": {
-        "name": "Tryb manualny"
-      },
-      "summer_mode": {
-        "name": "Tryb letni"
-      },
-      "winter_mode": {
-        "name": "Tryb zimowy"
-      },
-      "boost_mode": {
-        "name": "Tryb boost"
-      },
-      "night_mode": {
-        "name": "Tryb nocny"
-      },
-      "bypass_control": {
-        "name": "Sterowanie bypassem"
-      },
-      "gwc_control": {
-        "name": "Sterowanie GWC"
-      }
+      "on_off_panel_mode": { "name": "Główne zasilanie" },
+      "boost_mode": { "name": "Tryb boost" },
+      "eco_mode": { "name": "Tryb eco" },
+      "night_mode": { "name": "Tryb nocny" },
+      "party_mode": { "name": "Tryb party" },
+      "fireplace_mode": { "name": "Tryb kominkowy" },
+      "vacation_mode": { "name": "Tryb wakacyjny" },
+      "okap_mode": { "name": "Tryb okapu" },
+      "silent_mode": { "name": "Tryb cichy" }
     },
     "select": {
       "mode": {
@@ -420,30 +402,6 @@
           "auto": "Automatyczny",
           "manual": "Manualny",
           "temporary": "Tymczasowy"
-        }
-      },
-      "season_mode": {
-        "name": "Tryb sezonowy",
-        "state": {
-          "auto": "Automatyczny",
-          "winter": "Zimowy",
-          "summer": "Letni"
-        }
-      },
-      "special_mode": {
-        "name": "Tryb specjalny",
-        "state": {
-          "none": "Brak",
-          "okap": "Okap",
-          "kominek": "Kominek",
-          "wietrzenie": "Wietrzenie",
-          "pusty_dom": "Pusty dom",
-          "boost": "Boost",
-          "night": "Nocny",
-          "party": "Party",
-          "vacation": "Wakacyjny",
-          "economy": "Ekonomiczny",
-          "comfort": "Komfort"
         }
       },
       "bypass_mode": {
@@ -458,7 +416,11 @@
         "name": "Tryb GWC",
         "state": {
           "off": "Wyłączony",
+ codex/replace-hard-coded-strings-with-translation-keys
           "auto": "Automatyczny",
+=======
+          "auto": "Auto",
+ main
           "forced": "Wymuszony"
         }
       },

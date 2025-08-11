@@ -368,6 +368,7 @@
         "name": "Panel Power"
       }
     },
+ codex/replace-hard-coded-strings-with-translation-keys
     "climate": {
       "thessla_green_climate": {
         "name": "Climate Control"
@@ -376,6 +377,22 @@
     "select": {
       "mode": {
         "name": "Operating Mode",
+=======
+    "switch": {
+      "on_off_panel_mode": { "name": "Panel Power" },
+      "boost_mode": { "name": "Boost Mode" },
+      "eco_mode": { "name": "Eco Mode" },
+      "night_mode": { "name": "Night Mode" },
+      "party_mode": { "name": "Party Mode" },
+      "fireplace_mode": { "name": "Fireplace Mode" },
+      "vacation_mode": { "name": "Vacation Mode" },
+      "okap_mode": { "name": "Hood Mode" },
+      "silent_mode": { "name": "Silent Mode" }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+ main
         "state": {
           "auto": "Automatic",
           "manual": "Manual",
@@ -385,7 +402,11 @@
       "bypass_mode": {
         "name": "Bypass Mode",
         "state": {
+ codex/replace-hard-coded-strings-with-translation-keys
           "auto": "Automatic",
+=======
+          "auto": "Auto",
+ main
           "open": "Open",
           "closed": "Closed"
         }
@@ -394,7 +415,11 @@
         "name": "GWC Mode",
         "state": {
           "off": "Off",
+ codex/replace-hard-coded-strings-with-translation-keys
           "auto": "Automatic",
+=======
+          "auto": "Auto",
+ main
           "forced": "Forced"
         }
       },
