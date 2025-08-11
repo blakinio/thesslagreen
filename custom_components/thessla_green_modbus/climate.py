@@ -77,6 +77,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         """Initialize the climate entity."""
         super().__init__(coordinator, "climate")
         self._attr_translation_key = "thessla_green_climate"
+        self._attr_has_entity_name = True
 
         # Climate features
         self._attr_supported_features = (
