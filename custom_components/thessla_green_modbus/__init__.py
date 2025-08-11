@@ -14,7 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import (
     DOMAIN,
-    PLATFORMS,
+    PLATFORMS as PLATFORM_DOMAINS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     CONF_RETRY,
@@ -34,15 +34,7 @@ from .services import async_setup_services, async_unload_services
 _LOGGER = logging.getLogger(__name__)
 
 # Supported platforms
-PLATFORMS_TO_SETUP = [
-    Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-    Platform.CLIMATE,
-    Platform.FAN,
-    Platform.SELECT,
-    Platform.NUMBER,
-    Platform.SWITCH,
-]
+PLATFORMS: list[Platform] = [Platform(domain) for domain in PLATFORM_DOMAINS]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -111,7 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
     # Setup platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS_TO_SETUP)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     # Setup services (only once for first entry)
     if len(hass.data[DOMAIN]) == 1:
@@ -129,7 +121,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("Unloading ThesslaGreen Modbus integration")
     
     # Unload platforms
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS_TO_SETUP)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     
     if unload_ok:
         # Shutdown coordinator
