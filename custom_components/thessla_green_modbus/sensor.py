@@ -599,10 +599,10 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         
         self._register_name = register_name
         self._sensor_def = sensor_definition
-        
+
         # Entity attributes
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
-        self._attr_device_info = coordinator.device_info_dict
+        self._attr_device_info = coordinator.get_device_info()
 
         # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")

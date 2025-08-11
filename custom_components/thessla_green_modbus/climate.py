@@ -77,7 +77,7 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_climate"
         self._attr_name = f"{coordinator.device_name} Rekuperator"
-        self._attr_device_info = coordinator.device_info_dict
+        self._attr_device_info = coordinator.get_device_info()
         
         # Climate features
         self._attr_supported_features = (

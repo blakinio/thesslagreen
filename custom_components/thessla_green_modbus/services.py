@@ -403,10 +403,10 @@ def _get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str):
     """Get coordinator from entity ID."""
     # Find the config entry that matches this entity
     for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
-        if hasattr(coordinator, 'device_info_dict'):
+        if hasattr(coordinator, "get_device_info"):
             # Check if this entity belongs to this coordinator
-            device_identifiers = coordinator.device_info_dict.get("identifiers", set())
-            for domain, identifier in device_identifiers:
+            device_info = coordinator.get_device_info()
+            for domain, identifier in getattr(device_info, "identifiers", set()):
                 if domain == DOMAIN and identifier in entity_id:
                     return coordinator
     return None
