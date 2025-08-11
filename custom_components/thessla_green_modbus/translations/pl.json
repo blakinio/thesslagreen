@@ -35,16 +35,16 @@
     "step": {
       "init": {
           "title": "Opcje ThesslaGreen Modbus",
-          "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+          "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Limit czasu: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
-          "timeout": "Timeout połączenia (sekundy)",
+          "timeout": "Limit czasu połączenia (sekundy)",
           "retry": "Liczba prób ponowienia",
           "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)"
         },
         "data_description": {
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 sekund)",
-          "timeout": "Maksymalny czas oczekiwania na odpowiedź (5-60 sekund)",
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 sekund)",
           "retry": "Ile razy ponawiać nieudane odczyty (1-5 prób)",
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)"
         }
@@ -81,10 +81,10 @@
         "name": "Przepływ wywiewu"
       },
       "supply_percentage": {
-        "name": "Prędkość wentyl. nawiewnego"
+        "name": "Prędkość wentylatora nawiewnego"
       },
       "exhaust_percentage": {
-        "name": "Prędkość wentyl. wywiewnego"
+        "name": "Prędkość wentylatora wywiewnego"
       },
       "heat_recovery_efficiency": {
         "name": "Sprawność rekuperacji"
@@ -132,7 +132,7 @@
         "name": "Przepływ rekuperatora"
       },
       "bypass_flowrate": {
-        "name": "Przepływ bypass"
+        "name": "Przepływ bypassu"
       },
       "supply_air_flow": {
         "name": "Strumień nawiewu"
@@ -249,7 +249,7 @@
         "name": "Sterowanie chłodnicą"
       },
       "damper_position_bypass": {
-        "name": "Pozycja przepustnicy bypass"
+        "name": "Pozycja przepustnicy bypassu"
       },
       "damper_position_gwc": {
         "name": "Pozycja przepustnicy GWC"
@@ -347,7 +347,7 @@
         "name": "Błąd chłodnicy"
       },
       "bypass_error": {
-        "name": "Błąd bypass"
+        "name": "Błąd bypassu"
       },
       "gwc_error": {
         "name": "Błąd GWC"
@@ -423,7 +423,7 @@
         "name": "Tryb nocny"
       },
       "bypass_control": {
-        "name": "Sterowanie bypass"
+        "name": "Sterowanie bypassem"
       },
       "gwc_control": {
         "name": "Sterowanie GWC"
@@ -464,7 +464,7 @@
         }
       },
       "bypass_mode": {
-        "name": "Tryb bypass",
+        "name": "Tryb bypassu",
         "state": {
           "auto": "Automatyczny",
           "open": "Otwarty",
@@ -500,19 +500,19 @@
         "name": "Temperatura komfortu"
       },
       "air_flow_rate_manual": {
-        "name": "Intensywność manual"
+        "name": "Intensywność ręczna"
       },
       "air_flow_rate_auto": {
-        "name": "Intensywność auto"
+        "name": "Intensywność automatyczna"
       },
       "okap_intensity": {
-        "name": "Intensywność OKAP"
+        "name": "Intensywność okapu"
       },
       "kominek_intensity": {
-        "name": "Intensywność KOMINEK"
+        "name": "Intensywność kominka"
       },
       "wietrzenie_intensity": {
-        "name": "Intensywność WIETRZENIE"
+        "name": "Intensywność wietrzenia"
       },
       "filter_change_interval": {
         "name": "Interwał wymiany filtrów"
@@ -537,12 +537,12 @@
       "description": "Kontroluje prędkość wentylatorów nawiewnego i wywiewnego oraz balans przepływów."
     },
     "control_bypass": {
-      "name": "Steruj bypass",
-      "description": "Kontroluje tryb pracy systemu bypass."
+      "name": "Steruj bypassem",
+      "description": "Kontroluje tryb pracy systemu bypassu."
     },
     "control_gwc": {
       "name": "Steruj GWC",
-      "description": "Kontroluje system GWC (Ground Water Cooler)."
+      "description": "Kontroluje system GWC (Gruntowy Wymiennik Ciepła)."
     },
     "reset_alarms": {
       "name": "Resetuj alarmy",
