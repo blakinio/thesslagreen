@@ -35,6 +35,7 @@ The most complete integration for ThesslaGreen AirPack heat recovery units over 
 - ✅ **Home Assistant 2025.7.0+** – latest compatibility
 - ✅ **pymodbus 3.5.0+** – latest Modbus library
 - ✅ **Python 3.11+** – modern standards
+- ✅ **Standard AsyncModbusTcpClient** – no custom Modbus client required
 
 ## 🚀 Installation
 
