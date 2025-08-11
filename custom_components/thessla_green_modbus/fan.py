@@ -137,10 +137,26 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
         try:
-            # Set minimum flow rate (ThesslaGreen minimum is usually 10%)
-            await self.async_set_percentage(10)
-            _LOGGER.info("Turned off fan (set to minimum flow)")
-            
+            if "on_off_panel_mode" in HOLDING_REGISTERS:
+                # If system power control is available, use it to turn off
+                await self._write_register("on_off_panel_mode", 0)
+                self.coordinator.data["on_off_panel_mode"] = 0
+            else:
+                # Otherwise write zero flow to the active airflow register
+                current_mode = self._get_current_mode()
+                register = (
+                    "air_flow_rate_manual"
+                    if current_mode == "manual" or not current_mode
+                    else "air_flow_rate_auto"
+                )
+                if register in HOLDING_REGISTERS:
+                    await self._write_register(register, 0)
+                    self.coordinator.data[register] = 0
+
+            # Ensure current flow rate reflects the off state for properties
+            self.coordinator.data["air_flow_rate"] = 0
+            _LOGGER.info("Turned off fan")
+
         except Exception as exc:
             _LOGGER.error("Failed to turn off fan: %s", exc)
     
@@ -248,5 +264,5 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
         # Add last update time
         if self.coordinator.last_successful_update:
             attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()
-        
+
         return attributes
