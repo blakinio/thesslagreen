@@ -34,8 +34,8 @@
   "options": {
     "step": {
       "init": {
-          "title": "Opcje ThesslaGreen Modbus",
-          "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+        "title": "Opcje ThesslaGreen Modbus",
+        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Timeout połączenia (sekundy)",
@@ -80,29 +80,8 @@
       "exhaust_flowrate": {
         "name": "Przepływ wywiewu"
       },
-      "supply_percentage": {
-        "name": "Prędkość wentyl. nawiewnego"
-      },
-      "exhaust_percentage": {
-        "name": "Prędkość wentyl. wywiewnego"
-      },
       "heat_recovery_efficiency": {
         "name": "Sprawność rekuperacji"
-      },
-      "filter_time_remaining": {
-        "name": "Pozostały czas filtrów"
-      },
-      "operating_hours": {
-        "name": "Godziny pracy"
-      },
-      "energy_consumption": {
-        "name": "Zużycie energii"
-      },
-      "error_code": {
-        "name": "Kod błędu"
-      },
-      "warning_code": {
-        "name": "Kod ostrzeżenia"
       },
       "heating_temperature": {
         "name": "Temperatura grzania"
@@ -283,12 +262,6 @@
       "heating_cable": {
         "name": "Kabel grzejny"
       },
-      "alarm_status": {
-        "name": "Status alarmów"
-      },
-      "error_status": {
-        "name": "Status błędów"
-      },
       "fire_alarm": {
         "name": "Alarm pożarowy"
       },
@@ -393,129 +366,6 @@
       },
       "on_off_panel_mode": {
         "name": "Zasilanie główne"
-      }
-    },
-    "climate": {
-      "climate": {
-        "name": "Sterowanie klimatem"
-      }
-    },
-    "switch": {
-      "on_off_panel_mode": {
-        "name": "Główne zasilanie"
-      },
-      "auto_mode": {
-        "name": "Tryb automatyczny"
-      },
-      "manual_mode": {
-        "name": "Tryb manualny"
-      },
-      "summer_mode": {
-        "name": "Tryb letni"
-      },
-      "winter_mode": {
-        "name": "Tryb zimowy"
-      },
-      "boost_mode": {
-        "name": "Tryb boost"
-      },
-      "night_mode": {
-        "name": "Tryb nocny"
-      },
-      "bypass_control": {
-        "name": "Sterowanie bypass"
-      },
-      "gwc_control": {
-        "name": "Sterowanie GWC"
-      }
-    },
-    "select": {
-      "mode": {
-        "name": "Tryb pracy",
-        "state": {
-          "off": "Wyłączony",
-          "manual": "Manualny",
-          "auto": "Automatyczny",
-          "temporary": "Tymczasowy"
-        }
-      },
-      "season_mode": {
-        "name": "Tryb sezonowy",
-        "state": {
-          "auto": "Automatyczny",
-          "winter": "Zimowy",
-          "summer": "Letni"
-        }
-      },
-      "special_mode": {
-        "name": "Tryb specjalny",
-        "state": {
-          "none": "Brak",
-          "okap": "Okap",
-          "kominek": "Kominek",
-          "wietrzenie": "Wietrzenie",
-          "pusty_dom": "Pusty dom",
-          "boost": "Boost",
-          "night": "Nocny",
-          "party": "Party",
-          "vacation": "Wakacyjny",
-          "economy": "Ekonomiczny",
-          "comfort": "Komfort"
-        }
-      },
-      "bypass_mode": {
-        "name": "Tryb bypass",
-        "state": {
-          "auto": "Automatyczny",
-          "open": "Otwarty",
-          "closed": "Zamknięty"
-        }
-      },
-      "gwc_mode": {
-        "name": "Tryb GWC",
-        "state": {
-          "auto": "Automatyczny",
-          "on": "Włączony",
-          "off": "Wyłączony"
-        }
-      },
-      "filter_type": {
-        "name": "Typ filtrów",
-        "state": {
-          "presostat": "Presostat",
-          "flat_filters": "Filtry płaskie",
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure"
-        }
-      }
-    },
-    "number": {
-      "supply_temperature_manual": {
-        "name": "Temperatura nawiewu (manual)"
-      },
-      "supply_temperature_auto": {
-        "name": "Temperatura nawiewu (auto)"
-      },
-      "comfort_temperature": {
-        "name": "Temperatura komfortu"
-      },
-      "air_flow_rate_manual": {
-        "name": "Intensywność manual"
-      },
-      "air_flow_rate_auto": {
-        "name": "Intensywność auto"
-      },
-      "okap_intensity": {
-        "name": "Intensywność OKAP"
-      },
-      "kominek_intensity": {
-        "name": "Intensywność KOMINEK"
-      },
-      "wietrzenie_intensity": {
-        "name": "Intensywność WIETRZENIE"
-      },
-      "filter_change_interval": {
-        "name": "Interwał wymiany filtrów"
       }
     }
   },
