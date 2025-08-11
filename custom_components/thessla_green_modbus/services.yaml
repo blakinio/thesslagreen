@@ -63,7 +63,7 @@ set_airflow_schedule:
         select:
           options:
             - "monday"
-            - "tuesday" 
+            - "tuesday"
             - "wednesday"
             - "thursday"
             - "friday"
