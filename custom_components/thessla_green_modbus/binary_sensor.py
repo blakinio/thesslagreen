@@ -22,49 +22,49 @@ _LOGGER = logging.getLogger(__name__)
 BINARY_SENSOR_DEFINITIONS = {
     # System status (from coil registers)
     "duct_water_heater_pump": {
-        "name": "Pompa obiegowa nagrzewnicy",
+        "translation_key": "duct_water_heater_pump",
         "icon": "mdi:pump",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
     },
     "bypass": {
-        "name": "Bypass",
+        "translation_key": "bypass",
         "icon": "mdi:pipe-leak",
         "device_class": BinarySensorDeviceClass.OPENING,
         "register_type": "coil_registers",
     },
     "info": {
-        "name": "Potwierdzenie pracy centrali",
+        "translation_key": "info",
         "icon": "mdi:information",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
     },
     "power_supply_fans": {
-        "name": "Zasilanie wentylatorów",
+        "translation_key": "power_supply_fans",
         "icon": "mdi:fan",
         "device_class": BinarySensorDeviceClass.POWER,
         "register_type": "coil_registers",
     },
     "heating_cable": {
-        "name": "Kabel grzejny",
+        "translation_key": "heating_cable",
         "icon": "mdi:heating-coil",
         "device_class": BinarySensorDeviceClass.HEAT,
         "register_type": "coil_registers",
     },
     "work_permit": {
-        "name": "Potwierdzenie pracy (Expansion)",
+        "translation_key": "work_permit",
         "icon": "mdi:check-circle",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
     },
     "gwc": {
-        "name": "GWC",
+        "translation_key": "gwc",
         "icon": "mdi:pipe",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
     },
     "hood": {
-        "name": "Okap",
+        "translation_key": "hood",
         "icon": "mdi:stove",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
@@ -72,37 +72,37 @@ BINARY_SENSOR_DEFINITIONS = {
     
     # System status (from discrete inputs)
     "expansion": {
-        "name": "Moduł Expansion",
+        "translation_key": "expansion",
         "icon": "mdi:expansion-card",
         "device_class": BinarySensorDeviceClass.CONNECTIVITY,
         "register_type": "discrete_inputs",
     },
     "contamination_sensor": {
-        "name": "Czujnik zanieczyszczenia",
+        "translation_key": "contamination_sensor",
         "icon": "mdi:air-filter",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
     "external_contact_1": {
-        "name": "Kontakt zewnętrzny 1",
+        "translation_key": "external_contact_1",
         "icon": "mdi:electric-switch",
         "device_class": BinarySensorDeviceClass.OPENING,
         "register_type": "discrete_inputs",
     },
     "external_contact_2": {
-        "name": "Kontakt zewnętrzny 2",
+        "translation_key": "external_contact_2",
         "icon": "mdi:electric-switch",
         "device_class": BinarySensorDeviceClass.OPENING,
         "register_type": "discrete_inputs",
     },
     "external_contact_3": {
-        "name": "Kontakt zewnętrzny 3",
+        "translation_key": "external_contact_3",
         "icon": "mdi:electric-switch",
         "device_class": BinarySensorDeviceClass.OPENING,
         "register_type": "discrete_inputs",
     },
     "external_contact_4": {
-        "name": "Kontakt zewnętrzny 4",
+        "translation_key": "external_contact_4",
         "icon": "mdi:electric-switch",
         "device_class": BinarySensorDeviceClass.OPENING,
         "register_type": "discrete_inputs",
@@ -110,73 +110,73 @@ BINARY_SENSOR_DEFINITIONS = {
     
     # Alarms and errors (from discrete inputs)
     "fire_alarm": {
-        "name": "Alarm pożarowy",
+        "translation_key": "fire_alarm",
         "icon": "mdi:fire",
         "device_class": BinarySensorDeviceClass.SAFETY,
         "register_type": "discrete_inputs",
     },
     "frost_alarm": {
-        "name": "Alarm przeciwmrozowy",
+        "translation_key": "frost_alarm",
         "icon": "mdi:snowflake-alert",
         "device_class": BinarySensorDeviceClass.COLD,
         "register_type": "discrete_inputs",
     },
     "filter_alarm": {
-        "name": "Alarm filtra",
+        "translation_key": "filter_alarm",
         "icon": "mdi:filter-variant-remove",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
     "maintenance_alarm": {
-        "name": "Alarm konserwacji",
+        "translation_key": "maintenance_alarm",
         "icon": "mdi:wrench-clock",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
     "sensor_error": {
-        "name": "Błąd czujnika",
+        "translation_key": "sensor_error",
         "icon": "mdi:sensor-off",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
     "communication_error": {
-        "name": "Błąd komunikacji",
+        "translation_key": "communication_error",
         "icon": "mdi:wifi-off",
         "device_class": BinarySensorDeviceClass.CONNECTIVITY,
         "register_type": "discrete_inputs",
     },
     "fan_error": {
-        "name": "Błąd wentylatora",
+        "translation_key": "fan_error",
         "icon": "mdi:fan-off",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
     "heater_error": {
-        "name": "Błąd grzałki",
+        "translation_key": "heater_error",
         "icon": "mdi:heating-coil",
         "device_class": BinarySensorDeviceClass.HEAT,
         "register_type": "discrete_inputs",
     },
     "cooler_error": {
-        "name": "Błąd chłodnicy",
+        "translation_key": "cooler_error",
         "icon": "mdi:snowflake-off",
         "device_class": BinarySensorDeviceClass.COLD,
         "register_type": "discrete_inputs",
     },
     "bypass_error": {
-        "name": "Błąd bypass",
+        "translation_key": "bypass_error",
         "icon": "mdi:pipe-disconnected",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
     "gwc_error": {
-        "name": "Błąd GWC",
+        "translation_key": "gwc_error",
         "icon": "mdi:pipe-wrench",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
     "expansion_error": {
-        "name": "Błąd modułu Expansion",
+        "translation_key": "expansion_error",
         "icon": "mdi:expansion-card-variant",
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
@@ -184,73 +184,73 @@ BINARY_SENSOR_DEFINITIONS = {
     
     # Active protection systems (from input registers)
     "frost_protection_active": {
-        "name": "Ochrona przeciwmrozowa",
+        "translation_key": "frost_protection_active",
         "icon": "mdi:snowflake-check",
         "device_class": BinarySensorDeviceClass.COLD,
         "register_type": "input_registers",
     },
     "defrost_cycle_active": {
-        "name": "Cykl odszraniania",
+        "translation_key": "defrost_cycle_active",
         "icon": "mdi:snowflake-thermometer",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
     },
     "summer_bypass_active": {
-        "name": "Letni bypass",
+        "translation_key": "summer_bypass_active",
         "icon": "mdi:weather-sunny",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
     },
     "winter_heating_active": {
-        "name": "Zimowe grzanie",
+        "translation_key": "winter_heating_active",
         "icon": "mdi:weather-snowy",
         "device_class": BinarySensorDeviceClass.HEAT,
         "register_type": "input_registers",
     },
     "night_cooling_active": {
-        "name": "Nocne chłodzenie",
+        "translation_key": "night_cooling_active",
         "icon": "mdi:weather-night",
         "device_class": BinarySensorDeviceClass.COLD,
         "register_type": "input_registers",
     },
     "constant_flow_active": {
-        "name": "Stały przepływ",
+        "translation_key": "constant_flow_active",
         "icon": "mdi:waves",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
     },
     "air_quality_control_active": {
-        "name": "Kontrola jakości powietrza",
+        "translation_key": "air_quality_control_active",
         "icon": "mdi:air-filter",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
     },
     "humidity_control_active": {
-        "name": "Kontrola wilgotności",
+        "translation_key": "humidity_control_active",
         "icon": "mdi:water-percent",
         "device_class": BinarySensorDeviceClass.MOISTURE,
         "register_type": "input_registers",
     },
     "temperature_control_active": {
-        "name": "Kontrola temperatury",
+        "translation_key": "temperature_control_active",
         "icon": "mdi:thermometer-auto",
         "device_class": BinarySensorDeviceClass.HEAT,
         "register_type": "input_registers",
     },
     "demand_control_active": {
-        "name": "Kontrola na żądanie",
+        "translation_key": "demand_control_active",
         "icon": "mdi:hand-extended",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
     },
     "schedule_control_active": {
-        "name": "Kontrola harmonogramu",
+        "translation_key": "schedule_control_active",
         "icon": "mdi:calendar-clock",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
     },
     "manual_control_active": {
-        "name": "Kontrola manualna",
+        "translation_key": "manual_control_active",
         "icon": "mdi:hand-pointing-up",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
@@ -258,7 +258,7 @@ BINARY_SENSOR_DEFINITIONS = {
     
     # Device main status (from holding registers)
     "on_off_panel_mode": {
-        "name": "Zasilanie główne",
+        "translation_key": "on_off_panel_mode",
         "icon": "mdi:power",
         "device_class": BinarySensorDeviceClass.POWER,
         "register_type": "holding_registers",
@@ -283,7 +283,7 @@ async def async_setup_entry(
         # Check if this register is available on the device
         if register_name in coordinator.available_registers.get(register_type, set()):
             entities.append(ThesslaGreenBinarySensor(coordinator, register_name, sensor_def))
-            _LOGGER.debug("Created binary sensor: %s", sensor_def["name"])
+            _LOGGER.debug("Created binary sensor: %s", sensor_def["translation_key"])
     
     if entities:
         async_add_entities(entities, True)
@@ -309,14 +309,21 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
         
         # Entity attributes
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
-        self._attr_name = f"{coordinator.device_name} {sensor_definition['name']}"
         self._attr_device_info = coordinator.device_info_dict
-        
+
         # Binary sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
         self._attr_device_class = sensor_definition.get("device_class")
-        
-        _LOGGER.debug("Binary sensor initialized: %s (%s)", self._attr_name, register_name)
+
+        # Translation setup
+        self._attr_translation_key = sensor_definition.get("translation_key")
+        self._attr_has_entity_name = True
+
+        _LOGGER.debug(
+            "Binary sensor initialized: %s (%s)",
+            sensor_definition.get("translation_key"),
+            register_name,
+        )
 
     @property
     def is_on(self) -> Optional[bool]:
