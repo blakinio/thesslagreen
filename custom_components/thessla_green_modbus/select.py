@@ -19,25 +19,25 @@ _LOGGER = logging.getLogger(__name__)
 SELECT_DEFINITIONS = {
     "mode": {
         "icon": "mdi:cog",
-        "options": ["Automatyczny", "Manualny", "Chwilowy"],
+        "options": ["auto", "manual", "temporary"],
         "values": [0, 1, 2],
         "register_type": "holding_registers",
     },
     "bypass_mode": {
         "icon": "mdi:pipe-leak",
-        "options": ["Auto", "Otwarty", "Zamknięty"],
+        "options": ["auto", "open", "closed"],
         "values": [0, 1, 2],
         "register_type": "holding_registers",
     },
     "gwc_mode": {
         "icon": "mdi:pipe",
-        "options": ["Wyłączony", "Auto", "Wymuszony"],
+        "options": ["off", "auto", "forced"],
         "values": [0, 1, 2],
         "register_type": "holding_registers",
     },
     "filter_change": {
         "icon": "mdi:filter-variant",
-        "options": ["Presostat", "Filtry płaskie", "CleanPad", "CleanPad Pure"],
+        "options": ["presostat", "flat_filters", "cleanpad", "cleanpad_pure"],
         "values": [1, 2, 3, 4],
         "register_type": "holding_registers",
     },

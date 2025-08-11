@@ -34,13 +34,8 @@
   "options": {
     "step": {
       "init": {
- codex/audit-and-clean-translation-files
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
-=======
-          "title": "Opcje ThesslaGreen Modbus",
-          "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Limit czasu: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
- main
+        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Limit czasu: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Limit czasu połączenia (sekundy)",
@@ -85,15 +80,12 @@
       "exhaust_flowrate": {
         "name": "Przepływ wywiewu"
       },
- codex/audit-and-clean-translation-files
-=======
       "supply_percentage": {
         "name": "Prędkość wentylatora nawiewnego"
       },
       "exhaust_percentage": {
         "name": "Prędkość wentylatora wywiewnego"
       },
-main
       "heat_recovery_efficiency": {
         "name": "Sprawność rekuperacji"
       },
@@ -381,8 +373,6 @@ main
       "on_off_panel_mode": {
         "name": "Zasilanie główne"
       }
- codex/audit-and-clean-translation-files
-=======
     },
     "climate": {
       "thessla_green_climate": {
@@ -427,9 +417,8 @@ main
       "mode": {
         "name": "Tryb pracy",
         "state": {
-          "off": "Wyłączony",
-          "manual": "Manualny",
           "auto": "Automatyczny",
+          "manual": "Manualny",
           "temporary": "Tymczasowy"
         }
       },
@@ -468,12 +457,12 @@ main
       "gwc_mode": {
         "name": "Tryb GWC",
         "state": {
+          "off": "Wyłączony",
           "auto": "Automatyczny",
-          "on": "Włączony",
-          "off": "Wyłączony"
+          "forced": "Wymuszony"
         }
       },
-      "filter_type": {
+      "filter_change": {
         "name": "Typ filtrów",
         "state": {
           "presostat": "Presostat",
@@ -511,7 +500,6 @@ main
       "filter_change_interval": {
         "name": "Interwał wymiany filtrów"
       }
- main
     }
   },
   "services": {

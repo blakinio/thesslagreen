@@ -367,6 +367,46 @@
       "on_off_panel_mode": {
         "name": "Panel Power"
       }
+    },
+    "climate": {
+      "thessla_green_climate": {
+        "name": "Climate Control"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Operating Mode",
+        "state": {
+          "auto": "Automatic",
+          "manual": "Manual",
+          "temporary": "Temporary"
+        }
+      },
+      "bypass_mode": {
+        "name": "Bypass Mode",
+        "state": {
+          "auto": "Automatic",
+          "open": "Open",
+          "closed": "Closed"
+        }
+      },
+      "gwc_mode": {
+        "name": "GWC Mode",
+        "state": {
+          "off": "Off",
+          "auto": "Automatic",
+          "forced": "Forced"
+        }
+      },
+      "filter_change": {
+        "name": "Filter Type",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Flat Filters",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      }
     }
   },
   "services": {
