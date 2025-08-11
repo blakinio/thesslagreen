@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "ThesslaGreen Modbus",
-        "description": "Configure connection to ThesslaGreen AirPack heat recovery unit via Modbus TCP. The integration will automatically detect available device functions.",
+        "title": "ThesslaGreen Modbus Configuration",
+        "description": "Configure connection to ThesslaGreen AirPack via Modbus TCP. The integration will automatically detect available device functions and registers.",
         "data": {
           "host": "IP Address",
           "port": "Port",
@@ -11,19 +11,19 @@
           "name": "Name"
         },
         "data_description": {
-          "host": "IP address of the heat recovery unit on local network",
-          "port": "Modbus TCP port (standard 502)",
-          "slave_id": "Modbus device identifier (standard 10)",
+          "host": "IP address of the AirPack device on your local network",
+          "port": "Modbus TCP port (default 502)",
+          "slave_id": "Modbus device identifier (default 10)",
           "name": "Device name in Home Assistant"
         }
       },
       "confirm": {
-        "title": "Confirm configuration",
-        "description": "ThesslaGreen device detected:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Device name:** {device_name}\n**Firmware version:** {firmware_version}\n**Serial number:** {serial_number}\n\n**Scan statistics:**\n- Registers found: {register_count}\n- Scan success: {scan_success_rate}\n- Functions detected: {capabilities_count}\n- Main functions: {capabilities_list}\n\n{auto_detected_note}\n\nDo you want to continue with configuration?"
+        "title": "Confirm Configuration",
+        "description": "ThesslaGreen device detected:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Device Name:** {device_name}\n**Firmware Version:** {firmware_version}\n**Serial Number:** {serial_number}\n\n**Scan Statistics:**\n- Registers Found: {register_count}\n- Scan Success Rate: {scan_success_rate}\n- Capabilities Detected: {capabilities_count}\n- Main Features: {capabilities_list}\n\n{auto_detected_note}\n\nDo you want to continue with this configuration?"
       }
     },
     "error": {
-      "cannot_connect": "Cannot connect to device. Check IP address, port and network connection.",
+      "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
       "invalid_auth": "Authentication error. Check Slave ID settings.",
       "unknown": "Unexpected error. Check logs for details."
     },
@@ -34,14 +34,14 @@
   "options": {
     "step": {
       "init": {
-        "title": "ThesslaGreen Modbus Options",
-        "description": "Configure advanced integration options.\n\n**Current settings:**\n- Scan interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry count: {current_retry}\n- Full register list: {force_full_enabled}",
-        "data": {
-          "scan_interval": "Scan interval (seconds)",
-          "timeout": "Connection timeout (seconds)",
-          "retry": "Retry attempts",
-          "force_full_register_list": "Force full register list (skip scanning)"
-        },
+          "title": "ThesslaGreen Modbus Options",
+          "description": "Configure advanced integration options.\n\n**Current Settings:**\n- Scan Interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry Count: {current_retry}\n- Force Full Register List: {force_full_enabled}",
+          "data": {
+            "scan_interval": "Scan Interval (seconds)",
+            "timeout": "Connection Timeout (seconds)",
+            "retry": "Retry Attempts",
+            "force_full_register_list": "Force Full Register List (skip scanning)"
+          },
         "data_description": {
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
