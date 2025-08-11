@@ -16,12 +16,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenCoordinator]):
         """Initialize the entity."""
         super().__init__(coordinator)
         self._key = key
- codex/add-device-info-property-and-update-entities
-        
-=======
-
         # Retrieve fully populated DeviceInfo from the coordinator
- main
         self._attr_device_info = coordinator.get_device_info()
 
     @property
