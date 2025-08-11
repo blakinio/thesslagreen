@@ -376,7 +376,24 @@
     },
     "climate": {
       "thessla_green_climate": {
-        "name": "Sterowanie klimatem"
+        "name": "Sterowanie klimatem",
+        "state_attributes": {
+          "preset_mode": {
+            "none": "Brak",
+            "eco": "Eco",
+            "boost": "Boost",
+            "comfort": "Komfort",
+            "away": "Nieobecność",
+            "sleep": "Sen",
+            "fireplace": "Kominek",
+            "hood": "Okap",
+            "party": "Impreza",
+            "bathroom": "Łazienka",
+            "kitchen": "Kuchnia",
+            "summer": "Lato",
+            "winter": "Zima"
+          }
+        }
       }
     },
     "fan": {
@@ -416,11 +433,7 @@
         "name": "Tryb GWC",
         "state": {
           "off": "Wyłączony",
- codex/add-entity-translation-keys-and-update-json
-          "auto": "Auto",
-=======
           "auto": "Automatyczny",
- main
           "forced": "Wymuszony"
         }
       },
