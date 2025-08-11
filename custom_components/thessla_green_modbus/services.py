@@ -410,4 +410,3 @@ def _get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str):
                 if domain == DOMAIN and identifier in entity_id:
                     return coordinator
     return None
-
