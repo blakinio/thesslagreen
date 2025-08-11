@@ -29,12 +29,12 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN,
 )
 from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -584,7 +584,7 @@ async def async_setup_entry(
         _LOGGER.warning("No sensor entities created - no compatible registers found")
 
 
-class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
+class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
     """Sensor entity for ThesslaGreen device."""
 
     def __init__(
@@ -594,14 +594,10 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
         sensor_definition: Dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator)
-        
+        super().__init__(coordinator, register_name)
+
         self._register_name = register_name
         self._sensor_def = sensor_definition
-
-        # Entity attributes
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
-        self._attr_device_info = coordinator.get_device_info()
 
         # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
@@ -611,7 +607,6 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
 
         # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")
-        self._attr_has_entity_name = True
 
         _LOGGER.debug(
             "Sensor initialized: %s (%s)",
@@ -638,14 +633,6 @@ class ThesslaGreenSensor(CoordinatorEntity, SensorEntity):
             return f"{major}.{minor:02d}"
         
         return value
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return (
-            self.coordinator.last_update_success and
-            self._register_name in self.coordinator.data
-        )
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:

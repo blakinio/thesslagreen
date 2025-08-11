@@ -15,10 +15,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,16 +70,13 @@ async def async_setup_entry(
         _LOGGER.warning("Basic control not available, climate entity not created")
 
 
-class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
+class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     """Enhanced climate entity for ThesslaGreen AirPack."""
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the climate entity."""
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_climate"
+        super().__init__(coordinator, "climate")
         self._attr_translation_key = "thessla_green_climate"
-        self._attr_has_entity_name = True
-        self._attr_device_info = coordinator.get_device_info()
 
         # Climate features
         self._attr_supported_features = (
