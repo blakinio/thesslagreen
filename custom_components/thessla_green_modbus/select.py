@@ -72,6 +72,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
     def __init__(self, coordinator, register_name, definition):
         super().__init__(coordinator, register_name)
+        self._attr_device_info = coordinator.get_device_info()
         self._register_name = register_name
 
         self._attr_translation_key = definition["translation_key"]
