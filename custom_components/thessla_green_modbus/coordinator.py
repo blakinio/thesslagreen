@@ -131,6 +131,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             except Exception as exc:
                 _LOGGER.error("Device scan failed: %s", exc)
                 raise
+            finally:
+                await scanner.close()
         else:
             _LOGGER.info("Using full register list (skipping scan)")
             # Load all registers if forced
