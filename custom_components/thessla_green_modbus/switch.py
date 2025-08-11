@@ -195,7 +195,7 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
         
         # Ensure client is connected
         if not self.coordinator.client or not self.coordinator.client.connected:
-            if not await self.coordinator._async_setup_client():
+            if not await self.coordinator.async_ensure_client():
                 raise RuntimeError("Failed to connect to device")
         
         # Write register - pymodbus 3.5+ compatible
