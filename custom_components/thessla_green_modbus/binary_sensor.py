@@ -303,6 +303,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator, register_name)
+        self._attr_device_info = coordinator.get_device_info()
 
         self._register_name = register_name
         self._sensor_def = sensor_definition

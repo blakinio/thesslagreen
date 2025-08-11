@@ -1,10 +1,9 @@
 """Base entity for ThesslaGreen Modbus Integration."""
 from __future__ import annotations
 
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MODEL
+from .const import DOMAIN
 from .coordinator import ThesslaGreenCoordinator
 
 
@@ -18,16 +17,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenCoordinator]):
         super().__init__(coordinator)
         self._key = key
         
-        device_info = coordinator.device_info
-        device_name = device_info.get("device_name", "ThesslaGreen")
-        
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
-            name=device_name,
-            manufacturer="ThesslaGreen",
-            model=coordinator.device_info.get("model", MODEL),
-            sw_version=device_info.get("firmware", "Unknown"),
-        )
+        self._attr_device_info = coordinator.get_device_info()
 
     @property
     def unique_id(self) -> str:
