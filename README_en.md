@@ -91,7 +91,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Flows**: supply, exhaust, actual, min/max range
 - **Pressures**: supply, exhaust, differential, alarms
 - **Air quality**: CO₂, VOC, air quality index, humidity
-- **Energy**: consumption, recovery, peak power, average
+- **Energy**: consumption, recovery, peak power, average, annual CO₂ reduction (kg)
 - **System**: efficiency, operating hours, filter status, errors
 - **Diagnostics**: update time, data quality, statistics
 

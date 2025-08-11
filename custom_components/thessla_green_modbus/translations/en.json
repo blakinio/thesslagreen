@@ -177,7 +177,7 @@
         "name": "Annual Energy Savings"
       },
       "co2_reduction": {
-        "name": "CO2 Reduction"
+        "name": "Annual CO2 Reduction"
       },
       "fault_counter": {
         "name": "Fault Counter"

@@ -1,4 +1,5 @@
 """Climate entity for the ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import logging
@@ -23,8 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # HVAC mode mappings (from device mode register)
 HVAC_MODE_MAP = {
-    0: HVACMode.AUTO,      # Automatic mode
-    1: HVACMode.FAN_ONLY,  # Manual mode  
+    0: HVACMode.AUTO,  # Automatic mode
+    1: HVACMode.FAN_ONLY,  # Manual mode
     2: HVACMode.FAN_ONLY,  # Temporary mode
 }
 
@@ -59,7 +60,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up ThesslaGreen climate entity."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    
+
     # Only create climate entity if basic control is available
     if coordinator.capabilities.basic_control:
         entities = [ThesslaGreenClimate(coordinator)]
@@ -76,35 +77,47 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         """Initialize the climate entity."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_climate"
-        self._attr_name = f"{coordinator.device_name} Rekuperator"
+        self._attr_translation_key = "thessla_green_climate"
+        self._attr_has_entity_name = True
         self._attr_device_info = coordinator.get_device_info()
-        
+
         # Climate features
         self._attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE |
-            ClimateEntityFeature.FAN_MODE |
-            ClimateEntityFeature.PRESET_MODE |
-            ClimateEntityFeature.TURN_ON |
-            ClimateEntityFeature.TURN_OFF
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.FAN_MODE
+            | ClimateEntityFeature.PRESET_MODE
+            | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TURN_OFF
         )
-        
+
         # Temperature settings
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_precision = 0.5
         self._attr_min_temp = 15.0
         self._attr_max_temp = 35.0
         self._attr_target_temperature_step = 0.5
-        
+
         # HVAC modes
         self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]
-        
+
         # Fan modes (airflow rates)
-        self._attr_fan_modes = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"]
-        
+        self._attr_fan_modes = [
+            "10%",
+            "20%",
+            "30%",
+            "40%",
+            "50%",
+            "60%",
+            "70%",
+            "80%",
+            "90%",
+            "100%",
+        ]
+
         # Preset modes
         self._attr_preset_modes = PRESET_MODES
-        
-        _LOGGER.debug("Climate entity initialized: %s", self._attr_name)
+
+        _LOGGER.debug("Climate entity initialized")
 
     @property
     def current_temperature(self) -> Optional[float]:
@@ -133,7 +146,7 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         # Check if device is turned off
         if self.coordinator.data.get("on_off_panel_mode") == 0:
             return HVACMode.OFF
-        
+
         # Get mode from device
         device_mode = self.coordinator.data.get("mode", 0)
         return HVAC_MODE_MAP.get(device_mode, HVACMode.AUTO)
@@ -143,19 +156,19 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         """Return current HVAC action."""
         if self.hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
-        
+
         # Check if heating is active
         if self.coordinator.data.get("heating_cable", False):
             return HVACAction.HEATING
-        
+
         # Check if cooling/bypass is active
         if self.coordinator.data.get("bypass", False):
             return HVACAction.COOLING
-        
+
         # Check if fans are running
         if self.coordinator.data.get("power_supply_fans", False):
             return HVACAction.FAN
-        
+
         return HVACAction.IDLE
 
     @property
@@ -163,9 +176,9 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         """Return current fan mode."""
         # Get airflow rate from manual or current setting
         airflow = (
-            self.coordinator.data.get("air_flow_rate_manual") or
-            self.coordinator.data.get("air_flow_rate_temporary") or
-            50
+            self.coordinator.data.get("air_flow_rate_manual")
+            or self.coordinator.data.get("air_flow_rate_temporary")
+            or 50
         )
         # Round to nearest 10%
         rounded = round(airflow / 10) * 10
@@ -175,22 +188,22 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
     def preset_mode(self) -> Optional[str]:
         """Return current preset mode."""
         special_mode = self.coordinator.data.get("special_mode", 0)
-        
+
         if special_mode == 0:
             return "none"
-        
+
         # Check for active special function
         for preset, bit_value in SPECIAL_FUNCTION_MAP.items():
             if special_mode & bit_value:
                 return preset
-        
+
         return "none"
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
-        
+
         # Temperature sensors
         if "outside_temperature" in self.coordinator.data:
             attrs["outside_temperature"] = self.coordinator.data["outside_temperature"]
@@ -198,34 +211,34 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
             attrs["exhaust_temperature"] = self.coordinator.data["exhaust_temperature"]
         if "gwc_temperature" in self.coordinator.data:
             attrs["gwc_temperature"] = self.coordinator.data["gwc_temperature"]
-        
+
         # Airflow
         if "supply_flowrate" in self.coordinator.data:
             attrs["supply_airflow"] = self.coordinator.data["supply_flowrate"]
         if "exhaust_flowrate" in self.coordinator.data:
             attrs["exhaust_airflow"] = self.coordinator.data["exhaust_flowrate"]
-        
+
         # System status
         if "heat_recovery_efficiency" in self.coordinator.data:
             attrs["heat_recovery_efficiency"] = self.coordinator.data["heat_recovery_efficiency"]
-        
+
         # Special systems
         attrs["bypass_active"] = self.coordinator.data.get("bypass", False)
         attrs["gwc_active"] = self.coordinator.data.get("gwc", False)
         attrs["heating_active"] = self.coordinator.data.get("heating_cable", False)
-        
+
         # Air quality (if available)
         if "co2_level" in self.coordinator.data:
             attrs["co2_level"] = self.coordinator.data["co2_level"]
         if "humidity_indoor" in self.coordinator.data:
             attrs["humidity"] = self.coordinator.data["humidity_indoor"]
-        
+
         return attrs
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode."""
         _LOGGER.debug("Setting HVAC mode to %s", hvac_mode)
-        
+
         if hvac_mode == HVACMode.OFF:
             # Turn off the device
             success = await self.coordinator.async_write_register("on_off_panel_mode", 0)
@@ -235,7 +248,7 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
             # Set mode
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
             success = await self.coordinator.async_write_register("mode", device_mode)
-        
+
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -246,16 +259,18 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        
+
         _LOGGER.debug("Setting target temperature to %s°C", temperature)
-        
+
         # Set comfort temperature
         success = await self.coordinator.async_write_register("comfort_temperature", temperature)
-        
+
         # Also set required temperature for KOMFORT mode
         if success:
-            success = await self.coordinator.async_write_register("required_temperature", temperature)
-        
+            success = await self.coordinator.async_write_register(
+                "required_temperature", temperature
+            )
+
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -267,10 +282,10 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
             # Extract percentage from fan mode string
             airflow = int(fan_mode.rstrip("%"))
             _LOGGER.debug("Setting fan mode to %s%% airflow", airflow)
-            
+
             # Set manual airflow rate
             success = await self.coordinator.async_write_register("air_flow_rate_manual", airflow)
-            
+
             if success:
                 await self.coordinator.async_request_refresh()
             else:
@@ -281,16 +296,16 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set preset mode (special function)."""
         _LOGGER.debug("Setting preset mode to %s", preset_mode)
-        
+
         if preset_mode == "none":
             # Clear all special modes
             special_mode_value = 0
         else:
             # Set specific special mode
             special_mode_value = SPECIAL_FUNCTION_MAP.get(preset_mode, 0)
-        
+
         success = await self.coordinator.async_write_register("special_mode", special_mode_value)
-        
+
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -300,7 +315,7 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         """Turn the climate entity on."""
         _LOGGER.debug("Turning on climate entity")
         success = await self.coordinator.async_write_register("on_off_panel_mode", 1)
-        
+
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -310,7 +325,7 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
         """Turn the climate entity off."""
         _LOGGER.debug("Turning off climate entity")
         success = await self.coordinator.async_write_register("on_off_panel_mode", 0)
-        
+
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -319,7 +334,4 @@ class ThesslaGreenClimate(CoordinatorEntity, ClimateEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return (
-            self.coordinator.last_update_success and
-            "on_off_panel_mode" in self.coordinator.data
-        )
+        return self.coordinator.last_update_success and "on_off_panel_mode" in self.coordinator.data

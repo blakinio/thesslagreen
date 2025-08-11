@@ -1,4 +1,5 @@
 """Fan platform for the ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import logging
@@ -19,6 +20,7 @@ from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -26,20 +28,29 @@ async def async_setup_entry(
 ) -> None:
     """Set up ThesslaGreen fan from config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    
+
     # Check if fan control is available
-    fan_registers = ["air_flow_rate_manual", "air_flow_rate_auto", "supply_percentage", "exhaust_percentage"]
-    
+    fan_registers = [
+        "air_flow_rate_manual",
+        "air_flow_rate_auto",
+        "supply_percentage",
+        "exhaust_percentage",
+    ]
+
     has_fan_registers = False
     for register in fan_registers:
-        if register in coordinator.available_registers.get("holding", {}) or register in coordinator.available_registers.get("input", {}):
+        if register in coordinator.available_registers.get(
+            "holding_registers", set()
+        ) or register in coordinator.available_registers.get("input_registers", set()):
             has_fan_registers = True
             break
-    
+
     # If force full register list, assume fan is available
     if not has_fan_registers and coordinator.force_full_register_list:
-        has_fan_registers = any(register in HOLDING_REGISTERS for register in fan_registers[:2])  # Only check writable registers
-    
+        has_fan_registers = any(
+            register in HOLDING_REGISTERS for register in fan_registers[:2]
+        )  # Only check writable registers
+
     if has_fan_registers:
         async_add_entities([ThesslaGreenFan(coordinator)])
         _LOGGER.info("Added fan entity")
@@ -49,24 +60,25 @@ async def async_setup_entry(
 
 class ThesslaGreenFan(CoordinatorEntity, FanEntity):
     """ThesslaGreen fan entity."""
-    
+
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
         super().__init__(coordinator)
-        
+
         # Entity configuration
-        self._attr_name = f"{coordinator.device_name} Ventilation"
         self._attr_unique_id = f"{coordinator.device_name}_fan"
+        self._attr_translation_key = "thessla_green_fan"
+        self._attr_has_entity_name = True
         self._attr_device_info = coordinator.get_device_info()
-        
+
         # Fan configuration
         self._attr_supported_features = FanEntityFeature.SET_SPEED
-        
+
         # Speed range (10-100% as per ThesslaGreen specs)
         self._attr_speed_count = 9  # 10%, 20%, ..., 90%, 100%
-        
+
         _LOGGER.debug("Initialized fan entity")
-    
+
     @property
     def is_on(self) -> bool | None:
         """Return true if fan is on."""
@@ -74,42 +86,42 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
         if "on_off_panel_mode" in self.coordinator.data:
             if not self.coordinator.data["on_off_panel_mode"]:
                 return False
-        
+
         # Check current flow rate
         flow_rate = self._get_current_flow_rate()
         if flow_rate is None:
             return None
-        
+
         return flow_rate > 0
-    
+
     @property
     def percentage(self) -> int | None:
         """Return the current speed percentage."""
         flow_rate = self._get_current_flow_rate()
         if flow_rate is None:
             return None
-        
+
         # Convert to percentage (clamp to 0-100)
         return max(0, min(100, int(flow_rate)))
-    
+
     def _get_current_flow_rate(self) -> float | None:
         """Get current flow rate from available registers."""
         # Priority order for reading current flow rate
         flow_registers = [
-            "air_flow_rate",           # Current overall flow rate
-            "supply_percentage",       # Supply air percentage 
-            "air_flow_rate_manual",    # Manual flow rate setting
-            "air_flow_rate_auto",      # Auto flow rate setting
+            "air_flow_rate",  # Current overall flow rate
+            "supply_percentage",  # Supply air percentage
+            "air_flow_rate_manual",  # Manual flow rate setting
+            "air_flow_rate_auto",  # Auto flow rate setting
         ]
-        
+
         for register in flow_registers:
             if register in self.coordinator.data:
                 value = self.coordinator.data[register]
                 if value is not None and isinstance(value, (int, float)):
                     return float(value)
-        
+
         return None
-    
+
     async def async_turn_on(
         self,
         percentage: int | None = None,
@@ -121,19 +133,19 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
             # First ensure system is on
             if "on_off_panel_mode" in HOLDING_REGISTERS:
                 await self._write_register("on_off_panel_mode", 1)
-            
+
             # Set flow rate
             if percentage is not None:
                 await self.async_set_percentage(percentage)
             else:
                 # Default to 50% if no percentage specified
                 await self.async_set_percentage(50)
-            
+
             _LOGGER.info("Turned on fan")
-            
+
         except Exception as exc:
             _LOGGER.error("Failed to turn on fan: %s", exc)
-    
+
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
         try:
@@ -159,20 +171,20 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
 
         except Exception as exc:
             _LOGGER.error("Failed to turn off fan: %s", exc)
-    
+
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
         if percentage < 0 or percentage > 100:
             _LOGGER.error("Invalid percentage %d (must be 0-100)", percentage)
             return
-        
+
         try:
             # Ensure minimum flow rate (ThesslaGreen typically requires 10% minimum)
             actual_percentage = max(10, percentage) if percentage > 0 else 10
-            
+
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
-            
+
             if current_mode == "manual" or not current_mode:
                 # Set manual mode and flow rate
                 if "mode" in HOLDING_REGISTERS:
@@ -183,12 +195,12 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
                 # Auto mode - set auto flow rate
                 if "air_flow_rate_auto" in HOLDING_REGISTERS:
                     await self._write_register("air_flow_rate_auto", actual_percentage)
-            
+
             _LOGGER.info("Set fan speed to %d%%", actual_percentage)
-            
+
         except Exception as exc:
             _LOGGER.error("Failed to set fan speed to %d%%: %s", percentage, exc)
-    
+
     def _get_current_mode(self) -> str | None:
         """Get current system mode."""
         if "mode" in self.coordinator.data:
@@ -200,67 +212,68 @@ class ThesslaGreenFan(CoordinatorEntity, FanEntity):
             elif mode_value == 2:
                 return "temporary"
         return None
-    
+
     async def _write_register(self, register_name: str, value: int) -> None:
         """Write value to register."""
         if register_name not in HOLDING_REGISTERS:
             raise ValueError(f"Register {register_name} is not writable")
-        
+
         register_address = HOLDING_REGISTERS[register_name]
-        
+
         # Ensure client is connected
         if not self.coordinator.client or not self.coordinator.client.connected:
             if not await self.coordinator.async_ensure_client():
                 raise RuntimeError("Failed to connect to device")
-        
+
         # Write register - pymodbus 3.5+ compatible
         response = await self.coordinator.client.write_register(
-            address=register_address, 
-            value=value, 
-            slave=self.coordinator.slave_id
+            address=register_address, value=value, slave=self.coordinator.slave_id
         )
-        
+
         if response.isError():
             raise RuntimeError(f"Failed to write register {register_name}: {response}")
-        
+
         # Request immediate data update
         await self.coordinator.async_request_refresh()
-    
+
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return additional state attributes."""
         attributes = {}
-        
+
         # Add flow information
         if "supply_flowrate" in self.coordinator.data:
             attributes["supply_flow"] = self.coordinator.data["supply_flowrate"]
-        
+
         if "exhaust_flowrate" in self.coordinator.data:
             attributes["exhaust_flow"] = self.coordinator.data["exhaust_flowrate"]
-        
+
         if "supply_percentage" in self.coordinator.data:
             attributes["supply_percentage"] = self.coordinator.data["supply_percentage"]
-        
+
         if "exhaust_percentage" in self.coordinator.data:
             attributes["exhaust_percentage"] = self.coordinator.data["exhaust_percentage"]
-        
+
         # Add current mode
         current_mode = self._get_current_mode()
         if current_mode:
             attributes["operating_mode"] = current_mode
-        
+
         # Add system status
         system_status = []
-        if "power_supply_fans" in self.coordinator.data and self.coordinator.data["power_supply_fans"]:
+        if (
+            "power_supply_fans" in self.coordinator.data
+            and self.coordinator.data["power_supply_fans"]
+        ):
             system_status.append("fans_powered")
         if "boost_mode" in self.coordinator.data and self.coordinator.data["boost_mode"]:
             system_status.append("boost_active")
         if "eco_mode" in self.coordinator.data and self.coordinator.data["eco_mode"]:
             system_status.append("eco_active")
-        
+
         if system_status:
             attributes["system_status"] = system_status
-        
+
         # Add last update time
         if self.coordinator.last_successful_update:
             attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()

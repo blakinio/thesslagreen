@@ -402,7 +402,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
 def _get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str):
     """Get coordinator from entity ID."""
     # Find the config entry that matches this entity
-    for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
+    for coordinator in hass.data.get(DOMAIN, {}).values():
         if hasattr(coordinator, "get_device_info"):
             # Check if this entity belongs to this coordinator
             device_info = coordinator.get_device_info()
@@ -410,3 +410,4 @@ def _get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str):
                 if domain == DOMAIN and identifier in entity_id:
                     return coordinator
     return None
+

@@ -92,7 +92,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Przepływy**: Nawiew, wywiew, rzeczywisty, min/max zakresy
 - **Ciśnienia**: Nawiew, wywiew, różnicowe, alarmy
 - **Jakość powietrza**: CO2, VOC, indeks jakości, wilgotność
-- **Energie**: Zużycie, odzysk, moc szczytowa, średnia
+- **Energie**: Zużycie, odzysk, moc szczytowa, średnia, roczna redukcja CO2 (kg)
 - **System**: Sprawność, godziny pracy, status filtrów, błędy
 - **Diagnostyka**: Czas aktualizacji, jakość danych, statystyki
 

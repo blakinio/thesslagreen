@@ -34,17 +34,22 @@
   "options": {
     "step": {
       "init": {
+ codex/audit-and-clean-translation-files
         "title": "Opcje ThesslaGreen Modbus",
         "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+=======
+          "title": "Opcje ThesslaGreen Modbus",
+          "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Limit czasu: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+ main
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
-          "timeout": "Timeout połączenia (sekundy)",
+          "timeout": "Limit czasu połączenia (sekundy)",
           "retry": "Liczba prób ponowienia",
           "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)"
         },
         "data_description": {
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 sekund)",
-          "timeout": "Maksymalny czas oczekiwania na odpowiedź (5-60 sekund)",
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 sekund)",
           "retry": "Ile razy ponawiać nieudane odczyty (1-5 prób)",
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)"
         }
@@ -80,6 +85,15 @@
       "exhaust_flowrate": {
         "name": "Przepływ wywiewu"
       },
+ codex/audit-and-clean-translation-files
+=======
+      "supply_percentage": {
+        "name": "Prędkość wentylatora nawiewnego"
+      },
+      "exhaust_percentage": {
+        "name": "Prędkość wentylatora wywiewnego"
+      },
+main
       "heat_recovery_efficiency": {
         "name": "Sprawność rekuperacji"
       },
@@ -111,7 +125,7 @@
         "name": "Przepływ rekuperatora"
       },
       "bypass_flowrate": {
-        "name": "Przepływ bypass"
+        "name": "Przepływ bypassu"
       },
       "supply_air_flow": {
         "name": "Strumień nawiewu"
@@ -174,7 +188,7 @@
         "name": "Roczne oszczędności energii"
       },
       "co2_reduction": {
-        "name": "Redukcja CO2"
+        "name": "Roczna redukcja CO2"
       },
       "system_uptime": {
         "name": "Czas pracy systemu"
@@ -228,7 +242,7 @@
         "name": "Sterowanie chłodnicą"
       },
       "damper_position_bypass": {
-        "name": "Pozycja przepustnicy bypass"
+        "name": "Pozycja przepustnicy bypassu"
       },
       "damper_position_gwc": {
         "name": "Pozycja przepustnicy GWC"
@@ -320,7 +334,7 @@
         "name": "Błąd chłodnicy"
       },
       "bypass_error": {
-        "name": "Błąd bypass"
+        "name": "Błąd bypassu"
       },
       "gwc_error": {
         "name": "Błąd GWC"
@@ -367,6 +381,137 @@
       "on_off_panel_mode": {
         "name": "Zasilanie główne"
       }
+ codex/audit-and-clean-translation-files
+=======
+    },
+    "climate": {
+      "thessla_green_climate": {
+        "name": "Sterowanie klimatem"
+      }
+    },
+    "fan": {
+      "thessla_green_fan": {
+        "name": "Wentylacja"
+      }
+    },
+    "switch": {
+      "on_off_panel_mode": {
+        "name": "Główne zasilanie"
+      },
+      "auto_mode": {
+        "name": "Tryb automatyczny"
+      },
+      "manual_mode": {
+        "name": "Tryb manualny"
+      },
+      "summer_mode": {
+        "name": "Tryb letni"
+      },
+      "winter_mode": {
+        "name": "Tryb zimowy"
+      },
+      "boost_mode": {
+        "name": "Tryb boost"
+      },
+      "night_mode": {
+        "name": "Tryb nocny"
+      },
+      "bypass_control": {
+        "name": "Sterowanie bypassem"
+      },
+      "gwc_control": {
+        "name": "Sterowanie GWC"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Tryb pracy",
+        "state": {
+          "off": "Wyłączony",
+          "manual": "Manualny",
+          "auto": "Automatyczny",
+          "temporary": "Tymczasowy"
+        }
+      },
+      "season_mode": {
+        "name": "Tryb sezonowy",
+        "state": {
+          "auto": "Automatyczny",
+          "winter": "Zimowy",
+          "summer": "Letni"
+        }
+      },
+      "special_mode": {
+        "name": "Tryb specjalny",
+        "state": {
+          "none": "Brak",
+          "okap": "Okap",
+          "kominek": "Kominek",
+          "wietrzenie": "Wietrzenie",
+          "pusty_dom": "Pusty dom",
+          "boost": "Boost",
+          "night": "Nocny",
+          "party": "Party",
+          "vacation": "Wakacyjny",
+          "economy": "Ekonomiczny",
+          "comfort": "Komfort"
+        }
+      },
+      "bypass_mode": {
+        "name": "Tryb bypassu",
+        "state": {
+          "auto": "Automatyczny",
+          "open": "Otwarty",
+          "closed": "Zamknięty"
+        }
+      },
+      "gwc_mode": {
+        "name": "Tryb GWC",
+        "state": {
+          "auto": "Automatyczny",
+          "on": "Włączony",
+          "off": "Wyłączony"
+        }
+      },
+      "filter_type": {
+        "name": "Typ filtrów",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Filtry płaskie",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      }
+    },
+    "number": {
+      "supply_temperature_manual": {
+        "name": "Temperatura nawiewu (manual)"
+      },
+      "supply_temperature_auto": {
+        "name": "Temperatura nawiewu (auto)"
+      },
+      "comfort_temperature": {
+        "name": "Temperatura komfortu"
+      },
+      "air_flow_rate_manual": {
+        "name": "Intensywność ręczna"
+      },
+      "air_flow_rate_auto": {
+        "name": "Intensywność automatyczna"
+      },
+      "okap_intensity": {
+        "name": "Intensywność okapu"
+      },
+      "kominek_intensity": {
+        "name": "Intensywność kominka"
+      },
+      "wietrzenie_intensity": {
+        "name": "Intensywność wietrzenia"
+      },
+      "filter_change_interval": {
+        "name": "Interwał wymiany filtrów"
+      }
+ main
     }
   },
   "services": {
@@ -387,12 +532,12 @@
       "description": "Kontroluje prędkość wentylatorów nawiewnego i wywiewnego oraz balans przepływów."
     },
     "control_bypass": {
-      "name": "Steruj bypass",
-      "description": "Kontroluje tryb pracy systemu bypass."
+      "name": "Steruj bypassem",
+      "description": "Kontroluje tryb pracy systemu bypassu."
     },
     "control_gwc": {
       "name": "Steruj GWC",
-      "description": "Kontroluje system GWC (Ground Water Cooler)."
+      "description": "Kontroluje system GWC (Gruntowy Wymiennik Ciepła)."
     },
     "reset_alarms": {
       "name": "Resetuj alarmy",

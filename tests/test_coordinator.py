@@ -292,7 +292,7 @@ async def test_write_register_sync_pymodbus_api(coordinator):
         client.write_register.return_value = response
         
         # Test holding register write
-        result = coordinator._write_register_sync(100, 50, "holding")
+        result = coordinator._write_register_sync(100, 50, "holding_registers")
         
         # ✅ VERIFY: Should use keyword arguments (pymodbus 3.5+ compatible)
         client.write_register.assert_called_once()
