@@ -11,10 +11,10 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -292,7 +292,7 @@ async def async_setup_entry(
         _LOGGER.warning("No binary sensor entities created - no compatible registers found")
 
 
-class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
     """Binary sensor entity for ThesslaGreen device."""
 
     def __init__(
@@ -302,14 +302,10 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
         sensor_definition: Dict[str, Any],
     ) -> None:
         """Initialize the binary sensor."""
-        super().__init__(coordinator)
-        
+        super().__init__(coordinator, register_name)
+
         self._register_name = register_name
         self._sensor_def = sensor_definition
-
-        # Entity attributes
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
-        self._attr_device_info = coordinator.get_device_info()
 
         # Binary sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
@@ -317,7 +313,6 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
         # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")
-        self._attr_has_entity_name = True
 
         _LOGGER.debug(
             "Binary sensor initialized: %s (%s)",
@@ -352,14 +347,6 @@ class ThesslaGreenBinarySensor(CoordinatorEntity, BinarySensorEntity):
                 return bool(value)
         
         return False
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return (
-            self.coordinator.last_update_success and
-            self._register_name in self.coordinator.data
-        )
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:

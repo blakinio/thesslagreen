@@ -1,4 +1,3 @@
-# Select entities for the ThesslaGreen Modbus integration
 """Select platform for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
 
@@ -9,9 +8,9 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,43 +18,24 @@ _LOGGER = logging.getLogger(__name__)
 SELECT_DEFINITIONS = {
     "mode": {
         "icon": "mdi:cog",
- codex/replace-hard-coded-strings-with-translation-keys
-        "options": ["auto", "manual", "temporary"],
-        "values": [0, 1, 2],
-=======
         "translation_key": "mode",
         "states": {"auto": 0, "manual": 1, "temporary": 2},
- main
         "register_type": "holding_registers",
     },
     "bypass_mode": {
         "icon": "mdi:pipe-leak",
- codex/replace-hard-coded-strings-with-translation-keys
-        "options": ["auto", "open", "closed"],
-        "values": [0, 1, 2],
-=======
         "translation_key": "bypass_mode",
         "states": {"auto": 0, "open": 1, "closed": 2},
- main
         "register_type": "holding_registers",
     },
     "gwc_mode": {
         "icon": "mdi:pipe",
- codex/replace-hard-coded-strings-with-translation-keys
-        "options": ["off", "auto", "forced"],
-        "values": [0, 1, 2],
-=======
         "translation_key": "gwc_mode",
         "states": {"off": 0, "auto": 1, "forced": 2},
- main
         "register_type": "holding_registers",
     },
     "filter_change": {
         "icon": "mdi:filter-variant",
- codex/replace-hard-coded-strings-with-translation-keys
-        "options": ["presostat", "flat_filters", "cleanpad", "cleanpad_pure"],
-        "values": [1, 2, 3, 4],
-=======
         "translation_key": "filter_change",
         "states": {
             "presostat": 1,
@@ -63,7 +43,6 @@ SELECT_DEFINITIONS = {
             "cleanpad": 3,
             "cleanpad_pure": 4,
         },
- main
         "register_type": "holding_registers",
     },
 }
@@ -88,17 +67,14 @@ async def async_setup_entry(
         _LOGGER.info("Created %d select entities", len(entities))
 
 
-class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
+class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
     """Select entity for ThesslaGreen device."""
 
     def __init__(self, coordinator, register_name, definition):
-        super().__init__(coordinator)
+        super().__init__(coordinator, register_name)
         self._register_name = register_name
 
-        self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
         self._attr_translation_key = definition["translation_key"]
-        self._attr_has_entity_name = True
-        self._attr_device_info = coordinator.get_device_info()
         self._attr_icon = definition.get("icon")
         self._states = definition["states"]
         self._reverse_states = {v: k for k, v in self._states.items()}
