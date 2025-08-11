@@ -20,15 +20,60 @@ _LOGGER = logging.getLogger(__name__)
 # Switch entities that can be controlled
 SWITCH_ENTITIES = {
     # System control switches from holding registers
-    "on_off_panel_mode": {"icon": "mdi:power", "register_type": "holding_registers", "category": None},
-    "boost_mode": {"icon": "mdi:rocket-launch", "register_type": "holding_registers", "category": None},
-    "eco_mode": {"icon": "mdi:leaf", "register_type": "holding_registers", "category": None},
-    "night_mode": {"icon": "mdi:weather-night", "register_type": "holding_registers", "category": None},
-    "party_mode": {"icon": "mdi:party-popper", "register_type": "holding_registers", "category": None},
-    "fireplace_mode": {"icon": "mdi:fireplace", "register_type": "holding_registers", "category": None},
-    "vacation_mode": {"icon": "mdi:airplane", "register_type": "holding_registers", "category": None},
-    "okap_mode": {"icon": "mdi:range-hood", "register_type": "holding_registers", "category": None},
-    "silent_mode": {"icon": "mdi:volume-off", "register_type": "holding_registers", "category": None},
+    "on_off_panel_mode": {
+        "icon": "mdi:power",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "on_off_panel_mode",
+    },
+    "boost_mode": {
+        "icon": "mdi:rocket-launch",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "boost_mode",
+    },
+    "eco_mode": {
+        "icon": "mdi:leaf",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "eco_mode",
+    },
+    "night_mode": {
+        "icon": "mdi:weather-night",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "night_mode",
+    },
+    "party_mode": {
+        "icon": "mdi:party-popper",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "party_mode",
+    },
+    "fireplace_mode": {
+        "icon": "mdi:fireplace",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "fireplace_mode",
+    },
+    "vacation_mode": {
+        "icon": "mdi:airplane",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "vacation_mode",
+    },
+    "okap_mode": {
+        "icon": "mdi:range-hood",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "okap_mode",
+    },
+    "silent_mode": {
+        "icon": "mdi:volume-off",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "silent_mode",
+    },
 }
 
 
@@ -92,7 +137,7 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
 
         # Entity configuration
         self._attr_unique_id = f"{coordinator.device_name}_{register_name}"
-        self._attr_translation_key = register_name
+        self._attr_translation_key = entity_config["translation_key"]
         self._attr_has_entity_name = True
         self._attr_device_info = coordinator.get_device_info()
         self._attr_icon = entity_config["icon"]
