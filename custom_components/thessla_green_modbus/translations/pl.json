@@ -416,7 +416,11 @@
         "name": "Tryb GWC",
         "state": {
           "off": "Wyłączony",
+ codex/add-entity-translation-keys-and-update-json
           "auto": "Auto",
+=======
+          "auto": "Automatyczny",
+ main
           "forced": "Wymuszony"
         }
       },
