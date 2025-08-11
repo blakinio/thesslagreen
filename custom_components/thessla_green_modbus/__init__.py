@@ -23,6 +23,8 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
     DEFAULT_RETRY,
+    DEFAULT_SLAVE_ID,
+    DEFAULT_NAME,
     MANUFACTURER,
     MODEL,
 )
@@ -47,11 +49,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ThesslaGreen Modbus from a config entry."""
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
     
-    # Get configuration
+    # Get configuration - support both new and legacy keys
     host = entry.data[CONF_HOST]
-    port = entry.data[CONF_PORT]
-    slave_id = entry.data[CONF_SLAVE_ID]
-    name = entry.data[CONF_NAME]
+    port = entry.data.get(CONF_PORT, 8899)  # Default to 8899 for legacy
+    
+    # Try to get slave_id from multiple possible keys for compatibility
+    slave_id = None
+    if CONF_SLAVE_ID in entry.data:
+        slave_id = entry.data[CONF_SLAVE_ID]
+    elif "slave_id" in entry.data:
+        slave_id = entry.data["slave_id"]
+    elif "unit" in entry.data:
+        slave_id = entry.data["unit"]  # Legacy support
+    else:
+        slave_id = DEFAULT_SLAVE_ID  # Use default if not found
+    
+    # Get name with fallback
+    name = entry.data.get(CONF_NAME, DEFAULT_NAME)
     
     # Get options with defaults
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
@@ -149,6 +163,11 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         # Migration from version 1 to 2
         new_data = {**config_entry.data}
         new_options = {**config_entry.options}
+        
+        # Migrate "unit" to CONF_SLAVE_ID if needed
+        if "unit" in new_data and CONF_SLAVE_ID not in new_data:
+            new_data[CONF_SLAVE_ID] = new_data["unit"]
+            _LOGGER.info("Migrated 'unit' to '%s'", CONF_SLAVE_ID)
         
         # Add new fields with defaults if missing
         if CONF_SCAN_INTERVAL not in new_options:
