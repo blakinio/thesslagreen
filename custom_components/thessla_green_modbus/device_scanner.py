@@ -358,7 +358,7 @@ class ThesslaGreenDeviceScanner:
                     self.available_registers["coil_registers"].add(reg_name)
             
             if len(self.available_registers["coil_registers"]) > 0:
-                present_blocks["coil"] = (0x0000, 0x0005)
+                present_blocks["coil_registers"] = (0x0000, 0x0005)
             
             # Scan discrete inputs
             discrete_registers = [

@@ -20,15 +20,15 @@ _LOGGER = logging.getLogger(__name__)
 # Switch entities that can be controlled
 SWITCH_ENTITIES = {
     # System control switches from holding registers
-    "on_off_panel_mode": {"icon": "mdi:power", "register_type": "holding", "category": None},
-    "boost_mode": {"icon": "mdi:rocket-launch", "register_type": "holding", "category": None},
-    "eco_mode": {"icon": "mdi:leaf", "register_type": "holding", "category": None},
-    "night_mode": {"icon": "mdi:weather-night", "register_type": "holding", "category": None},
-    "party_mode": {"icon": "mdi:party-popper", "register_type": "holding", "category": None},
-    "fireplace_mode": {"icon": "mdi:fireplace", "register_type": "holding", "category": None},
-    "vacation_mode": {"icon": "mdi:airplane", "register_type": "holding", "category": None},
-    "okap_mode": {"icon": "mdi:range-hood", "register_type": "holding", "category": None},
-    "silent_mode": {"icon": "mdi:volume-off", "register_type": "holding", "category": None},
+    "on_off_panel_mode": {"icon": "mdi:power", "register_type": "holding_registers", "category": None},
+    "boost_mode": {"icon": "mdi:rocket-launch", "register_type": "holding_registers", "category": None},
+    "eco_mode": {"icon": "mdi:leaf", "register_type": "holding_registers", "category": None},
+    "night_mode": {"icon": "mdi:weather-night", "register_type": "holding_registers", "category": None},
+    "party_mode": {"icon": "mdi:party-popper", "register_type": "holding_registers", "category": None},
+    "fireplace_mode": {"icon": "mdi:fireplace", "register_type": "holding_registers", "category": None},
+    "vacation_mode": {"icon": "mdi:airplane", "register_type": "holding_registers", "category": None},
+    "okap_mode": {"icon": "mdi:range-hood", "register_type": "holding_registers", "category": None},
+    "silent_mode": {"icon": "mdi:volume-off", "register_type": "holding_registers", "category": None},
 }
 
 
@@ -47,13 +47,13 @@ async def async_setup_entry(
         # Check if this register is available and writable
         is_available = False
 
-        if config["register_type"] == "holding":
-            if register_name in coordinator.available_registers.get("holding", {}):
+        if config["register_type"] == "holding_registers":
+            if register_name in coordinator.available_registers.get("holding_registers", set()):
                 is_available = True
             elif coordinator.force_full_register_list and register_name in HOLDING_REGISTERS:
                 is_available = True
-        elif config["register_type"] == "coil":
-            if register_name in coordinator.available_registers.get("coil", {}):
+        elif config["register_type"] == "coil_registers":
+            if register_name in coordinator.available_registers.get("coil_registers", set()):
                 is_available = True
             elif coordinator.force_full_register_list and register_name in COIL_REGISTERS:
                 is_available = True
@@ -140,11 +140,11 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
         """Write value to register."""
         register_type = self.entity_config["register_type"]
 
-        if register_type == "holding":
+        if register_type == "holding_registers":
             if register_name not in HOLDING_REGISTERS:
                 raise ValueError(f"Register {register_name} is not a holding register")
             register_address = HOLDING_REGISTERS[register_name]
-        elif register_type == "coil":
+        elif register_type == "coil_registers":
             if register_name not in COIL_REGISTERS:
                 raise ValueError(f"Register {register_name} is not a coil register")
             register_address = COIL_REGISTERS[register_name]
@@ -157,11 +157,11 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
                 raise RuntimeError("Failed to connect to device")
 
         # Write register - pymodbus 3.5+ compatible
-        if register_type == "holding":
+        if register_type == "holding_registers":
             response = await self.coordinator.client.write_register(
                 address=register_address, value=value, slave=self.coordinator.slave_id
             )
-        else:  # coil
+        else:  # coil register
             response = await self.coordinator.client.write_coil(
                 address=register_address, value=bool(value), slave=self.coordinator.slave_id
             )
@@ -181,7 +181,7 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
         attributes["register_name"] = self.register_name
         register_type = self.entity_config["register_type"]
 
-        if register_type == "holding":
+        if register_type == "holding_registers":
             register_address = HOLDING_REGISTERS.get(self.register_name, 0)
         else:
             register_address = COIL_REGISTERS.get(self.register_name, 0)

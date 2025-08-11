@@ -47,15 +47,15 @@ async def async_setup_entry(
         register_type = None
 
         # Only check holding registers as they are writable
-        if register_name in coordinator.available_registers.get("holding", {}):
+        if register_name in coordinator.available_registers.get("holding_registers", set()):
             is_available = True
-            register_type = "holding"
+            register_type = "holding_registers"
 
         # If force full register list, check against holding registers
         if not is_available and coordinator.force_full_register_list:
             if register_name in HOLDING_REGISTERS:
                 is_available = True
-                register_type = "holding"
+                register_type = "holding_registers"
 
         if is_available:
             entities.append(

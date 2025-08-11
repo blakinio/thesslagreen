@@ -168,17 +168,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         # Group Input Registers
         if self.available_registers["input_registers"]:
             input_addrs = [INPUT_REGISTERS[reg] for reg in self.available_registers["input_registers"]]
-            self._register_groups["input"] = self._group_registers_for_batch_read(sorted(input_addrs))
+            self._register_groups["input_registers"] = self._group_registers_for_batch_read(sorted(input_addrs))
         
         # Group Holding Registers  
         if self.available_registers["holding_registers"]:
             holding_addrs = [HOLDING_REGISTERS[reg] for reg in self.available_registers["holding_registers"]]
-            self._register_groups["holding"] = self._group_registers_for_batch_read(sorted(holding_addrs))
+            self._register_groups["holding_registers"] = self._group_registers_for_batch_read(sorted(holding_addrs))
         
         # Group Coil Registers
         if self.available_registers["coil_registers"]:
             coil_addrs = [COIL_REGISTERS[reg] for reg in self.available_registers["coil_registers"]]
-            self._register_groups["coil"] = self._group_registers_for_batch_read(sorted(coil_addrs))
+            self._register_groups["coil_registers"] = self._group_registers_for_batch_read(sorted(coil_addrs))
         
         # Group Discrete Input Registers
         if self.available_registers["discrete_inputs"]:
@@ -321,10 +321,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read input registers using optimized batch reading."""
         data = {}
         
-        if "input" not in self._register_groups:
+        if "input_registers" not in self._register_groups:
             return data
-        
-        for start_addr, count in self._register_groups["input"]:
+
+        for start_addr, count in self._register_groups["input_registers"]:
             try:
                 response = await self.client.read_input_registers(start_addr, count)
                 if response.isError():
@@ -351,10 +351,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read holding registers using optimized batch reading."""
         data = {}
         
-        if "holding" not in self._register_groups:
+        if "holding_registers" not in self._register_groups:
             return data
-        
-        for start_addr, count in self._register_groups["holding"]:
+
+        for start_addr, count in self._register_groups["holding_registers"]:
             try:
                 response = await self.client.read_holding_registers(start_addr, count)
                 if response.isError():
@@ -381,10 +381,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read coil registers using optimized batch reading."""
         data = {}
         
-        if "coil" not in self._register_groups:
+        if "coil_registers" not in self._register_groups:
             return data
-        
-        for start_addr, count in self._register_groups["coil"]:
+
+        for start_addr, count in self._register_groups["coil_registers"]:
             try:
                 response = await self.client.read_coils(start_addr, count)
                 if response.isError():
