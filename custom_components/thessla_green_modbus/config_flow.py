@@ -1,27 +1,30 @@
 """Config flow for ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import selector
-from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .const import (
+    CONF_FORCE_FULL_REGISTER_LIST,
+    CONF_RETRY,
+    CONF_SCAN_INTERVAL,
     CONF_SLAVE_ID,
+    CONF_TIMEOUT,
     DEFAULT_NAME,
     DEFAULT_PORT,
+    DEFAULT_RETRY,
+    DEFAULT_SCAN_INTERVAL,
     DEFAULT_SLAVE_ID,
+    DEFAULT_TIMEOUT,
     DOMAIN,
-    MANUFACTURER,
-    MODEL,
 )
 from .device_scanner import ThesslaGreenDeviceScanner
 
@@ -36,37 +39,29 @@ class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
 
 
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     host = data[CONF_HOST]
     port = data[CONF_PORT]
     slave_id = data[CONF_SLAVE_ID]
     name = data.get(CONF_NAME, DEFAULT_NAME)
-    
+
     # Try to connect and scan device
     scanner = ThesslaGreenDeviceScanner(
-        host=host,
-        port=port,
-        slave_id=slave_id,
-        timeout=10,
-        retry=3
+        host=host, port=port, slave_id=slave_id, timeout=10, retry=3
     )
-    
+
     try:
         scan_result = await scanner.scan_device()
-        
+
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
-        
+
         device_info = scan_result.get("device_info", {})
-        
+
         # Return validated data with device info
-        return {
-            "title": name,
-            "device_info": device_info,
-            "scan_result": scan_result
-        }
-        
+        return {"title": name, "device_info": device_info, "scan_result": scan_result}
+
     except ConnectionException as exc:
         _LOGGER.error("Connection error: %s", exc)
         raise CannotConnect from exc
@@ -91,31 +86,29 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._device_info: dict[str, Any] = {}
         self._scan_result: dict[str, Any] = {}
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
-        
+
         if user_input is not None:
             try:
                 # Validate input and get device info
                 info = await validate_input(self.hass, user_input)
-                
+
                 # Store data for confirm step
                 self._data = user_input
                 self._device_info = info.get("device_info", {})
                 self._scan_result = info.get("scan_result", {})
-                
+
                 # Set unique ID based on host, port and slave_id
                 await self.async_set_unique_id(
                     f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
                 )
                 self._abort_if_unique_id_configured()
-                
+
                 # Show confirmation step with device info
                 return await self.async_step_confirm()
-                
+
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -123,7 +116,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
-        
+
         # Show form
         data_schema = vol.Schema(
             {
@@ -135,16 +128,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
             }
         )
-        
+
         return self.async_show_form(
             step_id="user",
             data_schema=data_schema,
             errors=errors,
         )
 
-    async def async_step_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the confirm step."""
         if user_input is not None:
             # Create entry with all data
@@ -159,28 +150,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
                 },
             )
-        
+
         # Prepare description with device info
         device_name = self._device_info.get("device_name", "Unknown")
         firmware_version = self._device_info.get("firmware", "Unknown")
         serial_number = self._device_info.get("serial_number", "Unknown")
-        
+
         # Get scan statistics
         available_registers = self._scan_result.get("available_registers", {})
         capabilities = self._scan_result.get("capabilities", {})
-        
-        register_count = sum(
-            len(regs) for regs in available_registers.values()
-        )
-        
-        capabilities_list = [
-            k.replace("_", " ").title() 
-            for k, v in capabilities.items() 
-            if v
-        ]
-        
+
+        register_count = sum(len(regs) for regs in available_registers.values())
+
+        capabilities_list = [k.replace("_", " ").title() for k, v in capabilities.items() if v]
+
         scan_success_rate = "100%" if register_count > 0 else "0%"
-        
+
         description_placeholders = {
             "host": self._data[CONF_HOST],
             "port": str(self._data[CONF_PORT]),
@@ -192,9 +177,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "scan_success_rate": scan_success_rate,
             "capabilities_count": str(len(capabilities_list)),
             "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
-            "auto_detected_note": "✅ Auto-detection successful!" if register_count > 0 else "⚠️ Limited auto-detection"
+            "auto_detected_note": (
+                "✅ Auto-detection successful!"
+                if register_count > 0
+                else "⚠️ Limited auto-detection"
+            ),
         }
-        
+
         return self.async_show_form(
             step_id="confirm",
             description_placeholders=description_placeholders,
@@ -208,37 +197,20 @@ class OptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle options flow."""
-        from .const import (
-            CONF_FORCE_FULL_REGISTER_LIST,
-            CONF_RETRY,
-            CONF_SCAN_INTERVAL,
-            CONF_TIMEOUT,
-            DEFAULT_RETRY,
-            DEFAULT_SCAN_INTERVAL,
-            DEFAULT_TIMEOUT,
-        )
-        
+
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
-        
+
         # Get current values
         current_scan_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
         )
-        current_timeout = self.config_entry.options.get(
-            CONF_TIMEOUT, DEFAULT_TIMEOUT
-        )
-        current_retry = self.config_entry.options.get(
-            CONF_RETRY, DEFAULT_RETRY
-        )
-        force_full = self.config_entry.options.get(
-            CONF_FORCE_FULL_REGISTER_LIST, False
-        )
-        
+        current_timeout = self.config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+        current_retry = self.config_entry.options.get(CONF_RETRY, DEFAULT_RETRY)
+        force_full = self.config_entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+
         data_schema = vol.Schema(
             {
                 vol.Optional(
@@ -259,7 +231,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 ): bool,
             }
         )
-        
+
         return self.async_show_form(
             step_id="init",
             data_schema=data_schema,
