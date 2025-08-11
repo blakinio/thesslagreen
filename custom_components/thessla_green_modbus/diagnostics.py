@@ -62,5 +62,5 @@ def _redact_sensitive_data(data: Dict[str, Any]) -> Dict[str, Any]:
                 import re
                 message = re.sub(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', 'xxx.xxx.xxx.xxx', message)
                 error["message"] = message
-    
+
     return safe_data
