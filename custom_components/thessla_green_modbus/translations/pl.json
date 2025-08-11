@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "ThesslaGreen Modbus",
-        "description": "Skonfiguruj połączenie z rekuperatorem ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykryje dostępne funkcje urządzenia.",
+        "title": "Konfiguracja ThesslaGreen Modbus",
+        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykryje dostępne funkcje i rejestry urządzenia.",
         "data": {
           "host": "Adres IP",
           "port": "Port",
@@ -11,19 +11,19 @@
           "name": "Nazwa"
         },
         "data_description": {
-          "host": "Adres IP rekuperatora w sieci lokalnej",
-          "port": "Port Modbus TCP (standardowo 502)",
-          "slave_id": "Identyfikator urządzenia Modbus (standardowo 10)",
+          "host": "Adres IP urządzenia AirPack w sieci lokalnej",
+          "port": "Port Modbus TCP (domyślnie 502)",
+          "slave_id": "Identyfikator urządzenia Modbus (domyślnie 10)",
           "name": "Nazwa urządzenia w Home Assistant"
         }
       },
       "confirm": {
         "title": "Potwierdź konfigurację",
-        "description": "Wykryto urządzenie ThesslaGreen:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Nazwa urządzenia:** {device_name}\n**Wersja firmware:** {firmware_version}\n**Numer seryjny:** {serial_number}\n\n**Statystyki skanowania:**\n- Znalezionych rejestrów: {register_count}\n- Sukces skanowania: {scan_success_rate}\n- Wykrytych funkcji: {capabilities_count}\n- Główne funkcje: {capabilities_list}\n\n{auto_detected_note}\n\nCzy chcesz kontynuować konfigurację?"
+        "description": "Wykryto urządzenie ThesslaGreen:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Nazwa urządzenia:** {device_name}\n**Wersja firmware:** {firmware_version}\n**Numer seryjny:** {serial_number}\n\n**Statystyki skanowania:**\n- Znalezionych rejestrów: {register_count}\n- Skuteczność skanowania: {scan_success_rate}\n- Wykryte możliwości: {capabilities_count}\n- Główne funkcje: {capabilities_list}\n\n{auto_detected_note}\n\nCzy chcesz kontynuować tę konfigurację?"
       }
     },
     "error": {
-      "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port i połączenie sieciowe.",
+      "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port oraz połączenie sieciowe.",
       "invalid_auth": "Błąd autoryzacji. Sprawdź ustawienia Slave ID.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi dla szczegółów."
     },
@@ -34,8 +34,8 @@
   "options": {
     "step": {
       "init": {
-        "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Pełna lista rejestrów: {force_full_enabled}",
+          "title": "Opcje ThesslaGreen Modbus",
+          "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Timeout połączenia (sekundy)",
