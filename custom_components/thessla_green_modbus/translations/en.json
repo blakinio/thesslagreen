@@ -367,6 +367,52 @@
       "on_off_panel_mode": {
         "name": "Panel Power"
       }
+    },
+    "switch": {
+      "on_off_panel_mode": { "name": "Panel Power" },
+      "boost_mode": { "name": "Boost Mode" },
+      "eco_mode": { "name": "Eco Mode" },
+      "night_mode": { "name": "Night Mode" },
+      "party_mode": { "name": "Party Mode" },
+      "fireplace_mode": { "name": "Fireplace Mode" },
+      "vacation_mode": { "name": "Vacation Mode" },
+      "okap_mode": { "name": "Hood Mode" },
+      "silent_mode": { "name": "Silent Mode" }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "auto": "Automatic",
+          "manual": "Manual",
+          "temporary": "Temporary"
+        }
+      },
+      "bypass_mode": {
+        "name": "Bypass Mode",
+        "state": {
+          "auto": "Auto",
+          "open": "Open",
+          "closed": "Closed"
+        }
+      },
+      "gwc_mode": {
+        "name": "GWC Mode",
+        "state": {
+          "off": "Off",
+          "auto": "Auto",
+          "forced": "Forced"
+        }
+      },
+      "filter_change": {
+        "name": "Filter Type",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Flat Filters",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      }
     }
   },
   "services": {
