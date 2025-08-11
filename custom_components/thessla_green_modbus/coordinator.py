@@ -557,6 +557,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             configuration_url=f"http://{self.host}",
         )
 
+    @property
+    def device_info_dict(self) -> Dict[str, Any]:
+        """Return device information as a plain dictionary."""
+        return self.get_device_info().as_dict()
+
 
 # Legacy compatibility - ThesslaGreenCoordinator alias
 ThesslaGreenCoordinator = ThesslaGreenModbusCoordinator
