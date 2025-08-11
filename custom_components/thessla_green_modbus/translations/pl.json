@@ -103,6 +103,171 @@
       },
       "warning_code": {
         "name": "Kod ostrzeżenia"
+      },
+      "heating_temperature": {
+        "name": "Temperatura grzania"
+      },
+      "heat_exchanger_temperature_1": {
+        "name": "Temperatura wymiennika 1"
+      },
+      "heat_exchanger_temperature_2": {
+        "name": "Temperatura wymiennika 2"
+      },
+      "heat_exchanger_temperature_3": {
+        "name": "Temperatura wymiennika 3"
+      },
+      "heat_exchanger_temperature_4": {
+        "name": "Temperatura wymiennika 4"
+      },
+      "outdoor_flowrate": {
+        "name": "Przepływ zewnętrzny"
+      },
+      "inside_flowrate": {
+        "name": "Przepływ wewnętrzny"
+      },
+      "gwc_flowrate": {
+        "name": "Przepływ GWC"
+      },
+      "heat_recovery_flowrate": {
+        "name": "Przepływ rekuperatora"
+      },
+      "bypass_flowrate": {
+        "name": "Przepływ bypass"
+      },
+      "supply_air_flow": {
+        "name": "Strumień nawiewu"
+      },
+      "exhaust_air_flow": {
+        "name": "Strumień wywiewu"
+      },
+      "co2_level": {
+        "name": "Poziom CO2"
+      },
+      "humidity_indoor": {
+        "name": "Wilgotność wewnętrzna"
+      },
+      "humidity_outdoor": {
+        "name": "Wilgotność zewnętrzna"
+      },
+      "pm1_level": {
+        "name": "PM1.0"
+      },
+      "pm25_level": {
+        "name": "PM2.5"
+      },
+      "pm10_level": {
+        "name": "PM10"
+      },
+      "voc_level": {
+        "name": "VOC"
+      },
+      "air_quality_index": {
+        "name": "Indeks jakości powietrza"
+      },
+      "filter_lifetime_remaining": {
+        "name": "Pozostały czas życia filtra"
+      },
+      "preheater_power": {
+        "name": "Moc wstępnego grzania"
+      },
+      "main_heater_power": {
+        "name": "Moc głównego grzania"
+      },
+      "cooler_power": {
+        "name": "Moc chłodzenia"
+      },
+      "supply_fan_power": {
+        "name": "Moc wentylatora nawiewnego"
+      },
+      "exhaust_fan_power": {
+        "name": "Moc wentylatora wywiewnego"
+      },
+      "total_power_consumption": {
+        "name": "Całkowite zużycie energii"
+      },
+      "daily_energy_consumption": {
+        "name": "Dzienne zużycie energii"
+      },
+      "annual_energy_consumption": {
+        "name": "Roczne zużycie energii"
+      },
+      "annual_energy_savings": {
+        "name": "Roczne oszczędności energii"
+      },
+      "co2_reduction": {
+        "name": "Redukcja CO2"
+      },
+      "system_uptime": {
+        "name": "Czas pracy systemu"
+      },
+      "fault_counter": {
+        "name": "Licznik błędów"
+      },
+      "maintenance_counter": {
+        "name": "Licznik konserwacji"
+      },
+      "filter_replacement_counter": {
+        "name": "Licznik wymian filtra"
+      },
+      "supply_pressure": {
+        "name": "Ciśnienie nawiewu"
+      },
+      "exhaust_pressure": {
+        "name": "Ciśnienie wywiewu"
+      },
+      "differential_pressure": {
+        "name": "Ciśnienie różnicowe"
+      },
+      "motor_supply_rpm": {
+        "name": "Obroty silnika nawiewnego"
+      },
+      "motor_exhaust_rpm": {
+        "name": "Obroty silnika wywiewnego"
+      },
+      "motor_supply_current": {
+        "name": "Prąd silnika nawiewnego"
+      },
+      "motor_exhaust_current": {
+        "name": "Prąd silnika wywiewnego"
+      },
+      "motor_supply_voltage": {
+        "name": "Napięcie silnika nawiewnego"
+      },
+      "motor_exhaust_voltage": {
+        "name": "Napięcie silnika wywiewnego"
+      },
+      "dac_supply": {
+        "name": "Sterowanie wentylatorem nawiewnym"
+      },
+      "dac_exhaust": {
+        "name": "Sterowanie wentylatorem wywiewnym"
+      },
+      "dac_heater": {
+        "name": "Sterowanie nagrzewnicą"
+      },
+      "dac_cooler": {
+        "name": "Sterowanie chłodnicą"
+      },
+      "damper_position_bypass": {
+        "name": "Pozycja przepustnicy bypass"
+      },
+      "damper_position_gwc": {
+        "name": "Pozycja przepustnicy GWC"
+      },
+      "damper_position_mix": {
+        "name": "Pozycja przepustnicy mieszającej"
+      },
+      "firmware_major": {
+        "name": "Wersja firmware (główna)"
+      },
+      "firmware_minor": {
+        "name": "Wersja firmware (podrzędna)"
+      },
+      "firmware_patch": {
+        "name": "Wersja firmware (poprawka)"
+      },
+      "expansion_version": {
+        "name": "Wersja modułu Expansion"
       }
     },
     "binary_sensor": {
@@ -129,6 +294,105 @@
       },
       "expansion": {
         "name": "Moduł rozszerzający"
+      },
+      "duct_water_heater_pump": {
+        "name": "Pompa obiegowa nagrzewnicy"
+      },
+      "info": {
+        "name": "Potwierdzenie pracy centrali"
+      },
+      "work_permit": {
+        "name": "Potwierdzenie pracy (Expansion)"
+      },
+      "hood": {
+        "name": "Okap"
+      },
+      "contamination_sensor": {
+        "name": "Czujnik zanieczyszczenia"
+      },
+      "external_contact_1": {
+        "name": "Kontakt zewnętrzny 1"
+      },
+      "external_contact_2": {
+        "name": "Kontakt zewnętrzny 2"
+      },
+      "external_contact_3": {
+        "name": "Kontakt zewnętrzny 3"
+      },
+      "external_contact_4": {
+        "name": "Kontakt zewnętrzny 4"
+      },
+      "frost_alarm": {
+        "name": "Alarm przeciwmrozowy"
+      },
+      "filter_alarm": {
+        "name": "Alarm filtra"
+      },
+      "maintenance_alarm": {
+        "name": "Alarm konserwacji"
+      },
+      "sensor_error": {
+        "name": "Błąd czujnika"
+      },
+      "communication_error": {
+        "name": "Błąd komunikacji"
+      },
+      "fan_error": {
+        "name": "Błąd wentylatora"
+      },
+      "heater_error": {
+        "name": "Błąd grzałki"
+      },
+      "cooler_error": {
+        "name": "Błąd chłodnicy"
+      },
+      "bypass_error": {
+        "name": "Błąd bypass"
+      },
+      "gwc_error": {
+        "name": "Błąd GWC"
+      },
+      "expansion_error": {
+        "name": "Błąd modułu Expansion"
+      },
+      "frost_protection_active": {
+        "name": "Ochrona przeciwmrozowa"
+      },
+      "defrost_cycle_active": {
+        "name": "Cykl odszraniania"
+      },
+      "summer_bypass_active": {
+        "name": "Letni bypass"
+      },
+      "winter_heating_active": {
+        "name": "Zimowe grzanie"
+      },
+      "night_cooling_active": {
+        "name": "Nocne chłodzenie"
+      },
+      "constant_flow_active": {
+        "name": "Stały przepływ"
+      },
+      "air_quality_control_active": {
+        "name": "Kontrola jakości powietrza"
+      },
+      "humidity_control_active": {
+        "name": "Kontrola wilgotności"
+      },
+      "temperature_control_active": {
+        "name": "Kontrola temperatury"
+      },
+      "demand_control_active": {
+        "name": "Kontrola na żądanie"
+      },
+      "schedule_control_active": {
+        "name": "Kontrola harmonogramu"
+      },
+      "manual_control_active": {
+        "name": "Kontrola manualna"
+      },
+      "on_off_panel_mode": {
+        "name": "Zasilanie główne"
       }
     },
     "climate": {

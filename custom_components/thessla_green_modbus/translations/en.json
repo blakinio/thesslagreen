@@ -121,6 +121,132 @@
       },
       "system_uptime": {
         "name": "System Uptime"
+      },
+      "heat_exchanger_temperature_1": {
+        "name": "Heat Exchanger Temperature 1"
+      },
+      "heat_exchanger_temperature_2": {
+        "name": "Heat Exchanger Temperature 2"
+      },
+      "heat_exchanger_temperature_3": {
+        "name": "Heat Exchanger Temperature 3"
+      },
+      "heat_exchanger_temperature_4": {
+        "name": "Heat Exchanger Temperature 4"
+      },
+      "outdoor_flowrate": {
+        "name": "Outdoor Airflow"
+      },
+      "inside_flowrate": {
+        "name": "Indoor Airflow"
+      },
+      "gwc_flowrate": {
+        "name": "GWC Airflow"
+      },
+      "heat_recovery_flowrate": {
+        "name": "Heat Recovery Airflow"
+      },
+      "bypass_flowrate": {
+        "name": "Bypass Airflow"
+      },
+      "supply_air_flow": {
+        "name": "Supply Air Flow"
+      },
+      "exhaust_air_flow": {
+        "name": "Exhaust Air Flow"
+      },
+      "pm1_level": {
+        "name": "PM1"
+      },
+      "preheater_power": {
+        "name": "Preheater Power"
+      },
+      "main_heater_power": {
+        "name": "Main Heater Power"
+      },
+      "cooler_power": {
+        "name": "Cooler Power"
+      },
+      "supply_fan_power": {
+        "name": "Supply Fan Power"
+      },
+      "exhaust_fan_power": {
+        "name": "Exhaust Fan Power"
+      },
+      "annual_energy_savings": {
+        "name": "Annual Energy Savings"
+      },
+      "co2_reduction": {
+        "name": "CO2 Reduction"
+      },
+      "fault_counter": {
+        "name": "Fault Counter"
+      },
+      "maintenance_counter": {
+        "name": "Maintenance Counter"
+      },
+      "filter_replacement_counter": {
+        "name": "Filter Replacement Counter"
+      },
+      "supply_pressure": {
+        "name": "Supply Pressure"
+      },
+      "exhaust_pressure": {
+        "name": "Exhaust Pressure"
+      },
+      "differential_pressure": {
+        "name": "Differential Pressure"
+      },
+      "motor_supply_rpm": {
+        "name": "Supply Fan RPM"
+      },
+      "motor_exhaust_rpm": {
+        "name": "Exhaust Fan RPM"
+      },
+      "motor_supply_current": {
+        "name": "Supply Fan Current"
+      },
+      "motor_exhaust_current": {
+        "name": "Exhaust Fan Current"
+      },
+      "motor_supply_voltage": {
+        "name": "Supply Fan Voltage"
+      },
+      "motor_exhaust_voltage": {
+        "name": "Exhaust Fan Voltage"
+      },
+      "dac_supply": {
+        "name": "Supply DAC"
+      },
+      "dac_exhaust": {
+        "name": "Exhaust DAC"
+      },
+      "dac_heater": {
+        "name": "Heater DAC"
+      },
+      "dac_cooler": {
+        "name": "Cooler DAC"
+      },
+      "damper_position_bypass": {
+        "name": "Bypass Damper Position"
+      },
+      "damper_position_gwc": {
+        "name": "GWC Damper Position"
+      },
+      "damper_position_mix": {
+        "name": "Mix Damper Position"
+      },
+      "firmware_major": {
+        "name": "Firmware Major"
+      },
+      "firmware_minor": {
+        "name": "Firmware Minor"
+      },
+      "firmware_patch": {
+        "name": "Firmware Patch"
+      },
+      "expansion_version": {
+        "name": "Expansion Version"
       }
     },
     "binary_sensor": {
@@ -162,6 +288,84 @@
       },
       "communication_error": {
         "name": "Communication Error"
+      },
+      "duct_water_heater_pump": {
+        "name": "Water Heater Pump"
+      },
+      "info": {
+        "name": "Unit Operation Confirmation"
+      },
+      "work_permit": {
+        "name": "Work Permit"
+      },
+      "hood": {
+        "name": "Hood"
+      },
+      "expansion": {
+        "name": "Expansion Module"
+      },
+      "contamination_sensor": {
+        "name": "Contamination Sensor"
+      },
+      "external_contact_1": {
+        "name": "External Contact 1"
+      },
+      "external_contact_2": {
+        "name": "External Contact 2"
+      },
+      "external_contact_3": {
+        "name": "External Contact 3"
+      },
+      "external_contact_4": {
+        "name": "External Contact 4"
+      },
+      "fire_alarm": {
+        "name": "Fire Alarm"
+      },
+      "frost_alarm": {
+        "name": "Frost Alarm"
+      },
+      "fan_error": {
+        "name": "Fan Error"
+      },
+      "heater_error": {
+        "name": "Heater Error"
+      },
+      "cooler_error": {
+        "name": "Cooler Error"
+      },
+      "bypass_error": {
+        "name": "Bypass Error"
+      },
+      "gwc_error": {
+        "name": "GWC Error"
+      },
+      "expansion_error": {
+        "name": "Expansion Module Error"
+      },
+      "night_cooling_active": {
+        "name": "Night Cooling Active"
+      },
+      "air_quality_control_active": {
+        "name": "Air Quality Control Active"
+      },
+      "humidity_control_active": {
+        "name": "Humidity Control Active"
+      },
+      "temperature_control_active": {
+        "name": "Temperature Control Active"
+      },
+      "demand_control_active": {
+        "name": "Demand Control Active"
+      },
+      "schedule_control_active": {
+        "name": "Schedule Control Active"
+      },
+      "manual_control_active": {
+        "name": "Manual Control Active"
+      },
+      "on_off_panel_mode": {
+        "name": "Panel Power"
       }
     },
     "climate": {
@@ -182,7 +386,7 @@
         "name": "Bypass Mode",
         "state": {
           "auto": "Auto",
-          "open": "Open", 
+          "open": "Open",
           "closed": "Closed"
         }
       },
