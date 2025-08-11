@@ -19,24 +19,43 @@ _LOGGER = logging.getLogger(__name__)
 SELECT_DEFINITIONS = {
     "mode": {
         "icon": "mdi:cog",
+ codex/replace-hard-coded-strings-with-translation-keys
+        "options": ["auto", "manual", "temporary"],
+        "values": [0, 1, 2],
+=======
         "translation_key": "mode",
         "states": {"auto": 0, "manual": 1, "temporary": 2},
+ main
         "register_type": "holding_registers",
     },
     "bypass_mode": {
         "icon": "mdi:pipe-leak",
+ codex/replace-hard-coded-strings-with-translation-keys
+        "options": ["auto", "open", "closed"],
+        "values": [0, 1, 2],
+=======
         "translation_key": "bypass_mode",
         "states": {"auto": 0, "open": 1, "closed": 2},
+ main
         "register_type": "holding_registers",
     },
     "gwc_mode": {
         "icon": "mdi:pipe",
+ codex/replace-hard-coded-strings-with-translation-keys
+        "options": ["off", "auto", "forced"],
+        "values": [0, 1, 2],
+=======
         "translation_key": "gwc_mode",
         "states": {"off": 0, "auto": 1, "forced": 2},
+ main
         "register_type": "holding_registers",
     },
     "filter_change": {
         "icon": "mdi:filter-variant",
+ codex/replace-hard-coded-strings-with-translation-keys
+        "options": ["presostat", "flat_filters", "cleanpad", "cleanpad_pure"],
+        "values": [1, 2, 3, 4],
+=======
         "translation_key": "filter_change",
         "states": {
             "presostat": 1,
@@ -44,6 +63,7 @@ SELECT_DEFINITIONS = {
             "cleanpad": 3,
             "cleanpad_pure": 4,
         },
+ main
         "register_type": "holding_registers",
     },
 }

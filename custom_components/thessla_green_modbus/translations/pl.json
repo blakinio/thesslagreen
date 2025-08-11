@@ -416,7 +416,11 @@
         "name": "Tryb GWC",
         "state": {
           "off": "Wyłączony",
+ codex/replace-hard-coded-strings-with-translation-keys
+          "auto": "Automatyczny",
+=======
           "auto": "Auto",
+ main
           "forced": "Wymuszony"
         }
       },
