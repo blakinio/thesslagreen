@@ -4,7 +4,7 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, MODEL
 from .coordinator import ThesslaGreenCoordinator
 
 
@@ -25,7 +25,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenCoordinator]):
             identifiers={(DOMAIN, f"{coordinator.host}_{coordinator.slave_id}")},
             name=device_name,
             manufacturer="ThesslaGreen",
-            model="AirPack",
+            model=coordinator.device_info.get("model", MODEL),
             sw_version=device_info.get("firmware", "Unknown"),
         )
 
