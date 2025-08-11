@@ -21,7 +21,15 @@ CONF_RETRY = "retry"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 
 # Platforms
-PLATFORMS = ["sensor", "binary_sensor", "climate", "fan", "select", "number", "switch", "diagnostics"]
+PLATFORMS = [
+    "sensor",
+    "binary_sensor",
+    "climate",
+    "fan",
+    "select",
+    "number",
+    "switch",
+]
 
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
