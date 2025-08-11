@@ -1,5 +1,7 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
+from typing import Any, Dict
+
 # Integration constants
 DOMAIN = "thessla_green_modbus"
 MANUFACTURER = "ThesslaGreen"
@@ -33,7 +35,7 @@ PLATFORMS = [
 ]
 
 # Entity mappings for various platforms
-ENTITY_MAPPINGS = {
+ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     "number": {
         "required_temperature": {
             "unit": "°C",

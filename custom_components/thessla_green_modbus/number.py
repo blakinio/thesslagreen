@@ -38,7 +38,7 @@ async def async_setup_entry(
     entities = []
 
     # Get number entity mappings
-    number_mappings = ENTITY_MAPPINGS.get("number", {})
+    number_mappings: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
 
     # Create number entities for available writable registers
     for register_name, entity_config in number_mappings.items():
