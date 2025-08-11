@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Enhanced optimization validation tests
-- GitHub Actions CI/CD pipeline  
+- GitHub Actions CI/CD pipeline
 - Pre-commit hooks for code quality
 - Example configuration file
 - Contributing guidelines
+
+### Removed
+- Custom Modbus client in favor of native AsyncModbusTcpClient
 
 ## [2.0.0] - 2025-01-XX - MAJOR OPTIMIZATION RELEASE ⚡
 
