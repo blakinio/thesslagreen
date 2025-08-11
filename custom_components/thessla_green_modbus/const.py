@@ -196,7 +196,7 @@ INPUT_REGISTERS = {
     "manual_control_active": 0x051F,
 }
 
-# HOLDING REGISTERS (03 - READ/WRITE HOLDING REGISTER) - Konfiguracja i kontrola
+# HOLDING REGISTERS (03 - READ/WRITE HOLDING REGISTER) - Configuration and control
 HOLDING_REGISTERS = {
     # Main control registers (0x1000-0x1020)
     "on_off_panel_mode": 0x1000,
@@ -341,20 +341,20 @@ HOLDING_REGISTERS = {
     "schedule_friday_period2_start": 0x1125,
     "schedule_friday_period2_end": 0x1126,
     "schedule_friday_period2_flow": 0x1127,
-    # Temporary mode control (0x1130-0x1135) - z dokumentacji PDF
+    # Temporary mode control (0x1130-0x1135) - from PDF documentation
     "cfg_mode1": 0x1130,
     "air_flow_rate_temporary": 0x1131,
     "airflow_rate_change_flag": 0x1132,
     "cfg_mode2": 0x1133,
     "supply_air_temperature_temporary": 0x1134,
     "temperature_change_flag": 0x1135,
-    # System reset controls (0x113D-0x113E) - z dokumentacji PDF
+    # System reset controls (0x113D-0x113E) - from PDF documentation
     "hard_reset_settings": 0x113D,
     "hard_reset_schedule": 0x113E,
-    # Filter control (0x1150-0x1151) - z dokumentacji PDF
+    # Filter control (0x1150-0x1151) - from PDF documentation
     "pres_check_day": 0x1150,
     "pres_check_time": 0x1151,
-    # Modbus communication settings (0x1164-0x116B) - z dokumentacji PDF
+    # Modbus communication settings (0x1164-0x116B) - from PDF documentation
     "uart0_id": 0x1164,
     "uart0_baud": 0x1165,
     "uart0_parity": 0x1166,
@@ -363,7 +363,7 @@ HOLDING_REGISTERS = {
     "uart1_baud": 0x1169,
     "uart1_parity": 0x116A,
     "uart1_stop": 0x116B,
-    # Device name (0x1FD0-0x1FD7) - z dokumentacji PDF
+    # Device name (0x1FD0-0x1FD7) - from PDF documentation
     "device_name_1": 0x1FD0,
     "device_name_2": 0x1FD1,
     "device_name_3": 0x1FD2,
@@ -372,7 +372,7 @@ HOLDING_REGISTERS = {
     "device_name_6": 0x1FD5,
     "device_name_7": 0x1FD6,
     "device_name_8": 0x1FD7,
-    # Product key and lock (0x1FFB-0x1FFF) - z dokumentacji PDF
+    # Product key and lock (0x1FFB-0x1FFF) - from PDF documentation
     "lock_pass1": 0x1FFB,
     "lock_pass2": 0x1FFC,
     "lock_flag": 0x1FFD,
@@ -380,38 +380,38 @@ HOLDING_REGISTERS = {
     "filter_change": 0x1FFF,
 }
 
-# COIL REGISTERS (01 - READ COILS) - Stany wyjść i przekaźników
+# COIL REGISTERS (01 - READ COILS) - Output and relay states
 COIL_REGISTERS = {
-    "duct_water_heater_pump": 5,  # Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy
-    "bypass": 9,  # Stan wyjścia siłownika przepustnicy bypass
-    "info": 10,  # Stan wyjścia sygnału potwierdzenia pracy centrali (O1)
-    "power_supply_fans": 11,  # Stan wyjścia przekaźnika zasilania wentylatorów
-    "heating_cable": 12,  # Stan wyjścia przekaźnika zasilania kabla grzejnego
-    "work_permit": 13,  # Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)
-    "gwc": 14,  # Stan wyjścia przekaźnika GWC
-    "hood": 15,  # Stan wyjścia zasilającego przepustnicę okapu
+    "duct_water_heater_pump": 5,  # State of circulation pump relay output
+    "bypass": 9,  # State of bypass damper actuator output
+    "info": 10,  # State of system operation confirmation output (O1)
+    "power_supply_fans": 11,  # State of fan power relay output
+    "heating_cable": 12,  # State of heating cable power relay output
+    "work_permit": 13,  # State of operation confirmation relay output (Expansion)
+    "gwc": 14,  # State of GWC relay output
+    "hood": 15,  # State of hood damper power output
 }
 
-# DISCRETE INPUT REGISTERS (02 - READ DISCRETE INPUTS) - Stany wejść cyfrowych
+# DISCRETE INPUT REGISTERS (02 - READ DISCRETE INPUTS) - Digital input states
 DISCRETE_INPUT_REGISTERS = {
-    "expansion": 0,  # Stan modułu expansion
-    "contamination_sensor": 1,  # Stan czujnika zanieczyszczenia
-    "external_contact_1": 2,  # Stan kontaktu zewnętrznego 1
-    "external_contact_2": 3,  # Stan kontaktu zewnętrznego 2
-    "external_contact_3": 4,  # Stan kontaktu zewnętrznego 3
-    "external_contact_4": 5,  # Stan kontaktu zewnętrznego 4
-    "fire_alarm": 6,  # Stan alarmu pożarowego
-    "frost_alarm": 7,  # Stan alarmu przeciwmrozowego
-    "filter_alarm": 8,  # Stan alarmu filtra
-    "maintenance_alarm": 9,  # Stan alarmu konserwacji
-    "sensor_error": 10,  # Stan błędu czujnika
-    "communication_error": 11,  # Stan błędu komunikacji
-    "fan_error": 12,  # Stan błędu wentylatora
-    "heater_error": 13,  # Stan błędu grzałki
-    "cooler_error": 14,  # Stan błędu chłodnicy
-    "bypass_error": 15,  # Stan błędu bypass
-    "gwc_error": 16,  # Stan błędu GWC
-    "expansion_error": 17,  # Stan błędu modułu expansion
+    "expansion": 0,  # Expansion module state
+    "contamination_sensor": 1,  # Contamination sensor state
+    "external_contact_1": 2,  # External contact 1 state
+    "external_contact_2": 3,  # External contact 2 state
+    "external_contact_3": 4,  # External contact 3 state
+    "external_contact_4": 5,  # External contact 4 state
+    "fire_alarm": 6,  # Fire alarm state
+    "frost_alarm": 7,  # Frost alarm state
+    "filter_alarm": 8,  # Filter alarm state
+    "maintenance_alarm": 9,  # Maintenance alarm state
+    "sensor_error": 10,  # Sensor error status
+    "communication_error": 11,  # Communication error status
+    "fan_error": 12,  # Fan error status
+    "heater_error": 13,  # Heater error status
+    "cooler_error": 14,  # Cooler error status
+    "bypass_error": 15,  # Bypass error status
+    "gwc_error": 16,  # GWC error status
+    "expansion_error": 17,  # Expansion module error status
 }
 
 # Special function modes for mode register
