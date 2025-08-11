@@ -13,7 +13,12 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, ENTITY_MAPPINGS, HOLDING_REGISTERS
+from .const import DOMAIN, HOLDING_REGISTERS
+
+try:  # Newer versions expose metadata through ENTITY_MAPPINGS
+    from .const import ENTITY_MAPPINGS
+except ImportError:  # pragma: no cover - fall back when not available
+    ENTITY_MAPPINGS = {}
 from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,6 +44,9 @@ async def async_setup_entry(
 
     # Get number entity mappings
     number_mappings: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
+    if not number_mappings:
+        _LOGGER.debug("No number entity mappings found; skipping setup")
+        return
 
     # Create number entities for available writable registers
     for register_name, entity_config in number_mappings.items():

@@ -416,10 +416,10 @@
         "name": "Tryb GWC",
         "state": {
           "off": "Wyłączony",
- codex/replace-hard-coded-strings-with-translation-keys
-          "auto": "Automatyczny",
-=======
+ codex/add-entity-translation-keys-and-update-json
           "auto": "Auto",
+=======
+          "auto": "Automatyczny",
  main
           "forced": "Wymuszony"
         }
@@ -459,11 +459,19 @@
       "wietrzenie_intensity": {
         "name": "Intensywność wietrzenia"
       },
-      "filter_change_interval": {
-        "name": "Interwał wymiany filtrów"
+        "filter_change_interval": {
+          "name": "Interwał wymiany filtrów"
+        },
+        "required_temperature": { "name": "Wymagana temperatura" },
+        "max_supply_temperature": { "name": "Maksymalna temperatura nawiewu" },
+        "min_supply_temperature": { "name": "Minimalna temperatura nawiewu" },
+        "heating_curve_slope": { "name": "Nachylenie krzywej grzewczej" },
+        "heating_curve_offset": { "name": "Przesunięcie krzywej grzewczej" },
+        "boost_air_flow_rate": { "name": "Prędkość nawiewu w trybie boost" },
+        "boost_duration": { "name": "Czas trwania trybu boost" },
+        "humidity_target": { "name": "Docelowa wilgotność" }
       }
-    }
-  },
+    },
   "services": {
     "set_mode": {
       "name": "Ustaw tryb pracy",

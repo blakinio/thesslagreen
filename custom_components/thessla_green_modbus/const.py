@@ -34,62 +34,67 @@ PLATFORMS = [
     "switch",
 ]
 
-# Entity mappings for various platforms
-ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
-    "number": {
-        "required_temperature": {
-            "unit": "°C",
-            "min": 16,
-            "max": 26,
-            "step": 0.5,
-            "scale": 0.5,
-        },
-        "max_supply_temperature": {
-            "unit": "°C",
-            "min": 15,
-            "max": 45,
-            "step": 0.5,
-            "scale": 0.5,
-        },
-        "min_supply_temperature": {
-            "unit": "°C",
-            "min": 5,
-            "max": 30,
-            "step": 0.5,
-            "scale": 0.5,
-        },
-        "heating_curve_slope": {
-            "min": 0,
-            "max": 10,
-            "step": 0.1,
-            "scale": 0.1,
-        },
-        "heating_curve_offset": {
-            "unit": "°C",
-            "min": -10,
-            "max": 10,
-            "step": 0.5,
-            "scale": 0.5,
-        },
-        "boost_air_flow_rate": {
-            "unit": "%",
-            "min": 0,
-            "max": 100,
-            "step": 1,
-        },
-        "boost_duration": {
-            "unit": "min",
-            "min": 0,
-            "max": 240,
-            "step": 1,
-        },
-        "humidity_target": {
-            "unit": "%",
-            "min": 0,
-            "max": 100,
-            "step": 1,
-        },
-    }
+# Mapping of writable register names to Home Assistant number entity metadata
+# (unit, ranges, scaling factors, etc.)
+NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+    "required_temperature": {
+        "unit": "°C",
+        "min": 16,
+        "max": 26,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    "max_supply_temperature": {
+        "unit": "°C",
+        "min": 15,
+        "max": 45,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    "min_supply_temperature": {
+        "unit": "°C",
+        "min": 5,
+        "max": 30,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    "heating_curve_slope": {
+        "min": 0,
+        "max": 10,
+        "step": 0.1,
+        "scale": 0.1,
+    },
+    "heating_curve_offset": {
+        "unit": "°C",
+        "min": -10,
+        "max": 10,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    "boost_air_flow_rate": {
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+    },
+    "boost_duration": {
+        "unit": "min",
+        "min": 0,
+        "max": 240,
+        "step": 1,
+    },
+    "humidity_target": {
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+    },
+}
+
+# Aggregated entity mappings for all platforms.  Additional platforms can be
+# added here in the future.
+ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "number": NUMBER_ENTITY_MAPPINGS,
 }
 
 # ============================================================================
@@ -104,11 +109,9 @@ INPUT_REGISTERS = {
     "day_of_week": 0x0002,
     "period": 0x0003,
     "firmware_patch": 0x0004,
-    
     # Compilation info (0x000E-0x000F)
     "compilation_days": 0x000E,
     "compilation_seconds": 0x000F,
-    
     # Temperature sensors (0x0010-0x0017) - 0.1°C resolution, 0x8000 = no sensor
     "outside_temperature": 0x0010,
     "supply_temperature": 0x0011,
@@ -118,7 +121,6 @@ INPUT_REGISTERS = {
     "gwc_temperature": 0x0015,
     "ambient_temperature": 0x0016,
     "heating_temperature": 0x0017,
-    
     # Flow sensors (0x0018-0x001E) - m³/h, 0x8000 = no sensor
     "supply_flowrate": 0x0018,
     "exhaust_flowrate": 0x0019,
@@ -127,7 +129,6 @@ INPUT_REGISTERS = {
     "gwc_flowrate": 0x001C,
     "heat_recovery_flowrate": 0x001D,
     "bypass_flowrate": 0x001E,
-    
     # Air quality sensors (0x0020-0x0027)
     "co2_level": 0x0020,
     "humidity_indoor": 0x0021,
@@ -137,7 +138,6 @@ INPUT_REGISTERS = {
     "pm10_level": 0x0025,
     "voc_level": 0x0026,
     "air_quality_index": 0x0027,
-    
     # System status registers (0x0030-0x003F)
     "heat_recovery_efficiency": 0x0030,
     "filter_lifetime_remaining": 0x0031,
@@ -155,20 +155,16 @@ INPUT_REGISTERS = {
     "fault_counter": 0x003D,
     "maintenance_counter": 0x003E,
     "filter_replacement_counter": 0x003F,
-    
     # Expansion module version (0x00F1)
     "expansion_version": 0x00F1,
-    
     # Current airflow (0x0100-0x0101)
     "supply_air_flow": 0x0100,
     "exhaust_air_flow": 0x0101,
-    
     # PWM control values (0x0500-0x0503) - 0-4095 (0-10V)
     "dac_supply": 0x0500,
     "dac_exhaust": 0x0501,
     "dac_heater": 0x0502,
     "dac_cooler": 0x0503,
-    
     # Advanced diagnostics (0x0504-0x051F)
     "motor_supply_rpm": 0x0504,
     "motor_exhaust_rpm": 0x0505,
@@ -236,7 +232,6 @@ HOLDING_REGISTERS = {
     "bathroom_air_flow_rate": 0x101E,
     "bathroom_duration": 0x101F,
     "kitchen_air_flow_rate": 0x1020,
-    
     # Special functions (0x1030-0x1050)
     "bypass_mode": 0x1030,
     "bypass_temperature_threshold": 0x1031,
@@ -271,7 +266,6 @@ HOLDING_REGISTERS = {
     "basement_switch": 0x104E,
     "attic_switch": 0x104F,
     "garage_switch": 0x1050,
-    
     # Air quality settings (0x1060-0x1080)
     "co2_threshold_low": 0x1060,
     "co2_threshold_medium": 0x1061,
@@ -306,7 +300,6 @@ HOLDING_REGISTERS = {
     "keypad_lock": 0x107E,
     "sound_volume": 0x107F,
     "language": 0x1080,
-    
     # Weekly schedule (0x1100-0x1127)
     "weekly_schedule_mode": 0x1100,
     "schedule_monday_period1_start": 0x1101,
@@ -348,7 +341,6 @@ HOLDING_REGISTERS = {
     "schedule_friday_period2_start": 0x1125,
     "schedule_friday_period2_end": 0x1126,
     "schedule_friday_period2_flow": 0x1127,
-    
     # Temporary mode control (0x1130-0x1135) - z dokumentacji PDF
     "cfg_mode1": 0x1130,
     "air_flow_rate_temporary": 0x1131,
@@ -356,15 +348,12 @@ HOLDING_REGISTERS = {
     "cfg_mode2": 0x1133,
     "supply_air_temperature_temporary": 0x1134,
     "temperature_change_flag": 0x1135,
-    
     # System reset controls (0x113D-0x113E) - z dokumentacji PDF
     "hard_reset_settings": 0x113D,
     "hard_reset_schedule": 0x113E,
-    
     # Filter control (0x1150-0x1151) - z dokumentacji PDF
     "pres_check_day": 0x1150,
     "pres_check_time": 0x1151,
-    
     # Modbus communication settings (0x1164-0x116B) - z dokumentacji PDF
     "uart0_id": 0x1164,
     "uart0_baud": 0x1165,
@@ -374,7 +363,6 @@ HOLDING_REGISTERS = {
     "uart1_baud": 0x1169,
     "uart1_parity": 0x116A,
     "uart1_stop": 0x116B,
-    
     # Device name (0x1FD0-0x1FD7) - z dokumentacji PDF
     "device_name_1": 0x1FD0,
     "device_name_2": 0x1FD1,
@@ -384,7 +372,6 @@ HOLDING_REGISTERS = {
     "device_name_6": 0x1FD5,
     "device_name_7": 0x1FD6,
     "device_name_8": 0x1FD7,
-    
     # Product key and lock (0x1FFB-0x1FFF) - z dokumentacji PDF
     "lock_pass1": 0x1FFB,
     "lock_pass2": 0x1FFC,
@@ -395,36 +382,36 @@ HOLDING_REGISTERS = {
 
 # COIL REGISTERS (01 - READ COILS) - Stany wyjść i przekaźników
 COIL_REGISTERS = {
-    "duct_water_heater_pump": 5,            # Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy
-    "bypass": 9,                            # Stan wyjścia siłownika przepustnicy bypass
-    "info": 10,                             # Stan wyjścia sygnału potwierdzenia pracy centrali (O1)
-    "power_supply_fans": 11,                # Stan wyjścia przekaźnika zasilania wentylatorów
-    "heating_cable": 12,                    # Stan wyjścia przekaźnika zasilania kabla grzejnego
-    "work_permit": 13,                      # Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)
-    "gwc": 14,                              # Stan wyjścia przekaźnika GWC
-    "hood": 15,                             # Stan wyjścia zasilającego przepustnicę okapu
+    "duct_water_heater_pump": 5,  # Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy
+    "bypass": 9,  # Stan wyjścia siłownika przepustnicy bypass
+    "info": 10,  # Stan wyjścia sygnału potwierdzenia pracy centrali (O1)
+    "power_supply_fans": 11,  # Stan wyjścia przekaźnika zasilania wentylatorów
+    "heating_cable": 12,  # Stan wyjścia przekaźnika zasilania kabla grzejnego
+    "work_permit": 13,  # Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)
+    "gwc": 14,  # Stan wyjścia przekaźnika GWC
+    "hood": 15,  # Stan wyjścia zasilającego przepustnicę okapu
 }
 
-# DISCRETE INPUT REGISTERS (02 - READ DISCRETE INPUTS) - Stany wejść cyfrowych  
+# DISCRETE INPUT REGISTERS (02 - READ DISCRETE INPUTS) - Stany wejść cyfrowych
 DISCRETE_INPUT_REGISTERS = {
-    "expansion": 0,                         # Stan modułu expansion
-    "contamination_sensor": 1,              # Stan czujnika zanieczyszczenia
-    "external_contact_1": 2,                # Stan kontaktu zewnętrznego 1
-    "external_contact_2": 3,                # Stan kontaktu zewnętrznego 2
-    "external_contact_3": 4,                # Stan kontaktu zewnętrznego 3
-    "external_contact_4": 5,                # Stan kontaktu zewnętrznego 4
-    "fire_alarm": 6,                        # Stan alarmu pożarowego
-    "frost_alarm": 7,                       # Stan alarmu przeciwmrozowego
-    "filter_alarm": 8,                      # Stan alarmu filtra
-    "maintenance_alarm": 9,                 # Stan alarmu konserwacji
-    "sensor_error": 10,                     # Stan błędu czujnika
-    "communication_error": 11,              # Stan błędu komunikacji
-    "fan_error": 12,                        # Stan błędu wentylatora
-    "heater_error": 13,                     # Stan błędu grzałki
-    "cooler_error": 14,                     # Stan błędu chłodnicy
-    "bypass_error": 15,                     # Stan błędu bypass
-    "gwc_error": 16,                        # Stan błędu GWC
-    "expansion_error": 17,                  # Stan błędu modułu expansion
+    "expansion": 0,  # Stan modułu expansion
+    "contamination_sensor": 1,  # Stan czujnika zanieczyszczenia
+    "external_contact_1": 2,  # Stan kontaktu zewnętrznego 1
+    "external_contact_2": 3,  # Stan kontaktu zewnętrznego 2
+    "external_contact_3": 4,  # Stan kontaktu zewnętrznego 3
+    "external_contact_4": 5,  # Stan kontaktu zewnętrznego 4
+    "fire_alarm": 6,  # Stan alarmu pożarowego
+    "frost_alarm": 7,  # Stan alarmu przeciwmrozowego
+    "filter_alarm": 8,  # Stan alarmu filtra
+    "maintenance_alarm": 9,  # Stan alarmu konserwacji
+    "sensor_error": 10,  # Stan błędu czujnika
+    "communication_error": 11,  # Stan błędu komunikacji
+    "fan_error": 12,  # Stan błędu wentylatora
+    "heater_error": 13,  # Stan błędu grzałki
+    "cooler_error": 14,  # Stan błędu chłodnicy
+    "bypass_error": 15,  # Stan błędu bypass
+    "gwc_error": 16,  # Stan błędu GWC
+    "expansion_error": 17,  # Stan błędu modułu expansion
 }
 
 # Special function modes for mode register
@@ -464,7 +451,7 @@ SPECIAL_FUNCTION_MAP = {
 REGISTER_UNITS = {
     # Temperature registers - 0.1°C resolution
     "outside_temperature": "°C",
-    "supply_temperature": "°C", 
+    "supply_temperature": "°C",
     "exhaust_temperature": "°C",
     "fpx_temperature": "°C",
     "duct_supply_temperature": "°C",
@@ -475,27 +462,24 @@ REGISTER_UNITS = {
     "heat_exchanger_temperature_2": "°C",
     "heat_exchanger_temperature_3": "°C",
     "heat_exchanger_temperature_4": "°C",
-    
     # Flow registers - m³/h
     "supply_flowrate": "m³/h",
     "exhaust_flowrate": "m³/h",
-    "outdoor_flowrate": "m³/h", 
+    "outdoor_flowrate": "m³/h",
     "inside_flowrate": "m³/h",
     "gwc_flowrate": "m³/h",
     "heat_recovery_flowrate": "m³/h",
     "bypass_flowrate": "m³/h",
     "supply_air_flow": "m³/h",
     "exhaust_air_flow": "m³/h",
-    
     # Air quality
     "co2_level": "ppm",
     "humidity_indoor": "%",
-    "humidity_outdoor": "%", 
+    "humidity_outdoor": "%",
     "pm1_level": "μg/m³",
     "pm25_level": "μg/m³",
     "pm10_level": "μg/m³",
     "voc_level": "ppb",
-    
     # Power
     "preheater_power": "W",
     "main_heater_power": "W",
@@ -506,7 +490,6 @@ REGISTER_UNITS = {
     "daily_energy_consumption": "Wh",
     "annual_energy_consumption": "kWh",
     "annual_energy_savings": "kWh",
-    
     # Percentages
     "heat_recovery_efficiency": "%",
     "air_flow_rate_manual": "%",
@@ -515,26 +498,22 @@ REGISTER_UNITS = {
     "damper_position_bypass": "%",
     "damper_position_gwc": "%",
     "damper_position_mix": "%",
-    
     # Pressure
     "supply_pressure": "Pa",
-    "exhaust_pressure": "Pa", 
+    "exhaust_pressure": "Pa",
     "differential_pressure": "Pa",
-    
     # Voltage/Current
     "dac_supply": "V",
     "dac_exhaust": "V",
-    "dac_heater": "V", 
+    "dac_heater": "V",
     "dac_cooler": "V",
     "motor_supply_current": "mA",
     "motor_exhaust_current": "mA",
     "motor_supply_voltage": "mV",
     "motor_exhaust_voltage": "mV",
-    
     # RPM
     "motor_supply_rpm": "rpm",
     "motor_exhaust_rpm": "rpm",
-    
     # Time
     "system_uptime": "h",
     "filter_lifetime_remaining": "days",
@@ -548,7 +527,6 @@ REGISTER_UNITS = {
     "air_quality_response_delay": "min",
     "air_quality_boost_duration": "min",
     "display_timeout": "s",
-
     # Misc
     "co2_reduction": "kg",
     "air_quality_index": "",
@@ -572,7 +550,6 @@ REGISTER_MULTIPLIERS = {
     "heat_exchanger_temperature_2": 0.1,
     "heat_exchanger_temperature_3": 0.1,
     "heat_exchanger_temperature_4": 0.1,
-    
     # Temperature settings with 0.5°C resolution
     "required_temperature": 0.5,
     "comfort_temperature": 0.5,
@@ -593,7 +570,6 @@ REGISTER_MULTIPLIERS = {
     "supply_air_temperature_manual": 0.5,
     "supply_air_temperature_temporary": 0.5,
     "required_temp": 0.5,
-    
     # Voltage/Current conversions
     "dac_supply": 0.00244,  # 0-4095 -> 0-10V
     "dac_exhaust": 0.00244,
@@ -603,7 +579,6 @@ REGISTER_MULTIPLIERS = {
     "motor_exhaust_current": 0.001,
     "motor_supply_voltage": 0.001,  # mV to V
     "motor_exhaust_voltage": 0.001,
-    
     # Other multipliers
     "heating_curve_slope": 0.1,
 }
@@ -614,7 +589,7 @@ DEVICE_CLASSES = {
     "outside_temperature": "temperature",
     "supply_temperature": "temperature",
     "exhaust_temperature": "temperature",
-    "fpx_temperature": "temperature", 
+    "fpx_temperature": "temperature",
     "duct_supply_temperature": "temperature",
     "gwc_temperature": "temperature",
     "ambient_temperature": "temperature",
@@ -623,11 +598,9 @@ DEVICE_CLASSES = {
     "heat_exchanger_temperature_2": "temperature",
     "heat_exchanger_temperature_3": "temperature",
     "heat_exchanger_temperature_4": "temperature",
-    
     # Humidity
     "humidity_indoor": "humidity",
     "humidity_outdoor": "humidity",
-    
     # Power/Energy
     "preheater_power": "power",
     "main_heater_power": "power",
@@ -638,15 +611,12 @@ DEVICE_CLASSES = {
     "daily_energy_consumption": "energy",
     "annual_energy_consumption": "energy",
     "annual_energy_savings": "energy",
-
     # Mass
     "co2_reduction": "weight",
-
     # Pressure
     "supply_pressure": "pressure",
     "exhaust_pressure": "pressure",
     "differential_pressure": "pressure",
-    
     # Voltage/Current
     "dac_supply": "voltage",
     "dac_exhaust": "voltage",
@@ -697,7 +667,6 @@ STATE_CLASSES = {
     "motor_exhaust_current": "measurement",
     "motor_supply_voltage": "measurement",
     "motor_exhaust_voltage": "measurement",
-    
     # Total increasing values
     "daily_energy_consumption": "total_increasing",
     "annual_energy_consumption": "total_increasing",
