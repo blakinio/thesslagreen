@@ -146,7 +146,12 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     class ExceptionResponse:  # type: ignore[override]
         pass
 
+    class AsyncModbusTcpClient:  # type: ignore[override]
+        pass
+
     pymodbus_client_tcp.ModbusTcpClient = ModbusTcpClient
+    pymodbus_client_tcp.AsyncModbusTcpClient = AsyncModbusTcpClient
+    pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
     pymodbus_client.tcp = pymodbus_client_tcp
     pymodbus.client = pymodbus_client
     pymodbus_exceptions.ModbusException = ModbusException
