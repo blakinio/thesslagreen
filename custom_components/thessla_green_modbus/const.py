@@ -20,7 +20,8 @@ CONF_TIMEOUT = "timeout"
 CONF_RETRY = "retry"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 
-# Platforms
+# Platforms supported by the integration
+# Diagnostics is handled separately and therefore not listed here
 PLATFORMS = [
     "sensor",
     "binary_sensor",

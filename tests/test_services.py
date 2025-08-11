@@ -77,7 +77,6 @@ class Platform:
     SWITCH = "switch"
     CLIMATE = "climate"
     FAN = "fan"
-    DIAGNOSTICS = "diagnostics"
 
 const.Platform = Platform
 

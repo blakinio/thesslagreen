@@ -166,7 +166,6 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         SWITCH = "switch"
         CLIMATE = "climate"
         FAN = "fan"
-        DIAGNOSTICS = "diagnostics"
 
     const.Platform = Platform
 
