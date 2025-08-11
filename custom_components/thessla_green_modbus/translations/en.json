@@ -373,6 +373,14 @@
         "name": "Climate Control"
       }
     },
+ codex/add-entity-translation-keys-and-update-json
+    "fan": {
+      "thessla_green_fan": {
+        "name": "Ventilation"
+      }
+    },
+=======
+ main
     "switch": {
       "on_off_panel_mode": { "name": "Panel Power" },
       "boost_mode": { "name": "Boost Mode" },
@@ -388,7 +396,7 @@
       "mode": {
         "name": "Mode",
         "state": {
-          "auto": "Automatic",
+          "auto": "Auto",
           "manual": "Manual",
           "temporary": "Temporary"
         }
@@ -396,7 +404,11 @@
       "bypass_mode": {
         "name": "Bypass Mode",
         "state": {
+ codex/add-entity-translation-keys-and-update-json
+          "auto": "Auto",
+=======
           "auto": "Automatic",
+ main
           "open": "Open",
           "closed": "Closed"
         }
@@ -405,7 +417,11 @@
         "name": "GWC Mode",
         "state": {
           "off": "Off",
+ codex/add-entity-translation-keys-and-update-json
+          "auto": "Auto",
+=======
           "auto": "Automatic",
+ main
           "forced": "Forced"
         }
       },
@@ -418,6 +434,16 @@
           "cleanpad_pure": "CleanPad Pure"
         }
       }
+    },
+    "number": {
+      "required_temperature": { "name": "Required Temperature" },
+      "max_supply_temperature": { "name": "Max Supply Temperature" },
+      "min_supply_temperature": { "name": "Min Supply Temperature" },
+      "heating_curve_slope": { "name": "Heating Curve Slope" },
+      "heating_curve_offset": { "name": "Heating Curve Offset" },
+      "boost_air_flow_rate": { "name": "Boost Air Flow Rate" },
+      "boost_duration": { "name": "Boost Duration" },
+      "humidity_target": { "name": "Humidity Target" }
     }
   },
   "services": {
