@@ -1,6 +1,6 @@
 """Test configuration for ThesslaGreen Modbus integration."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import os
 import sys
 import types

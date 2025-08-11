@@ -1,7 +1,6 @@
 import sys
 import types
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
