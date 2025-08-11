@@ -7,13 +7,13 @@
         "data": {
           "host": "IP Address",
           "port": "Port",
-          "slave_id": "Slave ID",
+          "slave_id": "Device ID (Slave ID)",
           "name": "Name"
         },
         "data_description": {
           "host": "IP address of the AirPack device on your local network",
           "port": "Modbus TCP port (default 502)",
-          "slave_id": "Modbus device identifier (default 10)",
+          "slave_id": "Modbus device ID (Slave ID, default 10)",
           "name": "Device name in Home Assistant"
         }
       },
