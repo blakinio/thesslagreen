@@ -396,8 +396,13 @@
       }
     },
     "climate": {
-      "climate": {
+      "thessla_green_climate": {
         "name": "Sterowanie klimatem"
+      }
+    },
+    "fan": {
+      "thessla_green_fan": {
+        "name": "Wentylacja"
       }
     },
     "switch": {

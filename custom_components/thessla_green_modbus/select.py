@@ -18,28 +18,24 @@ _LOGGER = logging.getLogger(__name__)
 # Select entity definitions
 SELECT_DEFINITIONS = {
     "mode": {
-        "name": "Tryb pracy",
         "icon": "mdi:cog",
         "options": ["Automatyczny", "Manualny", "Chwilowy"],
         "values": [0, 1, 2],
         "register_type": "holding_registers",
     },
     "bypass_mode": {
-        "name": "Tryb bypass",
         "icon": "mdi:pipe-leak",
         "options": ["Auto", "Otwarty", "Zamknięty"],
         "values": [0, 1, 2],
         "register_type": "holding_registers",
     },
     "gwc_mode": {
-        "name": "Tryb GWC",
         "icon": "mdi:pipe",
         "options": ["Wyłączony", "Auto", "Wymuszony"],
         "values": [0, 1, 2],
         "register_type": "holding_registers",
     },
     "filter_change": {
-        "name": "Typ filtra",
         "icon": "mdi:filter-variant",
         "options": ["Presostat", "Filtry płaskie", "CleanPad", "CleanPad Pure"],
         "values": [1, 2, 3, 4],
@@ -76,7 +72,8 @@ class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
         self._definition = definition
 
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
-        self._attr_name = f"{coordinator.device_name} {definition['name']}"
+        self._attr_translation_key = register_name
+        self._attr_has_entity_name = True
         self._attr_device_info = coordinator.get_device_info()
         self._attr_icon = definition.get("icon")
         self._attr_options = definition["options"]
@@ -104,4 +101,3 @@ class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
                 await self.coordinator.async_request_refresh()
         except ValueError:
             _LOGGER.error("Invalid option: %s", option)
-
