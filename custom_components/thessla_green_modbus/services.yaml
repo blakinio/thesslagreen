@@ -5,15 +5,11 @@
 set_special_mode:
   name: Set Special Mode
   description: Sets special operating mode of heat recovery unit (BOOST, ECO, FIREPLACE, HOOD, etc.)
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     mode:
       name: Special Mode
       description: Type of special mode to activate
@@ -46,15 +42,11 @@ set_special_mode:
 set_airflow_schedule:
   name: Set Airflow Schedule
   description: Configures weekly airflow schedule
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     day:
       name: Day of Week
       description: Day of week to configure
@@ -112,15 +104,11 @@ set_airflow_schedule:
 set_bypass_parameters:
   name: Set Bypass Parameters
   description: Configures bypass system parameters
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     mode:
       name: Bypass Mode
       description: Bypass operating mode
@@ -153,15 +141,11 @@ set_bypass_parameters:
 set_gwc_parameters:
   name: Set GWC Parameters
   description: Configures ground heat exchanger parameters
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     mode:
       name: GWC Mode
       description: Ground heat exchanger operating mode
@@ -194,15 +178,11 @@ set_gwc_parameters:
 set_air_quality_thresholds:
   name: Set Air Quality Thresholds
   description: Configures thresholds for air quality control system
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     co2_low:
       name: CO2 Low Threshold
       description: Low CO2 threshold in ppm
@@ -243,15 +223,11 @@ set_air_quality_thresholds:
 set_temperature_curve:
   name: Set Temperature Curve
   description: Configures heating curve for heating system
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     slope:
       name: Curve Slope
       description: Heating curve slope (0.1-3.0)
@@ -292,15 +268,11 @@ set_temperature_curve:
 reset_filters:
   name: Reset Filter Counter
   description: Resets filter lifetime counter
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     filter_type:
       name: Filter Type
       description: Type of filter to set
@@ -316,15 +288,11 @@ reset_filters:
 reset_settings:
   name: Reset Settings
   description: Resets user settings to default values
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     reset_type:
       name: Reset Type
       description: Type of settings to reset
@@ -339,28 +307,19 @@ reset_settings:
 start_pressure_test:
   name: Start Pressure Test
   description: Starts automatic filter/pressure control test
-  fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
 
 set_modbus_parameters:
   name: Set Modbus Parameters
   description: Configures Modbus communication parameters (for advanced users only)
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     port:
       name: Port
       description: Modbus port (Air-B or Air++)
@@ -409,15 +368,11 @@ set_modbus_parameters:
 set_device_name:
   name: Set Device Name
   description: Sets custom device name (max 16 ASCII characters)
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
   fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
     device_name:
       name: Device Name
       description: New device name (max 16 characters)
@@ -429,12 +384,7 @@ set_device_name:
 refresh_device_data:
   name: Refresh Device Data
   description: Forces immediate refresh of device data
-  fields:
-    entity_id:
-      name: Climate Entity
-      description: Heat recovery unit climate entity
-      required: true
-      selector:
-        entity:
-          domain: climate
-          integration: thessla_green_modbus
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
