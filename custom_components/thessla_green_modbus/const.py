@@ -488,9 +488,9 @@ REGISTER_UNITS = {
     "air_quality_response_delay": "min",
     "air_quality_boost_duration": "min",
     "display_timeout": "s",
-    
+
     # Misc
-    "co2_reduction": "kg/year",
+    "co2_reduction": "kg",
     "air_quality_index": "",
     "fault_counter": "",
     "maintenance_counter": "",
@@ -578,7 +578,10 @@ DEVICE_CLASSES = {
     "daily_energy_consumption": "energy",
     "annual_energy_consumption": "energy",
     "annual_energy_savings": "energy",
-    
+
+    # Mass
+    "co2_reduction": "weight",
+
     # Pressure
     "supply_pressure": "pressure",
     "exhaust_pressure": "pressure",
