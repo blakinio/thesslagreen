@@ -38,7 +38,7 @@ HVAC_MODE_REVERSE_MAP = {
 PRESET_MODES = [
     "none",
     "eco",
-    "boost", 
+    "boost",
     "comfort",
     "away",
     "sleep",
@@ -50,19 +50,6 @@ PRESET_MODES = [
     "summer",
     "winter",
 ]
-
-# HVAC mode mappings (from device mode register)
-HVAC_MODE_MAP = {
-    0: HVACMode.AUTO,      # Automatic mode
-    1: HVACMode.FAN_ONLY,  # Manual mode  
-    2: HVACMode.FAN_ONLY,  # Temporary mode
-}
-
-HVAC_MODE_REVERSE_MAP = {
-    HVACMode.AUTO: 0,
-    HVACMode.FAN_ONLY: 1,
-    HVACMode.OFF: 0,  # Will be handled by on_off_panel_mode
-}
 
 
 async def async_setup_entry(
