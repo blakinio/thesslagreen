@@ -169,3 +169,31 @@ def test_async_setup_closes_scanner():
 
     import asyncio
     asyncio.run(run_test())
+
+
+def test_disconnect_closes_client():
+    """Ensure _disconnect awaits client.close."""
+
+    async def run_test():
+        hass = MagicMock()
+        coordinator = ThesslaGreenCoordinator(
+            hass=hass,
+            host="localhost",
+            port=502,
+            slave_id=1,
+            name="Test",
+            scan_interval=30,
+            timeout=10,
+            retry=3,
+        )
+
+        client = AsyncMock()
+        coordinator.client = client
+
+        await coordinator._disconnect()
+
+        client.close.assert_awaited_once()
+        assert coordinator.client is None
+
+    import asyncio
+    asyncio.run(run_test())
