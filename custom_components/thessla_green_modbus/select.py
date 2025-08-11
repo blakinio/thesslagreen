@@ -77,7 +77,7 @@ class ThesslaGreenSelect(CoordinatorEntity, SelectEntity):
 
         self._attr_unique_id = f"{coordinator.host}_{coordinator.slave_id}_{register_name}"
         self._attr_name = f"{coordinator.device_name} {definition['name']}"
-        self._attr_device_info = coordinator.device_info_dict
+        self._attr_device_info = coordinator.get_device_info()
         self._attr_icon = definition.get("icon")
         self._attr_options = definition["options"]
 
