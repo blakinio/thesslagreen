@@ -19,7 +19,7 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
     
-    # Get comprehensive diagnostic data
+    # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
     
     # Redact sensitive information

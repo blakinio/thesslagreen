@@ -555,7 +555,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "total_reads": self.statistics["successful_reads"],
             "failed_reads": self.statistics["failed_reads"],
             "success_rate": (
-                self.statistics["successful_reads"] / 
+                self.statistics["successful_reads"] /
                 max(1, self.statistics["successful_reads"] + self.statistics["failed_reads"])
             ) * 100,
             "avg_response_time": self.statistics["average_response_time"],
@@ -564,7 +564,40 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "registers_available": sum(len(regs) for regs in self.available_registers.values()),
             "registers_read": self.statistics["total_registers_read"],
         }
-    
+
+    def get_diagnostic_data(self) -> Dict[str, Any]:
+        """Return diagnostic information for Home Assistant."""
+        last_update = self.statistics.get("last_successful_update")
+        connection = {
+            "host": self.host,
+            "port": self.port,
+            "slave_id": self.slave_id,
+            "connected": bool(self.client and getattr(self.client, "connected", False)),
+            "last_successful_update": last_update.isoformat() if last_update else None,
+        }
+
+        statistics = self.statistics.copy()
+        if statistics.get("last_successful_update"):
+            statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
+
+        diagnostics: Dict[str, Any] = {
+            "connection": connection,
+            "statistics": statistics,
+            "performance": self.performance_stats,
+            "device_info": self.device_info,
+            "available_registers": {
+                key: sorted(list(value)) for key, value in self.available_registers.items()
+            },
+            "capabilities": (
+                self.capabilities.as_dict()
+                if hasattr(self.capabilities, "as_dict")
+                else {}
+            ),
+            "scan_result": self.device_scan_result,
+        }
+
+        return diagnostics
+
     def get_device_info(self) -> DeviceInfo:
         """Get device information for Home Assistant."""
         return DeviceInfo(
