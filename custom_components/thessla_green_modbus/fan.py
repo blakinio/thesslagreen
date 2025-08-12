@@ -73,6 +73,14 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         _LOGGER.debug("Initialized fan entity")
 
     @property
+    def available(self) -> bool:
+        """Return if the fan entity is available."""
+        return (
+            self.coordinator.last_update_success
+            and self.coordinator.data.get("on_off_panel_mode") is not None
+        )
+
+    @property
     def is_on(self) -> bool | None:
         """Return true if fan is on."""
         # Check if system is powered on
