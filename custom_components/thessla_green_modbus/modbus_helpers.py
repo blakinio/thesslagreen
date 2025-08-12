@@ -11,6 +11,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # Cache which keyword ("slave" or "unit") a given function accepts
 _KWARG_CACHE: Dict[Callable[..., Awaitable[Any]], str | None] = {}
+# Cache function signatures to avoid repeated inspection
+_SIG_CACHE: Dict[Callable[..., Awaitable[Any]], inspect.Signature] = {}
 
 
 async def _call_modbus(
@@ -27,10 +29,16 @@ async def _call_modbus(
     per function for subsequent invocations.
     """
 
+    # Fetch and cache the function signature
+    signature = _SIG_CACHE.get(func)
+    if signature is None:
+        signature = inspect.signature(func)
+        _SIG_CACHE[func] = signature
+
     # Map positional arguments to keyword-only parameters so that any values
     # intended for keyword-only parameters (e.g. ``count``) are moved into
     # ``kwargs``.
-    params = inspect.signature(func).parameters
+    params = signature.parameters
     positional: list[Any] = []
     param_iter = iter(params.values())
     for arg in args:

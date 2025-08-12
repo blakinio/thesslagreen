@@ -41,11 +41,11 @@ template:
 # Utility meter (optional - for energy tracking)
 utility_meter:
   thessla_daily_energy:
-    source: sensor.thessla_green_power_consumption
+    source: sensor.thessla_total_power_consumption
     cycle: daily
-    thessla_monthly_energy:
-      source: sensor.thessla_green_power_consumption
-      cycle: monthly
+  thessla_monthly_energy:
+    source: sensor.thessla_total_power_consumption
+    cycle: monthly
 
 # Input boolean for manual controls (optional)
 input_boolean:
@@ -80,17 +80,17 @@ automation:
         entity_id: input_boolean.thessla_boost_mode
         to: 'on'
     action:
-      - service: select.select_option
+      - service: thessla_green_modbus.set_special_mode
         target:
-          entity_id: select.thessla_special_function
+          entity_id: climate.thessla_green_climate
         data:
-          option: "hood"
+          mode: "hood"
       - delay: '00:30:00'  # 30 minutes
-      - service: select.select_option
+      - service: thessla_green_modbus.set_special_mode
         target:
-          entity_id: select.thessla_special_function
+          entity_id: climate.thessla_green_climate
         data:
-          option: "none"
+          mode: "none"
       - service: input_boolean.turn_off
         entity_id: input_boolean.thessla_boost_mode
 
@@ -106,7 +106,7 @@ automation:
     action:
       - service: climate.set_preset_mode
         target:
-          entity_id: climate.thessla_rekuperator
+          entity_id: climate.thessla_green_climate
         data:
           preset_mode: "sleep"
 
@@ -122,7 +122,7 @@ automation:
     action:
       - service: climate.set_preset_mode
         target:
-          entity_id: climate.thessla_rekuperator
+          entity_id: climate.thessla_green_climate
         data:
           preset_mode: "comfort"
 
@@ -135,7 +135,7 @@ automation:
     action:
       - service: climate.set_preset_mode
         target:
-          entity_id: climate.thessla_rekuperator
+          entity_id: climate.thessla_green_climate
         data:
           preset_mode: "away"
 
@@ -159,11 +159,11 @@ automation:
         above: 20
         for: '02:00:00'  # 2 hours above 20°C
     action:
-      - service: select.select_option
+      - service: thessla_green_modbus.set_special_mode
         target:
-          entity_id: select.thessla_season_mode
+          entity_id: climate.thessla_green_climate
         data:
-          option: "summer"
+          mode: "summer"
 
   - alias: "ThesslaGreen: Winter mode"
     trigger:
@@ -172,11 +172,11 @@ automation:
         below: 10
         for: '02:00:00'  # 2 hours below 10°C
     action:
-      - service: select.select_option
+      - service: thessla_green_modbus.set_special_mode
         target:
-          entity_id: select.thessla_season_mode
+          entity_id: climate.thessla_green_climate
         data:
-          option: "winter"
+          mode: "winter"
 
 # Scripts (optional - for complex actions)
 script:
@@ -185,7 +185,7 @@ script:
     sequence:
       - service: climate.set_preset_mode
         target:
-          entity_id: climate.thessla_rekuperator
+          entity_id: climate.thessla_green_climate
         data:
           preset_mode: "comfort"
       - service: number.set_value
@@ -199,7 +199,7 @@ script:
     sequence:
       - service: climate.set_preset_mode
         target:
-          entity_id: climate.thessla_rekuperator
+          entity_id: climate.thessla_green_climate
         data:
           preset_mode: "eco"
       - service: number.set_value
@@ -211,11 +211,11 @@ script:
   thessla_party_mode:
     alias: "ThesslaGreen Party Mode"
     sequence:
-      - service: select.select_option
+      - service: thessla_green_modbus.set_special_mode
         target:
-          entity_id: select.thessla_special_function
+          entity_id: climate.thessla_green_climate
         data:
-          option: "ventilation_manual"
+          mode: "party"
       - service: number.set_value
         target:
           entity_id: number.thessla_air_flow_rate_manual
@@ -235,27 +235,25 @@ group:
   thessla_controls:
     name: "ThesslaGreen Controls"
     entities:
-      - climate.thessla_rekuperator
-      - fan.thessla_wentylator
+      - climate.thessla_green_climate
+      - fan.thessla_green_fan
       - select.thessla_mode
-      - select.thessla_special_function
 
   thessla_status:
     name: "ThesslaGreen Status"
     entities:
-      - binary_sensor.thessla_device_status_smart
+      - binary_sensor.thessla_info
       - binary_sensor.thessla_constant_flow_active
       - binary_sensor.thessla_power_supply_fans
 
 # Lovelace dashboard card examples (copy to your dashboard)
 # type: entities
 # entities:
-#   - entity: climate.thessla_rekuperator
+#   - entity: climate.thessla_green_climate
 #   - entity: sensor.thessla_outside_temperature
 #   - entity: sensor.thessla_supply_temperature
 #   - entity: sensor.thessla_supply_flowrate
 #   - entity: select.thessla_mode
-#   - entity: select.thessla_special_function
 # title: ThesslaGreen Control
 # show_header_toggle: false
 

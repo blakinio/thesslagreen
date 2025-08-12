@@ -39,7 +39,30 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
         def as_dict(self) -> Dict[str, Any]:
             """Return dictionary representation."""
             return dict(self)
+=======
+    class DeviceInfo:  # type: ignore[misc]
+        """Minimal fallback DeviceInfo for tests.
 
+        Stores provided keyword arguments and exposes an ``as_dict`` method
+        similar to Home Assistant's ``DeviceInfo`` dataclass.
+        """
+
+        def __init__(self, **kwargs: Any) -> None:
+            self._data: Dict[str, Any] = dict(kwargs)
+
+        def as_dict(self) -> Dict[str, Any]:
+            """Return stored fields as a dictionary."""
+            return dict(self._data)
+
+        # Provide dictionary-style and attribute-style access for convenience in tests
+        def __getitem__(self, key: str) -> Any:  # pragma: no cover - simple mapping
+            return self._data[key]
+
+        def __getattr__(self, item: str) -> Any:
+            try:
+                return self._data[item]
+            except KeyError as exc:  # pragma: no cover - mirror dict behaviour
+                raise AttributeError(item) from exc
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -286,7 +309,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     0x0000,
                     count=count,
                 )
-                if response.isError():
+                if response is None or response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
             except (ModbusException, ConnectionException) as exc:
@@ -429,6 +452,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     start_addr,
                     count=count,
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading input registers at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read input registers at 0x%04X: %s", start_addr, response
@@ -477,6 +506,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     start_addr,
                     count=count,
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading holding registers at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read holding registers at 0x%04X: %s", start_addr, response
@@ -527,6 +562,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     start_addr,
                     count=count,
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading coil registers at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read coil registers at 0x%04X: %s", start_addr, response
@@ -581,6 +622,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     start_addr,
                     count=count,
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading discrete inputs at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read discrete inputs at 0x%04X: %s", start_addr, response

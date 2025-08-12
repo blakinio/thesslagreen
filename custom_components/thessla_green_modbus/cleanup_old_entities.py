@@ -112,9 +112,14 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
             backup_path.unlink()
             return True
 
-    except Exception as exc:
-        _LOGGER.error("Error processing entity registry: %s", exc)
-        # Restore backup
+    except OSError as exc:
+        _LOGGER.error("Error processing entity registry file: %s", exc)
+        if backup_path.exists():
+            shutil.copy2(backup_path, registry_path)
+            _LOGGER.info("Restored backup from: %s", backup_path)
+        return False
+    except json.JSONDecodeError as exc:
+        _LOGGER.error("Error decoding entity registry JSON: %s", exc)
         if backup_path.exists():
             shutil.copy2(backup_path, registry_path)
             _LOGGER.info("Restored backup from: %s", backup_path)
