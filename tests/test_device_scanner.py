@@ -220,6 +220,25 @@ async def test_load_registers_duplicate_warning(tmp_path, caplog):
     assert any("Duplicate register address" in record.message for record in caplog.records)
 
 
+async def test_load_registers_duplicate_names(tmp_path):
+    """Ensure duplicate register names are suffixed for uniqueness."""
+    csv_content = (
+        "Function_Code,Register_Name,Address_DEC\n"
+        "04,reg_a,1\n"
+        "04,reg_a,2\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path
+    ):
+        scanner = ThesslaGreenDeviceScanner("host", 502, 10)
+
+    assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
+
+
 async def test_analyze_capabilities():
     """Test capability analysis."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
