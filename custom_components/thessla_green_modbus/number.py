@@ -77,7 +77,7 @@ async def async_setup_entry(
             _LOGGER.debug("Created number entity: %s", register_name)
 
     if entities:
-        async_add_entities(entities)
+        async_add_entities(entities, True)
         _LOGGER.info("Added %d number entities", len(entities))
     else:
         _LOGGER.debug("No number entities were created")
