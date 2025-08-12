@@ -87,6 +87,9 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
+        # Keep track of the Modbus client so it can be closed later
+        self._client: Optional["AsyncModbusTcpClient"] = None
+
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
@@ -267,11 +270,13 @@ class ThesslaGreenDeviceScanner:
         """Scan device and return device info, capabilities and present blocks."""
         from pymodbus.client import AsyncModbusTcpClient
 
-        client = AsyncModbusTcpClient(
+        # Store client instance for later cleanup in close()
+        self._client = AsyncModbusTcpClient(
             host=self.host,
             port=self.port,
             timeout=self.timeout,
         )
+        client = self._client
 
         try:
             _LOGGER.debug("Connecting to ThesslaGreen device at %s:%s", self.host, self.port)
@@ -434,14 +439,6 @@ class ThesslaGreenDeviceScanner:
         except Exception as exc:
             _LOGGER.exception("Unexpected error during device scan")
             raise
-        finally:
-            try:
-                await client.close()
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug("Error closing Modbus client: %s", exc)
-            except Exception as exc:
-                _LOGGER.debug("Unexpected error closing Modbus client: %s", exc)
-            _LOGGER.debug("Disconnected from ThesslaGreen device")
 
     async def scan_device(self) -> Dict[str, Any]:
         """Scan device and return formatted result - compatible with coordinator."""
@@ -485,8 +482,18 @@ class ThesslaGreenDeviceScanner:
 
     async def close(self):
         """Close the scanner connection if any."""
-        # Nothing to close in scanner itself
-        pass
+        if self._client is None:
+            return
+
+        try:
+            await self._client.close()
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug("Error closing Modbus client: %s", exc)
+        except Exception as exc:
+            _LOGGER.debug("Unexpected error closing Modbus client: %s", exc)
+        finally:
+            self._client = None
+            _LOGGER.debug("Disconnected from ThesslaGreen device")
 
     def _analyze_capabilities_enhanced(self) -> Dict[str, bool]:
         """Enhanced capability analysis for optimization tests."""

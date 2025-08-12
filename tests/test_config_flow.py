@@ -1,6 +1,6 @@
 """Test config flow for ThesslaGreen Modbus integration."""
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from homeassistant.const import CONF_HOST, CONF_PORT
 
@@ -69,6 +69,7 @@ async def test_form_user_success():
         CONF_HOST: "192.168.1.100",
         CONF_PORT: 502,
         "slave_id": 10,
+        "unit": 10,
         CONF_NAME: "My Device",
     }
 
@@ -152,14 +153,21 @@ async def test_validate_input_success():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.device_scanner.ThesslaGreenDeviceScanner.scan_device",
-        return_value={
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner"
+    ) as mock_scanner_cls:
+        scanner_instance = AsyncMock()
+        scanner_instance.scan_device.return_value = {
             "available_registers": {},
-            "device_info": {"device_name": "ThesslaGreen AirPack", "firmware": "1.0", "serial_number": "123"},
+            "device_info": {
+                "device_name": "ThesslaGreen AirPack",
+                "firmware": "1.0",
+                "serial_number": "123",
+            },
             "capabilities": {},
-        },
-    ):
+        }
+        mock_scanner_cls.return_value = scanner_instance
         result = await validate_input(hass, data)
+        scanner_instance.close.assert_awaited_once()
 
     assert result["title"] == "Test"
     assert "device_info" in result
