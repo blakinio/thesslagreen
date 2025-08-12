@@ -15,6 +15,8 @@ try:
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
     from homeassistant.exceptions import ConfigEntryNotReady
     import homeassistant.util  # ensure util submodule is loaded for plugins
+    import homeassistant.util.logging  # noqa: F401
+    import homeassistant.util.dt  # noqa: F401
 except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     ha = types.ModuleType("homeassistant")
     core = types.ModuleType("homeassistant.core")

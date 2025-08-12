@@ -130,6 +130,48 @@
       },
       "exp_version": {
         "name": "Expansion Version"
+      },
+      "day_of_week": {
+        "name": "Day of Week"
+      },
+      "period": {
+        "name": "Period"
+      },
+      "compilation_days": {
+        "name": "Compilation Days"
+      },
+      "compilation_seconds": {
+        "name": "Compilation Seconds"
+      },
+      "serial_number_1": {
+        "name": "Serial Number Part 1"
+      },
+      "serial_number_2": {
+        "name": "Serial Number Part 2"
+      },
+      "serial_number_3": {
+        "name": "Serial Number Part 3"
+      },
+      "serial_number_4": {
+        "name": "Serial Number Part 4"
+      },
+      "serial_number_5": {
+        "name": "Serial Number Part 5"
+      },
+      "serial_number_6": {
+        "name": "Serial Number Part 6"
+      },
+      "supply_percentage": {
+        "name": "Supply Percentage"
+      },
+      "exhaust_percentage": {
+        "name": "Exhaust Percentage"
+      },
+      "min_percentage": {
+        "name": "Minimum Percentage"
+      },
+      "max_percentage": {
+        "name": "Maximum Percentage"
       }
     },
     "binary_sensor": {
@@ -165,6 +207,45 @@
       },
       "contamination_sensor": {
         "name": "Contamination Sensor"
+      },
+      "duct_heater_protection": {
+        "name": "Duct Heater Protection"
+      },
+      "dp_duct_filter_overflow": {
+        "name": "Duct Filter Overflow"
+      },
+      "airing_sensor": {
+        "name": "Airing Sensor"
+      },
+      "airing_switch": {
+        "name": "Airing Switch"
+      },
+      "airing_mini": {
+        "name": "Airing Mini"
+      },
+      "fan_speed_3": {
+        "name": "Fan Speed 3"
+      },
+      "fan_speed_2": {
+        "name": "Fan Speed 2"
+      },
+      "fan_speed_1": {
+        "name": "Fan Speed 1"
+      },
+      "fireplace": {
+        "name": "Fireplace"
+      },
+      "dp_ahu_filter_overflow": {
+        "name": "AHU Filter Overflow"
+      },
+      "ahu_filter_protection": {
+        "name": "AHU Filter Protection"
+      },
+      "empty_house": {
+        "name": "Empty House"
+      },
+      "water_removal_active": {
+        "name": "Water Removal Active"
       },
       "ppoz": {
         "name": "Fire Alarm"

@@ -130,6 +130,48 @@
       },
       "exp_version": {
         "name": "Wersja modułu Expansion"
+      },
+      "day_of_week": {
+        "name": "Dzień tygodnia"
+      },
+      "period": {
+        "name": "Okres"
+      },
+      "compilation_days": {
+        "name": "Dni kompilacji"
+      },
+      "compilation_seconds": {
+        "name": "Sekundy kompilacji"
+      },
+      "serial_number_1": {
+        "name": "Numer seryjny część 1"
+      },
+      "serial_number_2": {
+        "name": "Numer seryjny część 2"
+      },
+      "serial_number_3": {
+        "name": "Numer seryjny część 3"
+      },
+      "serial_number_4": {
+        "name": "Numer seryjny część 4"
+      },
+      "serial_number_5": {
+        "name": "Numer seryjny część 5"
+      },
+      "serial_number_6": {
+        "name": "Numer seryjny część 6"
+      },
+      "supply_percentage": {
+        "name": "Procent nawiewu"
+      },
+      "exhaust_percentage": {
+        "name": "Procent wywiewu"
+      },
+      "min_percentage": {
+        "name": "Minimalny procent"
+      },
+      "max_percentage": {
+        "name": "Maksymalny procent"
       }
     },
     "binary_sensor": {
@@ -168,6 +210,45 @@
       },
       "contamination_sensor": {
         "name": "Czujnik zanieczyszczenia"
+      },
+      "duct_heater_protection": {
+        "name": "Zabezpieczenie nagrzewnicy kanałowej"
+      },
+      "dp_duct_filter_overflow": {
+        "name": "Przepełnienie filtra kanałowego"
+      },
+      "airing_sensor": {
+        "name": "Czujnik przewietrzania"
+      },
+      "airing_switch": {
+        "name": "Przełącznik przewietrzania"
+      },
+      "airing_mini": {
+        "name": "Mini przewietrzanie"
+      },
+      "fan_speed_3": {
+        "name": "Prędkość wentylatora 3"
+      },
+      "fan_speed_2": {
+        "name": "Prędkość wentylatora 2"
+      },
+      "fan_speed_1": {
+        "name": "Prędkość wentylatora 1"
+      },
+      "fireplace": {
+        "name": "Kominek"
+      },
+      "dp_ahu_filter_overflow": {
+        "name": "Przepełnienie filtra centrali"
+      },
+      "ahu_filter_protection": {
+        "name": "Zabezpieczenie filtra centrali"
+      },
+      "empty_house": {
+        "name": "Pusty dom"
+      },
+      "water_removal_active": {
+        "name": "Aktywne odprowadzanie wody"
       },
       "ppoz": {
         "name": "Alarm pożarowy"

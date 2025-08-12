@@ -1,0 +1,87 @@
+"""Tests for ThesslaGreen sensor platform setup."""
+import sys
+import types
+import pytest
+from unittest.mock import MagicMock
+
+# ---------------------------------------------------------------------------
+# Minimal Home Assistant stubs
+# ---------------------------------------------------------------------------
+
+const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
+setattr(const, "ELECTRIC_POTENTIAL_VOLT", "V")
+setattr(const, "PERCENTAGE", "%")
+
+
+class UnitOfTemperature:  # pragma: no cover - enum stub
+    CELSIUS = "°C"
+
+
+class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
+    CUBIC_METERS_PER_HOUR = "m³/h"
+
+
+const.UnitOfTemperature = UnitOfTemperature
+const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
+
+sensor_mod = types.ModuleType("homeassistant.components.sensor")
+
+
+class SensorEntity:  # pragma: no cover - simple stub
+    pass
+
+
+class SensorDeviceClass:  # pragma: no cover - enum stubs
+    TEMPERATURE = "temperature"
+    VOLTAGE = "voltage"
+
+
+class SensorStateClass:  # pragma: no cover - enum stubs
+    MEASUREMENT = "measurement"
+
+
+sensor_mod.SensorEntity = SensorEntity
+sensor_mod.SensorDeviceClass = SensorDeviceClass
+sensor_mod.SensorStateClass = SensorStateClass
+sys.modules["homeassistant.components.sensor"] = sensor_mod
+
+entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+
+
+class AddEntitiesCallback:  # pragma: no cover - simple stub
+    pass
+
+
+entity_platform.AddEntitiesCallback = AddEntitiesCallback
+sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+
+# ---------------------------------------------------------------------------
+# Actual tests
+# ---------------------------------------------------------------------------
+
+from custom_components.thessla_green_modbus.sensor import (
+    SENSOR_DEFINITIONS,
+    async_setup_entry,
+)
+from custom_components.thessla_green_modbus.const import DOMAIN
+
+
+@pytest.mark.asyncio
+async def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
+    """Ensure entities are created for all available sensor registers."""
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    available = {
+        "input_registers": set(),
+        "holding_registers": set(),
+    }
+    for name, definition in SENSOR_DEFINITIONS.items():
+        available.setdefault(definition["register_type"], set()).add(name)
+    mock_coordinator.available_registers = available
+
+    add_entities = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+
+    entities = add_entities.call_args[0][0]
+    assert len(entities) == len(SENSOR_DEFINITIONS)

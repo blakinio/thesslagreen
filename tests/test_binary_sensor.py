@@ -2,6 +2,7 @@
 import sys
 import types
 import pytest
+from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -49,7 +50,9 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 from custom_components.thessla_green_modbus.binary_sensor import (
     BINARY_SENSOR_DEFINITIONS,
     ThesslaGreenBinarySensor,
+    async_setup_entry,
 )
+from custom_components.thessla_green_modbus.const import DOMAIN
 
 
 def test_binary_sensor_creation_and_state(mock_coordinator):
@@ -65,3 +68,27 @@ def test_binary_sensor_creation_and_state(mock_coordinator):
     # Update coordinator data to trigger state change
     mock_coordinator.data["bypass"] = 1
     assert sensor.is_on is True
+
+
+@pytest.mark.asyncio
+async def test_async_setup_creates_all_binary_sensors(mock_coordinator, mock_config_entry):
+    """Ensure entities are created for all available binary sensor registers."""
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    # Build available register sets from definitions
+    available = {
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "input_registers": set(),
+        "holding_registers": set(),
+    }
+    for name, definition in BINARY_SENSOR_DEFINITIONS.items():
+        available[definition["register_type"]].add(name)
+    mock_coordinator.available_registers = available
+
+    add_entities = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+
+    entities = add_entities.call_args[0][0]
+    assert len(entities) == len(BINARY_SENSOR_DEFINITIONS)

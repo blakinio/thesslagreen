@@ -7,7 +7,12 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ELECTRIC_POTENTIAL_VOLT, UnitOfTemperature, UnitOfVolumeFlowRate
+from homeassistant.const import (
+    ELECTRIC_POTENTIAL_VOLT,
+    PERCENTAGE,
+    UnitOfTemperature,
+    UnitOfVolumeFlowRate,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -84,6 +89,57 @@ SENSOR_DEFINITIONS = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "input_registers",
     },
+    # System information
+    "day_of_week": {
+        "translation_key": "day_of_week",
+        "icon": "mdi:calendar-week",
+        "register_type": "input_registers",
+    },
+    "period": {
+        "translation_key": "period",
+        "icon": "mdi:clock-outline",
+        "register_type": "input_registers",
+    },
+    "compilation_days": {
+        "translation_key": "compilation_days",
+        "icon": "mdi:calendar",
+        "register_type": "input_registers",
+    },
+    "compilation_seconds": {
+        "translation_key": "compilation_seconds",
+        "icon": "mdi:timer",
+        "register_type": "input_registers",
+    },
+    "serial_number_1": {
+        "translation_key": "serial_number_1",
+        "icon": "mdi:identifier",
+        "register_type": "input_registers",
+    },
+    "serial_number_2": {
+        "translation_key": "serial_number_2",
+        "icon": "mdi:identifier",
+        "register_type": "input_registers",
+    },
+    "serial_number_3": {
+        "translation_key": "serial_number_3",
+        "icon": "mdi:identifier",
+        "register_type": "input_registers",
+    },
+    "serial_number_4": {
+        "translation_key": "serial_number_4",
+        "icon": "mdi:identifier",
+        "register_type": "input_registers",
+    },
+    "serial_number_5": {
+        "translation_key": "serial_number_5",
+        "icon": "mdi:identifier",
+        "register_type": "input_registers",
+    },
+    "serial_number_6": {
+        "translation_key": "serial_number_6",
+        "icon": "mdi:identifier",
+        "register_type": "input_registers",
+    },
     # Flow sensors
     "supply_flow_rate": {
         "translation_key": "supply_flow_rate",
@@ -144,6 +200,35 @@ SENSOR_DEFINITIONS = {
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": ELECTRIC_POTENTIAL_VOLT,
+        "register_type": "input_registers",
+    },
+    # Percentage sensors
+    "supply_percentage": {
+        "translation_key": "supply_percentage",
+        "icon": "mdi:fan-plus",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "exhaust_percentage": {
+        "translation_key": "exhaust_percentage",
+        "icon": "mdi:fan-minus",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "min_percentage": {
+        "translation_key": "min_percentage",
+        "icon": "mdi:percent-outline",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "max_percentage": {
+        "translation_key": "max_percentage",
+        "icon": "mdi:percent-outline",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
         "register_type": "input_registers",
     },
     # Firmware and version info
