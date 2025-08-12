@@ -194,8 +194,13 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             return
 
         try:
+            if percentage == 0:
+                await self.async_turn_off()
+                _LOGGER.info("Set fan speed to 0%")
+                return
+
             # Ensure minimum flow rate (ThesslaGreen typically requires 10% minimum)
-            actual_percentage = max(10, percentage) if percentage > 0 else 10
+            actual_percentage = max(10, percentage)
 
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
