@@ -616,7 +616,7 @@
       "fields": {
         "filter_type": {
           "name": "Filter Type",
-          "description": "Type of filter to set",
+          "description": "Type of filter to reset",
           "selector": {
             "select": {
               "options": {

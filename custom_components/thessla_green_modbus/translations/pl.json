@@ -616,7 +616,7 @@
       "fields": {
         "filter_type": {
           "name": "Typ filtra",
-          "description": "Typ filtra do ustawienia",
+          "description": "Typ filtra do zresetowania",
           "selector": {
             "select": {
               "options": {
