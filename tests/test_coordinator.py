@@ -110,6 +110,13 @@ class ModbusException(Exception):
 
 pymodbus_exceptions.ModbusException = ModbusException
 
+
+class ConnectionException(Exception):
+    pass
+
+
+pymodbus_exceptions.ConnectionException = ConnectionException
+
 modules = {
     "homeassistant": ha,
     "homeassistant.const": const,
@@ -195,6 +202,37 @@ def test_device_info(coordinator):
     """Test device info property."""
     coordinator.device_info = {"model": "AirPack Home"}
     device_info = coordinator.get_device_info()
+    assert device_info["manufacturer"] == "ThesslaGreen"
+    assert device_info["model"] == "AirPack Home"
+
+
+def test_device_info_dict_fallback(monkeypatch):
+    """device_info_dict should work without HA DeviceInfo."""
+    import importlib
+    import sys
+
+    # Simulate missing device_registry module
+    monkeypatch.delitem(sys.modules, "homeassistant.helpers.device_registry", raising=False)
+    monkeypatch.delattr(helpers_pkg, "device_registry", raising=False)
+    monkeypatch.delitem(
+        sys.modules, "custom_components.thessla_green_modbus.coordinator", raising=False
+    )
+    coordinator_module = importlib.import_module(
+        "custom_components.thessla_green_modbus.coordinator"
+    )
+    hass = MagicMock()
+    coord = coordinator_module.ThesslaGreenModbusCoordinator(
+        hass=hass,
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=10,
+        retry=3,
+    )
+    coord.device_info = {"model": "AirPack Home"}
+    device_info = coord.device_info_dict
     assert device_info["manufacturer"] == "ThesslaGreen"
     assert device_info["model"] == "AirPack Home"
 
