@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example configuration file
 - Contributing guidelines
 
+### Changed
+- Bumped minimum Home Assistant version to 2025.7.0
+
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient
 

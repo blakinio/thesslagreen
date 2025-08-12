@@ -501,10 +501,21 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
+codex/refactor-modbus-client-communication
                     response = await self.client.write_register(address, value, slave=self.slave_id)
                 elif register_name in COIL_REGISTERS:
                     address = COIL_REGISTERS[register_name]
                     response = await self.client.write_coil(address, bool(value), slave=self.slave_id)
+=======
+                    response = await self.client.write_register(
+                        address=address, value=value, slave=self.slave_id
+                    )
+                elif register_name in COIL_REGISTERS:
+                    address = COIL_REGISTERS[register_name]
+                    response = await self.client.write_coil(
+                        address=address, value=bool(value), slave=self.slave_id
+                    )
+main
                 else:
                     _LOGGER.error("Unknown register for writing: %s", register_name)
                     return False

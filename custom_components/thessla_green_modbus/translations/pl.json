@@ -7,13 +7,13 @@
         "data": {
           "host": "Adres IP",
           "port": "Port",
-          "slave_id": "Identyfikator Slave",
+          "slave_id": "ID urządzenia (Slave ID)",
           "name": "Nazwa"
         },
         "data_description": {
           "host": "Adres IP urządzenia AirPack w sieci lokalnej",
           "port": "Port Modbus TCP (domyślnie 502)",
-          "slave_id": "Identyfikator urządzenia Modbus (domyślnie 10)",
+          "slave_id": "ID urządzenia Modbus (Slave ID, domyślnie 10)",
           "name": "Nazwa urządzenia w Home Assistant"
         }
       },
@@ -35,7 +35,7 @@
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Interwał skanowania: {current_scan_interval}s\n- Limit czasu: {current_timeout}s\n- Liczba prób: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Częstotliwość odczytu: {current_scan_interval}s\n- Limit czasu połączenia: {current_timeout}s\n- Liczba ponowień: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Limit czasu połączenia (sekundy)",
@@ -117,7 +117,7 @@
         "name": "Przepływ rekuperatora"
       },
       "bypass_flowrate": {
-        "name": "Przepływ bypassu"
+        "name": "Przepływ obejścia (bypassu)"
       },
       "supply_air_flow": {
         "name": "Strumień nawiewu"
@@ -234,7 +234,7 @@
         "name": "Sterowanie chłodnicą"
       },
       "damper_position_bypass": {
-        "name": "Pozycja przepustnicy bypassu"
+        "name": "Pozycja przepustnicy obejścia (bypassu)"
       },
       "damper_position_gwc": {
         "name": "Pozycja przepustnicy GWC"
@@ -260,7 +260,7 @@
         "name": "Zasilanie wentylatorów"
       },
       "bypass": {
-        "name": "Bypass"
+        "name": "Obejście (bypass)"
       },
       "gwc": {
         "name": "System GWC"
@@ -326,7 +326,7 @@
         "name": "Błąd chłodnicy"
       },
       "bypass_error": {
-        "name": "Błąd bypassu"
+        "name": "Błąd obejścia (bypassu)"
       },
       "gwc_error": {
         "name": "Błąd GWC"
@@ -341,7 +341,7 @@
         "name": "Cykl odszraniania"
       },
       "summer_bypass_active": {
-        "name": "Letni bypass"
+        "name": "Letnie obejście (bypass)"
       },
       "winter_heating_active": {
         "name": "Zimowe grzanie"
@@ -422,7 +422,7 @@
         }
       },
       "bypass_mode": {
-        "name": "Tryb bypassu",
+        "name": "Tryb obejścia (bypass)",
         "state": {
           "auto": "Automatyczny",
           "open": "Otwarty",
@@ -503,8 +503,8 @@
       "description": "Kontroluje prędkość wentylatorów nawiewnego i wywiewnego oraz balans przepływów."
     },
     "control_bypass": {
-      "name": "Steruj bypassem",
-      "description": "Kontroluje tryb pracy systemu bypassu."
+      "name": "Steruj obejściem (bypass)",
+      "description": "Kontroluje tryb pracy systemu obejścia (bypassu)."
     },
     "control_gwc": {
       "name": "Steruj GWC",
