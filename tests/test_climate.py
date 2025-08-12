@@ -164,3 +164,20 @@ async def test_set_temperature_scaling():
         (addr_comfort, expected, coordinator.slave_id),
         (addr_required, expected, coordinator.slave_id),
     ]
+
+
+def test_target_temperature_none_when_unavailable():
+    """Return None when no target temperature register is present."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
+    coordinator.capabilities.basic_control = True
+    coordinator.data = {}
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate.target_temperature is None
+
+    coordinator.data["comfort_temperature"] = 20.0
+    assert climate.target_temperature == 20.0
