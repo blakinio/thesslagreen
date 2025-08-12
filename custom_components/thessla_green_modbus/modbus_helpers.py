@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Dict
 
 
 _LOGGER = logging.getLogger(__name__)
+
+# Cache which keyword ("slave" or "unit") a given function accepts
+_KWARG_CACHE: Dict[Callable[..., Awaitable[Any]], str | None] = {}
 
 
 async def _call_modbus(
@@ -15,18 +18,19 @@ async def _call_modbus(
     slave_id: int,
     *args: Any,
     **kwargs: Any,
-):
+) -> Any:
     """Invoke a Modbus function handling slave/unit compatibility.
 
-    This helper ensures compatibility between pymodbus versions that expect either
-    ``slave`` or ``unit`` as the keyword for the target device.
+    The call is first attempted using ``slave=<id>``.  If the underlying
+    function does not accept the ``slave`` keyword (raising ``TypeError``),
+    the helper retries with ``unit=<id>``.  The successful keyword is cached
+    per function for subsequent invocations.
     """
-    params = inspect.signature(func).parameters
- codex/refactor-modbus_helpers-to-support-keyword-only
-    kwarg = "slave" if "slave" in params else "unit"
 
-    # Map passed positional arguments to parameter names so that any values intended
-    # for keyword-only parameters (e.g. ``count``) are moved into ``kwargs``.
+    # Map positional arguments to keyword-only parameters so that any values
+    # intended for keyword-only parameters (e.g. ``count``) are moved into
+    # ``kwargs``.
+    params = inspect.signature(func).parameters
     positional: list[Any] = []
     param_iter = iter(params.values())
     for arg in args:
@@ -41,30 +45,30 @@ async def _call_modbus(
         else:
             positional.append(arg)
 
+    kwarg = _KWARG_CACHE.get(func)
+    if kwarg == "slave":
+        return await func(*positional, slave=slave_id, **kwargs)
+    if kwarg == "unit":
+        return await func(*positional, unit=slave_id, **kwargs)
+    if kwarg == "":
+        return await func(*positional, **kwargs)
+
+    # No cached keyword: try "slave" first then "unit"
     try:
-        return await func(*positional, **{kwarg: slave_id}, **kwargs)
-=======
-    if "slave" in params:
-        kwarg = "slave"
-    elif "unit" in params:
-        kwarg = "unit"
+        result = await func(*positional, slave=slave_id, **kwargs)
+    except TypeError as err:
+        if "unexpected keyword" not in str(err):
+            raise
+        try:
+            result = await func(*positional, unit=slave_id, **kwargs)
+        except TypeError as err2:
+            if "unexpected keyword" not in str(err2):
+                raise
+            _KWARG_CACHE[func] = ""
+            return await func(*positional, **kwargs)
+        else:
+            _KWARG_CACHE[func] = "unit"
+            return result
     else:
-        kwarg = None
-
-    try:
-        if kwarg is not None:
-            _LOGGER.debug(
-                "Calling %s with %s keyword", getattr(func, "__name__", repr(func)), kwarg
-            )
-            return await func(*args, **{kwarg: slave_id}, **kwargs)
-
-        _LOGGER.debug(
-            "Calling %s without address keyword", getattr(func, "__name__", repr(func))
-        )
-        return await func(*args, **kwargs)
- main
-    except Exception as err:  # pragma: no cover - log unexpected errors
-        _LOGGER.error(
-            "Modbus call %s failed: %s", getattr(func, "__name__", repr(func)), err
-        )
-        raise
+        _KWARG_CACHE[func] = "slave"
+        return result
