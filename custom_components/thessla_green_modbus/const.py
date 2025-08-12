@@ -20,6 +20,9 @@ DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
 
+# Sensor constants
+SENSOR_UNAVAILABLE = 0x8000  # Indicates missing/invalid sensor reading
+
 # Configuration options
 CONF_SLAVE_ID = "slave_id"
 CONF_SCAN_INTERVAL = "scan_interval"

@@ -53,6 +53,7 @@ from .const import (
     DOMAIN,
     MANUFACTURER,
     MODEL,
+    SENSOR_UNAVAILABLE,
 )
 from .multipliers import REGISTER_MULTIPLIERS
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
@@ -662,9 +663,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
         # Check for sensor error values
-        if value == 0x8000 and "temperature" in register_name.lower():
+        if value == SENSOR_UNAVAILABLE and "temperature" in register_name.lower():
             return None  # No sensor
-        if value == 0x8000 and "flow" in register_name.lower():
+        if value == SENSOR_UNAVAILABLE and "flow" in register_name.lower():
             return None  # No sensor
 
         # Apply multiplier

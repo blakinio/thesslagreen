@@ -3,6 +3,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 
 
 pytestmark = pytest.mark.asyncio
@@ -72,7 +73,10 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 0) is True
     
     # Invalid temperature sensor value
-    assert scanner._is_valid_register_value("outside_temperature", 32768) is False
+    assert (
+        scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        is False
+    )
     
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False

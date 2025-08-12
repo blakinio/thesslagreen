@@ -3,6 +3,8 @@ import pytest
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch, call
 
+from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+
 from conftest import CoordinatorMock
 
 from homeassistant.core import HomeAssistant
@@ -261,7 +263,9 @@ class TestThesslaGreenModbusCoordinator:
         assert result == 20.5
 
         # Invalid temperature (sensor disconnected)
-        result = coordinator_data._process_register_value("outside_temperature", 0x8000)
+        result = coordinator_data._process_register_value(
+            "outside_temperature", SENSOR_UNAVAILABLE
+        )
         assert result is None
 
         # Negative temperature (-5.0°C -> raw value 65486)
@@ -440,7 +444,10 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("mode", 1) is True
         
         # Invalid temperature sensor value
-        assert scanner._is_valid_register_value("outside_temperature", 32768) is False
+        assert (
+            scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+            is False
+        )
         
         # Invalid air flow value
         assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
