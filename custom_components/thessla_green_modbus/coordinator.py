@@ -303,6 +303,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     async def _ensure_connection(self) -> None:
         """Ensure Modbus connection is established."""
         if self.client is None or not self.client.connected:
+            if self.client is not None:
+                await self._disconnect()
             try:
                 from pymodbus.client import AsyncModbusTcpClient
 

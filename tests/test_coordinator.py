@@ -304,6 +304,37 @@ def test_post_process_data(coordinator):
     assert processed_data["flow_balance_status"] == "supply_dominant"
 
 
+@pytest.mark.asyncio
+async def test_reconfigure_does_not_leak_connections(coordinator):
+    """Ensure repeated reconnections do not increase open connections."""
+
+    class FakeClient:
+        """Simple Modbus client tracking open connections."""
+
+        open_connections = 0
+
+        def __init__(self, *args, **kwargs):
+            type(self).open_connections += 1
+            self.connected = False
+
+        async def connect(self):
+            self.connected = True
+            return True
+
+        async def close(self):
+            type(self).open_connections -= 1
+            self.connected = False
+
+    with patch("pymodbus.client.AsyncModbusTcpClient", FakeClient, create=True):
+        for _ in range(3):
+            await coordinator._ensure_connection()
+            assert FakeClient.open_connections == 1
+            coordinator.client.connected = False
+
+        await coordinator._disconnect()
+        assert FakeClient.open_connections == 0
+
+
 def cleanup_modules():
     """Clean up injected modules."""
     for name in modules:
