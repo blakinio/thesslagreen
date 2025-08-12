@@ -278,9 +278,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 await self._ensure_connection()
                 # Try to read a basic register to verify communication
                 response = await self._call_modbus(
+ codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_input_registers,
                     0x0000,
                     count=1,
+=======
+                    self.client.read_input_registers, 0x0000, count=1
+ main
                 )
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
@@ -419,9 +423,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         for start_addr, count in self._register_groups["input_registers"]:
             try:
                 response = await self._call_modbus(
+ codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_input_registers,
                     start_addr,
                     count=count,
+=======
+                    self.client.read_input_registers, start_addr, count=count
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -465,9 +473,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         for start_addr, count in self._register_groups["holding_registers"]:
             try:
                 response = await self._call_modbus(
+ codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_holding_registers,
                     start_addr,
                     count=count,
+=======
+                    self.client.read_holding_registers, start_addr, count=count
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -513,9 +525,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         for start_addr, count in self._register_groups["coil_registers"]:
             try:
                 response = await self._call_modbus(
+ codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_coils,
                     start_addr,
                     count=count,
+=======
+                    self.client.read_coils, start_addr, count=count
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -565,9 +581,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         for start_addr, count in self._register_groups["discrete_inputs"]:
             try:
                 response = await self._call_modbus(
+ codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_discrete_inputs,
                     start_addr,
                     count=count,
+=======
+                    self.client.read_discrete_inputs, start_addr, count=count
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
