@@ -132,14 +132,19 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def target_temperature(self) -> Optional[float]:
         """Return target temperature if available."""
         data = self.coordinator.data
-        for key in (
-            "comfort_temperature",
-            "required_temperature",
-            "required_temperature_legacy",
-        ):
-            value = data.get(key)
-            if isinstance(value, (int, float)):
-                return float(value)
+
+        value = data.get("comfort_temperature")
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        value = data.get("required_temperature")
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        value = data.get("required_temperature_legacy")
+        if isinstance(value, (int, float)):
+            return float(value)
+
         return None
 
     @property
@@ -254,17 +259,13 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
             # Retry once if power on failed
             if not power_on_success:
-                _LOGGER.warning(
-                    "Power-on failed when setting HVAC mode to %s, retrying", hvac_mode
-                )
+                _LOGGER.warning("Power-on failed when setting HVAC mode to %s, retrying", hvac_mode)
                 power_on_success = await self.coordinator.async_write_register(
                     "on_off_panel_mode", 1, refresh=False
                 )
 
             if not power_on_success:
-                _LOGGER.error(
-                    "Failed to enable device before setting HVAC mode to %s", hvac_mode
-                )
+                _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
                 return
 
             # Set mode
