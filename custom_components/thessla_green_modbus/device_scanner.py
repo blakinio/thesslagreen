@@ -134,14 +134,16 @@ class ThesslaGreenDeviceScanner:
         """Read coil registers."""
         try:
             response = await _call_modbus(
+ codex/refactor-device_scanner-and-coordinator-code
+=======
  codex/edit-emoji-strings-in-config_flow.py
                 client.read_coils,
                 self.slave_id,
                 address,
                 count,
 =======
+main
                 client.read_coils, self.slave_id, address, count
- main
             )
             if not response.isError():
                 return response.bits[:count]
