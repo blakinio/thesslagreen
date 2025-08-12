@@ -9,8 +9,9 @@ Usage:
 Run this script before restarting Home Assistant after updating the integration.
 """
 
-import logging
 import json
+import logging
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -83,7 +84,7 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
 
             # Check other problematic patterns
             for pattern in OLD_ENTITY_PATTERNS:
-                if pattern.replace("thessla.*", "thessla") in entity_id:
+                if re.search(pattern, entity_id):
                     if entity not in old_entities:
                         old_entities.append(entity)
 
@@ -142,7 +143,7 @@ def cleanup_automations(config_dir: Path) -> bool:
         # Check for references to old entities
         problematic_refs = []
         for pattern in OLD_ENTITY_PATTERNS:
-            if pattern.replace("thessla.*", "thessla") in content:
+            if re.search(pattern, content):
                 problematic_refs.append(pattern)
 
         if problematic_refs:
@@ -179,7 +180,7 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
         issues = []
 
         for pattern in OLD_ENTITY_PATTERNS:
-            if pattern.replace("thessla.*", "thessla") in content:
+            if re.search(pattern, content):
                 issues.append(f"Reference to {pattern}")
 
         # Check for old integration configuration
@@ -229,7 +230,7 @@ def cleanup_custom_component_cache(config_dir: Path) -> bool:
     return True
 
 
-def main():
+def main() -> None:
     """Main entry point of the script."""
     _LOGGER.info("ThesslaGreen Modbus - Cleanup Tool")
     _LOGGER.info("=" * 50)
