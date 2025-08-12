@@ -2,8 +2,14 @@ import sys
 import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
+)
+from custom_components.thessla_green_modbus.device_scanner import (
+    ConnectionException,
+    ThesslaGreenDeviceScanner,
 )
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
@@ -254,6 +260,23 @@ def test_disconnect_closes_client_sync():
 
         client.close.assert_called_once()
         assert coordinator.client is None
+
+    import asyncio
+    asyncio.run(run_test())
+
+
+def test_scan_device_closes_client_on_failure():
+    """Ensure scan_device closes the client even when scan fails."""
+
+    async def run_test():
+        scanner = ThesslaGreenDeviceScanner("localhost", 502)
+        scanner.scan = AsyncMock(side_effect=ConnectionException("fail"))
+        scanner.close = AsyncMock()
+
+        with pytest.raises(ConnectionException):
+            await scanner.scan_device()
+
+        scanner.close.assert_awaited_once()
 
     import asyncio
     asyncio.run(run_test())
