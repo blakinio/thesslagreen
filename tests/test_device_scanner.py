@@ -1,8 +1,11 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+
+
+pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
@@ -28,17 +31,18 @@ async def test_scan_device_success(mock_modbus_response):
     """Test successful device scan."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
     
-    with patch("pymodbus.client.ModbusTcpClient") as mock_client_class:
-        mock_client = MagicMock()
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
         mock_client.connect.return_value = True
         mock_client.read_input_registers.return_value = mock_modbus_response
         mock_client.read_holding_registers.return_value = mock_modbus_response
         mock_client.read_coils.return_value = mock_modbus_response
         mock_client.read_discrete_inputs.return_value = mock_modbus_response
         mock_client_class.return_value = mock_client
-        
+
         result = await scanner.scan_device()
-        
+        await scanner.close()
+
         assert "available_registers" in result
         assert "device_info" in result
         assert "capabilities" in result
@@ -49,13 +53,14 @@ async def test_scan_device_connection_failure():
     """Test device scan with connection failure."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
     
-    with patch("pymodbus.client.ModbusTcpClient") as mock_client_class:
-        mock_client = MagicMock()
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
         mock_client.connect.return_value = False
         mock_client_class.return_value = mock_client
-        
-        with pytest.raises(Exception, match="Failed to connect to device"):
+
+        with pytest.raises(Exception, match="Failed to connect"):
             await scanner.scan_device()
+        await scanner.close()
 
 
 async def test_is_valid_register_value():
@@ -118,3 +123,15 @@ async def test_group_registers_by_range():
     
     # Second chunk should have reg4, reg5
     assert len(chunks[0x0020]) == 2
+
+
+async def test_close_terminates_client():
+    """Ensure close() closes the underlying Modbus client."""
+    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    mock_client = AsyncMock()
+    scanner._client = mock_client
+
+    await scanner.close()
+
+    mock_client.close.assert_awaited_once()
+    assert scanner._client is None

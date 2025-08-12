@@ -9,6 +9,7 @@ core = types.ModuleType("homeassistant.core")
 helpers_pkg = types.ModuleType("homeassistant.helpers")
 helpers_uc = types.ModuleType("homeassistant.helpers.update_coordinator")
 helpers_dr = types.ModuleType("homeassistant.helpers.device_registry")
+helpers_script = types.ModuleType("homeassistant.helpers.script")
 exceptions = types.ModuleType("homeassistant.exceptions")
 config_entries = types.ModuleType("homeassistant.config_entries")
 pymodbus = types.ModuleType("pymodbus")
@@ -17,6 +18,28 @@ pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
 pymodbus_pdu = types.ModuleType("pymodbus.pdu")
 vol = types.ModuleType("voluptuous")
 cc_services = types.ModuleType("custom_components.thessla_green_modbus.services")
+
+# Minimal util.logging module required by pytest_homeassistant_custom_component
+util = types.ModuleType("homeassistant.util")
+util_logging = types.ModuleType("homeassistant.util.logging")
+
+
+def log_exception(*_args, **_kwargs):  # pragma: no cover - simple stub
+    return None
+
+
+util_logging.log_exception = log_exception
+util.logging = util_logging
+ha.util = util
+
+
+def _schedule_stop_scripts_after_shutdown(*_args, **_kwargs):  # pragma: no cover
+    return None
+
+
+helpers_script._schedule_stop_scripts_after_shutdown = (
+    _schedule_stop_scripts_after_shutdown
+)
 
 const.CONF_HOST = "host"
 const.CONF_NAME = "name"
@@ -46,6 +69,7 @@ class UpdateFailed(Exception):
 helpers_uc.UpdateFailed = UpdateFailed
 helpers_pkg.update_coordinator = helpers_uc
 helpers_pkg.device_registry = helpers_dr
+helpers_pkg.script = helpers_script
 
 class DeviceInfo:
     pass
@@ -107,8 +131,11 @@ sys.modules.update({
     "homeassistant.helpers": helpers_pkg,
     "homeassistant.helpers.update_coordinator": helpers_uc,
     "homeassistant.helpers.device_registry": helpers_dr,
+    "homeassistant.helpers.script": helpers_script,
     "homeassistant.exceptions": exceptions,
     "homeassistant.config_entries": config_entries,
+    "homeassistant.util": util,
+    "homeassistant.util.logging": util_logging,
     "pymodbus": pymodbus,
     "pymodbus.client": pymodbus_client,
     "pymodbus.exceptions": pymodbus_exceptions,
