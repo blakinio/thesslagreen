@@ -395,7 +395,8 @@ class ThesslaGreenDeviceScanner:
             for key, value in caps_dict.items():
                 setattr(caps, key, value)
 
-            register_blocks = {}
+            # Copy the discovered register address blocks so they can be returned
+            register_blocks = present_blocks.copy()
             _LOGGER.info(
                 "Device scan completed: %d registers detected, %d capabilities detected",
                 sum(len(v) for v in self.available_registers.values()),

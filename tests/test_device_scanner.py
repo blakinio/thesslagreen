@@ -109,7 +109,7 @@ async def test_scan_device_success(mock_modbus_response):
 async def test_scan_device_connection_failure():
     """Test device scan with connection failure."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
-    
+
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
         mock_client = AsyncMock()
         mock_client.connect.return_value = False
@@ -118,6 +118,58 @@ async def test_scan_device_connection_failure():
         with pytest.raises(Exception, match="Failed to connect"):
             await scanner.scan_device()
         await scanner.close()
+
+
+async def test_scan_blocks_propagated():
+    """Ensure scan_device returns discovered register blocks."""
+    # Avoid scanning extra registers from CSV for test speed
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=empty_regs):
+        scanner = ThesslaGreenDeviceScanner("192.168.1.1", 502, 10)
+
+        async def fake_read_input(client, address, count):
+            return [1] * count
+
+        async def fake_read_holding(client, address, count):
+            return [1] * count
+
+        async def fake_read_coil(client, address, count):
+            return [False] * count
+
+        async def fake_read_discrete(client, address, count):
+            return [False] * count
+
+        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.connect.return_value = True
+            mock_client_class.return_value = mock_client
+
+            with patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)), \
+                patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)), \
+                patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)), \
+                patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)):
+                result = await scanner.scan_device()
+
+    expected_blocks = {
+        "input_registers": (
+            min(INPUT_REGISTERS.values()),
+            max(INPUT_REGISTERS.values()),
+        ),
+        "holding_registers": (
+            min(HOLDING_REGISTERS.values()),
+            max(HOLDING_REGISTERS.values()),
+        ),
+        "coil_registers": (
+            min(COIL_REGISTERS.values()),
+            max(COIL_REGISTERS.values()),
+        ),
+        "discrete_inputs": (
+            min(DISCRETE_INPUT_REGISTERS.values()),
+            max(DISCRETE_INPUT_REGISTERS.values()),
+        ),
+    }
+
+    assert result["scan_blocks"] == expected_blocks
 
 
 async def test_is_valid_register_value():
