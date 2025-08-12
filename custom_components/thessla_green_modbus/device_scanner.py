@@ -133,9 +133,7 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
-            response = await _call_modbus(
-                client.read_coils, self.slave_id, address, count
-            )
+            response = await _call_modbus(client.read_coils, self.slave_id, address, count)
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
