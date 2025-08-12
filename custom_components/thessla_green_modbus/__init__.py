@@ -51,7 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     host = entry.data[CONF_HOST]
     port = entry.data.get(
         CONF_PORT, DEFAULT_PORT
-    )  # Default to DEFAULT_PORT (8899 was used in legacy versions)
+    )  # Default to DEFAULT_PORT (502; legacy versions used 8899)
     
     # Try to get slave_id from multiple possible keys for compatibility
     slave_id = None
