@@ -4,15 +4,15 @@
 
 set_special_mode:
   name: Set Special Mode
-  description: Sets special operating mode of heat recovery unit (BOOST, ECO, FIREPLACE, HOOD, etc.)
-  target:
+  description: Set unit to a special mode.
+  target: &tg_target
     entity:
       domain: climate
       integration: thessla_green_modbus
   fields:
     mode:
       name: Special Mode
-      description: Type of special mode to activate
+      description: Mode to activate.
       required: true
       selector:
         select:
@@ -30,7 +30,7 @@ set_special_mode:
             - "winter"
     duration:
       name: Duration (minutes)
-      description: Duration of special mode in minutes (0 = unlimited)
+      description: Minutes to run mode; 0 for unlimited.
       required: false
       default: 0
       selector:
@@ -41,15 +41,12 @@ set_special_mode:
 
 set_airflow_schedule:
   name: Set Airflow Schedule
-  description: Configures weekly airflow schedule
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Configure weekly airflow schedule.
+  target: *tg_target
   fields:
     day:
       name: Day of Week
-      description: Day of week to configure
+      description: Day of week.
       required: true
       selector:
         select:
@@ -63,7 +60,7 @@ set_airflow_schedule:
             - "sunday"
     period:
       name: Period
-      description: Day period (1 or 2)
+      description: Day period (1 or 2).
       required: true
       selector:
         select:
@@ -72,19 +69,18 @@ set_airflow_schedule:
             - "2"
     start_time:
       name: Start Time
-      description: Period start time (HH:MM)
+      description: Period start time.
       required: true
-      selector:
+      selector: &time_selector
         time:
     end_time:
       name: End Time
-      description: Period end time (HH:MM)
+      description: Period end time.
       required: true
-      selector:
-        time:
+      selector: *time_selector
     airflow_rate:
       name: Airflow Rate
-      description: Airflow intensity in %
+      description: Airflow in %.
       required: true
       selector:
         number:
@@ -93,7 +89,7 @@ set_airflow_schedule:
           step: 5
     temperature:
       name: Temperature
-      description: Target temperature in °C
+      description: Target temperature °C.
       required: false
       selector:
         number:
@@ -103,15 +99,12 @@ set_airflow_schedule:
 
 set_bypass_parameters:
   name: Set Bypass Parameters
-  description: Configures bypass system parameters
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Configure bypass parameters.
+  target: *tg_target
   fields:
     mode:
       name: Bypass Mode
-      description: Bypass operating mode
+      description: Bypass mode.
       required: true
       selector:
         select:
@@ -121,7 +114,7 @@ set_bypass_parameters:
             - "closed"
     temperature_threshold:
       name: Temperature Threshold
-      description: Bypass activation temperature threshold in °C
+      description: Activation temperature °C.
       required: false
       selector:
         number:
@@ -130,9 +123,9 @@ set_bypass_parameters:
           step: 0.5
     hysteresis:
       name: Hysteresis
-      description: Temperature hysteresis in °C
+      description: Temperature hysteresis °C.
       required: false
-      selector:
+      selector: &hysteresis_selector
         number:
           min: 1.0
           max: 5.0
@@ -140,15 +133,12 @@ set_bypass_parameters:
 
 set_gwc_parameters:
   name: Set GWC Parameters
-  description: Configures ground heat exchanger parameters
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Configure ground heat exchanger.
+  target: *tg_target
   fields:
     mode:
       name: GWC Mode
-      description: Ground heat exchanger operating mode
+      description: GWC mode.
       required: true
       selector:
         select:
@@ -158,7 +148,7 @@ set_gwc_parameters:
             - "forced"
     temperature_threshold:
       name: Temperature Threshold
-      description: GWC activation temperature threshold in °C
+      description: Activation temperature °C.
       required: false
       selector:
         number:
@@ -167,25 +157,18 @@ set_gwc_parameters:
           step: 0.5
     hysteresis:
       name: Hysteresis
-      description: Temperature hysteresis in °C
+      description: Temperature hysteresis °C.
       required: false
-      selector:
-        number:
-          min: 1.0
-          max: 5.0
-          step: 0.5
+      selector: *hysteresis_selector
 
 set_air_quality_thresholds:
   name: Set Air Quality Thresholds
-  description: Configures thresholds for air quality control system
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Configure air quality thresholds.
+  target: *tg_target
   fields:
     co2_low:
       name: CO2 Low Threshold
-      description: Low CO2 threshold in ppm
+      description: Low CO2 ppm.
       required: false
       selector:
         number:
@@ -194,7 +177,7 @@ set_air_quality_thresholds:
           step: 50
     co2_medium:
       name: CO2 Medium Threshold
-      description: Medium CO2 threshold in ppm
+      description: Medium CO2 ppm.
       required: false
       selector:
         number:
@@ -203,7 +186,7 @@ set_air_quality_thresholds:
           step: 50
     co2_high:
       name: CO2 High Threshold
-      description: High CO2 threshold in ppm
+      description: High CO2 ppm.
       required: false
       selector:
         number:
@@ -212,7 +195,7 @@ set_air_quality_thresholds:
           step: 50
     humidity_target:
       name: Target Humidity
-      description: Target humidity in %
+      description: Target humidity %.
       required: false
       selector:
         number:
@@ -222,15 +205,12 @@ set_air_quality_thresholds:
 
 set_temperature_curve:
   name: Set Temperature Curve
-  description: Configures heating curve for heating system
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Configure heating curve.
+  target: *tg_target
   fields:
     slope:
       name: Curve Slope
-      description: Heating curve slope (0.1-3.0)
+      description: Curve slope 0.1-3.0.
       required: true
       selector:
         number:
@@ -239,7 +219,7 @@ set_temperature_curve:
           step: 0.1
     offset:
       name: Curve Offset
-      description: Heating curve offset in °C
+      description: Curve offset °C.
       required: true
       selector:
         number:
@@ -248,7 +228,7 @@ set_temperature_curve:
           step: 0.5
     max_supply_temp:
       name: Max Supply Temperature
-      description: Maximum supply temperature in °C
+      description: Max supply temperature °C.
       required: false
       selector:
         number:
@@ -257,7 +237,7 @@ set_temperature_curve:
           step: 0.5
     min_supply_temp:
       name: Min Supply Temperature
-      description: Minimum supply temperature in °C
+      description: Min supply temperature °C.
       required: false
       selector:
         number:
@@ -267,15 +247,12 @@ set_temperature_curve:
 
 reset_filters:
   name: Reset Filter Counter
-  description: Resets filter lifetime counter
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Reset filter lifetime counter.
+  target: *tg_target
   fields:
     filter_type:
       name: Filter Type
-      description: Type of filter to set
+      description: Filter to reset.
       required: true
       selector:
         select:
@@ -287,15 +264,12 @@ reset_filters:
 
 reset_settings:
   name: Reset Settings
-  description: Resets user settings to default values
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Reset user settings.
+  target: *tg_target
   fields:
     reset_type:
       name: Reset Type
-      description: Type of settings to reset
+      description: Settings to reset.
       required: true
       selector:
         select:
@@ -306,23 +280,17 @@ reset_settings:
 
 start_pressure_test:
   name: Start Pressure Test
-  description: Starts automatic filter/pressure control test
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Start automatic pressure test.
+  target: *tg_target
 
 set_modbus_parameters:
   name: Set Modbus Parameters
-  description: Configures Modbus communication parameters (for advanced users only)
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Configure Modbus communication.
+  target: *tg_target
   fields:
     port:
       name: Port
-      description: Modbus port (Air-B or Air++)
+      description: Modbus port.
       required: true
       selector:
         select:
@@ -331,7 +299,7 @@ set_modbus_parameters:
             - "air_plus"
     baud_rate:
       name: Baud Rate
-      description: Modbus transmission speed
+      description: Transmission speed.
       required: false
       selector:
         select:
@@ -347,7 +315,7 @@ set_modbus_parameters:
             - "115200"
     parity:
       name: Parity
-      description: Parity bit
+      description: Parity bit.
       required: false
       selector:
         select:
@@ -357,7 +325,7 @@ set_modbus_parameters:
             - "odd"
     stop_bits:
       name: Stop Bits
-      description: Number of stop bits
+      description: Stop bits.
       required: false
       selector:
         select:
@@ -367,15 +335,12 @@ set_modbus_parameters:
 
 set_device_name:
   name: Set Device Name
-  description: Sets custom device name (max 16 ASCII characters)
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Set device name (max 16 ASCII).
+  target: *tg_target
   fields:
     device_name:
       name: Device Name
-      description: New device name (max 16 characters)
+      description: Device name (max 16 chars).
       required: true
       selector:
         text:
@@ -383,8 +348,5 @@ set_device_name:
 
 refresh_device_data:
   name: Refresh Device Data
-  description: Forces immediate refresh of device data
-  target:
-    entity:
-      domain: climate
-      integration: thessla_green_modbus
+  description: Force immediate data refresh.
+  target: *tg_target
