@@ -113,7 +113,9 @@ async def async_setup_entry(
             _LOGGER.debug("Created switch entity: %s", register_name)
 
     if entities:
-        async_add_entities(entities)
+        # Coordinator already holds initial data from setup, so update entities before add
+        # to populate their state without triggering another refresh
+        async_add_entities(entities, True)
         _LOGGER.info("Added %d switch entities", len(entities))
     else:
         _LOGGER.debug("No switch entities were created")
