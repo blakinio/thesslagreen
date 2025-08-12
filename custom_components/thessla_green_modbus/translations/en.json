@@ -562,6 +562,22 @@
                 }
               }
             }
+          },
+          "start_time": {
+            "name": "Start Time",
+            "description": "Start time for the period (HH:MM)"
+          },
+          "end_time": {
+            "name": "End Time",
+            "description": "End time for the period (HH:MM)"
+          },
+          "airflow_rate": {
+            "name": "Airflow Rate",
+            "description": "Target airflow rate (%)"
+          },
+          "temperature": {
+            "name": "Temperature",
+            "description": "Target temperature (°C)"
           }
         }
       },
@@ -581,6 +597,14 @@
                 }
               }
             }
+          },
+          "temperature_threshold": {
+            "name": "Temperature Threshold",
+            "description": "Temperature threshold for automatic control"
+          },
+          "hysteresis": {
+            "name": "Hysteresis",
+            "description": "Temperature hysteresis value"
           }
         }
       },
@@ -600,17 +624,61 @@
                 }
               }
             }
+          },
+          "temperature_threshold": {
+            "name": "Temperature Threshold",
+            "description": "Temperature threshold for automatic control"
+          },
+          "hysteresis": {
+            "name": "Hysteresis",
+            "description": "Temperature hysteresis value"
           }
         }
       },
-    "set_air_quality_thresholds": {
-      "name": "Set Air Quality Thresholds",
-      "description": "Configures thresholds for air quality control system"
-    },
-    "set_temperature_curve": {
-      "name": "Set Heating Curve",
-      "description": "Configures heating curve for heating system"
-    },
+      "set_air_quality_thresholds": {
+        "name": "Set Air Quality Thresholds",
+        "description": "Configures thresholds for air quality control system",
+        "fields": {
+          "co2_low": {
+            "name": "CO2 Low Threshold",
+            "description": "CO2 low level threshold (ppm)"
+          },
+          "co2_medium": {
+            "name": "CO2 Medium Threshold",
+            "description": "CO2 medium level threshold (ppm)"
+          },
+          "co2_high": {
+            "name": "CO2 High Threshold",
+            "description": "CO2 high level threshold (ppm)"
+          },
+          "humidity_target": {
+            "name": "Humidity Target",
+            "description": "Target humidity level (%)"
+          }
+        }
+      },
+      "set_temperature_curve": {
+        "name": "Set Heating Curve",
+        "description": "Configures heating curve for heating system",
+        "fields": {
+          "slope": {
+            "name": "Slope",
+            "description": "Slope of the heating curve"
+          },
+          "offset": {
+            "name": "Offset",
+            "description": "Offset of the heating curve"
+          },
+          "max_supply_temp": {
+            "name": "Max Supply Temperature",
+            "description": "Maximum supply temperature"
+          },
+          "min_supply_temp": {
+            "name": "Min Supply Temperature",
+            "description": "Minimum supply temperature"
+          }
+        }
+      },
     "reset_filters": {
       "name": "Reset Filter Counter",
       "description": "Resets filter lifetime counter",

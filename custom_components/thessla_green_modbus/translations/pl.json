@@ -562,6 +562,22 @@
               }
             }
           }
+        },
+        "start_time": {
+          "name": "Czas rozpoczęcia",
+          "description": "Czas rozpoczęcia okresu (HH:MM)"
+        },
+        "end_time": {
+          "name": "Czas zakończenia",
+          "description": "Czas zakończenia okresu (HH:MM)"
+        },
+        "airflow_rate": {
+          "name": "Przepływ powietrza",
+          "description": "Docelowy przepływ powietrza (%)"
+        },
+        "temperature": {
+          "name": "Temperatura",
+          "description": "Docelowa temperatura (°C)"
         }
       }
     },
@@ -581,6 +597,14 @@
               }
             }
           }
+        },
+        "temperature_threshold": {
+          "name": "Próg temperatury",
+          "description": "Próg temperatury dla automatycznej kontroli"
+        },
+        "hysteresis": {
+          "name": "Histereza",
+          "description": "Wartość histerezy temperatury"
         }
       }
     },
@@ -600,16 +624,60 @@
               }
             }
           }
+        },
+        "temperature_threshold": {
+          "name": "Próg temperatury",
+          "description": "Próg temperatury dla automatycznej kontroli"
+        },
+        "hysteresis": {
+          "name": "Histereza",
+          "description": "Wartość histerezy temperatury"
         }
       }
     },
     "set_air_quality_thresholds": {
       "name": "Ustaw progi jakości powietrza",
-      "description": "Konfiguruje progi dla systemu kontroli jakości powietrza"
+      "description": "Konfiguruje progi dla systemu kontroli jakości powietrza",
+      "fields": {
+        "co2_low": {
+          "name": "Próg CO2 niski",
+          "description": "Niski próg stężenia CO2 (ppm)"
+        },
+        "co2_medium": {
+          "name": "Próg CO2 średni",
+          "description": "Średni próg stężenia CO2 (ppm)"
+        },
+        "co2_high": {
+          "name": "Próg CO2 wysoki",
+          "description": "Wysoki próg stężenia CO2 (ppm)"
+        },
+        "humidity_target": {
+          "name": "Docelowa wilgotność",
+          "description": "Docelowy poziom wilgotności (%)"
+        }
+      }
     },
     "set_temperature_curve": {
       "name": "Ustaw krzywą grzewczą",
-      "description": "Konfiguruje krzywą grzewczą dla systemu ogrzewania"
+      "description": "Konfiguruje krzywą grzewczą dla systemu ogrzewania",
+      "fields": {
+        "slope": {
+          "name": "Nachylenie",
+          "description": "Nachylenie krzywej grzewczej"
+        },
+        "offset": {
+          "name": "Przesunięcie",
+          "description": "Przesunięcie krzywej grzewczej"
+        },
+        "max_supply_temp": {
+          "name": "Maks. temperatura nawiewu",
+          "description": "Maksymalna temperatura nawiewu"
+        },
+        "min_supply_temp": {
+          "name": "Min. temperatura nawiewu",
+          "description": "Minimalna temperatura nawiewu"
+        }
+      }
     },
     "reset_filters": {
       "name": "Resetuj licznik filtrów",
