@@ -18,7 +18,7 @@ class DummyCoordinator:
         self.writes = []
         self.available_registers = {"holding_registers": set()}
 
-    async def async_write_register(self, register_name, value) -> None:
+    async def async_write_register(self, register_name, value, refresh=True) -> None:
         address = HOLDING_REGISTERS[register_name]
         self.writes.append((address, value, self.slave_id))
 

@@ -211,22 +211,12 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         if register_name not in HOLDING_REGISTERS:
             raise ValueError(f"Register {register_name} is not writable")
 
-        register_address = HOLDING_REGISTERS[register_name]
-
-        # Ensure client is connected
-        if not self.coordinator.client or not self.coordinator.client.connected:
-            if not await self.coordinator.async_ensure_client():
-                raise RuntimeError("Failed to connect to device")
-
-        # Write register - pymodbus 3.5+ compatible
-        response = await self.coordinator.client.write_register(
-            address=register_address, value=value, unit=self.coordinator.slave_id
+        success = await self.coordinator.async_write_register(
+            register_name, value, refresh=False
         )
+        if not success:
+            raise RuntimeError(f"Failed to write register {register_name}")
 
-        if response.isError():
-            raise RuntimeError(f"Failed to write register {register_name}: {response}")
-
-        # Request immediate data update
         await self.coordinator.async_request_refresh()
 
     @property
