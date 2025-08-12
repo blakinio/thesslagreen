@@ -126,14 +126,14 @@ async def async_unload_services(hass):
 cc_services.async_setup_services = async_setup_services
 cc_services.async_unload_services = async_unload_services
 
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenCoordinator
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
 
 def test_async_setup_closes_scanner():
     """Ensure scanner is closed after async_setup."""
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator(
             hass=hass,
             host="localhost",
             port=502,
@@ -176,7 +176,7 @@ def test_disconnect_closes_client():
 
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator(
             hass=hass,
             host="localhost",
             port=502,

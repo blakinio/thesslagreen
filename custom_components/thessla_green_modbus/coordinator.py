@@ -756,7 +756,3 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     def device_info_dict(self) -> Dict[str, Any]:
         """Return device information as a plain dictionary for legacy use."""
         return self.get_device_info().as_dict()
-
-
-# Legacy compatibility - ThesslaGreenCoordinator alias
-ThesslaGreenCoordinator = ThesslaGreenModbusCoordinator

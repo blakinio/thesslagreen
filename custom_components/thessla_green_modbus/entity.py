@@ -4,15 +4,15 @@ from __future__ import annotations
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import ThesslaGreenCoordinator
+from .coordinator import ThesslaGreenModbusCoordinator
 
 
-class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenCoordinator]):
+class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     """Base entity for ThesslaGreen devices."""
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: ThesslaGreenCoordinator, key: str) -> None:
+    def __init__(self, coordinator: ThesslaGreenModbusCoordinator, key: str) -> None:
         """Initialize the entity."""
         super().__init__(coordinator)
         self._key = key
