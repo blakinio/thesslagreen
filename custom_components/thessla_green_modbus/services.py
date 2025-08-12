@@ -375,7 +375,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "set_airflow_schedule", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA)
     hass.services.async_register(DOMAIN, "set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA)
     hass.services.async_register(DOMAIN, "set_gwc_parameters", set_gwc_parameters, SET_GWC_PARAMETERS_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_air_quality_thresholds", set_air_quality_thresholds, SET_AIR_QUALITY_THRESHOLDS_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_air_quality_thresholds", set_air_quality_thresholds, SET_AIR_QUALITY_THRESHOLDS_SCHEMA)  # noqa: E501
     hass.services.async_register(DOMAIN, "set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA)
     hass.services.async_register(DOMAIN, "reset_filters", reset_filters, RESET_FILTERS_SCHEMA)
     hass.services.async_register(DOMAIN, "reset_settings", reset_settings, RESET_SETTINGS_SCHEMA)
