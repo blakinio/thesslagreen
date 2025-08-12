@@ -10,14 +10,19 @@ def run_tests():
     
     try:
         # Run pytest with coverage
-        result = subprocess.run([
-            sys.executable, "-m", "pytest",
-            "tests/",
-            "-v",
-            "--tb=short",
-            "-ra"
-        ], check=True)
-        
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/",
+                "-v",
+                "--tb=short",
+                "-ra",
+            ],
+            check=True,
+        )
+
         print("✅ All tests passed!")
         return 0
         
