@@ -1,9 +1,11 @@
 """Tests for ThesslaGreenSwitch entity."""
+
+import asyncio
 import sys
 import types
-import asyncio
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
@@ -54,51 +56,42 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.switch import (
+from custom_components.thessla_green_modbus.switch import (  # noqa: E402
     SWITCH_ENTITIES,
     ThesslaGreenSwitch,
 )
 
 
 def test_switch_creation_and_state(mock_coordinator):
-    """Test creation and state changes of switch entity."""
-    mock_coordinator.data["on_off_panel_mode"] = 1
-    switch = ThesslaGreenSwitch(
-        mock_coordinator, "on_off_panel_mode", SWITCH_ENTITIES["on_off_panel_mode"]
-    )
-    assert switch.is_on is True
+    """Test creation and state changes of special mode switch."""
+    bit = SWITCH_ENTITIES["boost"]["bit"]
+    mock_coordinator.data["special_mode"] = bit
+    switch = ThesslaGreenSwitch(mock_coordinator, "boost", SWITCH_ENTITIES["boost"])
+    assert switch.is_on is True  # nosec B101
 
-    mock_coordinator.data["on_off_panel_mode"] = 0
-    assert switch.is_on is False
+    mock_coordinator.data["special_mode"] = 0
+    assert switch.is_on is False  # nosec B101
 
 
 def test_switch_turn_on_off(mock_coordinator):
-    mock_coordinator.data["on_off_panel_mode"] = 0
-    switch = ThesslaGreenSwitch(
-        mock_coordinator, "on_off_panel_mode", SWITCH_ENTITIES["on_off_panel_mode"]
-    )
+    bit = SWITCH_ENTITIES["boost"]["bit"]
+    mock_coordinator.data["special_mode"] = 0
+    switch = ThesslaGreenSwitch(mock_coordinator, "boost", SWITCH_ENTITIES["boost"])
     asyncio.run(switch.async_turn_on())
-    mock_coordinator.async_write_register.assert_awaited_with(
-        "on_off_panel_mode", 1, refresh=False
-    )
+    mock_coordinator.async_write_register.assert_awaited_with("special_mode", bit, refresh=False)
     mock_coordinator.async_request_refresh.assert_awaited_once()
     mock_coordinator.async_write_register.reset_mock()
     mock_coordinator.async_request_refresh.reset_mock()
 
+    mock_coordinator.data["special_mode"] = bit
     asyncio.run(switch.async_turn_off())
-    mock_coordinator.async_write_register.assert_awaited_with(
-        "on_off_panel_mode", 0, refresh=False
-    )
+    mock_coordinator.async_write_register.assert_awaited_with("special_mode", 0, refresh=False)
     mock_coordinator.async_request_refresh.assert_awaited_once()
 
 
 def test_switch_turn_on_modbus_failure(mock_coordinator):
     """Ensure Modbus errors are surfaced when turning on the switch."""
-    switch = ThesslaGreenSwitch(
-        mock_coordinator, "on_off_panel_mode", SWITCH_ENTITIES["on_off_panel_mode"]
-    )
-    mock_coordinator.async_write_register = AsyncMock(
-        side_effect=ConnectionException("fail")
-    )
+    switch = ThesslaGreenSwitch(mock_coordinator, "boost", SWITCH_ENTITIES["boost"])
+    mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
         asyncio.run(switch.async_turn_on())
