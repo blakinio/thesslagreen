@@ -47,7 +47,7 @@ def backup_file(file_path: Path) -> Path:
     """Create a backup of the file."""
     backup_path = file_path.with_suffix(file_path.suffix + BACKUP_SUFFIX)
     shutil.copy2(file_path, backup_path)
-    _LOGGER.info("✅ Backup created: %s", backup_path)
+    _LOGGER.info("Backup created: %s", backup_path)
     return backup_path
 
 
@@ -56,10 +56,10 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
     registry_path = config_dir / ".storage" / "core.entity_registry"
 
     if not registry_path.exists():
-        _LOGGER.error("❌ Entity registry not found: %s", registry_path)
+        _LOGGER.error("Entity registry not found: %s", registry_path)
         return False
 
-    _LOGGER.info("📁 Processing entity registry: %s", registry_path)
+    _LOGGER.info("Processing entity registry: %s", registry_path)
 
     # Backup
     backup_path = backup_file(registry_path)
@@ -90,7 +90,7 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
                         old_entities.append(entity)
 
         if old_entities:
-            _LOGGER.info("🗑️  Found %s old entities to remove:", len(old_entities))
+            _LOGGER.info("Found %s old entities to remove:", len(old_entities))
             for entity in old_entities:
                 _LOGGER.info(
                     "   - %s (platform: %s)",
@@ -105,20 +105,20 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
             with open(registry_path, "w", encoding="utf-8") as f:
                 json.dump(registry, f, indent=2, ensure_ascii=False)
 
-            _LOGGER.info("✅ Entity registry updated")
+            _LOGGER.info("Entity registry updated")
             return True
         else:
-            _LOGGER.info("✅ No old entities found")
+            _LOGGER.info("No old entities found")
             # Remove unnecessary backup
             backup_path.unlink()
             return True
 
     except Exception as exc:
-        _LOGGER.error("❌ Error processing entity registry: %s", exc)
+        _LOGGER.error("Error processing entity registry: %s", exc)
         # Restore backup
         if backup_path.exists():
             shutil.copy2(backup_path, registry_path)
-            _LOGGER.info("🔄 Restored backup from: %s", backup_path)
+            _LOGGER.info("Restored backup from: %s", backup_path)
         return False
 
 
@@ -127,10 +127,10 @@ def cleanup_automations(config_dir: Path) -> bool:
     automations_path = config_dir / "automations.yaml"
 
     if not automations_path.exists():
-        _LOGGER.info("ℹ️  automations.yaml does not exist - skipping")
+        _LOGGER.info("automations.yaml does not exist - skipping")
         return True
 
-    _LOGGER.info("📁 Checking automations: %s", automations_path)
+    _LOGGER.info("Checking automations: %s", automations_path)
 
     try:
         with open(automations_path, "r", encoding="utf-8") as f:
@@ -143,18 +143,18 @@ def cleanup_automations(config_dir: Path) -> bool:
                 problematic_refs.append(pattern)
 
         if problematic_refs:
-            _LOGGER.warning("⚠️  Found %s references to old entities:", len(problematic_refs))
+            _LOGGER.warning("Found %s references to old entities:", len(problematic_refs))
             for ref in problematic_refs:
                 _LOGGER.warning("   - %s", ref)
-            _LOGGER.warning("❗ Review and update automations manually")
+            _LOGGER.warning("Review and update automations manually")
             _LOGGER.warning("   File: %s", automations_path)
             return False
         else:
-            _LOGGER.info("✅ Automations are clean")
+            _LOGGER.info("Automations are clean")
             return True
 
     except Exception as exc:
-        _LOGGER.error("❌ Error checking automations: %s", exc)
+        _LOGGER.error("Error checking automations: %s", exc)
         return False
 
 
@@ -163,10 +163,10 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
     config_path = config_dir / "configuration.yaml"
 
     if not config_path.exists():
-        _LOGGER.error("❌ configuration.yaml not found")
+        _LOGGER.error("configuration.yaml not found")
         return False
 
-    _LOGGER.info("📁 Checking configuration: %s", config_path)
+    _LOGGER.info("Checking configuration: %s", config_path)
 
     try:
         with open(config_path, "r", encoding="utf-8") as f:
@@ -184,17 +184,17 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
             issues.append("Old YAML configuration for integration (use UI)")
 
         if issues:
-            _LOGGER.warning("⚠️  Found %s issues in configuration:", len(issues))
+            _LOGGER.warning("Found %s issues in configuration:", len(issues))
             for issue in issues:
                 _LOGGER.warning("   - %s", issue)
-            _LOGGER.warning("❗ Review and update configuration.yaml manually")
+            _LOGGER.warning("Review and update configuration.yaml manually")
             return False
         else:
-            _LOGGER.info("✅ Configuration is clean")
+            _LOGGER.info("Configuration is clean")
             return True
 
     except Exception as exc:
-        _LOGGER.error("❌ Error checking configuration: %s", exc)
+        _LOGGER.error("Error checking configuration: %s", exc)
         return False
 
 
@@ -215,30 +215,30 @@ def cleanup_custom_component_cache(config_dir: Path) -> bool:
                     shutil.rmtree(cache_path)
                 else:
                     cache_path.unlink()
-                _LOGGER.info("🧹 Removed cache: %s", cache_path)
+                _LOGGER.info("Removed cache: %s", cache_path)
                 cleaned = True
             except Exception as exc:
-                _LOGGER.warning("⚠️  Unable to remove cache %s: %s", cache_path, exc)
+                _LOGGER.warning("Unable to remove cache %s: %s", cache_path, exc)
 
     if not cleaned:
-        _LOGGER.info("ℹ️  No cache found to clean")
+        _LOGGER.info("No cache found to clean")
 
     return True
 
 
 def main():
     """Main entry point of the script."""
-    _LOGGER.info("🔧 ThesslaGreen Modbus - Cleanup Tool")
+    _LOGGER.info("ThesslaGreen Modbus - Cleanup Tool")
     _LOGGER.info("=" * 50)
 
     # Locate HA configuration directory
     config_dir = find_ha_config_dir()
     if not config_dir:
-        _LOGGER.error("❌ Cannot find Home Assistant configuration directory")
+        _LOGGER.error("Cannot find Home Assistant configuration directory")
         _LOGGER.error("Ensure you are in the correct directory or Home Assistant is installed")
         sys.exit(1)
 
-    _LOGGER.info("📁 Found HA configuration: %s", config_dir)
+    _LOGGER.info("Found HA configuration: %s", config_dir)
     _LOGGER.info("")
 
     # Perform cleanup
@@ -250,26 +250,26 @@ def main():
     }
 
     _LOGGER.info("\n" + "=" * 50)
-    _LOGGER.info("📊 SUMMARY:")
+    _LOGGER.info("SUMMARY:")
 
     success_count = sum(results.values())
     total_count = len(results)
 
     for task, success in results.items():
-        status = "✅ OK" if success else "❌ ATTENTION"
+        status = "OK" if success else "ATTENTION"
         _LOGGER.info("   %s: %s", task.ljust(20), status)
 
     _LOGGER.info("\nResult: %s/%s tasks completed successfully", success_count, total_count)
 
     if success_count == total_count:
-        _LOGGER.info("\n🎉 Cleanup completed successfully!")
-        _LOGGER.info("💡 You can now safely restart Home Assistant")
+        _LOGGER.info("\nCleanup completed successfully!")
+        _LOGGER.info("You can now safely restart Home Assistant")
     else:
-        _LOGGER.warning("\n⚠️  Some tasks require attention")
-        _LOGGER.warning("📝 Check and fix the reported issues before restarting HA")
+        _LOGGER.warning("\nSome tasks require attention")
+        _LOGGER.warning("Check and fix the reported issues before restarting HA")
 
     # Show next steps
-    _LOGGER.info("\n🔄 NEXT STEPS:")
+    _LOGGER.info("\nNEXT STEPS:")
     _LOGGER.info("1. Review the warnings above (if any)")
     _LOGGER.info("2. Restart Home Assistant")
     _LOGGER.info("3. Verify the integration works properly")
@@ -280,8 +280,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        _LOGGER.warning("\n\n⏹️  Interrupted by user")
+        _LOGGER.warning("\n\nInterrupted by user")
         sys.exit(1)
     except Exception as exc:
-        _LOGGER.error("\n❌ Unexpected error: %s", exc)
+        _LOGGER.error("\nUnexpected error: %s", exc)
         sys.exit(1)
