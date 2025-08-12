@@ -20,9 +20,9 @@ pytestmark = pytest.mark.asyncio
 async def test_device_scanner_initialization():
     """Test device scanner initialization."""
     scanner = ThesslaGreenDeviceScanner("192.168.3.17", 8899, 10)
-    
-    assert scanner.host == "192.168.1.1"
-    assert scanner.port == 502
+
+    assert scanner.host == "192.168.3.17"
+    assert scanner.port == 8899
     assert scanner.slave_id == 10
 
 
@@ -74,6 +74,15 @@ async def test_scan_device_success():
         DISCRETE_INPUT_REGISTERS.keys()
     )
     assert result["device_info"]["firmware"] == "4.85.0"
+@pytest.fixture
+def mock_modbus_response():
+    response = MagicMock()
+    response.isError.return_value = False
+    response.registers = [4, 85, 0]
+    response.bits = [False]
+    return response
+
+
 async def test_scan_device_success(mock_modbus_response):
     """Test successful device scan."""
     regs = {

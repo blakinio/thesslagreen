@@ -2,6 +2,8 @@
 
 # Generated from modbus_registers.csv
 
+from __future__ import annotations
+
 COIL_REGISTERS: Dict[str, int] = {
 
     "duct_water_heater_pump": 5,
@@ -67,10 +69,6 @@ INPUT_REGISTERS: Dict[str, int] = {
     "max_percentage": 277,
     "water_removal_active": 298,
 }
-
-HOLDING_REGISTERS: Dict[str, int] = {
-    "date_time": 0,
-    "lock_date": 7,
 
 HOLDING_REGISTERS: dict[str, int] = {
     'date_time_1': 0,
