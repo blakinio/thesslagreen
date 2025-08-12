@@ -274,14 +274,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             try:
                 await self._ensure_connection()
                 # Try to read a basic register to verify communication
- codex/create-modbus_helpers-module-and-refactor-code
                 response = await _call_modbus(
-                    self.client.read_input_registers, self.slave_id, 0x0000, 1
-=======
-codex/resolve-merge-conflicts-in-modbus-files
-                response = await self._call_modbus(
-                    self.client.read_input_registers, 0x0000, 1
- main
+                    self.client.read_input_registers,
+                    self.slave_id,
+                    0x0000,
+                    1,
                 )
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
@@ -509,14 +506,11 @@ codex/resolve-merge-conflicts-in-modbus-files
 
         for start_addr, count in self._register_groups["coil_registers"]:
             try:
- codex/create-modbus_helpers-module-and-refactor-code
                 response = await _call_modbus(
-                    self.client.read_coils, self.slave_id, start_addr, count
-=======
- codex/resolve-merge-conflicts-in-modbus-files
-                response = await self._call_modbus(
-                    self.client.read_coils, start_addr, count
- main
+                    self.client.read_coils,
+                    self.slave_id,
+                    start_addr,
+                    count,
                 )
                 if response.isError():
                     _LOGGER.debug(
