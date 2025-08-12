@@ -173,6 +173,9 @@ python -m pytest tests/test_coordinator.py -v
 # Run with coverage
 python -m pytest tests/ --cov=custom_components.thessla_green_modbus
 
+# Validate register mappings against CSV definitions
+python -m pytest tests/test_register_coverage.py -v
+
 # Run optimization validation
 python run_optimization_tests.py
 ```

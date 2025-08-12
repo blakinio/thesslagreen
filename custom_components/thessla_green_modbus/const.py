@@ -1,8 +1,14 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
-
 import json
 from pathlib import Path
+
+from .registers import (  # noqa: F401
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+)
 
 OPTIONS_PATH = Path(__file__).parent / "options"
 
@@ -45,38 +51,6 @@ PLATFORMS = [
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
 # ============================================================================
-
-# COIL REGISTERS (01 - READ COILS) - Output and relay states
-COIL_REGISTERS = {
-    "duct_water_heater_pump": 5,  # Circulation pump relay output
-    "bypass": 9,  # Bypass damper actuator output
-    "info": 10,  # System operation confirmation output (O1)
-    "power_supply_fans": 11,  # Fan power relay output
-    "heating_cable": 12,  # Heating cable power relay output
-    "work_permit": 13,  # Operation confirmation relay (Expansion)
-    "gwc": 14,  # GWC relay output
-    "hood": 15,  # Hood damper power output
-}
-
-# DISCRETE INPUT REGISTERS (02 - READ DISCRETE INPUTS) - Digital input states
-DISCRETE_INPUT_REGISTERS = {
-    "duct_heater_protection": 0,  # Thermal protection of duct heater
-    "expansion": 1,  # Expansion module communication
-    "dp_duct_filter_overflow": 3,  # Duct filter pressure switch
-    "hood": 4,  # Hood function switch
-    "contamination_sensor": 5,  # Air quality sensor input
-    "airing_sensor": 6,  # Humidity sensor input
-    "airing_switch": 7,  # Ventilation switch
-    "airing_mini": 10,  # AirS switch position "Airing"
-    "fan_speed_3": 11,  # AirS switch position "3rd speed"
-    "fan_speed_2": 12,  # AirS switch position "2nd speed"
-    "fan_speed_1": 13,  # AirS switch position "1st speed"
-    "fireplace": 14,  # Fireplace function switch
-    "ppoz": 15,  # Fire alarm input
-    "dp_ahu_filter_overflow": 18,  # AHU filter pressure switch (DP1)
-    "ahu_filter_protection": 19,  # Thermal protection of FPX heater
-    "empty_house": 21,  # Empty house input
-}
 
 # Shared option lists
 SPECIAL_MODE_OPTIONS = json.loads((OPTIONS_PATH / "special_modes.json").read_text())
@@ -146,39 +120,11 @@ DEVICE_CLASSES = {
     "duct_supply_temperature": "temperature",
     "gwc_temperature": "temperature",
     "ambient_temperature": "temperature",
-    "heating_temperature": "temperature",
-    "heat_exchanger_temperature_1": "temperature",
-    "heat_exchanger_temperature_2": "temperature",
-    "heat_exchanger_temperature_3": "temperature",
-    "heat_exchanger_temperature_4": "temperature",
-    # Humidity
-    "humidity_indoor": "humidity",
-    "humidity_outdoor": "humidity",
-    # Power/Energy
-    "preheater_power": "power",
-    "main_heater_power": "power",
-    "cooler_power": "power",
-    "supply_fan_power": "power",
-    "exhaust_fan_power": "power",
-    "total_power_consumption": "power",
-    "daily_energy_consumption": "energy",
-    "annual_energy_consumption": "energy",
-    "annual_energy_savings": "energy",
-    # Mass
-    "co2_reduction": "weight",
-    # Pressure
-    "supply_pressure": "pressure",
-    "exhaust_pressure": "pressure",
-    "differential_pressure": "pressure",
-    # Voltage/Current
+    # Voltage
     "dac_supply": "voltage",
     "dac_exhaust": "voltage",
     "dac_heater": "voltage",
     "dac_cooler": "voltage",
-    "motor_supply_current": "current",
-    "motor_exhaust_current": "current",
-    "motor_supply_voltage": "voltage",
-    "motor_exhaust_voltage": "voltage",
 }
 
 # State classes for statistics
@@ -191,42 +137,12 @@ STATE_CLASSES = {
     "duct_supply_temperature": "measurement",
     "gwc_temperature": "measurement",
     "ambient_temperature": "measurement",
-    "heating_temperature": "measurement",
     "supply_flow_rate": "measurement",
     "exhaust_flow_rate": "measurement",
     "supply_air_flow": "measurement",
     "exhaust_air_flow": "measurement",
-    "co2_level": "measurement",
-    "humidity_indoor": "measurement",
-    "humidity_outdoor": "measurement",
-    "pm1_level": "measurement",
-    "pm25_level": "measurement",
-    "pm10_level": "measurement",
-    "voc_level": "measurement",
-    "air_quality_index": "measurement",
-    "heat_recovery_efficiency": "measurement",
-    "supply_pressure": "measurement",
-    "exhaust_pressure": "measurement",
-    "differential_pressure": "measurement",
-    "preheater_power": "measurement",
-    "main_heater_power": "measurement",
-    "cooler_power": "measurement",
-    "supply_fan_power": "measurement",
-    "exhaust_fan_power": "measurement",
-    "total_power_consumption": "measurement",
-    "motor_supply_rpm": "measurement",
-    "motor_exhaust_rpm": "measurement",
-    "motor_supply_current": "measurement",
-    "motor_exhaust_current": "measurement",
-    "motor_supply_voltage": "measurement",
-    "motor_exhaust_voltage": "measurement",
-    # Total increasing values
-    "daily_energy_consumption": "total_increasing",
-    "annual_energy_consumption": "total_increasing",
-    "annual_energy_savings": "total_increasing",
-    "system_uptime": "total_increasing",
-    "fault_counter": "total_increasing",
-    "maintenance_counter": "total_increasing",
-    "filter_replacement_counter": "total_increasing",
-    "co2_reduction": "total_increasing",
+    "dac_supply": "measurement",
+    "dac_exhaust": "measurement",
+    "dac_heater": "measurement",
+    "dac_cooler": "measurement",
 }

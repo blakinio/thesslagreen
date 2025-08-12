@@ -36,16 +36,16 @@
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} sek, Limit czasu połączenia {current_timeout} sek, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} s, Limit czasu połączenia {current_timeout} s, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
         "data": {
-          "scan_interval": "Interwał skanowania (sekundy)",
-          "timeout": "Limit czasu połączenia (sekundy)",
+          "scan_interval": "Interwał skanowania (s)",
+          "timeout": "Limit czasu połączenia (s)",
           "retry": "Liczba prób",
           "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)"
         },
         "data_description": {
-          "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 sekund)",
-          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 sekund)",
+          "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
           "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)"
         }
@@ -81,140 +81,11 @@
       "exhaust_flow_rate": {
         "name": "Zadany przepływ wywiewu"
       },
-      "heat_recovery_efficiency": {
-        "name": "Sprawność rekuperacji"
-      },
-      "heating_temperature": {
-        "name": "Temperatura grzania"
-      },
-      "heat_exchanger_temperature_1": {
-        "name": "Temperatura wymiennika 1"
-      },
-      "heat_exchanger_temperature_2": {
-        "name": "Temperatura wymiennika 2"
-      },
-      "heat_exchanger_temperature_3": {
-        "name": "Temperatura wymiennika 3"
-      },
-      "heat_exchanger_temperature_4": {
-        "name": "Temperatura wymiennika 4"
-      },
-      "outdoor_flow_rate": {
-        "name": "Przepływ zewnętrzny"
-      },
-      "inside_flow_rate": {
-        "name": "Przepływ wewnętrzny"
-      },
-      "gwc_flow_rate": {
-        "name": "Przepływ GWC"
-      },
-      "heat_recovery_flow_rate": {
-        "name": "Przepływ rekuperatora"
-      },
-      "bypass_flow_rate": {
-        "name": "Przepływ obejścia (bypassu)"
-      },
       "supply_air_flow": {
         "name": "Aktualny przepływ nawiewu"
       },
       "exhaust_air_flow": {
         "name": "Aktualny przepływ wywiewu"
-      },
-      "co2_level": {
-        "name": "Poziom CO2"
-      },
-      "humidity_indoor": {
-        "name": "Wilgotność wewnętrzna"
-      },
-      "humidity_outdoor": {
-        "name": "Wilgotność zewnętrzna"
-      },
-      "pm1_level": {
-        "name": "PM1.0"
-      },
-      "pm25_level": {
-        "name": "PM2.5"
-      },
-      "pm10_level": {
-        "name": "PM10"
-      },
-      "voc_level": {
-        "name": "VOC"
-      },
-      "air_quality_index": {
-        "name": "Indeks jakości powietrza"
-      },
-      "filter_lifetime_remaining": {
-        "name": "Pozostały czas pracy filtra"
-      },
-      "preheater_power": {
-        "name": "Moc wstępnego grzania"
-      },
-      "main_heater_power": {
-        "name": "Moc głównego grzania"
-      },
-      "cooler_power": {
-        "name": "Moc chłodzenia"
-      },
-      "supply_fan_power": {
-        "name": "Moc wentylatora nawiewnego"
-      },
-      "exhaust_fan_power": {
-        "name": "Moc wentylatora wywiewnego"
-      },
-      "total_power_consumption": {
-        "name": "Całkowite zużycie energii"
-      },
-      "daily_energy_consumption": {
-        "name": "Dzienne zużycie energii"
-      },
-      "annual_energy_consumption": {
-        "name": "Roczne zużycie energii"
-      },
-      "annual_energy_savings": {
-        "name": "Roczne oszczędności energii"
-      },
-      "co2_reduction": {
-        "name": "Roczna redukcja CO2"
-      },
-      "system_uptime": {
-        "name": "Czas pracy systemu"
-      },
-      "fault_counter": {
-        "name": "Licznik błędów"
-      },
-      "maintenance_counter": {
-        "name": "Licznik konserwacji"
-      },
-      "filter_replacement_counter": {
-        "name": "Licznik wymian filtra"
-      },
-      "supply_pressure": {
-        "name": "Ciśnienie nawiewu"
-      },
-      "exhaust_pressure": {
-        "name": "Ciśnienie wywiewu"
-      },
-      "differential_pressure": {
-        "name": "Ciśnienie różnicowe"
-      },
-      "motor_supply_rpm": {
-        "name": "Obroty silnika nawiewnego"
-      },
-      "motor_exhaust_rpm": {
-        "name": "Obroty silnika wywiewnego"
-      },
-      "motor_supply_current": {
-        "name": "Prąd silnika nawiewnego"
-      },
-      "motor_exhaust_current": {
-        "name": "Prąd silnika wywiewnego"
-      },
-      "motor_supply_voltage": {
-        "name": "Napięcie silnika nawiewnego"
-      },
-      "motor_exhaust_voltage": {
-        "name": "Napięcie silnika wywiewnego"
       },
       "dac_supply": {
         "name": "Sterowanie wentylatorem nawiewnym"
@@ -227,15 +98,6 @@
       },
       "dac_cooler": {
         "name": "Sterowanie chłodnicą"
-      },
-      "damper_position_bypass": {
-        "name": "Pozycja przepustnicy obejścia (bypassu)"
-      },
-      "damper_position_gwc": {
-        "name": "Pozycja przepustnicy GWC"
-      },
-      "damper_position_mix": {
-        "name": "Pozycja przepustnicy mieszającej"
       },
       "firmware_major": {
         "name": "Wersja firmware (główna)"
@@ -263,7 +125,7 @@
       "heating_cable": {
         "name": "Kabel grzejny"
       },
-      "ppoz": {
+      "fire_alarm": {
         "name": "Alarm pożarowy"
       },
       "expansion": {
@@ -284,41 +146,8 @@
       "contamination_sensor": {
         "name": "Czujnik zanieczyszczenia"
       },
-      "frost_protection_active": {
-        "name": "Ochrona przeciwmrozowa"
-      },
-      "defrost_cycle_active": {
-        "name": "Cykl odszraniania"
-      },
-      "summer_bypass_active": {
-        "name": "Letnie obejście (bypass)"
-      },
-      "winter_heating_active": {
-        "name": "Zimowe grzanie"
-      },
-      "night_cooling_active": {
-        "name": "Nocne chłodzenie"
-      },
       "constant_flow_active": {
         "name": "Stały przepływ"
-      },
-      "air_quality_control_active": {
-        "name": "Kontrola jakości powietrza"
-      },
-      "humidity_control_active": {
-        "name": "Kontrola wilgotności"
-      },
-      "temperature_control_active": {
-        "name": "Kontrola temperatury"
-      },
-      "demand_control_active": {
-        "name": "Kontrola na żądanie"
-      },
-      "schedule_control_active": {
-        "name": "Kontrola harmonogramu"
-      },
-      "manual_control_active": {
-        "name": "Kontrola manualna"
       },
       "on_off_panel_mode": {
         "name": "Zasilanie główne"

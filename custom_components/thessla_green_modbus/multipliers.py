@@ -1,4 +1,5 @@
 """Value conversion factors for ThesslaGreen Modbus registers."""
+
 from typing import Dict
 
 REGISTER_MULTIPLIERS: Dict[str, float] = {
@@ -36,6 +37,9 @@ REGISTER_MULTIPLIERS: Dict[str, float] = {
     "supply_air_temperature_temporary_2": 0.5,
     # Legacy register shares the same scaling as required_temperature
     "required_temperature_legacy": 0.5,
+    "supply_air_temperature_temporary": 0.5,
+    # Legacy alias
+    "required_temp": 0.5,
     # Voltage/Current conversions
     "dac_supply": 0.00244,  # 0-4095 -> 0-10V
     "dac_exhaust": 0.00244,
