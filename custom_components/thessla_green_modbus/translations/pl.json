@@ -128,9 +128,6 @@
       "version_patch": {
         "name": "Wersja firmware (poprawka)"
       },
-      "exp_version": {
-        "name": "Wersja modułu Expansion"
-      },
       "day_of_week": {
         "name": "Dzień tygodnia"
       },

@@ -128,9 +128,6 @@
       "version_patch": {
         "name": "Firmware Patch"
       },
-      "exp_version": {
-        "name": "Expansion Version"
-      },
       "day_of_week": {
         "name": "Day of Week"
       },
