@@ -25,6 +25,18 @@ async def async_get_config_entry_diagnostics(
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
 
+    # Add human-readable descriptions for active error/status registers
+    translations = await hass.helpers.translation.async_get_translations(
+        hass.config.language, f"component.{DOMAIN}"
+    )
+    active_errors: Dict[str, str] = {}
+    if coordinator.data:
+        for key, value in coordinator.data.items():
+            if value and (key.startswith("e_") or key.startswith("s_")):
+                active_errors[key] = translations.get(f"errors.{key}", key)
+    if active_errors:
+        diagnostics["active_errors"] = active_errors
+
     # Redact sensitive information
     diagnostics_safe = _redact_sensitive_data(diagnostics)
 
