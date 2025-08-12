@@ -191,7 +191,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "capabilities_count": str(len(capabilities_list)),
             "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
             "auto_detected_note": (
-                "Auto-detection successful!" if register_count > 0 else "Limited auto-detection"
+                self.hass.helpers.translation.async_translate(
+                    f"{DOMAIN}.auto_detected_note_success"
+                )
+                if register_count > 0
+                else self.hass.helpers.translation.async_translate(
+                    f"{DOMAIN}.auto_detected_note_limited"
+                )
             ),
         }
 

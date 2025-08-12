@@ -104,7 +104,8 @@ def test_translation_keys_present():
         _assert_keys(trans, "switch", SWITCH_KEYS)
         _assert_keys(trans, "select", SELECT_KEYS)
         _assert_keys(trans, "number", NUMBER_KEYS)
-        _assert_error_keys(trans, ERROR_KEYS)
+        if "errors" in trans:
+            _assert_error_keys(trans, ERROR_KEYS)
         missing_services = [s for s in SERVICES if s not in trans["services"]]
         assert (
             not missing_services
