@@ -3,7 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/thesslagreen/thessla-green-modbus-ha.svg)](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.7.1%2B-blue.svg)](https://home-assistant.io/)
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
 
 ## ✨ Complete ThesslaGreen AirPack integration for Home Assistant
 
@@ -34,7 +34,7 @@ The most complete integration for ThesslaGreen AirPack heat recovery units over 
 ### Home Assistant
 - ✅ **Requires Home Assistant 2025.7.1 or later** – minimum version declared in `manifest.json` (the `homeassistant` package is not part of `requirements.txt`)
 - ✅ **pymodbus 3.5.0+** – latest Modbus library
-- ✅ **Python 3.11+** – modern standards
+- ✅ **Python 3.12+** – modern standards
 - ✅ **Standard AsyncModbusTcpClient** – no custom Modbus client required
 
 ## 🚀 Installation
