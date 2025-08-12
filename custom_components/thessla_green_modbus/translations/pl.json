@@ -36,16 +36,16 @@
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} sek, Limit czasu połączenia {current_timeout} sek, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} s, Limit czasu połączenia {current_timeout} s, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
         "data": {
-          "scan_interval": "Interwał skanowania (sekundy)",
-          "timeout": "Limit czasu połączenia (sekundy)",
+          "scan_interval": "Interwał skanowania (s)",
+          "timeout": "Limit czasu połączenia (s)",
           "retry": "Liczba prób",
           "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)"
         },
         "data_description": {
-          "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 sekund)",
-          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 sekund)",
+          "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
           "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)"
         }
