@@ -150,10 +150,10 @@
         "name": "Bypass Airflow"
       },
       "supply_air_flow": {
-        "name": "Supply Air Flow"
+        "name": "Supply Airflow"
       },
       "exhaust_air_flow": {
-        "name": "Exhaust Air Flow"
+        "name": "Exhaust Airflow"
       },
       "pm1_level": {
         "name": "PM1"
