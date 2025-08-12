@@ -1,9 +1,6 @@
-import csv  # handle CSV register definitions
 import importlib.util
 import pathlib
-import re
-
-
+from tools.generate_registers import load_registers
 def to_snake_case(name: str) -> str:
     replacements = {"flowrate": "flow_rate"}
     for old, new in replacements.items():
@@ -61,9 +58,13 @@ def load_module_registers() -> (
 
 
 def test_register_definitions_match_csv() -> None:
+    csv_input, csv_holding = load_registers()
+    mod_input, mod_holding = load_module_registers()
     csv_coil, csv_discrete, csv_input, csv_holding = load_csv_registers()
     mod_coil, mod_discrete, mod_input, mod_holding = load_module_registers()
     assert csv_coil == mod_coil  # nosec B101
     assert csv_discrete == mod_discrete  # nosec B101
     assert csv_input == mod_input  # nosec B101
     assert csv_holding == mod_holding  # nosec B101
+    assert len(mod_input) == 28
+    assert len(mod_holding) == 282

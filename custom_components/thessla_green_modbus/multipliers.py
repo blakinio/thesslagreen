@@ -34,6 +34,9 @@ REGISTER_MULTIPLIERS: Dict[str, float] = {
     "defrost_temperature": 0.5,
     "night_cooling_temperature": 0.5,
     "supply_air_temperature_manual": 0.5,
+    "supply_air_temperature_temporary_2": 0.5,
+    # Legacy register shares the same scaling as required_temperature
+    "required_temperature_legacy": 0.5,
     "supply_air_temperature_temporary": 0.5,
     # Legacy alias
     "required_temp": 0.5,
