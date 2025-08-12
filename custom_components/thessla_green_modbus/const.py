@@ -1,11 +1,11 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
-from typing import Any, Dict
 
-# Large data structures are provided by dedicated modules
-from .entity_mappings import ENTITY_MAPPINGS, NUMBER_ENTITY_MAPPINGS
-from .multipliers import REGISTER_MULTIPLIERS
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
+import json
+from pathlib import Path
+
+OPTIONS_PATH = Path(__file__).parent / "options"
+
 
 # Integration constants
 DOMAIN = "thessla_green_modbus"
@@ -78,23 +78,32 @@ DISCRETE_INPUT_REGISTERS = {
     "empty_house": 21,  # Empty house input
 }
 
-# Special function modes for mode register
+# Shared option lists
+SPECIAL_MODE_OPTIONS = json.loads((OPTIONS_PATH / "special_modes.json").read_text())
+DAYS_OF_WEEK = json.loads((OPTIONS_PATH / "days_of_week.json").read_text())
+PERIODS = json.loads((OPTIONS_PATH / "periods.json").read_text())
+BYPASS_MODES = json.loads((OPTIONS_PATH / "bypass_modes.json").read_text())
+GWC_MODES = json.loads((OPTIONS_PATH / "gwc_modes.json").read_text())
+FILTER_TYPES = json.loads((OPTIONS_PATH / "filter_types.json").read_text())
+RESET_TYPES = json.loads((OPTIONS_PATH / "reset_types.json").read_text())
+MODBUS_PORTS = json.loads((OPTIONS_PATH / "modbus_ports.json").read_text())
+MODBUS_BAUD_RATES = json.loads((OPTIONS_PATH / "modbus_baud_rates.json").read_text())
+MODBUS_PARITY = json.loads((OPTIONS_PATH / "modbus_parity.json").read_text())
+MODBUS_STOP_BITS = json.loads((OPTIONS_PATH / "modbus_stop_bits.json").read_text())
+
+# Special function bit mappings for services
+SPECIAL_FUNCTION_MAP = {
+    mode: 1 << idx for idx, mode in enumerate(SPECIAL_MODE_OPTIONS[1:], start=0)
+}
+
+# Complete mapping including additional internal modes
 SPECIAL_MODES = {
     "normal": 0,
-    "boost": 1,
-    "eco": 2,
-    "away": 4,
-    "fireplace": 8,
-    "hood": 16,
-    "night": 32,
-    "party": 64,
-    "bathroom": 128,
-    "kitchen": 256,
-    "summer": 512,
-    "winter": 1024,
+    **SPECIAL_FUNCTION_MAP,
     "defrost": 2048,
     "frost_protection": 4096,
 }
+
 
 # Special function bit mappings for services (alias for SPECIAL_MODES)
 SPECIAL_FUNCTION_MAP = {
@@ -111,6 +120,7 @@ SPECIAL_FUNCTION_MAP = {
     "winter": 1024,
 }
 
+=======
 # Unit mappings
 REGISTER_UNITS = {
     # Temperature registers - 0.1°C resolution
@@ -131,6 +141,7 @@ REGISTER_UNITS = {
     # Temperature set-point
     "supply_air_temperature_manual": "°C",
 }
+
 
 # Device class mappings for Home Assistant
 DEVICE_CLASSES = {

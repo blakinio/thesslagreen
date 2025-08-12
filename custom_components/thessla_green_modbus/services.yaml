@@ -16,19 +16,7 @@ set_special_mode:
       required: true
       selector:
         select:
-          options:
-            - "none"
-            - "boost"
-            - "eco"
-            - "away"
-            - "sleep"
-            - "fireplace"
-            - "hood"
-            - "party"
-            - "bathroom"
-            - "kitchen"
-            - "summer"
-            - "winter"
+          options: !include options/special_modes.json
     duration:
       name: Duration (minutes)
       description: Minutes to run mode; 0 for unlimited.
@@ -51,23 +39,14 @@ set_airflow_schedule:
       required: true
       selector:
         select:
-          options:
-            - "monday"
-            - "tuesday"
-            - "wednesday"
-            - "thursday"
-            - "friday"
-            - "saturday"
-            - "sunday"
+          options: !include options/days_of_week.json
     period:
       name: Period
       description: Day period (1 or 2).
       required: true
       selector:
         select:
-          options:
-            - "1"
-            - "2"
+          options: !include options/periods.json
     start_time:
       name: Start Time
       description: Period start time.
@@ -109,10 +88,7 @@ set_bypass_parameters:
       required: true
       selector:
         select:
-          options:
-            - "auto"
-            - "open"
-            - "closed"
+          options: !include options/bypass_modes.json
     temperature_threshold:
       name: Temperature Threshold
       description: Activation temperature °C.
@@ -143,10 +119,7 @@ set_gwc_parameters:
       required: true
       selector:
         select:
-          options:
-            - "off"
-            - "auto"
-            - "forced"
+          options: !include options/gwc_modes.json
     temperature_threshold:
       name: Temperature Threshold
       description: Activation temperature °C.
@@ -257,11 +230,7 @@ reset_filters:
       required: true
       selector:
         select:
-          options:
-            - "presostat"
-            - "flat_filters"
-            - "cleanpad"
-            - "cleanpad_pure"
+          options: !include options/filter_types.json
 
 reset_settings:
   name: Reset Settings
@@ -274,10 +243,7 @@ reset_settings:
       required: true
       selector:
         select:
-          options:
-            - "user_settings"
-            - "schedule_settings"
-            - "all_settings"
+          options: !include options/reset_types.json
 
 start_pressure_test:
   name: Start Pressure Test
@@ -295,44 +261,28 @@ set_modbus_parameters:
       required: true
       selector:
         select:
-          options:
-            - "air_b"
-            - "air_plus"
+          options: !include options/modbus_ports.json
     baud_rate:
       name: Baud Rate
       description: Transmission speed.
       required: false
       selector:
         select:
-          options:
-            - "4800"
-            - "9600"
-            - "14400"
-            - "19200"
-            - "28800"
-            - "38400"
-            - "57600"
-            - "76800"
-            - "115200"
+          options: !include options/modbus_baud_rates.json
     parity:
       name: Parity
       description: Parity bit.
       required: false
       selector:
         select:
-          options:
-            - "none"
-            - "even"
-            - "odd"
+          options: !include options/modbus_parity.json
     stop_bits:
       name: Stop Bits
       description: Stop bits.
       required: false
       selector:
         select:
-          options:
-            - "1"
-            - "2"
+          options: !include options/modbus_stop_bits.json
 
 set_device_name:
   name: Set Device Name

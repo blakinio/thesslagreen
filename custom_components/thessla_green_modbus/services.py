@@ -1,8 +1,11 @@
+
+"""Service handlers for the ThesslaGreen Modbus integration."""
+import annotations
+
 """Service handlers for the ThesslaGreen Modbus integration."""
 
-from __future__ import annotations
-
 import logging
+from typing import TYPE_CHECKING
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -11,8 +14,25 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from .const import (
+    BYPASS_MODES,
+    DAYS_OF_WEEK,
+    DOMAIN,
+    FILTER_TYPES,
+    GWC_MODES,
+    MODBUS_BAUD_RATES,
+    MODBUS_PARITY,
+    MODBUS_PORTS,
+    MODBUS_STOP_BITS,
+    PERIODS,
+    RESET_TYPES,
+    SPECIAL_FUNCTION_MAP,
+    SPECIAL_MODE_OPTIONS,
+)
 from .multipliers import REGISTER_MULTIPLIERS
+
+if TYPE_CHECKING:
+    from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +61,10 @@ def _scale_for_register(register_name: str, value: float) -> int:
 SET_SPECIAL_MODE_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
+
+
+        vol.Required("mode"): vol.In(SPECIAL_MODE_OPTIONS),
+
         vol.Required("mode"): vol.In(
             [
                 "none",
@@ -57,6 +81,7 @@ SET_SPECIAL_MODE_SCHEMA = vol.Schema(
                 "winter",
             ]
         ),
+
         vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=480)),
     }
 )
@@ -64,6 +89,8 @@ SET_SPECIAL_MODE_SCHEMA = vol.Schema(
 SET_AIRFLOW_SCHEDULE_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("day"): vol.In(DAYS_OF_WEEK),
+        vol.Required("period"): vol.In(PERIODS),
         vol.Required("day"): vol.In(
             ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         ),
@@ -79,6 +106,8 @@ SET_BYPASS_PARAMETERS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
         vol.Required("mode"): vol.In(["auto", "open", "closed"]),
+        vol.Required("mode"): vol.In(BYPASS_MODES),
+        vol.Required("mode"): vol.In(["auto", "open", "closed"]),
         vol.Optional("temperature_threshold"): vol.All(
             vol.Coerce(float), vol.Range(min=18.0, max=30.0)
         ),
@@ -89,6 +118,8 @@ SET_BYPASS_PARAMETERS_SCHEMA = vol.Schema(
 SET_GWC_PARAMETERS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("mode"): vol.In(["off", "auto", "forced"]),
+        vol.Required("mode"): vol.In(GWC_MODES),
         vol.Required("mode"): vol.In(["off", "auto", "forced"]),
         vol.Optional("temperature_threshold"): vol.All(
             vol.Coerce(float), vol.Range(min=-5.0, max=15.0)
@@ -123,12 +154,18 @@ RESET_FILTERS_SCHEMA = vol.Schema(
         vol.Required("filter_type"): vol.In(
             ["presostat", "flat_filters", "cleanpad", "cleanpad_pure"]
         ),
+        vol.Required("filter_type"): vol.In(FILTER_TYPES),
+        vol.Required("filter_type"): vol.In(
+            ["presostat", "flat_filters", "cleanpad", "cleanpad_pure"]
+        ),
     }
 )
 
 RESET_SETTINGS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("reset_type"): vol.In(["user_settings", "schedule_settings", "all_settings"]),
+        vol.Required("reset_type"): vol.In(RESET_TYPES),
         vol.Required("reset_type"): vol.In(["user_settings", "schedule_settings", "all_settings"]),
     }
 )
@@ -142,6 +179,10 @@ START_PRESSURE_TEST_SCHEMA = vol.Schema(
 SET_MODBUS_PARAMETERS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("port"): vol.In(MODBUS_PORTS),
+        vol.Optional("baud_rate"): vol.In(MODBUS_BAUD_RATES),
+        vol.Optional("parity"): vol.In(MODBUS_PARITY),
+        vol.Optional("stop_bits"): vol.In(MODBUS_STOP_BITS),
         vol.Required("port"): vol.In(["air_b", "air_plus"]),
         vol.Optional("baud_rate"): vol.In(
             ["4800", "9600", "14400", "19200", "28800", "38400", "57600", "76800", "115200"]
@@ -155,6 +196,7 @@ SET_DEVICE_NAME_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
         vol.Required("device_name"): vol.All(cv.string, vol.Match(r"^[ -~]{1,16}$")),
+        vol.Required("device_name"): vol.All(cv.string, vol.Length(min=1, max=16)),
     }
 )
 
@@ -589,7 +631,9 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     _LOGGER.info("ThesslaGreen Modbus services unloaded")
 
 
-def _get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str):
+def _get_coordinator_from_entity_id(
+    hass: HomeAssistant, entity_id: str
+) -> ThesslaGreenModbusCoordinator | None:
     """Get coordinator from entity ID using entity registry."""
     entity_registry = er.async_get(hass)
     entry = entity_registry.async_get(entity_id) if entity_registry else None
