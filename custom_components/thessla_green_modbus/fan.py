@@ -101,7 +101,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Get current flow rate from available registers."""
         # Priority order for reading current flow rate
         flow_registers = [
-            "air_flow_rate",  # Current overall flow rate
+            "supply_air_flow",  # Supply air flow rate
             "supply_percentage",  # Supply air percentage
             "air_flow_rate_manual",  # Manual flow rate setting
             "air_flow_rate_auto",  # Auto flow rate setting
@@ -158,8 +158,6 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     await self._write_register(register, 0)
                     self.coordinator.data[register] = 0
 
-            # Ensure current flow rate reflects the off state for properties
-            self.coordinator.data["air_flow_rate"] = 0
             _LOGGER.info("Turned off fan")
 
         except Exception as exc:
