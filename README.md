@@ -98,7 +98,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 
 ### Sensory binarne (40+ automatycznie wykrywanych)
 - **Status systemu**: Zasilanie wentylatorów, bypass, GWC, pompy
-- **Tryby**: Letni/zimowy, auto/manual, tryby specjalne
+- **Tryby**: Letni/zimowy, auto/manual, tryby specjalne (boost, eco, away, sleep, fireplace, hood, party, bathroom, kitchen, summer, winter)
 - **Wejścia**: Expansion, alarm pożarowy, kontaktrony, czujniki
 - **Błędy i alarmy**: Wszystkie kody S1-S32 i E99-E105
 - **Zabezpieczenia**: Termiczne, przeciwmrozowe, przeciążenia

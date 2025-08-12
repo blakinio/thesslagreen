@@ -21,6 +21,7 @@ set_special_mode:
             - "boost"
             - "eco"
             - "away"
+            - "sleep"
             - "fireplace"
             - "hood"
             - "party"
