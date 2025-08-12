@@ -12,12 +12,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .modbus_exceptions import ConnectionException, ModbusException
 from .const import DOMAIN
-from .entity_mappings import ENTITY_MAPPINGS
-from .registers import HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .entity_mappings import ENTITY_MAPPINGS
+from .modbus_exceptions import ConnectionException, ModbusException
+from .registers import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -173,9 +173,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
                 raise RuntimeError(f"Failed to write register {self.register_name}")
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
-            _LOGGER.error(
-                "Failed to set %s to %.2f: %s", self.register_name, value, exc
-            )
+            _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)
             raise
         except (ValueError, OSError) as exc:  # pragma: no cover - unexpected
             _LOGGER.exception(
@@ -213,8 +211,12 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         }
 
         # Add last update time
-        if self.coordinator.last_successful_update:
-            attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()
+        last_update = (
+            self.coordinator.statistics.get("last_successful_update")
+            or self.coordinator.last_update
+        )
+        if last_update is not None:
+            attributes["last_updated"] = last_update.isoformat()
 
         return attributes
 
