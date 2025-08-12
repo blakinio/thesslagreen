@@ -21,8 +21,5 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
         """Fallback Modbus exception when pymodbus is unavailable."""
 
         pass
-except Exception:  # pragma: no cover
-    _LOGGER.exception("Unexpected error importing pymodbus")
-    raise
 
 __all__ = ["ConnectionException", "ModbusException"]
