@@ -106,8 +106,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._scan_result = info.get("scan_result", {})
 
                 # Set unique ID based on host, port and slave_id
+                # Replace colons in host (IPv6) with hyphens to avoid separator conflicts
+                unique_host = user_input[CONF_HOST].replace(":", "-")
                 await self.async_set_unique_id(
-                    f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
+                    f"{unique_host}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
                 )
                 self._abort_if_unique_id_configured()
 
@@ -189,7 +191,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "capabilities_count": str(len(capabilities_list)),
             "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
             "auto_detected_note": (
-                "Auto-detection successful!" if register_count > 0 else "Limited auto-detection"
+                self.hass.helpers.translation.async_translate(
+                    f"{DOMAIN}.auto_detected_note_success"
+                )
+                if register_count > 0
+                else self.hass.helpers.translation.async_translate(
+                    f"{DOMAIN}.auto_detected_note_limited"
+                )
             ),
         }
 

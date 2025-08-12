@@ -80,14 +80,6 @@ SPECIAL_FUNCTION_MAP = {
     "winter": 1024,
 }
 
-# Complete mapping including additional internal modes
-SPECIAL_MODES = {
-    "normal": 0,
-    **SPECIAL_FUNCTION_MAP,
-    "defrost": 2048,
-    "frost_protection": 4096,
-}
-
 # Unit mappings
 REGISTER_UNITS = {
     # Temperature registers - 0.1°C resolution

@@ -11,8 +11,6 @@ CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbu
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
 
-
-
 def to_snake_case(name: str) -> str:
     """Convert a register name from the CSV to ``snake_case``."""
     replacements = {"flowrate": "flow_rate"}
@@ -90,7 +88,6 @@ def write_file(
     with OUTPUT_PATH.open("w", newline="\n") as f:
         f.write('"""Register definitions for the ThesslaGreen Modbus integration."""\n\n')
         f.write("from __future__ import annotations\n\n")
-        f.write("from typing import Dict\n\n\n")
         f.write("# Generated from modbus_registers.csv\n\n")
         sections = [
             ("COIL_REGISTERS", coils),

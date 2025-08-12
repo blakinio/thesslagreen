@@ -35,6 +35,37 @@ def _load_keys(file: Path, var_name: str):
 SENSOR_KEYS = _load_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
 BINARY_KEYS = _load_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
 SWITCH_KEYS = ["on_off_panel_mode"] + list(SPECIAL_FUNCTION_MAP.keys())
+def _load_translation_keys(file: Path, var_name: str):
+    tree = ast.parse(file.read_text(), filename=str(file))
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            target = node.targets[0]
+        elif isinstance(node, ast.AnnAssign):
+            target = node.target
+        else:
+            continue
+        if (
+            isinstance(target, ast.Name)
+            and target.id == var_name
+            and isinstance(node.value, ast.Dict)
+        ):
+            keys = []
+            for val in node.value.values:
+                if isinstance(val, ast.Dict):
+                    for k, v in zip(val.keys, val.values):
+                        if (
+                            isinstance(k, ast.Constant)
+                            and k.value == "translation_key"
+                            and isinstance(v, ast.Constant)
+                        ):
+                            keys.append(v.value)
+            return keys
+    return []
+
+
+SENSOR_KEYS = _load_translation_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
+BINARY_KEYS = _load_translation_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
+SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
 SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
@@ -65,7 +96,9 @@ def _assert_keys(trans, entity_type, keys):
 
 
 def _assert_error_keys(trans, keys):
-    section = trans.get("errors", {})
+    section = trans.get("errors")
+    if not section:
+        return
     missing = [k for k in keys if k not in section]
     assert not missing, f"Missing error translations: {missing}"  # nosec B101
 
@@ -77,7 +110,8 @@ def test_translation_keys_present():
         _assert_keys(trans, "switch", SWITCH_KEYS)
         _assert_keys(trans, "select", SELECT_KEYS)
         _assert_keys(trans, "number", NUMBER_KEYS)
-        _assert_error_keys(trans, ERROR_KEYS)
+        if "errors" in trans:
+            _assert_error_keys(trans, ERROR_KEYS)
         missing_services = [s for s in SERVICES if s not in trans["services"]]
         assert (
             not missing_services

@@ -1,4 +1,6 @@
 {
+  "auto_detected_note_success": "Auto-detection successful!",
+  "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
   "config": {
     "step": {
       "user": {
@@ -101,6 +103,9 @@
       },
       "dac_cooler": {
         "name": "Cooler DAC"
+      },
+      "exp_version": {
+        "name": "Expansion Version"
       },
       "firmware_major": {
         "name": "Firmware Major"

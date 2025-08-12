@@ -1,22 +1,22 @@
 """Test config flow for ThesslaGreen Modbus integration."""
-import pytest
+
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.const import CONF_HOST, CONF_PORT
 
+from custom_components.thessla_green_modbus.config_flow import (
+    CannotConnect,
+    ConfigFlow,
+    InvalidAuth,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
 
 CONF_NAME = "name"
-
-from custom_components.thessla_green_modbus.config_flow import (
-    ConfigFlow,
-    CannotConnect,
-    InvalidAuth,
-)
-
 
 pytestmark = pytest.mark.asyncio
 
@@ -35,25 +35,38 @@ async def test_form_user():
 async def test_form_user_success():
     """Test successful configuration with confirm step."""
     flow = ConfigFlow()
-    flow.hass = None
+    flow.hass = SimpleNamespace(
+        helpers=SimpleNamespace(translation=SimpleNamespace(async_translate=lambda key: key))
+    )
 
     validation_result = {
         "title": "ThesslaGreen 192.168.1.100",
-        "device_info": {"device_name": "ThesslaGreen AirPack", "firmware": "1.0", "serial_number": "123"},
+        "device_info": {
+            "device_name": "ThesslaGreen AirPack",
+            "firmware": "1.0",
+            "serial_number": "123",
+        },
         "scan_result": {
-            "device_info": {"device_name": "ThesslaGreen AirPack", "firmware": "1.0", "serial_number": "123"},
+            "device_info": {
+                "device_name": "ThesslaGreen AirPack",
+                "firmware": "1.0",
+                "serial_number": "123",
+            },
             "capabilities": {"fan": True},
             "register_count": 5,
         },
     }
 
-    with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
-        return_value=validation_result,
-    ), patch(
-        "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-    ), patch(
-        "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured"
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured"
+        ),
     ):
         result = await flow.async_step_user(
             {
@@ -78,6 +91,36 @@ async def test_form_user_success():
         CONF_NAME: "My Device",
     }
 
+
+async def test_unique_id_sanitized():
+    """Ensure unique ID replaces colons in host with hyphens."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    validation_result = {
+        "title": "ThesslaGreen fe80::1",
+        "device_info": {},
+        "scan_result": {},
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        return_value=validation_result,
+    ), patch(
+        "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
+    ), patch(
+        "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+    ) as mock_set_unique_id:
+        await flow.async_step_user(
+            {
+                CONF_HOST: "fe80::1",
+                CONF_PORT: 502,
+                "slave_id": 10,
+                CONF_NAME: "My Device",
+            }
+        )
+
+    mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
 
 async def test_form_user_cannot_connect():
     """Test we handle cannot connect error."""
@@ -277,7 +320,8 @@ async def test_validate_input_no_data():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.device_scanner.ThesslaGreenDeviceScanner.scan_device",
+        "custom_components.thessla_green_modbus.device_scanner."
+        "ThesslaGreenDeviceScanner.scan_device",
         return_value=None,
     ):
         with pytest.raises(CannotConnect):
@@ -297,7 +341,8 @@ async def test_validate_input_modbus_exception():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.device_scanner.ThesslaGreenDeviceScanner.scan_device",
+        "custom_components.thessla_green_modbus.device_scanner."
+        "ThesslaGreenDeviceScanner.scan_device",
         side_effect=ModbusException("error"),
     ):
         with pytest.raises(CannotConnect):

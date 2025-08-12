@@ -23,7 +23,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 02,0x000C,12,R/-,fan_speed_2,Stan wejścia przełącznika AirS w pozycji "2 bieg",0,1,,,"0 - OFF; 1 - ON",,
 02,0x000D,13,R/-,fan_speed_1,Stan wejścia przełącznika AirS w pozycji "1 bieg",0,1,,,"0 - OFF; 1 - ON",,
 02,0x000E,14,R/-,fireplace,Stan wejścia włącznika funkcji KOMINEK,0,1,,,"0 - OFF; 1 - ON",,
-02,0x000F,15,R/-,ppoz,Stan wejścia sygnału alarmu pożarowego (P.POZ.),0,1,,,"0 - OFF; 1 - ON",,
+02,0x000F,15,R/-,fire_alarm,Stan wejścia sygnału alarmu pożarowego (P.POZ.),0,1,,,"0 - OFF; 1 - ON",,
 02,0x0012,18,R/-,dp_ahu_filter_overflow,Stan wejścia presostatu filtrów w rekuperatorze (DP1),0,1,,,"0 - OFF; 1 - ON",,
 02,0x0013,19,R/-,ahu_filter_protection,Stan wejścia zabezpieczenia termicznego nagrzewnicy systemu przeciwzamrożeniowego FPX,0,1,,,"0 - OFF; 1 - ON",,
 02,0x0015,21,R/-,empty_house,Stan wejścia sygnału załączenia funkcji PUSTY DOM,0,1,,,"0 - OFF; 1 - ON",,

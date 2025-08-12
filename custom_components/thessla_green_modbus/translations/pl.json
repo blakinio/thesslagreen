@@ -1,4 +1,6 @@
 {
+  "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
+  "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
   "config": {
     "step": {
       "user": {
@@ -102,6 +104,9 @@
       "dac_cooler": {
         "name": "Sterowanie chłodnicą"
       },
+      "exp_version": {
+        "name": "Wersja modułu Expansion"
+      },
       "firmware_major": {
         "name": "Wersja firmware (główna)"
       },
@@ -139,6 +144,9 @@
       },
       "heating_cable": {
         "name": "Kabel grzejny"
+      },
+      "ppoz": {
+        "name": "Alarm pożarowy"
       },
       "fire_alarm": {
         "name": "Alarm pożarowy"

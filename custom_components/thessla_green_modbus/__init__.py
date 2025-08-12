@@ -203,34 +203,51 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     """Migrate old entry."""
     _LOGGER.debug("Migrating ThesslaGreen Modbus from version %s", config_entry.version)
 
-    if config_entry.version != 1:
-        return True
-
     new_data = {**config_entry.data}
     new_options = {**config_entry.options}
 
-    # Migrate "unit" to CONF_SLAVE_ID if needed
-    if "unit" in new_data and CONF_SLAVE_ID not in new_data:
-        new_data[CONF_SLAVE_ID] = new_data["unit"]
-        _LOGGER.info("Migrated 'unit' to '%s'", CONF_SLAVE_ID)
+    if config_entry.version == 1:
+        # Migrate "unit" to CONF_SLAVE_ID if needed
+        if "unit" in new_data and CONF_SLAVE_ID not in new_data:
+            new_data[CONF_SLAVE_ID] = new_data["unit"]
+            _LOGGER.info("Migrated 'unit' to '%s'", CONF_SLAVE_ID)
 
-    # Ensure port is present; older versions relied on legacy default
-    if CONF_PORT not in new_data:
-        new_data[CONF_PORT] = LEGACY_DEFAULT_PORT
-        _LOGGER.info("Added '%s' with legacy default %s", CONF_PORT, LEGACY_DEFAULT_PORT)
+        # Ensure port is present; older versions relied on legacy default
+        if CONF_PORT not in new_data:
+            new_data[CONF_PORT] = LEGACY_DEFAULT_PORT
+            _LOGGER.info("Added '%s' with legacy default %s", CONF_PORT, LEGACY_DEFAULT_PORT)
 
-    # Add new fields with defaults if missing
-    if CONF_SCAN_INTERVAL not in new_options:
-        new_options[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
-    if CONF_TIMEOUT not in new_options:
-        new_options[CONF_TIMEOUT] = DEFAULT_TIMEOUT
-    if CONF_RETRY not in new_options:
-        new_options[CONF_RETRY] = DEFAULT_RETRY
-    if CONF_FORCE_FULL_REGISTER_LIST not in new_options:
-        new_options[CONF_FORCE_FULL_REGISTER_LIST] = False
+        # Add new fields with defaults if missing
+        if CONF_SCAN_INTERVAL not in new_options:
+            new_options[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
+        if CONF_TIMEOUT not in new_options:
+            new_options[CONF_TIMEOUT] = DEFAULT_TIMEOUT
+        if CONF_RETRY not in new_options:
+            new_options[CONF_RETRY] = DEFAULT_RETRY
+        if CONF_FORCE_FULL_REGISTER_LIST not in new_options:
+            new_options[CONF_FORCE_FULL_REGISTER_LIST] = False
 
-    config_entry.version = 2
-    hass.config_entries.async_update_entry(config_entry, data=new_data, options=new_options)
+        config_entry.version = 2
+
+    # Build new unique ID replacing ':' in host with '-' to avoid separator conflicts
+    host = new_data.get(CONF_HOST)
+    port = new_data.get(CONF_PORT, LEGACY_DEFAULT_PORT)
+    # Determine slave ID using same logic as setup
+    if CONF_SLAVE_ID in new_data:
+        slave_id = new_data[CONF_SLAVE_ID]
+    elif "slave_id" in new_data:
+        slave_id = new_data["slave_id"]
+    elif "unit" in new_data:
+        slave_id = new_data["unit"]
+    else:
+        slave_id = DEFAULT_SLAVE_ID
+
+    unique_host = host.replace(":", "-") if host else host
+    new_unique_id = f"{unique_host}:{port}:{slave_id}"
+
+    hass.config_entries.async_update_entry(
+        config_entry, data=new_data, options=new_options, unique_id=new_unique_id
+    )
 
     _LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
