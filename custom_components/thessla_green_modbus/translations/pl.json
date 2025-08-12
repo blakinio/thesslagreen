@@ -114,10 +114,10 @@
         "name": "Przepływ obejścia (bypassu)"
       },
       "supply_air_flow": {
-        "name": "Strumień nawiewu"
+        "name": "Przepływ nawiewu"
       },
       "exhaust_air_flow": {
-        "name": "Strumień wywiewu"
+        "name": "Przepływ wywiewu"
       },
       "co2_level": {
         "name": "Poziom CO2"
