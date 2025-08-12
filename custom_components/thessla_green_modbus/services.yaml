@@ -286,12 +286,12 @@ set_modbus_parameters:
 
 set_device_name:
   name: Set Device Name
-  description: Set device name (max 16 ASCII).
+  description: Set device name using only printable ASCII characters (max 16).
   target: *tg_target
   fields:
     device_name:
       name: Device Name
-      description: Device name (max 16 chars).
+      description: Device name (1–16 printable ASCII chars).
       required: true
       selector:
         text:
