@@ -19,7 +19,7 @@
       },
       "confirm": {
         "title": "Confirm Configuration",
-        "description": "ThesslaGreen device detected:\n\n**Host:** {host}:{port}\n**Slave ID:** {slave_id}\n**Device Name:** {device_name}\n**Firmware Version:** {firmware_version}\n**Serial Number:** {serial_number}\n\n**Scan Statistics:**\n- Registers Found: {register_count}\n- Scan Success Rate: {scan_success_rate}\n- Capabilities Detected: {capabilities_count}\n- Main Features: {capabilities_list}\n\n{auto_detected_note}\n\nDo you want to continue with this configuration?"
+        "description": "ThesslaGreen device {device_name} detected at {host}:{port} with Slave ID {slave_id} and firmware {firmware_version}. {auto_detected_note} Do you want to continue with this configuration?"
       }
     },
     "error": {

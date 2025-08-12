@@ -5,7 +5,7 @@ from typing import Any, Dict
 # Integration constants
 DOMAIN = "thessla_green_modbus"
 MANUFACTURER = "ThesslaGreen"
-MODEL = "AirPack Home Serie 4"
+MODEL = "AirPack Home Series 4"
 
 # Connection defaults
 DEFAULT_NAME = "ThesslaGreen"

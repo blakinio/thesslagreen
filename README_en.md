@@ -26,7 +26,7 @@ The most complete integration for ThesslaGreen AirPack heat recovery units over 
 ## 📋 Compatibility
 
 ### Devices
-- ✅ **ThesslaGreen AirPack Home Serie 4** – all models
+- ✅ **ThesslaGreen AirPack Home Series 4** – all models
 - ✅ **AirPack Home 300v‑850h** (Energy+, Energy, Enthalpy)
 - ✅ **Modbus TCP/RTU protocol** with auto detection
 - ✅ **Firmware v3.x – v5.x** with automatic detection
