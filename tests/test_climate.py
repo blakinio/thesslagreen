@@ -145,23 +145,17 @@ async def test_set_temperature_scaling():
     coordinator.client = DummyClient()
     coordinator._ensure_connection = AsyncMock()
     coordinator.async_request_refresh = AsyncMock()
-    coordinator.available_registers["holding_registers"].update(
-        {"comfort_temperature", "required_temperature"}
-    )
+    coordinator.available_registers["holding_registers"].add("required_temperature")
     coordinator.capabilities.basic_control = True
 
     climate = ThesslaGreenClimate(coordinator)
 
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
 
-    addr_comfort = HOLDING_REGISTERS["comfort_temperature"]
     addr_required = HOLDING_REGISTERS["required_temperature"]
-    expected = int(round(21.5 / REGISTER_MULTIPLIERS["comfort_temperature"]))
+    expected = int(round(21.5 / REGISTER_MULTIPLIERS["required_temperature"]))
 
-    assert coordinator.client.writes == [
-        (addr_comfort, expected, coordinator.slave_id),
-        (addr_required, expected, coordinator.slave_id),
-    ]
+    assert coordinator.client.writes == [(addr_required, expected, coordinator.slave_id)]
 
 
 def test_target_temperature_none_when_unavailable():
@@ -175,7 +169,7 @@ def test_target_temperature_none_when_unavailable():
 
     assert climate.target_temperature is None
 
-    coordinator.data["comfort_temperature"] = 20.0
+    coordinator.data["required_temperature"] = 20.0
     assert climate.target_temperature == 20.0
 
 
