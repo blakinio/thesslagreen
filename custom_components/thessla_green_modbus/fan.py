@@ -30,7 +30,7 @@ async def async_setup_entry(
     # Check if fan control is available
     fan_registers = [
         "air_flow_rate_manual",
-        "air_flow_rate_auto",
+        "air_flow_rate_temporary",
         "supply_percentage",
         "exhaust_percentage",
     ]
@@ -114,7 +114,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             "supply_air_flow",  # Supply air flow rate
             "supply_percentage",  # Supply air percentage
             "air_flow_rate_manual",  # Manual flow rate setting
-            "air_flow_rate_auto",  # Auto flow rate setting
+            "air_flow_rate_temporary",  # Temporary flow rate setting
         ]
 
         for register in flow_registers:
@@ -163,7 +163,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 register = (
                     "air_flow_rate_manual"
                     if current_mode == "manual" or not current_mode
-                    else "air_flow_rate_auto"
+                    else "air_flow_rate_temporary"
                 )
                 if register in HOLDING_REGISTERS:
                     await self._write_register(register, 0)
@@ -201,8 +201,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
                 # Auto mode - set auto flow rate
-                if "air_flow_rate_auto" in HOLDING_REGISTERS:
-                    await self._write_register("air_flow_rate_auto", actual_percentage)
+                if "air_flow_rate_temporary" in HOLDING_REGISTERS:
+                    await self._write_register("air_flow_rate_temporary", actual_percentage)
 
             _LOGGER.info("Set fan speed to %d%%", actual_percentage)
 

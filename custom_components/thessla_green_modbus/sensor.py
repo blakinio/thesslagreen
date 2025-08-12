@@ -195,14 +195,14 @@ SENSOR_DEFINITIONS = {
         "icon": "mdi:fan",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "exhaust_air_flow": {
         "translation_key": "exhaust_air_flow",
         "icon": "mdi:fan-clock",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     
     # Air quality sensors
