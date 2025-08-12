@@ -110,7 +110,7 @@ class ThesslaGreenDeviceScanner:
         register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
         csv_path = files(__package__) / "data" / "modbus_registers.csv"
         try:
-            with csv_path.open(encoding="utf-8", newline="") as csvfile:
+            with csv_path.open(newline="", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     code = row.get("Function_Code")

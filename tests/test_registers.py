@@ -17,6 +17,12 @@ def to_snake_case(name: str) -> str:
     return "_".join(tokens)
 
 
+
+def load_csv_registers() -> tuple[dict[str, int], dict[str, int]]:
+    input_regs: dict[str, int] = {}
+    holding_regs: dict[str, int] = {}
+    csv_path = pathlib.Path("custom_components/thessla_green_modbus/data/modbus_registers.csv")
+
 def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
     rows.sort(key=lambda r: r[1])
     counts: dict[str, int] = {}

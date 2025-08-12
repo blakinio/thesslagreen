@@ -49,12 +49,12 @@ docs = [
 "Source" = "https://github.com/thesslagreen/thessla-green-modbus-ha"
 "Documentation" = "https://github.com/thesslagreen/thessla-green-modbus-ha/wiki"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["custom_components*"]
-
-[tool.setuptools]
-include-package-data = true
 
 [tool.setuptools.package-data]
 "custom_components.thessla_green_modbus" = ["data/*.csv"]
