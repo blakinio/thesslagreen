@@ -9,7 +9,7 @@
 
 ### Oprogramowanie
 - Home Assistant 2025.7.1 lub nowszy (minimalna wersja zadeklarowana w `manifest.json`, brak pakietu `homeassistant` w `requirements.txt`)
-- Python 3.10 lub nowszy
+- Python 3.12 lub nowszy
 - Biblioteka `pymodbus>=3.0.0`
 
 ## 🚀 Instalacja
