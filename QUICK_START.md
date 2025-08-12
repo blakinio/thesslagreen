@@ -16,7 +16,7 @@ Before starting, make sure you have:
 
 1. **Access your AirPack panel**
 2. **Navigate to:** Menu → Communication → Modbus TCP
-3. **Set:** Enable = YES, Port = 502, Slave ID = 10
+3. **Set:** Enable = YES, Port = 502, Device ID = 10
 4. **Note your AirPack's IP address** (e.g., 192.168.1.100)
 
 ### Step 3: Install the Integration 📦
@@ -46,7 +46,7 @@ Before starting, make sure you have:
 4. **Enter:**
    - **IP Address:** 192.168.1.100 (your AirPack IP)
    - **Port:** 502
-   - **Slave ID:** 10 (will auto-detect if wrong)
+   - **Device ID:** 10 (will auto-detect if wrong)
 5. **Click:** SUBMIT
 
 🎉 **Done!** Your AirPack should now be connected.
@@ -158,7 +158,7 @@ title: Temperature Trends
 **Solutions:**
 1. **Check IP address** - Ping your AirPack: `ping 192.168.1.100`
 2. **Check Modbus settings** - Ensure TCP is enabled, port 502
-3. **Try different Slave ID** - Integration auto-detects 1, 10, 247
+3. **Try different Device IDs** - Integration auto-detects 1, 10, 247
 4. **Check firewall** - Ensure port 502 is open
 
 ### ❌ "No entities created"

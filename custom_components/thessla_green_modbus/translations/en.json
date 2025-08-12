@@ -7,29 +7,29 @@
         "data": {
           "host": "IP Address",
           "port": "Port",
-          "slave_id": "Device ID (Slave ID)",
+          "slave_id": "Device ID",
           "name": "Name"
         },
         "data_description": {
           "host": "IP address of the AirPack device on your local network",
           "port": "Modbus TCP port (default 502)",
-          "slave_id": "Modbus device ID (Slave ID, default 10)",
+          "slave_id": "Modbus device ID (default 10)",
           "name": "Device name in Home Assistant"
         }
       },
       "confirm": {
         "title": "Confirm Configuration",
-        "description": "ThesslaGreen device {device_name} detected at {host}:{port} with Slave ID {slave_id} and firmware {firmware_version}. {auto_detected_note} Do you want to continue with this configuration?"
+        "description": "ThesslaGreen device {device_name} detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}. {auto_detected_note} Do you want to continue with this configuration?"
       }
     },
     "error": {
       "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
-      "invalid_auth": "Authentication error. Check Slave ID settings.",
+      "invalid_auth": "Authentication error. Check Device ID settings.",
       "invalid_input": "Invalid configuration provided. Check values and try again.",
       "unknown": "Unexpected error. Check logs for details."
     },
     "abort": {
-      "already_configured": "Device with this IP address and Slave ID is already configured."
+      "already_configured": "Device with this IP address and Device ID is already configured."
     }
   },
   "options": {

@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HVAC Mode Support**: Auto, Fan Only, Off modes
 
 #### Smart Device Detection & Configuration
-- **Auto-detection of Slave ID** - Automatically tries common slave IDs (1, 10, 247)
+- **Auto-detection of Device ID** - Automatically tries common device IDs (1, 10, 247)
 - **Enhanced Config Flow** - Better user experience with device info display
 - **Comprehensive Device Scanner** - Intelligent capability detection with 60+ capabilities
 - **Enhanced Error Handling** - Smart retry logic and graceful error recovery
