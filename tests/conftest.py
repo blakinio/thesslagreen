@@ -1,9 +1,11 @@
 """Test configuration for ThesslaGreen Modbus integration."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 import os
 import sys
 import types
+from datetime import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -91,8 +93,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     config_entries.OptionsFlow = OptionsFlow
     helpers.DataUpdateCoordinator = DataUpdateCoordinator
     helpers.UpdateFailed = UpdateFailed
+
     class DeviceInfo:  # type: ignore[override]
         pass
+
     device_registry.DeviceInfo = DeviceInfo
     exceptions.ConfigEntryNotReady = ConfigEntryNotReady
     exceptions.HomeAssistantError = HomeAssistantError
@@ -125,11 +129,15 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     selector.SelectSelector = SelectSelector
     selector.SelectSelectorConfig = SelectSelectorConfig
     selector.SelectSelectorMode = SelectSelectorMode
+
     async def async_extract_entity_ids(hass, service_call):
         return set()
+
     service_helper.async_extract_entity_ids = async_extract_entity_ids
+
     def er_async_get(hass):
         return getattr(hass, "entity_registry", None)
+
     entity_registry.async_get = er_async_get
     helpers_pkg.update_coordinator = helpers
     helpers_pkg.device_registry = device_registry
@@ -177,11 +185,18 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     # Minimal util.logging stub for pytest plugin compatibility
     util = types.ModuleType("homeassistant.util")
     util_logging = types.ModuleType("homeassistant.util.logging")
+    util_dt = types.ModuleType("homeassistant.util.dt")
 
     def log_exception(*args, **kwargs):  # pragma: no cover - simple no-op
         return None
 
+    def utcnow():  # pragma: no cover - simple stub
+        return datetime.utcnow()
+
     util_logging.log_exception = log_exception
+    util.dt = util_dt
+    util_dt.utcnow = utcnow
+    util_dt.now = utcnow
     util.logging = util_logging
     ha.util = util
 
@@ -196,6 +211,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.exceptions"] = exceptions
     sys.modules["homeassistant.const"] = const
     sys.modules["homeassistant.util"] = util
+    sys.modules["homeassistant.util.dt"] = util_dt
     sys.modules["homeassistant.util.logging"] = util_logging
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
     sys.modules["homeassistant.helpers.config_validation"] = cv
@@ -289,7 +305,7 @@ def mock_coordinator():
         },
         "capabilities": {
             "constant_flow": True,
-        "gwc_system": True,
+            "gwc_system": True,
             "bypass_system": True,
         },
     }
@@ -302,5 +318,3 @@ def mock_coordinator():
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     return coordinator
-
-
