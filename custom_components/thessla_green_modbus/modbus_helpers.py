@@ -22,6 +22,7 @@ async def _call_modbus(
     ``slave`` or ``unit`` as the keyword for the target device.
     """
     params = inspect.signature(func).parameters
+ codex/refactor-modbus_helpers-to-support-keyword-only
     kwarg = "slave" if "slave" in params else "unit"
 
     # Map passed positional arguments to parameter names so that any values intended
@@ -42,6 +43,26 @@ async def _call_modbus(
 
     try:
         return await func(*positional, **{kwarg: slave_id}, **kwargs)
+=======
+    if "slave" in params:
+        kwarg = "slave"
+    elif "unit" in params:
+        kwarg = "unit"
+    else:
+        kwarg = None
+
+    try:
+        if kwarg is not None:
+            _LOGGER.debug(
+                "Calling %s with %s keyword", getattr(func, "__name__", repr(func)), kwarg
+            )
+            return await func(*args, **{kwarg: slave_id}, **kwargs)
+
+        _LOGGER.debug(
+            "Calling %s without address keyword", getattr(func, "__name__", repr(func))
+        )
+        return await func(*args, **kwargs)
+ main
     except Exception as err:  # pragma: no cover - log unexpected errors
         _LOGGER.error(
             "Modbus call %s failed: %s", getattr(func, "__name__", repr(func)), err

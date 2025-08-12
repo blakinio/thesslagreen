@@ -100,7 +100,7 @@ class ThesslaGreenDeviceScanner:
         """Read input registers."""
         try:
             response = await _call_modbus(
-                client.read_input_registers, self.slave_id, address, count
+                client.read_input_registers, self.slave_id, address, count=count
             )
             if not response.isError():
                 return response.registers
@@ -116,7 +116,7 @@ class ThesslaGreenDeviceScanner:
         """Read holding registers."""
         try:
             response = await _call_modbus(
-                client.read_holding_registers, self.slave_id, address, count
+                client.read_holding_registers, self.slave_id, address, count=count
             )
             if not response.isError():
                 return response.registers
@@ -133,7 +133,9 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
-            response = await _call_modbus(client.read_coils, self.slave_id, address, count)
+            response = await _call_modbus(
+                client.read_coils, self.slave_id, address, count=count
+            )
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
@@ -148,7 +150,7 @@ class ThesslaGreenDeviceScanner:
         """Read discrete input registers."""
         try:
             response = await _call_modbus(
-                client.read_discrete_inputs, self.slave_id, address, count
+                client.read_discrete_inputs, self.slave_id, address, count=count
             )
             if not response.isError():
                 return response.bits[:count]

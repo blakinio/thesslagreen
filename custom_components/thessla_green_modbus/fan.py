@@ -24,7 +24,8 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
         pass
 
-from .const import DOMAIN, HOLDING_REGISTERS
+from .const import DOMAIN
+from .registers import HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
