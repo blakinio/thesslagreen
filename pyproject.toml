@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thessla-green-modbus"
-version = "2.0.0"
+version = "2.1.1"
 description = "ThesslaGreen Modbus integration for Home Assistant"
 readme = "README.md"
 license = {text = "MIT"}
@@ -26,7 +26,7 @@ classifiers = [
 requires-python = ">=3.10"
 # Core dependencies
 dependencies = [
-    "homeassistant>=2025.7.0",
+    "homeassistant>=2025.7.1",
     "pymodbus>=3.5.0,<4.0.0",
     "voluptuous>=0.13.1",
 ]
