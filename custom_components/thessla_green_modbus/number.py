@@ -12,6 +12,20 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+try:  # pragma: no cover - handle missing pymodbus during tests
+    from pymodbus.exceptions import ConnectionException, ModbusException
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
+
+    class ConnectionException(Exception):
+        """Fallback exception when pymodbus is unavailable."""
+
+        pass
+
+    class ModbusException(Exception):
+        """Fallback Modbus exception when pymodbus is unavailable."""
+
+        pass
+
 from .const import DOMAIN
 from .entity_mappings import ENTITY_MAPPINGS
 from .registers import HOLDING_REGISTERS
@@ -169,9 +183,21 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
                 _LOGGER.info("Set %s to %.2f", self.register_name, value)
             else:
                 _LOGGER.error("Failed to set %s to %.2f", self.register_name, value)
+                raise RuntimeError(f"Failed to write register {self.register_name}")
 
-        except Exception as exc:
-            _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
+            _LOGGER.error(
+                "Failed to set %s to %.2f: %s", self.register_name, value, exc
+            )
+            raise
+        except Exception as exc:  # pragma: no cover - unexpected
+            _LOGGER.exception(
+                "Unexpected error setting %s to %.2f: %s",
+                self.register_name,
+                value,
+                exc,
+            )
+            raise
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
