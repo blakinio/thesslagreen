@@ -43,9 +43,9 @@ utility_meter:
   thessla_daily_energy:
     source: sensor.thessla_green_power_consumption
     cycle: daily
-  thessla_monthly_energy:
-    source: sensor.thessla_green_power_consumption  
-    cycle: monthly
+    thessla_monthly_energy:
+      source: sensor.thessla_green_power_consumption
+      cycle: monthly
 
 # Input boolean for manual controls (optional)
 input_boolean:
@@ -84,13 +84,13 @@ automation:
         target:
           entity_id: select.thessla_special_function
         data:
-          option: "OKAP"
+          option: "hood"
       - delay: '00:30:00'  # 30 minutes
       - service: select.select_option
         target:
           entity_id: select.thessla_special_function
         data:
-          option: "Brak"
+          option: "none"
       - service: input_boolean.turn_off
         entity_id: input_boolean.thessla_boost_mode
 
@@ -163,7 +163,7 @@ automation:
         target:
           entity_id: select.thessla_season_mode
         data:
-          option: "Lato"
+          option: "summer"
 
   - alias: "ThesslaGreen: Winter mode"
     trigger:
@@ -176,7 +176,7 @@ automation:
         target:
           entity_id: select.thessla_season_mode
         data:
-          option: "Zima"
+          option: "winter"
 
 # Scripts (optional - for complex actions)
 script:
@@ -215,7 +215,7 @@ script:
         target:
           entity_id: select.thessla_special_function
         data:
-          option: "WIETRZENIE (aktywacja ręczna)"
+          option: "ventilation_manual"
       - service: number.set_value
         target:
           entity_id: number.thessla_air_flow_rate_manual
