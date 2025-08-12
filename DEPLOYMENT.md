@@ -8,7 +8,7 @@
 - Połączenie sieciowe między HA a rekuperatorem
 
 ### Oprogramowanie
-- Home Assistant 2023.4.0 lub nowszy
+- Home Assistant 2025.7.1 lub nowszy (minimalna wersja zadeklarowana w `manifest.json`, brak pakietu `homeassistant` w `requirements.txt`)
 - Python 3.10 lub nowszy
 - Biblioteka `pymodbus>=3.0.0`
 
