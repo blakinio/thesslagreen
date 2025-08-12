@@ -1,8 +1,6 @@
 """Value conversion factors for ThesslaGreen Modbus registers."""
 
-from typing import Dict
-
-REGISTER_MULTIPLIERS: Dict[str, float] = {
+REGISTER_MULTIPLIERS: dict[str, float] = {
     # Temperature sensors with 0.1°C resolution
     "outside_temperature": 0.1,
     "supply_temperature": 0.1,

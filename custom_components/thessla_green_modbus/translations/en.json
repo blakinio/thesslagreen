@@ -19,7 +19,7 @@
       },
       "confirm": {
         "title": "Confirm Configuration",
-        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) at {host}:{port}. Device ID {slave_id} runs firmware {firmware_version}. Registers: {register_count} ( {scan_success_rate} success). Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note} Continue with this configuration?"
+        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) at {host}:{port}. Device ID {slave_id} runs firmware {firmware_version}. Registers: {register_count} ({scan_success_rate} success rate). Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note} Continue with this configuration?"
       }
     },
     "error": {
@@ -332,7 +332,7 @@
         },
         "temperature": {
           "name": "Temperature",
-          "description": "Target temperature (°C)"
+          "description": "Target temperature (\u00b0C)"
         }
       }
     },

@@ -474,10 +474,6 @@ class ThesslaGreenDeviceScanner:
         self._client = None
         _LOGGER.debug("Disconnected from ThesslaGreen device")
 
-    def _analyze_capabilities_enhanced(self) -> DeviceCapabilities:
-        """Enhanced capability analysis for optimization tests."""
-        return self._analyze_capabilities()
-
     def _group_registers_for_batch_read(
         self, addresses: List[int], max_gap: int = 10
     ) -> List[Tuple[int, int]]:
