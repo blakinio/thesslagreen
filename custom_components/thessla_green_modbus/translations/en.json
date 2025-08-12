@@ -453,7 +453,7 @@
       "filter_change": {
         "name": "Filter Type",
         "state": {
-          "presostat": "Presostat",
+          "presostat": "Pressure switch",
           "flat_filters": "Flat Filters",
           "cleanpad": "CleanPad",
           "cleanpad_pure": "CleanPad Pure"
@@ -691,7 +691,7 @@
           "selector": {
             "select": {
               "options": {
-                "presostat": "Presostat",
+                "presostat": "Pressure switch",
                 "flat_filters": "Flat Filters",
                 "cleanpad": "CleanPad",
                 "cleanpad_pure": "CleanPad Pure"
