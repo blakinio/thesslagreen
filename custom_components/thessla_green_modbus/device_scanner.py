@@ -373,25 +373,33 @@ class ThesslaGreenDeviceScanner:
                 present_blocks[reg_type] = (addresses[0], addresses[-1])
 
             # Dynamically scan registers based on CSV definitions
-            for addr, reg_name in sorted(self._registers.get("04", {}).items()):
-                val = await self._read_input(client, addr, 1)
-                if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    self.available_registers["input_registers"].add(reg_name)
+            csv_register_maps = {
+                "input_registers": ("04", self._read_input),
+                "holding_registers": ("03", self._read_holding),
+                "coil_registers": ("01", self._read_coil),
+                "discrete_inputs": ("02", self._read_discrete),
+            }
 
-            for addr, reg_name in sorted(self._registers.get("03", {}).items()):
-                val = await self._read_holding(client, addr, 1)
-                if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    self.available_registers["holding_registers"].add(reg_name)
+            for reg_type, (code, read_fn) in csv_register_maps.items():
+                addr_to_name = self._registers.get(code, {})
+                addresses = sorted(addr_to_name)
+                if not addresses:
+                    continue
 
-            for addr, reg_name in sorted(self._registers.get("01", {}).items()):
-                val = await self._read_coil(client, addr, 1)
-                if val is not None:
-                    self.available_registers["coil_registers"].add(reg_name)
-
-            for addr, reg_name in sorted(self._registers.get("02", {}).items()):
-                val = await self._read_discrete(client, addr, 1)
-                if val is not None:
-                    self.available_registers["discrete_inputs"].add(reg_name)
+                for start, count in self._group_registers_for_batch_read(addresses):
+                    values = await read_fn(client, start, count)
+                    if values is None:
+                        continue
+                    for offset, value in enumerate(values):
+                        addr = start + offset
+                        reg_name = addr_to_name.get(addr)
+                        if not reg_name:
+                            continue
+                        if reg_type in ("input_registers", "holding_registers"):
+                            if self._is_valid_register_value(reg_name, value):
+                                self.available_registers[reg_type].add(reg_name)
+                        else:
+                            self.available_registers[reg_type].add(reg_name)
 
             # Analyze capabilities once all register scans are complete
             caps = self._analyze_capabilities()
