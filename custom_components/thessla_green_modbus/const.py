@@ -1,12 +1,5 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
-from typing import Any, Dict
-
-# Large data structures are provided by dedicated modules
-from .entity_mappings import ENTITY_MAPPINGS, NUMBER_ENTITY_MAPPINGS
-from .multipliers import REGISTER_MULTIPLIERS
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
-
 # Integration constants
 DOMAIN = "thessla_green_modbus"
 MANUFACTURER = "ThesslaGreen"
@@ -111,26 +104,6 @@ SPECIAL_FUNCTION_MAP = {
     "winter": 1024,
 }
 
-# Unit mappings
-REGISTER_UNITS = {
-    # Temperature registers - 0.1°C resolution
-    "outside_temperature": "°C",
-    "supply_temperature": "°C",
-    "exhaust_temperature": "°C",
-    "fpx_temperature": "°C",
-    "duct_supply_temperature": "°C",
-    "gwc_temperature": "°C",
-    "ambient_temperature": "°C",
-    # Flow registers - m³/h
-    "supply_air_flow": "m³/h",
-    "exhaust_air_flow": "m³/h",
-    "supply_flowrate": "m³/h",
-    "exhaust_flowrate": "m³/h",
-    # Percentages
-    "air_flow_rate_manual": "%",
-    # Temperature set-point
-    "supply_air_temperature_manual": "°C",
-}
 
 # Device class mappings for Home Assistant
 DEVICE_CLASSES = {
