@@ -1,4 +1,4 @@
-"""Tests for ThesslaGreenCoordinator - HA 2025.7+ & pymodbus 3.5+ Compatible."""
+"""Tests for ThesslaGreenCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
 import os
 import sys
