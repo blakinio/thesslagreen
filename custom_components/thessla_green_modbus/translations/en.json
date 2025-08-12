@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "ThesslaGreen Modbus Configuration",
-        "description": "Configure connection to ThesslaGreen AirPack via Modbus TCP. The integration will automatically detect available device functions and registers.",
+        "description": "Configure connection to ThesslaGreen AirPack via Modbus TCP.\nThe integration will automatically detect available device functions and registers.",
         "data": {
           "host": "IP Address",
           "port": "Port",
