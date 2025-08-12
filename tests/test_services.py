@@ -187,7 +187,7 @@ from custom_components.thessla_green_modbus.services import AIR_QUALITY_REGISTER
 
 def test_air_quality_register_map():
     """Verify correct mapping of air quality parameters to register names."""
-    assert AIR_QUALITY_REGISTER_MAP["co2_low"] == "co2_low_threshold"
-    assert AIR_QUALITY_REGISTER_MAP["co2_medium"] == "co2_medium_threshold"
-    assert AIR_QUALITY_REGISTER_MAP["co2_high"] == "co2_high_threshold"
-    assert AIR_QUALITY_REGISTER_MAP["humidity_target"] == "humidity_target_threshold"
+    assert AIR_QUALITY_REGISTER_MAP["co2_low"] == "co2_threshold_low"
+    assert AIR_QUALITY_REGISTER_MAP["co2_medium"] == "co2_threshold_medium"
+    assert AIR_QUALITY_REGISTER_MAP["co2_high"] == "co2_threshold_high"
+    assert AIR_QUALITY_REGISTER_MAP["humidity_target"] == "humidity_target"

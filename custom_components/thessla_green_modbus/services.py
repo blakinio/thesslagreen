@@ -15,10 +15,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # Map service parameters to corresponding register names
 AIR_QUALITY_REGISTER_MAP = {
-    "co2_low": "co2_low_threshold",
-    "co2_medium": "co2_medium_threshold",
-    "co2_high": "co2_high_threshold",
-    "humidity_target": "humidity_target_threshold",
+    "co2_low": "co2_threshold_low",
+    "co2_medium": "co2_threshold_medium",
+    "co2_high": "co2_threshold_high",
+    "humidity_target": "humidity_target",
 }
 
 # Service schemas
@@ -229,7 +229,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     if value is not None:
                         register_name = AIR_QUALITY_REGISTER_MAP[param]
                         await coordinator.async_write_register(register_name, value)
-                
+
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set air quality thresholds for %s", entity_id)
 
