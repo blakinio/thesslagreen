@@ -80,10 +80,10 @@
         "name": "Heating Temperature"
       },
       "supply_flowrate": {
-        "name": "Supply Airflow"
+        "name": "Target Supply Airflow"
       },
       "exhaust_flowrate": {
-        "name": "Exhaust Airflow"
+        "name": "Target Exhaust Airflow"
       },
       "heat_recovery_efficiency": {
         "name": "Heat Recovery Efficiency"
@@ -152,10 +152,10 @@
         "name": "Bypass Airflow"
       },
       "supply_air_flow": {
-        "name": "Supply Airflow"
+        "name": "Current Supply Airflow"
       },
       "exhaust_air_flow": {
-        "name": "Exhaust Airflow"
+        "name": "Current Exhaust Airflow"
       },
       "pm1_level": {
         "name": "PM1"
