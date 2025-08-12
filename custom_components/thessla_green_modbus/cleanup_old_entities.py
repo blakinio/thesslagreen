@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""
-Script to clean up old references in Home Assistant for the ThesslaGreen Modbus
-integration. Removes outdated entities and references that may cause errors.
+"""Cleanup old references created by the ThesslaGreen Modbus integration.
+
+The script removes outdated entities and references that may cause errors.
+It now supports both Polish and English entity names and can be configured at
+runtime through a config file or command line arguments.
 
 Usage:
-    python3 cleanup_old_entities.py
+    python3 cleanup_old_entities.py [--config CONFIG] [--pattern REGEX ...]
 
 Run this script before restarting Home Assistant after updating the integration.
 """
 
+import argparse
 import json
 import logging
 import re
@@ -28,11 +31,59 @@ HA_CONFIG_PATHS = [
     Path("./config"),  # Relative path
 ]
 
-OLD_ENTITY_PATTERNS = [
+DEFAULT_ENTITY_PATTERNS = [
     "number.rekuperator_predkosc",
     "thessla_green_modbus.rekuperator_predkosc",
     "thessla.*rekuperator_predkosc",
+    # English variants
+    "number.rekuperator_speed",
+    "thessla_green_modbus.rekuperator_speed",
+    "thessla.*rekuperator_speed",
 ]
+
+# This list will be extended at runtime from config file and CLI
+OLD_ENTITY_PATTERNS = DEFAULT_ENTITY_PATTERNS.copy()
+
+DEFAULT_CONFIG_FILE = Path(__file__).with_name("cleanup_config.json")
+
+
+def _load_patterns(config_file: Path | None, extra_patterns: list[str]) -> list[str]:
+    """Load patterns from defaults, config file and CLI."""
+    patterns = DEFAULT_ENTITY_PATTERNS.copy()
+
+    cfg = config_file or DEFAULT_CONFIG_FILE
+    if cfg and cfg.exists():
+        try:
+            with open(cfg, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            patterns.extend(data.get("old_entity_patterns", []))
+            _LOGGER.info(
+                "Loaded %s patterns from %s", len(data.get("old_entity_patterns", [])), cfg
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            _LOGGER.warning("Cannot read config file %s: %s", cfg, exc)
+
+    patterns.extend(extra_patterns)
+    return patterns
+
+
+def _parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Cleanup old ThesslaGreen entities")
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        help="Path to JSON config file with additional old_entity_patterns",
+    )
+    parser.add_argument(
+        "-p",
+        "--pattern",
+        action="append",
+        default=[],
+        help="Additional regex pattern to match old entities (can be repeated)",
+    )
+    return parser.parse_args()
 
 
 def find_ha_config_dir() -> Path | None:
@@ -234,8 +285,13 @@ def cleanup_custom_component_cache(config_dir: Path) -> bool:
 
 def main() -> None:
     """Main entry point of the script."""
+    args = _parse_args()
+    global OLD_ENTITY_PATTERNS
+    OLD_ENTITY_PATTERNS = _load_patterns(args.config, args.pattern)
+
     _LOGGER.info("ThesslaGreen Modbus - Cleanup Tool")
     _LOGGER.info("=" * 50)
+    _LOGGER.info("Using %s patterns", len(OLD_ENTITY_PATTERNS))
 
     # Locate HA configuration directory
     config_dir = find_ha_config_dir()
