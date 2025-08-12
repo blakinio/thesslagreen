@@ -1,9 +1,8 @@
 """Register definitions for the ThesslaGreen Modbus integration."""
 
-from typing import Dict
-
-
 from __future__ import annotations
+
+from typing import Dict
 
 
 # Generated from modbus_registers.csv
