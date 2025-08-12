@@ -501,7 +501,7 @@
   "services": {
       "set_special_mode": {
         "name": "Set Special Mode",
-        "description": "Sets special operating mode of the heat recovery unit (BOOST, ECO, FIREPLACE, HOOD, etc.)",
+        "description": "Sets special operating mode of the heat recovery unit (boost, eco, fireplace, hood, etc.)",
         "fields": {
           "mode": {
             "name": "Special Mode",

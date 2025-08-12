@@ -501,7 +501,7 @@
   "services": {
     "set_special_mode": {
       "name": "Ustaw tryb specjalny",
-      "description": "Ustawia specjalny tryb pracy rekuperatora (BOOST, ECO, KOMINEK, OKAP itd.)",
+      "description": "Ustawia specjalny tryb pracy rekuperatora (boost, eco, kominek, okap itd.)",
       "fields": {
         "mode": {
           "name": "Tryb specjalny",
