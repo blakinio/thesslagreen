@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -68,9 +69,9 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     except ModbusException as exc:
         _LOGGER.error("Modbus error: %s", exc)
         raise InvalidAuth from exc
-    except Exception as exc:
-        _LOGGER.exception("Unexpected error during device validation")
-        raise
+    except (OSError, asyncio.TimeoutError) as exc:
+        _LOGGER.error("Unexpected error during device validation: %s", exc)
+        raise CannotConnect from exc
     finally:
         await scanner.close()
 
@@ -116,8 +117,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except (ConnectionException, ModbusException) as exc:
                 _LOGGER.error("Modbus communication error: %s", exc)
                 errors["base"] = "cannot_connect"
-            except Exception as exc:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
+            except (OSError, asyncio.TimeoutError, ValueError) as exc:
+                _LOGGER.error("Unexpected exception: %s", exc)
                 errors["base"] = "unknown"
 
         # Show form
