@@ -1,9 +1,11 @@
 """Diagnostics platform for the ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import logging
 import re
 from typing import Any, Dict
+import ipaddress
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -18,9 +20,7 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> Dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][
-        entry.entry_id
-    ]
+    coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
@@ -50,28 +50,31 @@ def _redact_sensitive_data(data: Dict[str, Any]) -> Dict[str, Any]:
     # Create a copy to avoid modifying original data
     safe_data = data.copy()
 
+    def mask_ip(ip_str: str) -> str:
+        """Return a redacted representation of an IP address."""
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            return ip_str
+        if isinstance(ip, ipaddress.IPv4Address):
+            parts = ip_str.split(".")
+            return f"{parts[0]}.xxx.xxx.{parts[3]}"
+        segments = ip.exploded.split(":")
+        return ":".join([segments[0]] + ["xxxx"] * 6 + [segments[-1]])
+
     # Redact sensitive connection information
     if "connection" in safe_data:
         connection = safe_data["connection"].copy()
-        # Keep structure but redact actual host
         if "host" in connection:
-            host_parts = connection["host"].split(".")
-            if len(host_parts) == 4:
-                # Redact middle parts of IP: 192.xxx.xxx.17
-                connection["host"] = f"{host_parts[0]}.xxx.xxx.{host_parts[3]}"
+            connection["host"] = mask_ip(connection["host"])
         safe_data["connection"] = connection
 
     # Redact serial number if present
-    if (
-        "device_info" in safe_data
-        and "serial_number" in safe_data["device_info"]
-    ):
+    if "device_info" in safe_data and "serial_number" in safe_data["device_info"]:
         serial = safe_data["device_info"]["serial_number"]
         if serial and len(serial) > 4:
             # Show only first and last 2 characters
-            safe_data["device_info"]["serial_number"] = (
-                f"{serial[:2]}***{serial[-2:]}"
-            )
+            safe_data["device_info"]["serial_number"] = f"{serial[:2]}***{serial[-2:]}"
 
     # Keep error logs but redact any IP addresses in messages
     if "recent_errors" in safe_data:
@@ -80,8 +83,8 @@ def _redact_sensitive_data(data: Dict[str, Any]) -> Dict[str, Any]:
                 # Simple IP redaction
                 message = error["message"]
                 message = re.sub(
-                    r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
-                    "xxx.xxx.xxx.xxx",
+                    r"\b(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:]+)\b",
+                    lambda m: mask_ip(m.group(0)),
                     message,
                 )
                 error["message"] = message
