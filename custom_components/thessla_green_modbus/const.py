@@ -93,20 +93,6 @@ MODBUS_STOP_BITS = json.loads((OPTIONS_PATH / "modbus_stop_bits.json").read_text
 
 # Special function bit mappings for services
 SPECIAL_FUNCTION_MAP = {
-    mode: 1 << idx for idx, mode in enumerate(SPECIAL_MODE_OPTIONS[1:], start=0)
-}
-
-# Complete mapping including additional internal modes
-SPECIAL_MODES = {
-    "normal": 0,
-    **SPECIAL_FUNCTION_MAP,
-    "defrost": 2048,
-    "frost_protection": 4096,
-}
-
-
-# Special function bit mappings for services (alias for SPECIAL_MODES)
-SPECIAL_FUNCTION_MAP = {
     "boost": 1,
     "eco": 2,
     "away": 4,
@@ -118,6 +104,14 @@ SPECIAL_FUNCTION_MAP = {
     "kitchen": 256,
     "summer": 512,
     "winter": 1024,
+}
+
+# Complete mapping including additional internal modes
+SPECIAL_MODES = {
+    "normal": 0,
+    **SPECIAL_FUNCTION_MAP,
+    "defrost": 2048,
+    "frost_protection": 4096,
 }
 
 # Unit mappings
