@@ -289,7 +289,7 @@ class ThesslaGreenDeviceScanner:
                 _LOGGER.debug("Firmware version: %s", fw)
 
             # Determine model based on firmware features
-            model = "AirPack Home Serie 4"
+            model = "AirPack Home Series 4"
             if fw_data and fw_data[0] >= 4:
                 if fw_data[1] >= 85:
                     model = "AirPack⁴ Energy++"

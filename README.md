@@ -26,7 +26,7 @@ Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokoł
 ## 📋 Kompatybilność
 
 ### Urządzenia
-- ✅ **ThesslaGreen AirPack Home Serie 4** - wszystkie modele
+- ✅ **ThesslaGreen AirPack Home Series 4** - wszystkie modele
 - ✅ **AirPack Home 300v-850h** (Energy+, Energy, Enthalpy)
 - ✅ **Protokół Modbus TCP/RTU** z auto-detekcją
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
