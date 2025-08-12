@@ -164,41 +164,18 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         try:
-            await self.coordinator.async_write_register(self.register_name, value)
-            _LOGGER.info("Set %s to %.2f", self.register_name, value)
+            success = await self.coordinator.async_write_register(
+                self.register_name, value, refresh=False
+            )
+            if success:
+                await self.coordinator.async_request_refresh()
+                _LOGGER.info("Set %s to %.2f", self.register_name, value)
+            else:
+                _LOGGER.error("Failed to set %s to %.2f", self.register_name, value)
 
         except Exception as exc:
             _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)
 
- codex/modify-async_write_register-for-scaling
-=======
-    async def _write_register(self, register_name: str, value: float) -> None:
-        """Write value to register."""
-        if register_name not in HOLDING_REGISTERS:
-            raise ValueError(f"Register {register_name} is not writable")
-
-        register_address = HOLDING_REGISTERS[register_name]
-
-        # Convert to integer for Modbus
-        int_value = int(round(value))
-
-        # Ensure client is connected
-        if not self.coordinator.client or not self.coordinator.client.connected:
-            if not await self.coordinator.async_ensure_client():
-                raise RuntimeError("Failed to connect to device")
-
-        # Write register - pymodbus 3.5+ compatible
-        response = await self.coordinator.client.write_register(
-            address=register_address, value=int_value, unit=self.coordinator.slave_id
-        )
-
-        if response.isError():
-            raise RuntimeError(f"Failed to write register {register_name}: {response}")
-
-        # Request immediate data update
-        await self.coordinator.async_request_refresh()
-
-main
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return additional state attributes."""

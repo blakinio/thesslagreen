@@ -354,7 +354,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register("filter_change", filter_value)
+                await coordinator.async_write_register(
+                    "filter_change", filter_value, refresh=False
+                )
+                await coordinator.async_request_refresh()
                 _LOGGER.info("Reset filters for %s", entity_id)
 
     async def reset_settings(call: ServiceCall) -> None:

@@ -525,7 +525,9 @@ class TestThesslaGreenClimate:
         
         await climate.async_set_hvac_mode(HVACMode.FAN_ONLY)
         
-        mock_climate_coordinator.async_write_register.assert_called_with("mode", 1)
+        mock_climate_coordinator.async_write_register.assert_called_with(
+            "mode", 1, refresh=False
+        )
         mock_climate_coordinator.async_request_refresh.assert_called_once()
 
     @pytest.mark.asyncio
