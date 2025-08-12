@@ -97,7 +97,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 
 ### Binary sensors (40+ auto detected)
 - **System status**: fan power, bypass, GWC, pumps
-- **Modes**: summer/winter, auto/manual, special modes
+- **Modes**: summer/winter, auto/manual, special modes (boost, eco, away, sleep, fireplace, hood, party, bathroom, kitchen, summer, winter)
 - **Inputs**: expansion, fire alarm, contractors, sensors
 - **Errors and alarms**: all codes S1‑S32 and E99‑E105
 - **Protections**: thermal, anti freeze, overloads

@@ -38,8 +38,20 @@ def _scale_for_register(register_name: str, value: float) -> int:
 # Service schemas
 SET_SPECIAL_MODE_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_ids,
-    vol.Required("mode"): vol.In(["none", "boost", "eco", "away", "fireplace", "hood", 
-                                  "party", "bathroom", "kitchen", "summer", "winter"]),
+    vol.Required("mode"): vol.In([
+        "none",
+        "boost",
+        "eco",
+        "away",
+        "sleep",
+        "fireplace",
+        "hood",
+        "party",
+        "bathroom",
+        "kitchen",
+        "summer",
+        "winter",
+    ]),
     vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=480)),
 })
 
