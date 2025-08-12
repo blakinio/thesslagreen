@@ -124,7 +124,7 @@ automation:
         target:
           entity_id: climate.thessla_green_climate
         data:
-          preset_mode: "comfort"
+          preset_mode: "eco"
 
   # Away mode activation
   - alias: "ThesslaGreen: Away mode"
@@ -187,7 +187,7 @@ script:
         target:
           entity_id: climate.thessla_green_climate
         data:
-          preset_mode: "comfort"
+          preset_mode: "eco"
       - service: number.set_value
         target:
           entity_id: number.thessla_air_flow_rate_manual
