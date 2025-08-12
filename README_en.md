@@ -229,6 +229,15 @@ logger:
 - 💡 [Feature requests](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
+### Regenerating registers.py
+If you modify `custom_components/thessla_green_modbus/data/modbus_registers.csv`, rebuild the generated module:
+
+```bash
+python tools/generate_registers.py
+```
+
+Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+
 ### Changelog
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
