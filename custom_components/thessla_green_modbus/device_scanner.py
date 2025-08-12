@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 try:  # pragma: no cover
     from pymodbus.exceptions import ConnectionException
@@ -427,7 +427,7 @@ class ThesslaGreenDeviceScanner:
                 pass
             _LOGGER.debug("Disconnected from ThesslaGreen device")
 
-    async def scan_device(self) -> Dict[str, any]:
+    async def scan_device(self) -> Dict[str, Any]:
         """Scan device and return formatted result - compatible with coordinator."""
         try:
             info, caps, blocks = await self.scan()
