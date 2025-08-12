@@ -231,7 +231,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             discrete_addrs = [
                 DISCRETE_INPUT_REGISTERS[reg] for reg in self.available_registers["discrete_inputs"]
             ]
-            self._register_groups["discrete"] = self._group_registers_for_batch_read(
+            self._register_groups["discrete_inputs"] = self._group_registers_for_batch_read(
                 sorted(discrete_addrs)
             )
 
@@ -522,10 +522,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read discrete input registers using optimized batch reading."""
         data = {}
 
-        if "discrete" not in self._register_groups:
+        if "discrete_inputs" not in self._register_groups:
             return data
 
-        for start_addr, count in self._register_groups["discrete"]:
+        for start_addr, count in self._register_groups["discrete_inputs"]:
             try:
                 response = await self.client.read_discrete_inputs(
                     start_addr, count, unit=self.slave_id
