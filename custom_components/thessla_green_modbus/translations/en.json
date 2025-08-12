@@ -20,7 +20,7 @@
       "confirm": {
         "title": "Confirm Configuration",
 
-        "description": "ThesslaGreen device {device_name} (serial {serial_number}) detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}. Registers detected: {register_count} ({scan_success_rate} success). Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note} Do you want to continue with this configuration?"
+        "description": "ThesslaGreen device {device_name} (serial {serial_number}) detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}.\nRegisters detected: {register_count} ({scan_success_rate} success).\nCapabilities ({capabilities_count}): {capabilities_list}.\n{auto_detected_note}\nDo you want to continue with this configuration?"
       }
     },
     "error": {
