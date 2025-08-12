@@ -9,10 +9,10 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, HOLDING_REGISTERS, COIL_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ async def async_setup_entry(
         _LOGGER.debug("No switch entities were created")
 
 
-class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
+class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     """ThesslaGreen switch entity."""
 
     def __init__(
@@ -129,16 +129,13 @@ class ThesslaGreenSwitch(CoordinatorEntity, SwitchEntity):
         entity_config: Dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, register_name)
 
         self.register_name = register_name
         self.entity_config = entity_config
 
         # Entity configuration
-        self._attr_unique_id = f"{coordinator.device_name}_{register_name}"
         self._attr_translation_key = entity_config["translation_key"]
-        self._attr_has_entity_name = True
-        self._attr_device_info = coordinator.get_device_info()
         self._attr_icon = entity_config["icon"]
 
         # Set entity category if specified
