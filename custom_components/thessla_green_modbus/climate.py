@@ -40,7 +40,6 @@ PRESET_MODES = [
     "none",
     "eco",
     "boost",
-    "comfort",
     "away",
     "sleep",
     "fireplace",
