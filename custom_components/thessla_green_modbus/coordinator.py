@@ -53,7 +53,7 @@ from .const import (
     REGISTER_MULTIPLIERS,
 )
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
-from .modbus_helpers import _call_modbus
+from .modbus_helpers import _call_modbus as call_modbus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -131,6 +131,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "average_response_time": 0.0,
             "total_registers_read": 0,
         }
+
+    async def _call_modbus(self, func, *args, **kwargs):
+        """Wrapper around Modbus calls injecting the slave ID."""
+        return await call_modbus(func, self.slave_id, *args, **kwargs)
 
     async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
@@ -274,11 +278,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             try:
                 await self._ensure_connection()
                 # Try to read a basic register to verify communication
+ codex/refactor-coordinator.py-for-modbus-calls
+                response = await self._call_modbus(
+                    self.client.read_input_registers, 0x0000, 1
+=======
                 response = await _call_modbus(
                     self.client.read_input_registers,
                     self.slave_id,
                     0x0000,
                     1,
+ main
                 )
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
@@ -416,8 +425,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["input_registers"]:
             try:
-                response = await _call_modbus(
-                    self.client.read_input_registers, self.slave_id, start_addr, count
+                response = await self._call_modbus(
+                    self.client.read_input_registers, start_addr, count
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -460,8 +469,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["holding_registers"]:
             try:
-                response = await _call_modbus(
-                    self.client.read_holding_registers, self.slave_id, start_addr, count
+                response = await self._call_modbus(
+                    self.client.read_holding_registers, start_addr, count
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -506,11 +515,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["coil_registers"]:
             try:
+ codex/refactor-coordinator.py-for-modbus-calls
+                response = await self._call_modbus(
+                    self.client.read_coils, start_addr, count
+=======
                 response = await _call_modbus(
                     self.client.read_coils,
                     self.slave_id,
                     start_addr,
                     count,
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -559,8 +573,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
             try:
-                response = await _call_modbus(
-                    self.client.read_discrete_inputs, self.slave_id, start_addr, count
+                response = await self._call_modbus(
+                    self.client.read_discrete_inputs, start_addr, count
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -683,17 +697,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
-                    response = await _call_modbus(
+                    response = await self._call_modbus(
                         self.client.write_register,
-                        self.slave_id,
                         address=address,
                         value=value,
                     )
                 elif register_name in COIL_REGISTERS:
                     address = COIL_REGISTERS[register_name]
-                    response = await _call_modbus(
+                    response = await self._call_modbus(
                         self.client.write_coil,
-                        self.slave_id,
                         address=address,
                         value=bool(value),
                     )
