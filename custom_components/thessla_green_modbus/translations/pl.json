@@ -25,6 +25,7 @@
     "error": {
       "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port oraz połączenie sieciowe.",
       "invalid_auth": "Błąd autoryzacji. Sprawdź ustawienia Slave ID.",
+      "invalid_input": "Nieprawidłowa konfiguracja. Sprawdź wartości i spróbuj ponownie.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi dla szczegółów."
     },
     "abort": {
