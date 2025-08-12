@@ -53,7 +53,7 @@ from .const import (
     REGISTER_MULTIPLIERS,
 )
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
-from .modbus_helpers import _call_modbus as call_modbus
+from .modbus_helpers import _call_modbus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
     async def _call_modbus(self, func, *args, **kwargs):
         """Wrapper around Modbus calls injecting the slave ID."""
-        return await call_modbus(func, self.slave_id, *args, **kwargs)
+        return await _call_modbus(func, self.slave_id, *args, **kwargs)
 
     async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
