@@ -22,6 +22,8 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
+from .modbus_helpers import _call_modbus
+
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_SLAVE_ID = 10
@@ -92,20 +94,13 @@ class ThesslaGreenDeviceScanner:
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
 
-    async def _call_modbus(self, func, *args, **kwargs):
-        """Call Modbus client method handling slave/unit keyword."""
-        try:  # pymodbus >=3.5 uses 'slave'
-            return await func(*args, slave=self.slave_id, **kwargs)
-        except TypeError:  # pragma: no cover - fallback for older versions
-            return await func(*args, unit=self.slave_id, **kwargs)
-
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
         """Read input registers."""
         try:
-            response = await self._call_modbus(
-                client.read_input_registers, address, count
+            response = await _call_modbus(
+                client.read_input_registers, self.slave_id, address, count
             )
             if not response.isError():
                 return response.registers
@@ -120,8 +115,8 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read holding registers."""
         try:
-            response = await self._call_modbus(
-                client.read_holding_registers, address, count
+            response = await _call_modbus(
+                client.read_holding_registers, self.slave_id, address, count
             )
             if not response.isError():
                 return response.registers
@@ -138,13 +133,7 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
- codex/remove-conflict-markers-and-clean-up-code
-            response = await self._call_modbus(client.read_coils, address, count)
-=======
-            response = await self._call_modbus(
-                client.read_coils, address, count
-            )
- main
+            response = await _call_modbus(client.read_coils, self.slave_id, address, count)
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
@@ -158,8 +147,8 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read discrete input registers."""
         try:
-            response = await self._call_modbus(
-                client.read_discrete_inputs, address, count
+            response = await _call_modbus(
+                client.read_discrete_inputs, self.slave_id, address, count
             )
             if not response.isError():
                 return response.bits[:count]
@@ -490,9 +479,7 @@ class ThesslaGreenDeviceScanner:
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug("Error closing Modbus client: %s", exc, exc_info=True)
             except OSError as exc:
-                _LOGGER.debug(
-                    "Unexpected error closing Modbus client: %s", exc, exc_info=True
-                )
+                _LOGGER.debug("Unexpected error closing Modbus client: %s", exc, exc_info=True)
 
         self._client = None
         _LOGGER.debug("Disconnected from ThesslaGreen device")

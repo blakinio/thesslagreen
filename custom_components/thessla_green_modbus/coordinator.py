@@ -53,6 +53,7 @@ from .const import (
     REGISTER_MULTIPLIERS,
 )
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
+from .modbus_helpers import _call_modbus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -273,13 +274,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             try:
                 await self._ensure_connection()
                 # Try to read a basic register to verify communication
- codex/remove-conflict-markers-and-clean-up-code
-                response = await self._call_modbus(
-                    self.client.read_input_registers, 0x0000, 1
+                response = await _call_modbus(
+                    self.client.read_input_registers, self.slave_id, 0x0000, 1
                 )
-=======
-                response = await self._call_modbus(self.client.read_input_registers, 0x0000, 1)
- main
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
@@ -334,13 +331,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 self.statistics["connection_errors"] += 1
                 _LOGGER.exception("Unexpected error establishing connection: %s", exc)
                 raise
-
-    async def _call_modbus(self, func, *args, **kwargs):
-        """Invoke Modbus function handling slave/unit compatibility."""
-        try:  # pymodbus >=3.5 uses 'slave'
-            return await func(*args, slave=self.slave_id, **kwargs)
-        except TypeError:  # pragma: no cover - support older versions
-            return await func(*args, unit=self.slave_id, **kwargs)
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch data from the device with optimized batch reading."""
@@ -423,8 +413,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["input_registers"]:
             try:
-                response = await self._call_modbus(
-                    self.client.read_input_registers, start_addr, count
+                response = await _call_modbus(
+                    self.client.read_input_registers, self.slave_id, start_addr, count
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -467,8 +457,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["holding_registers"]:
             try:
-                response = await self._call_modbus(
-                    self.client.read_holding_registers, start_addr, count
+                response = await _call_modbus(
+                    self.client.read_holding_registers, self.slave_id, start_addr, count
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -513,13 +503,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["coil_registers"]:
             try:
- codex/remove-conflict-markers-and-clean-up-code
-                response = await self._call_modbus(
-                    self.client.read_coils, start_addr, count
+                response = await _call_modbus(
+                    self.client.read_coils, self.slave_id, start_addr, count
                 )
-=======
-                response = await self._call_modbus(self.client.read_coils, start_addr, count)
- main
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read coil registers at 0x%04X: %s", start_addr, response
@@ -567,8 +553,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
             try:
-                response = await self._call_modbus(
-                    self.client.read_discrete_inputs, start_addr, count
+                response = await _call_modbus(
+                    self.client.read_discrete_inputs, self.slave_id, start_addr, count
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -691,13 +677,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
-                    response = await self._call_modbus(
-                        self.client.write_register, address=address, value=value
+                    response = await _call_modbus(
+                        self.client.write_register,
+                        self.slave_id,
+                        address=address,
+                        value=value,
                     )
                 elif register_name in COIL_REGISTERS:
                     address = COIL_REGISTERS[register_name]
-                    response = await self._call_modbus(
-                        self.client.write_coil, address=address, value=bool(value)
+                    response = await _call_modbus(
+                        self.client.write_coil,
+                        self.slave_id,
+                        address=address,
+                        value=bool(value),
                     )
                 else:
                     _LOGGER.error("Unknown register for writing: %s", register_name)
