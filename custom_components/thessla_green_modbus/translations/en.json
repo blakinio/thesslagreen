@@ -246,39 +246,6 @@
     "number": {
       "required_temperature": {
         "name": "Required Temperature"
-      },
-      "max_supply_temperature": {
-        "name": "Max Supply Temperature"
-      },
-      "min_supply_temperature": {
-        "name": "Min Supply Temperature"
-      },
-      "heating_curve_slope": {
-        "name": "Heating Curve Slope"
-      },
-      "heating_curve_offset": {
-        "name": "Heating Curve Offset"
-      },
-      "boost_air_flow_rate": {
-        "name": "Boost Air Flow Rate"
-      },
-      "boost_duration": {
-        "name": "Boost Duration"
-      },
-      "humidity_target": {
-        "name": "Humidity Target"
-      },
-      "economy_temperature": {
-        "name": "Economy Temperature"
-      },
-      "night_temperature": {
-        "name": "Night Temperature"
-      },
-      "away_temperature": {
-        "name": "Away Temperature"
-      },
-      "frost_protection_temperature": {
-        "name": "Frost Protection Temperature"
       }
     }
   },
