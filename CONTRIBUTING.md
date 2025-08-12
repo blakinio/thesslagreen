@@ -78,7 +78,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies (Home Assistant core excluded)
 pip install -r requirements.txt -r requirements-dev.txt
 
-# Install pre-commit hooks
+# Install pre-commit hooks (run again after pulling new changes)
 pre-commit install
 ```
 
@@ -212,14 +212,15 @@ If you have a ThesslaGreen device:
 
 ### Pre-commit Checks
 
-Before committing, the following checks run automatically:
+Run `pre-commit install` once to activate these checks. Before committing, the following checks run automatically:
 
 - **Black** - Code formatting
-- **isort** - Import sorting  
+- **isort** - Import sorting
 - **flake8** - Linting
 - **mypy** - Type checking
 - **bandit** - Security scanning
 - **yamllint** - YAML validation
+- **check-merge-conflict** - Prevents committing unresolved merge conflicts
 
 ### Manual Quality Checks
 
