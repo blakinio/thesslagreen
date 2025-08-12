@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Konfiguracja ThesslaGreen Modbus",
-        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP.\\nIntegracja automatycznie wykryje dostępne funkcje i rejestry urządzenia.",
+        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykrywa dostępne funkcje i rejestry urządzenia.",
         "data": {
           "host": "Adres IP",
           "port": "Port",
@@ -36,7 +36,7 @@
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji.\n\n**Aktualne ustawienia:**\n- Częstotliwość odczytu: {current_scan_interval} sek\n- Limit czasu połączenia: {current_timeout} sek\n- Liczba powtórzeń nieudanych odczytów: {current_retry}\n- Wymuś pełną listę rejestrów: {force_full_enabled}",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} sek, Limit czasu połączenia {current_timeout} sek, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Limit czasu połączenia (sekundy)",
