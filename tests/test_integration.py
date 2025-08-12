@@ -32,6 +32,7 @@ async def test_async_setup_entry_success():
     ) as mock_coordinator_class:
         mock_coordinator = MagicMock()
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator_class.return_value = mock_coordinator
         
         result = await async_setup_entry(hass, entry)
@@ -67,6 +68,39 @@ async def test_async_setup_entry_failure():
         
         with pytest.raises(ConfigEntryNotReady):
             await async_setup_entry(hass, entry)
+
+
+@pytest.mark.asyncio
+async def test_async_setup_entry_custom_port():
+    """Test setup entry with a non-default port."""
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry"
+    entry.data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 8899,
+        "slave_id": 10,
+    }
+    entry.options = {}
+    entry.title = "Test Entry"
+    entry.add_update_listener = MagicMock()
+    entry.async_on_unload = MagicMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
+    ) as mock_coordinator_class:
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
+        mock_coordinator_class.return_value = mock_coordinator
+
+        result = await async_setup_entry(hass, entry)
+
+        assert result is True
+        assert mock_coordinator_class.call_args.kwargs["port"] == 8899
 
 
 async def test_async_unload_entry_success():
