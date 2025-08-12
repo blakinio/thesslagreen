@@ -1,5 +1,12 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
+
+import json
+from pathlib import Path
+
+OPTIONS_PATH = Path(__file__).parent / "options"
+
+
 # Integration constants
 DOMAIN = "thessla_green_modbus"
 MANUFACTURER = "ThesslaGreen"
@@ -71,23 +78,32 @@ DISCRETE_INPUT_REGISTERS = {
     "empty_house": 21,  # Empty house input
 }
 
-# Special function modes for mode register
+# Shared option lists
+SPECIAL_MODE_OPTIONS = json.loads((OPTIONS_PATH / "special_modes.json").read_text())
+DAYS_OF_WEEK = json.loads((OPTIONS_PATH / "days_of_week.json").read_text())
+PERIODS = json.loads((OPTIONS_PATH / "periods.json").read_text())
+BYPASS_MODES = json.loads((OPTIONS_PATH / "bypass_modes.json").read_text())
+GWC_MODES = json.loads((OPTIONS_PATH / "gwc_modes.json").read_text())
+FILTER_TYPES = json.loads((OPTIONS_PATH / "filter_types.json").read_text())
+RESET_TYPES = json.loads((OPTIONS_PATH / "reset_types.json").read_text())
+MODBUS_PORTS = json.loads((OPTIONS_PATH / "modbus_ports.json").read_text())
+MODBUS_BAUD_RATES = json.loads((OPTIONS_PATH / "modbus_baud_rates.json").read_text())
+MODBUS_PARITY = json.loads((OPTIONS_PATH / "modbus_parity.json").read_text())
+MODBUS_STOP_BITS = json.loads((OPTIONS_PATH / "modbus_stop_bits.json").read_text())
+
+# Special function bit mappings for services
+SPECIAL_FUNCTION_MAP = {
+    mode: 1 << idx for idx, mode in enumerate(SPECIAL_MODE_OPTIONS[1:], start=0)
+}
+
+# Complete mapping including additional internal modes
 SPECIAL_MODES = {
     "normal": 0,
-    "boost": 1,
-    "eco": 2,
-    "away": 4,
-    "fireplace": 8,
-    "hood": 16,
-    "night": 32,
-    "party": 64,
-    "bathroom": 128,
-    "kitchen": 256,
-    "summer": 512,
-    "winter": 1024,
+    **SPECIAL_FUNCTION_MAP,
     "defrost": 2048,
     "frost_protection": 4096,
 }
+
 
 # Special function bit mappings for services (alias for SPECIAL_MODES)
 SPECIAL_FUNCTION_MAP = {
@@ -102,6 +118,28 @@ SPECIAL_FUNCTION_MAP = {
     "kitchen": 256,
     "summer": 512,
     "winter": 1024,
+}
+
+=======
+# Unit mappings
+REGISTER_UNITS = {
+    # Temperature registers - 0.1°C resolution
+    "outside_temperature": "°C",
+    "supply_temperature": "°C",
+    "exhaust_temperature": "°C",
+    "fpx_temperature": "°C",
+    "duct_supply_temperature": "°C",
+    "gwc_temperature": "°C",
+    "ambient_temperature": "°C",
+    # Flow registers - m³/h
+    "supply_air_flow": "m³/h",
+    "exhaust_air_flow": "m³/h",
+    "supply_flowrate": "m³/h",
+    "exhaust_flowrate": "m³/h",
+    # Percentages
+    "air_flow_rate_manual": "%",
+    # Temperature set-point
+    "supply_air_temperature_manual": "°C",
 }
 
 

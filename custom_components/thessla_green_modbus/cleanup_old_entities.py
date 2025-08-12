@@ -31,8 +31,6 @@ OLD_ENTITY_PATTERNS = [
     "thessla.*rekuperator_predkosc",
 ]
 
-BACKUP_SUFFIX = f"_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
 
 def find_ha_config_dir() -> Path | None:
     """Find the Home Assistant configuration directory."""
@@ -44,7 +42,8 @@ def find_ha_config_dir() -> Path | None:
 
 def backup_file(file_path: Path) -> Path:
     """Create a backup of the file."""
-    backup_path = file_path.with_suffix(file_path.suffix + BACKUP_SUFFIX)
+    backup_suffix = datetime.now().strftime("_backup_%Y%m%d_%H%M%S")
+    backup_path = file_path.with_suffix(file_path.suffix + backup_suffix)
     shutil.copy2(file_path, backup_path)
     _LOGGER.info("Backup created: %s", backup_path)
     return backup_path
@@ -157,7 +156,7 @@ def cleanup_automations(config_dir: Path) -> bool:
             _LOGGER.info("Automations are clean")
             return True
 
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         _LOGGER.error("Error checking automations: %s", exc)
         return False
 
@@ -197,7 +196,7 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
             _LOGGER.info("Configuration is clean")
             return True
 
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         _LOGGER.error("Error checking configuration: %s", exc)
         return False
 
@@ -221,7 +220,7 @@ def cleanup_custom_component_cache(config_dir: Path) -> bool:
                     cache_path.unlink()
                 _LOGGER.info("Removed cache: %s", cache_path)
                 cleaned = True
-            except Exception as exc:
+            except OSError as exc:
                 _LOGGER.warning("Unable to remove cache %s: %s", cache_path, exc)
 
     if not cleaned:
@@ -286,6 +285,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         _LOGGER.warning("\n\nInterrupted by user")
         raise SystemExit(1)
-    except Exception as exc:
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         _LOGGER.error("\nUnexpected error: %s", exc)
         raise SystemExit(1)
