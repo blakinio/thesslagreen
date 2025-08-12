@@ -23,9 +23,35 @@ def to_snake_case(name: str) -> str:
     name = re.sub(r'__+', '_', name)
     return name.lower()
 
+def _build_register_map(rows: list[tuple[str, int]]) -> Dict[str, int]:
+    """Create a register map with unique names.
+
+    When the same register name appears multiple times in the CSV, append a
+    numeric suffix to make the identifier unique. The suffix starts at 1 to
+    match existing expectations in the integration (e.g. ``device_name_1``).
+    """
+
+    rows.sort(key=lambda r: r[1])
+    name_counts: Dict[str, int] = {}
+    for name, _ in rows:
+        name_counts[name] = name_counts.get(name, 0) + 1
+
+    seen: Dict[str, int] = {}
+    result: Dict[str, int] = {}
+    for name, addr in rows:
+        if name_counts[name] > 1:
+            index = seen.get(name, 0) + 1
+            seen[name] = index
+            unique = f"{name}_{index}"
+        else:
+            unique = name
+        result[unique] = addr
+    return result
+
+
 def load_registers() -> Tuple[Dict[str, int], Dict[str, int]]:
-    input_regs: Dict[str, int] = {}
-    holding_regs: Dict[str, int] = {}
+    input_rows: list[tuple[str, int]] = []
+    holding_rows: list[tuple[str, int]] = []
     with CSV_PATH.open(newline='') as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -35,11 +61,11 @@ def load_registers() -> Tuple[Dict[str, int], Dict[str, int]]:
             name = to_snake_case(row['Register_Name'])
             addr = int(row['Address_DEC'])
             if code == '04':
-                input_regs[name] = addr
+                input_rows.append((name, addr))
             elif code == '03':
-                holding_regs[name] = addr
-    input_regs = dict(sorted(input_regs.items(), key=lambda kv: kv[1]))
-    holding_regs = dict(sorted(holding_regs.items(), key=lambda kv: kv[1]))
+                holding_rows.append((name, addr))
+    input_regs = _build_register_map(input_rows)
+    holding_regs = _build_register_map(holding_rows)
     return input_regs, holding_regs
 
 def write_file(input_regs: Dict[str, int], holding_regs: Dict[str, int]) -> None:

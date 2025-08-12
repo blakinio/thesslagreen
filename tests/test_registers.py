@@ -1,36 +1,7 @@
-import csv  # handle CSV register definitions
 import importlib.util
 import pathlib
-import re
 
-
-def to_snake_case(name: str) -> str:
-    replacements = {"flowrate": "flow_rate"}
-    for old, new in replacements.items():
-        name = name.replace(old, new)
-    name = re.sub(r"[\s\-/]", "_", name)
-    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
-    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
-    name = re.sub(r"__+", "_", name)
-    return name.lower()
-
-
-def load_csv_registers() -> tuple[dict[str, int], dict[str, int]]:
-    input_regs: dict[str, int] = {}
-    holding_regs: dict[str, int] = {}
-    with pathlib.Path("modbus_registers.csv").open(newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            code = row["Function_Code"]
-            if not code or code.startswith("#"):
-                continue
-            name = to_snake_case(row["Register_Name"])
-            addr = int(row["Address_DEC"])
-            if code == "04":
-                input_regs[name] = addr
-            elif code == "03":
-                holding_regs[name] = addr
-    return input_regs, holding_regs
+from tools.generate_registers import load_registers
 
 
 def load_module_registers() -> tuple[dict[str, int], dict[str, int]]:
@@ -44,7 +15,9 @@ def load_module_registers() -> tuple[dict[str, int], dict[str, int]]:
 
 
 def test_register_definitions_match_csv() -> None:
-    csv_input, csv_holding = load_csv_registers()
+    csv_input, csv_holding = load_registers()
     mod_input, mod_holding = load_module_registers()
     assert csv_input == mod_input  # nosec B101
     assert csv_holding == mod_holding  # nosec B101
+    assert len(mod_input) == 28
+    assert len(mod_holding) == 282
