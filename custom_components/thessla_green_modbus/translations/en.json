@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "ThesslaGreen Modbus Configuration",
-        "description": "Configure connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects available device functions and registers.",
+        "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects device functions and registers.",
         "data": {
           "host": "IP Address",
           "port": "Port",
@@ -19,7 +19,7 @@
       },
       "confirm": {
         "title": "Confirm Configuration",
-        "description": "ThesslaGreen device {device_name} (serial {serial_number}) detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}. Registers detected: {register_count} ({scan_success_rate} success). Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note} Do you want to continue with this configuration?"
+        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) at {host}:{port}. Device ID {slave_id} runs firmware {firmware_version}. Registers: {register_count} ({scan_success_rate} success). Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note} Continue with this configuration?"
       }
     },
     "error": {
@@ -36,7 +36,7 @@
     "step": {
       "init": {
         "title": "ThesslaGreen Modbus Options",
-        "description": "Configure advanced integration options. Current settings: Scan Interval {current_scan_interval}s, Timeout {current_timeout}s, Retry Count {current_retry}, Force Full Register List {force_full_enabled}.",
+        "description": "Configure advanced integration options. Current settings. Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}.",
         "data": {
           "scan_interval": "Scan Interval (seconds)",
           "timeout": "Connection Timeout (seconds)",

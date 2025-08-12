@@ -1,4 +1,5 @@
 """Base entity for ThesslaGreen Modbus Integration."""
+
 from __future__ import annotations
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -21,9 +22,9 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
+        host = self.coordinator.host.replace(":", "-")
         return (
-            f"{DOMAIN}_{self.coordinator.host}_{self.coordinator.port}_"
-            f"{self.coordinator.slave_id}_{self._key}"
+            f"{DOMAIN}_{host}_{self.coordinator.port}_" f"{self.coordinator.slave_id}_{self._key}"
         )
 
     @property
