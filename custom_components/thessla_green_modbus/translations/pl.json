@@ -19,7 +19,7 @@
       },
       "confirm": {
         "title": "Potwierdź konfigurację",
-        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia {slave_id}, wersja oprogramowania {firmware_version}. Wykryto {register_count} rejestrów (skuteczność skanowania {scan_success_rate}). Dostępne funkcje ({capabilities_count}): {capabilities_list}. {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
+        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia {slave_id}, wersja oprogramowania {firmware_version}. Wykryto {register_count} rejestrów ( skuteczność skanowania {scan_success_rate}). Dostępne funkcje ({capabilities_count}): {capabilities_list}. {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
       }
     },
     "error": {
@@ -36,7 +36,7 @@
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} s, Limit czasu połączenia {current_timeout} s, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}.",
         "data": {
           "scan_interval": "Interwał skanowania (s)",
           "timeout": "Limit czasu połączenia (s)",
@@ -248,51 +248,6 @@
         "name": "Wymagana temperatura"
       }
     }
-  },
-  "errors": {
-    "s_2": "Błąd komunikacji I2C",
-    "s_6": "Zabezpieczenie termiczne nagrzewnicy FPX zadziałało maksymalną ilość razy w określonym czasie",
-    "s_7": "Brak możliwości kalibracji urządzenia z powodu zbyt niskiej temperatury zewnętrznej",
-    "s_8": "Sygnalizacja konieczności wprowadzenia klucza produktu",
-    "s_9": "Centrala zatrzymana z panelu AirS",
-    "s_10": "Zadziałał czujnik PPOŻ",
-    "s_13": "Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile",
-    "s_14": "Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej zadziałało maksymalną ilość razy",
-    "s_15": "Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej nie przyniosło oczekiwanych rezultatów",
-    "s_16": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej przy aktywnym systemie FPX",
-    "s_17": "Nie wymieniono filtrów w centrali (presostat)",
-    "s_19": "Nie wymieniono filtrów w centrali (bez presostatu)",
-    "s_20": "Nie wymieniono filtra kanałowego",
-    "s_22": "Nie zadziałało zabezpieczenie przeciwzamrożeniowe wymiennika (FPX)",
-    "s_23": "Uszkodzony czujnik temperatury na wlocie do wymiennika przy warunkach wymagających systemu FPX",
-    "s_24": "Uszkodzony czujnik temperatury w kanale nawiewnym za nagrzewnicą wodną",
-    "s_25": "Uszkodzony czujnik temperatury powietrza zewnętrznego",
-    "s_26": "Uszkodzony czujnik temperatury powietrza zewnętrznego oraz czujnik GWC glikolowego",
-    "s_29": "Zbyt wysoka temperatura przed rekuperatorem",
-    "s_30": "Nie działa wentylator nawiewny",
-    "s_31": "Nie działa wentylator wywiewny",
-    "s_32": "Brak komunikacji z modułem TG-02",
-    "e_99": "Sygnalizacja konieczności wprowadzenia klucza produktu AirPack",
-    "e_100": "Brak odczytu z czujnika temperatury powietrza zewnętrznego (TZ1)",
-    "e_101": "Brak odczytu z czujnika temperatury powietrza nawiewanego (TN1)",
-    "e_102": "Brak odczytu z czujnika temperatury powietrza usuwanego (TP)",
-    "e_103": "Brak odczytu z czujnika temperatury na wlocie do wymiennika (TZ2)",
-    "e_104": "Brak odczytu z czujnika temperatury pomieszczenia (TO)",
-    "e_105": "Brak odczytu z czujnika temperatury nawiewu za wymiennikiem kanałowym (TN2)",
-    "e_106": "Brak odczytu z czujnika temperatury zewnętrznej GWC (TZ3)",
-    "e_138": "Awaria czujnika CF wentylatora nawiewnego",
-    "e_139": "Awaria czujnika CF wentylatora wywiewnego",
-    "e_152": "Temperatura powietrza usuwanego wyższa od maksymalnej",
-    "e_196": "Regulacja instalacji nie została wykonana",
-    "e_197": "Regulacja instalacji została przerwana",
-    "e_198": "Brak komunikacji z modułem CF2",
-    "e_199": "Brak komunikacji z modułem CF",
-    "e_200": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali",
-    "e_201": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w kanale",
-    "e_249": "Brak komunikacji z modułem Expansion",
-    "e_250": "Konieczność wymiany filtrów (bez presostatu)",
-    "e_251": "Konieczność wymiany filtra kanałowego",
-    "e_252": "Konieczność wymiany filtrów (z presostatem)"
   },
   "services": {
     "set_special_mode": {
