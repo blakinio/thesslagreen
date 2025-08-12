@@ -6,7 +6,7 @@ import re
 from typing import Dict, Tuple
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "modbus_registers.csv"
+CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbus_registers.csv"
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
 

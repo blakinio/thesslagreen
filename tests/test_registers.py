@@ -18,7 +18,7 @@ def to_snake_case(name: str) -> str:
 def load_csv_registers() -> tuple[dict[str, int], dict[str, int]]:
     input_regs: dict[str, int] = {}
     holding_regs: dict[str, int] = {}
-    csv_path = pathlib.Path("custom_components/thessla_green_modbus/modbus_registers.csv")
+    csv_path = pathlib.Path("custom_components/thessla_green_modbus/data/modbus_registers.csv")
     with csv_path.open(newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:

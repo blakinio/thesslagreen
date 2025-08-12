@@ -14,7 +14,7 @@ FUNCTION_MAP = {
 
 
 def load_csv_mappings() -> dict[str, dict[str, int]]:
-    path = pathlib.Path("modbus_registers.csv")
+    path = pathlib.Path("custom_components/thessla_green_modbus/data/modbus_registers.csv")
     result: dict[str, dict[str, int]] = {code: {} for code in FUNCTION_MAP}
     with path.open(newline="") as csvfile:
         reader = csv.DictReader(
