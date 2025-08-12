@@ -22,13 +22,18 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_NAME,
 )
-from .coordinator import ThesslaGreenModbusCoordinator
-from .services import async_setup_services, async_unload_services
+# Import heavy modules lazily in setup functions to ease testing
 
 _LOGGER = logging.getLogger(__name__)
 
 # Supported platforms
-PLATFORMS: list[Platform] = [Platform(domain) for domain in PLATFORM_DOMAINS]
+# Build platform list compatible with both real Home Assistant enums and test stubs
+PLATFORMS: list[Platform] = []
+for domain in PLATFORM_DOMAINS:
+    if hasattr(Platform, domain.upper()):
+        PLATFORMS.append(getattr(Platform, domain.upper()))
+    else:
+        PLATFORMS.append(Platform(domain))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -65,6 +70,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     
     # Create coordinator for managing device communication
+    from .coordinator import ThesslaGreenModbusCoordinator
+
     coordinator = ThesslaGreenModbusCoordinator(
         hass=hass,
         host=host,
@@ -101,6 +108,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Setup services (only once for first entry)
     if len(hass.data[DOMAIN]) == 1:
+        from .services import async_setup_services
         await async_setup_services(hass)
     
     # Setup entry update listener
@@ -129,6 +137,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not hass.data[DOMAIN]:
             hass.data.pop(DOMAIN)
             # Unload services when last entry is removed
+            from .services import async_unload_services
             await async_unload_services(hass)
     
     _LOGGER.info("ThesslaGreen Modbus integration unloaded successfully")

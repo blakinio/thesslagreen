@@ -5,8 +5,16 @@ import logging
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Tuple, Set
 
-from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ConnectionException
+from typing import TYPE_CHECKING
+
+try:  # pragma: no cover
+    from pymodbus.exceptions import ConnectionException
+except Exception:  # pragma: no cover
+    class ConnectionException(Exception):
+        pass
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pymodbus.client import AsyncModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,40 +83,40 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
-    async def _read_input(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[int]]:
+    async def _read_input(self, client: "AsyncModbusTcpClient", address: int, count: int) -> Optional[List[int]]:
         """Read input registers."""
         try:
-            response = await client.read_input_registers(address, count)
+            response = await client.read_input_registers(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.registers
         except Exception as e:
             _LOGGER.debug("Failed to read input 0x%04X: %s", address, e)
         return None
 
-    async def _read_holding(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[int]]:
+    async def _read_holding(self, client: "AsyncModbusTcpClient", address: int, count: int) -> Optional[List[int]]:
         """Read holding registers."""
         try:
-            response = await client.read_holding_registers(address, count)
+            response = await client.read_holding_registers(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.registers
         except Exception as e:
             _LOGGER.debug("Failed to read holding 0x%04X: %s", address, e)
         return None
 
-    async def _read_coil(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[bool]]:
+    async def _read_coil(self, client: "AsyncModbusTcpClient", address: int, count: int) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
-            response = await client.read_coils(address, count)
+            response = await client.read_coils(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
         except Exception as e:
             _LOGGER.debug("Failed to read coil 0x%04X: %s", address, e)
         return None
 
-    async def _read_discrete(self, client: AsyncModbusTcpClient, address: int, count: int) -> Optional[List[bool]]:
+    async def _read_discrete(self, client: "AsyncModbusTcpClient", address: int, count: int) -> Optional[List[bool]]:
         """Read discrete input registers."""
         try:
-            response = await client.read_discrete_inputs(address, count)
+            response = await client.read_discrete_inputs(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
         except Exception as e:
@@ -230,11 +238,12 @@ class ThesslaGreenDeviceScanner:
 
     async def scan(self) -> Tuple[DeviceInfo, DeviceCapabilities, Dict[str, Tuple[int, int]]]:
         """Scan device and return device info, capabilities and present blocks."""
+        from pymodbus.client import AsyncModbusTcpClient
+
         client = AsyncModbusTcpClient(
-            host=self.host, 
-            port=self.port, 
+            host=self.host,
+            port=self.port,
             timeout=self.timeout,
-            slave=self.slave_id  # Set slave_id in client for pymodbus 3.5+
         )
         
         try:
