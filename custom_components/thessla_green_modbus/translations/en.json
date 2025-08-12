@@ -278,18 +278,6 @@
       "winter_heating_active": {
         "name": "Winter Heating"
       },
-      "filter_alarm": {
-        "name": "Filter Alarm"
-      },
-      "maintenance_alarm": {
-        "name": "Maintenance Alarm"
-      },
-      "sensor_error": {
-        "name": "Sensor Error"
-      },
-      "communication_error": {
-        "name": "Communication Error"
-      },
       "duct_water_heater_pump": {
         "name": "Water Heater Pump"
       },
@@ -308,41 +296,8 @@
       "contamination_sensor": {
         "name": "Contamination Sensor"
       },
-      "external_contact_1": {
-        "name": "External Contact 1"
-      },
-      "external_contact_2": {
-        "name": "External Contact 2"
-      },
-      "external_contact_3": {
-        "name": "External Contact 3"
-      },
-      "external_contact_4": {
-        "name": "External Contact 4"
-      },
-      "fire_alarm": {
+      "ppoz": {
         "name": "Fire Alarm"
-      },
-      "frost_alarm": {
-        "name": "Frost Alarm"
-      },
-      "fan_error": {
-        "name": "Fan Error"
-      },
-      "heater_error": {
-        "name": "Heater Error"
-      },
-      "cooler_error": {
-        "name": "Cooler Error"
-      },
-      "bypass_error": {
-        "name": "Bypass Error"
-      },
-      "gwc_error": {
-        "name": "GWC Error"
-      },
-      "expansion_error": {
-        "name": "Expansion Module Error"
       },
       "night_cooling_active": {
         "name": "Night Cooling Active"

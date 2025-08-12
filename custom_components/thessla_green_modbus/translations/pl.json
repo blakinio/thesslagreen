@@ -263,7 +263,7 @@
       "heating_cable": {
         "name": "Kabel grzejny"
       },
-      "fire_alarm": {
+      "ppoz": {
         "name": "Alarm pożarowy"
       },
       "expansion": {
@@ -283,51 +283,6 @@
       },
       "contamination_sensor": {
         "name": "Czujnik zanieczyszczenia"
-      },
-      "external_contact_1": {
-        "name": "Kontakt zewnętrzny 1"
-      },
-      "external_contact_2": {
-        "name": "Kontakt zewnętrzny 2"
-      },
-      "external_contact_3": {
-        "name": "Kontakt zewnętrzny 3"
-      },
-      "external_contact_4": {
-        "name": "Kontakt zewnętrzny 4"
-      },
-      "frost_alarm": {
-        "name": "Alarm przeciwmrozowy"
-      },
-      "filter_alarm": {
-        "name": "Alarm filtra"
-      },
-      "maintenance_alarm": {
-        "name": "Alarm konserwacji"
-      },
-      "sensor_error": {
-        "name": "Błąd czujnika"
-      },
-      "communication_error": {
-        "name": "Błąd komunikacji"
-      },
-      "fan_error": {
-        "name": "Błąd wentylatora"
-      },
-      "heater_error": {
-        "name": "Błąd grzałki"
-      },
-      "cooler_error": {
-        "name": "Błąd chłodnicy"
-      },
-      "bypass_error": {
-        "name": "Błąd obejścia (bypassu)"
-      },
-      "gwc_error": {
-        "name": "Błąd GWC"
-      },
-      "expansion_error": {
-        "name": "Błąd modułu Expansion"
       },
       "frost_protection_active": {
         "name": "Ochrona przeciwmrozowa"
