@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Konfiguracja ThesslaGreen Modbus",
-        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykrywa dostępne funkcje i rejestry urządzenia.",
+        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykrywa funkcje i rejestry urządzenia.",
         "data": {
           "host": "Adres IP",
           "port": "Port",
@@ -19,7 +19,7 @@
       },
       "confirm": {
         "title": "Potwierdź konfigurację",
-        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port} (ID urządzenia {slave_id}, wersja oprogramowania {firmware_version}). Wykryto {register_count} rejestrów (skuteczność skanowania {scan_success_rate}). Dostępne funkcje ({capabilities_count}): {capabilities_list}. {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
+        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia {slave_id}, wersja oprogramowania {firmware_version}. Wykryto {register_count} rejestrów (skuteczność skanowania {scan_success_rate}). Dostępne funkcje ({capabilities_count}): {capabilities_list}. {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
       }
     },
     "error": {
@@ -36,7 +36,7 @@
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} sek, Limit czasu połączenia {current_timeout} sek, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia. Częstotliwość odczytu: {current_scan_interval} sek. Limit czasu połączenia: {current_timeout} sek. Liczba powtórzeń nieudanych odczytów: {current_retry}. Wymuś pełną listę rejestrów: {force_full_enabled}.",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Limit czasu połączenia (sekundy)",
