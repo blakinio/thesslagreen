@@ -417,7 +417,7 @@
         "name": "Tryb kominkowy"
       },
       "vacation_mode": {
-        "name": "Tryb wakacyjny"
+        "name": "Tryb urlopowy"
       },
       "hood_mode": {
         "name": "Tryb okapu"
@@ -431,7 +431,7 @@
         "name": "Tryb pracy",
         "state": {
           "auto": "Automatyczny",
-          "manual": "Manualny",
+          "manual": "Ręczny",
           "temporary": "Tymczasowy"
         }
       },
