@@ -184,7 +184,12 @@ for name, module in modules.items():
 # Ensure repository root on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.thessla_green_modbus.services import AIR_QUALITY_REGISTER_MAP
+import importlib
+
+services_module = importlib.reload(
+    importlib.import_module("custom_components.thessla_green_modbus.services")
+)
+AIR_QUALITY_REGISTER_MAP = services_module.AIR_QUALITY_REGISTER_MAP
 
 
 def test_air_quality_register_map():

@@ -159,26 +159,19 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         if raw_value is None:
             return None
 
-        # Apply scale factor if configured
-        scale = self.entity_config.get("scale", 1)
-        if scale != 1 and isinstance(raw_value, (int, float)):
-            return round(float(raw_value) * scale, 2)
-
         return float(raw_value) if isinstance(raw_value, (int, float)) else None
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         try:
-            # Apply inverse scale factor if configured
-            scale = self.entity_config.get("scale", 1)
-            scaled_value = value / scale if scale != 1 else value
-
-            await self._write_register(self.register_name, scaled_value)
+            await self.coordinator.async_write_register(self.register_name, value)
             _LOGGER.info("Set %s to %.2f", self.register_name, value)
 
         except Exception as exc:
             _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)
 
+ codex/modify-async_write_register-for-scaling
+=======
     async def _write_register(self, register_name: str, value: float) -> None:
         """Write value to register."""
         if register_name not in HOLDING_REGISTERS:
@@ -205,6 +198,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Request immediate data update
         await self.coordinator.async_request_refresh()
 
+main
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return additional state attributes."""

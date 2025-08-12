@@ -584,13 +584,36 @@ main
             )
 
         return data
+ codex/modify-async_write_register-for-scaling
+    
+    async def async_write_register(self, register_name: str, value: float) -> bool:
+        """Write to a holding or coil register.
+
+        Values should be provided in user units (°C, minutes, etc.). The value
+        will be scaled according to ``REGISTER_MULTIPLIERS`` before being
+        written to the device.
+        """
+=======
 
     async def async_write_register(self, register_name: str, value: int) -> bool:
         """Write to a holding or coil register."""
+ main
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
 
+ codex/modify-async_write_register-for-scaling
+                original_value = value
+
+                # Apply multiplier if defined and convert to integer for Modbus
+                if register_name in REGISTER_MULTIPLIERS:
+                    multiplier = REGISTER_MULTIPLIERS[register_name]
+                    value = int(round(value / multiplier))
+                else:
+                    value = int(round(value))
+
+=======
+ main
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
@@ -607,10 +630,18 @@ main
                     return False
 
                 if response.isError():
-                    _LOGGER.error("Error writing to register %s: %s", register_name, response)
+                    _LOGGER.error(
+                        "Error writing to register %s: %s", register_name, response
+                    )
                     return False
 
+ codex/modify-async_write_register-for-scaling
+                _LOGGER.info(
+                    "Successfully wrote %s to register %s", original_value, register_name
+                )
+=======
                 _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
+main
 
                 # Request data refresh
                 await self.async_request_refresh()
