@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "ThesslaGreen Modbus Configuration",
-        "description": "Configure connection to ThesslaGreen AirPack via Modbus TCP.\\nThe integration will automatically detect available device functions and registers.",
+        "description": "Configure connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects available device functions and registers.",
         "data": {
           "host": "IP Address",
           "port": "Port",
@@ -19,8 +19,7 @@
       },
       "confirm": {
         "title": "Confirm Configuration",
-
-        "description": "ThesslaGreen device {device_name} (serial {serial_number}) detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}.\nRegisters detected: {register_count} ({scan_success_rate} success).\nCapabilities ({capabilities_count}): {capabilities_list}.\n{auto_detected_note}\nDo you want to continue with this configuration?"
+        "description": "ThesslaGreen device {device_name} (serial {serial_number}) detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}. Registers detected: {register_count} ({scan_success_rate} success). Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note} Do you want to continue with this configuration?"
       }
     },
     "error": {
@@ -37,7 +36,7 @@
     "step": {
       "init": {
         "title": "ThesslaGreen Modbus Options",
-        "description": "Configure advanced integration options.\n\n**Current Settings:**\n- Scan Interval: {current_scan_interval}s\n- Timeout: {current_timeout}s\n- Retry Count: {current_retry}\n- Force Full Register List: {force_full_enabled}",
+        "description": "Configure advanced integration options. Current settings: Scan Interval {current_scan_interval}s, Timeout {current_timeout}s, Retry Count {current_retry}, Force Full Register List {force_full_enabled}.",
         "data": {
           "scan_interval": "Scan Interval (seconds)",
           "timeout": "Connection Timeout (seconds)",
@@ -500,187 +499,187 @@
     }
   },
   "services": {
-      "set_special_mode": {
-        "name": "Set Special Mode",
-        "description": "Sets special operating mode of the heat recovery unit (boost, eco, fireplace, hood, etc.)",
-        "fields": {
-          "mode": {
-            "name": "Special Mode",
-            "description": "Type of special mode to activate",
-            "selector": {
-              "select": {
-                "options": {
-                  "none": "None",
-                  "boost": "Boost",
-                  "eco": "Eco",
-                  "away": "Away",
-                  "sleep": "Sleep",
-                  "fireplace": "Fireplace",
-                  "hood": "Hood",
-                  "party": "Party",
-                  "bathroom": "Bathroom",
-                  "kitchen": "Kitchen",
-                  "summer": "Summer",
-                  "winter": "Winter"
-                }
+    "set_special_mode": {
+      "name": "Set Special Mode",
+      "description": "Sets special operating mode of the heat recovery unit (boost, eco, fireplace, hood, etc.)",
+      "fields": {
+        "mode": {
+          "name": "Special Mode",
+          "description": "Type of special mode to activate",
+          "selector": {
+            "select": {
+              "options": {
+                "none": "None",
+                "boost": "Boost",
+                "eco": "Eco",
+                "away": "Away",
+                "sleep": "Sleep",
+                "fireplace": "Fireplace",
+                "hood": "Hood",
+                "party": "Party",
+                "bathroom": "Bathroom",
+                "kitchen": "Kitchen",
+                "summer": "Summer",
+                "winter": "Winter"
               }
             }
-          },
-          "duration": {
-            "name": "Duration (minutes)",
-            "description": "Duration of special mode in minutes (1-minute steps, 0 = unlimited)"
           }
+        },
+        "duration": {
+          "name": "Duration (minutes)",
+          "description": "Duration of special mode in minutes (1-minute steps, 0 = unlimited)"
         }
-      },
-      "set_airflow_schedule": {
-        "name": "Set Airflow Schedule",
-        "description": "Configures weekly airflow schedule",
-        "fields": {
-          "day": {
-            "name": "Day of Week",
-            "description": "Day of week to configure",
-            "selector": {
-              "select": {
-                "options": {
-                  "monday": "Monday",
-                  "tuesday": "Tuesday",
-                  "wednesday": "Wednesday",
-                  "thursday": "Thursday",
-                  "friday": "Friday",
-                  "saturday": "Saturday",
-                  "sunday": "Sunday"
-                }
+      }
+    },
+    "set_airflow_schedule": {
+      "name": "Set Airflow Schedule",
+      "description": "Configures weekly airflow schedule",
+      "fields": {
+        "day": {
+          "name": "Day of Week",
+          "description": "Day of week to configure",
+          "selector": {
+            "select": {
+              "options": {
+                "monday": "Monday",
+                "tuesday": "Tuesday",
+                "wednesday": "Wednesday",
+                "thursday": "Thursday",
+                "friday": "Friday",
+                "saturday": "Saturday",
+                "sunday": "Sunday"
               }
             }
-          },
-          "period": {
-            "name": "Period",
-            "description": "Day period (1 or 2)",
-            "selector": {
-              "select": {
-                "options": {
-                  "1": "Period 1",
-                  "2": "Period 2"
-                }
+          }
+        },
+        "period": {
+          "name": "Period",
+          "description": "Day period (1 or 2)",
+          "selector": {
+            "select": {
+              "options": {
+                "1": "Period 1",
+                "2": "Period 2"
               }
             }
-          },
-          "start_time": {
-            "name": "Start Time",
-            "description": "Start time for the period (HH:MM)"
-          },
-          "end_time": {
-            "name": "End Time",
-            "description": "End time for the period (HH:MM)"
-          },
-          "airflow_rate": {
-            "name": "Airflow Rate",
-            "description": "Target airflow rate (%)"
-          },
-          "temperature": {
-            "name": "Temperature",
-            "description": "Target temperature (°C)"
           }
+        },
+        "start_time": {
+          "name": "Start Time",
+          "description": "Start time for the period (HH:MM)"
+        },
+        "end_time": {
+          "name": "End Time",
+          "description": "End time for the period (HH:MM)"
+        },
+        "airflow_rate": {
+          "name": "Airflow Rate",
+          "description": "Target airflow rate (%)"
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target temperature (°C)"
         }
-      },
-      "set_bypass_parameters": {
-        "name": "Set Bypass Parameters",
-        "description": "Configures bypass system parameters",
-        "fields": {
-          "mode": {
-            "name": "Bypass Mode",
-            "description": "Bypass operating mode",
-            "selector": {
-              "select": {
-                "options": {
-                  "auto": "Automatic",
-                  "open": "Open",
-                  "closed": "Closed"
-                }
+      }
+    },
+    "set_bypass_parameters": {
+      "name": "Set Bypass Parameters",
+      "description": "Configures bypass system parameters",
+      "fields": {
+        "mode": {
+          "name": "Bypass Mode",
+          "description": "Bypass operating mode",
+          "selector": {
+            "select": {
+              "options": {
+                "auto": "Automatic",
+                "open": "Open",
+                "closed": "Closed"
               }
             }
-          },
-          "temperature_threshold": {
-            "name": "Temperature Threshold",
-            "description": "Temperature threshold for automatic control"
-          },
-          "hysteresis": {
-            "name": "Hysteresis",
-            "description": "Temperature hysteresis value"
           }
+        },
+        "temperature_threshold": {
+          "name": "Temperature Threshold",
+          "description": "Temperature threshold for automatic control"
+        },
+        "hysteresis": {
+          "name": "Hysteresis",
+          "description": "Temperature hysteresis value"
         }
-      },
-      "set_gwc_parameters": {
-        "name": "Set GWC Parameters",
-        "description": "Configures ground heat exchanger parameters",
-        "fields": {
-          "mode": {
-            "name": "GWC Mode",
-            "description": "Ground heat exchanger operating mode",
-            "selector": {
-              "select": {
-                "options": {
-                  "off": "Off",
-                  "auto": "Automatic",
-                  "forced": "Forced"
-                }
+      }
+    },
+    "set_gwc_parameters": {
+      "name": "Set GWC Parameters",
+      "description": "Configures ground heat exchanger parameters",
+      "fields": {
+        "mode": {
+          "name": "GWC Mode",
+          "description": "Ground heat exchanger operating mode",
+          "selector": {
+            "select": {
+              "options": {
+                "off": "Off",
+                "auto": "Automatic",
+                "forced": "Forced"
               }
             }
-          },
-          "temperature_threshold": {
-            "name": "Temperature Threshold",
-            "description": "Temperature threshold for automatic control"
-          },
-          "hysteresis": {
-            "name": "Hysteresis",
-            "description": "Temperature hysteresis value"
           }
+        },
+        "temperature_threshold": {
+          "name": "Temperature Threshold",
+          "description": "Temperature threshold for automatic control"
+        },
+        "hysteresis": {
+          "name": "Hysteresis",
+          "description": "Temperature hysteresis value"
         }
-      },
-      "set_air_quality_thresholds": {
-        "name": "Set Air Quality Thresholds",
-        "description": "Configures thresholds for air quality control system",
-        "fields": {
-          "co2_low": {
-            "name": "CO2 Low Threshold",
-            "description": "CO2 low level threshold (ppm)"
-          },
-          "co2_medium": {
-            "name": "CO2 Medium Threshold",
-            "description": "CO2 medium level threshold (ppm)"
-          },
-          "co2_high": {
-            "name": "CO2 High Threshold",
-            "description": "CO2 high level threshold (ppm)"
-          },
-          "humidity_target": {
-            "name": "Humidity Target",
-            "description": "Target humidity level (%)"
-          }
+      }
+    },
+    "set_air_quality_thresholds": {
+      "name": "Set Air Quality Thresholds",
+      "description": "Configures thresholds for air quality control system",
+      "fields": {
+        "co2_low": {
+          "name": "CO2 Low Threshold",
+          "description": "CO2 low level threshold (ppm)"
+        },
+        "co2_medium": {
+          "name": "CO2 Medium Threshold",
+          "description": "CO2 medium level threshold (ppm)"
+        },
+        "co2_high": {
+          "name": "CO2 High Threshold",
+          "description": "CO2 high level threshold (ppm)"
+        },
+        "humidity_target": {
+          "name": "Humidity Target",
+          "description": "Target humidity level (%)"
         }
-      },
-      "set_temperature_curve": {
-        "name": "Set Heating Curve",
-        "description": "Configures heating curve for heating system",
-        "fields": {
-          "slope": {
-            "name": "Slope",
-            "description": "Slope of the heating curve"
-          },
-          "offset": {
-            "name": "Offset",
-            "description": "Offset of the heating curve"
-          },
-          "max_supply_temp": {
-            "name": "Max Supply Temperature",
-            "description": "Maximum supply temperature"
-          },
-          "min_supply_temp": {
-            "name": "Min Supply Temperature",
-            "description": "Minimum supply temperature"
-          }
+      }
+    },
+    "set_temperature_curve": {
+      "name": "Set Heating Curve",
+      "description": "Configures heating curve for heating system",
+      "fields": {
+        "slope": {
+          "name": "Slope",
+          "description": "Slope of the heating curve"
+        },
+        "offset": {
+          "name": "Offset",
+          "description": "Offset of the heating curve"
+        },
+        "max_supply_temp": {
+          "name": "Max Supply Temperature",
+          "description": "Maximum supply temperature"
+        },
+        "min_supply_temp": {
+          "name": "Min Supply Temperature",
+          "description": "Minimum supply temperature"
         }
-      },
+      }
+    },
     "reset_filters": {
       "name": "Reset Filter Counter",
       "description": "Resets filter lifetime counter",
