@@ -12,7 +12,6 @@ integration:
 import logging
 import json
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -236,7 +235,7 @@ def main():
     if not config_dir:
         _LOGGER.error("Cannot find Home Assistant configuration directory")
         _LOGGER.error("Ensure you are in the correct directory or Home Assistant is installed")
-        sys.exit(1)
+        raise SystemExit(1)
 
     _LOGGER.info("Found HA configuration: %s", config_dir)
     _LOGGER.info("")
@@ -281,7 +280,7 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         _LOGGER.warning("\n\nInterrupted by user")
-        sys.exit(1)
+        raise SystemExit(1)
     except Exception as exc:
         _LOGGER.error("\nUnexpected error: %s", exc)
-        sys.exit(1)
+        raise SystemExit(1)
