@@ -27,8 +27,6 @@ from .const import DEFAULT_SLAVE_ID
 
 _LOGGER = logging.getLogger(__name__)
 
-SOCKET_TIMEOUT = 6.0
-
 
 @dataclass
 class DeviceInfo:
