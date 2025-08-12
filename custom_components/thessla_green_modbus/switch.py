@@ -215,8 +215,12 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
                 attributes["raw_value"] = raw_value
 
         # Add last update time
-        if self.coordinator.last_successful_update:
-            attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()
+        last_update = (
+            self.coordinator.statistics.get("last_successful_update")
+            or self.coordinator.last_update
+        )
+        if last_update is not None:
+            attributes["last_updated"] = last_update.isoformat()
 
         # Add mode-specific information
         if "mode" in self.register_name:
