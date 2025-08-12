@@ -201,7 +201,7 @@ def test_device_info(coordinator):
 
 def test_reverse_lookup_maps(coordinator):
     """Ensure reverse register maps resolve addresses to names."""
-    from custom_components.thessla_green_modbus.const import (
+    from custom_components.thessla_green_modbus.registers import (
         INPUT_REGISTERS,
         HOLDING_REGISTERS,
     )
@@ -215,7 +215,7 @@ def test_reverse_lookup_maps(coordinator):
 
 def test_reverse_lookup_performance(coordinator):
     """Dictionary lookups should outperform linear search."""
-    from custom_components.thessla_green_modbus.const import INPUT_REGISTERS
+    from custom_components.thessla_green_modbus.registers import INPUT_REGISTERS
     import time
 
     addresses = list(INPUT_REGISTERS.values())

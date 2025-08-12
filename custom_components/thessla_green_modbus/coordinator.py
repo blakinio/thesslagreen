@@ -46,12 +46,11 @@ from .const import (
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
     DOMAIN,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
     MANUFACTURER,
     MODEL,
-    REGISTER_MULTIPLIERS,
 )
+from .multipliers import REGISTER_MULTIPLIERS
+from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_helpers import _call_modbus
 

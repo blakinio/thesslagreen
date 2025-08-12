@@ -29,7 +29,7 @@ SENSOR_KEYS = _load_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
 BINARY_KEYS = _load_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
 SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
 SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
-NUMBER_KEYS = _load_keys(ROOT / "const.py", "NUMBER_ENTITY_MAPPINGS")
+NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 
 SERVICES = yaml.safe_load((ROOT / "services.yaml").read_text()).keys()
 
