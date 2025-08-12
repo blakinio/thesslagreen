@@ -117,8 +117,8 @@ class DummyClient:
     def __init__(self):
         self.writes = []
 
-    async def write_register(self, address, value, slave):
-        self.writes.append((address, value, slave))
+    async def write_register(self, address, value, unit=None, slave=None):
+        self.writes.append((address, value, unit or slave))
 
         class Response:
             def isError(self):
@@ -126,8 +126,10 @@ class DummyClient:
 
         return Response()
 
-    async def write_coil(self, address, value, slave):  # pragma: no cover - not used
-        self.writes.append((address, value, slave))
+    async def write_coil(
+        self, address, value, unit=None, slave=None
+    ):  # pragma: no cover - not used
+        self.writes.append((address, value, unit or slave))
 
         class Response:
             def isError(self):
@@ -141,9 +143,7 @@ async def test_set_temperature_scaling():
     """Ensure temperatures are scaled before writing to Modbus."""
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator(
-        hass, "host", 502, 1, "dev", timedelta(seconds=1)
-    )
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.client = DummyClient()
     coordinator._ensure_connection = AsyncMock()
     coordinator.async_request_refresh = AsyncMock()
@@ -169,9 +169,7 @@ async def test_set_temperature_scaling():
 def test_target_temperature_none_when_unavailable():
     """Return None when no target temperature register is present."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator(
-        hass, "host", 502, 1, "dev", timedelta(seconds=1)
-    )
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.capabilities.basic_control = True
     coordinator.data = {}
 
