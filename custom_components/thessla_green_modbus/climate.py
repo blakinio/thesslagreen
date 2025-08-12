@@ -221,10 +221,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         if "exhaust_flow_rate" in self.coordinator.data:
             attrs["exhaust_airflow"] = self.coordinator.data["exhaust_flow_rate"]
 
-        # System status
-        if "heat_recovery_efficiency" in self.coordinator.data:
-            attrs["heat_recovery_efficiency"] = self.coordinator.data["heat_recovery_efficiency"]
-
         # Special systems
         attrs["bypass_active"] = self.coordinator.data.get("bypass", False)
         attrs["gwc_active"] = self.coordinator.data.get("gwc", False)
