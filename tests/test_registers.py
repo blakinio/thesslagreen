@@ -1,21 +1,8 @@
 import csv
 import importlib.util
 import pathlib
-import re
 
-
-def to_snake_case(name: str) -> str:
-    replacements = {"flowrate": "flow_rate"}
-    for old, new in replacements.items():
-        name = name.replace(old, new)
-    name = re.sub(r"[\s\-/]", "_", name)
-    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
-    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
-    name = re.sub(r"__+", "_", name)
-    name = name.lower()
-    token_map = {"temp": "temperature"}
-    tokens = [token_map.get(token, token) for token in name.split("_")]
-    return "_".join(tokens)
+from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 
 def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
@@ -45,7 +32,7 @@ def load_csv_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int]
             code = row["Function_Code"]
             if not code or code.startswith("#"):
                 continue
-            name = to_snake_case(row["Register_Name"])
+            name = _to_snake_case(row["Register_Name"])
             addr = int(row["Address_DEC"])
             if code == "01":
                 coil_rows.append((name, addr))

@@ -6,7 +6,6 @@ import asyncio
 import csv
 import inspect
 import logging
-import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
@@ -19,23 +18,9 @@ if TYPE_CHECKING:  # pragma: no cover
 from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS, SENSOR_UNAVAILABLE
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _to_snake_case(name: str) -> str:
-    """Convert register names to snake_case."""
-    replacements = {"flowrate": "flow_rate"}
-    for old, new in replacements.items():
-        name = name.replace(old, new)
-    name = re.sub(r"[\s\-/]", "_", name)
-    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
-    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
-    name = re.sub(r"__+", "_", name)
-    name = name.lower()
-    token_map = {"temp": "temperature"}
-    tokens = [token_map.get(token, token) for token in name.split("_")]
-    return "_".join(tokens)
 
 
 @dataclass
@@ -124,7 +109,10 @@ class ThesslaGreenDeviceScanner:
                     if code in register_map:
                         if addr in register_map[code]:
                             _LOGGER.warning(
-                                "Duplicate register address %s for function code %s: %s", addr, code, name
+                                "Duplicate register address %s for function code %s: %s",
+                                addr,
+                                code,
+                                name,
                             )
                             continue
                         register_map[code][addr] = name
