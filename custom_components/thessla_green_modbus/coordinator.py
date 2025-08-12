@@ -62,6 +62,11 @@ from .modbus_helpers import _call_modbus
 
 _LOGGER = logging.getLogger(__name__)
 
+MULTI_REGISTER_SIZES = {
+    'date_time': 4,
+    'lock_date': 3,
+}
+
 
 class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     """Optimized data coordinator for ThesslaGreen Modbus device."""
@@ -225,11 +230,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         # Group Holding Registers
         if self.available_registers["holding_registers"]:
-            holding_addrs = [
-                HOLDING_REGISTERS[reg] for reg in self.available_registers["holding_registers"]
-            ]
+            holding_addrs: List[int] = []
+            for reg in self.available_registers["holding_registers"]:
+                start = HOLDING_REGISTERS[reg]
+                size = MULTI_REGISTER_SIZES.get(reg, 1)
+                holding_addrs.extend(range(start, start + size))
             self._register_groups["holding_registers"] = self._group_registers_for_batch_read(
-                sorted(holding_addrs)
+                sorted(set(holding_addrs))
             )
 
         # Group Coil Registers
@@ -504,6 +511,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
                     register_name = self._find_register_name(HOLDING_REGISTERS, addr)
+                    if register_name in MULTI_REGISTER_SIZES:
+                        size = MULTI_REGISTER_SIZES[register_name]
+                        values = response.registers[i : i + size]
+                        if (
+                            len(values) == size
+                            and register_name in self.available_registers["holding_registers"]
+                        ):
+                            data[register_name] = values
+                            self.statistics["total_registers_read"] += size
+                        continue
                     if (
                         register_name
                         and register_name in self.available_registers["holding_registers"]
@@ -703,7 +720,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         return data
 
     async def async_write_register(
-        self, register_name: str, value: float, refresh: bool = True
+        self,
+        register_name: str,
+        value: float | list[int] | tuple[int, ...],
+        refresh: bool = True,
     ) -> bool:
         """Write to a holding or coil register.
 
@@ -721,21 +741,38 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
                 original_value = value
 
-                # Apply multiplier if defined and convert to integer for Modbus
-                if register_name in REGISTER_MULTIPLIERS:
-                    multiplier = REGISTER_MULTIPLIERS[register_name]
-                    value = int(round(value / multiplier))
+                if register_name in MULTI_REGISTER_SIZES:
+                    if not isinstance(value, (list, tuple)) or len(value) != MULTI_REGISTER_SIZES[register_name]:
+                        _LOGGER.error(
+                            "Register %s expects %d values",
+                            register_name,
+                            MULTI_REGISTER_SIZES[register_name],
+                        )
+                        return False
+                    values = [int(v) for v in value]
                 else:
-                    value = int(round(value))
+                    # Apply multiplier if defined and convert to integer for Modbus
+                    if register_name in REGISTER_MULTIPLIERS:
+                        multiplier = REGISTER_MULTIPLIERS[register_name]
+                        value = int(round(float(value) / multiplier))
+                    else:
+                        value = int(round(float(value)))
 
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
-                    response = await self._call_modbus(
-                        self.client.write_register,
-                        address=address,
-                        value=value,
-                    )
+                    if register_name in MULTI_REGISTER_SIZES:
+                        response = await self._call_modbus(
+                            self.client.write_registers,
+                            address=address,
+                            values=values,
+                        )
+                    else:
+                        response = await self._call_modbus(
+                            self.client.write_register,
+                            address=address,
+                            value=value,
+                        )
                 elif register_name in COIL_REGISTERS:
                     address = COIL_REGISTERS[register_name]
                     response = await self._call_modbus(
