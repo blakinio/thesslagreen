@@ -3,6 +3,8 @@ import sys
 import types
 import asyncio
 import pytest
+from unittest.mock import AsyncMock
+from pymodbus.exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -29,6 +31,23 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+
+helpers_uc = sys.modules.setdefault(
+    "homeassistant.helpers.update_coordinator",
+    types.ModuleType("homeassistant.helpers.update_coordinator"),
+)
+
+
+class CoordinatorEntity:  # pragma: no cover - simple stub
+    def __init__(self, coordinator=None):
+        self.coordinator = coordinator
+
+    @classmethod
+    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
+        return cls
+
+
+helpers_uc.CoordinatorEntity = CoordinatorEntity
 
 # ---------------------------------------------------------------------------
 # Actual tests
@@ -70,3 +89,15 @@ def test_switch_turn_on_off(mock_coordinator):
         "on_off_panel_mode", 0, refresh=False
     )
     mock_coordinator.async_request_refresh.assert_awaited_once()
+
+
+def test_switch_turn_on_modbus_failure(mock_coordinator):
+    """Ensure Modbus errors are surfaced when turning on the switch."""
+    switch = ThesslaGreenSwitch(
+        mock_coordinator, "on_off_panel_mode", SWITCH_ENTITIES["on_off_panel_mode"]
+    )
+    mock_coordinator.async_write_register = AsyncMock(
+        side_effect=ConnectionException("fail")
+    )
+    with pytest.raises(ConnectionException):
+        asyncio.run(switch.async_turn_on())
