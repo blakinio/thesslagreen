@@ -208,7 +208,7 @@ HOLDING_REGISTERS: Dict[str, int] = {
     'gwc_regen': 4262,
     'gwc_mode': 4263,
     'gwc_regen_period': 4264,
-    'delta_t_gwc': 4266,
+    'delta_tgwc': 4266,
     'start_gwc_regen_winter_time': 4267,
     'stop_gwc_regen_winter_time': 4268,
     'start_gwc_regen_summer_time': 4269,
