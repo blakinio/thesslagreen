@@ -120,8 +120,11 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Step size
         self._attr_native_step = self.entity_config.get("step", 1)
 
-        # Mode - slider for temperatures and durations, box for others
-        if "temperature" in self.register_name or "duration" in self.register_name:
+        # Mode - slider for temperatures, durations and coefficients
+        if any(
+            keyword in self.register_name
+            for keyword in ["temperature", "duration", "coef", "percentage"]
+        ):
             self._attr_mode = NumberMode.SLIDER
         else:
             self._attr_mode = NumberMode.BOX
@@ -129,19 +132,25 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Icon
         if "temperature" in self.register_name:
             self._attr_icon = "mdi:thermometer"
-        elif "flow" in self.register_name or "rate" in self.register_name:
+        elif (
+            "flow" in self.register_name
+            or "rate" in self.register_name
+            or "fan_speed" in self.register_name
+        ):
             self._attr_icon = "mdi:fan"
         elif "duration" in self.register_name:
             self._attr_icon = "mdi:timer"
         elif "intensity" in self.register_name:
             self._attr_icon = "mdi:gauge"
+        elif "coef" in self.register_name or "percentage" in self.register_name:
+            self._attr_icon = "mdi:percent"
         else:
             self._attr_icon = "mdi:numeric"
 
         # Entity category for configuration parameters
         if any(
             keyword in self.register_name
-            for keyword in ["hysteresis", "correction", "max", "min", "balance"]
+            for keyword in ["hysteresis", "correction", "max", "min", "balance", "coef"]
         ):
             self._attr_entity_category = EntityCategory.CONFIG
 
