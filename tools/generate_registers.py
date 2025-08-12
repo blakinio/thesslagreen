@@ -17,6 +17,7 @@ def to_snake_case(name: str) -> str:
     for old, new in replacements.items():
         name = name.replace(old, new)
     name = re.sub(r'[\s\-/]', '_', name)
+    name = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', name)
     name = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', name)
     name = re.sub(r'(?<=\D)(\d)', r'_\1', name)
     name = re.sub(r'__+', '_', name)

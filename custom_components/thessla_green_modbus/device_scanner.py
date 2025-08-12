@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import inspect
 import logging
+import pathlib
+import re
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
@@ -23,6 +26,18 @@ from .const import (
 from .registers import INPUT_REGISTERS, HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _to_snake_case(name: str) -> str:
+    """Convert register names to snake_case."""
+    replacements = {"flowrate": "flow_rate"}
+    for old, new in replacements.items():
+        name = name.replace(old, new)
+    name = re.sub(r"[\s\-/]", "_", name)
+    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
+    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
+    name = re.sub(r"__+", "_", name)
+    return name.lower()
 
 
 @dataclass
@@ -86,8 +101,33 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
+        # Load register map from CSV
+        self._registers: Dict[str, Dict[int, str]] = self._load_registers()
+
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
+
+    def _load_registers(self) -> Dict[str, Dict[int, str]]:
+        """Load Modbus register definitions from CSV file."""
+        register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+        csv_path = pathlib.Path(__file__).resolve().parents[2] / "modbus_registers.csv"
+        try:
+            with csv_path.open(newline="") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    code = row.get("Function_Code")
+                    if not code or code.startswith("#"):
+                        continue
+                    name = _to_snake_case(row.get("Register_Name", ""))
+                    try:
+                        addr = int(row.get("Address_DEC", 0))
+                    except (TypeError, ValueError):
+                        continue
+                    if code in register_map:
+                        register_map[code][addr] = name
+        except FileNotFoundError:
+            _LOGGER.error("Register definition file not found: %s", csv_path)
+        return register_map
 
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
@@ -292,7 +332,6 @@ class ThesslaGreenDeviceScanner:
 
             info = DeviceInfo()
             present_blocks = {}
-
             # Read firmware version
             fw_data = await self._read_input(client, 0x0000, 5)
             if fw_data and len(fw_data) >= 3:
@@ -308,7 +347,6 @@ class ThesslaGreenDeviceScanner:
                 else:
                     model = "AirPack⁴ Energy+"
             info.model = model
-
             # Dynamically scan all defined registers
             register_maps = {
                 "input_registers": (INPUT_REGISTERS, self._read_input),
@@ -341,16 +379,41 @@ class ThesslaGreenDeviceScanner:
                 present_blocks[reg_type] = (addresses[0], addresses[-1])
 
             caps = self._analyze_capabilities()
+            # Dynamically scan registers based on CSV definitions
+            for addr, reg_name in sorted(self._registers.get("04", {}).items()):
+                val = await self._read_input(client, addr, 1)
+                if val is not None and self._is_valid_register_value(reg_name, val[0]):
+                    self.available_registers["input_registers"].add(reg_name)
 
+            for addr, reg_name in sorted(self._registers.get("03", {}).items()):
+                val = await self._read_holding(client, addr, 1)
+                if val is not None and self._is_valid_register_value(reg_name, val[0]):
+                    self.available_registers["holding_registers"].add(reg_name)
+
+            for addr, reg_name in sorted(self._registers.get("01", {}).items()):
+                val = await self._read_coil(client, addr, 1)
+                if val is not None:
+                    self.available_registers["coil_registers"].add(reg_name)
+
+            for addr, reg_name in sorted(self._registers.get("02", {}).items()):
+                val = await self._read_discrete(client, addr, 1)
+                if val is not None:
+                    self.available_registers["discrete_inputs"].add(reg_name)
+
+            caps_dict = self._analyze_capabilities()
+            for key, value in caps_dict.items():
+                setattr(caps, key, value)
+
+            register_blocks = {}
             _LOGGER.info(
-                "Device scan completed: %d blocks found, %d capabilities detected",
-                len(present_blocks),
+                "Device scan completed: %d registers detected, %d capabilities detected",
+                sum(len(v) for v in self.available_registers.values()),
                 sum(
                     1 for v in caps.as_dict().values() if bool(v) and not isinstance(v, (set, int))
                 ),
             )
 
-            return info, caps, present_blocks
+            return info, caps, register_blocks
 
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.exception("Device scan failed: %s", exc)

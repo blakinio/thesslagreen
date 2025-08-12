@@ -99,7 +99,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 ### Sensory binarne (40+ automatycznie wykrywanych)
 - **Status systemu**: Zasilanie wentylatorów, bypass, GWC, pompy
 - **Tryby**: Letni/zimowy, auto/manual, tryby specjalne (boost, eco, away, sleep, fireplace, hood, party, bathroom, kitchen, summer, winter)
-- **Wejścia**: Expansion, alarm pożarowy, kontaktrony, czujniki
+- **Wejścia**: Expansion, alarm pożarowy, czujnik zanieczyszczenia
 - **Błędy i alarmy**: Wszystkie kody S1-S32 i E99-E105
 - **Zabezpieczenia**: Termiczne, przeciwmrozowe, przeciążenia
 
@@ -318,6 +318,43 @@ logger:
 - **Auto-skanowanie**: Tylko dostępne rejestry, brak błędów
 - **Diagnostyka**: Szczegółowe metryki wydajności i błędów
 - **Stabilność**: Retry logic, fallback reads, graceful degradation
+
+## 🧹 Czyszczenie starych encji
+
+Po aktualizacji integracji możesz usunąć nieużywane encje przy pomocy
+skryptu `cleanup_old_entities.py`.
+
+```bash
+python3 custom_components/thessla_green_modbus/cleanup_old_entities.py
+```
+
+Skrypt domyślnie obsługuje polskie i angielskie nazwy encji
+(`rekuperator_predkosc`, `rekuperator_speed`).
+
+### Dodatkowe wzorce
+
+Możesz dodać własne wzorce poprzez opcję CLI lub plik konfiguracyjny:
+
+```bash
+python3 custom_components/thessla_green_modbus/cleanup_old_entities.py \
+    --pattern "thessla.*ventilation_speed" \
+    --pattern "number.extra_sensor"
+```
+
+Plik JSON z dodatkowymi wzorcami (domyślnie `cleanup_config.json` obok skryptu):
+
+```json
+{
+  "old_entity_patterns": ["thessla.*ventilation_speed"]
+}
+```
+
+Uruchomienie z własnym plikiem:
+
+```bash
+python3 custom_components/thessla_green_modbus/cleanup_old_entities.py \
+    --config my_cleanup_config.json
+```
 
 ## 🤝 Wsparcie i rozwój
 

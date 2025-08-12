@@ -26,12 +26,12 @@ _LOGGER = logging.getLogger(__name__)
 HVAC_MODE_MAP = {
     0: HVACMode.AUTO,  # Automatic mode
     1: HVACMode.FAN_ONLY,  # Manual mode
-    2: HVACMode.FAN_ONLY,  # Temporary mode
+    2: HVACMode.FAN_ONLY,  # Temporary boost mode
 }
 
 HVAC_MODE_REVERSE_MAP = {
     HVACMode.AUTO: 0,
-    HVACMode.FAN_ONLY: 1,
+    HVACMode.FAN_ONLY: 1,  # Manual and temporary modes use fan-only
     HVACMode.OFF: 0,  # Will be handled by on_off_panel_mode
 }
 
