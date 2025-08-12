@@ -26,7 +26,7 @@ This project adheres to a simple code of conduct:
 ### Prerequisites
 
 - Python 3.10+ 
-- Home Assistant 2023.4.0+
+- Home Assistant 2025.7.1+ (managed outside `requirements.txt`)
 - Git
 - A ThesslaGreen AirPack device (for testing)
 
@@ -75,13 +75,15 @@ cd thessla_green_modbus
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (Home Assistant core excluded)
 pip install -r requirements.txt
 pip install pre-commit pytest black isort flake8 mypy
 
 # Install pre-commit hooks
 pre-commit install
 ```
+
+> **Note:** The `homeassistant` package is not included in `requirements.txt`; ensure your environment provides a compatible Home Assistant version as declared in `custom_components/thessla_green_modbus/manifest.json`.
 
 ### 3. Verify Setup
 
