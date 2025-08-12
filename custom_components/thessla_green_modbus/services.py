@@ -1,6 +1,6 @@
-"""Service handlers for the ThesslaGreen Modbus integration."""
-
 from __future__ import annotations
+
+"""Service handlers for the ThesslaGreen Modbus integration."""
 
 import logging
 from typing import TYPE_CHECKING

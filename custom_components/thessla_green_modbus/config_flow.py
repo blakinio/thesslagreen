@@ -1,6 +1,6 @@
-"""Config flow for ThesslaGreen Modbus integration."""
-
 from __future__ import annotations
+
+"""Config flow for ThesslaGreen Modbus integration."""
 
 import asyncio
 import logging
@@ -11,8 +11,6 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-
-from .modbus_exceptions import ConnectionException, ModbusException
 
 from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,
@@ -29,6 +27,7 @@ from .const import (
     DOMAIN,
 )
 from .device_scanner import ThesslaGreenDeviceScanner
+from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -190,9 +189,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "capabilities_count": str(len(capabilities_list)),
             "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
             "auto_detected_note": (
-                "Auto-detection successful!"
-                if register_count > 0
-                else "Limited auto-detection"
+                "Auto-detection successful!" if register_count > 0 else "Limited auto-detection"
             ),
         }
 
