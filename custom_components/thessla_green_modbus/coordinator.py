@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+
+from homeassistant.util import dt as dt_util
 
 try:  # pragma: no cover - handle missing pymodbus during tests
     from pymodbus.exceptions import ConnectionException, ModbusException
@@ -90,7 +92,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         # Connection management
         self.client: Optional["AsyncModbusTcpClient"] = None
         self._connection_lock = asyncio.Lock()
-        self._last_successful_read = datetime.now()
+        self._last_successful_read = dt_util.utcnow()
 
         # Device info and capabilities
         self.device_info: Dict[str, Any] = {}
@@ -328,7 +330,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch data from the device with optimized batch reading."""
-        start_time = datetime.now()
+        start_time = dt_util.utcnow()
 
         async with self._connection_lock:
             try:
@@ -358,11 +360,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
                 # Update statistics
                 self.statistics["successful_reads"] += 1
-                self.statistics["last_successful_update"] = datetime.now()
+                self.statistics["last_successful_update"] = dt_util.utcnow()
                 self._consecutive_failures = 0
 
                 # Calculate response time
-                response_time = (datetime.now() - start_time).total_seconds()
+                response_time = (dt_util.utcnow() - start_time).total_seconds()
                 self.statistics["average_response_time"] = (
                     self.statistics["average_response_time"]
                     * (self.statistics["successful_reads"] - 1)

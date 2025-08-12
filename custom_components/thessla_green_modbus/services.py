@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, REGISTER_MULTIPLIERS, SPECIAL_FUNCTION_MAP
 
@@ -384,13 +385,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def start_pressure_test(call: ServiceCall) -> None:
         """Service to start pressure test."""
         entity_ids = async_extract_entity_ids(hass, call)
-        
+
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
                 # Trigger pressure test by setting current day and time
-                import datetime
-                now = datetime.datetime.now()
+                now = dt_util.now()
                 day_of_week = now.weekday()  # 0 = Monday
                 time_hhmm = now.hour * 100 + now.minute
                 
