@@ -9,7 +9,7 @@ MODEL = "AirPack Home Serie 4"
 
 # Connection defaults
 DEFAULT_NAME = "ThesslaGreen"
-DEFAULT_PORT = 502
+DEFAULT_PORT = 502  # Standard Modbus TCP port; legacy versions used 8899
 DEFAULT_SLAVE_ID = 10
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
