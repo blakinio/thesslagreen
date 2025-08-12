@@ -4,8 +4,8 @@ import csv
 from pathlib import Path
 
 from custom_components.thessla_green_modbus.const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS
-from custom_components.thessla_green_modbus.device_scanner import _to_snake_case
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 FUNCTION_MAP = {
     "01": COIL_REGISTERS,
