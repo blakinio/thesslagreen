@@ -83,12 +83,6 @@
       "exhaust_flowrate": {
         "name": "Exhaust Airflow"
       },
-      "supply_percentage": {
-        "name": "Supply Fan Speed"
-      },
-      "exhaust_percentage": {
-        "name": "Exhaust Fan Speed"
-      },
       "heat_recovery_efficiency": {
         "name": "Heat Recovery Efficiency"
       },
@@ -402,15 +396,33 @@
       }
     },
     "switch": {
-      "on_off_panel_mode": { "name": "Panel Power" },
-      "boost_mode": { "name": "Boost Mode" },
-      "eco_mode": { "name": "Eco Mode" },
-      "night_mode": { "name": "Night Mode" },
-      "party_mode": { "name": "Party Mode" },
-      "fireplace_mode": { "name": "Fireplace Mode" },
-      "vacation_mode": { "name": "Vacation Mode" },
-      "hood_mode": { "name": "Hood Mode" },
-      "silent_mode": { "name": "Silent Mode" }
+      "on_off_panel_mode": {
+        "name": "Panel Power"
+      },
+      "boost_mode": {
+        "name": "Boost Mode"
+      },
+      "eco_mode": {
+        "name": "Eco Mode"
+      },
+      "night_mode": {
+        "name": "Night Mode"
+      },
+      "party_mode": {
+        "name": "Party Mode"
+      },
+      "fireplace_mode": {
+        "name": "Fireplace Mode"
+      },
+      "vacation_mode": {
+        "name": "Vacation Mode"
+      },
+      "hood_mode": {
+        "name": "Hood Mode"
+      },
+      "silent_mode": {
+        "name": "Silent Mode"
+      }
     },
     "select": {
       "mode": {
@@ -448,23 +460,30 @@
       }
     },
     "number": {
-      "supply_temperature_manual": { "name": "Supply Temperature (Manual)" },
-      "supply_temperature_auto": { "name": "Supply Temperature (Auto)" },
-      "comfort_temperature": { "name": "Comfort Temperature" },
-      "air_flow_rate_manual": { "name": "Manual Air Flow Rate" },
-      "air_flow_rate_auto": { "name": "Automatic Air Flow Rate" },
-      "hood_intensity": { "name": "Hood Intensity" },
-      "fireplace_intensity": { "name": "Fireplace Intensity" },
-      "venting_intensity": { "name": "Venting Intensity" },
-      "filter_change_interval": { "name": "Filter Change Interval" },
-      "required_temperature": { "name": "Required Temperature" },
-      "max_supply_temperature": { "name": "Max Supply Temperature" },
-      "min_supply_temperature": { "name": "Min Supply Temperature" },
-      "heating_curve_slope": { "name": "Heating Curve Slope" },
-      "heating_curve_offset": { "name": "Heating Curve Offset" },
-      "boost_air_flow_rate": { "name": "Boost Air Flow Rate" },
-      "boost_duration": { "name": "Boost Duration" },
-      "humidity_target": { "name": "Humidity Target" }
+      "required_temperature": {
+        "name": "Required Temperature"
+      },
+      "max_supply_temperature": {
+        "name": "Max Supply Temperature"
+      },
+      "min_supply_temperature": {
+        "name": "Min Supply Temperature"
+      },
+      "heating_curve_slope": {
+        "name": "Heating Curve Slope"
+      },
+      "heating_curve_offset": {
+        "name": "Heating Curve Offset"
+      },
+      "boost_air_flow_rate": {
+        "name": "Boost Air Flow Rate"
+      },
+      "boost_duration": {
+        "name": "Boost Duration"
+      },
+      "humidity_target": {
+        "name": "Humidity Target"
+      }
     }
   },
   "services": {

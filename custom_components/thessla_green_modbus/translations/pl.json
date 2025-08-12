@@ -80,12 +80,6 @@
       "exhaust_flowrate": {
         "name": "Przepływ wywiewu"
       },
-      "supply_percentage": {
-        "name": "Prędkość wentylatora nawiewnego"
-      },
-      "exhaust_percentage": {
-        "name": "Prędkość wentylatora wywiewnego"
-      },
       "heat_recovery_efficiency": {
         "name": "Sprawność rekuperacji"
       },
@@ -402,15 +396,33 @@
       }
     },
     "switch": {
-      "on_off_panel_mode": { "name": "Główne zasilanie" },
-      "boost_mode": { "name": "Tryb boost" },
-      "eco_mode": { "name": "Tryb eco" },
-      "night_mode": { "name": "Tryb nocny" },
-      "party_mode": { "name": "Tryb party" },
-      "fireplace_mode": { "name": "Tryb kominkowy" },
-      "vacation_mode": { "name": "Tryb wakacyjny" },
-      "hood_mode": { "name": "Tryb okapu" },
-      "silent_mode": { "name": "Tryb cichy" }
+      "on_off_panel_mode": {
+        "name": "Główne zasilanie"
+      },
+      "boost_mode": {
+        "name": "Tryb boost"
+      },
+      "eco_mode": {
+        "name": "Tryb eco"
+      },
+      "night_mode": {
+        "name": "Tryb nocny"
+      },
+      "party_mode": {
+        "name": "Tryb party"
+      },
+      "fireplace_mode": {
+        "name": "Tryb kominkowy"
+      },
+      "vacation_mode": {
+        "name": "Tryb wakacyjny"
+      },
+      "hood_mode": {
+        "name": "Tryb okapu"
+      },
+      "silent_mode": {
+        "name": "Tryb cichy"
+      }
     },
     "select": {
       "mode": {
@@ -448,43 +460,32 @@
       }
     },
     "number": {
-      "supply_temperature_manual": {
-        "name": "Temperatura nawiewu (manual)"
+      "required_temperature": {
+        "name": "Wymagana temperatura"
       },
-      "supply_temperature_auto": {
-        "name": "Temperatura nawiewu (auto)"
+      "max_supply_temperature": {
+        "name": "Maksymalna temperatura nawiewu"
       },
-      "comfort_temperature": {
-        "name": "Temperatura komfortu"
+      "min_supply_temperature": {
+        "name": "Minimalna temperatura nawiewu"
       },
-      "air_flow_rate_manual": {
-        "name": "Intensywność ręczna"
+      "heating_curve_slope": {
+        "name": "Nachylenie krzywej grzewczej"
       },
-      "air_flow_rate_auto": {
-        "name": "Intensywność automatyczna"
+      "heating_curve_offset": {
+        "name": "Przesunięcie krzywej grzewczej"
       },
-      "hood_intensity": {
-        "name": "Intensywność okapu"
+      "boost_air_flow_rate": {
+        "name": "Prędkość nawiewu w trybie boost"
       },
-      "fireplace_intensity": {
-        "name": "Intensywność kominka"
+      "boost_duration": {
+        "name": "Czas trwania trybu boost"
       },
-      "venting_intensity": {
-        "name": "Intensywność wietrzenia"
-      },
-        "filter_change_interval": {
-          "name": "Interwał wymiany filtrów"
-        },
-        "required_temperature": { "name": "Wymagana temperatura" },
-        "max_supply_temperature": { "name": "Maksymalna temperatura nawiewu" },
-        "min_supply_temperature": { "name": "Minimalna temperatura nawiewu" },
-        "heating_curve_slope": { "name": "Nachylenie krzywej grzewczej" },
-        "heating_curve_offset": { "name": "Przesunięcie krzywej grzewczej" },
-        "boost_air_flow_rate": { "name": "Prędkość nawiewu w trybie boost" },
-        "boost_duration": { "name": "Czas trwania trybu boost" },
-        "humidity_target": { "name": "Docelowa wilgotność" }
+      "humidity_target": {
+        "name": "Docelowa wilgotność"
       }
-    },
+    }
+  },
   "services": {
     "set_special_mode": {
       "name": "Ustaw tryb specjalny",
