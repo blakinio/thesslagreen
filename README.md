@@ -99,7 +99,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 ### Sensory binarne (40+ automatycznie wykrywanych)
 - **Status systemu**: Zasilanie wentylatorów, bypass, GWC, pompy
 - **Tryby**: Letni/zimowy, auto/manual, tryby specjalne
-- **Wejścia**: Expansion, alarm pożarowy, kontaktroy, czujniki
+- **Wejścia**: Expansion, alarm pożarowy, kontaktrony, czujniki
 - **Błędy i alarmy**: Wszystkie kody S1-S32 i E99-E105
 - **Zabezpieczenia**: Termiczne, przeciwmrozowe, przeciążenia
 
@@ -279,7 +279,7 @@ Użyj serwisu `get_diagnostic_info` aby uzyskać:
 3. Użyj serwisu `rescan_device`
 4. W razie potrzeby włącz opcję "Pełna lista rejestrów"
 
-#### ❌ "Entycje niedostępne"
+#### ❌ "Encje niedostępne"
 1. Sprawdź połączenie sieciowe
 2. Restart rekuperatora (wyłącz zasilanie na 30s)
 3. Sprawdź status encji w **Narzędzia programistyczne**
