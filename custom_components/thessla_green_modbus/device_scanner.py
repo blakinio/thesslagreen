@@ -16,14 +16,9 @@ from .modbus_exceptions import ConnectionException, ModbusException
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
+from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS, SENSOR_UNAVAILABLE
 from .modbus_helpers import _call_modbus
-from .const import (
-    DEFAULT_SLAVE_ID,
-    SENSOR_UNAVAILABLE,
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-)
-from .registers import INPUT_REGISTERS, HOLDING_REGISTERS
+from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,7 +105,7 @@ class ThesslaGreenDeviceScanner:
     def _load_registers(self) -> Dict[str, Dict[int, str]]:
         """Load Modbus register definitions from CSV file."""
         register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-        csv_path = pathlib.Path(__file__).resolve().parents[2] / "modbus_registers.csv"
+        csv_path = pathlib.Path(__file__).parent / "modbus_registers.csv"
         try:
             with csv_path.open(newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
@@ -168,9 +163,7 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
-            response = await _call_modbus(
-                client.read_coils, self.slave_id, address, count=count
-            )
+            response = await _call_modbus(client.read_coils, self.slave_id, address, count=count)
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
@@ -274,9 +267,7 @@ class ThesslaGreenDeviceScanner:
 
         # Flow sensors (simple pattern match)
         caps.flow_sensors = {
-            reg
-            for reg in self.available_registers["input_registers"]
-            if "flow" in reg
+            reg for reg in self.available_registers["input_registers"] if "flow" in reg
         }
 
         # Air quality sensors
