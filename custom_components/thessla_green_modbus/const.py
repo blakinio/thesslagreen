@@ -120,7 +120,6 @@ SPECIAL_FUNCTION_MAP = {
     "winter": 1024,
 }
 
-=======
 # Unit mappings
 REGISTER_UNITS = {
     # Temperature registers - 0.1°C resolution
@@ -134,8 +133,8 @@ REGISTER_UNITS = {
     # Flow registers - m³/h
     "supply_air_flow": "m³/h",
     "exhaust_air_flow": "m³/h",
-    "supply_flowrate": "m³/h",
-    "exhaust_flowrate": "m³/h",
+    "supply_flow_rate": "m³/h",
+    "exhaust_flow_rate": "m³/h",
     # Percentages
     "air_flow_rate_manual": "%",
     # Temperature set-point
@@ -199,8 +198,8 @@ STATE_CLASSES = {
     "gwc_temperature": "measurement",
     "ambient_temperature": "measurement",
     "heating_temperature": "measurement",
-    "supply_flowrate": "measurement",
-    "exhaust_flowrate": "measurement",
+    "supply_flow_rate": "measurement",
+    "exhaust_flow_rate": "measurement",
     "supply_air_flow": "measurement",
     "exhaust_air_flow": "measurement",
     "co2_level": "measurement",
