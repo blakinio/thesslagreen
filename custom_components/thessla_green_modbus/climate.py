@@ -133,19 +133,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         """Return target temperature if available."""
         data = self.coordinator.data
 
- z412d3-codex/remove-lines-137-145-and-implement-target_temperature
-        comfort = data.get("comfort_temperature")
-        if isinstance(comfort, (int, float)):
-            return float(comfort)
-
-        required = data.get("required_temperature")
-        if isinstance(required, (int, float)):
-            return float(required)
-
-        legacy = data.get("required_temperature_legacy")
-        if isinstance(legacy, (int, float)):
-            return float(legacy)
-=======
         value = data.get("comfort_temperature")
         if isinstance(value, (int, float)):
             return float(value)
@@ -157,7 +144,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         value = data.get("required_temperature_legacy")
         if isinstance(value, (int, float)):
             return float(value)
- main
 
         return None
 

@@ -101,13 +101,13 @@ sys.modules["homeassistant.helpers.device_registry"] = device_registry
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
-from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenModbusCoordinator,
-)
 from custom_components.thessla_green_modbus.const import (
     DOMAIN,
     HOLDING_REGISTERS,
     REGISTER_MULTIPLIERS,
+)
+from custom_components.thessla_green_modbus.coordinator import (
+    ThesslaGreenModbusCoordinator,
 )
 
 

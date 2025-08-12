@@ -96,17 +96,13 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read input registers."""
         try:
-            response = await client.read_input_registers(address, count, unit=self.slave_id)
+            response = await client.read_input_registers(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug(
-                "Failed to read input 0x%04X: %s", address, exc, exc_info=True
-            )
+            _LOGGER.debug("Failed to read input 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error(
-                "Unexpected error reading input 0x%04X: %s", address, exc, exc_info=True
-            )
+            _LOGGER.error("Unexpected error reading input 0x%04X: %s", address, exc, exc_info=True)
         return None
 
     async def _read_holding(
@@ -114,13 +110,11 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read holding registers."""
         try:
-            response = await client.read_holding_registers(address, count, unit=self.slave_id)
+            response = await client.read_holding_registers(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug(
-                "Failed to read holding 0x%04X: %s", address, exc, exc_info=True
-            )
+            _LOGGER.debug("Failed to read holding 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.error(
                 "Unexpected error reading holding 0x%04X: %s", address, exc, exc_info=True
@@ -132,17 +126,13 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
-            response = await client.read_coils(address, count, unit=self.slave_id)
+            response = await client.read_coils(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug(
-                "Failed to read coil 0x%04X: %s", address, exc, exc_info=True
-            )
+            _LOGGER.debug("Failed to read coil 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error(
-                "Unexpected error reading coil 0x%04X: %s", address, exc, exc_info=True
-            )
+            _LOGGER.error("Unexpected error reading coil 0x%04X: %s", address, exc, exc_info=True)
         return None
 
     async def _read_discrete(
@@ -150,13 +140,11 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read discrete input registers."""
         try:
-            response = await client.read_discrete_inputs(address, count, unit=self.slave_id)
+            response = await client.read_discrete_inputs(address, count, slave=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug(
-                "Failed to read discrete 0x%04X: %s", address, exc, exc_info=True
-            )
+            _LOGGER.debug("Failed to read discrete 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.error(
                 "Unexpected error reading discrete 0x%04X: %s", address, exc, exc_info=True
