@@ -19,7 +19,7 @@
       },
       "confirm": {
         "title": "Confirm Configuration",
-        "description": "ThesslaGreen device {device_name} detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}. {auto_detected_note} Do you want to continue with this configuration?"
+        "description": "ThesslaGreen device {device_name} detected at {host}:{port} with Device ID {slave_id} and firmware {firmware_version}.\n{auto_detected_note} Do you want to continue with this configuration?"
       }
     },
     "error": {
