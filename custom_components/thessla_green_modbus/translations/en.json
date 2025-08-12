@@ -299,6 +299,9 @@
       "ppoz": {
         "name": "Fire Alarm"
       },
+      "fire_alarm": {
+        "name": "Fire Alarm"
+      },
       "night_cooling_active": {
         "name": "Night Cooling Active"
       },

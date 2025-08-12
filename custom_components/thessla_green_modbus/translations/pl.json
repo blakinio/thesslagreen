@@ -266,6 +266,9 @@
       "ppoz": {
         "name": "Alarm pożarowy"
       },
+      "fire_alarm": {
+        "name": "Alarm pożarowy"
+      },
       "expansion": {
         "name": "Moduł rozszerzający"
       },
