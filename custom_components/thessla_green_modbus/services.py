@@ -10,7 +10,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from .const import DOMAIN, REGISTER_MULTIPLIERS, SPECIAL_FUNCTION_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +21,18 @@ AIR_QUALITY_REGISTER_MAP = {
     "co2_high": "co2_threshold_high",
     "humidity_target": "humidity_target",
 }
+
+
+def _scale_for_register(register_name: str, value: float) -> int:
+    """Scale ``value`` according to ``REGISTER_MULTIPLIERS`` for ``register_name``.
+
+    This converts user-facing units (e.g. degrees Celsius) to raw register
+    values expected by the device.
+    """
+    multiplier = REGISTER_MULTIPLIERS.get(register_name)
+    if multiplier is not None:
+        return int(round(value / multiplier))
+    return int(round(value))
 
 # Service schemas
 SET_SPECIAL_MODE_SCHEMA = vol.Schema({
@@ -159,13 +171,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 flow_register = f"schedule_{day_name}_period{period}_flow"
                 temp_register = f"schedule_{day_name}_period{period}_temp"
                 
-                # Write schedule values
-                await coordinator.async_write_register(start_register, start_hhmm)
-                await coordinator.async_write_register(end_register, end_hhmm)
-                await coordinator.async_write_register(flow_register, airflow_rate)
-                
+                # Write schedule values with proper scaling
+                await coordinator.async_write_register(
+                    start_register, _scale_for_register(start_register, start_hhmm)
+                )
+                await coordinator.async_write_register(
+                    end_register, _scale_for_register(end_register, end_hhmm)
+                )
+                await coordinator.async_write_register(
+                    flow_register, _scale_for_register(flow_register, airflow_rate)
+                )
+
                 if temperature is not None:
-                    await coordinator.async_write_register(temp_register, temperature)
+                    await coordinator.async_write_register(
+                        temp_register, _scale_for_register(temp_register, temperature)
+                    )
                 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set airflow schedule for %s", entity_id)
@@ -183,13 +203,23 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register("bypass_mode", mode_value)
-                
+                await coordinator.async_write_register(
+                    "bypass_mode", _scale_for_register("bypass_mode", mode_value)
+                )
+
                 if temperature_threshold is not None:
-                    await coordinator.async_write_register("bypass_temperature_threshold", temperature_threshold)
-                
+                    await coordinator.async_write_register(
+                        "bypass_temperature_threshold",
+                        _scale_for_register(
+                            "bypass_temperature_threshold", temperature_threshold
+                        ),
+                    )
+
                 if hysteresis is not None:
-                    await coordinator.async_write_register("bypass_hysteresis", hysteresis)
+                    await coordinator.async_write_register(
+                        "bypass_hysteresis",
+                        _scale_for_register("bypass_hysteresis", hysteresis),
+                    )
                 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set bypass parameters for %s", entity_id)
@@ -207,13 +237,23 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register("gwc_mode", mode_value)
-                
+                await coordinator.async_write_register(
+                    "gwc_mode", _scale_for_register("gwc_mode", mode_value)
+                )
+
                 if temperature_threshold is not None:
-                    await coordinator.async_write_register("gwc_temperature_threshold", temperature_threshold)
-                
+                    await coordinator.async_write_register(
+                        "gwc_temperature_threshold",
+                        _scale_for_register(
+                            "gwc_temperature_threshold", temperature_threshold
+                        ),
+                    )
+
                 if hysteresis is not None:
-                    await coordinator.async_write_register("gwc_hysteresis", hysteresis)
+                    await coordinator.async_write_register(
+                        "gwc_hysteresis",
+                        _scale_for_register("gwc_hysteresis", hysteresis),
+                    )
                 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set GWC parameters for %s", entity_id)
@@ -245,17 +285,25 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register("heating_curve_slope", slope)
-                await coordinator.async_write_register("heating_curve_offset", offset)
+                await coordinator.async_write_register(
+                    "heating_curve_slope",
+                    _scale_for_register("heating_curve_slope", slope),
+                )
+                await coordinator.async_write_register(
+                    "heating_curve_offset",
+                    _scale_for_register("heating_curve_offset", offset),
+                )
 
                 if max_supply_temp is not None:
                     await coordinator.async_write_register(
-                        "max_supply_temperature", max_supply_temp
+                        "max_supply_temperature",
+                        _scale_for_register("max_supply_temperature", max_supply_temp),
                     )
 
                 if min_supply_temp is not None:
                     await coordinator.async_write_register(
-                        "min_supply_temperature", min_supply_temp
+                        "min_supply_temperature",
+                        _scale_for_register("min_supply_temperature", min_supply_temp),
                     )
 
                 await coordinator.async_request_refresh()
