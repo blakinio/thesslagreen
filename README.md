@@ -368,6 +368,15 @@ python3 custom_components/thessla_green_modbus/cleanup_old_entities.py \
 - 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
+### Regenerating registers.py
+If you modify `custom_components/thessla_green_modbus/data/modbus_registers.csv`, rebuild the generated module:
+
+```bash
+python tools/generate_registers.py
+```
+
+Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+
 ### Changelog
 Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 

@@ -5,22 +5,12 @@ from __future__ import annotations
 import csv
 import pathlib
 import re
-from typing import Dict, Tuple
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbus_registers.csv"
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
-# Legacy names mapped to their canonical versions
-ALIASES = {
-    "required_temp": "required_temperature",
-    "supply_air_temperature_manual": "comfort_temperature",
-}
 
-# CSV names that should be renamed to canonical forms
-RENAMES = {
-    "supply_air_temperature_manual": "comfort_temperature",
-}
 
 
 def to_snake_case(name: str) -> str:
@@ -38,14 +28,14 @@ def to_snake_case(name: str) -> str:
     return "_".join(tokens)
 
 
-def _build_register_map(rows: list[tuple[str, int]]) -> Dict[str, int]:
+def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
     """Create a register map with unique names."""
     rows.sort(key=lambda r: r[1])
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for name, _ in rows:
         counts[name] = counts.get(name, 0) + 1
-    seen: Dict[str, int] = {}
-    result: Dict[str, int] = {}
+    seen: dict[str, int] = {}
+    result: dict[str, int] = {}
     for name, addr in rows:
         if counts[name] > 1:
             idx = seen.get(name, 0) + 1
@@ -57,7 +47,7 @@ def _build_register_map(rows: list[tuple[str, int]]) -> Dict[str, int]:
     return result
 
 
-def load_registers() -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Dict[str, int]]:
+def load_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
     """Load registers from the CSV grouped by function code."""
     coil_rows: list[tuple[str, int]] = []
     discrete_rows: list[tuple[str, int]] = []
@@ -70,7 +60,6 @@ def load_registers() -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Di
         for row in reader:
             code = row["Function_Code"]
             name = to_snake_case(row["Register_Name"])
-            name = RENAMES.get(name, name)
             addr = int(row["Address_DEC"])
             if code == "01":
                 coil_rows.append((name, addr))
@@ -84,10 +73,6 @@ def load_registers() -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Di
     discrete_inputs = _build_register_map(discrete_rows)
     input_regs = _build_register_map(input_rows)
     holding_regs = _build_register_map(holding_rows)
-    for alias, canonical in ALIASES.items():
-        for mapping in (coils, discrete_inputs, input_regs, holding_regs):
-            if canonical in mapping:
-                mapping[alias] = mapping[canonical]
     coils = dict(sorted(coils.items(), key=lambda kv: kv[1]))
     discrete_inputs = dict(sorted(discrete_inputs.items(), key=lambda kv: kv[1]))
     input_regs = dict(sorted(input_regs.items(), key=lambda kv: kv[1]))
@@ -96,26 +81,33 @@ def load_registers() -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Di
 
 
 def write_file(
-    coils: Dict[str, int],
-    discrete_inputs: Dict[str, int],
-    input_regs: Dict[str, int],
-    holding_regs: Dict[str, int],
+    coils: dict[str, int],
+    discrete_inputs: dict[str, int],
+    input_regs: dict[str, int],
+    holding_regs: dict[str, int],
 ) -> None:
     """Write the registers module to :data:`OUTPUT_PATH`."""
     with OUTPUT_PATH.open("w", newline="\n") as f:
         f.write('"""Register definitions for the ThesslaGreen Modbus integration."""\n\n')
-        f.write("from typing import Dict\n\n")
-        f.write("# Generated from modbus_registers.csv\n")
-        for name, mapping in [
+        f.write("from __future__ import annotations\n\n")
+        f.write("from typing import Dict\n\n\n")
+        f.write("# Generated from modbus_registers.csv\n\n")
+        sections = [
             ("COIL_REGISTERS", coils),
             ("DISCRETE_INPUT_REGISTERS", discrete_inputs),
             ("INPUT_REGISTERS", input_regs),
             ("HOLDING_REGISTERS", holding_regs),
-        ]:
-            f.write(f"{name}: Dict[str, int] = {{\n")
+        ]
+        for idx, (name, mapping) in enumerate(sections):
+            f.write(f"{name}: dict[str, int] = {{\n")
             for key, addr in mapping.items():
-                f.write(f"    '{key}': {addr},\n")
-            f.write("}\n\n")
+                f.write(f'    "{key}": {addr},\n')
+            if name == "HOLDING_REGISTERS":
+                f.write("}\n")
+            elif name == "INPUT_REGISTERS":
+                f.write("}\n\n\n")
+            else:
+                f.write("}\n\n")
 
 
 def main() -> None:
