@@ -443,8 +443,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 day_of_week = now.weekday()  # 0 = Monday
                 time_hhmm = now.hour * 100 + now.minute
 
-                await coordinator.async_write_register("pres_check_day", day_of_week, refresh=False)
-                await coordinator.async_write_register("pres_check_time", time_hhmm, refresh=False)
+                await coordinator.async_write_register("pres_check_day_2", day_of_week, refresh=False)
+                await coordinator.async_write_register("pres_check_time_2", time_hhmm, refresh=False)
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Started pressure test for %s", entity_id)
 

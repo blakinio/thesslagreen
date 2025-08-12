@@ -75,146 +75,17 @@
       "ambient_temperature": {
         "name": "Ambient Temperature"
       },
-      "heating_temperature": {
-        "name": "Heating Temperature"
-      },
       "supply_flow_rate": {
         "name": "Target Supply Airflow"
       },
       "exhaust_flow_rate": {
         "name": "Target Exhaust Airflow"
       },
-      "heat_recovery_efficiency": {
-        "name": "Heat Recovery Efficiency"
-      },
-      "co2_level": {
-        "name": "CO2 Level"
-      },
-      "humidity_indoor": {
-        "name": "Indoor Humidity"
-      },
-      "humidity_outdoor": {
-        "name": "Outdoor Humidity"
-      },
-      "pm25_level": {
-        "name": "PM2.5"
-      },
-      "pm10_level": {
-        "name": "PM10"
-      },
-      "voc_level": {
-        "name": "VOC"
-      },
-      "air_quality_index": {
-        "name": "Air Quality Index"
-      },
-      "filter_lifetime_remaining": {
-        "name": "Filter Life Remaining"
-      },
-      "total_power_consumption": {
-        "name": "Total Power Consumption"
-      },
-      "daily_energy_consumption": {
-        "name": "Daily Energy Consumption"
-      },
-      "annual_energy_consumption": {
-        "name": "Annual Energy Consumption"
-      },
-      "system_uptime": {
-        "name": "System Uptime"
-      },
-      "heat_exchanger_temperature_1": {
-        "name": "Heat Exchanger Temperature 1"
-      },
-      "heat_exchanger_temperature_2": {
-        "name": "Heat Exchanger Temperature 2"
-      },
-      "heat_exchanger_temperature_3": {
-        "name": "Heat Exchanger Temperature 3"
-      },
-      "heat_exchanger_temperature_4": {
-        "name": "Heat Exchanger Temperature 4"
-      },
-      "outdoor_flow_rate": {
-        "name": "Outdoor Airflow"
-      },
-      "inside_flow_rate": {
-        "name": "Indoor Airflow"
-      },
-      "gwc_flow_rate": {
-        "name": "GWC Airflow"
-      },
-      "heat_recovery_flow_rate": {
-        "name": "Heat Recovery Airflow"
-      },
-      "bypass_flow_rate": {
-        "name": "Bypass Airflow"
-      },
       "supply_air_flow": {
         "name": "Current Supply Airflow"
       },
       "exhaust_air_flow": {
         "name": "Current Exhaust Airflow"
-      },
-      "pm1_level": {
-        "name": "PM1"
-      },
-      "preheater_power": {
-        "name": "Preheater Power"
-      },
-      "main_heater_power": {
-        "name": "Main Heater Power"
-      },
-      "cooler_power": {
-        "name": "Cooler Power"
-      },
-      "supply_fan_power": {
-        "name": "Supply Fan Power"
-      },
-      "exhaust_fan_power": {
-        "name": "Exhaust Fan Power"
-      },
-      "annual_energy_savings": {
-        "name": "Annual Energy Savings"
-      },
-      "co2_reduction": {
-        "name": "Annual CO2 Reduction"
-      },
-      "fault_counter": {
-        "name": "Fault Counter"
-      },
-      "maintenance_counter": {
-        "name": "Maintenance Counter"
-      },
-      "filter_replacement_counter": {
-        "name": "Filter Replacement Counter"
-      },
-      "supply_pressure": {
-        "name": "Supply Pressure"
-      },
-      "exhaust_pressure": {
-        "name": "Exhaust Pressure"
-      },
-      "differential_pressure": {
-        "name": "Differential Pressure"
-      },
-      "motor_supply_rpm": {
-        "name": "Supply Fan RPM"
-      },
-      "motor_exhaust_rpm": {
-        "name": "Exhaust Fan RPM"
-      },
-      "motor_supply_current": {
-        "name": "Supply Fan Current"
-      },
-      "motor_exhaust_current": {
-        "name": "Exhaust Fan Current"
-      },
-      "motor_supply_voltage": {
-        "name": "Supply Fan Voltage"
-      },
-      "motor_exhaust_voltage": {
-        "name": "Exhaust Fan Voltage"
       },
       "dac_supply": {
         "name": "Supply DAC"
@@ -227,15 +98,6 @@
       },
       "dac_cooler": {
         "name": "Cooler DAC"
-      },
-      "damper_position_bypass": {
-        "name": "Bypass Damper Position"
-      },
-      "damper_position_gwc": {
-        "name": "GWC Damper Position"
-      },
-      "damper_position_mix": {
-        "name": "Mix Damper Position"
       },
       "firmware_major": {
         "name": "Firmware Major"
@@ -266,18 +128,6 @@
       "constant_flow_active": {
         "name": "Constant Flow"
       },
-      "frost_protection_active": {
-        "name": "Frost Protection"
-      },
-      "defrost_cycle_active": {
-        "name": "Defrost Cycle"
-      },
-      "summer_bypass_active": {
-        "name": "Summer Bypass"
-      },
-      "winter_heating_active": {
-        "name": "Winter Heating"
-      },
       "duct_water_heater_pump": {
         "name": "Water Heater Pump"
       },
@@ -296,32 +146,8 @@
       "contamination_sensor": {
         "name": "Contamination Sensor"
       },
-      "ppoz": {
-        "name": "Fire Alarm"
-      },
       "fire_alarm": {
         "name": "Fire Alarm"
-      },
-      "night_cooling_active": {
-        "name": "Night Cooling Active"
-      },
-      "air_quality_control_active": {
-        "name": "Air Quality Control Active"
-      },
-      "humidity_control_active": {
-        "name": "Humidity Control Active"
-      },
-      "temperature_control_active": {
-        "name": "Temperature Control Active"
-      },
-      "demand_control_active": {
-        "name": "Demand Control Active"
-      },
-      "schedule_control_active": {
-        "name": "Schedule Control Active"
-      },
-      "manual_control_active": {
-        "name": "Manual Control Active"
       },
       "on_off_panel_mode": {
         "name": "Panel Power"
@@ -420,39 +246,6 @@
     "number": {
       "required_temperature": {
         "name": "Required Temperature"
-      },
-      "max_supply_temperature": {
-        "name": "Max Supply Temperature"
-      },
-      "min_supply_temperature": {
-        "name": "Min Supply Temperature"
-      },
-      "heating_curve_slope": {
-        "name": "Heating Curve Slope"
-      },
-      "heating_curve_offset": {
-        "name": "Heating Curve Offset"
-      },
-      "boost_air_flow_rate": {
-        "name": "Boost Air Flow Rate"
-      },
-      "boost_duration": {
-        "name": "Boost Duration"
-      },
-      "humidity_target": {
-        "name": "Humidity Target"
-      },
-      "economy_temperature": {
-        "name": "Economy Temperature"
-      },
-      "night_temperature": {
-        "name": "Night Temperature"
-      },
-      "away_temperature": {
-        "name": "Away Temperature"
-      },
-      "frost_protection_temperature": {
-        "name": "Frost Protection Temperature"
       }
     }
   },

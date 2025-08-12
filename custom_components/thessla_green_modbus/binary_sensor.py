@@ -86,76 +86,10 @@ BINARY_SENSOR_DEFINITIONS = {
         "device_class": BinarySensorDeviceClass.SAFETY,
         "register_type": "discrete_inputs",
     },
-    # Active protection systems (from input registers)
-    "frost_protection_active": {
-        "translation_key": "frost_protection_active",
-        "icon": "mdi:snowflake-check",
-        "device_class": BinarySensorDeviceClass.COLD,
-        "register_type": "input_registers",
-    },
-    "defrost_cycle_active": {
-        "translation_key": "defrost_cycle_active",
-        "icon": "mdi:snowflake-thermometer",
-        "device_class": BinarySensorDeviceClass.RUNNING,
-        "register_type": "input_registers",
-    },
-    "summer_bypass_active": {
-        "translation_key": "summer_bypass_active",
-        "icon": "mdi:weather-sunny",
-        "device_class": BinarySensorDeviceClass.RUNNING,
-        "register_type": "input_registers",
-    },
-    "winter_heating_active": {
-        "translation_key": "winter_heating_active",
-        "icon": "mdi:weather-snowy",
-        "device_class": BinarySensorDeviceClass.HEAT,
-        "register_type": "input_registers",
-    },
-    "night_cooling_active": {
-        "translation_key": "night_cooling_active",
-        "icon": "mdi:weather-night",
-        "device_class": BinarySensorDeviceClass.COLD,
-        "register_type": "input_registers",
-    },
+    # Active modes (from input registers)
     "constant_flow_active": {
         "translation_key": "constant_flow_active",
         "icon": "mdi:waves",
-        "device_class": BinarySensorDeviceClass.RUNNING,
-        "register_type": "input_registers",
-    },
-    "air_quality_control_active": {
-        "translation_key": "air_quality_control_active",
-        "icon": "mdi:air-filter",
-        "device_class": BinarySensorDeviceClass.RUNNING,
-        "register_type": "input_registers",
-    },
-    "humidity_control_active": {
-        "translation_key": "humidity_control_active",
-        "icon": "mdi:water-percent",
-        "device_class": BinarySensorDeviceClass.MOISTURE,
-        "register_type": "input_registers",
-    },
-    "temperature_control_active": {
-        "translation_key": "temperature_control_active",
-        "icon": "mdi:thermometer-auto",
-        "device_class": BinarySensorDeviceClass.HEAT,
-        "register_type": "input_registers",
-    },
-    "demand_control_active": {
-        "translation_key": "demand_control_active",
-        "icon": "mdi:hand-extended",
-        "device_class": BinarySensorDeviceClass.RUNNING,
-        "register_type": "input_registers",
-    },
-    "schedule_control_active": {
-        "translation_key": "schedule_control_active",
-        "icon": "mdi:calendar-clock",
-        "device_class": BinarySensorDeviceClass.RUNNING,
-        "register_type": "input_registers",
-    },
-    "manual_control_active": {
-        "translation_key": "manual_control_active",
-        "icon": "mdi:hand-pointing-up",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "input_registers",
     },

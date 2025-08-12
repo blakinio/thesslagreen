@@ -1,17 +1,23 @@
 """Tests for ThesslaGreenNumber entity."""
+
+import asyncio
 import sys
 import types
-import asyncio
-import pytest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
+
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
 # ---------------------------------------------------------------------------
 
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
+
 
 # Units and constants
 class UnitOfTemperature:  # pragma: no cover - simple stub
@@ -53,9 +59,7 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-helpers = sys.modules.setdefault(
-    "homeassistant.helpers", types.ModuleType("homeassistant.helpers")
-)
+helpers = sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
 helpers.__path__ = []  # mark as package
 entity_helper = types.ModuleType("homeassistant.helpers.entity")
 
@@ -67,19 +71,36 @@ class EntityCategory:  # pragma: no cover - simple stub
 entity_helper.EntityCategory = EntityCategory
 sys.modules["homeassistant.helpers.entity"] = entity_helper
 
-coordinator_module = types.ModuleType(
-    "custom_components.thessla_green_modbus.coordinator"
-)
+coordinator_module = types.ModuleType("custom_components.thessla_green_modbus.coordinator")
 
 
 class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
-    pass
+    def __init__(self, *args, **kwargs):
+        self.available_registers = {"holding_registers": set()}
+        self.capabilities = SimpleNamespace(basic_control=False)
+        self.client = None
+        self.slave_id = args[3] if len(args) > 3 else kwargs.get("slave_id", 0)
+
+    async def _ensure_connection(self):
+        return None
+
+    async def async_request_refresh(self):
+        return None
+
+    def get_device_info(self):
+        return {}
+
+    async def async_write_register(self, *args, **kwargs):
+        register, value = args[0], args[1]
+        address = HOLDING_REGISTERS[register]
+        multiplier = REGISTER_MULTIPLIERS.get(register, 1)
+        raw = int(round(value / multiplier))
+        await self.client.write_register(address, raw, slave=self.slave_id)
+        return True
 
 
 coordinator_module.ThesslaGreenModbusCoordinator = ThesslaGreenModbusCoordinator
-sys.modules[
-    "custom_components.thessla_green_modbus.coordinator"
-] = coordinator_module
+sys.modules["custom_components.thessla_green_modbus.coordinator"] = coordinator_module
 
 helpers_uc = sys.modules.setdefault(
     "homeassistant.helpers.update_coordinator",
@@ -102,10 +123,7 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.number import (
-    ENTITY_MAPPINGS,
-    ThesslaGreenNumber,
-)
+from custom_components.thessla_green_modbus.number import ENTITY_MAPPINGS, ThesslaGreenNumber
 
 
 def test_number_creation_and_state(mock_coordinator):
@@ -138,9 +156,7 @@ def test_number_set_value_modbus_failure(mock_coordinator):
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
     number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
 
-    mock_coordinator.async_write_register = AsyncMock(
-        side_effect=ConnectionException("fail")
-    )
+    mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
         asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_request_refresh.assert_not_awaited()

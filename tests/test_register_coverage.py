@@ -1,5 +1,7 @@
+"""Validate coverage of register definitions against CSV specification."""
+
 import csv
-import pathlib
+from pathlib import Path
 
 from custom_components.thessla_green_modbus.const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS
 from custom_components.thessla_green_modbus.device_scanner import _to_snake_case
@@ -12,11 +14,19 @@ FUNCTION_MAP = {
     "04": INPUT_REGISTERS,
 }
 
+CSV_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "data"
+    / "modbus_registers.csv"
+)
+
 
 def load_csv_mappings() -> dict[str, dict[str, int]]:
     path = pathlib.Path("custom_components/thessla_green_modbus/data/modbus_registers.csv")
     result: dict[str, dict[str, int]] = {code: {} for code in FUNCTION_MAP}
-    with path.open(newline="") as csvfile:
+    with CSV_PATH.open(newline="") as csvfile:
         reader = csv.DictReader(
             row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
         )
@@ -28,7 +38,7 @@ def load_csv_mappings() -> dict[str, dict[str, int]]:
     return result
 
 
-def test_all_registers_covered():
+def test_all_registers_covered() -> None:
     csv_maps = load_csv_mappings()
     missing = []
     mismatched = []

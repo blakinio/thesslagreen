@@ -141,10 +141,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         if isinstance(value, (int, float)):
             return float(value)
 
-        value = data.get("required_temperature_legacy")
-        if isinstance(value, (int, float)):
-            return float(value)
-
         return None
 
     @property
@@ -184,7 +180,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         # Get airflow rate from manual or current setting
         airflow = (
             self.coordinator.data.get("air_flow_rate_manual")
-            or self.coordinator.data.get("air_flow_rate_temporary")
+            or self.coordinator.data.get("air_flow_rate_temporary_2")
             or 50
         )
         # Round to nearest 10%

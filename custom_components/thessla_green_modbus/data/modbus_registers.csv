@@ -336,7 +336,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x1FFB,8187,R/W,lockPass1,Klucz produktu użytkownika słowo młodsze,0,0x423f,0,1,"Pod tymi adresami można zapisać klucz produktu wprowadzony przez użytkownika",,
 03,0x1FFC,8188,R/W,lockPass2,Klucz produktu użytkownika słowo starsze,0,0x000f,0,1,,,
 03,0x1FFD,8189,R/W,lockFlag,Aktywacja blokady urządzenia,0,1,0,1,"0 - blokada nieaktywna; 1 - blokada aktywna",,
-03,0x1FFE,8190,R/-,requiredTemp,Temperatura zadana trybu KOMFORT,20,90,40,0.5,°C,,,
+03,0x1FFE,8190,R/-,requiredTemperature,Temperatura zadana trybu KOMFORT,20,90,40,0.5,°C,,,
 03,0x1FFF,8191,R/W,filterChange,System kontroli filtrów / typ filtrów,1,4,1,1,"1 - presostat; 2 - filtry płaskie; 3 - filtry CleanPad; 4 - filtry CleanPad Pure",,
 
 # ALARMY - SEKCJA 0x2000
