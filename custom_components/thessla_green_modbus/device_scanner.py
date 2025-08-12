@@ -6,9 +6,9 @@ import asyncio
 import csv
 import inspect
 import logging
-import pathlib
 import re
 from dataclasses import asdict, dataclass, field
+from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -108,9 +108,9 @@ class ThesslaGreenDeviceScanner:
     def _load_registers(self) -> Dict[str, Dict[int, str]]:
         """Load Modbus register definitions from CSV file."""
         register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-        csv_path = pathlib.Path(__file__).parent / "modbus_registers.csv"
+        csv_path = files(__package__) / "data" / "modbus_registers.csv"
         try:
-            with csv_path.open(newline="") as csvfile:
+            with csv_path.open(encoding="utf-8", newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     code = row.get("Function_Code")

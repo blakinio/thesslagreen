@@ -53,6 +53,12 @@ docs = [
 where = ["."]
 include = ["custom_components*"]
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"custom_components.thessla_green_modbus" = ["data/*.csv"]
+
 [tool.black]
 target-version = ["py312"]
 line-length = 100
