@@ -76,10 +76,10 @@
         "name": "Temperatura otoczenia"
       },
       "supply_flowrate": {
-        "name": "Przepływ nawiewu"
+        "name": "Zadany przepływ nawiewu"
       },
       "exhaust_flowrate": {
-        "name": "Przepływ wywiewu"
+        "name": "Zadany przepływ wywiewu"
       },
       "heat_recovery_efficiency": {
         "name": "Sprawność rekuperacji"
@@ -115,10 +115,10 @@
         "name": "Przepływ obejścia (bypassu)"
       },
       "supply_air_flow": {
-        "name": "Przepływ nawiewu"
+        "name": "Aktualny przepływ nawiewu"
       },
       "exhaust_air_flow": {
-        "name": "Przepływ wywiewu"
+        "name": "Aktualny przepływ wywiewu"
       },
       "co2_level": {
         "name": "Poziom CO2"
