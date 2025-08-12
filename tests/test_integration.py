@@ -128,7 +128,7 @@ async def test_register_constants():
     """Test that register constants are properly defined."""
     from custom_components.thessla_green_modbus.const import (
         COIL_REGISTERS,
-        DISCRETE_INPUTS,
+        DISCRETE_INPUT_REGISTERS,
         INPUT_REGISTERS,
         HOLDING_REGISTERS,
     )
@@ -137,7 +137,7 @@ async def test_register_constants():
     assert "power_supply_fans" in COIL_REGISTERS
     assert "outside_temperature" in INPUT_REGISTERS
     assert "mode" in HOLDING_REGISTERS
-    assert "expansion" in DISCRETE_INPUTS
+    assert "expansion" in DISCRETE_INPUT_REGISTERS
     
     # Test address ranges
     assert COIL_REGISTERS["power_supply_fans"] == 0x000B
