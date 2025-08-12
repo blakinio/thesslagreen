@@ -8,11 +8,16 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 try:  # pragma: no cover - handle missing pymodbus during tests
-    from pymodbus.exceptions import ConnectionException
+    from pymodbus.exceptions import ConnectionException, ModbusException
 except Exception:  # pragma: no cover
 
     class ConnectionException(Exception):
         """Fallback exception when pymodbus is not available."""
+
+        pass
+
+    class ModbusException(Exception):
+        """Fallback Modbus exception when pymodbus is not available."""
 
         pass
 
@@ -152,8 +157,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     self.device_info.get("model", "Unknown"),
                     self.device_info.get("firmware", "Unknown"),
                 )
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.error("Device scan failed: %s", exc)
+                raise
+            except Exception as exc:
+                _LOGGER.exception("Unexpected error during device scan")
                 raise
             finally:
                 await scanner.close()
@@ -266,8 +274,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.error("Connection test failed: %s", exc)
+                raise
+            except Exception as exc:
+                _LOGGER.exception("Unexpected error during connection test")
                 raise
 
     async def _async_setup_client(self) -> bool:
@@ -278,8 +289,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         try:
             await self._ensure_connection()
             return True
-        except Exception as exc:
+        except (ModbusException, ConnectionException) as exc:
             _LOGGER.error("Failed to set up Modbus client: %s", exc)
+            return False
+        except Exception as exc:
+            _LOGGER.exception("Unexpected error setting up Modbus client")
             return False
 
     async def async_ensure_client(self) -> bool:
@@ -301,9 +315,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 if not connected:
                     raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
                 _LOGGER.debug("Modbus connection established")
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 self.statistics["connection_errors"] += 1
                 _LOGGER.error("Failed to establish connection: %s", exc)
+                raise
+            except Exception as exc:
+                self.statistics["connection_errors"] += 1
+                _LOGGER.exception("Unexpected error establishing connection")
                 raise
 
     async def _async_update_data(self) -> Dict[str, Any]:
@@ -354,7 +372,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 )
                 return data
 
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 self.statistics["failed_reads"] += 1
                 self.statistics["last_error"] = str(exc)
                 self._consecutive_failures += 1
@@ -366,6 +384,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
                 _LOGGER.error("Failed to update data: %s", exc)
                 raise UpdateFailed(f"Error communicating with device: {exc}") from exc
+            except Exception as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    await self._disconnect()
+
+                _LOGGER.exception("Unexpected error during data update")
+                raise UpdateFailed(f"Unexpected error: {exc}") from exc
 
     async def _read_input_registers_optimized(self) -> Dict[str, Any]:
         """Read input registers using optimized batch reading."""
@@ -398,8 +427,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
 
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug("Error reading input registers at 0x%04X: %s", start_addr, exc)
+                continue
+            except Exception as exc:
+                _LOGGER.exception(
+                    "Unexpected error reading input registers at 0x%04X", start_addr
+                )
                 continue
 
         return data
@@ -435,8 +469,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
 
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug("Error reading holding registers at 0x%04X: %s", start_addr, exc)
+                continue
+            except Exception as exc:
+                _LOGGER.exception(
+                    "Unexpected error reading holding registers at 0x%04X", start_addr
+                )
                 continue
 
         return data
@@ -468,8 +507,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
 
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug("Error reading coil registers at 0x%04X: %s", start_addr, exc)
+                continue
+            except Exception as exc:
+                _LOGGER.exception(
+                    "Unexpected error reading coil registers at 0x%04X", start_addr
+                )
                 continue
 
         return data
@@ -503,8 +547,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
 
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug("Error reading discrete inputs at 0x%04X: %s", start_addr, exc)
+                continue
+            except Exception as exc:
+                _LOGGER.exception(
+                    "Unexpected error reading discrete inputs at 0x%04X", start_addr
+                )
                 continue
 
         return data
@@ -549,7 +598,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 if exhaust != outside:
                     efficiency = ((supply - outside) / (exhaust - outside)) * 100
                     data["calculated_efficiency"] = max(0, min(100, efficiency))
-            except Exception as exc:
+            except (ZeroDivisionError, TypeError) as exc:
                 _LOGGER.debug("Could not calculate efficiency: %s", exc)
 
         # Calculate flow balance
@@ -616,8 +665,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     await self.async_request_refresh()
                 return True
 
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.error("Failed to write register %s: %s", register_name, exc)
+                return False
+            except Exception as exc:
+                _LOGGER.exception(
+                    "Unexpected error writing register %s", register_name
+                )
                 return False
 
     async def _disconnect(self) -> None:
@@ -626,8 +680,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             try:
                 await self.client.close()
                 _LOGGER.debug("Disconnected from Modbus device")
-            except Exception as exc:
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug("Error disconnecting: %s", exc)
+            except Exception as exc:
+                _LOGGER.exception("Unexpected error disconnecting: %s", exc)
             finally:
                 self.client = None
 

@@ -7,10 +7,13 @@ from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 try:  # pragma: no cover
-    from pymodbus.exceptions import ConnectionException
+    from pymodbus.exceptions import ConnectionException, ModbusException
 except Exception:  # pragma: no cover
 
     class ConnectionException(Exception):
+        pass
+
+    class ModbusException(Exception):
         pass
 
 
@@ -92,8 +95,10 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_input_registers(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.registers
-        except Exception as e:
-            _LOGGER.debug("Failed to read input 0x%04X: %s", address, e)
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug("Failed to read input 0x%04X: %s", address, exc)
+        except Exception as exc:
+            _LOGGER.exception("Unexpected error reading input 0x%04X", address)
         return None
 
     async def _read_holding(
@@ -104,8 +109,10 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_holding_registers(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.registers
-        except Exception as e:
-            _LOGGER.debug("Failed to read holding 0x%04X: %s", address, e)
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug("Failed to read holding 0x%04X: %s", address, exc)
+        except Exception as exc:
+            _LOGGER.exception("Unexpected error reading holding 0x%04X", address)
         return None
 
     async def _read_coil(
@@ -116,8 +123,10 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_coils(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
-        except Exception as e:
-            _LOGGER.debug("Failed to read coil 0x%04X: %s", address, e)
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug("Failed to read coil 0x%04X: %s", address, exc)
+        except Exception as exc:
+            _LOGGER.exception("Unexpected error reading coil 0x%04X", address)
         return None
 
     async def _read_discrete(
@@ -128,8 +137,10 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_discrete_inputs(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
-        except Exception as e:
-            _LOGGER.debug("Failed to read discrete 0x%04X: %s", address, e)
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug("Failed to read discrete 0x%04X: %s", address, exc)
+        except Exception as exc:
+            _LOGGER.exception("Unexpected error reading discrete 0x%04X", address)
         return None
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
@@ -417,14 +428,19 @@ class ThesslaGreenDeviceScanner:
 
             return info, caps, present_blocks
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException) as exc:
             _LOGGER.error("Device scan failed: %s", exc)
+            raise
+        except Exception as exc:
+            _LOGGER.exception("Unexpected error during device scan")
             raise
         finally:
             try:
                 await client.close()
-            except Exception:
-                pass
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug("Error closing Modbus client: %s", exc)
+            except Exception as exc:
+                _LOGGER.debug("Unexpected error closing Modbus client: %s", exc)
             _LOGGER.debug("Disconnected from ThesslaGreen device")
 
     async def scan_device(self) -> Dict[str, Any]:
@@ -460,12 +476,12 @@ class ThesslaGreenDeviceScanner:
 
             return result
 
-        except ConnectionException as exc:
+        except (ConnectionException, ModbusException) as exc:
             _LOGGER.error("Connection failed during device scan: %s", exc)
-            raise Exception("Failed to connect to device") from exc
+            raise
         except Exception as exc:
-            _LOGGER.error("Device scan failed: %s", exc)
-            raise Exception(f"Device scan failed: {exc}") from exc
+            _LOGGER.exception("Device scan failed")
+            raise
 
     async def close(self):
         """Close the scanner connection if any."""
