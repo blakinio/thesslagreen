@@ -262,6 +262,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     port=self.port,
                     timeout=self.timeout,
                 )
+                # Explicitly set unit ID for pymodbus >=3.5
+                try:
+                    self.client.unit_id = self.slave_id
+                except Exception:
+                    setattr(self.client, "unit_id", self.slave_id)
                 connected = await self.client.connect()
                 if not connected:
                     raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
@@ -501,12 +506,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
-codex/refactor-modbus-client-communication
-                    response = await self.client.write_register(address, value, slave=self.slave_id)
-                elif register_name in COIL_REGISTERS:
-                    address = COIL_REGISTERS[register_name]
-                    response = await self.client.write_coil(address, bool(value), slave=self.slave_id)
-=======
                     response = await self.client.write_register(
                         address=address, value=value, slave=self.slave_id
                     )
@@ -515,7 +514,6 @@ codex/refactor-modbus-client-communication
                     response = await self.client.write_coil(
                         address=address, value=bool(value), slave=self.slave_id
                     )
-main
                 else:
                     _LOGGER.error("Unknown register for writing: %s", register_name)
                     return False
