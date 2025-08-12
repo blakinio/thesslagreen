@@ -3,10 +3,10 @@
 Script to clean up old references in Home Assistant for the ThesslaGreen Modbus
 integration. Removes outdated entities and references that may cause errors.
 
-Usage: run this script before restarting Home Assistant after updating the
-integration:
-
+Usage:
     python3 cleanup_old_entities.py
+
+Run this script before restarting Home Assistant after updating the integration.
 """
 
 import logging
