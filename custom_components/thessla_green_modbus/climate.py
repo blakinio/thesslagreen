@@ -134,9 +134,15 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             return self.coordinator.data["comfort_temperature"]
         if "required_temperature" in self.coordinator.data:
             return self.coordinator.data["required_temperature"]
+ codex/rename-required_temp-entry-in-const.py
+        elif "required_temperature_legacy" in self.coordinator.data:
+            return self.coordinator.data["required_temperature_legacy"]
+        return 22.0  # Default
+=======
         if "required_temp" in self.coordinator.data:
             return self.coordinator.data["required_temp"]
         return None
+ main
 
     @property
     def hvac_mode(self) -> HVACMode:
