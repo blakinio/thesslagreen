@@ -132,17 +132,16 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         # Try comfort temperature first, then required temperature
         if "comfort_temperature" in self.coordinator.data:
             return self.coordinator.data["comfort_temperature"]
-        if "required_temperature" in self.coordinator.data:
-            return self.coordinator.data["required_temperature"]
- codex/rename-required_temp-entry-in-const.py
-        elif "required_temperature_legacy" in self.coordinator.data:
-            return self.coordinator.data["required_temperature_legacy"]
-        return 22.0  # Default
-=======
-        if "required_temp" in self.coordinator.data:
-            return self.coordinator.data["required_temp"]
+
+        for key in (
+            "required_temperature",
+            "required_temperature_legacy",
+            "required_temp",
+        ):
+            if key in self.coordinator.data:
+                return self.coordinator.data[key]
+
         return None
- main
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -249,10 +248,26 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 "on_off_panel_mode", 0, refresh=False
             )
         else:
-            # Turn on device first
-            await self.coordinator.async_write_register(
+            # Turn on device first and capture result
+            power_on_success = await self.coordinator.async_write_register(
                 "on_off_panel_mode", 1, refresh=False
             )
+
+            # Retry once if power on failed
+            if not power_on_success:
+                _LOGGER.warning(
+                    "Power-on failed when setting HVAC mode to %s, retrying", hvac_mode
+                )
+                power_on_success = await self.coordinator.async_write_register(
+                    "on_off_panel_mode", 1, refresh=False
+                )
+
+            if not power_on_success:
+                _LOGGER.error(
+                    "Failed to enable device before setting HVAC mode to %s", hvac_mode
+                )
+                return
+
             # Set mode
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
             success = await self.coordinator.async_write_register(
