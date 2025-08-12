@@ -488,19 +488,107 @@
   "services": {
     "set_special_mode": {
       "name": "Ustaw tryb specjalny",
-      "description": "Ustawia specjalny tryb pracy rekuperatora (BOOST, ECO, KOMINEK, OKAP itd.)"
+      "description": "Ustawia specjalny tryb pracy rekuperatora (BOOST, ECO, KOMINEK, OKAP itd.)",
+      "fields": {
+        "mode": {
+          "name": "Tryb specjalny",
+          "description": "Rodzaj trybu specjalnego do aktywacji",
+          "selector": {
+            "select": {
+              "options": {
+                "none": "Brak",
+                "boost": "Boost",
+                "eco": "Eco",
+                "away": "Nieobecność",
+                "fireplace": "Kominek",
+                "hood": "Okap",
+                "party": "Impreza",
+                "bathroom": "Łazienka",
+                "kitchen": "Kuchnia",
+                "summer": "Lato",
+                "winter": "Zima"
+              }
+            }
+          }
+        },
+        "duration": {
+          "name": "Czas trwania (minuty)",
+          "description": "Czas trwania trybu specjalnego w minutach (0 = bez limitu)"
+        }
+      }
     },
     "set_airflow_schedule": {
       "name": "Ustaw harmonogram przepływu powietrza",
-      "description": "Konfiguruje tygodniowy harmonogram przepływu powietrza"
+      "description": "Konfiguruje tygodniowy harmonogram przepływu powietrza",
+      "fields": {
+        "day": {
+          "name": "Dzień tygodnia",
+          "description": "Dzień tygodnia do konfiguracji",
+          "selector": {
+            "select": {
+              "options": {
+                "monday": "Poniedziałek",
+                "tuesday": "Wtorek",
+                "wednesday": "Środa",
+                "thursday": "Czwartek",
+                "friday": "Piątek",
+                "saturday": "Sobota",
+                "sunday": "Niedziela"
+              }
+            }
+          }
+        },
+        "period": {
+          "name": "Okres",
+          "description": "Okres dnia (1 lub 2)",
+          "selector": {
+            "select": {
+              "options": {
+                "1": "Okres 1",
+                "2": "Okres 2"
+              }
+            }
+          }
+        }
+      }
     },
     "set_bypass_parameters": {
       "name": "Ustaw parametry bypassu",
-      "description": "Konfiguruje parametry systemu obejścia (bypassu)"
+      "description": "Konfiguruje parametry systemu obejścia (bypassu)",
+      "fields": {
+        "mode": {
+          "name": "Tryb bypassu",
+          "description": "Tryb pracy obejścia",
+          "selector": {
+            "select": {
+              "options": {
+                "auto": "Automatyczny",
+                "open": "Otwarty",
+                "closed": "Zamknięty"
+              }
+            }
+          }
+        }
+      }
     },
     "set_gwc_parameters": {
       "name": "Ustaw parametry GWC",
-      "description": "Konfiguruje parametry gruntowego wymiennika ciepła"
+      "description": "Konfiguruje parametry gruntowego wymiennika ciepła",
+      "fields": {
+        "mode": {
+          "name": "Tryb GWC",
+          "description": "Tryb pracy gruntowego wymiennika ciepła",
+          "selector": {
+            "select": {
+              "options": {
+                "off": "Wyłączony",
+                "auto": "Automatyczny",
+                "forced": "Wymuszony"
+              }
+            }
+          }
+        }
+      }
     },
     "set_air_quality_thresholds": {
       "name": "Ustaw progi jakości powietrza",
@@ -512,11 +600,42 @@
     },
     "reset_filters": {
       "name": "Resetuj licznik filtrów",
-      "description": "Resetuje licznik żywotności filtrów"
+      "description": "Resetuje licznik żywotności filtrów",
+      "fields": {
+        "filter_type": {
+          "name": "Typ filtra",
+          "description": "Typ filtra do ustawienia",
+          "selector": {
+            "select": {
+              "options": {
+                "presostat": "Presostat",
+                "flat_filters": "Filtry płaskie",
+                "cleanpad": "CleanPad",
+                "cleanpad_pure": "CleanPad Pure"
+              }
+            }
+          }
+        }
+      }
     },
     "reset_settings": {
       "name": "Resetuj ustawienia",
-      "description": "Przywraca ustawienia użytkownika do wartości domyślnych"
+      "description": "Przywraca ustawienia użytkownika do wartości domyślnych",
+      "fields": {
+        "reset_type": {
+          "name": "Rodzaj resetu",
+          "description": "Zakres ustawień do zresetowania",
+          "selector": {
+            "select": {
+              "options": {
+                "user_settings": "Ustawienia użytkownika",
+                "schedule_settings": "Ustawienia harmonogramu",
+                "all_settings": "Wszystkie ustawienia"
+              }
+            }
+          }
+        }
+      }
     },
     "start_pressure_test": {
       "name": "Rozpocznij test ciśnienia",
@@ -524,7 +643,65 @@
     },
     "set_modbus_parameters": {
       "name": "Ustaw parametry Modbus",
-      "description": "Konfiguruje parametry komunikacji Modbus (tylko dla zaawansowanych użytkowników)"
+      "description": "Konfiguruje parametry komunikacji Modbus (tylko dla zaawansowanych użytkowników)",
+      "fields": {
+        "port": {
+          "name": "Port",
+          "description": "Port Modbus (Air-B lub Air++)",
+          "selector": {
+            "select": {
+              "options": {
+                "air_b": "Air-B",
+                "air_plus": "Air++"
+              }
+            }
+          }
+        },
+        "baud_rate": {
+          "name": "Szybkość transmisji",
+          "description": "Prędkość transmisji Modbus",
+          "selector": {
+            "select": {
+              "options": {
+                "4800": "4800",
+                "9600": "9600",
+                "14400": "14400",
+                "19200": "19200",
+                "28800": "28800",
+                "38400": "38400",
+                "57600": "57600",
+                "76800": "76800",
+                "115200": "115200"
+              }
+            }
+          }
+        },
+        "parity": {
+          "name": "Parzystość",
+          "description": "Bit parzystości",
+          "selector": {
+            "select": {
+              "options": {
+                "none": "Brak",
+                "even": "Parzysta",
+                "odd": "Nieparzysta"
+              }
+            }
+          }
+        },
+        "stop_bits": {
+          "name": "Bity stopu",
+          "description": "Liczba bitów stopu",
+          "selector": {
+            "select": {
+              "options": {
+                "1": "1",
+                "2": "2"
+              }
+            }
+          }
+        }
+      }
     },
     "set_device_name": {
       "name": "Ustaw nazwę urządzenia",
