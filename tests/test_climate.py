@@ -106,11 +106,9 @@ from custom_components.thessla_green_modbus.climate import (
     ThesslaGreenClimate,
 )
 from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
-from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenModbusCoordinator,
-)
 
 
 class DummyClient:

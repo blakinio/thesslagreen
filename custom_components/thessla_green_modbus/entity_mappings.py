@@ -1,4 +1,5 @@
 """Entity mapping definitions for the ThesslaGreen Modbus integration."""
+
 from typing import Any, Dict
 
 NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {

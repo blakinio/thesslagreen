@@ -18,6 +18,7 @@ CSV_PATH = (
     Path(__file__).resolve().parent.parent
     / "custom_components"
     / "thessla_green_modbus"
+    / "data"
     / "modbus_registers.csv"
 )
 
