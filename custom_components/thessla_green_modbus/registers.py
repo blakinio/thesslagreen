@@ -1,9 +1,7 @@
 """Register definitions for the ThesslaGreen Modbus integration."""
 
-from typing import Dict
-
 # Generated from modbus_registers.csv
-COIL_REGISTERS: Dict[str, int] = {
+COIL_REGISTERS: dict[str, int] = {
     "duct_water_heater_pump": 5,
     "bypass": 9,
     "info": 10,
@@ -14,7 +12,7 @@ COIL_REGISTERS: Dict[str, int] = {
     "hood": 15,
 }
 
-DISCRETE_INPUT_REGISTERS: Dict[str, int] = {
+DISCRETE_INPUT_REGISTERS: dict[str, int] = {
     "duct_heater_protection": 0,
     "expansion": 1,
     "dp_duct_filter_overflow": 3,
@@ -33,7 +31,7 @@ DISCRETE_INPUT_REGISTERS: Dict[str, int] = {
     "empty_house": 21,
 }
 
-INPUT_REGISTERS: Dict[str, int] = {
+INPUT_REGISTERS: dict[str, int] = {
     "version_major": 0,
     "version_minor": 1,
     "day_of_week": 2,
@@ -64,7 +62,7 @@ INPUT_REGISTERS: Dict[str, int] = {
     "water_removal_active": 298,
 }
 
-HOLDING_REGISTERS: Dict[str, int] = {
+HOLDING_REGISTERS: dict[str, int] = {
     'date_time_1': 0,
     'date_time_2': 1,
     'date_time_3': 2,
