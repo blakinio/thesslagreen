@@ -497,12 +497,26 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         
         return data
     
-    async def async_write_register(self, register_name: str, value: int) -> bool:
-        """Write to a holding or coil register."""
+    async def async_write_register(self, register_name: str, value: float) -> bool:
+        """Write to a holding or coil register.
+
+        Values should be provided in user units (°C, minutes, etc.). The value
+        will be scaled according to ``REGISTER_MULTIPLIERS`` before being
+        written to the device.
+        """
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                
+
+                original_value = value
+
+                # Apply multiplier if defined and convert to integer for Modbus
+                if register_name in REGISTER_MULTIPLIERS:
+                    multiplier = REGISTER_MULTIPLIERS[register_name]
+                    value = int(round(value / multiplier))
+                else:
+                    value = int(round(value))
+
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
@@ -517,17 +531,21 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 else:
                     _LOGGER.error("Unknown register for writing: %s", register_name)
                     return False
-                
+
                 if response.isError():
-                    _LOGGER.error("Error writing to register %s: %s", register_name, response)
+                    _LOGGER.error(
+                        "Error writing to register %s: %s", register_name, response
+                    )
                     return False
-                
-                _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
-                
+
+                _LOGGER.info(
+                    "Successfully wrote %s to register %s", original_value, register_name
+                )
+
                 # Request data refresh
                 await self.async_request_refresh()
                 return True
-                
+
             except Exception as exc:
                 _LOGGER.error("Failed to write register %s: %s", register_name, exc)
                 return False
