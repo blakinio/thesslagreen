@@ -9,12 +9,12 @@ integration:
     python3 cleanup_old_entities.py
 """
 
-import json
 import logging
+import json
 import shutil
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 _LOGGER = logging.getLogger(__name__)
 
