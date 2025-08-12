@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate registers.py from modbus_registers.csv."""
+
 import csv
 import pathlib
 import re
@@ -12,6 +13,12 @@ OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.p
 # Legacy names mapped to their canonical versions
 ALIASES = {
     "required_temp": "required_temperature",
+    "supply_air_temperature_manual": "comfort_temperature",
+}
+
+# CSV names that should be renamed to canonical forms
+RENAMES = {
+    "supply_air_temperature_manual": "comfort_temperature",
 }
 
 
@@ -29,6 +36,7 @@ def to_snake_case(name: str) -> str:
     token_map = {"temp": "temperature"}
     tokens = [token_map.get(token, token) for token in name.split("_")]
     return "_".join(tokens)
+
 
 def _build_register_map(rows: list[tuple[str, int]]) -> Dict[str, int]:
     """Create a register map with unique names.
@@ -56,44 +64,42 @@ def _build_register_map(rows: list[tuple[str, int]]) -> Dict[str, int]:
     return result
 
 
-def load_registers() -> Tuple[Dict[str, int], Dict[str, int]]:
+def load_registers() -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Dict[str, int]]:
+    """Load registers from the CSV grouped by function code."""
+
+    coil_rows: list[tuple[str, int]] = []
+    discrete_rows: list[tuple[str, int]] = []
     input_rows: list[tuple[str, int]] = []
     holding_rows: list[tuple[str, int]] = []
-    with CSV_PATH.open(newline='') as f:
-def load_registers() -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Dict[str, int]]:
-    coils: Dict[str, int] = {}
-    discrete_inputs: Dict[str, int] = {}
-    input_regs: Dict[str, int] = {}
-    holding_regs: Dict[str, int] = {}
+
     with CSV_PATH.open(newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             code = row["Function_Code"]
             if not code or code.startswith("#"):
                 continue
-            name = to_snake_case(row['Register_Name'])
-            addr = int(row['Address_DEC'])
-            if code == '04':
-                input_rows.append((name, addr))
-            elif code == '03':
-                holding_rows.append((name, addr))
-    input_regs = _build_register_map(input_rows)
-    holding_regs = _build_register_map(holding_rows)
-    return input_regs, holding_regs
             name = to_snake_case(row["Register_Name"])
+            name = RENAMES.get(name, name)
             addr = int(row["Address_DEC"])
             if code == "01":
-                coils[name] = addr
+                coil_rows.append((name, addr))
             elif code == "02":
-                discrete_inputs[name] = addr
+                discrete_rows.append((name, addr))
             elif code == "04":
-                input_regs[name] = addr
+                input_rows.append((name, addr))
             elif code == "03":
-                holding_regs[name] = addr
+                holding_rows.append((name, addr))
+
+    coils = _build_register_map(coil_rows)
+    discrete_inputs = _build_register_map(discrete_rows)
+    input_regs = _build_register_map(input_rows)
+    holding_regs = _build_register_map(holding_rows)
+
     for alias, canonical in ALIASES.items():
         for mapping in (coils, discrete_inputs, input_regs, holding_regs):
             if canonical in mapping:
                 mapping[alias] = mapping[canonical]
+
     coils = dict(sorted(coils.items(), key=lambda kv: kv[1]))
     discrete_inputs = dict(sorted(discrete_inputs.items(), key=lambda kv: kv[1]))
     input_regs = dict(sorted(input_regs.items(), key=lambda kv: kv[1]))
@@ -107,8 +113,10 @@ def write_file(
     input_regs: Dict[str, int],
     holding_regs: Dict[str, int],
 ) -> None:
+    """Write the registers module."""
+
     with OUTPUT_PATH.open("w", newline="\n") as f:
-        f.write('"""Register definitions for the ThesslaGreen Modbus integration."""\n')
+        f.write('"""Register definitions for the ThesslaGreen Modbus integration."""\n\n')
         f.write("from typing import Dict\n\n")
         f.write("# Generated from modbus_registers.csv\n")
         f.write("COIL_REGISTERS: Dict[str, int] = {\n")
