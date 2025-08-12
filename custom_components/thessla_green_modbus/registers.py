@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
-
 # Generated from modbus_registers.csv
 
 COIL_REGISTERS: dict[str, int] = {
