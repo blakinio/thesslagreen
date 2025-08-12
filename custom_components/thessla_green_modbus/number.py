@@ -6,7 +6,12 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolumeFlowRate,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -26,6 +31,7 @@ UNIT_MAPPINGS = {
     "%": PERCENTAGE,
     "min": UnitOfTime.MINUTES,
     "h": UnitOfTime.HOURS,
+    "m³/h": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
 }
 
 

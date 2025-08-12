@@ -4,7 +4,7 @@ import asyncio
 import sys
 import types
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -29,8 +29,13 @@ class UnitOfTime:  # pragma: no cover - simple stub
     HOURS = "h"
 
 
+class UnitOfVolumeFlowRate:  # pragma: no cover - simple stub
+    CUBIC_METERS_PER_HOUR = "m³/h"
+
+
 const.UnitOfTemperature = UnitOfTemperature
 const.UnitOfTime = UnitOfTime
+const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
 const.PERCENTAGE = "%"
 
 number_mod = types.ModuleType("homeassistant.components.number")
@@ -59,9 +64,17 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-helpers = sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
-helpers.__path__ = []  # mark as package
+helpers = sys.modules.setdefault(
+    "homeassistant.helpers", types.ModuleType("homeassistant.helpers")
+)
+if not hasattr(helpers, "__path__"):
+    helpers.__path__ = []  # mark as package
 entity_helper = types.ModuleType("homeassistant.helpers.entity")
+script_helper = types.ModuleType("homeassistant.helpers.script")
+helpers.entity = entity_helper
+helpers.script = script_helper
+sys.modules["homeassistant.helpers.script"] = script_helper
+script_helper._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
 
 
 class EntityCategory:  # pragma: no cover - simple stub
@@ -123,7 +136,12 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.number import ENTITY_MAPPINGS, ThesslaGreenNumber
+from custom_components.thessla_green_modbus.number import (
+    ENTITY_MAPPINGS,
+    ThesslaGreenNumber,
+    async_setup_entry,
+)
+from custom_components.thessla_green_modbus.const import DOMAIN
 
 
 def test_number_creation_and_state(mock_coordinator):
@@ -185,3 +203,34 @@ def test_number_set_value_other_errors(mock_coordinator, exc_cls):
     with pytest.raises(exc_cls):
         asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "register,value",
+    [
+        ("max_supply_air_flow_rate", 250),
+        ("bypass_off", 10),
+    ],
+)
+def test_new_number_entities(mock_coordinator, register, value):
+    """Test number entities for newly added registers."""
+    mock_coordinator.data[register] = value
+    entity_config = ENTITY_MAPPINGS["number"][register]
+    number = ThesslaGreenNumber(mock_coordinator, register, entity_config)
+    assert number.native_value == value
+
+
+@pytest.mark.asyncio
+async def test_async_setup_creates_new_numbers(mock_coordinator, mock_config_entry):
+    """Ensure setup creates number entities for new registers."""
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_coordinator.available_registers.setdefault("holding_registers", set()).update(
+        {"max_supply_air_flow_rate", "bypass_off"}
+    )
+
+    add_entities = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+    entities = add_entities.call_args[0][0]
+    names = {entity.register_name for entity in entities}
+    assert {"max_supply_air_flow_rate", "bypass_off"} <= names
