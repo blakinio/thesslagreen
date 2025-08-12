@@ -470,6 +470,8 @@ class ThesslaGreenDeviceScanner:
         except (OSError, asyncio.TimeoutError, ValueError) as exc:
             _LOGGER.exception("Device scan failed: %s", exc)
             raise
+        finally:
+            await self.close()
 
     async def close(self):
         """Close the scanner connection if any."""
