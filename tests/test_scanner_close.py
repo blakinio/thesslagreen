@@ -2,6 +2,10 @@ import sys
 import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from custom_components.thessla_green_modbus.coordinator import (
+    ThesslaGreenModbusCoordinator,
+)
+
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
 const = types.ModuleType("homeassistant.const")
@@ -18,6 +22,18 @@ pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
 pymodbus_pdu = types.ModuleType("pymodbus.pdu")
 vol = types.ModuleType("voluptuous")
 cc_services = types.ModuleType("custom_components.thessla_green_modbus.services")
+
+
+async def async_setup_services(hass):
+    pass
+
+
+async def async_unload_services(hass):
+    pass
+
+
+cc_services.async_setup_services = async_setup_services
+cc_services.async_unload_services = async_unload_services
 
 # Minimal util.logging module required by pytest_homeassistant_custom_component
 util = types.ModuleType("homeassistant.util")
@@ -143,17 +159,6 @@ sys.modules.update({
     "voluptuous": vol,
     "custom_components.thessla_green_modbus.services": cc_services,
 })
-
-async def async_setup_services(hass):
-    pass
-
-async def async_unload_services(hass):
-    pass
-
-cc_services.async_setup_services = async_setup_services
-cc_services.async_unload_services = async_unload_services
-
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
 
 def test_async_setup_closes_scanner():

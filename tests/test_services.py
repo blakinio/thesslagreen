@@ -1,5 +1,6 @@
 """Tests for service helper mappings."""
 
+import importlib
 import os
 import sys
 import types
@@ -193,8 +194,6 @@ for name, module in modules.items():
 
 # Ensure repository root on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-import importlib
 
 services_module = importlib.reload(
     importlib.import_module("custom_components.thessla_green_modbus.services")
