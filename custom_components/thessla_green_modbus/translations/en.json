@@ -482,6 +482,18 @@
       },
       "humidity_target": {
         "name": "Humidity Target"
+      },
+      "economy_temperature": {
+        "name": "Economy Temperature"
+      },
+      "night_temperature": {
+        "name": "Night Temperature"
+      },
+      "away_temperature": {
+        "name": "Away Temperature"
+      },
+      "frost_protection_temperature": {
+        "name": "Frost Protection Temperature"
       }
     }
   },
