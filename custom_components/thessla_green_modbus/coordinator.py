@@ -506,10 +506,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     )
                     continue
 
-                if response.bits is None:
-                    _LOGGER.error(
-                        "No bits returned reading coil registers at 0x%04X", start_addr
-                    )
+                if not response.bits:
+                    if response.bits is None:
+                        _LOGGER.error(
+                            "No bits returned reading coil registers at 0x%04X",
+                            start_addr,
+                        )
                     continue
 
                 # Process each bit in the batch
@@ -556,10 +558,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     )
                     continue
 
-                if response.bits is None:
-                    _LOGGER.error(
-                        "No bits returned reading discrete inputs at 0x%04X", start_addr
-                    )
+                if not response.bits:
+                    if response.bits is None:
+                        _LOGGER.error(
+                            "No bits returned reading discrete inputs at 0x%04X",
+                            start_addr,
+                        )
                     continue
 
                 # Process each bit in the batch
