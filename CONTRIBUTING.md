@@ -76,8 +76,7 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies (Home Assistant core excluded)
-pip install -r requirements.txt
-pip install pre-commit pytest black isort flake8 mypy
+pip install -r requirements.txt -r requirements-dev.txt
 
 # Install pre-commit hooks
 pre-commit install
