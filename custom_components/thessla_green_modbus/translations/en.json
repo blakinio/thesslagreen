@@ -249,6 +249,57 @@
     "number": {
       "required_temperature": {
         "name": "Required Temperature"
+      },
+      "min_gwc_air_temperature": {
+        "name": "Min GWC Air Temperature"
+      },
+      "max_gwc_air_temperature": {
+        "name": "Max GWC Air Temperature"
+      },
+      "min_bypass_temperature": {
+        "name": "Min Bypass Temperature"
+      },
+      "fan_speed_1_coef": {
+        "name": "Fan Speed 1 Coefficient"
+      },
+      "fan_speed_2_coef": {
+        "name": "Fan Speed 2 Coefficient"
+      },
+      "fan_speed_3_coef": {
+        "name": "Fan Speed 3 Coefficient"
+      },
+      "hood_supply_coef": {
+        "name": "Hood Supply Coefficient"
+      },
+      "hood_exhaust_coef": {
+        "name": "Hood Exhaust Coefficient"
+      },
+      "fireplace_supply_coef": {
+        "name": "Fireplace Supply Coefficient"
+      },
+      "airing_bathroom_coef": {
+        "name": "Bathroom Airing Coefficient"
+      },
+      "airing_coef": {
+        "name": "Airing Coefficient"
+      },
+      "contamination_coef": {
+        "name": "Contamination Coefficient"
+      },
+      "empty_house_coef": {
+        "name": "Empty House Coefficient"
+      },
+      "airing_switch_coef": {
+        "name": "Airing Switch Coefficient"
+      },
+      "open_window_coef": {
+        "name": "Open Window Coefficient"
+      },
+      "bypass_coef_1": {
+        "name": "Bypass Coefficient 1"
+      },
+      "bypass_coef_2": {
+        "name": "Bypass Coefficient 2"
       }
     }
   },

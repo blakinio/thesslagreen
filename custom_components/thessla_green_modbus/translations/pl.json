@@ -249,6 +249,57 @@
     "number": {
       "required_temperature": {
         "name": "Wymagana temperatura"
+      },
+      "min_gwc_air_temperature": {
+        "name": "Min. temperatura GWC"
+      },
+      "max_gwc_air_temperature": {
+        "name": "Maks. temperatura GWC"
+      },
+      "min_bypass_temperature": {
+        "name": "Min. temperatura bypassu"
+      },
+      "fan_speed_1_coef": {
+        "name": "Współczynnik prędkości wentylatora 1"
+      },
+      "fan_speed_2_coef": {
+        "name": "Współczynnik prędkości wentylatora 2"
+      },
+      "fan_speed_3_coef": {
+        "name": "Współczynnik prędkości wentylatora 3"
+      },
+      "hood_supply_coef": {
+        "name": "Współczynnik nawiewu okapu"
+      },
+      "hood_exhaust_coef": {
+        "name": "Współczynnik wywiewu okapu"
+      },
+      "fireplace_supply_coef": {
+        "name": "Współczynnik nawiewu kominka"
+      },
+      "airing_bathroom_coef": {
+        "name": "Współczynnik przewietrzania łazienki"
+      },
+      "airing_coef": {
+        "name": "Współczynnik przewietrzania"
+      },
+      "contamination_coef": {
+        "name": "Współczynnik zanieczyszczenia"
+      },
+      "empty_house_coef": {
+        "name": "Współczynnik trybu nieobecności"
+      },
+      "airing_switch_coef": {
+        "name": "Współczynnik przełącznika przewietrzania"
+      },
+      "open_window_coef": {
+        "name": "Współczynnik otwartego okna"
+      },
+      "bypass_coef_1": {
+        "name": "Współczynnik bypassu 1"
+      },
+      "bypass_coef_2": {
+        "name": "Współczynnik bypassu 2"
       }
     }
   },
