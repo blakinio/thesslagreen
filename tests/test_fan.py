@@ -4,7 +4,14 @@ import types
 import asyncio
 import pytest
 from unittest.mock import AsyncMock
-from pymodbus.exceptions import ConnectionException
+
+try:  # pragma: no cover - handle missing or incompatible pymodbus
+    from pymodbus.exceptions import ConnectionException
+except Exception:  # pragma: no cover
+    class ConnectionException(Exception):
+        """Fallback exception when pymodbus is unavailable."""
+
+        pass
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -16,7 +23,9 @@ fan_mod = types.ModuleType("homeassistant.components.fan")
 
 
 class FanEntity:  # pragma: no cover - simple stub
-    pass
+    @property
+    def speed_count(self):
+        return getattr(self, "_attr_speed_count", None)
 
 
 class FanEntityFeature:  # pragma: no cover - simple stub
@@ -66,6 +75,7 @@ def test_fan_creation_and_state(mock_coordinator):
     mock_coordinator.data["supply_percentage"] = 50
     mock_coordinator.data["on_off_panel_mode"] = 1
     fan = ThesslaGreenFan(mock_coordinator)
+    assert fan.speed_count == 10
     assert fan.is_on is True
     assert fan.percentage == 50
 
