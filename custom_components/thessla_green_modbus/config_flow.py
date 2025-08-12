@@ -106,8 +106,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._scan_result = info.get("scan_result", {})
 
                 # Set unique ID based on host, port and slave_id
+                # Replace colons in host (IPv6) with hyphens to avoid separator conflicts
+                unique_host = user_input[CONF_HOST].replace(":", "-")
                 await self.async_set_unique_id(
-                    f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
+                    f"{unique_host}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
                 )
                 self._abort_if_unique_id_configured()
 

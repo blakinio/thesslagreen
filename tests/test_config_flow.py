@@ -79,6 +79,36 @@ async def test_form_user_success():
     }
 
 
+async def test_unique_id_sanitized():
+    """Ensure unique ID replaces colons in host with hyphens."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    validation_result = {
+        "title": "ThesslaGreen fe80::1",
+        "device_info": {},
+        "scan_result": {},
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        return_value=validation_result,
+    ), patch(
+        "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
+    ), patch(
+        "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+    ) as mock_set_unique_id:
+        await flow.async_step_user(
+            {
+                CONF_HOST: "fe80::1",
+                CONF_PORT: 502,
+                "slave_id": 10,
+                CONF_NAME: "My Device",
+            }
+        )
+
+    mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
+
 async def test_form_user_cannot_connect():
     """Test we handle cannot connect error."""
     flow = ConfigFlow()
