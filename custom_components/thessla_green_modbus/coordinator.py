@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
@@ -712,16 +713,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
     async def _disconnect(self) -> None:
         """Disconnect from Modbus device."""
-        if self.client:
+        if self.client is not None:
             try:
-                await self.client.close()
-                _LOGGER.debug("Disconnected from Modbus device")
+                result = self.client.close()
+                if inspect.isawaitable(result):
+                    await result
             except (ModbusException, ConnectionException):
                 _LOGGER.debug("Error disconnecting", exc_info=True)
             except OSError:
                 _LOGGER.exception("Unexpected error disconnecting")
-            finally:
-                self.client = None
+
+        self.client = None
+        _LOGGER.debug("Disconnected from Modbus device")
 
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and disconnect."""

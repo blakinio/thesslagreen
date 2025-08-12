@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
@@ -474,18 +475,20 @@ class ThesslaGreenDeviceScanner:
 
     async def close(self):
         """Close the scanner connection if any."""
-        if self._client is None:
-            return
+        if self._client is not None:
+            try:
+                result = self._client.close()
+                if inspect.isawaitable(result):
+                    await result
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug("Error closing Modbus client: %s", exc, exc_info=True)
+            except OSError as exc:
+                _LOGGER.debug(
+                    "Unexpected error closing Modbus client: %s", exc, exc_info=True
+                )
 
-        try:
-            await self._client.close()
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug("Error closing Modbus client: %s", exc, exc_info=True)
-        except OSError as exc:
-            _LOGGER.debug("Unexpected error closing Modbus client: %s", exc, exc_info=True)
-        finally:
-            self._client = None
-            _LOGGER.debug("Disconnected from ThesslaGreen device")
+        self._client = None
+        _LOGGER.debug("Disconnected from ThesslaGreen device")
 
     def _analyze_capabilities_enhanced(self) -> Dict[str, bool]:
         """Enhanced capability analysis for optimization tests."""
