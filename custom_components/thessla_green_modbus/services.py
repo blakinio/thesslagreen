@@ -7,6 +7,7 @@ import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
 
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
@@ -402,11 +403,9 @@ async def async_unload_services(hass: HomeAssistant) -> None:
 
 
 def _get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str):
-    """Get coordinator from entity ID."""
-    # Find the config entry that matches this entity
-    for coordinator in hass.data.get(DOMAIN, {}).values():
-        # Check if this entity belongs to this coordinator
-        for domain, identifier in coordinator.get_device_info().identifiers:
-            if domain == DOMAIN and identifier in entity_id:
-                return coordinator
-    return None
+    """Get coordinator from entity ID using entity registry."""
+    entity_registry = er.async_get(hass)
+    entry = entity_registry.async_get(entity_id) if entity_registry else None
+    if not entry:
+        return None
+    return hass.data.get(DOMAIN, {}).get(entry.config_entry_id)

@@ -20,6 +20,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     helpers = types.ModuleType("homeassistant.helpers.update_coordinator")
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     service_helper = types.ModuleType("homeassistant.helpers.service")
+    entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
     exceptions = types.ModuleType("homeassistant.exceptions")
     const = types.ModuleType("homeassistant.const")
     data_entry_flow = types.ModuleType("homeassistant.data_entry_flow")
@@ -127,11 +128,15 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     async def async_extract_entity_ids(hass, service_call):
         return set()
     service_helper.async_extract_entity_ids = async_extract_entity_ids
+    def er_async_get(hass):
+        return getattr(hass, "entity_registry", None)
+    entity_registry.async_get = er_async_get
     helpers_pkg.update_coordinator = helpers
     helpers_pkg.device_registry = device_registry
     helpers_pkg.config_validation = cv
     helpers_pkg.selector = selector
     helpers_pkg.service = service_helper
+    helpers_pkg.entity_registry = entity_registry
 
     # Minimal pymodbus stubs
     class ModbusTcpClient:  # type: ignore[override]
@@ -176,6 +181,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.helpers.update_coordinator"] = helpers
     sys.modules["homeassistant.helpers.device_registry"] = device_registry
     sys.modules["homeassistant.helpers.service"] = service_helper
+    sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
     sys.modules["homeassistant.exceptions"] = exceptions
     sys.modules["homeassistant.const"] = const
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
