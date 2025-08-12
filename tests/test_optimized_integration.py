@@ -1,7 +1,7 @@
 """Comprehensive test suite for ThesslaGreen Modbus integration - OPTIMIZED VERSION."""
 import pytest
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, call
 
 from conftest import CoordinatorMock
 
@@ -520,15 +520,45 @@ class TestThesslaGreenClimate:
         """Test setting HVAC mode."""
         from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
         from homeassistant.components.climate import HVACMode
-        
+
         climate = ThesslaGreenClimate(mock_climate_coordinator)
-        
+
         await climate.async_set_hvac_mode(HVACMode.FAN_ONLY)
-        
-        mock_climate_coordinator.async_write_register.assert_called_with(
-            "mode", 1, refresh=False
+
+        # First enable call then mode change
+        mock_climate_coordinator.async_write_register.assert_has_calls(
+            [
+                call("on_off_panel_mode", 1, refresh=False),
+                call("mode", 1, refresh=False),
+            ]
         )
+        assert mock_climate_coordinator.async_write_register.call_count == 2
         mock_climate_coordinator.async_request_refresh.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_climate_set_hvac_mode_enable_failed(self, mock_climate_coordinator, caplog):
+        """Abort mode change if enabling fails."""
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
+        from homeassistant.components.climate import HVACMode
+
+        climate = ThesslaGreenClimate(mock_climate_coordinator)
+        mock_climate_coordinator.async_write_register = AsyncMock(
+            side_effect=[False, False]
+        )
+
+        with caplog.at_level(logging.ERROR):
+            await climate.async_set_hvac_mode(HVACMode.FAN_ONLY)
+
+        # Should attempt to enable twice and then abort
+        mock_climate_coordinator.async_write_register.assert_has_calls(
+            [
+                call("on_off_panel_mode", 1, refresh=False),
+                call("on_off_panel_mode", 1, refresh=False),
+            ]
+        )
+        assert mock_climate_coordinator.async_write_register.call_count == 2
+        mock_climate_coordinator.async_request_refresh.assert_not_called()
+        assert "Failed to enable device" in caplog.text
 
     @pytest.mark.asyncio
     async def test_climate_set_preset_mode(self, mock_climate_coordinator):
