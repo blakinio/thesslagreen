@@ -1,6 +1,9 @@
+import csv
 import importlib.util
 import pathlib
-from tools.generate_registers import load_registers
+import re
+
+
 def to_snake_case(name: str) -> str:
     replacements = {"flowrate": "flow_rate"}
     for old, new in replacements.items():
@@ -20,8 +23,8 @@ def load_csv_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int]
     discrete_regs: dict[str, int] = {}
     input_regs: dict[str, int] = {}
     holding_regs: dict[str, int] = {}
-    csv_path = pathlib.Path("custom_components/thessla_green_modbus/modbus_registers.csv")
-    with csv_path.open(newline="") as f:
+    csv_path = pathlib.Path("custom_components/thessla_green_modbus/data/modbus_registers.csv")
+    with csv_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             code = row["Function_Code"]
@@ -58,13 +61,11 @@ def load_module_registers() -> (
 
 
 def test_register_definitions_match_csv() -> None:
-    csv_input, csv_holding = load_registers()
-    mod_input, mod_holding = load_module_registers()
     csv_coil, csv_discrete, csv_input, csv_holding = load_csv_registers()
     mod_coil, mod_discrete, mod_input, mod_holding = load_module_registers()
     assert csv_coil == mod_coil  # nosec B101
     assert csv_discrete == mod_discrete  # nosec B101
     assert csv_input == mod_input  # nosec B101
     assert csv_holding == mod_holding  # nosec B101
-    assert len(mod_input) == 28
-    assert len(mod_holding) == 282
+    assert len(mod_input) == 28  # nosec B101
+    assert len(mod_holding) == 282  # nosec B101
