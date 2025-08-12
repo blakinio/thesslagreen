@@ -1,6 +1,6 @@
-"""Switch platform for the ThesslaGreen Modbus integration."""
-
 from __future__ import annotations
+
+"""Switch platform for the ThesslaGreen Modbus integration."""
 
 import logging
 from typing import Any, Dict
@@ -10,11 +10,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .modbus_exceptions import ConnectionException, ModbusException
 from .const import COIL_REGISTERS, DOMAIN
-from .registers import HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .modbus_exceptions import ConnectionException, ModbusException
+from .registers import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -185,9 +185,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
 
     async def _write_register(self, register_name: str, value: int) -> None:
         """Write value to register."""
-        success = await self.coordinator.async_write_register(
-            register_name, value, refresh=False
-        )
+        success = await self.coordinator.async_write_register(register_name, value, refresh=False)
         if not success:
             raise RuntimeError(f"Failed to write register {register_name}")
 

@@ -1,5 +1,6 @@
-"""Select platform for the ThesslaGreen Modbus integration."""
 from __future__ import annotations
+
+"""Select platform for the ThesslaGreen Modbus integration."""
 
 import logging
 from typing import Optional
