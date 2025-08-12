@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import async_extract_entity_ids
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP, REGISTER_MULTIPLIERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -244,15 +244,30 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register("heating_curve_slope", slope)
-                await coordinator.async_write_register("heating_curve_offset", offset)
-                
+                slope_raw = int(round(slope / REGISTER_MULTIPLIERS.get("heating_curve_slope", 1)))
+                offset_raw = int(round(offset / REGISTER_MULTIPLIERS.get("heating_curve_offset", 1)))
+
+                await coordinator.async_write_register("heating_curve_slope", slope_raw)
+                await coordinator.async_write_register("heating_curve_offset", offset_raw)
+
                 if max_supply_temp is not None:
-                    await coordinator.async_write_register("max_supply_temperature", max_supply_temp)
-                
+                    max_raw = int(
+                        round(
+                            max_supply_temp
+                            / REGISTER_MULTIPLIERS.get("max_supply_temperature", 1)
+                        )
+                    )
+                    await coordinator.async_write_register("max_supply_temperature", max_raw)
+
                 if min_supply_temp is not None:
-                    await coordinator.async_write_register("min_supply_temperature", min_supply_temp)
-                
+                    min_raw = int(
+                        round(
+                            min_supply_temp
+                            / REGISTER_MULTIPLIERS.get("min_supply_temperature", 1)
+                        )
+                    )
+                    await coordinator.async_write_register("min_supply_temperature", min_raw)
+
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set temperature curve for %s", entity_id)
 
