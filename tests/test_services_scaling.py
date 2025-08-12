@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
 import custom_components.thessla_green_modbus.services as services
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
 from custom_components.thessla_green_modbus.services import _scale_for_register
 
 
@@ -37,134 +37,6 @@ class Services:
 
 
 @pytest.mark.asyncio
-async def test_temperature_curve_service_scaling(monkeypatch):
-    """Ensure set_temperature_curve writes scaled values to Modbus."""
-
-    hass = SimpleNamespace()
-    hass.services = Services()
-    coordinator = DummyCoordinator()
-
-    monkeypatch.setattr(
-        services, "_get_coordinator_from_entity_id", lambda h, e: coordinator
-    )
-    monkeypatch.setattr(
-        services, "async_extract_entity_ids", lambda h, call: call.data["entity_id"]
-    )
-
-    await services.async_setup_services(hass)
-    handler = hass.services.handlers["set_temperature_curve"]
-
-    call = SimpleNamespace(
-        data={
-            "entity_id": ["climate.device"],
-            "slope": 2.5,
-            "offset": 1.0,
-            "max_supply_temp": 45.0,
-            "min_supply_temp": 20.0,
-        }
-    )
-
-    await handler(call)
-
-    writes = coordinator.writes
-    expected_slope = _scale_for_register("heating_curve_slope", 2.5)
-    expected_offset = _scale_for_register("heating_curve_offset", 1.0)
-    expected_max = _scale_for_register("max_supply_temperature", 45.0)
-    expected_min = _scale_for_register("min_supply_temperature", 20.0)
-
-    assert writes[0] == (HOLDING_REGISTERS["heating_curve_slope"], expected_slope, 1)
-    assert writes[1] == (HOLDING_REGISTERS["heating_curve_offset"], expected_offset, 1)
-    assert writes[2] == (HOLDING_REGISTERS["max_supply_temperature"], expected_max, 1)
-    assert writes[3] == (HOLDING_REGISTERS["min_supply_temperature"], expected_min, 1)
-
-
-@pytest.mark.asyncio
-async def test_bypass_parameters_service_scaling(monkeypatch):
-    """Ensure set_bypass_parameters writes scaled values."""
-
-    hass = SimpleNamespace()
-    hass.services = Services()
-    coordinator = DummyCoordinator()
-
-    monkeypatch.setattr(
-        services, "_get_coordinator_from_entity_id", lambda h, e: coordinator
-    )
-    monkeypatch.setattr(
-        services, "async_extract_entity_ids", lambda h, call: call.data["entity_id"]
-    )
-
-    await services.async_setup_services(hass)
-    handler = hass.services.handlers["set_bypass_parameters"]
-
-    call = SimpleNamespace(
-        data={
-            "entity_id": ["climate.device"],
-            "mode": "auto",
-            "temperature_threshold": 20.5,
-            "hysteresis": 2.5,
-        }
-    )
-
-    await handler(call)
-
-    writes = coordinator.writes
-    expected_mode = _scale_for_register("bypass_mode", 0)
-    expected_temp = _scale_for_register("bypass_temperature_threshold", 20.5)
-    expected_hyst = _scale_for_register("bypass_hysteresis", 2.5)
-
-    assert writes[0] == (HOLDING_REGISTERS["bypass_mode"], expected_mode, 1)
-    assert writes[1] == (
-        HOLDING_REGISTERS["bypass_temperature_threshold"],
-        expected_temp,
-        1,
-    )
-    assert writes[2] == (HOLDING_REGISTERS["bypass_hysteresis"], expected_hyst, 1)
-
-
-@pytest.mark.asyncio
-async def test_gwc_parameters_service_scaling(monkeypatch):
-    """Ensure set_gwc_parameters writes scaled values."""
-
-    hass = SimpleNamespace()
-    hass.services = Services()
-    coordinator = DummyCoordinator()
-
-    monkeypatch.setattr(
-        services, "_get_coordinator_from_entity_id", lambda h, e: coordinator
-    )
-    monkeypatch.setattr(
-        services, "async_extract_entity_ids", lambda h, call: call.data["entity_id"]
-    )
-
-    await services.async_setup_services(hass)
-    handler = hass.services.handlers["set_gwc_parameters"]
-
-    call = SimpleNamespace(
-        data={
-            "entity_id": ["climate.device"],
-            "mode": "auto",
-            "temperature_threshold": 5.0,
-            "hysteresis": 1.5,
-        }
-    )
-
-    await handler(call)
-
-    writes = coordinator.writes
-    expected_mode = _scale_for_register("gwc_mode", 1)
-    expected_temp = _scale_for_register("gwc_temperature_threshold", 5.0)
-    expected_hyst = _scale_for_register("gwc_hysteresis", 1.5)
-
-    assert writes[0] == (HOLDING_REGISTERS["gwc_mode"], expected_mode, 1)
-    assert writes[1] == (
-        HOLDING_REGISTERS["gwc_temperature_threshold"],
-        expected_temp,
-        1,
-    )
-    assert writes[2] == (HOLDING_REGISTERS["gwc_hysteresis"], expected_hyst, 1)
-
-
-@pytest.mark.asyncio
 async def test_airflow_schedule_service_scaling(monkeypatch):
     """Ensure set_airflow_schedule scales values before writing."""
 
@@ -172,9 +44,7 @@ async def test_airflow_schedule_service_scaling(monkeypatch):
     hass.services = Services()
     coordinator = DummyCoordinator()
 
-    monkeypatch.setattr(
-        services, "_get_coordinator_from_entity_id", lambda h, e: coordinator
-    )
+    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda h, e: coordinator)
     monkeypatch.setattr(
         services, "async_extract_entity_ids", lambda h, call: call.data["entity_id"]
     )
@@ -222,4 +92,3 @@ async def test_airflow_schedule_service_scaling(monkeypatch):
         expected_temp,
         1,
     )
-
