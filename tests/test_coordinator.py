@@ -317,8 +317,8 @@ def test_post_process_data(coordinator):
         "outside_temperature": 100,  # 10.0°C
         "supply_temperature": 200,   # 20.0°C  
         "exhaust_temperature": 250,  # 25.0°C
-        "supply_flowrate": 150,
-        "exhaust_flowrate": 140,
+        "supply_flow_rate": 150,
+        "exhaust_flow_rate": 140,
     }
     
     processed_data = coordinator._post_process_data(raw_data)

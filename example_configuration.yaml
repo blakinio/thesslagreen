@@ -14,8 +14,8 @@ template:
       - name: "ThesslaGreen Efficiency"
         unit_of_measurement: "%"
         state: >
-          {% set supply_flow = states('sensor.thessla_supply_flowrate') | float(0) %}
-          {% set exhaust_flow = states('sensor.thessla_exhaust_flowrate') | float(0) %}
+          {% set supply_flow = states('sensor.thessla_supply_flow_rate') | float(0) %}
+          {% set exhaust_flow = states('sensor.thessla_exhaust_flow_rate') | float(0) %}
           {% if supply_flow > 0 and exhaust_flow > 0 %}
             {{ ((min(supply_flow, exhaust_flow) / max(supply_flow, exhaust_flow)) * 100) | round(1) }}
           {% else %}
@@ -252,7 +252,7 @@ group:
 #   - entity: climate.thessla_green_climate
 #   - entity: sensor.thessla_outside_temperature
 #   - entity: sensor.thessla_supply_temperature
-#   - entity: sensor.thessla_supply_flowrate
+#   - entity: sensor.thessla_supply_flow_rate
 #   - entity: select.thessla_mode
 # title: ThesslaGreen Control
 # show_header_toggle: false

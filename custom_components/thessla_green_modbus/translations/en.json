@@ -79,10 +79,10 @@
       "heating_temperature": {
         "name": "Heating Temperature"
       },
-      "supply_flowrate": {
+      "supply_flow_rate": {
         "name": "Target Supply Airflow"
       },
-      "exhaust_flowrate": {
+      "exhaust_flow_rate": {
         "name": "Target Exhaust Airflow"
       },
       "heat_recovery_efficiency": {
@@ -136,19 +136,19 @@
       "heat_exchanger_temperature_4": {
         "name": "Heat Exchanger Temperature 4"
       },
-      "outdoor_flowrate": {
+      "outdoor_flow_rate": {
         "name": "Outdoor Airflow"
       },
-      "inside_flowrate": {
+      "inside_flow_rate": {
         "name": "Indoor Airflow"
       },
-      "gwc_flowrate": {
+      "gwc_flow_rate": {
         "name": "GWC Airflow"
       },
-      "heat_recovery_flowrate": {
+      "heat_recovery_flow_rate": {
         "name": "Heat Recovery Airflow"
       },
-      "bypass_flowrate": {
+      "bypass_flow_rate": {
         "name": "Bypass Airflow"
       },
       "supply_air_flow": {

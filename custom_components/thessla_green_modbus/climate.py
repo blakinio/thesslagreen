@@ -220,10 +220,10 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             attrs["gwc_temperature"] = self.coordinator.data["gwc_temperature"]
 
         # Airflow
-        if "supply_flowrate" in self.coordinator.data:
-            attrs["supply_airflow"] = self.coordinator.data["supply_flowrate"]
-        if "exhaust_flowrate" in self.coordinator.data:
-            attrs["exhaust_airflow"] = self.coordinator.data["exhaust_flowrate"]
+        if "supply_flow_rate" in self.coordinator.data:
+            attrs["supply_airflow"] = self.coordinator.data["supply_flow_rate"]
+        if "exhaust_flow_rate" in self.coordinator.data:
+            attrs["exhaust_airflow"] = self.coordinator.data["exhaust_flow_rate"]
 
         # System status
         if "heat_recovery_efficiency" in self.coordinator.data:

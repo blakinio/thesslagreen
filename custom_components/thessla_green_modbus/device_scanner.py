@@ -158,7 +158,7 @@ class ThesslaGreenDeviceScanner:
             return value != SENSOR_UNAVAILABLE
 
         # Air flow sensors use the same sentinel for no sensor
-        if any(x in register_name.lower() for x in ["flow", "air_flow", "flowrate"]):
+        if any(x in register_name.lower() for x in ["flow", "air_flow", "flow_rate"]):
             return value != SENSOR_UNAVAILABLE and value != 65535
 
         # Mode values should be in valid range
@@ -311,13 +311,13 @@ class ThesslaGreenDeviceScanner:
 
             # Scan flow sensors (0x0018-0x001E)
             flow_sensors = [
-                (0x0018, "supply_flowrate"),
-                (0x0019, "exhaust_flowrate"),
-                (0x001A, "outdoor_flowrate"),
-                (0x001B, "inside_flowrate"),
-                (0x001C, "gwc_flowrate"),
-                (0x001D, "heat_recovery_flowrate"),
-                (0x001E, "bypass_flowrate"),
+                (0x0018, "supply_flow_rate"),
+                (0x0019, "exhaust_flow_rate"),
+                (0x001A, "outdoor_flow_rate"),
+                (0x001B, "inside_flow_rate"),
+                (0x001C, "gwc_flow_rate"),
+                (0x001D, "heat_recovery_flow_rate"),
+                (0x001E, "bypass_flow_rate"),
             ]
 
             for addr, reg_name in flow_sensors:

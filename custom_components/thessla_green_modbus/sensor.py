@@ -141,50 +141,50 @@ SENSOR_DEFINITIONS = {
     },
     
     # Flow sensors
-    "supply_flowrate": {
-        "translation_key": "supply_flowrate",
+    "supply_flow_rate": {
+        "translation_key": "supply_flow_rate",
         "icon": "mdi:fan",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
-    "exhaust_flowrate": {
-        "translation_key": "exhaust_flowrate",
+    "exhaust_flow_rate": {
+        "translation_key": "exhaust_flow_rate",
         "icon": "mdi:fan-clock",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
-    "outdoor_flowrate": {
-        "translation_key": "outdoor_flowrate",
+    "outdoor_flow_rate": {
+        "translation_key": "outdoor_flow_rate",
         "icon": "mdi:weather-windy",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
-    "inside_flowrate": {
-        "translation_key": "inside_flowrate",
+    "inside_flow_rate": {
+        "translation_key": "inside_flow_rate",
         "icon": "mdi:home-circle",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
-    "gwc_flowrate": {
-        "translation_key": "gwc_flowrate",
+    "gwc_flow_rate": {
+        "translation_key": "gwc_flow_rate",
         "icon": "mdi:pipe",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
-    "heat_recovery_flowrate": {
-        "translation_key": "heat_recovery_flowrate",
+    "heat_recovery_flow_rate": {
+        "translation_key": "heat_recovery_flow_rate",
         "icon": "mdi:heat-pump",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
-    "bypass_flowrate": {
-        "translation_key": "bypass_flowrate",
+    "bypass_flow_rate": {
+        "translation_key": "bypass_flow_rate",
         "icon": "mdi:pipe-leak",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,

@@ -239,11 +239,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         attributes = {}
 
         # Add flow information
-        if "supply_flowrate" in self.coordinator.data:
-            attributes["supply_flow"] = self.coordinator.data["supply_flowrate"]
+        if "supply_flow_rate" in self.coordinator.data:
+            attributes["supply_flow"] = self.coordinator.data["supply_flow_rate"]
 
-        if "exhaust_flowrate" in self.coordinator.data:
-            attributes["exhaust_flow"] = self.coordinator.data["exhaust_flowrate"]
+        if "exhaust_flow_rate" in self.coordinator.data:
+            attributes["exhaust_flow"] = self.coordinator.data["exhaust_flow_rate"]
 
         if "supply_percentage" in self.coordinator.data:
             attributes["supply_percentage"] = self.coordinator.data["supply_percentage"]

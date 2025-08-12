@@ -32,8 +32,8 @@ INPUT_REGISTERS: Dict[str, int] = {
     "exhaust_air_flow": 0x0101,
     "constant_flow_active": 0x010F,
     # Flow set-points
-    "supply_flowrate": 0x0112,
-    "exhaust_flowrate": 0x0113,
+    "supply_flow_rate": 0x0112,
+    "exhaust_flow_rate": 0x0113,
 }
 
 # HOLDING REGISTERS (03 - READ/WRITE HOLDING REGISTER)

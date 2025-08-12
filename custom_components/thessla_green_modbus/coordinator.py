@@ -692,8 +692,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug("Could not calculate efficiency: %s", exc)
 
         # Calculate flow balance
-        if "supply_flowrate" in data and "exhaust_flowrate" in data:
-            data["flow_balance"] = data["supply_flowrate"] - data["exhaust_flowrate"]
+        if "supply_flow_rate" in data and "exhaust_flow_rate" in data:
+            data["flow_balance"] = data["supply_flow_rate"] - data["exhaust_flow_rate"]
             data["flow_balance_status"] = (
                 "balanced"
                 if abs(data["flow_balance"]) < 10

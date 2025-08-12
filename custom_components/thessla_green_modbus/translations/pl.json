@@ -75,10 +75,10 @@
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
       },
-      "supply_flowrate": {
+      "supply_flow_rate": {
         "name": "Zadany przepływ nawiewu"
       },
-      "exhaust_flowrate": {
+      "exhaust_flow_rate": {
         "name": "Zadany przepływ wywiewu"
       },
       "heat_recovery_efficiency": {
@@ -99,19 +99,19 @@
       "heat_exchanger_temperature_4": {
         "name": "Temperatura wymiennika 4"
       },
-      "outdoor_flowrate": {
+      "outdoor_flow_rate": {
         "name": "Przepływ zewnętrzny"
       },
-      "inside_flowrate": {
+      "inside_flow_rate": {
         "name": "Przepływ wewnętrzny"
       },
-      "gwc_flowrate": {
+      "gwc_flow_rate": {
         "name": "Przepływ GWC"
       },
-      "heat_recovery_flowrate": {
+      "heat_recovery_flow_rate": {
         "name": "Przepływ rekuperatora"
       },
-      "bypass_flowrate": {
+      "bypass_flow_rate": {
         "name": "Przepływ obejścia (bypassu)"
       },
       "supply_air_flow": {

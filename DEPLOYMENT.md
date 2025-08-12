@@ -296,7 +296,7 @@ entities:
   - entity: climate.thessla_green_klimat
   - entity: sensor.thessla_outside_temperature
   - entity: sensor.thessla_supply_temperature
-  - entity: sensor.thessla_supply_flowrate
+  - entity: sensor.thessla_supply_flow_rate
   - entity: select.thessla_mode
   - entity: select.thessla_special_function
   - entity: binary_sensor.thessla_constant_flow_active
