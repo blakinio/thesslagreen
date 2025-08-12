@@ -122,6 +122,11 @@ class ThesslaGreenDeviceScanner:
                     except (TypeError, ValueError):
                         continue
                     if code in register_map:
+                        if addr in register_map[code]:
+                            _LOGGER.warning(
+                                "Duplicate register address %s for function code %s: %s", addr, code, name
+                            )
+                            continue
                         register_map[code][addr] = name
         except FileNotFoundError:
             _LOGGER.error("Register definition file not found: %s", csv_path)
