@@ -28,7 +28,7 @@ DISCRETE_INPUT_REGISTERS: dict[str, int] = {
     "fan_speed_2": 12,
     "fan_speed_1": 13,
     "fireplace": 14,
-    "ppoz": 15,
+    "fire_alarm": 15,
     "dp_ahu_filter_overflow": 18,
     "ahu_filter_protection": 19,
     "empty_house": 21,
