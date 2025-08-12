@@ -64,8 +64,13 @@ INPUT_REGISTERS: Dict[str, int] = {
     'water_removal_active': 298,
 }
 HOLDING_REGISTERS: Dict[str, int] = {
-    'date_time': 0,
-    'lock_date': 7,
+    'date_time_1': 0,
+    'date_time_2': 1,
+    'date_time_3': 2,
+    'date_time_4': 3,
+    'lock_date_1': 7,
+    'lock_date_2': 8,
+    'lock_date_3': 9,
     'configuration_mode': 13,
     'access_level': 15,
     'schedule_summer_mon_1': 16,
