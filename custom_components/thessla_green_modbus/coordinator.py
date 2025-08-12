@@ -157,11 +157,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     self.device_info.get("model", "Unknown"),
                     self.device_info.get("firmware", "Unknown"),
                 )
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.error("Device scan failed: %s", exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.exception("Device scan failed")
                 raise
-            except (OSError, asyncio.TimeoutError, ValueError) as exc:
-                _LOGGER.error("Unexpected error during device scan: %s", exc)
+            except (OSError, asyncio.TimeoutError, ValueError):
+                _LOGGER.exception("Unexpected error during device scan")
                 raise
             finally:
                 await scanner.close()
@@ -274,11 +274,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.error("Connection test failed: %s", exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.exception("Connection test failed")
                 raise
-            except (OSError, asyncio.TimeoutError) as exc:
-                _LOGGER.error("Unexpected error during connection test: %s", exc)
+            except (OSError, asyncio.TimeoutError):
+                _LOGGER.exception("Unexpected error during connection test")
                 raise
 
     async def _async_setup_client(self) -> bool:
@@ -289,11 +289,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         try:
             await self._ensure_connection()
             return True
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.error("Failed to set up Modbus client: %s", exc)
+        except (ModbusException, ConnectionException):
+            _LOGGER.exception("Failed to set up Modbus client")
             return False
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error("Unexpected error setting up Modbus client: %s", exc)
+        except (OSError, asyncio.TimeoutError):
+            _LOGGER.exception("Unexpected error setting up Modbus client")
             return False
 
     async def async_ensure_client(self) -> bool:
@@ -317,13 +317,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 if not connected:
                     raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
                 _LOGGER.debug("Modbus connection established")
-            except (ModbusException, ConnectionException) as exc:
+            except (ModbusException, ConnectionException):
                 self.statistics["connection_errors"] += 1
-                _LOGGER.error("Failed to establish connection: %s", exc)
+                _LOGGER.exception("Failed to establish connection")
                 raise
-            except (OSError, asyncio.TimeoutError) as exc:
+            except (OSError, asyncio.TimeoutError):
                 self.statistics["connection_errors"] += 1
-                _LOGGER.error("Unexpected error establishing connection: %s", exc)
+                _LOGGER.exception("Unexpected error establishing connection")
                 raise
 
     async def _async_update_data(self) -> Dict[str, Any]:
@@ -429,12 +429,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
 
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug("Error reading input registers at 0x%04X: %s", start_addr, exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.debug(
+                    "Error reading input registers at 0x%04X", start_addr, exc_info=True
+                )
                 continue
-            except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            except (OSError, asyncio.TimeoutError, ValueError):
                 _LOGGER.error(
-                    "Unexpected error reading input registers at 0x%04X: %s", start_addr, exc
+                    "Unexpected error reading input registers at 0x%04X",
+                    start_addr,
+                    exc_info=True,
                 )
                 continue
 
@@ -471,12 +475,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
 
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug("Error reading holding registers at 0x%04X: %s", start_addr, exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.debug(
+                    "Error reading holding registers at 0x%04X", start_addr, exc_info=True
+                )
                 continue
-            except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            except (OSError, asyncio.TimeoutError, ValueError):
                 _LOGGER.error(
-                    "Unexpected error reading holding registers at 0x%04X: %s", start_addr, exc
+                    "Unexpected error reading holding registers at 0x%04X",
+                    start_addr,
+                    exc_info=True,
                 )
                 continue
 
@@ -509,12 +517,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
 
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug("Error reading coil registers at 0x%04X: %s", start_addr, exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.debug(
+                    "Error reading coil registers at 0x%04X", start_addr, exc_info=True
+                )
                 continue
-            except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            except (OSError, asyncio.TimeoutError, ValueError):
                 _LOGGER.error(
-                    "Unexpected error reading coil registers at 0x%04X: %s", start_addr, exc
+                    "Unexpected error reading coil registers at 0x%04X",
+                    start_addr,
+                    exc_info=True,
                 )
                 continue
 
@@ -549,12 +561,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
 
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug("Error reading discrete inputs at 0x%04X: %s", start_addr, exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.debug(
+                    "Error reading discrete inputs at 0x%04X", start_addr, exc_info=True
+                )
                 continue
-            except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            except (OSError, asyncio.TimeoutError, ValueError):
                 _LOGGER.error(
-                    "Unexpected error reading discrete inputs at 0x%04X: %s", start_addr, exc
+                    "Unexpected error reading discrete inputs at 0x%04X",
+                    start_addr,
+                    exc_info=True,
                 )
                 continue
 
@@ -667,12 +683,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     await self.async_request_refresh()
                 return True
 
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.error("Failed to write register %s: %s", register_name, exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.exception("Failed to write register %s", register_name)
                 return False
-            except (OSError, asyncio.TimeoutError, ValueError) as exc:
-                _LOGGER.error(
-                    "Unexpected error writing register %s: %s", register_name, exc
+            except (OSError, asyncio.TimeoutError, ValueError):
+                _LOGGER.exception(
+                    "Unexpected error writing register %s", register_name
                 )
                 return False
 
@@ -682,10 +698,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             try:
                 await self.client.close()
                 _LOGGER.debug("Disconnected from Modbus device")
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug("Error disconnecting: %s", exc)
-            except OSError as exc:
-                _LOGGER.error("Unexpected error disconnecting: %s", exc)
+            except (ModbusException, ConnectionException):
+                _LOGGER.debug("Error disconnecting", exc_info=True)
+            except OSError:
+                _LOGGER.exception("Unexpected error disconnecting")
             finally:
                 self.client = None
 

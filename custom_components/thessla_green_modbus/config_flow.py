@@ -64,13 +64,13 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         return {"title": name, "device_info": device_info, "scan_result": scan_result}
 
     except ConnectionException as exc:
-        _LOGGER.error("Connection error: %s", exc)
+        _LOGGER.exception("Connection error")
         raise CannotConnect from exc
     except ModbusException as exc:
-        _LOGGER.error("Modbus error: %s", exc)
+        _LOGGER.exception("Modbus error")
         raise InvalidAuth from exc
     except (OSError, asyncio.TimeoutError) as exc:
-        _LOGGER.error("Unexpected error during device validation: %s", exc)
+        _LOGGER.exception("Unexpected error during device validation")
         raise CannotConnect from exc
     finally:
         await scanner.close()
@@ -114,11 +114,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except (ConnectionException, ModbusException) as exc:
-                _LOGGER.error("Modbus communication error: %s", exc)
+            except (ConnectionException, ModbusException):
+                _LOGGER.exception("Modbus communication error")
                 errors["base"] = "cannot_connect"
-            except (OSError, asyncio.TimeoutError, ValueError) as exc:
-                _LOGGER.error("Unexpected exception: %s", exc)
+            except (OSError, asyncio.TimeoutError, ValueError):
+                _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
         # Show form
