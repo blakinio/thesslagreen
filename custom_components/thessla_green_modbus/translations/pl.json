@@ -250,9 +250,6 @@
       "water_removal_active": {
         "name": "Aktywne odprowadzanie wody"
       },
-      "ppoz": {
-        "name": "Alarm pożarowy"
-      },
       "constant_flow_active": {
         "name": "Stały przepływ"
       },
