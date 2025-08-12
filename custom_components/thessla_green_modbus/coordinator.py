@@ -281,15 +281,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # issues with keyword-only parameters in pymodbus.
                 count = 1
                 response = await self._call_modbus(
- codex/remove-conflict-remnants-from-coordinator.py
-                    self.client.read_input_registers, 0x0000, count=count
-=======
                     self.client.read_input_registers,
                     0x0000,
                     count=count,
- main
                 )
-                if response.isError():
+                if response is None or response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
             except (ModbusException, ConnectionException) as exc:
@@ -428,14 +424,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
- codex/remove-conflict-remnants-from-coordinator.py
-                    self.client.read_input_registers, start_addr, count=count
-=======
                     self.client.read_input_registers,
                     start_addr,
                     count=count,
- main
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading input registers at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read input registers at 0x%04X: %s", start_addr, response
@@ -480,14 +478,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
- codex/remove-conflict-remnants-from-coordinator.py
-                    self.client.read_holding_registers, start_addr, count=count
-=======
                     self.client.read_holding_registers,
                     start_addr,
                     count=count,
- main
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading holding registers at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read holding registers at 0x%04X: %s", start_addr, response
@@ -534,14 +534,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
- codex/remove-conflict-remnants-from-coordinator.py
-                    self.client.read_coils, start_addr, count=count
-=======
                     self.client.read_coils,
                     start_addr,
                     count=count,
- main
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading coil registers at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read coil registers at 0x%04X: %s", start_addr, response
@@ -592,14 +594,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
- codex/remove-conflict-remnants-from-coordinator.py
-                    self.client.read_discrete_inputs, start_addr, count=count
-=======
                     self.client.read_discrete_inputs,
                     start_addr,
                     count=count,
- main
                 )
+                if response is None:
+                    _LOGGER.error(
+                        "No response reading discrete inputs at 0x%04X",
+                        start_addr,
+                    )
+                    continue
                 if response.isError():
                     _LOGGER.debug(
                         "Failed to read discrete inputs at 0x%04X: %s", start_addr, response
