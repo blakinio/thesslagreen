@@ -1,7 +1,9 @@
 """Register definitions for the ThesslaGreen Modbus integration."""
 
 # Generated from modbus_registers.csv
-COIL_REGISTERS: dict[str, int] = {
+
+COIL_REGISTERS: Dict[str, int] = {
+
     "duct_water_heater_pump": 5,
     "bypass": 9,
     "info": 10,
@@ -12,7 +14,8 @@ COIL_REGISTERS: dict[str, int] = {
     "hood": 15,
 }
 
-DISCRETE_INPUT_REGISTERS: dict[str, int] = {
+
+DISCRETE_INPUT_REGISTERS: Dict[str, int] = {
     "duct_heater_protection": 0,
     "expansion": 1,
     "dp_duct_filter_overflow": 3,
@@ -31,7 +34,9 @@ DISCRETE_INPUT_REGISTERS: dict[str, int] = {
     "empty_house": 21,
 }
 
-INPUT_REGISTERS: dict[str, int] = {
+
+INPUT_REGISTERS: Dict[str, int] = {
+
     "version_major": 0,
     "version_minor": 1,
     "day_of_week": 2,
@@ -46,6 +51,7 @@ INPUT_REGISTERS: dict[str, int] = {
     "duct_supply_temperature": 20,
     "gwc_temperature": 21,
     "ambient_temperature": 22,
+    "heating_temperature": 23,
     "serial_number_1": 24,
     "serial_number_2": 25,
     "serial_number_3": 26,
@@ -61,6 +67,10 @@ INPUT_REGISTERS: dict[str, int] = {
     "max_percentage": 277,
     "water_removal_active": 298,
 }
+
+HOLDING_REGISTERS: Dict[str, int] = {
+    "date_time": 0,
+    "lock_date": 7,
 
 HOLDING_REGISTERS: dict[str, int] = {
     'date_time_1': 0,
@@ -499,7 +509,6 @@ HOLDING_REGISTERS: dict[str, int] = {
     "season_mode": 4209,
     "air_flow_rate_manual": 4210,
     "air_flow_rate_temporary_1": 4211,
-    "comfort_temperature": 4212,
     "supply_air_temperature_manual": 4212,
     "supply_air_temperature_temporary_1": 4213,
     "fan_speed_1_coef": 4216,
@@ -582,7 +591,6 @@ HOLDING_REGISTERS: dict[str, int] = {
     "lock_pass_2": 8188,
     "lock_flag": 8189,
     "required_temperature": 8190,
-    "required_temp": 8190,
     "filter_change": 8191,
     "alarm": 8192,
     "error": 8193,

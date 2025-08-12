@@ -134,9 +134,7 @@ for name, module in modules.items():
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # ✅ FIXED: Import correct coordinator class name
-from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenModbusCoordinator,
-)
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
 
 @pytest.fixture
@@ -235,10 +233,7 @@ def test_device_info_dict_fallback(monkeypatch):
 
 def test_reverse_lookup_maps(coordinator):
     """Ensure reverse register maps resolve addresses to names."""
-    from custom_components.thessla_green_modbus.registers import (
-        INPUT_REGISTERS,
-        HOLDING_REGISTERS,
-    )
+    from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
     addr = INPUT_REGISTERS["outside_temperature"]
     assert coordinator._input_registers_rev[addr] == "outside_temperature"
@@ -249,8 +244,9 @@ def test_reverse_lookup_maps(coordinator):
 
 def test_reverse_lookup_performance(coordinator):
     """Dictionary lookups should outperform linear search."""
-    from custom_components.thessla_green_modbus.registers import INPUT_REGISTERS
     import time
+
+    from custom_components.thessla_green_modbus.registers import INPUT_REGISTERS
 
     addresses = list(INPUT_REGISTERS.values())
 
@@ -301,6 +297,9 @@ def test_register_value_processing(coordinator):
     temp_result = coordinator._process_register_value("outside_temperature", 250)
     assert temp_result == 25.0
 
+    heating_result = coordinator._process_register_value("heating_temperature", 250)
+    assert heating_result == 25.0
+
     invalid_temp = coordinator._process_register_value("outside_temperature", 0x8000)
     assert invalid_temp is None
 
@@ -315,24 +314,24 @@ def test_post_process_data(coordinator):
     """Test data post-processing."""
     raw_data = {
         "outside_temperature": 100,  # 10.0°C
-        "supply_temperature": 200,   # 20.0°C  
+        "supply_temperature": 200,  # 20.0°C
         "exhaust_temperature": 250,  # 25.0°C
         "supply_flow_rate": 150,
         "exhaust_flow_rate": 140,
     }
-    
+
     processed_data = coordinator._post_process_data(raw_data)
-    
+
     # Check calculated efficiency
     assert "calculated_efficiency" in processed_data
     efficiency = processed_data["calculated_efficiency"]
     assert isinstance(efficiency, (int, float))
     assert 0 <= efficiency <= 100
-    
+
     # Check flow balance
     assert "flow_balance" in processed_data
     assert processed_data["flow_balance"] == 10  # 150 - 140
-    
+
     # Check flow balance status
     assert "flow_balance_status" in processed_data
     assert processed_data["flow_balance_status"] == "supply_dominant"
@@ -377,4 +376,5 @@ def cleanup_modules():
 
 # Register cleanup
 import atexit
+
 atexit.register(cleanup_modules)

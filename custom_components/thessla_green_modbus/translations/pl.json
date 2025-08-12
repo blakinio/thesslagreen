@@ -75,6 +75,9 @@
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
       },
+      "heating_temperature": {
+        "name": "Temperatura nagrzewnicy"
+      },
       "supply_flow_rate": {
         "name": "Zadany przepływ nawiewu"
       },

@@ -75,6 +75,9 @@
       "ambient_temperature": {
         "name": "Ambient Temperature"
       },
+      "heating_temperature": {
+        "name": "Heating Temperature"
+      },
       "supply_flow_rate": {
         "name": "Target Supply Airflow"
       },
