@@ -235,6 +235,11 @@ class ThesslaGreenDeviceScanner:
         for sensor in temp_sensors:
             caps[f"sensor_{sensor}"] = sensor in self.available_registers["input_registers"]
 
+        # Count total temperature sensors present
+        caps["temperature_sensors_count"] = sum(
+            1 for sensor in temp_sensors if caps[f"sensor_{sensor}"]
+        )
+
         # Check for air quality sensors
         caps["air_quality"] = any(
             sensor in self.available_registers["input_registers"]
@@ -252,36 +257,6 @@ class ThesslaGreenDeviceScanner:
         caps["basic_control"] = "mode" in self.available_registers["holding_registers"]
 
         return caps
-
-    def _group_registers_by_range(
-        self, registers: Dict[str, int], max_gap: int = 10
-    ) -> Dict[int, List[str]]:
-        """Group registers by address ranges for optimized batch reading."""
-        if not registers:
-            return {}
-
-        # Sort by address
-        sorted_regs = sorted(registers.items(), key=lambda x: x[1])
-
-        chunks = {}
-        current_chunk_start = None
-        current_chunk = []
-
-        for name, addr in sorted_regs:
-            if current_chunk_start is None:
-                current_chunk_start = addr
-                current_chunk = [name]
-            elif addr - (current_chunk_start + len(current_chunk) - 1) <= max_gap:
-                current_chunk.append(name)
-            else:
-                chunks[current_chunk_start] = current_chunk
-                current_chunk_start = addr
-                current_chunk = [name]
-
-        if current_chunk:
-            chunks[current_chunk_start] = current_chunk
-
-        return chunks
 
     async def scan(self) -> Tuple[DeviceInfo, DeviceCapabilities, Dict[str, Tuple[int, int]]]:
         """Scan device and return device info, capabilities and present blocks."""
