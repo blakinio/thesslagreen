@@ -23,10 +23,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
 from .modbus_helpers import _call_modbus
+from .const import DEFAULT_SLAVE_ID
 
 _LOGGER = logging.getLogger(__name__)
-
-DEFAULT_SLAVE_ID = 10
 SOCKET_TIMEOUT = 6.0
 
 
