@@ -3,31 +3,77 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.const import (
+    SENSOR_UNAVAILABLE,
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+)
+from custom_components.thessla_green_modbus.registers import (
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+)
 
 
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.fixture
-def mock_modbus_response():
-    """Mock Modbus response."""
-    response = MagicMock()
-    response.isError.return_value = False
-    response.registers = [4, 85, 0]  # Version 4.85.0
-    response.bits = [True, False, True]
-    return response
-
-
 async def test_device_scanner_initialization():
     """Test device scanner initialization."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    scanner = ThesslaGreenDeviceScanner("192.168.3.17", 8899, 10)
     
-    assert scanner.host == "192.168.1.100"
+    assert scanner.host == "192.168.1.1"
     assert scanner.port == 502
     assert scanner.slave_id == 10
 
 
+async def test_scan_device_success():
+    """Test successful device scan with dynamic register scanning."""
+    scanner = ThesslaGreenDeviceScanner("192.168.1.1", 502, 10)
+
+    async def fake_read_input(client, address, count):
+        data = [1] * count
+        if address == 0:
+            data[0:3] = [4, 85, 0]
+        return data
+
+    async def fake_read_holding(client, address, count):
+        return [1] * count
+
+    async def fake_read_coil(client, address, count):
+        return [False] * count
+
+    async def fake_read_discrete(client, address, count):
+        return [False] * count
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
+
+        with patch.object(
+            scanner, "_read_input", AsyncMock(side_effect=fake_read_input)
+        ), patch.object(
+            scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)
+        ), patch.object(
+            scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)
+        ), patch.object(
+            scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)
+        ):
+            result = await scanner.scan_device()
+
+    assert set(result["available_registers"]["input_registers"]) == set(
+        INPUT_REGISTERS.keys()
+    )
+    assert set(result["available_registers"]["holding_registers"]) == set(
+        HOLDING_REGISTERS.keys()
+    )
+    assert set(result["available_registers"]["coil_registers"]) == set(
+        COIL_REGISTERS.keys()
+    )
+    assert set(result["available_registers"]["discrete_inputs"]) == set(
+        DISCRETE_INPUT_REGISTERS.keys()
+    )
+    assert result["device_info"]["firmware"] == "4.85.0"
 async def test_scan_device_success(mock_modbus_response):
     """Test successful device scan."""
     regs = {
@@ -105,12 +151,12 @@ async def test_analyze_capabilities():
     }
     
     capabilities = scanner._analyze_capabilities()
-    
-    assert capabilities["constant_flow"] is True
-    assert capabilities["gwc_system"] is True
-    assert capabilities["bypass_system"] is True
-    assert capabilities["expansion_module"] is True
-    assert capabilities["sensor_outside_temperature"] is True
+
+    assert capabilities.constant_flow is True
+    assert capabilities.gwc_system is True
+    assert capabilities.bypass_system is True
+    assert capabilities.expansion_module is True
+    assert capabilities.sensor_outside_temperature is True
 
 
 @pytest.mark.parametrize("async_close", [True, False])
