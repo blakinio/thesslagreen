@@ -98,6 +98,10 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
             return
 
         value = self._states[option]
-        success = await self.coordinator.async_write_register(self._register_name, value)
+        success = await self.coordinator.async_write_register(
+            self._register_name, value, refresh=False
+        )
         if success:
             await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to set %s to %s", self._register_name, option)
