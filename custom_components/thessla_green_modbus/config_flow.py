@@ -49,7 +49,11 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
 
     # Try to connect and scan device
     scanner = ThesslaGreenDeviceScanner(
-        host=host, port=port, slave_id=slave_id, timeout=10, retry=3
+        host=host,
+        port=port,
+        slave_id=slave_id,
+        timeout=DEFAULT_TIMEOUT,
+        retry=DEFAULT_RETRY,
     )
 
     try:
