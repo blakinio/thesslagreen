@@ -16,6 +16,8 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
+logging.basicConfig(level=logging.INFO)
+
 _LOGGER = logging.getLogger(__name__)
 
 # Configuration
