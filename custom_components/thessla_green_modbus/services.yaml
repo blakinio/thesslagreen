@@ -37,7 +37,7 @@ set_special_mode:
         number:
           min: 0
           max: 480
-          step: 5
+          step: 1
 
 set_airflow_schedule:
   name: Set Airflow Schedule

@@ -526,7 +526,7 @@
         },
         "duration": {
           "name": "Czas trwania (minuty)",
-          "description": "Czas trwania trybu specjalnego w minutach (0 = bez limitu)"
+          "description": "Czas trwania trybu specjalnego w minutach (krok co 1 minutę, 0 = bez limitu)"
         }
       }
     },
