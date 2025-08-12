@@ -92,6 +92,21 @@
       "exhaust_air_flow": {
         "name": "Current Exhaust Airflow"
       },
+      "max_supply_air_flow_rate": {
+        "name": "Max Supply Airflow"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Max Exhaust Airflow"
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominal Supply Airflow"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominal Exhaust Airflow"
+      },
+      "bypass_off": {
+        "name": "Bypass Off Temperature"
+      },
       "dac_supply": {
         "name": "Supply DAC"
       },
@@ -407,6 +422,21 @@
       },
       "bypass_coef_2": {
         "name": "Bypass Coefficient 2"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Max Supply Airflow"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Max Exhaust Airflow"
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominal Supply Airflow"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominal Exhaust Airflow"
+      },
+      "bypass_off": {
+        "name": "Bypass Off Temperature"
       }
     }
   },

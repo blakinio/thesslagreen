@@ -117,6 +117,39 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "max": 200,
         "step": 1,
     },
+    # Airflow limit registers
+    "max_supply_air_flow_rate": {
+        "unit": "m³/h",
+        "min": 0,
+        "max": 500,
+        "step": 5,
+    },
+    "max_exhaust_air_flow_rate": {
+        "unit": "m³/h",
+        "min": 0,
+        "max": 500,
+        "step": 5,
+    },
+    "nominal_supply_air_flow": {
+        "unit": "m³/h",
+        "min": 0,
+        "max": 500,
+        "step": 5,
+    },
+    "nominal_exhaust_air_flow": {
+        "unit": "m³/h",
+        "min": 0,
+        "max": 500,
+        "step": 5,
+    },
+    # Bypass settings
+    "bypass_off": {
+        "unit": "°C",
+        "min": 0,
+        "max": 40,
+        "step": 0.5,
+        "scale": 0.5,
+    },
 }
 
 ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {

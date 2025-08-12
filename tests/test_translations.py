@@ -128,3 +128,18 @@ def test_translation_structures_match():
                 compare_dict(en[key], pl[key], f"{path}{key}.")
 
     compare_dict(EN, PL)
+
+
+def test_new_translation_keys_present():
+    """Ensure translations exist for newly added registers."""
+    new_keys = [
+        "max_supply_air_flow_rate",
+        "max_exhaust_air_flow_rate",
+        "nominal_supply_air_flow",
+        "nominal_exhaust_air_flow",
+        "bypass_off",
+    ]
+    for trans in (EN, PL):
+        for key in new_keys:
+            assert key in trans["entity"]["sensor"]
+            assert key in trans["entity"]["number"]

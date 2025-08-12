@@ -26,6 +26,8 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     service_helper = types.ModuleType("homeassistant.helpers.service")
     entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
+    script_helper = types.ModuleType("homeassistant.helpers.script")
+    script_helper._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
     exceptions = types.ModuleType("homeassistant.exceptions")
     const = types.ModuleType("homeassistant.const")
     data_entry_flow = types.ModuleType("homeassistant.data_entry_flow")
@@ -158,6 +160,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     helpers_pkg.selector = selector
     helpers_pkg.service = service_helper
     helpers_pkg.entity_registry = entity_registry
+    helpers_pkg.script = script_helper
 
     # Minimal pymodbus stubs
     class ModbusTcpClient:  # type: ignore[override]
@@ -221,6 +224,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.helpers.device_registry"] = device_registry
     sys.modules["homeassistant.helpers.service"] = service_helper
     sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
+    sys.modules["homeassistant.helpers.script"] = script_helper
     sys.modules["homeassistant.exceptions"] = exceptions
     sys.modules["homeassistant.const"] = const
     sys.modules["homeassistant.util"] = util

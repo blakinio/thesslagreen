@@ -169,6 +169,42 @@ SENSOR_DEFINITIONS = {
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
     },
+    "max_supply_air_flow_rate": {
+        "translation_key": "max_supply_air_flow_rate",
+        "icon": "mdi:fan",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "holding_registers",
+    },
+    "max_exhaust_air_flow_rate": {
+        "translation_key": "max_exhaust_air_flow_rate",
+        "icon": "mdi:fan-clock",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "holding_registers",
+    },
+    "nominal_supply_air_flow": {
+        "translation_key": "nominal_supply_air_flow",
+        "icon": "mdi:fan",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "holding_registers",
+    },
+    "nominal_exhaust_air_flow": {
+        "translation_key": "nominal_exhaust_air_flow",
+        "icon": "mdi:fan-clock",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "holding_registers",
+    },
+    "bypass_off": {
+        "translation_key": "bypass_off",
+        "icon": "mdi:thermometer-off",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
     # PWM control values
     "dac_supply": {
         "translation_key": "dac_supply",

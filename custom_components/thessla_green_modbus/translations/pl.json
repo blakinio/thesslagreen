@@ -92,6 +92,21 @@
       "exhaust_air_flow": {
         "name": "Aktualny przepływ wywiewu"
       },
+      "max_supply_air_flow_rate": {
+        "name": "Maksymalny przepływ nawiewu"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Maksymalny przepływ wywiewu"
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominalny przepływ nawiewu"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominalny przepływ wywiewu"
+      },
+      "bypass_off": {
+        "name": "Temperatura wyłączenia bypassu"
+      },
       "dac_supply": {
         "name": "Sterowanie wentylatorem nawiewnym"
       },
@@ -407,6 +422,21 @@
       },
       "bypass_coef_2": {
         "name": "Współczynnik bypassu 2"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Maksymalny przepływ nawiewu"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Maksymalny przepływ wywiewu"
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominalny przepływ nawiewu"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominalny przepływ wywiewu"
+      },
+      "bypass_off": {
+        "name": "Temperatura wyłączenia bypassu"
       }
     }
   },
