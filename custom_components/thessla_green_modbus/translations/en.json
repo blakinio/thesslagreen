@@ -113,6 +113,18 @@
       },
       "expansion_version": {
         "name": "Expansion Version"
+      },
+      "version_major": {
+        "name": "Firmware Major"
+      },
+      "version_minor": {
+        "name": "Firmware Minor"
+      },
+      "version_patch": {
+        "name": "Firmware Patch"
+      },
+      "exp_version": {
+        "name": "Expansion Version"
       }
     },
     "binary_sensor": {
@@ -148,6 +160,9 @@
       },
       "contamination_sensor": {
         "name": "Contamination Sensor"
+      },
+      "ppoz": {
+        "name": "Fire Alarm"
       },
       "fire_alarm": {
         "name": "Fire Alarm"
@@ -186,29 +201,38 @@
       "on_off_panel_mode": {
         "name": "Panel Power"
       },
-      "boost_mode": {
+      "boost": {
         "name": "Boost Mode"
       },
-      "eco_mode": {
+      "eco": {
         "name": "Eco Mode"
       },
-      "night_mode": {
-        "name": "Night Mode"
+      "sleep": {
+        "name": "Sleep Mode"
       },
-      "party_mode": {
+      "party": {
         "name": "Party Mode"
       },
-      "fireplace_mode": {
+      "fireplace": {
         "name": "Fireplace Mode"
       },
-      "vacation_mode": {
-        "name": "Vacation Mode"
+      "away": {
+        "name": "Away Mode"
       },
-      "hood_mode": {
+      "hood": {
         "name": "Hood Mode"
       },
-      "silent_mode": {
-        "name": "Silent Mode"
+      "bathroom": {
+        "name": "Bathroom Mode"
+      },
+      "kitchen": {
+        "name": "Kitchen Mode"
+      },
+      "summer": {
+        "name": "Summer Mode"
+      },
+      "winter": {
+        "name": "Winter Mode"
       }
     },
     "select": {

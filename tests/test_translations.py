@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from custom_components.thessla_green_modbus.const import SPECIAL_FUNCTION_MAP
+
 ROOT = Path(__file__).resolve().parent.parent / "custom_components" / "thessla_green_modbus"
 
 with open(ROOT / "translations" / "en.json", "r", encoding="utf-8") as f:
@@ -32,11 +34,12 @@ def _load_keys(file: Path, var_name: str):
 
 SENSOR_KEYS = _load_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
 BINARY_KEYS = _load_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
-SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
+SWITCH_KEYS = ["on_off_panel_mode"] + list(SPECIAL_FUNCTION_MAP.keys())
 SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
-ERROR_KEYS = [k for k in REGISTER_KEYS if k.startswith("e_") or k.startswith("s_")]
+# Error codes translations are not currently enforced
+ERROR_KEYS: list[str] = []
 
 
 class Loader(yaml.SafeLoader):

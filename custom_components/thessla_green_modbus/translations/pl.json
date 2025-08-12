@@ -113,6 +113,18 @@
       },
       "expansion_version": {
         "name": "Wersja modułu Expansion"
+      },
+      "version_major": {
+        "name": "Wersja firmware (główna)"
+      },
+      "version_minor": {
+        "name": "Wersja firmware (podrzędna)"
+      },
+      "version_patch": {
+        "name": "Wersja firmware (poprawka)"
+      },
+      "exp_version": {
+        "name": "Wersja modułu Expansion"
       }
     },
     "binary_sensor": {
@@ -148,6 +160,9 @@
       },
       "contamination_sensor": {
         "name": "Czujnik zanieczyszczenia"
+      },
+      "ppoz": {
+        "name": "Alarm pożarowy"
       },
       "constant_flow_active": {
         "name": "Stały przepływ"
@@ -186,29 +201,38 @@
       "on_off_panel_mode": {
         "name": "Główne zasilanie"
       },
-      "boost_mode": {
+      "boost": {
         "name": "Tryb boost"
       },
-      "eco_mode": {
+      "eco": {
         "name": "Tryb eco"
       },
-      "night_mode": {
+      "sleep": {
         "name": "Tryb nocny"
       },
-      "party_mode": {
+      "party": {
         "name": "Tryb party"
       },
-      "fireplace_mode": {
+      "fireplace": {
         "name": "Tryb kominkowy"
       },
-      "vacation_mode": {
+      "away": {
         "name": "Tryb urlopowy"
       },
-      "hood_mode": {
+      "hood": {
         "name": "Tryb okapu"
       },
-      "silent_mode": {
-        "name": "Tryb cichy"
+      "bathroom": {
+        "name": "Tryb łazienkowy"
+      },
+      "kitchen": {
+        "name": "Tryb kuchenny"
+      },
+      "summer": {
+        "name": "Tryb letni"
+      },
+      "winter": {
+        "name": "Tryb zimowy"
       }
     },
     "select": {

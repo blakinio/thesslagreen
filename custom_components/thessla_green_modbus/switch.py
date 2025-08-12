@@ -1,4 +1,5 @@
 """Switch platform for the ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import logging
@@ -9,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import COIL_REGISTERS, DOMAIN
+from .const import COIL_REGISTERS, DOMAIN, SPECIAL_FUNCTION_MAP
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -18,63 +19,42 @@ from .registers import HOLDING_REGISTERS
 _LOGGER = logging.getLogger(__name__)
 
 # Switch entities that can be controlled
-SWITCH_ENTITIES = {
+SWITCH_ENTITIES: Dict[str, Dict[str, Any]] = {
     # System control switches from holding registers
     "on_off_panel_mode": {
         "icon": "mdi:power",
+        "register": "on_off_panel_mode",
         "register_type": "holding_registers",
         "category": None,
         "translation_key": "on_off_panel_mode",
     },
-    "boost_mode": {
-        "icon": "mdi:rocket-launch",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "boost_mode",
-    },
-    "eco_mode": {
-        "icon": "mdi:leaf",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "eco_mode",
-    },
-    "night_mode": {
-        "icon": "mdi:weather-night",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "night_mode",
-    },
-    "party_mode": {
-        "icon": "mdi:party-popper",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "party_mode",
-    },
-    "fireplace_mode": {
-        "icon": "mdi:fireplace",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "fireplace_mode",
-    },
-    "vacation_mode": {
-        "icon": "mdi:airplane",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "vacation_mode",
-    },
-    "hood_mode": {
-        "icon": "mdi:range-hood",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "hood_mode",
-    },
-    "silent_mode": {
-        "icon": "mdi:volume-off",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "silent_mode",
-    },
 }
+
+# Icon mapping for special modes
+SPECIAL_MODE_ICONS = {
+    "boost": "mdi:rocket-launch",
+    "eco": "mdi:leaf",
+    "away": "mdi:airplane",
+    "fireplace": "mdi:fireplace",
+    "hood": "mdi:range-hood",
+    "sleep": "mdi:weather-night",
+    "party": "mdi:party-popper",
+    "bathroom": "mdi:shower",
+    "kitchen": "mdi:chef-hat",
+    "summer": "mdi:white-balance-sunny",
+    "winter": "mdi:snowflake",
+}
+
+# Dynamically create switch entries for each special mode bit
+for mode, bit in SPECIAL_FUNCTION_MAP.items():
+    SWITCH_ENTITIES[mode] = {
+        "icon": SPECIAL_MODE_ICONS.get(mode, "mdi:toggle-switch"),
+        "register": "special_mode",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": mode,
+        "bit": bit,
+    }
 
 
 async def async_setup_entry(
@@ -88,7 +68,9 @@ async def async_setup_entry(
     entities = []
 
     # Create switch entities for available writable registers
-    for register_name, config in SWITCH_ENTITIES.items():
+    for key, config in SWITCH_ENTITIES.items():
+        register_name = config["register"]
+
         # Check if this register is available and writable
         is_available = False
 
@@ -107,11 +89,11 @@ async def async_setup_entry(
             entities.append(
                 ThesslaGreenSwitch(
                     coordinator=coordinator,
-                    register_name=register_name,
+                    key=key,
                     entity_config=config,
                 )
             )
-            _LOGGER.debug("Created switch entity: %s", register_name)
+            _LOGGER.debug("Created switch entity: %s", key)
 
     if entities:
         # Coordinator already holds initial data from setup, so update entities before add
@@ -128,14 +110,15 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: ThesslaGreenModbusCoordinator,
-        register_name: str,
+        key: str,
         entity_config: Dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
-        super().__init__(coordinator, register_name)
+        super().__init__(coordinator, key)
 
-        self.register_name = register_name
         self.entity_config = entity_config
+        self.register_name = entity_config["register"]
+        self.bit = entity_config.get("bit")
 
         # Entity configuration
         self._attr_translation_key = entity_config["translation_key"]
@@ -145,7 +128,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         if entity_config.get("category"):
             self._attr_entity_category = entity_config["category"]
 
-        _LOGGER.debug("Initialized switch entity for register: %s", register_name)
+        _LOGGER.debug("Initialized switch entity: %s", key)
 
     @property
     def is_on(self) -> bool | None:
@@ -159,13 +142,21 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         if raw_value is None:
             return None
 
+        if self.bit is not None:
+            return bool(raw_value & self.bit)
+
         # Convert to boolean
         return bool(raw_value)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         try:
-            await self._write_register(self.register_name, 1)
+            if self.bit is not None:
+                current = self.coordinator.data.get(self.register_name, 0)
+                value = current | self.bit
+            else:
+                value = 1
+            await self._write_register(self.register_name, value)
             _LOGGER.info("Turned on %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
@@ -175,7 +166,12 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         try:
-            await self._write_register(self.register_name, 0)
+            if self.bit is not None:
+                current = self.coordinator.data.get(self.register_name, 0)
+                value = current & ~self.bit
+            else:
+                value = 0
+            await self._write_register(self.register_name, value)
             _LOGGER.info("Turned off %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
@@ -222,14 +218,14 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             attributes["last_updated"] = last_update.isoformat()
 
         # Add mode-specific information
-        if "mode" in self.register_name:
-            attributes["control_type"] = "operating_mode"
-        elif self.register_name in ["boost_mode", "eco_mode", "night_mode"]:
-            attributes["control_type"] = "performance_mode"
-        elif self.register_name in ["party_mode", "fireplace_mode", "vacation_mode", "hood_mode"]:
+        if self.register_name == "special_mode":
             attributes["control_type"] = "special_mode"
+            if self.bit is not None:
+                attributes["bit"] = self.bit
         elif self.register_name == "on_off_panel_mode":
             attributes["control_type"] = "system_power"
+        elif "mode" in self.register_name:
+            attributes["control_type"] = "operating_mode"
 
         return attributes
 
