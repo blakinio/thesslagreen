@@ -69,6 +69,7 @@ const.CONF_PORT = "port"
 const.CONF_SCAN_INTERVAL = "scan_interval"
 const.CONF_NAME = "name"
 
+
 class Platform:
     SENSOR = "sensor"
     BINARY_SENSOR = "binary_sensor"
@@ -77,6 +78,7 @@ class Platform:
     SWITCH = "switch"
     CLIMATE = "climate"
     FAN = "fan"
+
 
 const.Platform = Platform
 

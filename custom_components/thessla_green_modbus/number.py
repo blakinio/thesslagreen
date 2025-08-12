@@ -7,11 +7,10 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature, PERCENTAGE, UnitOfTime
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, HOLDING_REGISTERS
 
@@ -20,6 +19,7 @@ try:  # Newer versions expose metadata through ENTITY_MAPPINGS
 except ImportError:  # pragma: no cover - fall back when not available
     ENTITY_MAPPINGS = {}
 from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ async def async_setup_entry(
         _LOGGER.debug("No number entities were created")
 
 
-class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
+class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     """ThesslaGreen number entity."""
 
     def __init__(
@@ -94,17 +94,14 @@ class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
         register_type: Optional[str] = None,
     ) -> None:
         """Initialize the number entity."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, register_name)
 
         self.register_name = register_name
         self.entity_config = entity_config
         self.register_type = register_type
 
         # Entity configuration
-        self._attr_unique_id = f"{coordinator.device_name}_{register_name}"
         self._attr_translation_key = register_name
-        self._attr_has_entity_name = True
-        self._attr_device_info = coordinator.get_device_info()
 
         # Number configuration
         self._setup_number_attributes()
@@ -173,6 +170,35 @@ class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
         except Exception as exc:
             _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)
 
+ codex/modify-async_write_register-for-scaling
+=======
+    async def _write_register(self, register_name: str, value: float) -> None:
+        """Write value to register."""
+        if register_name not in HOLDING_REGISTERS:
+            raise ValueError(f"Register {register_name} is not writable")
+
+        register_address = HOLDING_REGISTERS[register_name]
+
+        # Convert to integer for Modbus
+        int_value = int(round(value))
+
+        # Ensure client is connected
+        if not self.coordinator.client or not self.coordinator.client.connected:
+            if not await self.coordinator.async_ensure_client():
+                raise RuntimeError("Failed to connect to device")
+
+        # Write register - pymodbus 3.5+ compatible
+        response = await self.coordinator.client.write_register(
+            address=register_address, value=int_value, unit=self.coordinator.slave_id
+        )
+
+        if response.isError():
+            raise RuntimeError(f"Failed to write register {register_name}: {response}")
+
+        # Request immediate data update
+        await self.coordinator.async_request_refresh()
+
+main
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return additional state attributes."""
