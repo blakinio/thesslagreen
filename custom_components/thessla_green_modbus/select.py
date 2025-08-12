@@ -1,8 +1,9 @@
 """Select platform for the ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -10,7 +11,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,7 +73,12 @@ async def async_setup_entry(
 class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
     """Select entity for ThesslaGreen device."""
 
-    def __init__(self, coordinator, register_name, definition):
+    def __init__(
+        self,
+        coordinator: ThesslaGreenModbusCoordinator,
+        register_name: str,
+        definition: dict[str, Any],
+    ) -> None:
         super().__init__(coordinator, register_name)
         self._attr_device_info = coordinator.get_device_info()
         self._register_name = register_name
@@ -98,10 +106,30 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
             return
 
         value = self._states[option]
-        success = await self.coordinator.async_write_register(
-            self._register_name, value, refresh=False
-        )
+        try:
+            success = await self.coordinator.async_write_register(
+                self._register_name, value, refresh=False
+            )
+        except (ModbusException, ConnectionException) as err:
+            _LOGGER.error("Error setting %s to %s: %s", self._register_name, option, err)
+            self.hass.helpers.issue.async_create_issue(
+                DOMAIN,
+                "modbus_write_failed",
+                translation_key="modbus_write_failed",
+                translation_placeholders={
+                    "register": self._register_name,
+                    "error": str(err),
+                },
+            )
+            return
+
         if success:
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set %s to %s", self._register_name, option)
+            self.hass.helpers.issue.async_create_issue(
+                DOMAIN,
+                "modbus_write_failed",
+                translation_key="modbus_write_failed",
+                translation_placeholders={"register": self._register_name},
+            )
