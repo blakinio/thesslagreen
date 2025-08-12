@@ -96,16 +96,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "coil_registers": set(),
             "discrete_inputs": set(),
         }
-
-codex/refactor-thessla_green_modbus-code
-=======
         # Pre-computed reverse register maps for fast lookups
         self._input_registers_rev = {addr: name for name, addr in INPUT_REGISTERS.items()}
         self._holding_registers_rev = {addr: name for name, addr in HOLDING_REGISTERS.items()}
         self._coil_registers_rev = {addr: name for name, addr in COIL_REGISTERS.items()}
         self._discrete_inputs_rev = {addr: name for name, addr in DISCRETE_INPUT_REGISTERS.items()}
-        
-main
+
         # Optimization: Pre-computed register groups for batch reading
         self._register_groups: Dict[str, List[Tuple[int, int]]] = {}
         self._failed_registers: Set[str] = set()
@@ -392,16 +388,11 @@ main
                 # Process each register in the batch
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
- codex/refactor-thessla_green_modbus-code
                     register_name = self._find_register_name(INPUT_REGISTERS, addr)
                     if (
                         register_name
                         and register_name in self.available_registers["input_registers"]
                     ):
-=======
-                    register_name = self._input_registers_rev.get(addr)
-                    if register_name and register_name in self.available_registers["input_registers"]:
- main
                         processed_value = self._process_register_value(register_name, value)
                         if processed_value is not None:
                             data[register_name] = processed_value
@@ -434,16 +425,11 @@ main
                 # Process each register in the batch
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
-codex/refactor-thessla_green_modbus-code
                     register_name = self._find_register_name(HOLDING_REGISTERS, addr)
                     if (
                         register_name
                         and register_name in self.available_registers["holding_registers"]
                     ):
-=======
-                    register_name = self._holding_registers_rev.get(addr)
-                    if register_name and register_name in self.available_registers["holding_registers"]:
- main
                         processed_value = self._process_register_value(register_name, value)
                         if processed_value is not None:
                             data[register_name] = processed_value
@@ -474,16 +460,11 @@ codex/refactor-thessla_green_modbus-code
                 # Process each bit in the batch
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
-codex/refactor-thessla_green_modbus-code
                     register_name = self._find_register_name(COIL_REGISTERS, addr)
                     if (
                         register_name
                         and register_name in self.available_registers["coil_registers"]
                     ):
-=======
-                    register_name = self._coil_registers_rev.get(addr)
-                    if register_name and register_name in self.available_registers["coil_registers"]:
- main
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
 
@@ -514,16 +495,11 @@ codex/refactor-thessla_green_modbus-code
                 # Process each bit in the batch
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
-codex/refactor-thessla_green_modbus-code
                     register_name = self._find_register_name(DISCRETE_INPUT_REGISTERS, addr)
                     if (
                         register_name
                         and register_name in self.available_registers["discrete_inputs"]
                     ):
-=======
-                    register_name = self._discrete_inputs_rev.get(addr)
-                    if register_name and register_name in self.available_registers["discrete_inputs"]:
- main
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
 
@@ -533,16 +509,18 @@ codex/refactor-thessla_green_modbus-code
 
         return data
 
- codex/refactor-thessla_green_modbus-code
     def _find_register_name(self, register_map: Dict[str, int], address: int) -> Optional[str]:
-        """Find register name by address."""
-        for name, addr in register_map.items():
-            if addr == address:
-                return name
+        """Find register name by address using pre-built reverse maps."""
+        if register_map is INPUT_REGISTERS:
+            return self._input_registers_rev.get(address)
+        if register_map is HOLDING_REGISTERS:
+            return self._holding_registers_rev.get(address)
+        if register_map is COIL_REGISTERS:
+            return self._coil_registers_rev.get(address)
+        if register_map is DISCRETE_INPUT_REGISTERS:
+            return self._discrete_inputs_rev.get(address)
         return None
 
-=======
-main
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
         # Check for sensor error values
@@ -584,8 +562,7 @@ main
             )
 
         return data
- codex/modify-async_write_register-for-scaling
-    
+
     async def async_write_register(self, register_name: str, value: float) -> bool:
         """Write to a holding or coil register.
 
@@ -593,16 +570,10 @@ main
         will be scaled according to ``REGISTER_MULTIPLIERS`` before being
         written to the device.
         """
-=======
-
-    async def async_write_register(self, register_name: str, value: int) -> bool:
-        """Write to a holding or coil register."""
- main
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
 
- codex/modify-async_write_register-for-scaling
                 original_value = value
 
                 # Apply multiplier if defined and convert to integer for Modbus
@@ -612,8 +583,6 @@ main
                 else:
                     value = int(round(value))
 
-=======
- main
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
@@ -630,18 +599,10 @@ main
                     return False
 
                 if response.isError():
-                    _LOGGER.error(
-                        "Error writing to register %s: %s", register_name, response
-                    )
+                    _LOGGER.error("Error writing to register %s: %s", register_name, response)
                     return False
 
- codex/modify-async_write_register-for-scaling
-                _LOGGER.info(
-                    "Successfully wrote %s to register %s", original_value, register_name
-                )
-=======
-                _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
-main
+                _LOGGER.info("Successfully wrote %s to register %s", original_value, register_name)
 
                 # Request data refresh
                 await self.async_request_refresh()
