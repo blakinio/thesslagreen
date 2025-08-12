@@ -563,12 +563,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         return data
 
-    async def async_write_register(self, register_name: str, value: float) -> bool:
+    async def async_write_register(
+        self, register_name: str, value: float, refresh: bool = True
+    ) -> bool:
         """Write to a holding or coil register.
 
         Values should be provided in user units (°C, minutes, etc.). The value
         will be scaled according to ``REGISTER_MULTIPLIERS`` before being
         written to the device.
+
+        If ``refresh`` is ``True`` (default), the coordinator will request a data
+        refresh after the write. Set to ``False`` when performing multiple writes
+        in sequence and manually refresh at the end.
         """
         async with self._connection_lock:
             try:
@@ -602,10 +608,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     _LOGGER.error("Error writing to register %s: %s", register_name, response)
                     return False
 
-                _LOGGER.info("Successfully wrote %s to register %s", original_value, register_name)
+                _LOGGER.info(
+                    "Successfully wrote %s to register %s", original_value, register_name
+                )
 
-                # Request data refresh
-                await self.async_request_refresh()
+                if refresh:
+                    await self.async_request_refresh()
                 return True
 
             except Exception as exc:
