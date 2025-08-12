@@ -63,8 +63,13 @@ from .modbus_helpers import _call_modbus
 _LOGGER = logging.getLogger(__name__)
 
 MULTI_REGISTER_SIZES = {
-    'date_time': 4,
-    'lock_date': 3,
+    'date_time_1': 4,
+    'date_time_2': 4,
+    'date_time_3': 4,
+    'date_time_4': 4,
+    'lock_date_1': 3,
+    'lock_date_2': 3,
+    'lock_date_3': 3,
 }
 
 
