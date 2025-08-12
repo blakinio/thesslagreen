@@ -3,6 +3,7 @@
 import os
 import sys
 import types
+from types import SimpleNamespace
 
 # Stub Home Assistant and pymodbus modules for import
 ha = types.ModuleType("homeassistant")
@@ -11,10 +12,12 @@ core = types.ModuleType("homeassistant.core")
 helpers_pkg = types.ModuleType("homeassistant.helpers")
 helpers_cv = types.ModuleType("homeassistant.helpers.config_validation")
 helpers_dr = types.ModuleType("homeassistant.helpers.device_registry")
+helpers_er = types.ModuleType("homeassistant.helpers.entity_registry")
 helpers_service = types.ModuleType("homeassistant.helpers.service")
 helpers = types.ModuleType("homeassistant.helpers.update_coordinator")
 helpers_pkg.config_validation = helpers_cv
 helpers_pkg.device_registry = helpers_dr
+helpers_pkg.entity_registry = helpers_er
 helpers_pkg.service = helpers_service
 helpers_pkg.update_coordinator = helpers
 exceptions = types.ModuleType("homeassistant.exceptions")
@@ -119,6 +122,13 @@ async def async_extract_entity_ids(hass, call):
 helpers_service.async_extract_entity_ids = async_extract_entity_ids
 
 
+def er_async_get(hass):
+    return getattr(hass, "entity_registry", None)
+
+
+helpers_er.async_get = er_async_get
+
+
 def entity_ids(value):
     return value
 
@@ -198,3 +208,34 @@ def test_air_quality_register_map():
     assert AIR_QUALITY_REGISTER_MAP["co2_medium"] == "co2_threshold_medium"
     assert AIR_QUALITY_REGISTER_MAP["co2_high"] == "co2_threshold_high"
     assert AIR_QUALITY_REGISTER_MAP["humidity_target"] == "humidity_target"
+
+
+def test_get_coordinator_from_entity_id_multiple_devices():
+    """Ensure coordinator lookup maps entities to correct coordinators."""
+    hass = core.HomeAssistant()
+    coord1 = object()
+    coord2 = object()
+    hass.data = {services_module.DOMAIN: {"entry1": coord1, "entry2": coord2}}
+
+    class DummyRegistry:
+        def __init__(self, mapping):
+            self._mapping = mapping
+
+        def async_get(self, entity_id):
+            return self._mapping.get(entity_id)
+
+    hass.entity_registry = DummyRegistry(
+        {
+            "sensor.dev1": SimpleNamespace(config_entry_id="entry1"),
+            "sensor.dev2": SimpleNamespace(config_entry_id="entry2"),
+        }
+    )
+
+    assert (
+        services_module._get_coordinator_from_entity_id(hass, "sensor.dev1")
+        is coord1
+    )
+    assert (
+        services_module._get_coordinator_from_entity_id(hass, "sensor.dev2")
+        is coord2
+    )
