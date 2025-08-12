@@ -34,6 +34,12 @@ try:  # pragma: no cover
     from homeassistant.helpers.device_registry import DeviceInfo
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
+    class DeviceInfo(dict):
+        """Minimal fallback DeviceInfo for tests."""
+        def as_dict(self) -> Dict[str, Any]:
+            """Return dictionary representation."""
+            return dict(self)
+=======
     class DeviceInfo:  # type: ignore[misc]
         """Minimal fallback DeviceInfo for tests.
 
@@ -57,7 +63,6 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
                 return self._data[item]
             except KeyError as exc:  # pragma: no cover - mirror dict behaviour
                 raise AttributeError(item) from exc
-
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
