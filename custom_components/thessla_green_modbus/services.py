@@ -62,7 +62,7 @@ SET_BYPASS_PARAMETERS_SCHEMA = vol.Schema({
 
 SET_GWC_PARAMETERS_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_ids,
-    vol.Required("mode"): vol.In(["disabled", "auto", "forced"]),
+    vol.Required("mode"): vol.In(["off", "auto", "forced"]),
     vol.Optional("temperature_threshold"): vol.All(vol.Coerce(float), vol.Range(min=-5.0, max=15.0)),
     vol.Optional("hysteresis"): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
 })
@@ -255,7 +255,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         temperature_threshold = call.data.get("temperature_threshold")
         hysteresis = call.data.get("hysteresis")
         
-        mode_map = {"disabled": 0, "auto": 1, "forced": 2}
+        mode_map = {"off": 0, "auto": 1, "forced": 2}
         mode_value = mode_map[mode]
         
         for entity_id in entity_ids:
