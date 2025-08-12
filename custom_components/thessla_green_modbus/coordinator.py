@@ -34,11 +34,37 @@ try:  # pragma: no cover
     from homeassistant.helpers.device_registry import DeviceInfo
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
+
+    class DeviceInfo:  # type: ignore[misc]
+        """Minimal fallback DeviceInfo for tests.
+
+        Stores provided keyword arguments and exposes an ``as_dict`` method
+        similar to Home Assistant's ``DeviceInfo`` dataclass.
+        """
+
+        def __init__(self, **kwargs: Any) -> None:
+            self._data: Dict[str, Any] = dict(kwargs)
+
+        def as_dict(self) -> Dict[str, Any]:
+            """Return stored fields as a dictionary."""
+            return dict(self._data)
+
+        # Provide dictionary-style and attribute-style access for convenience in tests
+        def __getitem__(self, key: str) -> Any:  # pragma: no cover - simple mapping
+            return self._data[key]
+
+        def __getattr__(self, item: str) -> Any:
+            try:
+                return self._data[item]
+            except KeyError as exc:  # pragma: no cover - mirror dict behaviour
+                raise AttributeError(item) from exc
+=======
     class DeviceInfo(dict):
         """Minimal fallback DeviceInfo for tests."""
         def as_dict(self) -> Dict[str, Any]:
             """Return dictionary representation."""
             return dict(self)
+
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
