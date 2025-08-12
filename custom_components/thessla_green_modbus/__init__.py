@@ -1,12 +1,15 @@
 """ThesslaGreen Modbus integration for Home Assistant."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.update_coordinator import UpdateFailed
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .const import (
     DOMAIN,
@@ -88,14 +91,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Setup coordinator (this includes device scanning)
     try:
         await coordinator.async_setup()
-    except Exception as exc:
+    except (
+        ConnectionException,
+        ModbusException,
+        asyncio.TimeoutError,
+        OSError,
+    ) as exc:
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
-    
+
     # Perform first data update
     try:
         await coordinator.async_config_entry_first_refresh()
-    except Exception as exc:
+    except (
+        ConnectionException,
+        ModbusException,
+        UpdateFailed,
+        asyncio.TimeoutError,
+        OSError,
+    ) as exc:
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
     

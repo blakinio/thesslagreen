@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 try:  # pragma: no cover
     from pymodbus.exceptions import ConnectionException, ModbusException
-except Exception:  # pragma: no cover
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
     class ConnectionException(Exception):
         pass
@@ -100,8 +101,8 @@ class ThesslaGreenDeviceScanner:
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read input 0x%04X: %s", address, exc)
-        except Exception as exc:
-            _LOGGER.exception("Unexpected error reading input 0x%04X", address)
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.error("Unexpected error reading input 0x%04X: %s", address, exc)
         return None
 
     async def _read_holding(
@@ -114,8 +115,8 @@ class ThesslaGreenDeviceScanner:
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read holding 0x%04X: %s", address, exc)
-        except Exception as exc:
-            _LOGGER.exception("Unexpected error reading holding 0x%04X", address)
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.error("Unexpected error reading holding 0x%04X: %s", address, exc)
         return None
 
     async def _read_coil(
@@ -128,8 +129,8 @@ class ThesslaGreenDeviceScanner:
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read coil 0x%04X: %s", address, exc)
-        except Exception as exc:
-            _LOGGER.exception("Unexpected error reading coil 0x%04X", address)
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.error("Unexpected error reading coil 0x%04X: %s", address, exc)
         return None
 
     async def _read_discrete(
@@ -142,8 +143,8 @@ class ThesslaGreenDeviceScanner:
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read discrete 0x%04X: %s", address, exc)
-        except Exception as exc:
-            _LOGGER.exception("Unexpected error reading discrete 0x%04X", address)
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.error("Unexpected error reading discrete 0x%04X: %s", address, exc)
         return None
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
@@ -436,8 +437,8 @@ class ThesslaGreenDeviceScanner:
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.error("Device scan failed: %s", exc)
             raise
-        except Exception as exc:
-            _LOGGER.exception("Unexpected error during device scan")
+        except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            _LOGGER.error("Unexpected error during device scan: %s", exc)
             raise
 
     async def scan_device(self) -> Dict[str, Any]:
@@ -476,8 +477,8 @@ class ThesslaGreenDeviceScanner:
         except (ConnectionException, ModbusException) as exc:
             _LOGGER.error("Connection failed during device scan: %s", exc)
             raise
-        except Exception as exc:
-            _LOGGER.exception("Device scan failed")
+        except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            _LOGGER.error("Device scan failed: %s", exc)
             raise
 
     async def close(self):
@@ -489,7 +490,7 @@ class ThesslaGreenDeviceScanner:
             await self._client.close()
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Error closing Modbus client: %s", exc)
-        except Exception as exc:
+        except OSError as exc:
             _LOGGER.debug("Unexpected error closing Modbus client: %s", exc)
         finally:
             self._client = None
