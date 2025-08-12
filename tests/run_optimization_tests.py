@@ -46,11 +46,11 @@ async def validate_optimization_metrics():
         )
         
         # Simulate many registers
-        test_registers = {f"test_reg_{i}": 0x1000 + i for i in range(50)}
-        groups = coordinator._group_registers_by_range(test_registers, max_gap=15)
-        
+        test_addresses = [0x1000 + i for i in range(50)]
+        groups = coordinator._group_registers_for_batch_read(test_addresses, max_gap=15)
+
         # Should create fewer groups than individual registers (optimization working)
-        if len(groups) < len(test_registers) and len(groups) > 0:
+        if len(groups) < len(test_addresses) and len(groups) > 0:
             results["register_grouping"] = True
             print("✅ Register grouping: OPTIMIZED (grouped into fewer batches)")
         else:

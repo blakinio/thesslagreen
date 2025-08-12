@@ -99,32 +99,6 @@ async def test_analyze_capabilities():
     assert capabilities["sensor_outside_temperature"] is True
 
 
-async def test_group_registers_by_range():
-    """Test register grouping by address ranges."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
-    
-    registers = {
-        "reg1": 0x0010,
-        "reg2": 0x0011,
-        "reg3": 0x0012,
-        "reg4": 0x0020,  # Gap of 14, should start new chunk
-        "reg5": 0x0021,
-    }
-    
-    chunks = scanner._group_registers_by_range(registers, max_gap=10)
-    
-    # Should have 2 chunks
-    assert len(chunks) == 2
-    assert 0x0010 in chunks
-    assert 0x0020 in chunks
-    
-    # First chunk should have reg1, reg2, reg3
-    assert len(chunks[0x0010]) == 3
-    
-    # Second chunk should have reg4, reg5
-    assert len(chunks[0x0020]) == 2
-
-
 async def test_close_terminates_client():
     """Ensure close() closes the underlying Modbus client."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
