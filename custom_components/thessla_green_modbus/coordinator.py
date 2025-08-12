@@ -276,14 +276,21 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                # Try to read a basic register to verify communication
+                # Try to read a basic register to verify communication. "count" must
+                # always be passed as a keyword argument to ``_call_modbus`` to avoid
+                # issues with keyword-only parameters in pymodbus.
+                count = 1
                 response = await self._call_modbus(
+ codex/update-modbus-calls-to-use-keyword-arguments
+                    self.client.read_input_registers, 0x0000, count=count
+=======
  codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_input_registers,
                     0x0000,
                     count=1,
 =======
                     self.client.read_input_registers, 0x0000, count=1
+ main
  main
                 )
                 if response.isError():
@@ -422,6 +429,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["input_registers"]:
             try:
+                # Pass "count" as a keyword argument to ensure compatibility with
+                # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
  codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_input_registers,
@@ -472,6 +481,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["holding_registers"]:
             try:
+                # Pass "count" as a keyword argument to ensure compatibility with
+                # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
  codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_holding_registers,
@@ -524,6 +535,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["coil_registers"]:
             try:
+                # Pass "count" as a keyword argument to ensure compatibility with
+                # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
  codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_coils,
@@ -580,6 +593,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
             try:
+                # Pass "count" as a keyword argument to ensure compatibility with
+                # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
  codex/update-modbus-client-calls-to-use-keyword-arguments
                     self.client.read_discrete_inputs,
