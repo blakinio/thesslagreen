@@ -4,7 +4,10 @@ from unittest.mock import AsyncMock, patch
 
 from homeassistant.const import CONF_HOST, CONF_PORT
 
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+)
 
 CONF_NAME = "name"
 
@@ -105,7 +108,29 @@ async def test_form_user_modbus_exception():
 
     with patch(
         "custom_components.thessla_green_modbus.config_flow.validate_input",
-        side_effect=ModbusException,
+        side_effect=ModbusException("error"),
+    ):
+        result = await flow.async_step_user(
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_PORT: 502,
+                "slave_id": 10,
+                CONF_NAME: "My Device",
+            }
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_form_user_connection_exception():
+    """Test Modbus connection error during user step."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        side_effect=ConnectionException,
     ):
         result = await flow.async_step_user(
             {
@@ -273,7 +298,7 @@ async def test_validate_input_modbus_exception():
 
     with patch(
         "custom_components.thessla_green_modbus.device_scanner.ThesslaGreenDeviceScanner.scan_device",
-        side_effect=ModbusException,
+        side_effect=ModbusException("error"),
     ):
         with pytest.raises(CannotConnect):
             await validate_input(hass, data)
