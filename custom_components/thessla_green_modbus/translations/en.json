@@ -83,6 +83,12 @@
       "exhaust_flowrate": {
         "name": "Exhaust Airflow"
       },
+      "supply_percentage": {
+        "name": "Supply Fan Speed"
+      },
+      "exhaust_percentage": {
+        "name": "Exhaust Fan Speed"
+      },
       "heat_recovery_efficiency": {
         "name": "Heat Recovery Efficiency"
       },
@@ -403,7 +409,7 @@
       "party_mode": { "name": "Party Mode" },
       "fireplace_mode": { "name": "Fireplace Mode" },
       "vacation_mode": { "name": "Vacation Mode" },
-      "okap_mode": { "name": "Hood Mode" },
+      "hood_mode": { "name": "Hood Mode" },
       "silent_mode": { "name": "Silent Mode" }
     },
     "select": {
@@ -442,6 +448,15 @@
       }
     },
     "number": {
+      "supply_temperature_manual": { "name": "Supply Temperature (Manual)" },
+      "supply_temperature_auto": { "name": "Supply Temperature (Auto)" },
+      "comfort_temperature": { "name": "Comfort Temperature" },
+      "air_flow_rate_manual": { "name": "Manual Air Flow Rate" },
+      "air_flow_rate_auto": { "name": "Automatic Air Flow Rate" },
+      "hood_intensity": { "name": "Hood Intensity" },
+      "fireplace_intensity": { "name": "Fireplace Intensity" },
+      "venting_intensity": { "name": "Venting Intensity" },
+      "filter_change_interval": { "name": "Filter Change Interval" },
       "required_temperature": { "name": "Required Temperature" },
       "max_supply_temperature": { "name": "Max Supply Temperature" },
       "min_supply_temperature": { "name": "Min Supply Temperature" },

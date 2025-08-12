@@ -122,7 +122,7 @@ data:
 # Aktywuj tryb specjalny
 service: thessla_green_modbus.set_special_mode
 data:
-  special_mode: "okap"
+  special_mode: "hood"
   intensity: 100
   duration: 30
 
@@ -197,7 +197,7 @@ data:
 ### Auto boost podczas gotowania
 ```yaml
 automation:
-  - alias: "Kuchnia - tryb OKAP"
+  - alias: "Kuchnia - tryb HOOD"
     trigger:
       - platform: state
         entity_id: binary_sensor.kuchnia_ruch
@@ -205,7 +205,7 @@ automation:
     action:
       - service: thessla_green_modbus.set_special_mode
         data:
-          special_mode: "okap"
+          special_mode: "hood"
           intensity: 120
           duration: 45
 ```

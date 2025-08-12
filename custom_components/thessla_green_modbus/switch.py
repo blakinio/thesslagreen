@@ -61,11 +61,11 @@ SWITCH_ENTITIES = {
         "category": None,
         "translation_key": "vacation_mode",
     },
-    "okap_mode": {
+    "hood_mode": {
         "icon": "mdi:range-hood",
         "register_type": "holding_registers",
         "category": None,
-        "translation_key": "okap_mode",
+        "translation_key": "hood_mode",
     },
     "silent_mode": {
         "icon": "mdi:volume-off",
@@ -245,7 +245,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             attributes["control_type"] = "operating_mode"
         elif self.register_name in ["boost_mode", "eco_mode", "night_mode"]:
             attributes["control_type"] = "performance_mode"
-        elif self.register_name in ["party_mode", "fireplace_mode", "vacation_mode", "okap_mode"]:
+        elif self.register_name in ["party_mode", "fireplace_mode", "vacation_mode", "hood_mode"]:
             attributes["control_type"] = "special_mode"
         elif self.register_name == "on_off_panel_mode":
             attributes["control_type"] = "system_power"
