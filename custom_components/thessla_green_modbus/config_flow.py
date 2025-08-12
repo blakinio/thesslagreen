@@ -117,7 +117,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except (ConnectionException, ModbusException):
                 _LOGGER.exception("Modbus communication error")
                 errors["base"] = "cannot_connect"
-            except (OSError, asyncio.TimeoutError, ValueError):
+            except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
@@ -182,9 +182,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "capabilities_count": str(len(capabilities_list)),
             "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
             "auto_detected_note": (
-                "✅ Auto-detection successful!"
+                "Auto-detection successful!"
                 if register_count > 0
-                else "⚠️ Limited auto-detection"
+                else "Limited auto-detection"
             ),
         }
 
