@@ -12,12 +12,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, HOLDING_REGISTERS
-
-try:  # Newer versions expose metadata through ENTITY_MAPPINGS
-    from .const import ENTITY_MAPPINGS
-except ImportError:  # pragma: no cover - fall back when not available
-    ENTITY_MAPPINGS = {}
+from .const import DOMAIN
+from .entity_mappings import ENTITY_MAPPINGS
+from .registers import HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 

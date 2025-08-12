@@ -11,7 +11,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, REGISTER_MULTIPLIERS, SPECIAL_FUNCTION_MAP
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from .multipliers import REGISTER_MULTIPLIERS
 
 _LOGGER = logging.getLogger(__name__)
 
