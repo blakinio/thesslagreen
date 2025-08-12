@@ -132,14 +132,19 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def target_temperature(self) -> Optional[float]:
         """Return target temperature if available."""
         data = self.coordinator.data
-        for key in (
-            "comfort_temperature",
-            "required_temperature",
-            "required_temperature_legacy",
-        ):
-            value = data.get(key)
-            if isinstance(value, (int, float)):
-                return float(value)
+
+        comfort = data.get("comfort_temperature")
+        if isinstance(comfort, (int, float)):
+            return float(comfort)
+
+        required = data.get("required_temperature")
+        if isinstance(required, (int, float)):
+            return float(required)
+
+        legacy = data.get("required_temperature_legacy")
+        if isinstance(legacy, (int, float)):
+            return float(legacy)
+
         return None
 
     @property
