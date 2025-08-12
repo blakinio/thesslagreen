@@ -10,6 +10,20 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+try:  # pragma: no cover - handle missing pymodbus during tests
+    from pymodbus.exceptions import ConnectionException, ModbusException
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
+
+    class ConnectionException(Exception):
+        """Fallback exception when pymodbus is unavailable."""
+
+        pass
+
+    class ModbusException(Exception):
+        """Fallback Modbus exception when pymodbus is unavailable."""
+
+        pass
+
 from .const import COIL_REGISTERS, DOMAIN, HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -167,8 +181,9 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             await self._write_register(self.register_name, 1)
             _LOGGER.info("Turned on %s", self.register_name)
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn on %s: %s", self.register_name, exc)
+            raise
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
@@ -176,8 +191,9 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             await self._write_register(self.register_name, 0)
             _LOGGER.info("Turned off %s", self.register_name)
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn off %s: %s", self.register_name, exc)
+            raise
 
     async def _write_register(self, register_name: str, value: int) -> None:
         """Write value to register."""

@@ -10,6 +10,20 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+try:  # pragma: no cover - handle missing pymodbus during tests
+    from pymodbus.exceptions import ConnectionException, ModbusException
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
+
+    class ConnectionException(Exception):
+        """Fallback exception when pymodbus is unavailable."""
+
+        pass
+
+    class ModbusException(Exception):
+        """Fallback Modbus exception when pymodbus is unavailable."""
+
+        pass
+
 from .const import DOMAIN, HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -144,8 +158,9 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
             _LOGGER.info("Turned on fan")
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn on fan: %s", exc)
+            raise
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
@@ -168,8 +183,9 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
             _LOGGER.info("Turned off fan")
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn off fan: %s", exc)
+            raise
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
@@ -197,8 +213,9 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
             _LOGGER.info("Set fan speed to %d%%", actual_percentage)
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to set fan speed to %d%%: %s", percentage, exc)
+            raise
 
     def _get_current_mode(self) -> str | None:
         """Get current system mode."""
