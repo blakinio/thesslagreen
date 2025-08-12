@@ -134,10 +134,14 @@ class ThesslaGreenDeviceScanner:
         """Read coil registers."""
         try:
             response = await _call_modbus(
+ codex/remove-conflicts-in-async_write_register
                 client.read_coils,
                 self.slave_id,
                 address,
                 count,
+=======
+                client.read_coils, self.slave_id, address, count
+ main
             )
             if not response.isError():
                 return response.bits[:count]
