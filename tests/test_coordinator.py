@@ -1,4 +1,4 @@
-"""Tests for ThesslaGreenCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
+"""Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
 import os
 import sys
@@ -132,7 +132,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenCoordinator,
+    ThesslaGreenModbusCoordinator,
 )
 
 
@@ -146,7 +146,7 @@ def coordinator():
         "coil_registers": {"system_on_off"},
         "discrete_inputs": set(),
     }
-    coordinator = ThesslaGreenCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator(
         hass=hass,
         host="localhost",
         port=502,
@@ -244,7 +244,7 @@ def test_coordinator_initialization():
     hass = MagicMock()
     available_registers = {"holding_registers": set(), "input_registers": set()}
 
-    coordinator = ThesslaGreenCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator(
         hass=hass,
         host="192.168.1.100",
         port=502,

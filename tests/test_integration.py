@@ -28,7 +28,7 @@ async def test_async_setup_entry_success():
     entry.async_on_unload = MagicMock()
     
     with patch(
-        "custom_components.thessla_green_modbus.ThesslaGreenCoordinator"
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
         mock_coordinator = MagicMock()
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
@@ -57,7 +57,7 @@ async def test_async_setup_entry_failure():
     entry.options = {}
     
     with patch(
-        "custom_components.thessla_green_modbus.ThesslaGreenCoordinator"
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
         mock_coordinator = MagicMock()
         mock_coordinator.async_config_entry_first_refresh = AsyncMock(
