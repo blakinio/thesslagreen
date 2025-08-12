@@ -3,6 +3,36 @@
 from typing import Dict
 
 # Generated from modbus_registers.csv
+COIL_REGISTERS: Dict[str, int] = {
+    "duct_water_heater_pump": 5,
+    "bypass": 9,
+    "info": 10,
+    "power_supply_fans": 11,
+    "heating_cable": 12,
+    "work_permit": 13,
+    "gwc": 14,
+    "hood": 15,
+}
+
+DISCRETE_INPUT_REGISTERS: Dict[str, int] = {
+    "duct_heater_protection": 0,
+    "expansion": 1,
+    "dp_duct_filter_overflow": 3,
+    "hood": 4,
+    "contamination_sensor": 5,
+    "airing_sensor": 6,
+    "airing_switch": 7,
+    "airing_mini": 10,
+    "fan_speed_3": 11,
+    "fan_speed_2": 12,
+    "fan_speed_1": 13,
+    "fireplace": 14,
+    "ppoz": 15,
+    "dp_ahu_filter_overflow": 18,
+    "ahu_filter_protection": 19,
+    "empty_house": 21,
+}
+
 INPUT_REGISTERS: Dict[str, int] = {
     "version_major": 0,
     "version_minor": 1,

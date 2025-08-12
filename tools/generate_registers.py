@@ -9,12 +9,15 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "modbus_registers.csv"
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
+# Legacy names mapped to their canonical versions
+ALIASES = {
+    "required_temp": "required_temperature",
+}
+
 
 def to_snake_case(name: str) -> str:
     """Convert register name from CSV to snake_case."""
-    replacements = {
-        "flowrate": "flow_rate",
-    }
+    replacements = {"flowrate": "flow_rate"}
     for old, new in replacements.items():
         name = name.replace(old, new)
     name = re.sub(r"[\s\-/]", "_", name)
@@ -22,10 +25,15 @@ def to_snake_case(name: str) -> str:
     name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
     name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
     name = re.sub(r"__+", "_", name)
-    return name.lower()
+    name = name.lower()
+    token_map = {"temp": "temperature"}
+    tokens = [token_map.get(token, token) for token in name.split("_")]
+    return "_".join(tokens)
 
 
-def load_registers() -> Tuple[Dict[str, int], Dict[str, int]]:
+def load_registers() -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Dict[str, int]]:
+    coils: Dict[str, int] = {}
+    discrete_inputs: Dict[str, int] = {}
     input_regs: Dict[str, int] = {}
     holding_regs: Dict[str, int] = {}
     with CSV_PATH.open(newline="") as f:
@@ -36,20 +44,43 @@ def load_registers() -> Tuple[Dict[str, int], Dict[str, int]]:
                 continue
             name = to_snake_case(row["Register_Name"])
             addr = int(row["Address_DEC"])
-            if code == "04":
+            if code == "01":
+                coils[name] = addr
+            elif code == "02":
+                discrete_inputs[name] = addr
+            elif code == "04":
                 input_regs[name] = addr
             elif code == "03":
                 holding_regs[name] = addr
+    for alias, canonical in ALIASES.items():
+        for mapping in (coils, discrete_inputs, input_regs, holding_regs):
+            if canonical in mapping:
+                mapping[alias] = mapping[canonical]
+    coils = dict(sorted(coils.items(), key=lambda kv: kv[1]))
+    discrete_inputs = dict(sorted(discrete_inputs.items(), key=lambda kv: kv[1]))
     input_regs = dict(sorted(input_regs.items(), key=lambda kv: kv[1]))
     holding_regs = dict(sorted(holding_regs.items(), key=lambda kv: kv[1]))
-    return input_regs, holding_regs
+    return coils, discrete_inputs, input_regs, holding_regs
 
 
-def write_file(input_regs: Dict[str, int], holding_regs: Dict[str, int]) -> None:
+def write_file(
+    coils: Dict[str, int],
+    discrete_inputs: Dict[str, int],
+    input_regs: Dict[str, int],
+    holding_regs: Dict[str, int],
+) -> None:
     with OUTPUT_PATH.open("w", newline="\n") as f:
         f.write('"""Register definitions for the ThesslaGreen Modbus integration."""\n')
         f.write("from typing import Dict\n\n")
         f.write("# Generated from modbus_registers.csv\n")
+        f.write("COIL_REGISTERS: Dict[str, int] = {\n")
+        for name, addr in coils.items():
+            f.write(f"    '{name}': {addr},\n")
+        f.write("}\n\n")
+        f.write("DISCRETE_INPUT_REGISTERS: Dict[str, int] = {\n")
+        for name, addr in discrete_inputs.items():
+            f.write(f"    '{name}': {addr},\n")
+        f.write("}\n\n")
         f.write("INPUT_REGISTERS: Dict[str, int] = {\n")
         for name, addr in input_regs.items():
             f.write(f"    '{name}': {addr},\n")
@@ -61,8 +92,8 @@ def write_file(input_regs: Dict[str, int], holding_regs: Dict[str, int]) -> None
 
 
 def main() -> None:
-    input_regs, holding_regs = load_registers()
-    write_file(input_regs, holding_regs)
+    coils, discrete_inputs, input_regs, holding_regs = load_registers()
+    write_file(coils, discrete_inputs, input_regs, holding_regs)
 
 
 if __name__ == "__main__":

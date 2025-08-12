@@ -3,6 +3,13 @@
 import json
 from pathlib import Path
 
+from .registers import (  # noqa: F401
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+)
+
 OPTIONS_PATH = Path(__file__).parent / "options"
 
 
@@ -44,38 +51,6 @@ PLATFORMS = [
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
 # ============================================================================
-
-# COIL REGISTERS (01 - READ COILS) - Output and relay states
-COIL_REGISTERS = {
-    "duct_water_heater_pump": 5,  # Circulation pump relay output
-    "bypass": 9,  # Bypass damper actuator output
-    "info": 10,  # System operation confirmation output (O1)
-    "power_supply_fans": 11,  # Fan power relay output
-    "heating_cable": 12,  # Heating cable power relay output
-    "work_permit": 13,  # Operation confirmation relay (Expansion)
-    "gwc": 14,  # GWC relay output
-    "hood": 15,  # Hood damper power output
-}
-
-# DISCRETE INPUT REGISTERS (02 - READ DISCRETE INPUTS) - Digital input states
-DISCRETE_INPUT_REGISTERS = {
-    "duct_heater_protection": 0,  # Thermal protection of duct heater
-    "expansion": 1,  # Expansion module communication
-    "dp_duct_filter_overflow": 3,  # Duct filter pressure switch
-    "hood": 4,  # Hood function switch
-    "contamination_sensor": 5,  # Air quality sensor input
-    "airing_sensor": 6,  # Humidity sensor input
-    "airing_switch": 7,  # Ventilation switch
-    "airing_mini": 10,  # AirS switch position "Airing"
-    "fan_speed_3": 11,  # AirS switch position "3rd speed"
-    "fan_speed_2": 12,  # AirS switch position "2nd speed"
-    "fan_speed_1": 13,  # AirS switch position "1st speed"
-    "fireplace": 14,  # Fireplace function switch
-    "ppoz": 15,  # Fire alarm input
-    "dp_ahu_filter_overflow": 18,  # AHU filter pressure switch (DP1)
-    "ahu_filter_protection": 19,  # Thermal protection of FPX heater
-    "empty_house": 21,  # Empty house input
-}
 
 # Shared option lists
 SPECIAL_MODE_OPTIONS = json.loads((OPTIONS_PATH / "special_modes.json").read_text())
