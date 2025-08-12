@@ -9,7 +9,8 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import UpdateFailed
-from pymodbus.exceptions import ConnectionException, ModbusException
+
+from .modbus_exceptions import ConnectionException, ModbusException
 
 from .const import (
     DOMAIN,

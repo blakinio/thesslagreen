@@ -8,8 +8,11 @@ from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
 )
 from custom_components.thessla_green_modbus.device_scanner import (
-    ConnectionException,
     ThesslaGreenDeviceScanner,
+)
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
 )
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
@@ -127,12 +130,6 @@ class ModbusTcpClient:
 
 pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
 pymodbus_client.ModbusTcpClient = ModbusTcpClient
-
-class ModbusException(Exception):
-    pass
-
-class ConnectionException(Exception):
-    pass
 
 class ModbusIOException(Exception):
     pass

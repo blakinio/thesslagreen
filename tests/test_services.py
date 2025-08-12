@@ -6,6 +6,11 @@ import sys
 import types
 from types import SimpleNamespace
 
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+)
+
 # Stub Home Assistant and pymodbus modules for import
 ha = types.ModuleType("homeassistant")
 const = types.ModuleType("homeassistant.const")
@@ -156,11 +161,6 @@ class AsyncModbusTcpClient:
 
 pymodbus_client_tcp.AsyncModbusTcpClient = AsyncModbusTcpClient
 pymodbus_client.tcp = pymodbus_client_tcp
-
-class ModbusException(Exception):
-    pass
-class ConnectionException(Exception):
-    pass
 
 pymodbus_exceptions.ModbusException = ModbusException
 pymodbus_exceptions.ConnectionException = ConnectionException

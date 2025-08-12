@@ -10,20 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-try:  # pragma: no cover - handle missing pymodbus during tests
-    from pymodbus.exceptions import ConnectionException, ModbusException
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
-
-    class ConnectionException(Exception):
-        """Fallback exception when pymodbus is unavailable."""
-
-        pass
-
-    class ModbusException(Exception):
-        """Fallback Modbus exception when pymodbus is unavailable."""
-
-        pass
-
+from .modbus_exceptions import ConnectionException, ModbusException
 from .const import COIL_REGISTERS, DOMAIN
 from .registers import HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
