@@ -100,7 +100,11 @@ sys.modules["homeassistant.helpers.device_registry"] = device_registry
 # Actual imports after stubbing
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
+from custom_components.thessla_green_modbus.climate import (
+    HVAC_MODE_MAP,
+    HVAC_MODE_REVERSE_MAP,
+    ThesslaGreenClimate,
+)
 from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
@@ -175,3 +179,14 @@ def test_target_temperature_none_when_unavailable():
 
     coordinator.data["comfort_temperature"] = 20.0
     assert climate.target_temperature == 20.0
+
+
+def test_hvac_mode_mappings():
+    """Verify device modes map to and from Home Assistant HVAC modes."""
+    assert HVAC_MODE_MAP[0] == HVACMode.AUTO
+    assert HVAC_MODE_MAP[1] == HVACMode.FAN_ONLY
+    assert HVAC_MODE_MAP[2] == HVACMode.FAN_ONLY
+
+    assert HVAC_MODE_REVERSE_MAP[HVACMode.AUTO] == 0
+    assert HVAC_MODE_REVERSE_MAP[HVACMode.FAN_ONLY] == 1
+    assert HVAC_MODE_REVERSE_MAP[HVACMode.OFF] == 0
