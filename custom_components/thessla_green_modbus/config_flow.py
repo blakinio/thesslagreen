@@ -69,8 +69,8 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         _LOGGER.error("Modbus error: %s", exc)
         raise InvalidAuth from exc
     except Exception as exc:
-        _LOGGER.error("Unexpected error: %s", exc)
-        raise CannotConnect from exc
+        _LOGGER.exception("Unexpected error during device validation")
+        raise
     finally:
         await scanner.close()
 
@@ -113,7 +113,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
+            except (ConnectionException, ModbusException) as exc:
+                _LOGGER.error("Modbus communication error: %s", exc)
+                errors["base"] = "cannot_connect"
+            except Exception as exc:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
