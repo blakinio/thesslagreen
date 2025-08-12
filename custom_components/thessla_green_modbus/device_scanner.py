@@ -104,13 +104,9 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read input registers."""
         try:
- codex/update-modbus-calls-for-slave_id
-            response = await client.read_input_registers(address, count, slave=self.slave_id)
-=======
             response = await self._call_modbus(
                 client.read_input_registers, address, count
             )
- main
             if not response.isError():
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
@@ -124,13 +120,9 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read holding registers."""
         try:
- codex/update-modbus-calls-for-slave_id
-            response = await client.read_holding_registers(address, count, slave=self.slave_id)
-=======
             response = await self._call_modbus(
                 client.read_holding_registers, address, count
             )
- main
             if not response.isError():
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
@@ -146,11 +138,7 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
- codex/update-modbus-calls-for-slave_id
-            response = await client.read_coils(address, count, slave=self.slave_id)
-=======
             response = await self._call_modbus(client.read_coils, address, count)
- main
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
@@ -164,13 +152,9 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read discrete input registers."""
         try:
- codex/update-modbus-calls-for-slave_id
-            response = await client.read_discrete_inputs(address, count, slave=self.slave_id)
-=======
             response = await self._call_modbus(
                 client.read_discrete_inputs, address, count
             )
- main
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
