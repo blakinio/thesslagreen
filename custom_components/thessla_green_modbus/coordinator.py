@@ -281,7 +281,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # issues with keyword-only parameters in pymodbus.
                 count = 1
                 response = await self._call_modbus(
+ codex/remove-conflict-remnants-from-coordinator.py
                     self.client.read_input_registers, 0x0000, count=count
+=======
+                    self.client.read_input_registers,
+                    0x0000,
+                    count=count,
+ main
                 )
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
@@ -422,7 +428,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
+ codex/remove-conflict-remnants-from-coordinator.py
                     self.client.read_input_registers, start_addr, count=count
+=======
+                    self.client.read_input_registers,
+                    start_addr,
+                    count=count,
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -468,7 +480,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
+ codex/remove-conflict-remnants-from-coordinator.py
                     self.client.read_holding_registers, start_addr, count=count
+=======
+                    self.client.read_holding_registers,
+                    start_addr,
+                    count=count,
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -516,7 +534,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
+ codex/remove-conflict-remnants-from-coordinator.py
                     self.client.read_coils, start_addr, count=count
+=======
+                    self.client.read_coils,
+                    start_addr,
+                    count=count,
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
@@ -568,7 +592,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
+ codex/remove-conflict-remnants-from-coordinator.py
                     self.client.read_discrete_inputs, start_addr, count=count
+=======
+                    self.client.read_discrete_inputs,
+                    start_addr,
+                    count=count,
+ main
                 )
                 if response.isError():
                     _LOGGER.debug(
