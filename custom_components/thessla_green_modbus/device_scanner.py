@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Dict, List, Optional, Tuple, Set
 
 from typing import TYPE_CHECKING
@@ -30,9 +30,9 @@ class DeviceInfo:
 @dataclass
 class DeviceCapabilities:
     basic_control: bool = False
-    temperature_sensors: set = None
-    flow_sensors: set = None
-    special_functions: set = None
+    temperature_sensors: Set[str] = field(default_factory=set)
+    flow_sensors: Set[str] = field(default_factory=set)
+    special_functions: Set[str] = field(default_factory=set)
     expansion_module: bool = False
     constant_flow: bool = False
     gwc_system: bool = False
@@ -50,15 +50,6 @@ class DeviceCapabilities:
     sensor_ambient_temperature: bool = False
     sensor_heating_temperature: bool = False
     temperature_sensors_count: int = 0
-
-    def __post_init__(self):
-        # Avoid None in sets
-        if self.temperature_sensors is None:
-            self.temperature_sensors = set()
-        if self.flow_sensors is None:
-            self.flow_sensors = set()
-        if self.special_functions is None:
-            self.special_functions = set()
 
     def as_dict(self) -> Dict:
         return asdict(self)
