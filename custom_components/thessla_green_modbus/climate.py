@@ -134,8 +134,8 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             return self.coordinator.data["comfort_temperature"]
         elif "required_temperature" in self.coordinator.data:
             return self.coordinator.data["required_temperature"]
-        elif "required_temp" in self.coordinator.data:
-            return self.coordinator.data["required_temp"]
+        elif "required_temperature_legacy" in self.coordinator.data:
+            return self.coordinator.data["required_temperature_legacy"]
         return 22.0  # Default
 
     @property

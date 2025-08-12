@@ -376,7 +376,8 @@ HOLDING_REGISTERS = {
     "lock_pass1": 0x1FFB,
     "lock_pass2": 0x1FFC,
     "lock_flag": 0x1FFD,
-    "required_temp": 0x1FFE,
+    # Legacy location for required temperature used by older firmware
+    "required_temperature_legacy": 0x1FFE,
     "filter_change": 0x1FFF,
 }
 
@@ -569,7 +570,8 @@ REGISTER_MULTIPLIERS = {
     "night_cooling_temperature": 0.5,
     "supply_air_temperature_manual": 0.5,
     "supply_air_temperature_temporary": 0.5,
-    "required_temp": 0.5,
+    # Legacy register shares the same scaling as required_temperature
+    "required_temperature_legacy": 0.5,
     # Voltage/Current conversions
     "dac_supply": 0.00244,  # 0-4095 -> 0-10V
     "dac_exhaust": 0.00244,
