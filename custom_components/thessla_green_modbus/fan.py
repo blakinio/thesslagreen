@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 """Fan platform for the ThesslaGreen Modbus integration."""
+from __future__ import annotations
 
 import logging
 from typing import Any, Dict
