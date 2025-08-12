@@ -153,7 +153,7 @@ set_gwc_parameters:
       selector:
         select:
           options:
-            - "disabled"
+            - "off"
             - "auto"
             - "forced"
     temperature_threshold:
