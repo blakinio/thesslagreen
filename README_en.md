@@ -66,7 +66,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - Menu → Communication → Modbus TCP
 - Enable: **YES**
 - Port: **502** (default)
-- Slave ID: **10** (default)
+- Device ID: **10** (default)
 
 ### 2. Add the integration in Home Assistant
 1. **Settings** → **Devices & Services** → **+ ADD INTEGRATION**
@@ -74,7 +74,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 3. Enter the data:
    - **IP Address**: unit IP (e.g. 192.168.1.100)
    - **Port**: 502
-   - **Slave ID**: 10
+   - **Device ID**: 10
 4. The integration will automatically scan the device
 5. Click **ADD**
 
@@ -168,7 +168,7 @@ Use the `get_diagnostic_info` service to receive:
 #### ❌ "Cannot connect"
 1. Check IP and ping the device: `ping 192.168.1.100`
 2. Ensure Modbus TCP is enabled (port 502)
-3. Try different Slave IDs (integration auto detects 1, 10, 247)
+3. Try different Device IDs (integration auto detects 1, 10, 247)
 4. Check network firewall
 
 #### ❌ "No entities"

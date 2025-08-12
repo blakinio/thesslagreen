@@ -7,29 +7,29 @@
         "data": {
           "host": "Adres IP",
           "port": "Port",
-          "slave_id": "ID urządzenia (Slave ID)",
+          "slave_id": "ID urządzenia",
           "name": "Nazwa"
         },
         "data_description": {
           "host": "Adres IP urządzenia AirPack w sieci lokalnej",
           "port": "Port Modbus TCP (domyślnie 502)",
-          "slave_id": "ID urządzenia Modbus (Slave ID, domyślnie 10)",
+          "slave_id": "ID urządzenia Modbus (domyślnie 10)",
           "name": "Nazwa urządzenia w Home Assistant"
         }
       },
       "confirm": {
         "title": "Potwierdź konfigurację",
-        "description": "Wykryto urządzenie ThesslaGreen {device_name} pod adresem {host}:{port} (ID Slave {slave_id}, wersja oprogramowania {firmware_version}). {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
+        "description": "Wykryto urządzenie ThesslaGreen {device_name} pod adresem {host}:{port} (ID urządzenia {slave_id}, wersja oprogramowania {firmware_version}). {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
       }
     },
     "error": {
       "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port oraz połączenie sieciowe.",
-      "invalid_auth": "Błąd autoryzacji. Sprawdź ustawienia Slave ID.",
+      "invalid_auth": "Błąd autoryzacji. Sprawdź ustawienia ID urządzenia.",
       "invalid_input": "Nieprawidłowa konfiguracja. Sprawdź wartości i spróbuj ponownie.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi dla szczegółów."
     },
     "abort": {
-      "already_configured": "Urządzenie z tym adresem IP i Slave ID jest już skonfigurowane."
+      "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
     }
   },
   "options": {

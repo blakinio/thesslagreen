@@ -51,7 +51,7 @@
    - Menu → Komunikacja → Modbus TCP
    - Włącz: TAK
    - Port: 502 (domyślny)
-   - Slave ID: 10 (domyślny)
+   - ID urządzenia: 10 (domyślny)
 
 2. **Skonfiguruj sieć:**
    - Ustaw statyczny IP dla rekuperatora
@@ -65,7 +65,7 @@
 4. **Wprowadź dane:**
    - **Host**: IP rekuperatora (np. 192.168.1.100)
    - **Port**: 502
-   - **Slave ID**: 10
+   - **ID urządzenia**: 10
    - **Nazwa**: ThesslaGreen AirPack
 
 5. **Kliknij DODAJ**
@@ -225,7 +225,7 @@ automation:
 2. **Sprawdź konfigurację Modbus:**
    - Czy Modbus TCP jest włączony?
    - Czy port 502 jest otwarty?
-   - Czy Slave ID jest poprawne?
+   - Czy ID urządzenia jest poprawne?
 
 3. **Sprawdź firewall:**
    - Czy HA ma dostęp do portu 502?

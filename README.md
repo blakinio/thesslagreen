@@ -67,7 +67,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - Menu → Komunikacja → Modbus TCP
 - Włącz: **TAK**
 - Port: **502** (domyślny)
-- Slave ID: **10** (domyślny)
+- ID urządzenia: **10** (domyślny)
 
 ### 2. Dodaj integrację w Home Assistant
 1. **Ustawienia** → **Integracje** → **+ DODAJ INTEGRACJĘ**
@@ -75,7 +75,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 3. Wprowadź dane:
    - **IP Address**: IP rekuperatora (np. 192.168.1.100)
    - **Port**: 502
-   - **Slave ID**: 10
+   - **ID urządzenia**: 10
 4. Integracja automatycznie przeskanuje urządzenie
 5. Kliknij **DODAJ**
 
@@ -270,7 +270,7 @@ Użyj serwisu `get_diagnostic_info` aby uzyskać:
 #### ❌ "Nie można połączyć"
 1. Sprawdź IP i ping do urządzenia: `ping 192.168.1.100`
 2. Upewnij się, że Modbus TCP jest włączony (port 502)
-3. Spróbuj różnych Slave ID (integracja auto-wykrywa 1, 10, 247)
+3. Spróbuj różnych ID urządzenia (integracja auto-wykrywa 1, 10, 247)
 4. Sprawdź zaporę sieciową
 
 #### ❌ "Brak encji"
