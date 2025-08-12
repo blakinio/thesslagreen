@@ -177,9 +177,9 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
                 "Failed to set %s to %.2f: %s", self.register_name, value, exc
             )
             raise
-        except Exception as exc:  # pragma: no cover - unexpected
+        except (ValueError, OSError) as exc:  # pragma: no cover - unexpected
             _LOGGER.exception(
-                "Unexpected error setting %s to %.2f: %s",
+                "Error setting %s to %.2f: %s",
                 self.register_name,
                 value,
                 exc,

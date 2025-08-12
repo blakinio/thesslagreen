@@ -156,3 +156,16 @@ def test_number_set_value_write_failure(mock_coordinator):
     with pytest.raises(RuntimeError):
         asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.parametrize("exc_cls", [ValueError, OSError])
+def test_number_set_value_other_errors(mock_coordinator, exc_cls):
+    """Ensure ValueError and OSError propagate when setting the number."""
+    mock_coordinator.data["required_temperature"] = 20
+    entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+
+    mock_coordinator.async_write_register = AsyncMock(side_effect=exc_cls("fail"))
+    with pytest.raises(exc_cls):
+        asyncio.run(number.async_set_native_value(22))
+    mock_coordinator.async_request_refresh.assert_not_awaited()
