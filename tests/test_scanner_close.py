@@ -229,3 +229,31 @@ def test_disconnect_closes_client():
 
     import asyncio
     asyncio.run(run_test())
+
+
+def test_disconnect_closes_client_sync():
+    """Ensure _disconnect handles sync client.close."""
+
+    async def run_test():
+        hass = MagicMock()
+        coordinator = ThesslaGreenModbusCoordinator(
+            hass=hass,
+            host="localhost",
+            port=502,
+            slave_id=1,
+            name="Test",
+            scan_interval=30,
+            timeout=10,
+            retry=3,
+        )
+
+        client = MagicMock()
+        coordinator.client = client
+
+        await coordinator._disconnect()
+
+        client.close.assert_called_once()
+        assert coordinator.client is None
+
+    import asyncio
+    asyncio.run(run_test())
