@@ -409,7 +409,7 @@
       "party_mode": { "name": "Tryb party" },
       "fireplace_mode": { "name": "Tryb kominkowy" },
       "vacation_mode": { "name": "Tryb wakacyjny" },
-      "okap_mode": { "name": "Tryb okapu" },
+      "hood_mode": { "name": "Tryb okapu" },
       "silent_mode": { "name": "Tryb cichy" }
     },
     "select": {
@@ -463,13 +463,13 @@
       "air_flow_rate_auto": {
         "name": "Intensywność automatyczna"
       },
-      "okap_intensity": {
+      "hood_intensity": {
         "name": "Intensywność okapu"
       },
-      "kominek_intensity": {
+      "fireplace_intensity": {
         "name": "Intensywność kominka"
       },
-      "wietrzenie_intensity": {
+      "venting_intensity": {
         "name": "Intensywność wietrzenia"
       },
         "filter_change_interval": {
