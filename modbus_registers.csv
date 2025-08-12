@@ -1,12 +1,12 @@
 Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,Default_Value,Multiplier,Unit,Information,Software_Version,Notes
 
 # 01 - READ COILS
-01,0x0005,5,R/-,duct_warter_heater_pump,Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy,0,1,,,"0 - OFF; 1 - ON",,
+01,0x0005,5,R/-,duct_water_heater_pump,Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy,0,1,,,"0 - OFF; 1 - ON",,
 01,0x0009,9,R/-,bypass,Stan wyjścia siłownika przepustnicy bypass,0,1,,,"0 - OFF; 1 - ON",,
 01,0x000A,10,R/-,info,Stan wyjścia sygnału potwierdzenia pracy centrali (O1),0,1,,,"0 - OFF; 1 - ON",4.84,
 01,0x000B,11,R/-,power_supply_fans,Stan wyjścia przekaźnika zasilania wentylatorów,0,1,,,"0 - OFF; 1 - ON",,
 01,0x000C,12,R/-,heating_cable,Stan wyjścia przekaźnika zasilania kabla grzejnego,0,1,,,"0 - OFF; 1 - ON",,
-01,0x000D,13,R/-,workt_permit,Stan wyjścia przekaźnika potwierdzenia pracy (Expansion),0,1,,,"0 - OFF; 1 - ON",,
+01,0x000D,13,R/-,work_permit,Stan wyjścia przekaźnika potwierdzenia pracy (Expansion),0,1,,,"0 - OFF; 1 - ON",,
 01,0x000E,14,R/-,gwc,Stan wyjścia przekaźnika GWC,0,1,,,"0 - OFF; 1 - ON",,
 01,0x000F,15,R/-,hood,Stan wyjścia zasilającego przepustnicę okapu,0,1,,,"0 - OFF; 1 - ON",,
 
@@ -52,8 +52,8 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 04,0x010F,271,R/-,constant_flow_active,Status aktywności systemu Constant Flow,0,1,,1,"0 - nieaktywny; 1 - aktywny",,
 04,0x0110,272,R/-,supply_percentage,Zadana intensywność wentylacji (nawiew),0,150,,1,%,"Zakres wartości podczas pracy ograniczony wartościami (0x04) 0x0114 oraz 0x0115",,
 04,0x0111,273,R/-,exhaust_percentage,Zadana intensywność wentylacji (nawiew),0,150,,1,%,"Zakres wartości podczas pracy ograniczony wartościami (0x04) 0x0114 oraz 0x0115",,
-04,0x0112,274,R/-,supply_flowrate,Zadany strumień przepływu (nawiew),0,4095,,1,m3/h,"Strumień powietrza nawiewanego mierzony przez system CF",,
-04,0x0113,275,R/-,exhaust_flowrate,Zadany strumień przepływu (wywiew),0,4095,,1,m3/h,"Strumień powietrza nawiewanego mierzony przez system CF",,
+04,0x0112,274,R/-,supply_flow_rate,Zadany strumień przepływu (nawiew),0,4095,,1,m3/h,"Strumień powietrza nawiewanego mierzony przez system CF",,
+04,0x0113,275,R/-,exhaust_flow_rate,Zadany strumień przepływu (wywiew),0,4095,,1,m3/h,"Strumień powietrza nawiewanego mierzony przez system CF",,
 04,0x0114,276,R/-,min_percentage,Minimalna możliwa do ustawienia intensywność wentylacji,10,10,,1,%,"Zakres dynamiczny - wartość jest zależna od instalacji i wartości nominalnych wydatków z kalibracji, nie mniejsza niż 10%",,
 04,0x0115,277,R/-,max_percentage,Maksymalna możliwa do ustawienia intensywność wentylacji,150,150,,1,%,"Zakres dynamiczny - wartość jest zależna od instalacji i wartości nominalnych wydatków z kalibracji, nie większa niż 150%",,
 04,0x012A,298,R/-,water_removal_active,Status działania procedury HEWR,0,1,1,1,"0 - brak (procedura nieaktywna); 1 - jest (trwa procedura)",4.80,
