@@ -99,11 +99,13 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_input_registers(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.registers
-        except (ModbusException, ConnectionException):
-            _LOGGER.debug(f"Failed to read input 0x{address:04X}", exc_info=True)
-        except (OSError, asyncio.TimeoutError):
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug(
+                "Failed to read input 0x%04X: %s", address, exc, exc_info=True
+            )
+        except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.error(
-                f"Unexpected error reading input 0x{address:04X}", exc_info=True
+                "Unexpected error reading input 0x%04X: %s", address, exc, exc_info=True
             )
         return None
 
@@ -115,11 +117,13 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_holding_registers(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.registers
-        except (ModbusException, ConnectionException):
-            _LOGGER.debug(f"Failed to read holding 0x{address:04X}", exc_info=True)
-        except (OSError, asyncio.TimeoutError):
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug(
+                "Failed to read holding 0x%04X: %s", address, exc, exc_info=True
+            )
+        except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.error(
-                f"Unexpected error reading holding 0x{address:04X}", exc_info=True
+                "Unexpected error reading holding 0x%04X: %s", address, exc, exc_info=True
             )
         return None
 
@@ -131,11 +135,13 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_coils(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
-        except (ModbusException, ConnectionException):
-            _LOGGER.debug(f"Failed to read coil 0x{address:04X}", exc_info=True)
-        except (OSError, asyncio.TimeoutError):
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug(
+                "Failed to read coil 0x%04X: %s", address, exc, exc_info=True
+            )
+        except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.error(
-                f"Unexpected error reading coil 0x{address:04X}", exc_info=True
+                "Unexpected error reading coil 0x%04X: %s", address, exc, exc_info=True
             )
         return None
 
@@ -147,11 +153,13 @@ class ThesslaGreenDeviceScanner:
             response = await client.read_discrete_inputs(address, count, unit=self.slave_id)
             if not response.isError():
                 return response.bits[:count]
-        except (ModbusException, ConnectionException):
-            _LOGGER.debug(f"Failed to read discrete 0x{address:04X}", exc_info=True)
-        except (OSError, asyncio.TimeoutError):
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug(
+                "Failed to read discrete 0x%04X: %s", address, exc, exc_info=True
+            )
+        except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.error(
-                f"Unexpected error reading discrete 0x{address:04X}", exc_info=True
+                "Unexpected error reading discrete 0x%04X: %s", address, exc, exc_info=True
             )
         return None
 
@@ -442,11 +450,11 @@ class ThesslaGreenDeviceScanner:
 
             return info, caps, present_blocks
 
-        except (ModbusException, ConnectionException):
-            _LOGGER.exception("Device scan failed")
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.exception("Device scan failed: %s", exc)
             raise
-        except (OSError, asyncio.TimeoutError, ValueError):
-            _LOGGER.exception("Unexpected error during device scan")
+        except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            _LOGGER.exception("Unexpected error during device scan: %s", exc)
             raise
 
     async def scan_device(self) -> Dict[str, Any]:
@@ -482,11 +490,11 @@ class ThesslaGreenDeviceScanner:
 
             return result
 
-        except (ConnectionException, ModbusException):
-            _LOGGER.exception("Connection failed during device scan")
+        except (ConnectionException, ModbusException) as exc:
+            _LOGGER.exception("Connection failed during device scan: %s", exc)
             raise
-        except (OSError, asyncio.TimeoutError, ValueError):
-            _LOGGER.exception("Device scan failed")
+        except (OSError, asyncio.TimeoutError, ValueError) as exc:
+            _LOGGER.exception("Device scan failed: %s", exc)
             raise
 
     async def close(self):
@@ -496,10 +504,10 @@ class ThesslaGreenDeviceScanner:
 
         try:
             await self._client.close()
-        except (ModbusException, ConnectionException):
-            _LOGGER.debug("Error closing Modbus client", exc_info=True)
-        except OSError:
-            _LOGGER.debug("Unexpected error closing Modbus client", exc_info=True)
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug("Error closing Modbus client: %s", exc, exc_info=True)
+        except OSError as exc:
+            _LOGGER.debug("Unexpected error closing Modbus client: %s", exc, exc_info=True)
         finally:
             self._client = None
             _LOGGER.debug("Disconnected from ThesslaGreen device")

@@ -157,11 +157,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     self.device_info.get("model", "Unknown"),
                     self.device_info.get("firmware", "Unknown"),
                 )
-            except (ModbusException, ConnectionException):
-                _LOGGER.exception("Device scan failed")
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.exception("Device scan failed: %s", exc)
                 raise
-            except (OSError, asyncio.TimeoutError, ValueError):
-                _LOGGER.exception("Unexpected error during device scan")
+            except (OSError, asyncio.TimeoutError, ValueError) as exc:
+                _LOGGER.exception("Unexpected error during device scan: %s", exc)
                 raise
             finally:
                 await scanner.close()
@@ -274,11 +274,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
-            except (ModbusException, ConnectionException):
-                _LOGGER.exception("Connection test failed")
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.exception("Connection test failed: %s", exc)
                 raise
-            except (OSError, asyncio.TimeoutError):
-                _LOGGER.exception("Unexpected error during connection test")
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.exception("Unexpected error during connection test: %s", exc)
                 raise
 
     async def _async_setup_client(self) -> bool:
@@ -289,11 +289,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         try:
             await self._ensure_connection()
             return True
-        except (ModbusException, ConnectionException):
-            _LOGGER.exception("Failed to set up Modbus client")
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.exception("Failed to set up Modbus client: %s", exc)
             return False
-        except (OSError, asyncio.TimeoutError):
-            _LOGGER.exception("Unexpected error setting up Modbus client")
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.exception("Unexpected error setting up Modbus client: %s", exc)
             return False
 
     async def async_ensure_client(self) -> bool:
@@ -317,13 +317,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 if not connected:
                     raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
                 _LOGGER.debug("Modbus connection established")
-            except (ModbusException, ConnectionException):
+            except (ModbusException, ConnectionException) as exc:
                 self.statistics["connection_errors"] += 1
-                _LOGGER.exception("Failed to establish connection")
+                _LOGGER.exception("Failed to establish connection: %s", exc)
                 raise
-            except (OSError, asyncio.TimeoutError):
+            except (OSError, asyncio.TimeoutError) as exc:
                 self.statistics["connection_errors"] += 1
-                _LOGGER.exception("Unexpected error establishing connection")
+                _LOGGER.exception("Unexpected error establishing connection: %s", exc)
                 raise
 
     async def _async_update_data(self) -> Dict[str, Any]:

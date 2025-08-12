@@ -64,13 +64,13 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         return {"title": name, "device_info": device_info, "scan_result": scan_result}
 
     except ConnectionException as exc:
-        _LOGGER.exception("Connection error")
+        _LOGGER.exception("Connection error: %s", exc)
         raise CannotConnect from exc
     except ModbusException as exc:
-        _LOGGER.exception("Modbus error")
+        _LOGGER.exception("Modbus error: %s", exc)
         raise InvalidAuth from exc
     except (OSError, asyncio.TimeoutError) as exc:
-        _LOGGER.exception("Unexpected error during device validation")
+        _LOGGER.exception("Unexpected error during device validation: %s", exc)
         raise CannotConnect from exc
     finally:
         await scanner.close()
