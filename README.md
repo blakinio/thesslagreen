@@ -12,10 +12,10 @@ Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokoł
 ### 🚀 Kluczowe funkcje v2.1+
 
 - **🔍 Inteligentne skanowanie urządzenia** - automatycznie wykrywa dostępne funkcje i rejestry
-- **📱 Tylko aktywne entycje** - tworzy tylko te entycje, które są rzeczywiście dostępne
+- **📱 Tylko aktywne encje** - tworzy tylko te encje, które są rzeczywiście dostępne
 - **🏠 Kompletna kontrola rekuperatora** - wszystkie tryby pracy, temperatury, przepływy
 - **📊 Pełny monitoring** - wszystkie czujniki, statusy, alarmy, diagnostyka
-- **🌡️ Zaawansowana entycja Climate** - pełna kontrola z preset modes i trybami specjalnymi
+- **🌡️ Zaawansowana encja Climate** - pełna kontrola z preset modes i trybami specjalnymi
 - **⚡ Wszystkie funkcje specjalne** - OKAP, KOMINEK, WIETRZENIE, PUSTY DOM, BOOST
 - **🌿 Systemy GWC i Bypass** - kompletna kontrola systemów dodatkowych
 - **📅 Harmonogram tygodniowy** - pełna konfiguracja programów czasowych
@@ -85,7 +85,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Retry**: 1-5 prób (domyślnie 3)
 - **Pełna lista rejestrów**: Pomiń skanowanie (może powodować błędy)
 
-## 📊 Dostępne entycje
+## 📊 Dostępne encje
 
 ### Sensory (50+ automatycznie wykrywanych)
 - **Temperatury**: Zewnętrzna, nawiew, wywiew, FPX, GWC, kanałowa, otoczenia
@@ -273,7 +273,7 @@ Użyj serwisu `get_diagnostic_info` aby uzyskać:
 3. Spróbuj różnych Slave ID (integracja auto-wykrywa 1, 10, 247)
 4. Sprawdź zaporę sieciową
 
-#### ❌ "Brak entycji"
+#### ❌ "Brak encji"
 1. Poczekaj 30-60 sekund na początkowe skanowanie
 2. Sprawdź logi w **Ustawienia** → **System** → **Logi**
 3. Użyj serwisu `rescan_device`
@@ -282,7 +282,7 @@ Użyj serwisu `get_diagnostic_info` aby uzyskać:
 #### ❌ "Entycje niedostępne"
 1. Sprawdź połączenie sieciowe
 2. Restart rekuperatora (wyłącz zasilanie na 30s)
-3. Sprawdź status entycji w **Narzędzia programistyczne**
+3. Sprawdź status encji w **Narzędzia programistyczne**
 
 ### Logowanie debugowe
 Dodaj do `configuration.yaml`:
