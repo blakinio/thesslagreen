@@ -144,7 +144,7 @@
         "name": "Indeks jakości powietrza"
       },
       "filter_lifetime_remaining": {
-        "name": "Pozostały czas życia filtra"
+        "name": "Pozostały czas pracy filtra"
       },
       "preheater_power": {
         "name": "Moc wstępnego grzania"
@@ -612,7 +612,7 @@
     },
     "reset_filters": {
       "name": "Resetuj licznik filtrów",
-      "description": "Resetuje licznik żywotności filtrów",
+      "description": "Resetuje licznik czasu pracy filtrów",
       "fields": {
         "filter_type": {
           "name": "Typ filtra",
