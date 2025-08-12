@@ -68,7 +68,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         raise CannotConnect from exc
     except ModbusException as exc:
         _LOGGER.exception("Modbus error: %s", exc)
-        raise InvalidAuth from exc
+        raise CannotConnect from exc
     except (OSError, asyncio.TimeoutError) as exc:
         _LOGGER.exception("Unexpected error during device validation: %s", exc)
         raise CannotConnect from exc
