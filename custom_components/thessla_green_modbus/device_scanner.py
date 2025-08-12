@@ -14,7 +14,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
 from .modbus_helpers import _call_modbus
-from .const import DEFAULT_SLAVE_ID, SENSOR_UNAVAILABLE
+from .const import (
+    DEFAULT_SLAVE_ID,
+    SENSOR_UNAVAILABLE,
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+)
+from .registers import INPUT_REGISTERS, HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -168,47 +174,48 @@ class ThesslaGreenDeviceScanner:
         # Default: consider valid
         return True
 
-    def _analyze_capabilities(self) -> Dict[str, bool]:
+    def _analyze_capabilities(self) -> DeviceCapabilities:
         """Analyze available registers to determine device capabilities."""
-        caps = {}
+        caps = DeviceCapabilities()
 
-        # Check for constant flow control
-        caps["constant_flow"] = any(
+        # Constant flow detection
+        caps.constant_flow = any(
             "constant_flow" in reg or "cf_" in reg
-            for reg in self.available_registers["input_registers"]
+            for reg in (
+                self.available_registers["input_registers"].union(
+                    self.available_registers["holding_registers"]
+                )
+            )
         )
 
-        # Check for GWC system
-        caps["gwc_system"] = any(
+        # Systems detection
+        caps.gwc_system = any(
             "gwc" in reg.lower()
             for registers in self.available_registers.values()
             for reg in registers
         )
-
-        # Check for bypass system
-        caps["bypass_system"] = any(
+        caps.bypass_system = any(
             "bypass" in reg.lower()
             for registers in self.available_registers.values()
             for reg in registers
         )
 
-        # Check for expansion module
-        caps["expansion_module"] = "expansion" in self.available_registers["discrete_inputs"]
+        # Expansion module
+        caps.expansion_module = "expansion" in self.available_registers["discrete_inputs"]
 
-        # Check for heating/cooling
-        caps["heating_system"] = any(
+        # Heating/Cooling systems
+        caps.heating_system = any(
             "heating" in reg.lower() or "heater" in reg.lower()
             for registers in self.available_registers.values()
             for reg in registers
         )
-
-        caps["cooling_system"] = any(
+        caps.cooling_system = any(
             "cooling" in reg.lower() or "cooler" in reg.lower()
             for registers in self.available_registers.values()
             for reg in registers
         )
 
-        # Check for temperature sensors
+        # Temperature sensors
         temp_sensors = [
             "outside_temperature",
             "supply_temperature",
@@ -219,30 +226,47 @@ class ThesslaGreenDeviceScanner:
             "ambient_temperature",
             "heating_temperature",
         ]
-
         for sensor in temp_sensors:
-            caps[f"sensor_{sensor}"] = sensor in self.available_registers["input_registers"]
+            if sensor in self.available_registers["input_registers"]:
+                caps.temperature_sensors.add(sensor)
+                setattr(caps, f"sensor_{sensor}", True)
+        caps.temperature_sensors_count = len(caps.temperature_sensors)
 
-        # Count total temperature sensors present
-        caps["temperature_sensors_count"] = sum(
-            1 for sensor in temp_sensors if caps[f"sensor_{sensor}"]
+        # Flow sensors (simple pattern match)
+        caps.flow_sensors = {
+            reg
+            for reg in self.available_registers["input_registers"]
+            if "flow" in reg
+        }
+
+        # Air quality sensors
+        caps.air_quality = (
+            any(
+                sensor in self.available_registers["input_registers"]
+                for sensor in [
+                    "co2_level",
+                    "voc_level",
+                    "pm25_level",
+                    "air_quality_index",
+                ]
+            )
+            or "contamination_sensor" in self.available_registers["discrete_inputs"]
         )
 
-        # Check for air quality sensors
-        caps["air_quality"] = any(
-            sensor in self.available_registers["input_registers"]
-            for sensor in ["co2_level", "voc_level", "pm25_level", "air_quality_index"]
-        )
-
-        # Check for weekly schedule
-        caps["weekly_schedule"] = any(
+        # Weekly schedule features
+        caps.weekly_schedule = any(
             "schedule" in reg.lower() or "weekly" in reg.lower()
             for registers in self.available_registers.values()
             for reg in registers
         )
 
-        # Basic control is always available if we can read mode
-        caps["basic_control"] = "mode" in self.available_registers["holding_registers"]
+        # Basic control availability
+        caps.basic_control = "mode" in self.available_registers["holding_registers"]
+
+        # Special functions from discrete inputs
+        for func in ["fireplace", "airing_switch"]:
+            if func in self.available_registers["discrete_inputs"]:
+                caps.special_functions.add(func)
 
         return caps
 
@@ -267,7 +291,6 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.debug("Connected successfully, starting device scan")
 
             info = DeviceInfo()
-            caps = DeviceCapabilities()
             present_blocks = {}
 
             # Read firmware version
@@ -286,122 +309,38 @@ class ThesslaGreenDeviceScanner:
                     model = "AirPack⁴ Energy+"
             info.model = model
 
-            # Scan temperature sensors (0x0010-0x0017)
-            temp_sensors = [
-                (0x0010, "outside_temperature"),
-                (0x0011, "supply_temperature"),
-                (0x0012, "exhaust_temperature"),
-                (0x0013, "fpx_temperature"),
-                (0x0014, "duct_supply_temperature"),
-                (0x0015, "gwc_temperature"),
-                (0x0016, "ambient_temperature"),
-                (0x0017, "heating_temperature"),
-            ]
+            # Dynamically scan all defined registers
+            register_maps = {
+                "input_registers": (INPUT_REGISTERS, self._read_input),
+                "holding_registers": (HOLDING_REGISTERS, self._read_holding),
+                "coil_registers": (COIL_REGISTERS, self._read_coil),
+                "discrete_inputs": (DISCRETE_INPUT_REGISTERS, self._read_discrete),
+            }
 
-            for addr, reg_name in temp_sensors:
-                val = await self._read_input(client, addr, 1)
-                if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    caps.temperature_sensors.add(reg_name)
-                    setattr(caps, f"sensor_{reg_name}", True)
-                    caps.temperature_sensors_count += 1
-                    self.available_registers["input_registers"].add(reg_name)
+            for reg_type, (reg_map, read_fn) in register_maps.items():
+                addr_to_name = {addr: name for name, addr in reg_map.items()}
+                addresses = sorted(addr_to_name)
+                if not addresses:
+                    continue
 
-            if caps.temperature_sensors_count > 0:
-                present_blocks["temperature"] = (0x0010, 0x0017)
+                for start, count in self._group_registers_for_batch_read(addresses):
+                    values = await read_fn(client, start, count)
+                    if values is None:
+                        continue
+                    for offset, value in enumerate(values):
+                        addr = start + offset
+                        name = addr_to_name.get(addr)
+                        if not name:
+                            continue
+                        if reg_type in ("input_registers", "holding_registers"):
+                            if self._is_valid_register_value(name, value):
+                                self.available_registers[reg_type].add(name)
+                        else:
+                            self.available_registers[reg_type].add(name)
 
-            # Scan flow sensors (0x0018-0x001E)
-            flow_sensors = [
-                (0x0018, "supply_flow_rate"),
-                (0x0019, "exhaust_flow_rate"),
-                (0x001A, "outdoor_flow_rate"),
-                (0x001B, "inside_flow_rate"),
-                (0x001C, "gwc_flow_rate"),
-                (0x001D, "heat_recovery_flow_rate"),
-                (0x001E, "bypass_flow_rate"),
-            ]
+                present_blocks[reg_type] = (addresses[0], addresses[-1])
 
-            for addr, reg_name in flow_sensors:
-                val = await self._read_input(client, addr, 1)
-                if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    caps.flow_sensors.add(reg_name)
-                    self.available_registers["input_registers"].add(reg_name)
-
-            if len(caps.flow_sensors) > 0:
-                present_blocks["flow"] = (0x0018, 0x001E)
-
-            # Scan control registers
-            control_registers = [
-                (0x0000, "mode"),
-                (0x0001, "on_off_panel_mode"),
-                (0x0002, "manual_override"),
-                (0x0012, "gwc_mode"),
-                (0x0014, "bypass_mode"),
-                (0x0016, "cooling_mode"),
-                (0x0020, "constant_flow_mode"),
-            ]
-
-            for addr, reg_name in control_registers:
-                val = await self._read_holding(client, addr, 1)
-                if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    if "constant_flow" in reg_name:
-                        caps.constant_flow = True
-                    elif "gwc" in reg_name:
-                        caps.gwc_system = True
-                    elif "bypass" in reg_name:
-                        caps.bypass_system = True
-                    elif "cooling" in reg_name:
-                        caps.cooling_system = True
-
-                    self.available_registers["holding_registers"].add(reg_name)
-
-            if len(self.available_registers["holding_registers"]) > 0:
-                present_blocks["control"] = (0x0000, 0x0020)
-
-            # Scan coil registers
-            coil_registers = [
-                (0x0000, "power_supply_fans"),
-                (0x0001, "power_exhaust_fans"),
-                (0x0002, "gwc_enabled"),
-                (0x0003, "bypass_enabled"),
-                (0x0004, "heating_enabled"),
-                (0x0005, "cooling_enabled"),
-            ]
-
-            for addr, reg_name in coil_registers:
-                val = await self._read_coil(client, addr, 1)
-                if val is not None:
-                    if "heating" in reg_name and val[0]:
-                        caps.heating_system = True
-                    elif "cooling" in reg_name and val[0]:
-                        caps.cooling_system = True
-
-                    self.available_registers["coil_registers"].add(reg_name)
-
-            if len(self.available_registers["coil_registers"]) > 0:
-                present_blocks["coil_registers"] = (0x0000, 0x0005)
-
-            # Scan discrete inputs
-            discrete_registers = [
-                (0x0000, "expansion"),
-                (0x0005, "contamination_sensor"),
-                (0x0007, "airing_switch"),
-                (0x000E, "fireplace"),
-            ]
-
-            for addr, reg_name in discrete_registers:
-                val = await self._read_discrete(client, addr, 1)
-                if val is not None:
-                    if "expansion" in reg_name and val[0]:
-                        caps.expansion_module = True
-                    elif "contamination_sensor" in reg_name:
-                        caps.air_quality = True
-                    elif reg_name in ["fireplace", "airing_switch"]:
-                        caps.special_functions.add(reg_name)
-
-                    self.available_registers["discrete_inputs"].add(reg_name)
-
-            if len(self.available_registers["discrete_inputs"]) > 0:
-                present_blocks["discrete"] = (0x0000, 0x000F)
+            caps = self._analyze_capabilities()
 
             _LOGGER.info(
                 "Device scan completed: %d blocks found, %d capabilities detected",
@@ -477,7 +416,7 @@ class ThesslaGreenDeviceScanner:
         self._client = None
         _LOGGER.debug("Disconnected from ThesslaGreen device")
 
-    def _analyze_capabilities_enhanced(self) -> Dict[str, bool]:
+    def _analyze_capabilities_enhanced(self) -> DeviceCapabilities:
         """Enhanced capability analysis for optimization tests."""
         return self._analyze_capabilities()
 
