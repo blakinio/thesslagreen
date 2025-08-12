@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 """Number platform for the ThesslaGreen Modbus integration."""
+from __future__ import annotations
 
 import logging
 from typing import Any, Dict, Optional
