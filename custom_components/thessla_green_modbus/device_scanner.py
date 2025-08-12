@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
 from .modbus_helpers import _call_modbus
-from .const import DEFAULT_SLAVE_ID
+from .const import DEFAULT_SLAVE_ID, SENSOR_UNAVAILABLE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,13 +153,13 @@ class ThesslaGreenDeviceScanner:
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
-        # Temperature sensors use 0x8000 to indicate no sensor
+        # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in register_name.lower():
-            return value != 0x8000 and value != 32768
+            return value != SENSOR_UNAVAILABLE
 
-        # Air flow sensors use 0x8000 to indicate no sensor
+        # Air flow sensors use the same sentinel for no sensor
         if any(x in register_name.lower() for x in ["flow", "air_flow", "flowrate"]):
-            return value != 0x8000 and value != 32768 and value != 65535
+            return value != SENSOR_UNAVAILABLE and value != 65535
 
         # Mode values should be in valid range
         if "mode" in register_name.lower():
