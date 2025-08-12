@@ -80,7 +80,7 @@ BINARY_SENSOR_DEFINITIONS = {
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
-    "ppoz": {
+    "fire_alarm": {
         "translation_key": "fire_alarm",
         "icon": "mdi:fire",
         "device_class": BinarySensorDeviceClass.SAFETY,
