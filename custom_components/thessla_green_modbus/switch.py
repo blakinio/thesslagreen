@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, HOLDING_REGISTERS, COIL_REGISTERS
+from .const import COIL_REGISTERS, DOMAIN, HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
@@ -200,11 +200,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         # Write register - pymodbus 3.5+ compatible
         if register_type == "holding_registers":
             response = await self.coordinator.client.write_register(
-                address=register_address, value=value, slave=self.coordinator.slave_id
+                address=register_address, value=value, unit=self.coordinator.slave_id
             )
         else:  # coil register
             response = await self.coordinator.client.write_coil(
-                address=register_address, value=bool(value), slave=self.coordinator.slave_id
+                address=register_address, value=bool(value), unit=self.coordinator.slave_id
             )
 
         if response.isError():

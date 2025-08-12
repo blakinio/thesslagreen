@@ -220,7 +220,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
         # Write register - pymodbus 3.5+ compatible
         response = await self.coordinator.client.write_register(
-            address=register_address, value=value, slave=self.coordinator.slave_id
+            address=register_address, value=value, unit=self.coordinator.slave_id
         )
 
         if response.isError():

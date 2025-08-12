@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature, PERCENTAGE, UnitOfTime
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -196,7 +196,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
 
         # Write register - pymodbus 3.5+ compatible
         response = await self.coordinator.client.write_register(
-            address=register_address, value=int_value, slave=self.coordinator.slave_id
+            address=register_address, value=int_value, unit=self.coordinator.slave_id
         )
 
         if response.isError():

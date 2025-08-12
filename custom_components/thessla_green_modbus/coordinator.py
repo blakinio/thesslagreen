@@ -1,49 +1,57 @@
 """Data coordinator for the ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Set, List, Tuple
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 try:  # pragma: no cover - handle missing pymodbus during tests
     from pymodbus.exceptions import ConnectionException
 except Exception:  # pragma: no cover
+
     class ConnectionException(Exception):
         """Fallback exception when pymodbus is not available."""
+
         pass
+
 
 if TYPE_CHECKING:  # pragma: no cover - used for type hints only
     from pymodbus.client import AsyncModbusTcpClient
 
 from homeassistant.core import HomeAssistant
+
 try:  # pragma: no cover
     from homeassistant.helpers.device_registry import DeviceInfo
 except Exception:  # pragma: no cover
+
     class DeviceInfo(dict):
         """Minimal fallback DeviceInfo for tests."""
+
         pass
+
+
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
-    DOMAIN,
-    MANUFACTURER, 
-    MODEL,
-    INPUT_REGISTERS,
-    HOLDING_REGISTERS,
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
+    DOMAIN,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+    MANUFACTURER,
+    MODEL,
     REGISTER_MULTIPLIERS,
 )
-from .device_scanner import ThesslaGreenDeviceScanner, DeviceCapabilities
+from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     """Optimized data coordinator for ThesslaGreen Modbus device."""
-    
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -64,7 +72,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             name=f"{DOMAIN}_{name}",
             update_interval=scan_interval,
         )
-        
+
         self.host = host
         self.port = port
         self.slave_id = slave_id
@@ -73,12 +81,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.retry = retry
         self.force_full_register_list = force_full_register_list
         self.entry = entry
-        
+
         # Connection management
         self.client: Optional["AsyncModbusTcpClient"] = None
         self._connection_lock = asyncio.Lock()
         self._last_successful_read = datetime.now()
-        
+
         # Device info and capabilities
         self.device_info: Dict[str, Any] = {}
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
@@ -89,21 +97,24 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "discrete_inputs": set(),
         }
 
+codex/refactor-thessla_green_modbus-code
+=======
         # Pre-computed reverse register maps for fast lookups
         self._input_registers_rev = {addr: name for name, addr in INPUT_REGISTERS.items()}
         self._holding_registers_rev = {addr: name for name, addr in HOLDING_REGISTERS.items()}
         self._coil_registers_rev = {addr: name for name, addr in COIL_REGISTERS.items()}
         self._discrete_inputs_rev = {addr: name for name, addr in DISCRETE_INPUT_REGISTERS.items()}
         
+main
         # Optimization: Pre-computed register groups for batch reading
         self._register_groups: Dict[str, List[Tuple[int, int]]] = {}
         self._failed_registers: Set[str] = set()
         self._consecutive_failures = 0
         self._max_failures = 5
-        
+
         # Device scan result
         self.device_scan_result: Optional[Dict[str, Any]] = None
-        
+
         # Statistics and diagnostics
         self.statistics = {
             "successful_reads": 0,
@@ -115,11 +126,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "average_response_time": 0.0,
             "total_registers_read": 0,
         }
-    
+
     async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
         _LOGGER.info("Setting up ThesslaGreen coordinator for %s:%s", self.host, self.port)
-        
+
         # Scan device to discover available registers and capabilities
         if not self.force_full_register_list:
             _LOGGER.info("Scanning device for available registers...")
@@ -128,20 +139,22 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 port=self.port,
                 slave_id=self.slave_id,
                 timeout=self.timeout,
-                retry=self.retry
+                retry=self.retry,
             )
-            
+
             try:
                 self.device_scan_result = await scanner.scan_device()
                 self.available_registers = self.device_scan_result.get("available_registers", {})
                 self.device_info = self.device_scan_result.get("device_info", {})
-                self.capabilities = DeviceCapabilities(**self.device_scan_result.get("capabilities", {}))
-                
+                self.capabilities = DeviceCapabilities(
+                    **self.device_scan_result.get("capabilities", {})
+                )
+
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",
                     self.device_scan_result.get("register_count", 0),
                     self.device_info.get("model", "Unknown"),
-                    self.device_info.get("firmware", "Unknown")
+                    self.device_info.get("firmware", "Unknown"),
                 )
             except Exception as exc:
                 _LOGGER.error("Device scan failed: %s", exc)
@@ -152,15 +165,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             _LOGGER.info("Using full register list (skipping scan)")
             # Load all registers if forced
             self._load_full_register_list()
-        
+
         # Pre-compute register groups for batch reading
         self._compute_register_groups()
-        
+
         # Test initial connection
         await self._test_connection()
-        
+
         return True
-    
+
     def _load_full_register_list(self) -> None:
         """Load full register list when forced."""
         self.available_registers = {
@@ -169,51 +182,71 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "coil_registers": set(COIL_REGISTERS.keys()),
             "discrete_inputs": set(DISCRETE_INPUT_REGISTERS.keys()),
         }
-        
+
         self.device_info = {
             "device_name": f"ThesslaGreen {MODEL}",
             "model": MODEL,
             "firmware": "Unknown",
             "serial_number": "Unknown",
         }
-        
-        _LOGGER.info("Loaded full register list: %d total registers",
-                    sum(len(regs) for regs in self.available_registers.values()))
-    
+
+        _LOGGER.info(
+            "Loaded full register list: %d total registers",
+            sum(len(regs) for regs in self.available_registers.values()),
+        )
+
     def _compute_register_groups(self) -> None:
         """Pre-compute register groups for optimized batch reading."""
         # Group Input Registers
         if self.available_registers["input_registers"]:
-            input_addrs = [INPUT_REGISTERS[reg] for reg in self.available_registers["input_registers"]]
-            self._register_groups["input_registers"] = self._group_registers_for_batch_read(sorted(input_addrs))
-        
-        # Group Holding Registers  
+            input_addrs = [
+                INPUT_REGISTERS[reg] for reg in self.available_registers["input_registers"]
+            ]
+            self._register_groups["input_registers"] = self._group_registers_for_batch_read(
+                sorted(input_addrs)
+            )
+
+        # Group Holding Registers
         if self.available_registers["holding_registers"]:
-            holding_addrs = [HOLDING_REGISTERS[reg] for reg in self.available_registers["holding_registers"]]
-            self._register_groups["holding_registers"] = self._group_registers_for_batch_read(sorted(holding_addrs))
-        
+            holding_addrs = [
+                HOLDING_REGISTERS[reg] for reg in self.available_registers["holding_registers"]
+            ]
+            self._register_groups["holding_registers"] = self._group_registers_for_batch_read(
+                sorted(holding_addrs)
+            )
+
         # Group Coil Registers
         if self.available_registers["coil_registers"]:
             coil_addrs = [COIL_REGISTERS[reg] for reg in self.available_registers["coil_registers"]]
-            self._register_groups["coil_registers"] = self._group_registers_for_batch_read(sorted(coil_addrs))
-        
+            self._register_groups["coil_registers"] = self._group_registers_for_batch_read(
+                sorted(coil_addrs)
+            )
+
         # Group Discrete Input Registers
         if self.available_registers["discrete_inputs"]:
-            discrete_addrs = [DISCRETE_INPUT_REGISTERS[reg] for reg in self.available_registers["discrete_inputs"]]
-            self._register_groups["discrete"] = self._group_registers_for_batch_read(sorted(discrete_addrs))
-        
-        _LOGGER.debug("Pre-computed register groups: %s", 
-                     {k: len(v) for k, v in self._register_groups.items()})
-    
-    def _group_registers_for_batch_read(self, addresses: List[int], max_gap: int = 10, max_batch: int = 16) -> List[Tuple[int, int]]:
+            discrete_addrs = [
+                DISCRETE_INPUT_REGISTERS[reg] for reg in self.available_registers["discrete_inputs"]
+            ]
+            self._register_groups["discrete"] = self._group_registers_for_batch_read(
+                sorted(discrete_addrs)
+            )
+
+        _LOGGER.debug(
+            "Pre-computed register groups: %s",
+            {k: len(v) for k, v in self._register_groups.items()},
+        )
+
+    def _group_registers_for_batch_read(
+        self, addresses: List[int], max_gap: int = 10, max_batch: int = 16
+    ) -> List[Tuple[int, int]]:
         """Group consecutive registers for efficient batch reading."""
         if not addresses:
             return []
-        
+
         groups = []
         current_start = addresses[0]
         current_end = addresses[0]
-        
+
         for addr in addresses[1:]:
             # If gap is too large or batch too big, start new group
             if (addr - current_end > max_gap) or (current_end - current_start + 1 >= max_batch):
@@ -222,18 +255,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 current_end = addr
             else:
                 current_end = addr
-        
+
         # Add last group
         groups.append((current_start, current_end - current_start + 1))
         return groups
-    
+
     async def _test_connection(self) -> None:
         """Test initial connection to the device."""
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
                 # Try to read a basic register to verify communication
-                response = await self.client.read_input_registers(0x0000, 1, slave=self.slave_id)
+                response = await self.client.read_input_registers(0x0000, 1, unit=self.slave_id)
                 if response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
@@ -268,11 +301,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     port=self.port,
                     timeout=self.timeout,
                 )
-                # Explicitly set unit ID for pymodbus >=3.5
-                try:
-                    self.client.unit_id = self.slave_id
-                except Exception:
-                    setattr(self.client, "unit_id", self.slave_id)
                 connected = await self.client.connect()
                 if not connected:
                     raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
@@ -281,181 +309,240 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 self.statistics["connection_errors"] += 1
                 _LOGGER.error("Failed to establish connection: %s", exc)
                 raise
-    
+
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch data from the device with optimized batch reading."""
         start_time = datetime.now()
-        
+
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                
+
                 # Read all register types
                 data = {}
-                
+
                 # Read Input Registers
                 input_data = await self._read_input_registers_optimized()
                 data.update(input_data)
-                
+
                 # Read Holding Registers
                 holding_data = await self._read_holding_registers_optimized()
                 data.update(holding_data)
-                
+
                 # Read Coil Registers
                 coil_data = await self._read_coil_registers_optimized()
                 data.update(coil_data)
-                
+
                 # Read Discrete Inputs
                 discrete_data = await self._read_discrete_inputs_optimized()
                 data.update(discrete_data)
-                
+
                 # Post-process data (calculate derived values)
                 data = self._post_process_data(data)
-                
+
                 # Update statistics
                 self.statistics["successful_reads"] += 1
                 self.statistics["last_successful_update"] = datetime.now()
                 self._consecutive_failures = 0
-                
+
                 # Calculate response time
                 response_time = (datetime.now() - start_time).total_seconds()
                 self.statistics["average_response_time"] = (
-                    (self.statistics["average_response_time"] * (self.statistics["successful_reads"] - 1) + response_time) 
-                    / self.statistics["successful_reads"]
+                    self.statistics["average_response_time"]
+                    * (self.statistics["successful_reads"] - 1)
+                    + response_time
+                ) / self.statistics["successful_reads"]
+
+                _LOGGER.debug(
+                    "Data update successful: %d values read in %.2fs", len(data), response_time
                 )
-                
-                _LOGGER.debug("Data update successful: %d values read in %.2fs", len(data), response_time)
                 return data
-                
+
             except Exception as exc:
                 self.statistics["failed_reads"] += 1
                 self.statistics["last_error"] = str(exc)
                 self._consecutive_failures += 1
-                
+
                 # Disconnect if too many failures
                 if self._consecutive_failures >= self._max_failures:
                     _LOGGER.error("Too many consecutive failures, disconnecting")
                     await self._disconnect()
-                
+
                 _LOGGER.error("Failed to update data: %s", exc)
                 raise UpdateFailed(f"Error communicating with device: {exc}") from exc
-    
+
     async def _read_input_registers_optimized(self) -> Dict[str, Any]:
         """Read input registers using optimized batch reading."""
         data = {}
-        
+
         if "input_registers" not in self._register_groups:
             return data
 
         for start_addr, count in self._register_groups["input_registers"]:
             try:
-                response = await self.client.read_input_registers(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_input_registers(
+                    start_addr, count, unit=self.slave_id
+                )
                 if response.isError():
-                    _LOGGER.debug("Failed to read input registers at 0x%04X: %s", start_addr, response)
+                    _LOGGER.debug(
+                        "Failed to read input registers at 0x%04X: %s", start_addr, response
+                    )
                     continue
-                
+
                 # Process each register in the batch
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
+ codex/refactor-thessla_green_modbus-code
+                    register_name = self._find_register_name(INPUT_REGISTERS, addr)
+                    if (
+                        register_name
+                        and register_name in self.available_registers["input_registers"]
+                    ):
+=======
                     register_name = self._input_registers_rev.get(addr)
                     if register_name and register_name in self.available_registers["input_registers"]:
+ main
                         processed_value = self._process_register_value(register_name, value)
                         if processed_value is not None:
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
-                        
+
             except Exception as exc:
                 _LOGGER.debug("Error reading input registers at 0x%04X: %s", start_addr, exc)
                 continue
-        
+
         return data
-    
+
     async def _read_holding_registers_optimized(self) -> Dict[str, Any]:
         """Read holding registers using optimized batch reading."""
         data = {}
-        
+
         if "holding_registers" not in self._register_groups:
             return data
 
         for start_addr, count in self._register_groups["holding_registers"]:
             try:
-                response = await self.client.read_holding_registers(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_holding_registers(
+                    start_addr, count, unit=self.slave_id
+                )
                 if response.isError():
-                    _LOGGER.debug("Failed to read holding registers at 0x%04X: %s", start_addr, response)
+                    _LOGGER.debug(
+                        "Failed to read holding registers at 0x%04X: %s", start_addr, response
+                    )
                     continue
-                
+
                 # Process each register in the batch
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
+codex/refactor-thessla_green_modbus-code
+                    register_name = self._find_register_name(HOLDING_REGISTERS, addr)
+                    if (
+                        register_name
+                        and register_name in self.available_registers["holding_registers"]
+                    ):
+=======
                     register_name = self._holding_registers_rev.get(addr)
                     if register_name and register_name in self.available_registers["holding_registers"]:
+ main
                         processed_value = self._process_register_value(register_name, value)
                         if processed_value is not None:
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
-                        
+
             except Exception as exc:
                 _LOGGER.debug("Error reading holding registers at 0x%04X: %s", start_addr, exc)
                 continue
-        
+
         return data
-    
+
     async def _read_coil_registers_optimized(self) -> Dict[str, Any]:
         """Read coil registers using optimized batch reading."""
         data = {}
-        
+
         if "coil_registers" not in self._register_groups:
             return data
 
         for start_addr, count in self._register_groups["coil_registers"]:
             try:
-                response = await self.client.read_coils(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_coils(start_addr, count, unit=self.slave_id)
                 if response.isError():
-                    _LOGGER.debug("Failed to read coil registers at 0x%04X: %s", start_addr, response)
+                    _LOGGER.debug(
+                        "Failed to read coil registers at 0x%04X: %s", start_addr, response
+                    )
                     continue
-                
+
                 # Process each bit in the batch
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
+codex/refactor-thessla_green_modbus-code
+                    register_name = self._find_register_name(COIL_REGISTERS, addr)
+                    if (
+                        register_name
+                        and register_name in self.available_registers["coil_registers"]
+                    ):
+=======
                     register_name = self._coil_registers_rev.get(addr)
                     if register_name and register_name in self.available_registers["coil_registers"]:
+ main
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
-                        
+
             except Exception as exc:
                 _LOGGER.debug("Error reading coil registers at 0x%04X: %s", start_addr, exc)
                 continue
-        
+
         return data
-    
+
     async def _read_discrete_inputs_optimized(self) -> Dict[str, Any]:
         """Read discrete input registers using optimized batch reading."""
         data = {}
-        
+
         if "discrete" not in self._register_groups:
             return data
-        
+
         for start_addr, count in self._register_groups["discrete"]:
             try:
-                response = await self.client.read_discrete_inputs(start_addr, count, slave=self.slave_id)
+                response = await self.client.read_discrete_inputs(
+                    start_addr, count, unit=self.slave_id
+                )
                 if response.isError():
-                    _LOGGER.debug("Failed to read discrete inputs at 0x%04X: %s", start_addr, response)
+                    _LOGGER.debug(
+                        "Failed to read discrete inputs at 0x%04X: %s", start_addr, response
+                    )
                     continue
-                
+
                 # Process each bit in the batch
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
+codex/refactor-thessla_green_modbus-code
+                    register_name = self._find_register_name(DISCRETE_INPUT_REGISTERS, addr)
+                    if (
+                        register_name
+                        and register_name in self.available_registers["discrete_inputs"]
+                    ):
+=======
                     register_name = self._discrete_inputs_rev.get(addr)
                     if register_name and register_name in self.available_registers["discrete_inputs"]:
+ main
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
-                        
+
             except Exception as exc:
                 _LOGGER.debug("Error reading discrete inputs at 0x%04X: %s", start_addr, exc)
                 continue
-        
+
         return data
 
+ codex/refactor-thessla_green_modbus-code
+    def _find_register_name(self, register_map: Dict[str, int], address: int) -> Optional[str]:
+        """Find register name by address."""
+        for name, addr in register_map.items():
+            if addr == address:
+                return name
+        return None
+
+=======
+main
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
         # Check for sensor error values
@@ -463,74 +550,76 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             return None  # No sensor
         if value == 0x8000 and "flow" in register_name.lower():
             return None  # No sensor
-        
+
         # Apply multiplier
         if register_name in REGISTER_MULTIPLIERS:
             value = value * REGISTER_MULTIPLIERS[register_name]
-        
+
         return value
-    
+
     def _post_process_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Post-process data to calculate derived values."""
         # Calculate heat recovery efficiency if temperatures available
-        if all(k in data for k in ["outside_temperature", "supply_temperature", "exhaust_temperature"]):
+        if all(
+            k in data for k in ["outside_temperature", "supply_temperature", "exhaust_temperature"]
+        ):
             try:
                 outside = data["outside_temperature"]
                 supply = data["supply_temperature"]
                 exhaust = data["exhaust_temperature"]
-                
+
                 if exhaust != outside:
                     efficiency = ((supply - outside) / (exhaust - outside)) * 100
                     data["calculated_efficiency"] = max(0, min(100, efficiency))
             except Exception as exc:
                 _LOGGER.debug("Could not calculate efficiency: %s", exc)
-        
+
         # Calculate flow balance
         if "supply_flowrate" in data and "exhaust_flowrate" in data:
             data["flow_balance"] = data["supply_flowrate"] - data["exhaust_flowrate"]
             data["flow_balance_status"] = (
-                "balanced" if abs(data["flow_balance"]) < 10
-                else "supply_dominant" if data["flow_balance"] > 0
-                else "exhaust_dominant"
+                "balanced"
+                if abs(data["flow_balance"]) < 10
+                else "supply_dominant" if data["flow_balance"] > 0 else "exhaust_dominant"
             )
-        
+
         return data
-    
+
     async def async_write_register(self, register_name: str, value: int) -> bool:
         """Write to a holding or coil register."""
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                
+
                 # Determine register type and address
                 if register_name in HOLDING_REGISTERS:
                     address = HOLDING_REGISTERS[register_name]
                     response = await self.client.write_register(
-                        address=address, value=value, slave=self.slave_id
+                        address=address, value=value, unit=self.slave_id
                     )
                 elif register_name in COIL_REGISTERS:
                     address = COIL_REGISTERS[register_name]
                     response = await self.client.write_coil(
-                        address=address, value=bool(value), slave=self.slave_id
+                        address=address, value=bool(value), unit=self.slave_id
                     )
                 else:
                     _LOGGER.error("Unknown register for writing: %s", register_name)
                     return False
-                
+
                 if response.isError():
                     _LOGGER.error("Error writing to register %s: %s", register_name, response)
                     return False
-                
+
                 _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
-                
+
                 # Request data refresh
                 await self.async_request_refresh()
                 return True
-                
+
             except Exception as exc:
                 _LOGGER.error("Failed to write register %s: %s", register_name, exc)
                 return False
-    
+
     async def _disconnect(self) -> None:
         """Disconnect from Modbus device."""
         if self.client:
@@ -541,12 +630,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug("Error disconnecting: %s", exc)
             finally:
                 self.client = None
-    
+
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and disconnect."""
         _LOGGER.debug("Shutting down ThesslaGreen coordinator")
         await self._disconnect()
-    
+
     @property
     def performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics."""
@@ -554,9 +643,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "total_reads": self.statistics["successful_reads"],
             "failed_reads": self.statistics["failed_reads"],
             "success_rate": (
-                self.statistics["successful_reads"] /
-                max(1, self.statistics["successful_reads"] + self.statistics["failed_reads"])
-            ) * 100,
+                self.statistics["successful_reads"]
+                / max(1, self.statistics["successful_reads"] + self.statistics["failed_reads"])
+            )
+            * 100,
             "avg_response_time": self.statistics["average_response_time"],
             "connection_errors": self.statistics["connection_errors"],
             "last_error": self.statistics["last_error"],
@@ -588,9 +678,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 key: sorted(list(value)) for key, value in self.available_registers.items()
             },
             "capabilities": (
-                self.capabilities.as_dict()
-                if hasattr(self.capabilities, "as_dict")
-                else {}
+                self.capabilities.as_dict() if hasattr(self.capabilities, "as_dict") else {}
             ),
             "scan_result": self.device_scan_result,
         }
