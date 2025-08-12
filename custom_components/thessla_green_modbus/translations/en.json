@@ -527,7 +527,7 @@
           },
           "duration": {
             "name": "Duration (minutes)",
-            "description": "Duration of special mode in minutes (0 = unlimited)"
+            "description": "Duration of special mode in minutes (1-minute steps, 0 = unlimited)"
           }
         }
       },
