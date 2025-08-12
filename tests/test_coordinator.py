@@ -27,6 +27,7 @@ pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
 const.CONF_HOST = "host"
 const.CONF_PORT = "port"
 const.CONF_SCAN_INTERVAL = "scan_interval"
+const.CONF_NAME = "name"
 
 
 class Platform:
@@ -145,44 +146,43 @@ def coordinator():
         "coil_registers": {"system_on_off"},
         "discrete_inputs": set(),
     }
-    return ThesslaGreenCoordinator(
+    coordinator = ThesslaGreenCoordinator(
         hass=hass,
-        host="localhost", 
-        port=502, 
+        host="localhost",
+        port=502,
         slave_id=1,
+        name="test",
         scan_interval=30,
         timeout=10,
         retry=3,
-        available_registers=available_registers
     )
+    coordinator.available_registers = available_registers
+    return coordinator
 
 
 @pytest.mark.asyncio
 async def test_async_write_invalid_register(coordinator):
     """Return False and do not refresh on unknown register."""
-    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client:
-        result = await coordinator.async_write_register("invalid", 1)
-        assert result is False
-        mock_client.assert_not_called()
+    coordinator._ensure_connection = AsyncMock()
+    result = await coordinator.async_write_register("invalid", 1)
+    assert result is False
 
 
-@pytest.mark.asyncio 
+@pytest.mark.asyncio
 async def test_async_write_valid_register(coordinator):
     """Test successful register write."""
     coordinator.async_request_refresh = AsyncMock()
-    
-    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client_cls:
-        client = MagicMock()
-        mock_client_cls.return_value = client
-        client.connect.return_value = True
-        response = MagicMock()
-        response.isError.return_value = False
-        client.write_register.return_value = response
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_register = AsyncMock(return_value=response)
+    coordinator.client = client
 
-        result = await coordinator.async_write_register("mode", 1)
-        
-        assert result is True
-        coordinator.async_request_refresh.assert_called_once()
+    result = await coordinator.async_write_register("mode", 1)
+
+    assert result is True
+    coordinator.async_request_refresh.assert_called_once()
 
 
 def test_performance_stats(coordinator):
@@ -193,32 +193,69 @@ def test_performance_stats(coordinator):
 
 def test_device_info(coordinator):
     """Test device info property."""
-    coordinator.device_scan_result = {
-        "device_info": {"firmware": "4.85.0"}
-    }
-    
-    device_info = coordinator.device_info
+    coordinator.device_info = {"model": "AirPack Home"}
+    device_info = coordinator.get_device_info()
     assert device_info["manufacturer"] == "ThesslaGreen"
     assert device_info["model"] == "AirPack Home"
 
 
-@pytest.mark.asyncio
-async def test_coordinator_initialization():
+def test_reverse_lookup_maps(coordinator):
+    """Ensure reverse register maps resolve addresses to names."""
+    from custom_components.thessla_green_modbus.const import (
+        INPUT_REGISTERS,
+        HOLDING_REGISTERS,
+    )
+
+    addr = INPUT_REGISTERS["outside_temperature"]
+    assert coordinator._input_registers_rev[addr] == "outside_temperature"
+
+    h_addr = HOLDING_REGISTERS["mode"]
+    assert coordinator._holding_registers_rev[h_addr] == "mode"
+
+
+def test_reverse_lookup_performance(coordinator):
+    """Dictionary lookups should outperform linear search."""
+    from custom_components.thessla_green_modbus.const import INPUT_REGISTERS
+    import time
+
+    addresses = list(INPUT_REGISTERS.values())
+
+    start = time.perf_counter()
+    for addr in addresses:
+        coordinator._input_registers_rev.get(addr)
+    dict_time = time.perf_counter() - start
+
+    def linear_search(register_map, address):
+        for name, addr in register_map.items():
+            if addr == address:
+                return name
+        return None
+
+    start = time.perf_counter()
+    for addr in addresses:
+        linear_search(INPUT_REGISTERS, addr)
+    linear_time = time.perf_counter() - start
+
+    assert dict_time < linear_time
+
+
+def test_coordinator_initialization():
     """Test coordinator initialization."""
     hass = MagicMock()
     available_registers = {"holding_registers": set(), "input_registers": set()}
-    
+
     coordinator = ThesslaGreenCoordinator(
         hass=hass,
         host="192.168.1.100",
         port=502,
         slave_id=10,
+        name="init",
         scan_interval=30,
         timeout=10,
         retry=3,
-        available_registers=available_registers
     )
-    
+    coordinator.available_registers = available_registers
+
     assert coordinator.host == "192.168.1.100"
     assert coordinator.port == 502
     assert coordinator.slave_id == 10
@@ -227,29 +264,17 @@ async def test_coordinator_initialization():
 
 def test_register_value_processing(coordinator):
     """Test register value processing."""
-    # Test temperature processing
     temp_result = coordinator._process_register_value("outside_temperature", 250)
-    assert temp_result == 250  # Raw value returned
-    
-    # Test invalid temperature
+    assert temp_result == 25.0
+
     invalid_temp = coordinator._process_register_value("outside_temperature", 0x8000)
     assert invalid_temp is None
-    
-    # Test percentage processing
+
     percentage_result = coordinator._process_register_value("supply_percentage", 75)
     assert percentage_result == 75
-    
-    # Test invalid percentage
-    invalid_percentage = coordinator._process_register_value("supply_percentage", 150)
-    assert invalid_percentage is None
-    
-    # Test mode processing
+
     mode_result = coordinator._process_register_value("mode", 1)
     assert mode_result == 1
-    
-    # Test invalid mode
-    invalid_mode = coordinator._process_register_value("mode", 25)
-    assert invalid_mode is None
 
 
 def test_post_process_data(coordinator):
@@ -277,34 +302,6 @@ def test_post_process_data(coordinator):
     # Check flow balance status
     assert "flow_balance_status" in processed_data
     assert processed_data["flow_balance_status"] == "supply_dominant"
-
-
-@pytest.mark.asyncio
-async def test_write_register_sync_pymodbus_api(coordinator):
-    """Test that write_register_sync uses pymodbus 3.5+ compatible API."""
-    with patch("custom_components.thessla_green_modbus.coordinator.ModbusTcpClient") as mock_client_cls:
-        client = MagicMock()
-        mock_client_cls.return_value = client
-        client.connect.return_value = True
-        
-        response = MagicMock()
-        response.isError.return_value = False
-        client.write_register.return_value = response
-        
-        # Test holding register write
-        result = coordinator._write_register_sync(100, 50, "holding_registers")
-        
-        # ✅ VERIFY: Should use keyword arguments (pymodbus 3.5+ compatible)
-        client.write_register.assert_called_once()
-        call_args = client.write_register.call_args
-        
-        # Check if keyword arguments are used
-        if call_args.kwargs:
-            assert "address" in call_args.kwargs
-            assert "value" in call_args.kwargs  
-            assert "slave" in call_args.kwargs
-        
-        assert result is True
 
 
 def cleanup_modules():

@@ -11,7 +11,6 @@ from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, HOLDING_REGISTERS
 
@@ -20,6 +19,7 @@ try:  # Newer versions expose metadata through ENTITY_MAPPINGS
 except ImportError:  # pragma: no cover - fall back when not available
     ENTITY_MAPPINGS = {}
 from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ async def async_setup_entry(
         _LOGGER.debug("No number entities were created")
 
 
-class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
+class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     """ThesslaGreen number entity."""
 
     def __init__(
@@ -94,17 +94,14 @@ class ThesslaGreenNumber(CoordinatorEntity, NumberEntity):
         register_type: Optional[str] = None,
     ) -> None:
         """Initialize the number entity."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, register_name)
 
         self.register_name = register_name
         self.entity_config = entity_config
         self.register_type = register_type
 
         # Entity configuration
-        self._attr_unique_id = f"{coordinator.device_name}_{register_name}"
         self._attr_translation_key = register_name
-        self._attr_has_entity_name = True
-        self._attr_device_info = coordinator.get_device_info()
 
         # Number configuration
         self._setup_number_attributes()

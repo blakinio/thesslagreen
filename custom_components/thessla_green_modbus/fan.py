@@ -9,10 +9,10 @@ from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,18 +54,15 @@ async def async_setup_entry(
         _LOGGER.debug("No fan control registers available - skipping fan entity")
 
 
-class ThesslaGreenFan(CoordinatorEntity, FanEntity):
+class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     """ThesslaGreen fan entity."""
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, "fan")
 
         # Entity configuration
-        self._attr_unique_id = f"{coordinator.device_name}_fan"
         self._attr_translation_key = "thessla_green_fan"
-        self._attr_has_entity_name = True
-        self._attr_device_info = coordinator.get_device_info()
 
         # Fan configuration
         self._attr_supported_features = FanEntityFeature.SET_SPEED
