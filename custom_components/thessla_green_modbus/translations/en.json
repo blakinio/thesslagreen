@@ -486,22 +486,110 @@
     }
   },
   "services": {
-    "set_special_mode": {
-      "name": "Set Special Mode",
-      "description": "Sets special operating mode of the heat recovery unit (BOOST, ECO, FIREPLACE, HOOD, etc.)"
-    },
-    "set_airflow_schedule": {
-      "name": "Set Airflow Schedule",
-      "description": "Configures weekly airflow schedule"
-    },
-    "set_bypass_parameters": {
-      "name": "Set Bypass Parameters",
-      "description": "Configures bypass system parameters"
-    },
-    "set_gwc_parameters": {
-      "name": "Set GWC Parameters",
-      "description": "Configures ground heat exchanger parameters"
-    },
+      "set_special_mode": {
+        "name": "Set Special Mode",
+        "description": "Sets special operating mode of the heat recovery unit (BOOST, ECO, FIREPLACE, HOOD, etc.)",
+        "fields": {
+          "mode": {
+            "name": "Special Mode",
+            "description": "Type of special mode to activate",
+            "selector": {
+              "select": {
+                "options": {
+                  "none": "None",
+                  "boost": "Boost",
+                  "eco": "Eco",
+                  "away": "Away",
+                  "fireplace": "Fireplace",
+                  "hood": "Hood",
+                  "party": "Party",
+                  "bathroom": "Bathroom",
+                  "kitchen": "Kitchen",
+                  "summer": "Summer",
+                  "winter": "Winter"
+                }
+              }
+            }
+          },
+          "duration": {
+            "name": "Duration (minutes)",
+            "description": "Duration of special mode in minutes (0 = unlimited)"
+          }
+        }
+      },
+      "set_airflow_schedule": {
+        "name": "Set Airflow Schedule",
+        "description": "Configures weekly airflow schedule",
+        "fields": {
+          "day": {
+            "name": "Day of Week",
+            "description": "Day of week to configure",
+            "selector": {
+              "select": {
+                "options": {
+                  "monday": "Monday",
+                  "tuesday": "Tuesday",
+                  "wednesday": "Wednesday",
+                  "thursday": "Thursday",
+                  "friday": "Friday",
+                  "saturday": "Saturday",
+                  "sunday": "Sunday"
+                }
+              }
+            }
+          },
+          "period": {
+            "name": "Period",
+            "description": "Day period (1 or 2)",
+            "selector": {
+              "select": {
+                "options": {
+                  "1": "Period 1",
+                  "2": "Period 2"
+                }
+              }
+            }
+          }
+        }
+      },
+      "set_bypass_parameters": {
+        "name": "Set Bypass Parameters",
+        "description": "Configures bypass system parameters",
+        "fields": {
+          "mode": {
+            "name": "Bypass Mode",
+            "description": "Bypass operating mode",
+            "selector": {
+              "select": {
+                "options": {
+                  "auto": "Automatic",
+                  "open": "Open",
+                  "closed": "Closed"
+                }
+              }
+            }
+          }
+        }
+      },
+      "set_gwc_parameters": {
+        "name": "Set GWC Parameters",
+        "description": "Configures ground heat exchanger parameters",
+        "fields": {
+          "mode": {
+            "name": "GWC Mode",
+            "description": "Ground heat exchanger operating mode",
+            "selector": {
+              "select": {
+                "options": {
+                  "off": "Off",
+                  "auto": "Automatic",
+                  "forced": "Forced"
+                }
+              }
+            }
+          }
+        }
+      },
     "set_air_quality_thresholds": {
       "name": "Set Air Quality Thresholds",
       "description": "Configures thresholds for air quality control system"
@@ -512,11 +600,42 @@
     },
     "reset_filters": {
       "name": "Reset Filter Counter",
-      "description": "Resets filter lifetime counter"
+      "description": "Resets filter lifetime counter",
+      "fields": {
+        "filter_type": {
+          "name": "Filter Type",
+          "description": "Type of filter to set",
+          "selector": {
+            "select": {
+              "options": {
+                "presostat": "Presostat",
+                "flat_filters": "Flat Filters",
+                "cleanpad": "CleanPad",
+                "cleanpad_pure": "CleanPad Pure"
+              }
+            }
+          }
+        }
+      }
     },
     "reset_settings": {
       "name": "Reset Settings",
-      "description": "Resets user settings to default values"
+      "description": "Resets user settings to default values",
+      "fields": {
+        "reset_type": {
+          "name": "Reset Type",
+          "description": "Type of settings to reset",
+          "selector": {
+            "select": {
+              "options": {
+                "user_settings": "User settings",
+                "schedule_settings": "Schedule settings",
+                "all_settings": "All settings"
+              }
+            }
+          }
+        }
+      }
     },
     "start_pressure_test": {
       "name": "Start Pressure Test",
@@ -524,7 +643,65 @@
     },
     "set_modbus_parameters": {
       "name": "Set Modbus Parameters",
-      "description": "Configures Modbus communication parameters (for advanced users only)"
+      "description": "Configures Modbus communication parameters (for advanced users only)",
+      "fields": {
+        "port": {
+          "name": "Port",
+          "description": "Modbus port (Air-B or Air++)",
+          "selector": {
+            "select": {
+              "options": {
+                "air_b": "Air-B",
+                "air_plus": "Air++"
+              }
+            }
+          }
+        },
+        "baud_rate": {
+          "name": "Baud Rate",
+          "description": "Modbus transmission speed",
+          "selector": {
+            "select": {
+              "options": {
+                "4800": "4800",
+                "9600": "9600",
+                "14400": "14400",
+                "19200": "19200",
+                "28800": "28800",
+                "38400": "38400",
+                "57600": "57600",
+                "76800": "76800",
+                "115200": "115200"
+              }
+            }
+          }
+        },
+        "parity": {
+          "name": "Parity",
+          "description": "Parity bit",
+          "selector": {
+            "select": {
+              "options": {
+                "none": "None",
+                "even": "Even",
+                "odd": "Odd"
+              }
+            }
+          }
+        },
+        "stop_bits": {
+          "name": "Stop Bits",
+          "description": "Number of stop bits",
+          "selector": {
+            "select": {
+              "options": {
+                "1": "1",
+                "2": "2"
+              }
+            }
+          }
+        }
+      }
     },
     "set_device_name": {
       "name": "Set Device Name",
