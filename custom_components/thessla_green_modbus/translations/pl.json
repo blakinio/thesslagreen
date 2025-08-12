@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Konfiguracja ThesslaGreen Modbus",
-        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP.\nIntegracja automatycznie wykryje dostępne funkcje i rejestry urządzenia.",
+        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykryje dostępne funkcje i rejestry urządzenia.",
         "data": {
           "host": "Adres IP",
           "port": "Port",
