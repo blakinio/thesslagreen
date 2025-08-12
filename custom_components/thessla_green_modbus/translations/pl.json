@@ -19,7 +19,7 @@
       },
       "confirm": {
         "title": "Potwierdź konfigurację",
-        "description": "Wykryto urządzenie ThesslaGreen {device_name} pod adresem {host}:{port} (ID urządzenia {slave_id}, wersja oprogramowania {firmware_version}). {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
+        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port} (ID urządzenia {slave_id}, wersja oprogramowania {firmware_version}). Wykryto rejestrów: {register_count} (skuteczność skanowania {scan_success_rate}). Dostępne funkcje ({capabilities_count}): {capabilities_list}. {auto_detected_note} Czy chcesz kontynuować tę konfigurację?"
       }
     },
     "error": {
