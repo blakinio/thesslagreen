@@ -372,7 +372,6 @@ class ThesslaGreenDeviceScanner:
 
                 present_blocks[reg_type] = (addresses[0], addresses[-1])
 
-            caps = self._analyze_capabilities()
             # Dynamically scan registers based on CSV definitions
             for addr, reg_name in sorted(self._registers.get("04", {}).items()):
                 val = await self._read_input(client, addr, 1)
@@ -394,9 +393,8 @@ class ThesslaGreenDeviceScanner:
                 if val is not None:
                     self.available_registers["discrete_inputs"].add(reg_name)
 
-            caps_dict = self._analyze_capabilities()
-            for key, value in caps_dict.items():
-                setattr(caps, key, value)
+            # Analyze capabilities once all register scans are complete
+            caps = self._analyze_capabilities()
 
             # Copy the discovered register address blocks so they can be returned
             register_blocks = present_blocks.copy()
