@@ -30,6 +30,9 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Legacy default port used before version 2 when explicit port was optional
+LEGACY_DEFAULT_PORT = 8899
+
 # Supported platforms
 # Build platform list compatible with both real Home Assistant enums and test stubs
 PLATFORMS: list[Platform] = []
@@ -183,6 +186,13 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     if "unit" in new_data and CONF_SLAVE_ID not in new_data:
         new_data[CONF_SLAVE_ID] = new_data["unit"]
         _LOGGER.info("Migrated 'unit' to '%s'", CONF_SLAVE_ID)
+
+    # Ensure port is present; older versions relied on legacy default
+    if CONF_PORT not in new_data:
+        new_data[CONF_PORT] = LEGACY_DEFAULT_PORT
+        _LOGGER.info(
+            "Added '%s' with legacy default %s", CONF_PORT, LEGACY_DEFAULT_PORT
+        )
 
     # Add new fields with defaults if missing
     if CONF_SCAN_INTERVAL not in new_options:
