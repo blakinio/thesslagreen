@@ -22,6 +22,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
     DEFAULT_RETRY,
+    DEFAULT_PORT,
     DEFAULT_SLAVE_ID,
     DEFAULT_NAME,
 )
@@ -45,7 +46,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Get configuration - support both new and legacy keys
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, 8899)  # Default to 8899 for legacy
+    port = entry.data.get(
+        CONF_PORT, DEFAULT_PORT
+    )  # Default to DEFAULT_PORT (8899 was used in legacy versions)
     
     # Try to get slave_id from multiple possible keys for compatibility
     slave_id = None
