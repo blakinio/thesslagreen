@@ -4,9 +4,9 @@ import shutil
 from pathlib import Path
 from unittest.mock import call, patch
 
-from custom_components.thessla_green_modbus.cleanup_old_entities import (
-    cleanup_entity_registry,
-)
+import pytest
+
+from tools.cleanup_old_entities import cleanup_entity_registry
 
 
 def _setup_registry(tmp_path: Path, content: str) -> Path:
@@ -17,20 +17,27 @@ def _setup_registry(tmp_path: Path, content: str) -> Path:
     return registry_path
 
 
-def test_cleanup_entity_registry_invalid_json_restores_backup(tmp_path, caplog):
+def test_cleanup_entity_registry_invalid_json_restores_backup(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     registry_path = _setup_registry(tmp_path, "{invalid")
 
     with patch("shutil.copy2", wraps=shutil.copy2) as mock_copy:
         with caplog.at_level(logging.ERROR):
-            assert not cleanup_entity_registry(tmp_path)
+            assert not cleanup_entity_registry(tmp_path)  # nosec B101
 
     backup_path = mock_copy.call_args_list[0].args[1]
-    assert "Error decoding entity registry JSON" in caplog.text
-    assert mock_copy.call_args_list == [call(registry_path, backup_path), call(backup_path, registry_path)]
-    assert registry_path.read_text(encoding="utf-8") == "{invalid"
+    assert "Error decoding entity registry JSON" in caplog.text  # nosec B101
+    assert mock_copy.call_args_list == [  # nosec B101
+        call(registry_path, backup_path),
+        call(backup_path, registry_path),
+    ]
+    assert registry_path.read_text(encoding="utf-8") == "{invalid"  # nosec B101
 
 
-def test_cleanup_entity_registry_oserror_restores_backup(tmp_path, caplog):
+def test_cleanup_entity_registry_oserror_restores_backup(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     original = {
         "data": {
             "entities": [
@@ -46,9 +53,12 @@ def test_cleanup_entity_registry_oserror_restores_backup(tmp_path, caplog):
     with patch("json.dump", side_effect=OSError("disk error")):
         with patch("shutil.copy2", wraps=shutil.copy2) as mock_copy:
             with caplog.at_level(logging.ERROR):
-                assert not cleanup_entity_registry(tmp_path)
+                assert not cleanup_entity_registry(tmp_path)  # nosec B101
 
     backup_path = mock_copy.call_args_list[0].args[1]
-    assert "Error processing entity registry file" in caplog.text
-    assert mock_copy.call_args_list == [call(registry_path, backup_path), call(backup_path, registry_path)]
-    assert json.loads(registry_path.read_text(encoding="utf-8")) == original
+    assert "Error processing entity registry file" in caplog.text  # nosec B101
+    assert mock_copy.call_args_list == [  # nosec B101
+        call(registry_path, backup_path),
+        call(backup_path, registry_path),
+    ]
+    assert json.loads(registry_path.read_text(encoding="utf-8")) == original  # nosec B101

@@ -322,10 +322,10 @@ logger:
 ## 🧹 Czyszczenie starych encji
 
 Po aktualizacji integracji możesz usunąć nieużywane encje przy pomocy
-skryptu `cleanup_old_entities.py`.
+skryptu `tools/cleanup_old_entities.py`.
 
 ```bash
-python3 custom_components/thessla_green_modbus/cleanup_old_entities.py
+python3 tools/cleanup_old_entities.py
 ```
 
 Skrypt domyślnie obsługuje polskie i angielskie nazwy encji
@@ -336,7 +336,7 @@ Skrypt domyślnie obsługuje polskie i angielskie nazwy encji
 Możesz dodać własne wzorce poprzez opcję CLI lub plik konfiguracyjny:
 
 ```bash
-python3 custom_components/thessla_green_modbus/cleanup_old_entities.py \
+python3 tools/cleanup_old_entities.py \
     --pattern "thessla.*ventilation_speed" \
     --pattern "number.extra_sensor"
 ```
@@ -352,7 +352,7 @@ Plik JSON z dodatkowymi wzorcami (domyślnie `cleanup_config.json` obok skryptu)
 Uruchomienie z własnym plikiem:
 
 ```bash
-python3 custom_components/thessla_green_modbus/cleanup_old_entities.py \
+python3 tools/cleanup_old_entities.py \
     --config my_cleanup_config.json
 ```
 
