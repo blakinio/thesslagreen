@@ -88,6 +88,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "coil_registers": set(),
             "discrete_inputs": set(),
         }
+
+        # Pre-computed reverse register maps for fast lookups
+        self._input_registers_rev = {addr: name for name, addr in INPUT_REGISTERS.items()}
+        self._holding_registers_rev = {addr: name for name, addr in HOLDING_REGISTERS.items()}
+        self._coil_registers_rev = {addr: name for name, addr in COIL_REGISTERS.items()}
+        self._discrete_inputs_rev = {addr: name for name, addr in DISCRETE_INPUT_REGISTERS.items()}
         
         # Optimization: Pre-computed register groups for batch reading
         self._register_groups: Dict[str, List[Tuple[int, int]]] = {}
@@ -351,7 +357,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Process each register in the batch
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
-                    register_name = self._find_register_name(INPUT_REGISTERS, addr)
+                    register_name = self._input_registers_rev.get(addr)
                     if register_name and register_name in self.available_registers["input_registers"]:
                         processed_value = self._process_register_value(register_name, value)
                         if processed_value is not None:
@@ -381,7 +387,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Process each register in the batch
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
-                    register_name = self._find_register_name(HOLDING_REGISTERS, addr)
+                    register_name = self._holding_registers_rev.get(addr)
                     if register_name and register_name in self.available_registers["holding_registers"]:
                         processed_value = self._process_register_value(register_name, value)
                         if processed_value is not None:
@@ -411,7 +417,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Process each bit in the batch
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
-                    register_name = self._find_register_name(COIL_REGISTERS, addr)
+                    register_name = self._coil_registers_rev.get(addr)
                     if register_name and register_name in self.available_registers["coil_registers"]:
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
@@ -439,7 +445,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Process each bit in the batch
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
-                    register_name = self._find_register_name(DISCRETE_INPUT_REGISTERS, addr)
+                    register_name = self._discrete_inputs_rev.get(addr)
                     if register_name and register_name in self.available_registers["discrete_inputs"]:
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
@@ -449,14 +455,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 continue
         
         return data
-    
-    def _find_register_name(self, register_map: Dict[str, int], address: int) -> Optional[str]:
-        """Find register name by address."""
-        for name, addr in register_map.items():
-            if addr == address:
-                return name
-        return None
-    
+
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
         # Check for sensor error values
