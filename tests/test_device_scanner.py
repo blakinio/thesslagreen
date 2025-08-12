@@ -30,24 +30,34 @@ async def test_device_scanner_initialization():
 
 async def test_scan_device_success(mock_modbus_response):
     """Test successful device scan."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
-    
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_client.connect.return_value = True
-        mock_client.read_input_registers.return_value = mock_modbus_response
-        mock_client.read_holding_registers.return_value = mock_modbus_response
-        mock_client.read_coils.return_value = mock_modbus_response
-        mock_client.read_discrete_inputs.return_value = mock_modbus_response
-        mock_client_class.return_value = mock_client
+    regs = {
+        "04": {16: "outside_temperature"},
+        "03": {0: "mode"},
+        "01": {0: "power_supply_fans"},
+        "02": {0: "expansion"},
+    }
+    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=regs):
+        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
 
-        result = await scanner.scan_device()
-        await scanner.close()
+        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.connect.return_value = True
+            mock_client.read_input_registers.return_value = mock_modbus_response
+            mock_client.read_holding_registers.return_value = mock_modbus_response
+            mock_client.read_coils.return_value = mock_modbus_response
+            mock_client.read_discrete_inputs.return_value = mock_modbus_response
+            mock_client_class.return_value = mock_client
 
-        assert "available_registers" in result
-        assert "device_info" in result
-        assert "capabilities" in result
-        assert result["device_info"]["firmware"] == "4.85.0"
+            result = await scanner.scan_device()
+
+            assert "available_registers" in result
+            assert "device_info" in result
+            assert "capabilities" in result
+            assert result["device_info"]["firmware"] == "4.85.0"
+            assert "outside_temperature" in result["available_registers"]["input_registers"]
+            assert "mode" in result["available_registers"]["holding_registers"]
+            assert "power_supply_fans" in result["available_registers"]["coil_registers"]
+            assert "expansion" in result["available_registers"]["discrete_inputs"]
 
 
 async def test_scan_device_connection_failure():

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import inspect
 import logging
+import pathlib
+import re
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
@@ -17,6 +20,18 @@ from .modbus_helpers import _call_modbus
 from .const import DEFAULT_SLAVE_ID, SENSOR_UNAVAILABLE
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _to_snake_case(name: str) -> str:
+    """Convert register names to snake_case."""
+    replacements = {"flowrate": "flow_rate"}
+    for old, new in replacements.items():
+        name = name.replace(old, new)
+    name = re.sub(r"[\s\-/]", "_", name)
+    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
+    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
+    name = re.sub(r"__+", "_", name)
+    return name.lower()
 
 
 @dataclass
@@ -80,8 +95,33 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
+        # Load register map from CSV
+        self._registers: Dict[str, Dict[int, str]] = self._load_registers()
+
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
+
+    def _load_registers(self) -> Dict[str, Dict[int, str]]:
+        """Load Modbus register definitions from CSV file."""
+        register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+        csv_path = pathlib.Path(__file__).resolve().parents[2] / "modbus_registers.csv"
+        try:
+            with csv_path.open(newline="") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    code = row.get("Function_Code")
+                    if not code or code.startswith("#"):
+                        continue
+                    name = _to_snake_case(row.get("Register_Name", ""))
+                    try:
+                        addr = int(row.get("Address_DEC", 0))
+                    except (TypeError, ValueError):
+                        continue
+                    if code in register_map:
+                        register_map[code][addr] = name
+        except FileNotFoundError:
+            _LOGGER.error("Register definition file not found: %s", csv_path)
+        return register_map
 
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
@@ -268,7 +308,6 @@ class ThesslaGreenDeviceScanner:
 
             info = DeviceInfo()
             caps = DeviceCapabilities()
-            present_blocks = {}
 
             # Read firmware version
             fw_data = await self._read_input(client, 0x0000, 5)
@@ -286,132 +325,42 @@ class ThesslaGreenDeviceScanner:
                     model = "AirPack⁴ Energy+"
             info.model = model
 
-            # Scan temperature sensors (0x0010-0x0017)
-            temp_sensors = [
-                (0x0010, "outside_temperature"),
-                (0x0011, "supply_temperature"),
-                (0x0012, "exhaust_temperature"),
-                (0x0013, "fpx_temperature"),
-                (0x0014, "duct_supply_temperature"),
-                (0x0015, "gwc_temperature"),
-                (0x0016, "ambient_temperature"),
-                (0x0017, "heating_temperature"),
-            ]
-
-            for addr, reg_name in temp_sensors:
+            # Dynamically scan registers based on CSV definitions
+            for addr, reg_name in sorted(self._registers.get("04", {}).items()):
                 val = await self._read_input(client, addr, 1)
                 if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    caps.temperature_sensors.add(reg_name)
-                    setattr(caps, f"sensor_{reg_name}", True)
-                    caps.temperature_sensors_count += 1
                     self.available_registers["input_registers"].add(reg_name)
 
-            if caps.temperature_sensors_count > 0:
-                present_blocks["temperature"] = (0x0010, 0x0017)
-
-            # Scan flow sensors (0x0018-0x001E)
-            flow_sensors = [
-                (0x0018, "supply_flow_rate"),
-                (0x0019, "exhaust_flow_rate"),
-                (0x001A, "outdoor_flow_rate"),
-                (0x001B, "inside_flow_rate"),
-                (0x001C, "gwc_flow_rate"),
-                (0x001D, "heat_recovery_flow_rate"),
-                (0x001E, "bypass_flow_rate"),
-            ]
-
-            for addr, reg_name in flow_sensors:
-                val = await self._read_input(client, addr, 1)
-                if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    caps.flow_sensors.add(reg_name)
-                    self.available_registers["input_registers"].add(reg_name)
-
-            if len(caps.flow_sensors) > 0:
-                present_blocks["flow"] = (0x0018, 0x001E)
-
-            # Scan control registers
-            control_registers = [
-                (0x0000, "mode"),
-                (0x0001, "on_off_panel_mode"),
-                (0x0002, "manual_override"),
-                (0x0012, "gwc_mode"),
-                (0x0014, "bypass_mode"),
-                (0x0016, "cooling_mode"),
-                (0x0020, "constant_flow_mode"),
-            ]
-
-            for addr, reg_name in control_registers:
+            for addr, reg_name in sorted(self._registers.get("03", {}).items()):
                 val = await self._read_holding(client, addr, 1)
                 if val is not None and self._is_valid_register_value(reg_name, val[0]):
-                    if "constant_flow" in reg_name:
-                        caps.constant_flow = True
-                    elif "gwc" in reg_name:
-                        caps.gwc_system = True
-                    elif "bypass" in reg_name:
-                        caps.bypass_system = True
-                    elif "cooling" in reg_name:
-                        caps.cooling_system = True
-
                     self.available_registers["holding_registers"].add(reg_name)
 
-            if len(self.available_registers["holding_registers"]) > 0:
-                present_blocks["control"] = (0x0000, 0x0020)
-
-            # Scan coil registers
-            coil_registers = [
-                (0x0000, "power_supply_fans"),
-                (0x0001, "power_exhaust_fans"),
-                (0x0002, "gwc_enabled"),
-                (0x0003, "bypass_enabled"),
-                (0x0004, "heating_enabled"),
-                (0x0005, "cooling_enabled"),
-            ]
-
-            for addr, reg_name in coil_registers:
+            for addr, reg_name in sorted(self._registers.get("01", {}).items()):
                 val = await self._read_coil(client, addr, 1)
                 if val is not None:
-                    if "heating" in reg_name and val[0]:
-                        caps.heating_system = True
-                    elif "cooling" in reg_name and val[0]:
-                        caps.cooling_system = True
-
                     self.available_registers["coil_registers"].add(reg_name)
 
-            if len(self.available_registers["coil_registers"]) > 0:
-                present_blocks["coil_registers"] = (0x0000, 0x0005)
-
-            # Scan discrete inputs
-            discrete_registers = [
-                (0x0000, "expansion"),
-                (0x0005, "contamination_sensor"),
-                (0x0007, "airing_switch"),
-                (0x000E, "fireplace"),
-            ]
-
-            for addr, reg_name in discrete_registers:
+            for addr, reg_name in sorted(self._registers.get("02", {}).items()):
                 val = await self._read_discrete(client, addr, 1)
                 if val is not None:
-                    if "expansion" in reg_name and val[0]:
-                        caps.expansion_module = True
-                    elif "contamination_sensor" in reg_name:
-                        caps.air_quality = True
-                    elif reg_name in ["fireplace", "airing_switch"]:
-                        caps.special_functions.add(reg_name)
-
                     self.available_registers["discrete_inputs"].add(reg_name)
 
-            if len(self.available_registers["discrete_inputs"]) > 0:
-                present_blocks["discrete"] = (0x0000, 0x000F)
+            caps_dict = self._analyze_capabilities()
+            for key, value in caps_dict.items():
+                setattr(caps, key, value)
+
+            register_blocks = {}
 
             _LOGGER.info(
-                "Device scan completed: %d blocks found, %d capabilities detected",
-                len(present_blocks),
+                "Device scan completed: %d registers detected, %d capabilities detected",
+                sum(len(v) for v in self.available_registers.values()),
                 sum(
                     1 for v in caps.as_dict().values() if bool(v) and not isinstance(v, (set, int))
                 ),
             )
 
-            return info, caps, present_blocks
+            return info, caps, register_blocks
 
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.exception("Device scan failed: %s", exc)
