@@ -1,4 +1,5 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
+import logging
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -197,6 +198,26 @@ async def test_is_valid_register_value():
     
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
+
+
+async def test_load_registers_duplicate_warning(tmp_path, caplog):
+    """Warn when duplicate register addresses are encountered."""
+    csv_content = (
+        "Function_Code,Register_Name,Address_DEC\n"
+        "04,reg_a,1\n"
+        "04,reg_b,1\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path
+    ):
+        with caplog.at_level(logging.WARNING):
+            ThesslaGreenDeviceScanner("host", 502, 10)
+
+    assert any("Duplicate register address" in record.message for record in caplog.records)
 
 
 async def test_analyze_capabilities():
