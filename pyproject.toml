@@ -9,7 +9,7 @@ description = "ThesslaGreen Modbus integration for Home Assistant"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "ThesslaGreen Modbus Integration", email = "contact@example.com"}
+    {name = "ThesslaGreen Modbus Integration", email = "blakinio@o2.pl"}
 ]
 keywords = ["home-assistant", "modbus", "hvac", "thesslagreen", "airpack"]
 classifiers = [
@@ -26,7 +26,6 @@ classifiers = [
 requires-python = ">=3.10"
 # Core dependencies
 dependencies = [
-    "homeassistant>=2025.7.1",
     "pymodbus>=3.5.0,<4.0.0",
     "voluptuous>=0.13.1",
 ]
