@@ -176,6 +176,9 @@ python -m pytest tests/ --cov=custom_components.thessla_green_modbus
 # Validate register mappings against CSV definitions
 python -m pytest tests/test_register_coverage.py -v
 
+# Verify CSV and registers.py are in sync
+python tools/validate_registers.py
+
 # Run optimization validation
 python run_optimization_tests.py
 ```
