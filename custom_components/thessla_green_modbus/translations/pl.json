@@ -36,7 +36,7 @@
     "step": {
       "init": {
         "title": "Opcje ThesslaGreen Modbus",
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} sek, Limit czasu połączenia {current_timeout} sek, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu {current_scan_interval} sek, Limit czasu połączenia {current_timeout} sek, Liczba powtórzeń nieudanych odczytów {current_retry}, Wymuś pełną listę rejestrów {force_full_enabled}.",
         "data": {
           "scan_interval": "Interwał skanowania (sekundy)",
           "timeout": "Limit czasu połączenia (sekundy)",
