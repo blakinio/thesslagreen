@@ -35,6 +35,8 @@ BINARY_KEYS = _load_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
 SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
 SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
+REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
+ERROR_KEYS = [k for k in REGISTER_KEYS if k.startswith("e_") or k.startswith("s_")]
 
 
 class Loader(yaml.SafeLoader):
@@ -59,6 +61,12 @@ def _assert_keys(trans, entity_type, keys):
     assert not missing, f"Missing {entity_type} translations: {missing}"  # nosec B101
 
 
+def _assert_error_keys(trans, keys):
+    section = trans.get("errors", {})
+    missing = [k for k in keys if k not in section]
+    assert not missing, f"Missing error translations: {missing}"  # nosec B101
+
+
 def test_translation_keys_present():
     for trans in (EN, PL):
         _assert_keys(trans, "sensor", SENSOR_KEYS)
@@ -66,6 +74,7 @@ def test_translation_keys_present():
         _assert_keys(trans, "switch", SWITCH_KEYS)
         _assert_keys(trans, "select", SELECT_KEYS)
         _assert_keys(trans, "number", NUMBER_KEYS)
+        _assert_error_keys(trans, ERROR_KEYS)
         missing_services = [s for s in SERVICES if s not in trans["services"]]
         assert (
             not missing_services
