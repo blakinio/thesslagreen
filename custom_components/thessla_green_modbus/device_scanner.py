@@ -97,6 +97,7 @@ class ThesslaGreenDeviceScanner:
         try:
             with csv_path.open(newline="", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
+                rows: Dict[str, List[Tuple[str, int]]] = {"03": [], "04": [], "01": [], "02": []}
                 for row in reader:
                     code = row.get("Function_Code")
                     if not code or code.startswith("#"):
@@ -106,7 +107,17 @@ class ThesslaGreenDeviceScanner:
                         addr = int(row.get("Address_DEC", 0))
                     except (TypeError, ValueError):
                         continue
-                    if code in register_map:
+                    if code in rows:
+                        rows[code].append((name, addr))
+
+                for code, items in rows.items():
+                    # Sort by address to ensure deterministic numbering
+                    items.sort(key=lambda item: item[1])
+                    counts: Dict[str, int] = {}
+                    for name, _ in items:
+                        counts[name] = counts.get(name, 0) + 1
+                    seen: Dict[str, int] = {}
+                    for name, addr in items:
                         if addr in register_map[code]:
                             _LOGGER.warning(
                                 "Duplicate register address %s for function code %s: %s",
@@ -115,6 +126,10 @@ class ThesslaGreenDeviceScanner:
                                 name,
                             )
                             continue
+                        if counts[name] > 1:
+                            idx = seen.get(name, 0) + 1
+                            seen[name] = idx
+                            name = f"{name}_{idx}"
                         register_map[code][addr] = name
         except FileNotFoundError:
             _LOGGER.error("Register definition file not found: %s", csv_path)
