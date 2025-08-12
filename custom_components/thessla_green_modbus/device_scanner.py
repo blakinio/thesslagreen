@@ -8,16 +8,7 @@ import logging
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-try:  # pragma: no cover
-    from pymodbus.exceptions import ConnectionException, ModbusException
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
-
-    class ConnectionException(Exception):
-        pass
-
-    class ModbusException(Exception):
-        pass
-
+from .modbus_exceptions import ConnectionException, ModbusException
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient

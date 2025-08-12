@@ -5,13 +5,7 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock
 
-try:  # pragma: no cover - handle missing or incompatible pymodbus
-    from pymodbus.exceptions import ConnectionException
-except Exception:  # pragma: no cover
-    class ConnectionException(Exception):
-        """Fallback exception when pymodbus is unavailable."""
-
-        pass
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs

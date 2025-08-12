@@ -11,7 +11,8 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from pymodbus.exceptions import ConnectionException, ModbusException
+
+from .modbus_exceptions import ConnectionException, ModbusException
 
 from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,

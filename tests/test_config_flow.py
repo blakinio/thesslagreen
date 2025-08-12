@@ -3,7 +3,8 @@ import pytest
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.const import CONF_HOST, CONF_PORT
-from pymodbus.exceptions import ModbusException
+
+from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
 
 CONF_NAME = "name"
 

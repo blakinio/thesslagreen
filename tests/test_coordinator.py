@@ -7,6 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+)
+
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
 const = types.ModuleType("homeassistant.const")
@@ -104,16 +109,7 @@ class ModbusTcpClient:
 pymodbus_client.ModbusTcpClient = ModbusTcpClient
 
 
-class ModbusException(Exception):
-    pass
-
-
 pymodbus_exceptions.ModbusException = ModbusException
-
-
-class ConnectionException(Exception):
-    pass
-
 
 pymodbus_exceptions.ConnectionException = ConnectionException
 

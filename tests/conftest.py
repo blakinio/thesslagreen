@@ -94,6 +94,16 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     helpers.DataUpdateCoordinator = DataUpdateCoordinator
     helpers.UpdateFailed = UpdateFailed
 
+    class CoordinatorEntity:  # type: ignore[override]
+        def __init__(self, coordinator=None):
+            self.coordinator = coordinator
+
+        @classmethod
+        def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
+            return cls
+
+    helpers.CoordinatorEntity = CoordinatorEntity
+
     class DeviceInfo:  # type: ignore[override]
         pass
 

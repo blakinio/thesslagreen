@@ -10,20 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from homeassistant.util import dt as dt_util
 
-try:  # pragma: no cover - handle missing pymodbus during tests
-    from pymodbus.exceptions import ConnectionException, ModbusException
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
-
-    class ConnectionException(Exception):
-        """Fallback exception when pymodbus is not available."""
-
-        pass
-
-    class ModbusException(Exception):
-        """Fallback Modbus exception when pymodbus is not available."""
-
-        pass
-
+from .modbus_exceptions import ConnectionException, ModbusException
 
 if TYPE_CHECKING:  # pragma: no cover - used for type hints only
     from pymodbus.client import AsyncModbusTcpClient
