@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
@@ -91,12 +92,25 @@ class ThesslaGreenDeviceScanner:
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
 
+    async def _call_modbus(self, func, *args, **kwargs):
+        """Call Modbus client method handling slave/unit keyword."""
+        try:  # pymodbus >=3.5 uses 'slave'
+            return await func(*args, slave=self.slave_id, **kwargs)
+        except TypeError:  # pragma: no cover - fallback for older versions
+            return await func(*args, unit=self.slave_id, **kwargs)
+
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
         """Read input registers."""
         try:
+ codex/update-modbus-calls-for-slave_id
             response = await client.read_input_registers(address, count, slave=self.slave_id)
+=======
+            response = await self._call_modbus(
+                client.read_input_registers, address, count
+            )
+ main
             if not response.isError():
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
@@ -110,7 +124,13 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read holding registers."""
         try:
+ codex/update-modbus-calls-for-slave_id
             response = await client.read_holding_registers(address, count, slave=self.slave_id)
+=======
+            response = await self._call_modbus(
+                client.read_holding_registers, address, count
+            )
+ main
             if not response.isError():
                 return response.registers
         except (ModbusException, ConnectionException) as exc:
@@ -126,7 +146,11 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read coil registers."""
         try:
+ codex/update-modbus-calls-for-slave_id
             response = await client.read_coils(address, count, slave=self.slave_id)
+=======
+            response = await self._call_modbus(client.read_coils, address, count)
+ main
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
@@ -140,7 +164,13 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[bool]]:
         """Read discrete input registers."""
         try:
+ codex/update-modbus-calls-for-slave_id
             response = await client.read_discrete_inputs(address, count, slave=self.slave_id)
+=======
+            response = await self._call_modbus(
+                client.read_discrete_inputs, address, count
+            )
+ main
             if not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
@@ -462,18 +492,20 @@ class ThesslaGreenDeviceScanner:
 
     async def close(self):
         """Close the scanner connection if any."""
-        if self._client is None:
-            return
+        if self._client is not None:
+            try:
+                result = self._client.close()
+                if inspect.isawaitable(result):
+                    await result
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug("Error closing Modbus client: %s", exc, exc_info=True)
+            except OSError as exc:
+                _LOGGER.debug(
+                    "Unexpected error closing Modbus client: %s", exc, exc_info=True
+                )
 
-        try:
-            await self._client.close()
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug("Error closing Modbus client: %s", exc, exc_info=True)
-        except OSError as exc:
-            _LOGGER.debug("Unexpected error closing Modbus client: %s", exc, exc_info=True)
-        finally:
-            self._client = None
-            _LOGGER.debug("Disconnected from ThesslaGreen device")
+        self._client = None
+        _LOGGER.debug("Disconnected from ThesslaGreen device")
 
     def _analyze_capabilities_enhanced(self) -> Dict[str, bool]:
         """Enhanced capability analysis for optimization tests."""

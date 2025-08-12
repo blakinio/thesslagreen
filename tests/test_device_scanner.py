@@ -99,13 +99,19 @@ async def test_analyze_capabilities():
     assert capabilities["sensor_outside_temperature"] is True
 
 
-async def test_close_terminates_client():
-    """Ensure close() closes the underlying Modbus client."""
+@pytest.mark.parametrize("async_close", [True, False])
+async def test_close_terminates_client(async_close):
+    """Ensure close() handles both async and sync client close methods."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
-    mock_client = AsyncMock()
+    mock_client = AsyncMock() if async_close else MagicMock()
     scanner._client = mock_client
 
     await scanner.close()
 
-    mock_client.close.assert_awaited_once()
+    if async_close:
+        mock_client.close.assert_called_once()
+        mock_client.close.assert_awaited_once()
+    else:
+        mock_client.close.assert_called_once()
+
     assert scanner._client is None

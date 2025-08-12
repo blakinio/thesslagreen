@@ -117,8 +117,8 @@ class DummyClient:
     def __init__(self):
         self.writes = []
 
-    async def write_register(self, address, value, unit=None, slave=None):
-        self.writes.append((address, value, unit or slave))
+    async def write_register(self, address, value, slave=None):
+        self.writes.append((address, value, slave))
 
         class Response:
             def isError(self):
@@ -126,10 +126,8 @@ class DummyClient:
 
         return Response()
 
-    async def write_coil(
-        self, address, value, unit=None, slave=None
-    ):  # pragma: no cover - not used
-        self.writes.append((address, value, unit or slave))
+    async def write_coil(self, address, value, slave=None):  # pragma: no cover - not used
+        self.writes.append((address, value, slave))
 
         class Response:
             def isError(self):
