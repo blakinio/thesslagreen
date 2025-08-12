@@ -486,57 +486,53 @@
       }
     },
   "services": {
-    "set_mode": {
-      "name": "Ustaw tryb pracy",
-      "description": "Ustawia tryb pracy rekuperatora z opcjonalną intensywnością."
-    },
     "set_special_mode": {
       "name": "Ustaw tryb specjalny",
-      "description": "Aktywuje tryb specjalny z konfiguracją intensywności i czasu trwania."
+      "description": "Ustawia specjalny tryb pracy rekuperatora (BOOST, ECO, KOMINEK, OKAP itd.)"
     },
-    "set_temperature": {
-      "name": "Ustaw temperaturę",
-      "description": "Ustawia temperaturę docelową dla wybranego trybu pracy."
+    "set_airflow_schedule": {
+      "name": "Ustaw harmonogram przepływu powietrza",
+      "description": "Konfiguruje tygodniowy harmonogram przepływu powietrza"
     },
-    "set_fan_speed": {
-      "name": "Ustaw prędkość wentylatorów",
-      "description": "Kontroluje prędkość wentylatorów nawiewnego i wywiewnego oraz balans przepływów."
+    "set_bypass_parameters": {
+      "name": "Ustaw parametry bypassu",
+      "description": "Konfiguruje parametry systemu obejścia (bypassu)"
     },
-    "control_bypass": {
-      "name": "Steruj obejściem (bypass)",
-      "description": "Kontroluje tryb pracy systemu obejścia (bypassu)."
+    "set_gwc_parameters": {
+      "name": "Ustaw parametry GWC",
+      "description": "Konfiguruje parametry gruntowego wymiennika ciepła"
     },
-    "control_gwc": {
-      "name": "Steruj GWC",
-      "description": "Kontroluje system GWC (Gruntowy Wymiennik Ciepła)."
+    "set_air_quality_thresholds": {
+      "name": "Ustaw progi jakości powietrza",
+      "description": "Konfiguruje progi dla systemu kontroli jakości powietrza"
     },
-    "reset_alarms": {
-      "name": "Resetuj alarmy",
-      "description": "Resetuje alarmy i błędy systemu."
+    "set_temperature_curve": {
+      "name": "Ustaw krzywą grzewczą",
+      "description": "Konfiguruje krzywą grzewczą dla systemu ogrzewania"
     },
-    "set_schedule": {
-      "name": "Ustaw harmonogram",
-      "description": "Konfiguruje harmonogram pracy dla wybranego dnia i okresu czasowego."
+    "reset_filters": {
+      "name": "Resetuj licznik filtrów",
+      "description": "Resetuje licznik żywotności filtrów"
     },
-    "rescan_device": {
-      "name": "Przeskanuj urządzenie",
-      "description": "Ponownie skanuje urządzenie w celu wykrycia dostępnych funkcji i rejestrów."
+    "reset_settings": {
+      "name": "Resetuj ustawienia",
+      "description": "Przywraca ustawienia użytkownika do wartości domyślnych"
     },
-    "get_diagnostic_info": {
-      "name": "Pobierz informacje diagnostyczne",
-      "description": "Wyświetla szczegółowe informacje diagnostyczne o urządzeniu i integracji."
+    "start_pressure_test": {
+      "name": "Rozpocznij test ciśnienia",
+      "description": "Uruchamia automatyczny test kontroli filtrów/ciśnienia"
     },
-    "backup_settings": {
-      "name": "Kopia zapasowa ustawień",
-      "description": "Tworzy kopię zapasową ustawień urządzenia."
+    "set_modbus_parameters": {
+      "name": "Ustaw parametry Modbus",
+      "description": "Konfiguruje parametry komunikacji Modbus (tylko dla zaawansowanych użytkowników)"
     },
-    "restore_settings": {
-      "name": "Przywróć ustawienia",
-      "description": "Przywraca ustawienia urządzenia z wcześniej utworzonej kopii zapasowej."
+    "set_device_name": {
+      "name": "Ustaw nazwę urządzenia",
+      "description": "Ustawia własną nazwę urządzenia (max 16 znaków ASCII)"
     },
-    "calibrate_sensors": {
-      "name": "Kalibruj czujniki",
-      "description": "Kalibruje czujniki temperatury z indywidualnymi offsetami."
+    "refresh_device_data": {
+      "name": "Odśwież dane urządzenia",
+      "description": "Wymusza natychmiastowe odświeżenie danych urządzenia"
     }
   }
 }
