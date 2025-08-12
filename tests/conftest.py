@@ -174,6 +174,17 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
     const.Platform = Platform
 
+    # Minimal util.logging stub for pytest plugin compatibility
+    util = types.ModuleType("homeassistant.util")
+    util_logging = types.ModuleType("homeassistant.util.logging")
+
+    def log_exception(*args, **kwargs):  # pragma: no cover - simple no-op
+        return None
+
+    util_logging.log_exception = log_exception
+    util.logging = util_logging
+    ha.util = util
+
     sys.modules["homeassistant"] = ha
     sys.modules["homeassistant.core"] = core
     sys.modules["homeassistant.config_entries"] = config_entries
@@ -184,6 +195,8 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
     sys.modules["homeassistant.exceptions"] = exceptions
     sys.modules["homeassistant.const"] = const
+    sys.modules["homeassistant.util"] = util
+    sys.modules["homeassistant.util.logging"] = util_logging
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
     sys.modules["homeassistant.helpers.config_validation"] = cv
     sys.modules["homeassistant.helpers.selector"] = selector
@@ -194,6 +207,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["pymodbus.pdu"] = pymodbus_pdu
 
 DOMAIN = "thessla_green_modbus"
+
+# Ensure util.logging is importable for pytest plugin
+import homeassistant.util.logging  # type: ignore
 
 
 class CoordinatorMock(MagicMock):

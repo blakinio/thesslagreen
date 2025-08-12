@@ -1,5 +1,4 @@
-# ThesslaGreen Modbus Integration - Python Dependencies
-# Updated core requirements
+# ThesslaGreen Modbus Integration - Runtime Dependencies
 
 # Core Home Assistant provided by host environment
 # (minimum version declared in manifest.json)
@@ -7,20 +6,5 @@
 # Modbus communication library
 pymodbus>=3.5.0,<4.0.0
 
-# Data validation and schemas  
+# Data validation and schemas
 voluptuous>=0.13.1
-
-# Testing dependencies (development)
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-pytest-homeassistant-custom-component>=0.13.0
-
-# Code quality tools (development)
-black>=22.0.0
-isort>=5.10.0
-flake8>=4.0.0
-mypy>=0.990
-
-# Documentation (development)
-sphinx>=4.0.0
-sphinx-rtd-theme>=1.0.0
