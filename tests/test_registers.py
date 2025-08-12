@@ -2,8 +2,7 @@ import csv
 import importlib.util
 import pathlib
 import re
-
-
+from tools.generate_registers import load_registers
 def to_snake_case(name: str) -> str:
     replacements = {"flowrate": "flow_rate"}
     for old, new in replacements.items():
@@ -18,7 +17,28 @@ def to_snake_case(name: str) -> str:
     return "_".join(tokens)
 
 
+def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
+    rows.sort(key=lambda r: r[1])
+    counts: dict[str, int] = {}
+    for name, _ in rows:
+        counts[name] = counts.get(name, 0) + 1
+    seen: dict[str, int] = {}
+    result: dict[str, int] = {}
+    for name, addr in rows:
+        if counts[name] > 1:
+            seen[name] = seen.get(name, 0) + 1
+            name = f"{name}_{seen[name]}"
+        result[name] = addr
+    return result
+
+
 def load_csv_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
+    coil_rows: list[tuple[str, int]] = []
+    discrete_rows: list[tuple[str, int]] = []
+    input_rows: list[tuple[str, int]] = []
+    holding_rows: list[tuple[str, int]] = []
+    csv_path = pathlib.Path("custom_components/thessla_green_modbus/modbus_registers.csv")
+    with csv_path.open(newline="") as f:
     coil_regs: dict[str, int] = {}
     discrete_regs: dict[str, int] = {}
     input_regs: dict[str, int] = {}
@@ -33,14 +53,19 @@ def load_csv_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int]
             name = to_snake_case(row["Register_Name"])
             addr = int(row["Address_DEC"])
             if code == "01":
-                coil_regs[name] = addr
+                coil_rows.append((name, addr))
             elif code == "02":
-                discrete_regs[name] = addr
+                discrete_rows.append((name, addr))
             elif code == "04":
-                input_regs[name] = addr
+                input_rows.append((name, addr))
             elif code == "03":
-                holding_regs[name] = addr
-    return coil_regs, discrete_regs, input_regs, holding_regs
+                holding_rows.append((name, addr))
+    return (
+        _build_register_map(coil_rows),
+        _build_register_map(discrete_rows),
+        _build_register_map(input_rows),
+        _build_register_map(holding_rows),
+    )
 
 
 def load_module_registers() -> (

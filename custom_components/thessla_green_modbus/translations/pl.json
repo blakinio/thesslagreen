@@ -246,39 +246,6 @@
     "number": {
       "required_temperature": {
         "name": "Wymagana temperatura"
-      },
-      "max_supply_temperature": {
-        "name": "Maksymalna temperatura nawiewu"
-      },
-      "min_supply_temperature": {
-        "name": "Minimalna temperatura nawiewu"
-      },
-      "heating_curve_slope": {
-        "name": "Nachylenie krzywej grzewczej"
-      },
-      "heating_curve_offset": {
-        "name": "Przesunięcie krzywej grzewczej"
-      },
-      "boost_air_flow_rate": {
-        "name": "Prędkość nawiewu w trybie boost"
-      },
-      "boost_duration": {
-        "name": "Czas trwania trybu boost"
-      },
-      "humidity_target": {
-        "name": "Docelowa wilgotność"
-      },
-      "economy_temperature": {
-        "name": "Temperatura ekonomiczna"
-      },
-      "night_temperature": {
-        "name": "Temperatura nocna"
-      },
-      "away_temperature": {
-        "name": "Temperatura nieobecności"
-      },
-      "frost_protection_temperature": {
-        "name": "Temperatura przeciwmrozowa"
       }
     }
   },
