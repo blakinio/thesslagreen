@@ -141,14 +141,14 @@ async def test_form_user_invalid_auth():
     assert result["errors"] == {"base": "invalid_auth"}
 
 
-async def test_form_user_unexpected_exception():
-    """Test we handle unexpected exception."""
+async def test_form_user_invalid_value():
+    """Test we handle invalid value error."""
     flow = ConfigFlow()
     flow.hass = None
 
     with patch(
         "custom_components.thessla_green_modbus.config_flow.validate_input",
-        side_effect=Exception,
+        side_effect=ValueError,
     ):
         result = await flow.async_step_user(
             {
@@ -160,7 +160,49 @@ async def test_form_user_unexpected_exception():
         )
 
     assert result["type"] == "form"
-    assert result["errors"] == {"base": "unknown"}
+    assert result["errors"] == {"base": "invalid_input"}
+
+
+async def test_form_user_missing_key():
+    """Test we handle missing key error."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        side_effect=KeyError("test"),
+    ):
+        result = await flow.async_step_user(
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_PORT: 502,
+                "slave_id": 10,
+                CONF_NAME: "My Device",
+            }
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "invalid_input"}
+
+
+async def test_form_user_unexpected_exception():
+    """Test unexpected exceptions are raised."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        side_effect=RuntimeError,
+    ):
+        with pytest.raises(RuntimeError):
+            await flow.async_step_user(
+                {
+                    CONF_HOST: "192.168.1.100",
+                    CONF_PORT: 502,
+                    "slave_id": 10,
+                    CONF_NAME: "My Device",
+                }
+            )
 
 
 async def test_validate_input_success():

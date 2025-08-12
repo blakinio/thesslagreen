@@ -25,6 +25,7 @@
     "error": {
       "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
       "invalid_auth": "Authentication error. Check Slave ID settings.",
+      "invalid_input": "Invalid configuration provided. Check values and try again.",
       "unknown": "Unexpected error. Check logs for details."
     },
     "abort": {
