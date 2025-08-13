@@ -250,6 +250,35 @@ async def test_analyze_capabilities():
     assert capabilities.sensor_outside_temperature is True
 
 
+async def test_analyze_capabilities_flag_presence():
+    """Capabilities should reflect register presence and absence."""
+    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+
+    # Positive case: registers exist
+    scanner.available_registers = {
+        "input_registers": {"constant_flow_active", "outside_temperature"},
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+    capabilities = scanner._analyze_capabilities()
+
+    assert capabilities.constant_flow is True
+    assert capabilities.sensor_outside_temperature is True
+
+    # Negative case: registers absent
+    scanner.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+    capabilities = scanner._analyze_capabilities()
+
+    assert capabilities.constant_flow is False
+    assert capabilities.sensor_outside_temperature is False
+
+
 @pytest.mark.parametrize("async_close", [True, False])
 async def test_close_terminates_client(async_close):
     """Ensure close() handles both async and sync client close methods."""
