@@ -778,7 +778,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         _LOGGER.error(
                             "Register %s expects %d values",
                             register_name,
-                            "Register %s expects %d values", 
+                            "Register %s expects %d values",
                             start_register,
                             MULTI_REGISTER_SIZES[start_register],
                         )
@@ -797,13 +797,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         return False
                     values = [int(v) for v in value]
                 else:
-                    if register_name in MULTI_REGISTER_SIZES:
-                        _LOGGER.error(
-                            "Register %s expects %d values",
-                            register_name,
-                            MULTI_REGISTER_SIZES[register_name],
-                        )
-                        return False
                     # Apply multiplier if defined and convert to integer for Modbus
                     if register_name in REGISTER_MULTIPLIERS:
                         multiplier = REGISTER_MULTIPLIERS[register_name]
