@@ -1,4 +1,5 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
+
 import logging
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -51,30 +52,23 @@ async def test_scan_device_success():
         mock_client.connect.return_value = True
         mock_client_class.return_value = mock_client
 
-        with patch.object(
-            scanner, "_read_input", AsyncMock(side_effect=fake_read_input)
-        ), patch.object(
-            scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)
-        ), patch.object(
-            scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)
-        ), patch.object(
-            scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
             result = await scanner.scan_device()
 
-    assert set(result["available_registers"]["input_registers"]) == set(
-        INPUT_REGISTERS.keys()
-    )
-    assert set(result["available_registers"]["holding_registers"]) == set(
-        HOLDING_REGISTERS.keys()
-    )
-    assert set(result["available_registers"]["coil_registers"]) == set(
-        COIL_REGISTERS.keys()
-    )
+    assert set(result["available_registers"]["input_registers"]) == set(INPUT_REGISTERS.keys())
+    assert set(result["available_registers"]["holding_registers"]) == set(HOLDING_REGISTERS.keys())
+    assert set(result["available_registers"]["coil_registers"]) == set(COIL_REGISTERS.keys())
     assert set(result["available_registers"]["discrete_inputs"]) == set(
         DISCRETE_INPUT_REGISTERS.keys()
     )
     assert result["device_info"]["firmware"] == "4.85.0"
+
+
 @pytest.fixture
 def mock_modbus_response():
     response = MagicMock()
@@ -92,7 +86,7 @@ async def test_scan_device_success(mock_modbus_response):
         "01": {0: "power_supply_fans"},
         "02": {0: "expansion"},
     }
-    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=regs):
+    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=(regs, {})):
         scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
 
         with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
@@ -134,7 +128,7 @@ async def test_scan_blocks_propagated():
     """Ensure scan_device returns discovered register blocks."""
     # Avoid scanning extra registers from CSV for test speed
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
-    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=empty_regs):
+    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=(empty_regs, {})):
         scanner = ThesslaGreenDeviceScanner("192.168.1.1", 502, 10)
 
         async def fake_read_input(client, address, count):
@@ -154,10 +148,12 @@ async def test_scan_blocks_propagated():
             mock_client.connect.return_value = True
             mock_client_class.return_value = mock_client
 
-            with patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)), \
-                patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)), \
-                patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)), \
-                patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)):
+            with (
+                patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+                patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+                patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+                patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+            ):
                 result = await scanner.scan_device()
 
     expected_blocks = {
@@ -185,28 +181,29 @@ async def test_scan_blocks_propagated():
 async def test_is_valid_register_value():
     """Test register value validation."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
-    
+
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
-    
+
     # Invalid temperature sensor value
-    assert (
-        scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-        is False
-    )
-    
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
+
+    # Mode values respect allowed set
+    assert scanner._is_valid_register_value("mode", 1) is True
+    assert scanner._is_valid_register_value("mode", 3) is False
+
+    # Range from CSV
+    assert scanner._is_valid_register_value("supply_percentage", 100) is True
+    assert scanner._is_valid_register_value("supply_percentage", 200) is False
 
 
 async def test_load_registers_duplicate_warning(tmp_path, caplog):
     """Warn when duplicate register addresses are encountered."""
-    csv_content = (
-        "Function_Code,Register_Name,Address_DEC\n"
-        "04,reg_a,1\n"
-        "04,reg_b,1\n"
-    )
+    csv_content = "Function_Code,Register_Name,Address_DEC\n" "04,reg_a,1\n" "04,reg_b,1\n"
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)
@@ -222,11 +219,7 @@ async def test_load_registers_duplicate_warning(tmp_path, caplog):
 
 async def test_load_registers_duplicate_names(tmp_path):
     """Ensure duplicate register names are suffixed for uniqueness."""
-    csv_content = (
-        "Function_Code,Register_Name,Address_DEC\n"
-        "04,reg_a,1\n"
-        "04,reg_a,2\n"
-    )
+    csv_content = "Function_Code,Register_Name,Address_DEC\n" "04,reg_a,1\n" "04,reg_a,2\n"
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)
@@ -242,7 +235,7 @@ async def test_load_registers_duplicate_names(tmp_path):
 async def test_analyze_capabilities():
     """Test capability analysis."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
-    
+
     # Mock available registers
     scanner.available_registers = {
         "input_registers": {"constant_flow_active", "outside_temperature"},
@@ -250,7 +243,7 @@ async def test_analyze_capabilities():
         "coil_registers": {"power_supply_fans"},
         "discrete_inputs": {"expansion"},
     }
-    
+
     capabilities = scanner._analyze_capabilities()
 
     assert capabilities.constant_flow is True

@@ -22,6 +22,14 @@ from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
+# Specific registers may only accept discrete values
+REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
+    "mode": {0, 1, 2},
+    "season_mode": {0, 1},
+    "special_mode": set(range(0, 12)),
+    "antifreez_mode": {0, 1},
+}
+
 
 @dataclass
 class DeviceInfo:
@@ -84,20 +92,30 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
-        # Load register map from CSV
-        self._registers: Dict[str, Dict[int, str]] = self._load_registers()
+        # Load register map and value ranges from CSV
+        self._registers: Dict[str, Dict[int, str]]
+        self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]]
+        self._registers, self._register_ranges = self._load_registers()
 
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
 
-    def _load_registers(self) -> Dict[str, Dict[int, str]]:
-        """Load Modbus register definitions from CSV file."""
+    def _load_registers(
+        self,
+    ) -> Tuple[Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]]:
+        """Load Modbus register definitions and value ranges from CSV file."""
         register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+        register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
         csv_path = files(__package__) / "data" / "modbus_registers.csv"
         try:
             with csv_path.open(newline="", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
-                rows: Dict[str, List[Tuple[str, int]]] = {"03": [], "04": [], "01": [], "02": []}
+                rows: Dict[str, List[Tuple[str, int, Optional[int], Optional[int]]]] = {
+                    "03": [],
+                    "04": [],
+                    "01": [],
+                    "02": [],
+                }
                 for row in reader:
                     code = row.get("Function_Code")
                     if not code or code.startswith("#"):
@@ -110,17 +128,29 @@ class ThesslaGreenDeviceScanner:
                         addr = int(row.get("Address_DEC", 0))
                     except (TypeError, ValueError):
                         continue
+                    min_raw = row.get("Min")
+                    max_raw = row.get("Max")
+                    min_val: Optional[int]
+                    max_val: Optional[int]
+                    try:
+                        min_val = int(float(min_raw)) if min_raw not in (None, "") else None
+                    except ValueError:
+                        min_val = None
+                    try:
+                        max_val = int(float(max_raw)) if max_raw not in (None, "") else None
+                    except ValueError:
+                        max_val = None
                     if code in rows:
-                        rows[code].append((name, addr))
+                        rows[code].append((name, addr, min_val, max_val))
 
                 for code, items in rows.items():
                     # Sort by address to ensure deterministic numbering
                     items.sort(key=lambda item: item[1])
                     counts: Dict[str, int] = {}
-                    for name, _ in items:
+                    for name, *_ in items:
                         counts[name] = counts.get(name, 0) + 1
                     seen: Dict[str, int] = {}
-                    for name, addr in items:
+                    for name, addr, min_val, max_val in items:
                         if addr in register_map[code]:
                             _LOGGER.warning(
                                 "Duplicate register address %s for function code %s: %s",
@@ -134,9 +164,11 @@ class ThesslaGreenDeviceScanner:
                             seen[name] = idx
                             name = f"{name}_{idx}"
                         register_map[code][addr] = name
+                        if min_val is not None or max_val is not None:
+                            register_ranges[name] = (min_val, max_val)
         except FileNotFoundError:
             _LOGGER.error("Register definition file not found: %s", csv_path)
-        return register_map
+        return register_map, register_ranges
 
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
@@ -206,17 +238,27 @@ class ThesslaGreenDeviceScanner:
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
+        name = register_name.lower()
+
         # Temperature sensors use a sentinel value to indicate no sensor
-        if "temperature" in register_name.lower():
+        if "temperature" in name:
             return value != SENSOR_UNAVAILABLE
 
         # Air flow sensors use the same sentinel for no sensor
-        if any(x in register_name.lower() for x in ["flow", "air_flow", "flow_rate"]):
-            return value != SENSOR_UNAVAILABLE and value != 65535
+        if any(x in name for x in ["flow", "air_flow", "flow_rate"]):
+            return value not in (SENSOR_UNAVAILABLE, 65535)
 
-        # Mode values should be in valid range
-        if "mode" in register_name.lower():
-            return 0 <= value <= 4
+        # Discrete allowed values for specific registers
+        if name in REGISTER_ALLOWED_VALUES:
+            return value in REGISTER_ALLOWED_VALUES[name]
+
+        # Use range from CSV if available
+        if name in self._register_ranges:
+            min_val, max_val = self._register_ranges[name]
+            if min_val is not None and value < min_val:
+                return False
+            if max_val is not None and value > max_val:
+                return False
 
         # Default: consider valid
         return True
