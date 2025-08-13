@@ -12,9 +12,15 @@ from custom_components.thessla_green_modbus.const import (
 )
 from custom_components.thessla_green_modbus.device_scanner import (
     ThesslaGreenDeviceScanner,
+    _decode_register_time,
     _decode_bcd_time,
+    _decode_setting_value,
+    _format_register_value,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ModbusException,
+    ModbusIOException,
+)
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 pytestmark = pytest.mark.asyncio
@@ -39,8 +45,15 @@ async def test_read_holding_skips_after_failure():
     # Initial failing scan
     with patch(
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-        AsyncMock(side_effect=ModbusException("boom")),
+        AsyncMock(side_effect=ModbusIOException("boom")),
     ) as call_mock1, patch("asyncio.sleep", AsyncMock()):
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock1,
+        patch("asyncio.sleep", AsyncMock()),
+    ):
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
         assert call_mock1.await_count == scanner.retry
@@ -59,14 +72,16 @@ async def test_read_holding_skips_after_failure():
 
 async def test_read_input_backoff():
     """Ensure exponential backoff delays between retries."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=3, backoff=0.1
+    )
     mock_client = AsyncMock()
 
     sleep_mock = AsyncMock()
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
+            AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", sleep_mock),
     ):
@@ -79,48 +94,52 @@ async def test_read_input_backoff():
 
 async def test_read_input_logs_warning_on_failure(caplog):
     """Warn when input registers cannot be read after retries."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=2
+    )
     mock_client = AsyncMock()
 
     caplog.set_level(logging.WARNING)
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
+            AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_input(mock_client, 0x0001, 3)
+        result = await scanner._read_input(mock_client, 0x0001, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert "Failed to read input registers 0x0001-0x0003 after 3 retries" in caplog.text
+    assert "Device does not expose register 0x0001" in caplog.text
 
 
 async def test_read_input_skips_cached_failures():
     """Input registers are cached after repeated failures."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=2
+    )
     mock_client = AsyncMock()
 
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
+            AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_input(mock_client, 0x0001, 2)
+        result = await scanner._read_input(mock_client, 0x0001, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert {0x0001, 0x0002} <= scanner._failed_input
+    assert {0x0001} <= scanner._failed_input
 
     # Subsequent call should be skipped
     with patch(
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
         AsyncMock(),
     ) as call_mock2:
-        result = await scanner._read_input(mock_client, 0x0001, 2)
+        result = await scanner._read_input(mock_client, 0x0001, 1)
         assert result is None
         call_mock2.assert_not_called()
 
@@ -443,8 +462,11 @@ async def test_scan_device_batch_fallback():
     batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
     assert any(call.args[2] == 2 for call in batch_calls)
     assert any(call.args[2] == 1 for call in batch_calls)
+
+
 async def test_temperature_register_unavailable_skipped():
     """Temperature registers with SENSOR_UNAVAILABLE should be skipped."""
+
 
 async def test_temperature_register_unavailable_kept():
     """Temperature registers with SENSOR_UNAVAILABLE should remain available."""
@@ -490,7 +512,6 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-
     # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
 
@@ -516,20 +537,44 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("max_percentage", 120) is True
     assert scanner._is_valid_register_value("min_percentage", -1) is False
     assert scanner._is_valid_register_value("max_percentage", 200) is False
-    # BCD time registers
+    # HH:MM time registers
     scanner._register_ranges["schedule_start_time"] = (0, 2359)
-    assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 0x081E) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 0x0800) is True
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
-    assert scanner._is_valid_register_value("schedule_start_time", 800) is True
-    assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
+    assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
 
 
+async def test_decode_register_time():
+    """Verify time decoding for HH:MM byte-encoded values."""
+    assert _decode_register_time(0x081E) == 830
+    assert _decode_register_time(0x1234) == 1852
+    assert _decode_register_time(0x2460) is None
+    assert _decode_register_time(0x0960) is None
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
     assert _decode_bcd_time(0x1234) == 1234
-    assert _decode_bcd_time(800) == 800
+    assert _decode_bcd_time(0x0800) == 800
     assert _decode_bcd_time(0x2460) is None
     assert _decode_bcd_time(2400) is None
+
+
+
+async def test_decode_setting_value():
+    """Verify decoding of combined airflow and temperature settings."""
+    assert _decode_setting_value(0x3C28) == (60, 20.0)
+    assert _decode_setting_value(-1) is None
+    assert _decode_setting_value(0xFF28) is None
+
+
+async def test_format_register_value_schedule():
+    """Formatted schedule registers should render as HH:MM."""
+    assert _format_register_value("schedule_summer_mon_1", 0x0615) == "06:15"
+
+
+async def test_format_register_value_setting():
+    """Formatted setting registers should show percent and temperature."""
+    assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
 
 
 async def test_scan_excludes_unavailable_temperature():
@@ -658,39 +703,10 @@ async def test_load_registers_missing_range_warning(tmp_path, caplog):
     assert any("Incomplete range" in record.message for record in caplog.records)
 
 
-async def test_load_registers_sanitize_range_values(tmp_path):
-    """Ensure Min/Max values are sanitized before conversion."""
+async def test_load_registers_sanitize_range_values(tmp_path, caplog):
+    """Sanitize range values and ignore non-numeric entries."""
     csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n"
-        "04,1,reg_a,0 # comment,10abc\n"
-    )
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
-        patch(
-            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
-            {"reg_a": 1},
-        ),
-        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert scanner._register_ranges["reg_a"] == (0, 10)
-
-
-async def test_load_registers_invalid_range_logs(tmp_path, caplog):
-    """Warn when Min/Max cannot be parsed even after sanitization."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n"
-        "04,1,reg_a,abc,#comment\n"
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0 # comment,10abc\n"
     )
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -712,9 +728,36 @@ async def test_load_registers_invalid_range_logs(tmp_path, caplog):
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
+    assert scanner._register_ranges["reg_a"] == (0, None)
+    assert any("non-numeric Max" in record.message for record in caplog.records)
+
+
+async def test_load_registers_invalid_range_logs(tmp_path, caplog):
+    """Warn when Min/Max cannot be parsed even after sanitization."""
+    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,abc,#comment\n"
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_a": 1},
+        ),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+        caplog.at_level(logging.WARNING),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
     assert "reg_a" not in scanner._register_ranges
-    assert any("Invalid Min" in record.message for record in caplog.records)
-    assert any("Invalid Max" in record.message for record in caplog.records)
+    assert any("non-numeric Min" in record.message for record in caplog.records)
+    assert any("non-numeric Max" in record.message for record in caplog.records)
 
 
 async def test_load_registers_missing_required_register(tmp_path):

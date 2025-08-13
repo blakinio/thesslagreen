@@ -251,7 +251,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x108F,4239,R/W,openWindowCoef,Intensywność wentylacji dla funkcji OTWARTE OKNA (wywiew),10,100,100,1,%,"0-100 - nastawa intensywności wentylacji; 101 - intensywność wentylacji z aktywnego trybu automatycznego / manualnego",3.72,
 
 # KONTROLA FILTRÓW
-03,0x1094,4244,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central wyposażonych w presostat / filtr kanałowy z presostatem"
+03,0x1094,4244,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central wyposażonych w presostat / filtr kanałowy z presostatem"
 03,0x1095,4245,R/W,presCheckTime,Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM],0,23,12,1,h,"Rejestr zawiera godzinę [GG] i minutę [MM] rozpoczęcia procedury",,
 
 # GWC SYSTEM
@@ -306,7 +306,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x113E,4414,R/W,hard_reset_schedule,Reset ustawień trybów pracy,0,1,,1,"0 - brak; 1 - jest",,
 
 # KONTROLA FILTRÓW - DODATKOWE
-03,0x1150,4432,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central w presostat / filtr kanałowy z presostatem"
+03,0x1150,4432,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central w presostat / filtr kanałowy z presostatem"
 03,0x1151,4433,R/W,presCheckTime,Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM],0,23,12,1,h,"Rejestr zawiera godzinę [GG] i minutę [MM] rozpoczęcia procedury",,
 
 # KOMUNIKACJA MODBUS
@@ -369,7 +369,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x2065,8293,R/W,E101,Brak odczytu z czujnika temperatury powietrza nawiewanego - NAWIEW (TN1),0,1,,1,"0 - brak; 1 - jest",,
 03,0x2066,8294,R/W,E102,Brak odczytu z czujnika temperatury powietrza usuwanego z pomieszczeń - WYWIEW (TP),0,1,,1,"0 - brak; 1 - jest",,
 03,0x2067,8295,R/W,E103,Brak odczytu z czujnika temperatury powietrza na wlocie do wymiennika rekuperacyjnego - FPX (TZ2),0,1,,1,"0 - brak; 1 - jest",,
-03,0x2068,8296,R/W,E104,"Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO)",0,1,,1,,"0 - brak; 1 - jest",,
+03,0x2068,8296,R/W,E104,"Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO)",0,1,,1,"0 - brak; 1 - jest",,
 03,0x2069,8297,R/W,E105,Brak odczytu z czujnika temperatury powietrza nawiewanego za wymiennikiem kanałowym (TN2),0,1,,1,"0 - brak; 1 - jest",,
 03,0x206A,8298,R/W,E106,Brak odczytu z czujnika temperatury powietrza zewnętrznego glikolowego GWC (TZ3),0,1,,1,"0 - brak; 1 - jest",,
 03,0x208A,8330,R/W,E138,Awaria czujnika CF wentylatora nawiewnego - Brak komunikacji z przetwornikiem ciśnienia wentylatora,0,1,,1,"0 - brak; 1 - jest",,
