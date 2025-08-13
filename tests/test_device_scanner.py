@@ -75,8 +75,8 @@ def mock_modbus_response():
     return response
 
 
-async def test_scan_device_success(mock_modbus_response):
-    """Test successful device scan."""
+async def test_scan_device_success_static(mock_modbus_response):
+    """Test successful device scan with predefined registers."""
     regs = {
         "04": {16: "outside_temperature"},
         "03": {0: "mode"},
