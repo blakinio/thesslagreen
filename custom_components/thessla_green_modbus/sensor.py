@@ -8,8 +8,8 @@ from typing import Any, Dict, Optional
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    ELECTRIC_POTENTIAL_VOLT,
     PERCENTAGE,
+    UnitOfElectricPotential,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
@@ -211,7 +211,7 @@ SENSOR_DEFINITIONS = {
         "icon": "mdi:sine-wave",
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
-        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "unit": UnitOfElectricPotential.VOLT,
         "register_type": "input_registers",
     },
     "dac_exhaust": {
@@ -219,7 +219,7 @@ SENSOR_DEFINITIONS = {
         "icon": "mdi:sine-wave",
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
-        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "unit": UnitOfElectricPotential.VOLT,
         "register_type": "input_registers",
     },
     "dac_heater": {
@@ -227,7 +227,7 @@ SENSOR_DEFINITIONS = {
         "icon": "mdi:sine-wave",
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
-        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "unit": UnitOfElectricPotential.VOLT,
         "register_type": "input_registers",
     },
     "dac_cooler": {
@@ -235,7 +235,7 @@ SENSOR_DEFINITIONS = {
         "icon": "mdi:sine-wave",
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
-        "unit": ELECTRIC_POTENTIAL_VOLT,
+        "unit": UnitOfElectricPotential.VOLT,
         "register_type": "input_registers",
     },
     # Percentage sensors

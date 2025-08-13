@@ -11,7 +11,6 @@ import pytest
 # ---------------------------------------------------------------------------
 
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-setattr(const, "ELECTRIC_POTENTIAL_VOLT", "V")
 setattr(const, "PERCENTAGE", "%")
 
 
@@ -23,8 +22,13 @@ class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
     CUBIC_METERS_PER_HOUR = "m³/h"
 
 
+class UnitOfElectricPotential:  # pragma: no cover - enum stub
+    VOLT = "V"
+
+
 const.UnitOfTemperature = UnitOfTemperature
 const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
+const.UnitOfElectricPotential = UnitOfElectricPotential
 
 sensor_mod = types.ModuleType("homeassistant.components.sensor")
 
@@ -86,4 +90,4 @@ async def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_ent
     await async_setup_entry(hass, mock_config_entry, add_entities)
 
     entities = add_entities.call_args[0][0]
-    assert len(entities) == len(SENSOR_DEFINITIONS)
+    assert len(entities) == len(SENSOR_DEFINITIONS)  # nosec B101
