@@ -454,6 +454,8 @@ class TestThesslaGreenDeviceScanner:
         # Valid values
         assert scanner._is_valid_register_value("test_register", 100) is True
         assert scanner._is_valid_register_value("mode", 1) is True
+        assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
+        assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
 
         # Invalid temperature sensor value
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
