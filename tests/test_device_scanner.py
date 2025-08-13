@@ -197,6 +197,12 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("supply_percentage", 100) is True
     assert scanner._is_valid_register_value("supply_percentage", 200) is False
 
+    # Dynamic percentage limits should accept device-provided values
+    assert scanner._is_valid_register_value("min_percentage", 20) is True
+    assert scanner._is_valid_register_value("max_percentage", 120) is True
+    assert scanner._is_valid_register_value("min_percentage", -1) is False
+    assert scanner._is_valid_register_value("max_percentage", 200) is False
+
 
 async def test_load_registers_duplicate_warning(tmp_path, caplog):
     """Warn when duplicate register addresses are encountered."""
