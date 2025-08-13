@@ -39,8 +39,18 @@ CONF_TIMEOUT = "timeout"
 CONF_RETRY = "retry"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 CONF_SCAN_UART_SETTINGS = "scan_uart_settings"
+CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
 
 DEFAULT_SCAN_UART_SETTINGS = False
+DEFAULT_SKIP_MISSING_REGISTERS = False
+
+# Registers that are known to be unavailable on some devices
+KNOWN_MISSING_REGISTERS = {
+    "input_registers": {"compilation_days"},
+    "holding_registers": set(),
+    "coil_registers": set(),
+    "discrete_inputs": set(),
+}
 
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
