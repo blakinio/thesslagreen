@@ -279,6 +279,7 @@ def mock_config_entry():
         "scan_interval": 30,
         "timeout": 10,
         "retry": 3,
+        "scan_uart_settings": False,
     }
     return config_entry
 

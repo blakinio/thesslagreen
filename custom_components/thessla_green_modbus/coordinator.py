@@ -100,6 +100,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         timeout: int = 10,
         retry: int = 3,
         force_full_register_list: bool = False,
+        scan_uart_settings: bool = False,
         entry: Optional[Any] = None,
     ) -> None:
         """Initialize the coordinator."""
@@ -117,6 +118,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.timeout = timeout
         self.retry = retry
         self.force_full_register_list = force_full_register_list
+        self.scan_uart_settings = scan_uart_settings
         self.entry = entry
 
         # Connection management
@@ -177,6 +179,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 slave_id=self.slave_id,
                 timeout=self.timeout,
                 retry=self.retry,
+                scan_uart_settings=self.scan_uart_settings,
             )
 
             try:

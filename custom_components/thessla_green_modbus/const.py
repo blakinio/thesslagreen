@@ -38,6 +38,9 @@ CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TIMEOUT = "timeout"
 CONF_RETRY = "retry"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
+CONF_SCAN_UART_SETTINGS = "scan_uart_settings"
+
+DEFAULT_SCAN_UART_SETTINGS = False
 
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here

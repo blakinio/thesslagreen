@@ -49,6 +49,7 @@ class TestThesslaGreenIntegration:
             "scan_interval": 30,
             "timeout": 10,
             "retry": 3,
+            "scan_uart_settings": False,
         }
         entry.add_update_listener = MagicMock()
         entry.async_on_unload = MagicMock()
