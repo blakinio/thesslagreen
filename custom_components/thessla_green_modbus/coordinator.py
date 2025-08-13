@@ -171,7 +171,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         # Scan device to discover available registers and capabilities
         if not self.force_full_register_list:
             _LOGGER.info("Scanning device for available registers...")
-            scanner = ThesslaGreenDeviceScanner(
+            scanner = await ThesslaGreenDeviceScanner.create(
                 host=self.host,
                 port=self.port,
                 slave_id=self.slave_id,

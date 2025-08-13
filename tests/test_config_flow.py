@@ -348,20 +348,20 @@ async def test_validate_input_success():
         CONF_NAME: "Test",
     }
 
+    scanner_instance = AsyncMock()
+    scanner_instance.scan_device.return_value = {
+        "available_registers": {},
+        "device_info": {
+            "device_name": "ThesslaGreen AirPack",
+            "firmware": "1.0",
+            "serial_number": "123",
+        },
+        "capabilities": {},
+    }
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner"
-    ) as mock_scanner_cls:
-        scanner_instance = AsyncMock()
-        scanner_instance.scan_device.return_value = {
-            "available_registers": {},
-            "device_info": {
-                "device_name": "ThesslaGreen AirPack",
-                "firmware": "1.0",
-                "serial_number": "123",
-            },
-            "capabilities": {},
-        }
-        mock_scanner_cls.return_value = scanner_instance
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
         result = await validate_input(hass, data)
 
     assert result["title"] == "Test"

@@ -69,7 +69,7 @@ async def validate_optimization_metrics():
         print("🔍 Testing device scanner optimization...")
         from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 
-        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
         # Check if scanner has optimization methods
         if hasattr(scanner, "_group_registers_for_batch_read") and hasattr(

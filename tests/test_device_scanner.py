@@ -18,7 +18,7 @@ pytestmark = pytest.mark.asyncio
 
 async def test_device_scanner_initialization():
     """Test device scanner initialization."""
-    scanner = ThesslaGreenDeviceScanner("192.168.3.17", 8899, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
 
     assert scanner.host == "192.168.3.17"
     assert scanner.port == 8899
@@ -27,7 +27,7 @@ async def test_device_scanner_initialization():
 
 async def test_scan_device_success_dynamic():
     """Test successful device scan with dynamic register scanning."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.1", 502, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
     async def fake_read_input(client, address, count):
         data = [1] * count
@@ -83,8 +83,12 @@ async def test_scan_device_success_static(mock_modbus_response):
         "01": {0: "power_supply_fans"},
         "02": {0: "expansion"},
     }
-    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=(regs, {})):
-        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    with patch.object(
+        ThesslaGreenDeviceScanner,
+        "_load_registers",
+        AsyncMock(return_value=(regs, {})),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
         with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -109,7 +113,7 @@ async def test_scan_device_success_static(mock_modbus_response):
 
 async def test_scan_device_connection_failure():
     """Test device scan with connection failure."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
         mock_client = AsyncMock()
@@ -125,8 +129,12 @@ async def test_scan_blocks_propagated():
     """Ensure scan_device returns discovered register blocks."""
     # Avoid scanning extra registers from CSV for test speed
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
-    with patch.object(ThesslaGreenDeviceScanner, "_load_registers", return_value=(empty_regs, {})):
-        scanner = ThesslaGreenDeviceScanner("192.168.1.1", 502, 10)
+    with patch.object(
+        ThesslaGreenDeviceScanner,
+        "_load_registers",
+        AsyncMock(return_value=(empty_regs, {})),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
         async def fake_read_input(client, address, count):
             return [1] * count
@@ -177,7 +185,7 @@ async def test_scan_blocks_propagated():
 
 async def test_is_valid_register_value():
     """Test register value validation."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True
@@ -210,7 +218,7 @@ async def test_is_valid_register_value():
 
 async def test_capabilities_detect_schedule_keywords():
     """Ensure capability detection considers scheduling related registers."""
-    scanner = ThesslaGreenDeviceScanner("host", 502, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
     scanner.available_registers["holding_registers"].add("airing_start_time")
     caps = scanner._analyze_capabilities()
     assert caps.weekly_schedule is True
@@ -227,7 +235,7 @@ async def test_load_registers_duplicate_warning(tmp_path, caplog):
         "custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path
     ):
         with caplog.at_level(logging.WARNING):
-            ThesslaGreenDeviceScanner("host", 502, 10)
+            await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
     assert any("Duplicate register address" in record.message for record in caplog.records)
 
@@ -242,14 +250,14 @@ async def test_load_registers_duplicate_names(tmp_path):
     with patch(
         "custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path
     ):
-        scanner = ThesslaGreenDeviceScanner("host", 502, 10)
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
     assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
 
 
 async def test_analyze_capabilities():
     """Test capability analysis."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
     # Mock available registers
     scanner.available_registers = {
@@ -270,7 +278,7 @@ async def test_analyze_capabilities():
 
 async def test_analyze_capabilities_flag_presence():
     """Capabilities should reflect register presence and absence."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
     # Positive case: registers exist
     scanner.available_registers = {
@@ -300,7 +308,7 @@ async def test_analyze_capabilities_flag_presence():
 @pytest.mark.parametrize("async_close", [True, False])
 async def test_close_terminates_client(async_close):
     """Ensure close() handles both async and sync client close methods."""
-    scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
     mock_client = AsyncMock() if async_close else MagicMock()
     scanner._client = mock_client
 

@@ -1,6 +1,7 @@
 """Comprehensive test suite for ThesslaGreen Modbus integration - OPTIMIZED VERSION."""
 
 import logging
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -420,7 +421,7 @@ class TestThesslaGreenDeviceScanner:
         """Test successful device scanning."""
         from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 
-        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
         with patch("pymodbus.client.ModbusTcpClient", return_value=mock_modbus_client):
             result = await scanner.scan_device()
@@ -435,7 +436,7 @@ class TestThesslaGreenDeviceScanner:
         """Test scanner behavior on connection failure."""
         from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 
-        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
         mock_client = MagicMock()
         mock_client.connect.return_value = False
@@ -448,7 +449,7 @@ class TestThesslaGreenDeviceScanner:
         """Test register value validation logic."""
         from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 
-        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+        scanner = asyncio.run(ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10))
 
         # Valid values
         assert scanner._is_valid_register_value("test_register", 100) is True
@@ -467,7 +468,7 @@ class TestThesslaGreenDeviceScanner:
         """Test capability analysis logic."""
         from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 
-        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+        scanner = asyncio.run(ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10))
         scanner.available_registers = {
             "input_registers": {
                 "constant_flow_active",
@@ -645,7 +646,7 @@ class TestPerformanceOptimizations:
         """Test that device scanner provides optimization statistics."""
         from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 
-        scanner = ThesslaGreenDeviceScanner("192.168.1.100", 502, 10)
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
         # Mock successful scan
         with patch("pymodbus.client.ModbusTcpClient") as mock_client_class:
