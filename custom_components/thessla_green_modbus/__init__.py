@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
+from importlib import import_module
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
@@ -30,9 +31,14 @@ from .const import (
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .modbus_exceptions import ConnectionException, ModbusException
 
-# Import heavy modules lazily in setup functions to ease testing
-
 _LOGGER = logging.getLogger(__name__)
+
+# Preload platform modules to avoid runtime import warnings
+for _platform in PLATFORM_DOMAINS:
+    try:
+        import_module(f".{_platform}", __name__)
+    except Exception:  # pragma: no cover - environment-dependent
+        _LOGGER.debug("Could not preload platform %s", _platform, exc_info=True)
 
 # Legacy default port used before version 2 when explicit port was optional
 LEGACY_DEFAULT_PORT = 8899
