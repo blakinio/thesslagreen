@@ -78,7 +78,7 @@ class DeviceCapabilities:
     sensor_heating_temperature: bool = False
     temperature_sensors_count: int = 0
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
