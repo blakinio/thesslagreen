@@ -433,6 +433,38 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
         assert FakeClient.open_connections == 0
 
 
+@pytest.mark.asyncio
+async def test_missing_client_raises_connection_exception(coordinator):
+    """Missing client should raise ConnectionException instead of AttributeError."""
+    coordinator.client = None
+    coordinator._ensure_connection = AsyncMock(side_effect=ConnectionException("fail"))
+    coordinator._register_groups = {
+        "input_registers": [(0x0000, 1)],
+        "holding_registers": [(0x0000, 1)],
+        "coil_registers": [(0x0000, 1)],
+        "discrete_inputs": [(0x0000, 1)],
+    }
+
+    with pytest.raises(ConnectionException):
+        await coordinator._read_input_registers_optimized()
+    with pytest.raises(ConnectionException):
+        await coordinator._read_holding_registers_optimized()
+    with pytest.raises(ConnectionException):
+        await coordinator._read_coil_registers_optimized()
+    with pytest.raises(ConnectionException):
+        await coordinator._read_discrete_inputs_optimized()
+
+
+@pytest.mark.asyncio
+async def test_async_update_data_missing_client(coordinator):
+    """_async_update_data should raise UpdateFailed when client cannot be established."""
+    coordinator.client = None
+    coordinator._ensure_connection = AsyncMock()
+
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+
+
 def cleanup_modules():
     """Clean up injected modules."""
     for name in modules:
