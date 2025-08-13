@@ -563,7 +563,13 @@ class ThesslaGreenDeviceScanner:
                 "Device scan completed: %d registers detected, %d capabilities detected",
                 sum(len(v) for v in self.available_registers.values()),
                 sum(
-                    1 for v in caps.as_dict().values() if bool(v) and not isinstance(v, (set, int))
+                    1
+                    for v in caps.as_dict().values()
+                    if (isinstance(v, bool) and v)
+                    or (
+                        bool(v)
+                        and not isinstance(v, (set, int, bool))
+                    )
                 ),
             )
 
@@ -603,7 +609,13 @@ class ThesslaGreenDeviceScanner:
                 info.firmware,
                 register_count,
                 sum(
-                    1 for v in caps.as_dict().values() if bool(v) and not isinstance(v, (set, int))
+                    1
+                    for v in caps.as_dict().values()
+                    if (isinstance(v, bool) and v)
+                    or (
+                        bool(v)
+                        and not isinstance(v, (set, int, bool))
+                    )
                 ),
             )
 
