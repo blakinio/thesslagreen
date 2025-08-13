@@ -705,5 +705,11 @@
       "name": "Odśwież dane urządzenia",
       "description": "Wymusza natychmiastowe odświeżenie danych urządzenia"
     }
+  },
+  "issues": {
+    "modbus_write_failed": {
+      "title": "Błąd zapisu Modbus",
+      "description": "Nie udało się zapisać do rejestru {register}. Sprawdź połączenie i uprawnienia urządzenia."
+    }
   }
 }
