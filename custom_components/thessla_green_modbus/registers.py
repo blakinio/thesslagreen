@@ -35,11 +35,8 @@ DISCRETE_INPUT_REGISTERS: dict[str, int] = {
 }
 
 INPUT_REGISTERS: dict[str, int] = {
-    "version_major": 0,
-    "version_minor": 1,
     "day_of_week": 2,
     "period": 3,
-    "version_patch": 4,
     "compilation_days": 14,
     "compilation_seconds": 15,
     "outside_temperature": 16,
@@ -205,7 +202,6 @@ HOLDING_REGISTERS: dict[str, int] = {
     "airing_winter_sun": 180,
     "rtc_cal": 192,
     "cf_version": 240,
-    "exp_version": 241,
     "supply_air_flow": 256,
     "exhaust_air_flow": 257,
     "dac_supply": 1280,

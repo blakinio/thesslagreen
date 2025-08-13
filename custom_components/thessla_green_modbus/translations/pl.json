@@ -119,18 +119,6 @@
       "dac_cooler": {
         "name": "Sterowanie chłodnicą"
       },
-      "firmware_major": {
-        "name": "Wersja firmware (główna)"
-      },
-      "firmware_minor": {
-        "name": "Wersja firmware (podrzędna)"
-      },
-      "firmware_patch": {
-        "name": "Wersja firmware (poprawka)"
-      },
-      "expansion_version": {
-        "name": "Wersja modułu Expansion"
-      },
       "day_of_week": {
         "name": "Dzień tygodnia"
       },

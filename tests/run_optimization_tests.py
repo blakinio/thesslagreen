@@ -148,8 +148,6 @@ async def validate_register_coverage():
             "outside_temperature",
             "supply_temperature",
             "exhaust_temperature",
-            "firmware_major",
-            "firmware_minor",
         }
 
         critical_holding_regs = {
