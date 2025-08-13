@@ -246,22 +246,33 @@ class ThesslaGreenDeviceScanner:
 
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
-            return value != SENSOR_UNAVAILABLE
+            if value == SENSOR_UNAVAILABLE:
+                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                return False
+            return True
 
         # Air flow sensors use the same sentinel for no sensor
         if any(x in name for x in ["flow", "air_flow", "flow_rate"]):
-            return value not in (SENSOR_UNAVAILABLE, 65535)
+            if value in (SENSOR_UNAVAILABLE, 65535):
+                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                return False
+            return True
 
         # Discrete allowed values for specific registers
         if name in REGISTER_ALLOWED_VALUES:
-            return value in REGISTER_ALLOWED_VALUES[name]
+            if value not in REGISTER_ALLOWED_VALUES[name]:
+                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                return False
+            return True
 
         # Use range from CSV if available
         if name in self._register_ranges:
             min_val, max_val = self._register_ranges[name]
             if min_val is not None and value < min_val:
+                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
                 return False
             if max_val is not None and value > max_val:
+                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
                 return False
 
         # Default: consider valid
