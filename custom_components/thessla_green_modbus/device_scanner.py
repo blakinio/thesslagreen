@@ -66,20 +66,21 @@ def _decode_register_time(value: int) -> Optional[int]:
 
     return None
 
-    # First attempt BCD decoding
+
+def _decode_bcd_time(value: int) -> Optional[int]:
+    """Decode BCD or decimal HHMM values to ``HHMM``."""
+
     nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
-    if all(nibble <= 9 for nibble in nibbles):
+    if all(n <= 9 for n in nibbles):
         hours = nibbles[0] * 10 + nibbles[1]
         minutes = nibbles[2] * 10 + nibbles[3]
         if hours <= 23 and minutes <= 59:
             return hours * 100 + minutes
 
-    # Fallback to plain decimal HHMM representation (e.g. 800 -> 08:00)
     hours_dec = value // 100
     minutes_dec = value % 100
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
         return hours_dec * 100 + minutes_dec
-
     return None
 
 
