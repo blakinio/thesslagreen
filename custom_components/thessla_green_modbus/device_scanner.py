@@ -102,7 +102,10 @@ class ThesslaGreenDeviceScanner:
                     code = row.get("Function_Code")
                     if not code or code.startswith("#"):
                         continue
-                    name = _to_snake_case(row.get("Register_Name", ""))
+                    name_raw = row.get("Register_Name")
+                    if not isinstance(name_raw, str) or not name_raw.strip():
+                        continue
+                    name = _to_snake_case(name_raw)
                     try:
                         addr = int(row.get("Address_DEC", 0))
                     except (TypeError, ValueError):
