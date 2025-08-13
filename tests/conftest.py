@@ -231,18 +231,6 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
     sys.modules["homeassistant.helpers.config_validation"] = cv
     sys.modules["homeassistant.helpers.selector"] = selector
-    # Minimal util logging stub required by pytest_homeassistant_custom_component
-    util = types.ModuleType("homeassistant.util")
-    util_logging = types.ModuleType("homeassistant.util.logging")
-
-    def log_exception(format_err, *args):  # pragma: no cover - simple stub
-        return None
-
-    util_logging.log_exception = log_exception
-    util.logging = util_logging
-    ha.util = util
-    sys.modules["homeassistant.util"] = util
-    sys.modules["homeassistant.util.logging"] = util_logging
     sys.modules["pymodbus"] = pymodbus
     sys.modules["pymodbus.client"] = pymodbus_client
     sys.modules["pymodbus.client.tcp"] = pymodbus_client_tcp
