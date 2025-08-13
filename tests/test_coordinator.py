@@ -11,6 +11,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -134,7 +135,9 @@ for name, module in modules.items():
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # ✅ FIXED: Import correct coordinator class name
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+    ThesslaGreenModbusCoordinator,
+)
 
 
 @pytest.fixture
@@ -184,6 +187,44 @@ async def test_async_write_valid_register(coordinator):
 
     assert result is True
     coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_write_multi_register_start(coordinator):
+    """Writing multi-register from start address succeeds."""
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+
+    result = await coordinator.async_write_register("date_time_1", [1, 2, 3, 4])
+
+    assert result is True
+    client.write_registers.assert_awaited_once_with(
+        address=HOLDING_REGISTERS["date_time_1"], values=[1, 2, 3, 4], slave=1
+    )
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_write_multi_register_non_start(coordinator):
+    """Multi-register writes from non-start addresses are rejected."""
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_registers = AsyncMock()
+    client.write_register = AsyncMock()
+    coordinator.client = client
+
+    result = await coordinator.async_write_register("date_time_2", [1, 2, 3])
+
+    assert result is False
+    client.write_registers.assert_not_awaited()
+    client.write_register.assert_not_awaited()
+    coordinator.async_request_refresh.assert_not_called()
 
 
 def test_performance_stats(coordinator):
@@ -375,6 +416,6 @@ def cleanup_modules():
 
 
 # Register cleanup
-import atexit
+import atexit  # noqa: E402
 
 atexit.register(cleanup_modules)

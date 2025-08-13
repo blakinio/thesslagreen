@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant
 try:  # pragma: no cover
     from homeassistant.helpers.device_registry import DeviceInfo
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
+
     class DeviceInfo:  # type: ignore[misc]
         """Minimal fallback DeviceInfo for tests.
 
@@ -55,22 +56,29 @@ from .const import (
     MODEL,
     SENSOR_UNAVAILABLE,
 )
-from .multipliers import REGISTER_MULTIPLIERS
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_helpers import _call_modbus
+from .multipliers import REGISTER_MULTIPLIERS
+from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
 MULTI_REGISTER_SIZES = {
-    'date_time_1': 4,
-    'date_time_2': 4,
-    'date_time_3': 4,
-    'date_time_4': 4,
-    'lock_date_1': 3,
-    'lock_date_2': 3,
-    'lock_date_3': 3,
+    "date_time_1": 4,
+    "lock_date_1": 3,
 }
+
+# Map each register belonging to a multi-register block to its starting register
+MULTI_REGISTER_STARTS: Dict[str, str] = {}
+for start, size in MULTI_REGISTER_SIZES.items():
+    MULTI_REGISTER_STARTS[start] = start
+    base = HOLDING_REGISTERS[start]
+    for offset in range(1, size):
+        addr = base + offset
+        for name, reg_addr in HOLDING_REGISTERS.items():
+            if reg_addr == addr:
+                MULTI_REGISTER_STARTS[name] = start
+                break
 
 
 class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
@@ -518,7 +526,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     register_name = self._find_register_name(HOLDING_REGISTERS, addr)
                     if register_name in MULTI_REGISTER_SIZES:
                         size = MULTI_REGISTER_SIZES[register_name]
-                        values = response.registers[i : i + size]
+                        values = response.registers[i : i + size]  # noqa: E203
                         if (
                             len(values) == size
                             and register_name in self.available_registers["holding_registers"]
@@ -745,17 +753,37 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 await self._ensure_connection()
 
                 original_value = value
+                start_register = MULTI_REGISTER_STARTS.get(register_name)
 
-                if register_name in MULTI_REGISTER_SIZES:
-                    if not isinstance(value, (list, tuple)) or len(value) != MULTI_REGISTER_SIZES[register_name]:
+                if isinstance(value, (list, tuple)):
+                    if start_register is None:
+                        _LOGGER.error(
+                            "Register %s does not support multi-register writes",
+                            register_name,
+                        )
+                        return False
+                    if start_register != register_name:
+                        _LOGGER.error(
+                            "Multi-register writes must start at %s",
+                            start_register,
+                        )
+                        return False
+                    if len(value) != MULTI_REGISTER_SIZES[start_register]:
+                        _LOGGER.error(
+                            "Register %s expects %d values",
+                            register_name,
+                            MULTI_REGISTER_SIZES[start_register],
+                        )
+                        return False
+                    values = [int(v) for v in value]
+                else:
+                    if register_name in MULTI_REGISTER_SIZES:
                         _LOGGER.error(
                             "Register %s expects %d values",
                             register_name,
                             MULTI_REGISTER_SIZES[register_name],
                         )
                         return False
-                    values = [int(v) for v in value]
-                else:
                     # Apply multiplier if defined and convert to integer for Modbus
                     if register_name in REGISTER_MULTIPLIERS:
                         multiplier = REGISTER_MULTIPLIERS[register_name]
