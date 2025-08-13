@@ -1,8 +1,10 @@
 """Tests for ThesslaGreenBinarySensor entity."""
+
 import sys
 import types
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -47,12 +49,12 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.binary_sensor import (
+from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
     BINARY_SENSOR_DEFINITIONS,
     ThesslaGreenBinarySensor,
     async_setup_entry,
 )
-from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 
 
 def test_binary_sensor_creation_and_state(mock_coordinator):
