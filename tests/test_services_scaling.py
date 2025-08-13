@@ -69,12 +69,12 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
 
     assert writes[0] == (
         HOLDING_REGISTERS["schedule_monday_period1_start"],
-        630,
+        0x0630,
         1,
     )  # nosec: B101
     assert writes[1] == (
         HOLDING_REGISTERS["schedule_monday_period1_end"],
-        800,
+        0x0800,
         1,
     )  # nosec: B101
     assert writes[2] == (

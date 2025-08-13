@@ -31,38 +31,27 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
     "antifreez_mode": {0, 1},
 }
 
-# Registers storing times as BCD HHMM values
-BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "setting_", "airing_")
+# Registers storing times encoded as HH:MM bytes
+TIME_REGISTER_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
 
 
-def _decode_bcd_time(value: int) -> Optional[int]:
-    """Decode a BCD encoded or decimal HHMM value to an integer.
+def _decode_register_time(value: int) -> Optional[int]:
+    """Decode a 16-bit register with HH:MM byte encoding to ``HHMM``.
 
-    The return value is ``HHMM`` (e.g. ``0x1234`` or ``1234`` -> ``1234``).
-    ``None`` is returned if the input is negative or cannot be parsed as a
-    valid time value.
+    The most significant byte stores the hour and the least significant byte
+    stores the minute. ``None`` is returned if the value is negative or if the
+    extracted hour/minute fall outside of valid ranges.
     """
 
     if value < 0:
         return None
 
-    # First try plain decimal HHMM representation (e.g. 800 -> 08:00)
-    hours_dec = value // 100
-    minutes_dec = value % 100
-    if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
-        return hours_dec * 100 + minutes_dec
+    hour = (value >> 8) & 0xFF
+    minute = value & 0xFF
+    if 0 <= hour <= 23 and 0 <= minute <= 59:
+        return hour * 100 + minute
 
-    # Fall back to BCD decoding
-    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
-    if any(nibble > 9 for nibble in nibbles):
-        return None
-
-    hours = nibbles[0] * 10 + nibbles[1]
-    minutes = nibbles[2] * 10 + nibbles[3]
-    if hours > 23 or minutes > 59:
-        return None
-
-    return hours * 100 + minutes
+    return None
 
 
 # Maximum registers per batch read (Modbus limit)
@@ -178,7 +167,14 @@ class ThesslaGreenDeviceScanner:
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
         self = cls(
-            host, port, slave_id, timeout, retry, backoff, verbose_invalid_values, scan_uart_settings
+            host,
+            port,
+            slave_id,
+            timeout,
+            retry,
+            backoff,
+            verbose_invalid_values,
+            scan_uart_settings,
         )
         await self._async_setup()
         return self
@@ -218,9 +214,7 @@ class ThesslaGreenDeviceScanner:
                         min_raw = row.get("Min")
                         max_raw = row.get("Max")
 
-                        def _parse_range(
-                            label: str, raw: Optional[str]
-                        ) -> Optional[int]:
+                        def _parse_range(label: str, raw: Optional[str]) -> Optional[int]:
                             if raw in (None, ""):
                                 return None
                             text = str(raw).split("#", 1)[0]
@@ -354,15 +348,12 @@ class ThesslaGreenDeviceScanner:
             self.retry,
         )
         self._failed_input.update(range(start, end + 1))
-        _LOGGER.debug(
-            "Caching failed input registers 0x%04X-0x%04X", start, end
-        )
+        _LOGGER.debug("Caching failed input registers 0x%04X-0x%04X", start, end)
         return None
 
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-
         """Read holding registers with retry and per-register failure tracking."""
         failures = self._holding_failures.get(address, 0)
         if failures >= self.retry:
@@ -370,9 +361,7 @@ class ThesslaGreenDeviceScanner:
 
         """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
-            _LOGGER.debug(
-                "Skipping cached failed holding register 0x%04X", address
-            )
+            _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
 
             return None
 
@@ -403,7 +392,6 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-
 
             if self.backoff and attempt < self.retry:
                 await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
@@ -508,9 +496,9 @@ class ThesslaGreenDeviceScanner:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
-        # Decode BCD time values before validation
-        if name.startswith(BCD_TIME_PREFIXES):
-            decoded = _decode_bcd_time(value)
+        # Decode schedule/airing time values before validation
+        if name.startswith(TIME_REGISTER_PREFIXES):
+            decoded = _decode_register_time(value)
             if decoded is None:
                 self._log_invalid_value(register_name, value)
                 return False

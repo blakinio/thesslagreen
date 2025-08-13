@@ -328,7 +328,8 @@ class TestThesslaGreenConfigFlow:
         }
 
         with patch(
-            "custom_components.thessla_green_modbus.device_scanner.ThesslaGreenDeviceScanner.scan_device",
+            "custom_components.thessla_green_modbus.device_scanner."
+            "ThesslaGreenDeviceScanner.scan_device",
             return_value=scanner_result,
         ):
             yield
@@ -471,12 +472,12 @@ class TestThesslaGreenDeviceScanner:
         # Invalid mode value
         assert scanner._is_valid_register_value("mode", 5) is False
 
-        # Schedule registers accept both BCD and decimal times
+        # Schedule registers decode HH:MM byte values
         scanner._register_ranges["schedule_start_time"] = (0, 2359)
-        assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
-        assert scanner._is_valid_register_value("schedule_start_time", 800) is True
+        assert scanner._is_valid_register_value("schedule_start_time", 0x081E) is True
+        assert scanner._is_valid_register_value("schedule_start_time", 0x0800) is True
         assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
-        assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
+        assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
 
     def test_capability_analysis(self):
         """Test capability analysis logic."""
