@@ -197,12 +197,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             auto_detected_note = translations.get(
                 "auto_detected_note_limited",
-                f"component.{DOMAIN}.auto_detected_note_success",
-                "Auto-detection successful!",
-            )
-        else:
-            auto_detected_note = translations.get(
-                f"component.{DOMAIN}.auto_detected_note_limited",
                 "Limited auto-detection - some registers may be missing.",
             )
 
