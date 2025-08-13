@@ -267,31 +267,6 @@ SENSOR_DEFINITIONS = {
         "unit": PERCENTAGE,
         "register_type": "input_registers",
     },
-    # Firmware and version info
-    "version_major": {
-        "translation_key": "firmware_major",
-        "icon": "mdi:chip",
-        "unit": None,
-        "register_type": "input_registers",
-    },
-    "version_minor": {
-        "translation_key": "firmware_minor",
-        "icon": "mdi:chip",
-        "unit": None,
-        "register_type": "input_registers",
-    },
-    "version_patch": {
-        "translation_key": "firmware_patch",
-        "icon": "mdi:chip",
-        "unit": None,
-        "register_type": "input_registers",
-    },
-    "exp_version": {
-        "translation_key": "expansion_version",
-        "icon": "mdi:expansion-card",
-        "unit": None,
-        "register_type": "holding_registers",
-    },
 }
 
 
@@ -359,16 +334,6 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         if value is None:
             return None
-
-        # Special handling for firmware version display
-        if self._register_name in ["version_major", "version_minor", "version_patch"]:
-            return value
-
-        # Special handling for expansion version (convert hex to decimal.decimal format)
-        if self._register_name == "exp_version" and isinstance(value, int):
-            major = (value >> 8) & 0xFF
-            minor = value & 0xFF
-            return f"{major}.{minor:02d}"
 
         return value
 

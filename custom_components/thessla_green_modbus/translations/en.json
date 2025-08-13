@@ -119,18 +119,6 @@
       "dac_cooler": {
         "name": "Cooler DAC"
       },
-      "firmware_major": {
-        "name": "Firmware Major"
-      },
-      "firmware_minor": {
-        "name": "Firmware Minor"
-      },
-      "firmware_patch": {
-        "name": "Firmware Patch"
-      },
-      "expansion_version": {
-        "name": "Expansion Version"
-      },
       "day_of_week": {
         "name": "Day of Week"
       },

@@ -29,11 +29,8 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 02,0x0015,21,R/-,empty_house,Stan wejścia sygnału załączenia funkcji PUSTY DOM,0,1,,,"0 - OFF; 1 - ON",,
 
 # 04 - READ INPUT REGISTER
-04,0x0000,0,R/-,VERSION_MAJOR,Wersja oprogramowania sterownika - liczba 1 [MM],,,1,,"Format zapisu wersji oprogramowania: <MM>.<mm>.<pp>",3.00,"3.xy - wersje na procesor ATmega128; 4.xy - wersje na procesor ATmega2561; 9x.yz - wersje testowe"
-04,0x0001,1,R/-,VERSION_MINOR,Wersja oprogramowania sterownika - liczba 2 [mm],,,1,,Format zapisu wersji oprogramowania: <MM>.<mm>.<pp>,3.00,
 04,0x0002,2,R/-,day_of_week,Bieżący dzień tygodnia dla trybu automatycznego,0,6,1,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",3.00,
 04,0x0003,3,R/-,period,Bieżący odcinek czasowy dla trybu automatycznego,0,3,1,1,"0 - Odcinek czasowy 1; 1 - Odcinek czasowy 2; 2 - Odcinek czasowy 3; 3 - Odcinek czasowy 4",3.00,
-04,0x0004,4,R/-,VERSION_PATCH,Wersja oprogramowania sterownika - liczba 3 [pp],,,1,,"Format zapisu wersji oprogramowania: <MM>.<mm>.<pp>",4.82,
 04,0x000E,14,R/-,compilation_days,Data kompilacji oprogramowania Basic,0,65535,,1,d,"Liczba dni od 01.01.2000",,
 04,0x000F,15,R/-,compilation_seconds,Godzina kompilacji oprogramowania Basic,0,43200,,2,s,"Liczba sekund od 00:00:00",,
 04,0x0010,16,R/-,outside_temperature,Temperatura powietrza zewnętrznego (TZ1),-999,999,,0.1,°C,"Wartość 0x8000 (hex) / 32768 (dec) oznacza brak odczytu temperatury",,"*wartość maksymalna w przypadku odczytu temperatury"
@@ -211,7 +208,6 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 # INNE USTAWIENIA
 03,0x00C0,192,R/W,RTC_cal,Dane kalibracyjne zegara czasu rzeczywistego,0,255,198,1,,"Zakres wartości rzeczywistych: od (-127) do (+127)",,
 03,0x00F0,240,R/-,CF_version,Wersja oprogramowania modułu CF lub (od 4.75) TG-02,,,1,,"Format zapisu wersji oprogramowania: [MM].[mm]",,
-03,0x00F1,241,R/-,EXP_version,Wersja oprogramowania modułu Expansion,,,1,,"Format zapisu wersji oprogramowania: [MM].[mm]",,
 03,0x0100,256,R/-,supplyAirFlow,Wartość chwilowa strumienia powietrza - nawiew,0,65535,,1,m3/h,"0 - brak przepływu (CF aktywny); 65535 - CF nieaktywny",,
 03,0x0101,257,R/-,exhaustAirFlow,Wartość chwilowa strumienia powietrza - wywiew,0,65535,,1,m3/h,,,
 03,0x0500,1280,R/-,dac_supply,Napięcie sterujące wentylatorem nawiewnym (PWM),0,4095,,0.00244,V,"0 - 0.0V; 4095 - 10.0V",,
