@@ -12,14 +12,14 @@ COIL_REGISTERS: dict[str, int] = {
     "heating_cable": 12,
     "work_permit": 13,
     "gwc": 14,
-    "hood": 15,
+    "hood_output": 15,
 }
 
 DISCRETE_INPUT_REGISTERS: dict[str, int] = {
     "duct_heater_protection": 0,
     "expansion": 1,
     "dp_duct_filter_overflow": 3,
-    "hood": 4,
+    "hood_switch": 4,
     "contamination_sensor": 5,
     "airing_sensor": 6,
     "airing_switch": 7,

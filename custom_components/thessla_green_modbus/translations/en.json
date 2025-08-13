@@ -187,8 +187,8 @@
       "work_permit": {
         "name": "Work Permit"
       },
-      "hood": {
-        "name": "Hood"
+      "hood_output": {
+        "name": "Hood Output"
       },
       "expansion": {
         "name": "Expansion Module"
