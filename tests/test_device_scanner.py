@@ -658,8 +658,8 @@ async def test_load_registers_missing_range_warning(tmp_path, caplog):
     assert any("Incomplete range" in record.message for record in caplog.records)
 
 
-async def test_load_registers_sanitize_range_values(tmp_path):
-    """Ensure Min/Max values are sanitized before conversion."""
+async def test_load_registers_sanitize_range_values(tmp_path, caplog):
+    """Sanitize range values and ignore non-numeric entries."""
     csv_content = (
         "Function_Code,Address_DEC,Register_Name,Min,Max\n"
         "04,1,reg_a,0 # comment,10abc\n"
@@ -680,10 +680,12 @@ async def test_load_registers_sanitize_range_values(tmp_path):
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
         ),
+        caplog.at_level(logging.WARNING),
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
-    assert scanner._register_ranges["reg_a"] == (0, 10)
+    assert scanner._register_ranges["reg_a"] == (0, None)
+    assert any("non-numeric Max" in record.message for record in caplog.records)
 
 
 async def test_load_registers_invalid_range_logs(tmp_path, caplog):
@@ -713,8 +715,8 @@ async def test_load_registers_invalid_range_logs(tmp_path, caplog):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
     assert "reg_a" not in scanner._register_ranges
-    assert any("Invalid Min" in record.message for record in caplog.records)
-    assert any("Invalid Max" in record.message for record in caplog.records)
+    assert any("non-numeric Min" in record.message for record in caplog.records)
+    assert any("non-numeric Max" in record.message for record in caplog.records)
 
 
 async def test_load_registers_missing_required_register(tmp_path):

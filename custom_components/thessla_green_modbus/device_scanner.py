@@ -223,15 +223,26 @@ class ThesslaGreenDeviceScanner:
                         ) -> Optional[int]:
                             if raw in (None, ""):
                                 return None
-                            text = str(raw).split("#", 1)[0]
-                            text = re.sub(r"[^0-9+\-\.]+", "", text)
+
+                            text = str(raw).split("#", 1)[0].strip()
                             if not text:
-                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                _LOGGER.warning(
+                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                )
                                 return None
+
+                            if not re.fullmatch(r"[+-]?\d+(?:\.\d+)?", text):
+                                _LOGGER.warning(
+                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                )
+                                return None
+
                             try:
                                 return int(float(text))
                             except ValueError:
-                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                _LOGGER.warning(
+                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                )
                                 return None
 
                         min_val = _parse_range("Min", min_raw)
