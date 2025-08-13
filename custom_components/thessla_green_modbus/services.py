@@ -27,7 +27,6 @@ from .const import (
     SPECIAL_FUNCTION_MAP,
     SPECIAL_MODE_OPTIONS,
 )
-from .multipliers import REGISTER_MULTIPLIERS
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -41,18 +40,6 @@ AIR_QUALITY_REGISTER_MAP = {
     "co2_high": "co2_threshold_high",
     "humidity_target": "humidity_target",
 }
-
-
-def _scale_for_register(register_name: str, value: float) -> int:
-    """Scale ``value`` according to ``REGISTER_MULTIPLIERS`` for ``register_name``.
-
-    This converts user-facing units (e.g. degrees Celsius) to raw register
-    values expected by the device.
-    """
-    multiplier = REGISTER_MULTIPLIERS.get(register_name)
-    if multiplier is not None:
-        return int(round(value / multiplier))
-    return int(round(value))
 
 
 # Service schemas
@@ -271,24 +258,24 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 # Write schedule values with proper scaling
                 await coordinator.async_write_register(
                     start_register,
-                    _scale_for_register(start_register, start_hhmm),
+                    start_hhmm,
                     refresh=False,
                 )
                 await coordinator.async_write_register(
                     end_register,
-                    _scale_for_register(end_register, end_hhmm),
+                    end_hhmm,
                     refresh=False,
                 )
                 await coordinator.async_write_register(
                     flow_register,
-                    _scale_for_register(flow_register, airflow_rate),
+                    airflow_rate,
                     refresh=False,
                 )
 
                 if temperature is not None:
                     await coordinator.async_write_register(
                         temp_register,
-                        _scale_for_register(temp_register, temperature),
+                        temperature,
                         refresh=False,
                     )
 
@@ -309,14 +296,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if coordinator:
                 await coordinator.async_write_register(
                     "bypass_mode",
-                    _scale_for_register("bypass_mode", mode_value),
+                    mode_value,
                     refresh=False,
                 )
 
                 if min_temperature is not None:
                     await coordinator.async_write_register(
                         "min_bypass_temperature",
-                        _scale_for_register("min_bypass_temperature", min_temperature),
+                        min_temperature,
                         refresh=False,
                     )
 
@@ -338,21 +325,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if coordinator:
                 await coordinator.async_write_register(
                     "gwc_mode",
-                    _scale_for_register("gwc_mode", mode_value),
+                    mode_value,
                     refresh=False,
                 )
 
                 if min_air_temperature is not None:
                     await coordinator.async_write_register(
                         "min_gwc_air_temperature",
-                        _scale_for_register("min_gwc_air_temperature", min_air_temperature),
+                        min_air_temperature,
                         refresh=False,
                     )
 
                 if max_air_temperature is not None:
                     await coordinator.async_write_register(
                         "max_gwc_air_temperature",
-                        _scale_for_register("max_gwc_air_temperature", max_air_temperature),
+                        max_air_temperature,
                         refresh=False,
                     )
 
@@ -388,26 +375,26 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if coordinator:
                 await coordinator.async_write_register(
                     "heating_curve_slope",
-                    _scale_for_register("heating_curve_slope", slope),
+                    slope,
                     refresh=False,
                 )
                 await coordinator.async_write_register(
                     "heating_curve_offset",
-                    _scale_for_register("heating_curve_offset", offset),
+                    offset,
                     refresh=False,
                 )
 
                 if max_supply_temp is not None:
                     await coordinator.async_write_register(
                         "max_supply_temperature",
-                        _scale_for_register("max_supply_temperature", max_supply_temp),
+                        max_supply_temp,
                         refresh=False,
                     )
 
                 if min_supply_temp is not None:
                     await coordinator.async_write_register(
                         "min_supply_temperature",
-                        _scale_for_register("min_supply_temperature", min_supply_temp),
+                        min_supply_temp,
                         refresh=False,
                     )
 
