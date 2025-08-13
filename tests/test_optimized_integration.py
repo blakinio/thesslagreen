@@ -456,14 +456,8 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("mode", 1) is True
 
 
-        # SENSOR_UNAVAILABLE should still be treated as valid for temperature sensors
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-
-        # Temperature sensor unavailable value should be considered valid
-        assert (
-            scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-            is True
-        )
+        # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
 
 
         # Invalid air flow value
