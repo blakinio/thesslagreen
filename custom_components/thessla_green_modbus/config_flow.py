@@ -172,14 +172,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         available_registers = self._scan_result.get("available_registers", {})
         capabilities = self._scan_result.get("capabilities", {})
 
-        register_count = sum(len(regs) for regs in available_registers.values())
+        register_count = self._scan_result.get(
+            "register_count",
+            sum(len(regs) for regs in available_registers.values()),
+        )
 
         capabilities_list = [k.replace("_", " ").title() for k, v in capabilities.items() if v]
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
-        translations = await translation.async_get_translations(
-            self.hass, self.hass.config.language, DOMAIN
-        )
 
         language = getattr(getattr(self.hass, "config", None), "language", "en")
         translations: dict[str, str] = {}
