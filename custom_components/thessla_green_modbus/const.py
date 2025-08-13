@@ -3,6 +3,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import Any, cast
 
 from .registers import (  # noqa: F401
     COIL_REGISTERS,
@@ -54,72 +55,33 @@ PLATFORMS = [
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
 # ============================================================================
 
+
+def _load_json_option(filename: str) -> list[Any]:
+    """Load an option list from a JSON file in ``OPTIONS_PATH``.
+
+    Returns an empty list if the file does not exist or cannot be parsed.
+    ``filename`` should be relative to ``OPTIONS_PATH``.
+    """
+
+    try:
+        return cast(list[Any], json.loads((OPTIONS_PATH / filename).read_text()))
+    except (FileNotFoundError, json.JSONDecodeError) as err:
+        _LOGGER.warning("Failed to load %s: %s", filename, err)
+        return []
+
+
 # Shared option lists
-try:
-    SPECIAL_MODE_OPTIONS = json.loads((OPTIONS_PATH / "special_modes.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load special_modes.json: %s", err)
-    SPECIAL_MODE_OPTIONS = []
-
-try:
-    DAYS_OF_WEEK = json.loads((OPTIONS_PATH / "days_of_week.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load days_of_week.json: %s", err)
-    DAYS_OF_WEEK = []
-
-try:
-    PERIODS = json.loads((OPTIONS_PATH / "periods.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load periods.json: %s", err)
-    PERIODS = []
-
-try:
-    BYPASS_MODES = json.loads((OPTIONS_PATH / "bypass_modes.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load bypass_modes.json: %s", err)
-    BYPASS_MODES = []
-
-try:
-    GWC_MODES = json.loads((OPTIONS_PATH / "gwc_modes.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load gwc_modes.json: %s", err)
-    GWC_MODES = []
-
-try:
-    FILTER_TYPES = json.loads((OPTIONS_PATH / "filter_types.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load filter_types.json: %s", err)
-    FILTER_TYPES = []
-
-try:
-    RESET_TYPES = json.loads((OPTIONS_PATH / "reset_types.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load reset_types.json: %s", err)
-    RESET_TYPES = []
-
-try:
-    MODBUS_PORTS = json.loads((OPTIONS_PATH / "modbus_ports.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load modbus_ports.json: %s", err)
-    MODBUS_PORTS = []
-
-try:
-    MODBUS_BAUD_RATES = json.loads((OPTIONS_PATH / "modbus_baud_rates.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load modbus_baud_rates.json: %s", err)
-    MODBUS_BAUD_RATES = []
-
-try:
-    MODBUS_PARITY = json.loads((OPTIONS_PATH / "modbus_parity.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load modbus_parity.json: %s", err)
-    MODBUS_PARITY = []
-
-try:
-    MODBUS_STOP_BITS = json.loads((OPTIONS_PATH / "modbus_stop_bits.json").read_text())
-except (FileNotFoundError, json.JSONDecodeError) as err:
-    _LOGGER.warning("Failed to load modbus_stop_bits.json: %s", err)
-    MODBUS_STOP_BITS = []
+SPECIAL_MODE_OPTIONS = _load_json_option("special_modes.json")
+DAYS_OF_WEEK = _load_json_option("days_of_week.json")
+PERIODS = _load_json_option("periods.json")
+BYPASS_MODES = _load_json_option("bypass_modes.json")
+GWC_MODES = _load_json_option("gwc_modes.json")
+FILTER_TYPES = _load_json_option("filter_types.json")
+RESET_TYPES = _load_json_option("reset_types.json")
+MODBUS_PORTS = _load_json_option("modbus_ports.json")
+MODBUS_BAUD_RATES = _load_json_option("modbus_baud_rates.json")
+MODBUS_PARITY = _load_json_option("modbus_parity.json")
+MODBUS_STOP_BITS = _load_json_option("modbus_stop_bits.json")
 
 # Special function bit mappings for services
 SPECIAL_FUNCTION_MAP = {
