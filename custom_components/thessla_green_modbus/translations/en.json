@@ -514,13 +514,9 @@
             }
           }
         },
-        "temperature_threshold": {
-          "name": "Temperature Threshold",
-          "description": "Temperature threshold for automatic control"
-        },
-        "hysteresis": {
-          "name": "Hysteresis",
-          "description": "Temperature hysteresis value"
+        "min_outdoor_temperature": {
+          "name": "Minimum Outdoor Temperature",
+          "description": "Minimum outdoor temperature to enable bypass"
         }
       }
     },
@@ -541,13 +537,13 @@
             }
           }
         },
-        "temperature_threshold": {
-          "name": "Temperature Threshold",
-          "description": "Temperature threshold for automatic control"
+        "min_air_temperature": {
+          "name": "Minimum Air Temperature",
+          "description": "Lower outdoor temperature threshold"
         },
-        "hysteresis": {
-          "name": "Hysteresis",
-          "description": "Temperature hysteresis value"
+        "max_air_temperature": {
+          "name": "Maximum Air Temperature",
+          "description": "Upper outdoor temperature threshold"
         }
       }
     },

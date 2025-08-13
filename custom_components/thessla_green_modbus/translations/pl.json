@@ -514,13 +514,9 @@
             }
           }
         },
-        "temperature_threshold": {
-          "name": "Próg temperatury",
-          "description": "Próg temperatury dla automatycznej kontroli"
-        },
-        "hysteresis": {
-          "name": "Histereza",
-          "description": "Wartość histerezy temperatury"
+        "min_outdoor_temperature": {
+          "name": "Minimalna temperatura zewnętrzna",
+          "description": "Minimalna temperatura zewnętrzna włączająca bypass"
         }
       }
     },
@@ -541,13 +537,13 @@
             }
           }
         },
-        "temperature_threshold": {
-          "name": "Próg temperatury",
-          "description": "Próg temperatury dla automatycznej kontroli"
+        "min_air_temperature": {
+          "name": "Minimalna temperatura powietrza",
+          "description": "Dolny próg temperatury powietrza zewnętrznego"
         },
-        "hysteresis": {
-          "name": "Histereza",
-          "description": "Wartość histerezy temperatury"
+        "max_air_temperature": {
+          "name": "Maksymalna temperatura powietrza",
+          "description": "Górny próg temperatury powietrza zewnętrznego"
         }
       }
     },

@@ -80,10 +80,9 @@ SET_BYPASS_PARAMETERS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
         vol.Required("mode"): vol.In(BYPASS_MODES),
-        vol.Optional("temperature_threshold"): vol.All(
-            vol.Coerce(float), vol.Range(min=18.0, max=30.0)
+        vol.Optional("min_outdoor_temperature"): vol.All(
+            vol.Coerce(float), vol.Range(min=10.0, max=40.0)
         ),
-        vol.Optional("hysteresis"): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
     }
 )
 
@@ -91,10 +90,12 @@ SET_GWC_PARAMETERS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
         vol.Required("mode"): vol.In(GWC_MODES),
-        vol.Optional("temperature_threshold"): vol.All(
-            vol.Coerce(float), vol.Range(min=-5.0, max=15.0)
+        vol.Optional("min_air_temperature"): vol.All(
+            vol.Coerce(float), vol.Range(min=0.0, max=20.0)
         ),
-        vol.Optional("hysteresis"): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
+        vol.Optional("max_air_temperature"): vol.All(
+            vol.Coerce(float), vol.Range(min=30.0, max=80.0)
+        ),
     }
 )
 
@@ -298,8 +299,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         """Service to set bypass parameters."""
         entity_ids = async_extract_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
-        temperature_threshold = call.data.get("temperature_threshold")
-        hysteresis = call.data.get("hysteresis")
+        min_temperature = call.data.get("min_outdoor_temperature")
 
         mode_map = {"auto": 0, "open": 1, "closed": 2}
         mode_value = mode_map[mode]
@@ -313,17 +313,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     refresh=False,
                 )
 
-                if temperature_threshold is not None:
+                if min_temperature is not None:
                     await coordinator.async_write_register(
-                        "bypass_temperature_threshold",
-                        _scale_for_register("bypass_temperature_threshold", temperature_threshold),
-                        refresh=False,
-                    )
-
-                if hysteresis is not None:
-                    await coordinator.async_write_register(
-                        "bypass_hysteresis",
-                        _scale_for_register("bypass_hysteresis", hysteresis),
+                        "min_bypass_temperature",
+                        _scale_for_register("min_bypass_temperature", min_temperature),
                         refresh=False,
                     )
 
@@ -334,8 +327,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         """Service to set GWC parameters."""
         entity_ids = async_extract_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
-        temperature_threshold = call.data.get("temperature_threshold")
-        hysteresis = call.data.get("hysteresis")
+        min_air_temperature = call.data.get("min_air_temperature")
+        max_air_temperature = call.data.get("max_air_temperature")
 
         mode_map = {"off": 0, "auto": 1, "forced": 2}
         mode_value = mode_map[mode]
@@ -349,17 +342,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     refresh=False,
                 )
 
-                if temperature_threshold is not None:
+                if min_air_temperature is not None:
                     await coordinator.async_write_register(
-                        "gwc_temperature_threshold",
-                        _scale_for_register("gwc_temperature_threshold", temperature_threshold),
+                        "min_gwc_air_temperature",
+                        _scale_for_register("min_gwc_air_temperature", min_air_temperature),
                         refresh=False,
                     )
 
-                if hysteresis is not None:
+                if max_air_temperature is not None:
                     await coordinator.async_write_register(
-                        "gwc_hysteresis",
-                        _scale_for_register("gwc_hysteresis", hysteresis),
+                        "max_gwc_air_temperature",
+                        _scale_for_register("max_gwc_air_temperature", max_air_temperature),
                         refresh=False,
                     )
 
