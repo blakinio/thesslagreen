@@ -215,7 +215,8 @@ logger:
 - **Optimized reads**: register grouping, 60% fewer Modbus calls
 - **Auto scanning**: only available registers, no errors
 - **Diagnostics**: detailed performance and error metrics
-- **Stability**: retry logic, fallback reads, graceful degradation
+- **Stability**: retry logic, fallback reads, graceful degradation, and automatic
+  skipping of unsupported registers
 
 ## 🤝 Support and development
 
