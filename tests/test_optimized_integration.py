@@ -455,16 +455,27 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("test_register", 100) is True
         assert scanner._is_valid_register_value("mode", 1) is True
 
-
         # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
 
+        # SENSOR_UNAVAILABLE should still be treated as valid for temperature sensors
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+
+        # Temperature sensor unavailable value should be considered valid
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
         # Invalid air flow value
         assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
 
         # Invalid mode value
         assert scanner._is_valid_register_value("mode", 5) is False
+
+        # Schedule registers accept both BCD and decimal times
+        scanner._register_ranges["schedule_start_time"] = (0, 2359)
+        assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
+        assert scanner._is_valid_register_value("schedule_start_time", 800) is True
+        assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
+        assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
 
     def test_capability_analysis(self):
         """Test capability analysis logic."""
