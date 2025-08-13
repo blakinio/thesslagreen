@@ -213,10 +213,6 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             if raw_value is not None:
                 attributes["raw_value"] = raw_value
 
-        # Add scale information if applicable
-        if "scale" in self.entity_config:
-            attributes["scale_factor"] = self.entity_config["scale"]
-
         # Add valid range
         attributes["valid_range"] = {
             "min": self._attr_native_min_value,

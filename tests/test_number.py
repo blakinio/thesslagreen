@@ -150,6 +150,7 @@ def test_number_creation_and_state(mock_coordinator):
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
     number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
     assert number.native_value == 20
+    assert "scale_factor" not in number.extra_state_attributes
 
     mock_coordinator.data["required_temperature"] = 21.5
     assert number.native_value == 21.5
