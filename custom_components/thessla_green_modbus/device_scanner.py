@@ -571,7 +571,13 @@ class ThesslaGreenDeviceScanner:
             present_blocks = {}
             # Read firmware version
             fw_data = await self._read_input(client, 0x0000, 5)
-            if fw_data and len(fw_data) >= 3:
+            if not fw_data or len(fw_data) < 3:
+                _LOGGER.info(
+                    "Firmware registers unavailable; firmware version could not be determined"
+                )
+                fw_data = None
+                info.firmware = "Unknown"
+            else:
                 fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
                 info.firmware = fw
                 _LOGGER.debug("Firmware version: %s", fw)
