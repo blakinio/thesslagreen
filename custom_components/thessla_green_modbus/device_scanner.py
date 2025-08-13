@@ -108,6 +108,10 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
+        # Track holding registers that consistently fail to respond so we
+        # can avoid retrying them repeatedly during scanning
+        self._failed_holding: Set[int] = set()
+
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
         self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
@@ -229,20 +233,40 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-        """Read holding registers."""
-        try:
-            response = await _call_modbus(
-                client.read_holding_registers, self.slave_id, address, count=count
-            )
-            if response is None or response.isError():
-                return None
-            return response.registers
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug("Failed to read holding 0x%04X: %s", address, exc, exc_info=True)
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error(
-                "Unexpected error reading holding 0x%04X: %s", address, exc, exc_info=True
-            )
+        """Read holding registers with retry and failure tracking."""
+        if address in self._failed_holding:
+            # We've already determined this register does not respond
+            return None
+
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_holding_registers, self.slave_id, address, count=count
+                )
+                if response is None or response.isError():
+                    raise ModbusException("No response")
+                return response.registers
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Failed to read holding 0x%04X (attempt %d/%d): %s",
+                    address,
+                    attempt,
+                    self.retry,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading holding 0x%04X: %s",
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+        # After retry attempts mark register as unsupported to avoid future retries
+        self._failed_holding.add(address)
+        _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
         return None
 
     async def _read_coil(

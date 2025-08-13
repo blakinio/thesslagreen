@@ -12,6 +12,7 @@ from custom_components.thessla_green_modbus.const import (
 )
 from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
 
 pytestmark = pytest.mark.asyncio
 
@@ -23,6 +24,33 @@ async def test_device_scanner_initialization():
     assert scanner.host == "192.168.3.17"
     assert scanner.port == 8899
     assert scanner.slave_id == 10
+
+
+async def test_read_holding_skips_unresponsive_register(caplog):
+    """Registers that fail repeatedly should be skipped on subsequent scans."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    mock_client = AsyncMock()
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(side_effect=ModbusException("boom")),
+    ) as call_mock:
+        result = await scanner._read_holding(mock_client, 0x00A8, 1)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    # Second call should be skipped without calling modbus again
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(),
+    ) as call_mock:
+        result = await scanner._read_holding(mock_client, 0x00A8, 1)
+        assert result is None
+        call_mock.assert_not_called()
+
+    assert 0x00A8 in scanner._failed_holding
+    assert "0x00A8" in caplog.text
 
 
 async def test_scan_device_success_dynamic():
