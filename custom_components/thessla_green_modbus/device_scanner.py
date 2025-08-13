@@ -128,6 +128,10 @@ class ThesslaGreenDeviceScanner:
         # can avoid retrying them repeatedly during scanning
         self._failed_holding: Set[int] = set()
 
+        # Track input registers that consistently fail to respond so we can
+        # avoid retrying them repeatedly during scanning
+        self._failed_input: Set[int] = set()
+
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
         self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
@@ -280,6 +284,14 @@ class ThesslaGreenDeviceScanner:
         start = address
         end = address + count - 1
 
+        if any(reg in self._failed_input for reg in range(start, end + 1)):
+            _LOGGER.debug(
+                "Skipping cached failed input registers 0x%04X-0x%04X",
+                start,
+                end,
+            )
+            return None
+
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -312,6 +324,10 @@ class ThesslaGreenDeviceScanner:
             end,
             self.retry,
         )
+        self._failed_input.update(range(start, end + 1))
+        _LOGGER.debug(
+            "Caching failed input registers 0x%04X-0x%04X", start, end
+        )
         return None
 
     async def _read_holding(
@@ -319,7 +335,9 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read holding registers with retry and failure tracking."""
         if address in self._failed_holding:
-            # We've already determined this register does not respond
+            _LOGGER.debug(
+                "Skipping cached failed holding register 0x%04X", address
+            )
             return None
 
         for attempt in range(1, self.retry + 1):
@@ -350,7 +368,7 @@ class ThesslaGreenDeviceScanner:
 
         # After retry attempts mark register as unsupported to avoid future retries
         self._failed_holding.add(address)
-        _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+        _LOGGER.debug("Caching failed holding register 0x%04X", address)
         return None
 
     async def _read_coil(
