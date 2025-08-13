@@ -778,6 +778,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         _LOGGER.error(
                             "Register %s expects %d values",
                             register_name,
+                            "Register %s expects %d values", 
+                            start_register,
                             MULTI_REGISTER_SIZES[start_register],
                         )
                         return False

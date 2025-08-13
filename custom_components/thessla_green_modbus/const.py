@@ -1,6 +1,7 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
 import json
+import logging
 from pathlib import Path
 
 from .registers import (  # noqa: F401
@@ -11,6 +12,7 @@ from .registers import (  # noqa: F401
 )
 
 OPTIONS_PATH = Path(__file__).parent / "options"
+_LOGGER = logging.getLogger(__name__)
 
 
 # Integration constants
@@ -53,17 +55,71 @@ PLATFORMS = [
 # ============================================================================
 
 # Shared option lists
-SPECIAL_MODE_OPTIONS = json.loads((OPTIONS_PATH / "special_modes.json").read_text())
-DAYS_OF_WEEK = json.loads((OPTIONS_PATH / "days_of_week.json").read_text())
-PERIODS = json.loads((OPTIONS_PATH / "periods.json").read_text())
-BYPASS_MODES = json.loads((OPTIONS_PATH / "bypass_modes.json").read_text())
-GWC_MODES = json.loads((OPTIONS_PATH / "gwc_modes.json").read_text())
-FILTER_TYPES = json.loads((OPTIONS_PATH / "filter_types.json").read_text())
-RESET_TYPES = json.loads((OPTIONS_PATH / "reset_types.json").read_text())
-MODBUS_PORTS = json.loads((OPTIONS_PATH / "modbus_ports.json").read_text())
-MODBUS_BAUD_RATES = json.loads((OPTIONS_PATH / "modbus_baud_rates.json").read_text())
-MODBUS_PARITY = json.loads((OPTIONS_PATH / "modbus_parity.json").read_text())
-MODBUS_STOP_BITS = json.loads((OPTIONS_PATH / "modbus_stop_bits.json").read_text())
+try:
+    SPECIAL_MODE_OPTIONS = json.loads((OPTIONS_PATH / "special_modes.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load special_modes.json: %s", err)
+    SPECIAL_MODE_OPTIONS = []
+
+try:
+    DAYS_OF_WEEK = json.loads((OPTIONS_PATH / "days_of_week.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load days_of_week.json: %s", err)
+    DAYS_OF_WEEK = []
+
+try:
+    PERIODS = json.loads((OPTIONS_PATH / "periods.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load periods.json: %s", err)
+    PERIODS = []
+
+try:
+    BYPASS_MODES = json.loads((OPTIONS_PATH / "bypass_modes.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load bypass_modes.json: %s", err)
+    BYPASS_MODES = []
+
+try:
+    GWC_MODES = json.loads((OPTIONS_PATH / "gwc_modes.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load gwc_modes.json: %s", err)
+    GWC_MODES = []
+
+try:
+    FILTER_TYPES = json.loads((OPTIONS_PATH / "filter_types.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load filter_types.json: %s", err)
+    FILTER_TYPES = []
+
+try:
+    RESET_TYPES = json.loads((OPTIONS_PATH / "reset_types.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load reset_types.json: %s", err)
+    RESET_TYPES = []
+
+try:
+    MODBUS_PORTS = json.loads((OPTIONS_PATH / "modbus_ports.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load modbus_ports.json: %s", err)
+    MODBUS_PORTS = []
+
+try:
+    MODBUS_BAUD_RATES = json.loads((OPTIONS_PATH / "modbus_baud_rates.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load modbus_baud_rates.json: %s", err)
+    MODBUS_BAUD_RATES = []
+
+try:
+    MODBUS_PARITY = json.loads((OPTIONS_PATH / "modbus_parity.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load modbus_parity.json: %s", err)
+    MODBUS_PARITY = []
+
+try:
+    MODBUS_STOP_BITS = json.loads((OPTIONS_PATH / "modbus_stop_bits.json").read_text())
+except (FileNotFoundError, json.JSONDecodeError) as err:
+    _LOGGER.warning("Failed to load modbus_stop_bits.json: %s", err)
+    MODBUS_STOP_BITS = []
 
 # Special function bit mappings for services
 SPECIAL_FUNCTION_MAP = {

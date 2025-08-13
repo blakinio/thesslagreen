@@ -207,9 +207,9 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 
 # INNE USTAWIENIA
 03,0x00C0,192,R/W,RTC_cal,Dane kalibracyjne zegara czasu rzeczywistego,0,255,198,1,,"Zakres wartości rzeczywistych: od (-127) do (+127)",,
-03,0x00F0,240,R/-,CF_version,Wersja oprogramowania modułu CF lub (od 4.75) TG-02,,,1,,"Format zapisu wersji oprogramowania: [MM].[mm]",,
-03,0x0100,256,R/-,supplyAirFlow,Wartość chwilowa strumienia powietrza - nawiew,0,65535,,1,m3/h,"0 - brak przepływu (CF aktywny); 65535 - CF nieaktywny",,
-03,0x0101,257,R/-,exhaustAirFlow,Wartość chwilowa strumienia powietrza - wywiew,0,65535,,1,m3/h,,,
+03,0x00F0,240,R/-,cf_version,Wersja oprogramowania modułu CF lub (od 4.75) TG-02,,,1,,"Format zapisu wersji oprogramowania: [MM].[mm]",,
+03,0x0100,256,R/-,supply_air_flow,Wartość chwilowa strumienia powietrza - nawiew,0,65535,,1,m3/h,"0 - brak przepływu (CF aktywny); 65535 - CF nieaktywny",,
+03,0x0101,257,R/-,exhaust_air_flow,Wartość chwilowa strumienia powietrza - wywiew,0,65535,,1,m3/h,,,
 03,0x0500,1280,R/-,dac_supply,Napięcie sterujące wentylatorem nawiewnym (PWM),0,4095,,0.00244,V,"0 - 0.0V; 4095 - 10.0V",,
 03,0x0501,1281,R/-,dac_exhaust,Napięcie sterujące wentylatorem wywiewnym (PWM),0,4095,,0.00244,V,"0 - 0.0V; 4095 - 10.0V",,
 03,0x0502,1282,R/-,dac_heater,Napięcie sterujące nagrzewnicą kanałową (PWM),0,4095,,0.00244,V,"0 - 0.0V; 4095 - 10.0V",,
