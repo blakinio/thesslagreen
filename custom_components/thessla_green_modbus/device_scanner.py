@@ -31,6 +31,10 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
 }
 
 
+# Maximum registers per batch read (Modbus limit)
+MAX_BATCH_REGISTERS = 16
+
+
 @dataclass
 class DeviceInfo:
     model: str = "Unknown AirPack"
@@ -576,7 +580,10 @@ class ThesslaGreenDeviceScanner:
         current_end = addresses[0]
 
         for addr in addresses[1:]:
-            if addr - current_end <= max_gap and current_end - current_start + 1 < 16:
+            if (
+                addr - current_end <= max_gap
+                and current_end - current_start + 1 < MAX_BATCH_REGISTERS
+            ):
                 current_end = addr
             else:
                 groups.append((current_start, current_end - current_start + 1))
