@@ -213,17 +213,35 @@ class ThesslaGreenDeviceScanner:
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
         """Read input registers."""
-        try:
-            response = await _call_modbus(
-                client.read_input_registers, self.slave_id, address, count=count
-            )
-            if response is None or response.isError():
-                return None
-            return response.registers
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug("Failed to read input 0x%04X: %s", address, exc, exc_info=True)
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error("Unexpected error reading input 0x%04X: %s", address, exc, exc_info=True)
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_input_registers, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.registers
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Failed to read input 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading input 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+        _LOGGER.warning(
+            "Failed to read input registers 0x%04X-0x%04X after %d retries",
+            address,
+            address + count - 1,
+            self.retry,
+        )
         return None
 
     async def _read_holding(
