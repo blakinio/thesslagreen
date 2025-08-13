@@ -14,7 +14,10 @@ from custom_components.thessla_green_modbus.device_scanner import (
     ThesslaGreenDeviceScanner,
     _decode_bcd_time,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ModbusException,
+    ModbusIOException,
+)
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 pytestmark = pytest.mark.asyncio
@@ -39,7 +42,7 @@ async def test_read_holding_skips_after_failure():
     # Initial failing scan
     with patch(
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-        AsyncMock(side_effect=ModbusException("boom")),
+        AsyncMock(side_effect=ModbusIOException("boom")),
     ) as call_mock1, patch("asyncio.sleep", AsyncMock()):
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
@@ -59,14 +62,16 @@ async def test_read_holding_skips_after_failure():
 
 async def test_read_input_backoff():
     """Ensure exponential backoff delays between retries."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=3, backoff=0.1
+    )
     mock_client = AsyncMock()
 
     sleep_mock = AsyncMock()
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
+            AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", sleep_mock),
     ):
@@ -79,48 +84,52 @@ async def test_read_input_backoff():
 
 async def test_read_input_logs_warning_on_failure(caplog):
     """Warn when input registers cannot be read after retries."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=2
+    )
     mock_client = AsyncMock()
 
     caplog.set_level(logging.WARNING)
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
+            AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_input(mock_client, 0x0001, 3)
+        result = await scanner._read_input(mock_client, 0x0001, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert "Failed to read input registers 0x0001-0x0003 after 3 retries" in caplog.text
+    assert "Device does not expose register 0x0001" in caplog.text
 
 
 async def test_read_input_skips_cached_failures():
     """Input registers are cached after repeated failures."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=2
+    )
     mock_client = AsyncMock()
 
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
+            AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_input(mock_client, 0x0001, 2)
+        result = await scanner._read_input(mock_client, 0x0001, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert {0x0001, 0x0002} <= scanner._failed_input
+    assert {0x0001} <= scanner._failed_input
 
     # Subsequent call should be skipped
     with patch(
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
         AsyncMock(),
     ) as call_mock2:
-        result = await scanner._read_input(mock_client, 0x0001, 2)
+        result = await scanner._read_input(mock_client, 0x0001, 1)
         assert result is None
         call_mock2.assert_not_called()
 

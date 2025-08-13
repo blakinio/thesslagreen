@@ -52,6 +52,7 @@ from .const import (
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
     DOMAIN,
+    KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
     MODEL,
     SENSOR_UNAVAILABLE,
@@ -102,6 +103,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         force_full_register_list: bool = False,
         scan_uart_settings: bool = False,
         entry: Optional[Any] = None,
+        skip_missing_registers: bool = False,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -120,6 +122,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.force_full_register_list = force_full_register_list
         self.scan_uart_settings = scan_uart_settings
         self.entry = entry
+        self.skip_missing_registers = skip_missing_registers
 
         # Connection management
         self.client: Optional["AsyncModbusTcpClient"] = None
@@ -180,11 +183,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 timeout=self.timeout,
                 retry=self.retry,
                 scan_uart_settings=self.scan_uart_settings,
+                skip_known_missing=self.skip_missing_registers,
             )
 
             try:
                 self.device_scan_result = await scanner.scan_device()
                 self.available_registers = self.device_scan_result.get("available_registers", {})
+                if self.skip_missing_registers:
+                    for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+                        self.available_registers.get(reg_type, set()).difference_update(names)
                 self.device_info = self.device_scan_result.get("device_info", {})
                 self.capabilities = DeviceCapabilities(
                     **self.device_scan_result.get("capabilities", {})
@@ -225,6 +232,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             "coil_registers": set(COIL_REGISTERS.keys()),
             "discrete_inputs": set(DISCRETE_INPUT_REGISTERS.keys()),
         }
+
+        if self.skip_missing_registers:
+            for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+                self.available_registers[reg_type].difference_update(names)
 
         self.device_info = {
             "device_name": f"ThesslaGreen {MODEL}",

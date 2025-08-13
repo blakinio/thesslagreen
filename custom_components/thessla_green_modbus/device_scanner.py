@@ -11,12 +11,18 @@ from dataclasses import asdict, dataclass, field
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from .modbus_exceptions import ConnectionException, ModbusException
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
-from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS, SENSOR_UNAVAILABLE
+from .const import (
+    COIL_REGISTERS,
+    DEFAULT_SLAVE_ID,
+    DISCRETE_INPUT_REGISTERS,
+    KNOWN_MISSING_REGISTERS,
+    SENSOR_UNAVAILABLE,
+)
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .utils import _to_snake_case
@@ -120,6 +126,7 @@ class ThesslaGreenDeviceScanner:
         backoff: float = 0,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
+        skip_known_missing: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         self.host = host
@@ -130,6 +137,7 @@ class ThesslaGreenDeviceScanner:
         self.backoff = backoff
         self.verbose_invalid_values = verbose_invalid_values
         self.scan_uart_settings = scan_uart_settings
+        self.skip_known_missing = skip_known_missing
 
         # Available registers storage
         self.available_registers: Dict[str, Set[str]] = {
@@ -148,6 +156,7 @@ class ThesslaGreenDeviceScanner:
 
         # Track input registers that consistently fail to respond so we can
         # avoid retrying them repeatedly during scanning
+        self._input_failures: Dict[int, int] = {}
         self._failed_input: Set[int] = set()
 
         # Placeholder for register map and value ranges loaded asynchronously
@@ -175,10 +184,19 @@ class ThesslaGreenDeviceScanner:
         backoff: float = 0,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
+        skip_known_missing: bool = False,
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
         self = cls(
-            host, port, slave_id, timeout, retry, backoff, verbose_invalid_values, scan_uart_settings
+            host,
+            port,
+            slave_id,
+            timeout,
+            retry,
+            backoff,
+            verbose_invalid_values,
+            scan_uart_settings,
+            skip_known_missing,
         )
         await self._async_setup()
         return self
@@ -321,6 +339,23 @@ class ThesslaGreenDeviceScanner:
                 )
                 if response is not None and not response.isError():
                     return response.registers
+            except ModbusIOException as exc:
+                _LOGGER.debug(
+                    "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._input_failures.get(address, 0) + 1
+                    self._input_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_input:
+                        self._failed_input.add(address)
+                        _LOGGER.warning(
+                            "Device does not expose register 0x%04X", address
+                        )
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
@@ -347,33 +382,16 @@ class ThesslaGreenDeviceScanner:
             if self.backoff and attempt < self.retry:
                 await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
 
-        _LOGGER.warning(
-            "Failed to read input registers 0x%04X-0x%04X after %d retries",
-            start,
-            end,
-            self.retry,
-        )
-        self._failed_input.update(range(start, end + 1))
-        _LOGGER.debug(
-            "Caching failed input registers 0x%04X-0x%04X", start, end
-        )
         return None
 
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-
-        """Read holding registers with retry and per-register failure tracking."""
-        failures = self._holding_failures.get(address, 0)
-        if failures >= self.retry:
-            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
-
         """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
             _LOGGER.debug(
                 "Skipping cached failed holding register 0x%04X", address
             )
-
             return None
 
         for attempt in range(1, self.retry + 1):
@@ -386,6 +404,23 @@ class ThesslaGreenDeviceScanner:
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers
+            except ModbusIOException as exc:
+                _LOGGER.debug(
+                    "Modbus IO error reading holding 0x%04X (attempt %d/%d): %s",
+                    address,
+                    attempt,
+                    self.retry,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        _LOGGER.warning(
+                            "Device does not expose register 0x%04X", address
+                        )
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read holding 0x%04X (attempt %d/%d): %s",
@@ -404,20 +439,10 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-
             if self.backoff and attempt < self.retry:
                 await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
-
-        self._holding_failures[address] = failures + 1
-        if self._holding_failures[address] >= self.retry:
-            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
-
             if attempt < self.retry:
                 await asyncio.sleep(2 ** (attempt - 1))
-
-        # After retry attempts mark register as unsupported to avoid future retries
-        self._failed_holding.add(address)
-        _LOGGER.debug("Caching failed holding register 0x%04X", address)
 
         return None
 
@@ -725,6 +750,12 @@ class ThesslaGreenDeviceScanner:
             for reg_type, (reg_map, read_fn) in register_maps.items():
                 addr_to_name = {addr: name for name, addr in reg_map.items()}
                 addresses = sorted(addr_to_name)
+                if self.skip_known_missing:
+                    addresses = [
+                        a
+                        for a in addresses
+                        if addr_to_name[a] not in KNOWN_MISSING_REGISTERS.get(reg_type, set())
+                    ]
                 if reg_type == "holding_registers" and not self.scan_uart_settings:
                     addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
                 if not addresses:
@@ -786,6 +817,12 @@ class ThesslaGreenDeviceScanner:
             for reg_type, (code, read_fn) in csv_register_maps.items():
                 addr_to_name = self._registers.get(code, {})
                 addresses = sorted(addr_to_name)
+                if self.skip_known_missing:
+                    addresses = [
+                        a
+                        for a in addresses
+                        if addr_to_name[a] not in KNOWN_MISSING_REGISTERS.get(reg_type, set())
+                    ]
                 if reg_type == "holding_registers" and not self.scan_uart_settings:
                     addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
                 if not addresses:
