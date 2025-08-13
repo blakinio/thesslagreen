@@ -451,18 +451,18 @@
           "selector": {
             "select": {
               "options": {
-                "none": "Brak",
-                "boost": "Boost",
-                "eco": "Eco",
-                "away": "Nieobecność",
-                "sleep": "Sen",
-                "fireplace": "Kominek",
-                "hood": "Okap",
-                "party": "Impreza",
-                "bathroom": "Łazienka",
-                "kitchen": "Kuchnia",
-                "summer": "Lato",
-                "winter": "Zima"
+                "thessla_green_modbus.special_mode_none": "Brak",
+                "thessla_green_modbus.special_mode_boost": "Boost",
+                "thessla_green_modbus.special_mode_eco": "Eco",
+                "thessla_green_modbus.special_mode_away": "Nieobecność",
+                "thessla_green_modbus.special_mode_sleep": "Sen",
+                "thessla_green_modbus.special_mode_fireplace": "Kominek",
+                "thessla_green_modbus.special_mode_hood": "Okap",
+                "thessla_green_modbus.special_mode_party": "Impreza",
+                "thessla_green_modbus.special_mode_bathroom": "Łazienka",
+                "thessla_green_modbus.special_mode_kitchen": "Kuchnia",
+                "thessla_green_modbus.special_mode_summer": "Lato",
+                "thessla_green_modbus.special_mode_winter": "Zima"
               }
             }
           }
@@ -483,13 +483,13 @@
           "selector": {
             "select": {
               "options": {
-                "monday": "Poniedziałek",
-                "tuesday": "Wtorek",
-                "wednesday": "Środa",
-                "thursday": "Czwartek",
-                "friday": "Piątek",
-                "saturday": "Sobota",
-                "sunday": "Niedziela"
+                "thessla_green_modbus.day_monday": "Poniedziałek",
+                "thessla_green_modbus.day_tuesday": "Wtorek",
+                "thessla_green_modbus.day_wednesday": "Środa",
+                "thessla_green_modbus.day_thursday": "Czwartek",
+                "thessla_green_modbus.day_friday": "Piątek",
+                "thessla_green_modbus.day_saturday": "Sobota",
+                "thessla_green_modbus.day_sunday": "Niedziela"
               }
             }
           }
@@ -500,8 +500,8 @@
           "selector": {
             "select": {
               "options": {
-                "1": "Okres 1",
-                "2": "Okres 2"
+                "thessla_green_modbus.period_1": "Okres 1",
+                "thessla_green_modbus.period_2": "Okres 2"
               }
             }
           }
@@ -534,9 +534,9 @@
           "selector": {
             "select": {
               "options": {
-                "auto": "Automatyczny",
-                "open": "Otwarty",
-                "closed": "Zamknięty"
+                "thessla_green_modbus.bypass_mode_auto": "Automatyczny",
+                "thessla_green_modbus.bypass_mode_open": "Otwarty",
+                "thessla_green_modbus.bypass_mode_closed": "Zamknięty"
               }
             }
           }
@@ -561,9 +561,9 @@
           "selector": {
             "select": {
               "options": {
-                "off": "Wyłączony",
-                "auto": "Automatyczny",
-                "forced": "Wymuszony"
+                "thessla_green_modbus.gwc_mode_off": "Wyłączony",
+                "thessla_green_modbus.gwc_mode_auto": "Automatyczny",
+                "thessla_green_modbus.gwc_mode_forced": "Wymuszony"
               }
             }
           }
@@ -632,10 +632,10 @@
           "selector": {
             "select": {
               "options": {
-                "presostat": "Presostat",
-                "flat_filters": "Filtry płaskie",
-                "cleanpad": "CleanPad",
-                "cleanpad_pure": "CleanPad Pure"
+                "thessla_green_modbus.filter_type_presostat": "Presostat",
+                "thessla_green_modbus.filter_type_flat_filters": "Filtry płaskie",
+                "thessla_green_modbus.filter_type_cleanpad": "CleanPad",
+                "thessla_green_modbus.filter_type_cleanpad_pure": "CleanPad Pure"
               }
             }
           }
@@ -652,9 +652,9 @@
           "selector": {
             "select": {
               "options": {
-                "user_settings": "Ustawienia użytkownika",
-                "schedule_settings": "Ustawienia harmonogramu",
-                "all_settings": "Wszystkie ustawienia"
+                "thessla_green_modbus.reset_type_user_settings": "Ustawienia użytkownika",
+                "thessla_green_modbus.reset_type_schedule_settings": "Ustawienia harmonogramu",
+                "thessla_green_modbus.reset_type_all_settings": "Wszystkie ustawienia"
               }
             }
           }
@@ -675,8 +675,8 @@
           "selector": {
             "select": {
               "options": {
-                "air_b": "Air-B",
-                "air_plus": "Air++"
+                "thessla_green_modbus.modbus_port_air_b": "Air-B",
+                "thessla_green_modbus.modbus_port_air_plus": "Air++"
               }
             }
           }
@@ -687,15 +687,15 @@
           "selector": {
             "select": {
               "options": {
-                "4800": "4800",
-                "9600": "9600",
-                "14400": "14400",
-                "19200": "19200",
-                "28800": "28800",
-                "38400": "38400",
-                "57600": "57600",
-                "76800": "76800",
-                "115200": "115200"
+                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
+                "thessla_green_modbus.modbus_baud_rate_9600": "9600",
+                "thessla_green_modbus.modbus_baud_rate_14400": "14400",
+                "thessla_green_modbus.modbus_baud_rate_19200": "19200",
+                "thessla_green_modbus.modbus_baud_rate_28800": "28800",
+                "thessla_green_modbus.modbus_baud_rate_38400": "38400",
+                "thessla_green_modbus.modbus_baud_rate_57600": "57600",
+                "thessla_green_modbus.modbus_baud_rate_76800": "76800",
+                "thessla_green_modbus.modbus_baud_rate_115200": "115200"
               }
             }
           }
@@ -706,9 +706,9 @@
           "selector": {
             "select": {
               "options": {
-                "none": "Brak",
-                "even": "Parzysta",
-                "odd": "Nieparzysta"
+                "thessla_green_modbus.modbus_parity_none": "Brak",
+                "thessla_green_modbus.modbus_parity_even": "Parzysta",
+                "thessla_green_modbus.modbus_parity_odd": "Nieparzysta"
               }
             }
           }
@@ -719,8 +719,8 @@
           "selector": {
             "select": {
               "options": {
-                "1": "1",
-                "2": "2"
+                "thessla_green_modbus.modbus_stop_bits_1": "1",
+                "thessla_green_modbus.modbus_stop_bits_2": "2"
               }
             }
           }

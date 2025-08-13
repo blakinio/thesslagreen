@@ -165,10 +165,32 @@ REFRESH_DEVICE_DATA_SCHEMA = vol.Schema(
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for ThesslaGreen Modbus integration."""
 
+    def _normalize_option(value: str) -> str:
+        """Convert translation keys to internal option values."""
+        if value and value.startswith(f"{DOMAIN}."):
+            value = value.split(".", 1)[1]
+        prefixes = [
+            "special_mode_",
+            "day_",
+            "period_",
+            "bypass_mode_",
+            "gwc_mode_",
+            "filter_type_",
+            "reset_type_",
+            "modbus_port_",
+            "modbus_baud_rate_",
+            "modbus_parity_",
+            "modbus_stop_bits_",
+        ]
+        for prefix in prefixes:
+            if value.startswith(prefix):
+                return value[len(prefix) :]  # noqa: E203
+        return value
+
     async def set_special_mode(call: ServiceCall) -> None:
         """Service to set special mode."""
         entity_ids = async_extract_entity_ids(hass, call)
-        mode = call.data["mode"]
+        mode = _normalize_option(call.data["mode"])
         duration = call.data.get("duration", 0)
 
         for entity_id in entity_ids:
@@ -202,8 +224,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def set_airflow_schedule(call: ServiceCall) -> None:
         """Service to set airflow schedule."""
         entity_ids = async_extract_entity_ids(hass, call)
-        day = call.data["day"]
-        period = call.data["period"]
+        day = _normalize_option(call.data["day"])
+        period = _normalize_option(call.data["period"])
         start_time = call.data["start_time"]
         end_time = call.data["end_time"]
         airflow_rate = call.data["airflow_rate"]
@@ -275,7 +297,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def set_bypass_parameters(call: ServiceCall) -> None:
         """Service to set bypass parameters."""
         entity_ids = async_extract_entity_ids(hass, call)
-        mode = call.data["mode"]
+        mode = _normalize_option(call.data["mode"])
         temperature_threshold = call.data.get("temperature_threshold")
         hysteresis = call.data.get("hysteresis")
 
@@ -311,7 +333,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def set_gwc_parameters(call: ServiceCall) -> None:
         """Service to set GWC parameters."""
         entity_ids = async_extract_entity_ids(hass, call)
-        mode = call.data["mode"]
+        mode = _normalize_option(call.data["mode"])
         temperature_threshold = call.data.get("temperature_threshold")
         hysteresis = call.data.get("hysteresis")
 
@@ -402,7 +424,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def reset_filters(call: ServiceCall) -> None:
         """Service to reset filter counter."""
         entity_ids = async_extract_entity_ids(hass, call)
-        filter_type = call.data["filter_type"]
+        filter_type = _normalize_option(call.data["filter_type"])
 
         filter_type_map = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}
         filter_value = filter_type_map[filter_type]
@@ -417,7 +439,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def reset_settings(call: ServiceCall) -> None:
         """Service to reset settings."""
         entity_ids = async_extract_entity_ids(hass, call)
-        reset_type = call.data["reset_type"]
+        reset_type = _normalize_option(call.data["reset_type"])
 
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
@@ -443,18 +465,28 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 day_of_week = now.weekday()  # 0 = Monday
                 time_hhmm = now.hour * 100 + now.minute
 
-                await coordinator.async_write_register("pres_check_day_2", day_of_week, refresh=False)
-                await coordinator.async_write_register("pres_check_time_2", time_hhmm, refresh=False)
+                await coordinator.async_write_register(
+                    "pres_check_day_2", day_of_week, refresh=False
+                )
+                await coordinator.async_write_register(
+                    "pres_check_time_2", time_hhmm, refresh=False
+                )
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Started pressure test for %s", entity_id)
 
     async def set_modbus_parameters(call: ServiceCall) -> None:
         """Service to set Modbus parameters."""
         entity_ids = async_extract_entity_ids(hass, call)
-        port = call.data["port"]
+        port = _normalize_option(call.data["port"])
         baud_rate = call.data.get("baud_rate")
         parity = call.data.get("parity")
         stop_bits = call.data.get("stop_bits")
+        if baud_rate:
+            baud_rate = _normalize_option(baud_rate)
+        if parity:
+            parity = _normalize_option(parity)
+        if stop_bits:
+            stop_bits = _normalize_option(stop_bits)
 
         baud_map = {
             "4800": 0,

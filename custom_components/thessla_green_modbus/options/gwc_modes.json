@@ -1,5 +1,5 @@
 [
-  "off",
-  "auto",
-  "forced"
+  "thessla_green_modbus.gwc_mode_off",
+  "thessla_green_modbus.gwc_mode_auto",
+  "thessla_green_modbus.gwc_mode_forced"
 ]

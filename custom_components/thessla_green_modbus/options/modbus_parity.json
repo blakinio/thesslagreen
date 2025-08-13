@@ -1,5 +1,5 @@
 [
-  "none",
-  "even",
-  "odd"
+  "thessla_green_modbus.modbus_parity_none",
+  "thessla_green_modbus.modbus_parity_even",
+  "thessla_green_modbus.modbus_parity_odd"
 ]
