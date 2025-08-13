@@ -455,6 +455,9 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("test_register", 100) is True
         assert scanner._is_valid_register_value("mode", 1) is True
 
+        # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+
         # SENSOR_UNAVAILABLE should still be treated as valid for temperature sensors
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 

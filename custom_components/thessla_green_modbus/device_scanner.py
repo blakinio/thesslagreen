@@ -509,12 +509,8 @@ class ThesslaGreenDeviceScanner:
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
             if value == SENSOR_UNAVAILABLE:
-                _LOGGER.debug("Temperature sensor %s unavailable: %s", register_name, value)
-                _LOGGER.debug(
-                    "Temperature register %s unavailable: %s",
-                    register_name,
-                    value,
-                )
+                # Treat the register as unavailable without logging
+                return False
             return True
 
         # Air flow sensors use the same sentinel for no sensor

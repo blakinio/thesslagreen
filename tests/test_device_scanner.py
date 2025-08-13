@@ -153,6 +153,10 @@ async def test_scan_device_success_dynamic():
             patch.object(scanner, "_is_valid_register_value", return_value=True),
         ):
             result = await scanner.scan_device()
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert "access_level" in result["available_registers"]["holding_registers"]
+    assert "power_supply_fans" in result["available_registers"]["coil_registers"]
+    assert "expansion" in result["available_registers"]["discrete_inputs"]
     assert set(result["available_registers"]["input_registers"]) == set(INPUT_REGISTERS.keys())
     assert set(result["available_registers"]["holding_registers"]) == set(HOLDING_REGISTERS.keys())
     assert set(result["available_registers"]["coil_registers"]) == set(COIL_REGISTERS.keys())
@@ -226,6 +230,10 @@ async def test_scan_device_success_static(mock_modbus_response):
             mock_client = AsyncMock()
             mock_client.connect.return_value = True
             mock_client.read_input_registers.return_value = mock_modbus_response
+            mock_holding_response = MagicMock()
+            mock_holding_response.isError.return_value = False
+            mock_holding_response.registers = [1]
+            mock_client.read_holding_registers.return_value = mock_holding_response
             holding_response = MagicMock()
             holding_response.isError.return_value = False
             holding_response.registers = [1]
@@ -429,7 +437,8 @@ async def test_scan_device_batch_fallback():
     batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
     assert any(call.args[2] == 2 for call in batch_calls)
     assert any(call.args[2] == 1 for call in batch_calls)
-
+async def test_temperature_register_unavailable_skipped():
+    """Temperature registers with SENSOR_UNAVAILABLE should be skipped."""
 
 async def test_temperature_register_unavailable_kept():
     """Temperature registers with SENSOR_UNAVAILABLE should remain available."""
@@ -464,7 +473,7 @@ async def test_temperature_register_unavailable_kept():
         ):
             result = await scanner.scan_device()
 
-    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
 async def test_is_valid_register_value():
@@ -474,6 +483,10 @@ async def test_is_valid_register_value():
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
+
+
+    # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
 
     # SENSOR_UNAVAILABLE should still be considered valid for temperature sensors
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
@@ -513,8 +526,8 @@ async def test_decode_bcd_time():
     assert _decode_bcd_time(2400) is None
 
 
-async def test_scan_includes_unavailable_temperature():
-    """Temperature register with SENSOR_UNAVAILABLE should remain available."""
+async def test_scan_excludes_unavailable_temperature():
+    """Temperature register with SENSOR_UNAVAILABLE should be excluded."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
     async def fake_read_input(client, address, count):
@@ -548,7 +561,16 @@ async def test_scan_includes_unavailable_temperature():
         ):
             result = await scanner.scan_device()
 
-    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert "outside_temperature" not in result["available_registers"]["input_registers"]
+
+
+async def test_temperature_unavailable_no_warning(caplog):
+    """SENSOR_UNAVAILABLE should not log a warning for temperature sensors."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+
+    caplog.set_level(logging.WARNING)
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+    assert "outside_temperature" not in caplog.text
 
 
 async def test_capabilities_detect_schedule_keywords():
