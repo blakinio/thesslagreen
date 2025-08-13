@@ -6,6 +6,7 @@ import asyncio
 import csv
 import inspect
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
@@ -127,6 +128,10 @@ class ThesslaGreenDeviceScanner:
         # can avoid retrying them repeatedly during scanning
         self._failed_holding: Set[int] = set()
 
+        # Track input registers that consistently fail to respond so we can
+        # avoid retrying them repeatedly during scanning
+        self._failed_input: Set[int] = set()
+
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
         self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
@@ -190,16 +195,25 @@ class ThesslaGreenDeviceScanner:
                             continue
                         min_raw = row.get("Min")
                         max_raw = row.get("Max")
-                        min_val: Optional[int]
-                        max_val: Optional[int]
-                        try:
-                            min_val = int(float(min_raw)) if min_raw not in (None, "") else None
-                        except ValueError:
-                            min_val = None
-                        try:
-                            max_val = int(float(max_raw)) if max_raw not in (None, "") else None
-                        except ValueError:
-                            max_val = None
+
+                        def _parse_range(
+                            label: str, raw: Optional[str]
+                        ) -> Optional[int]:
+                            if raw in (None, ""):
+                                return None
+                            text = str(raw).split("#", 1)[0]
+                            text = re.sub(r"[^0-9+\-\.]+", "", text)
+                            if not text:
+                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                return None
+                            try:
+                                return int(float(text))
+                            except ValueError:
+                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                return None
+
+                        min_val = _parse_range("Min", min_raw)
+                        max_val = _parse_range("Max", max_raw)
                         # Warn if a range is expected but Min/Max is missing
                         if (min_raw not in (None, "") or max_raw not in (None, "")) and (
                             min_val is None or max_val is None
@@ -270,6 +284,14 @@ class ThesslaGreenDeviceScanner:
         start = address
         end = address + count - 1
 
+        if any(reg in self._failed_input for reg in range(start, end + 1)):
+            _LOGGER.debug(
+                "Skipping cached failed input registers 0x%04X-0x%04X",
+                start,
+                end,
+            )
+            return None
+
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -306,6 +328,10 @@ class ThesslaGreenDeviceScanner:
             end,
             self.retry,
         )
+        self._failed_input.update(range(start, end + 1))
+        _LOGGER.debug(
+            "Caching failed input registers 0x%04X-0x%04X", start, end
+        )
         return None
 
     async def _read_holding(
@@ -313,7 +339,9 @@ class ThesslaGreenDeviceScanner:
     ) -> Optional[List[int]]:
         """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
-            # We've already determined this register does not respond
+            _LOGGER.debug(
+                "Skipping cached failed holding register 0x%04X", address
+            )
             return None
 
         for attempt in range(1, self.retry + 1):
@@ -347,7 +375,7 @@ class ThesslaGreenDeviceScanner:
 
         # After retry attempts mark register as unsupported to avoid future retries
         self._failed_holding.add(address)
-        _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+        _LOGGER.debug("Caching failed holding register 0x%04X", address)
         return None
 
     async def _read_coil(
@@ -614,6 +642,14 @@ class ThesslaGreenDeviceScanner:
             fw_data = await self._read_input(client, 0x0000, 5)
             if fw_data and len(fw_data) >= 5:
                 fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[4]}"
+            if not fw_data or len(fw_data) < 3:
+                _LOGGER.info(
+                    "Firmware registers unavailable; firmware version could not be determined"
+                )
+                fw_data = None
+                info.firmware = "Unknown"
+            else:
+                fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
                 info.firmware = fw
                 _LOGGER.debug("Firmware version: %s", fw)
 
