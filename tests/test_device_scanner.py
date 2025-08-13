@@ -263,6 +263,58 @@ async def test_load_registers_duplicate_names(tmp_path):
     assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
 
 
+async def test_read_input_fallback_detects_temperature(caplog):
+    """Fallback to holding registers should discover temperature inputs."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with (
+        patch.object(
+            ThesslaGreenDeviceScanner,
+            "_load_registers",
+            AsyncMock(return_value=(empty_regs, {})),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"outside_temperature": 16},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS",
+            {},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS",
+            {},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+        from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client.read_input_registers.side_effect = ModbusException("fail")
+
+        resp_fw = MagicMock()
+        resp_fw.isError.return_value = False
+        resp_fw.registers = [4, 85, 0, 0, 0]
+        resp_temp = MagicMock()
+        resp_temp.isError.return_value = False
+        resp_temp.registers = [10]
+        mock_client.read_holding_registers.side_effect = [resp_fw, resp_temp]
+
+        mock_client_class.return_value = mock_client
+
+        with caplog.at_level(logging.DEBUG):
+            result = await scanner.scan_device()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert any("Falling back to holding registers" in record.message for record in caplog.records)
+
+
 async def test_analyze_capabilities():
     """Test capability analysis."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)

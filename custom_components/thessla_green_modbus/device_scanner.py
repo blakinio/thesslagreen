@@ -269,6 +269,43 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
+
+            # Fallback to holding registers if input read fails
+            _LOGGER.debug(
+                "Falling back to holding registers for input 0x%04X (attempt %d)",
+                address,
+                attempt,
+            )
+            try:
+                response = await _call_modbus(
+                    client.read_holding_registers, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.registers
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    response,
+                )
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
             if attempt < self.retry:
                 await asyncio.sleep(0.5)
         return None
