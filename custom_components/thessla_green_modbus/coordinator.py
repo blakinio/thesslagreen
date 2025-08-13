@@ -379,6 +379,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             try:
                 await self._ensure_connection()
 
+                # Verify client connection after attempting to ensure it
+                if self.client is None:
+                    raise UpdateFailed("Modbus client is not connected")
+
                 # Read all register types
                 data = {}
 
@@ -447,6 +451,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read input registers using optimized batch reading."""
         data = {}
 
+        if self.client is None:
+            try:
+                await self._ensure_connection()
+            except Exception as exc:  # pragma: no cover - defensive
+                raise ConnectionException("Modbus client is not connected") from exc
+            if self.client is None:
+                raise ConnectionException("Modbus client is not connected")
+
         if "input_registers" not in self._register_groups:
             return data
 
@@ -500,6 +512,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     async def _read_holding_registers_optimized(self) -> Dict[str, Any]:
         """Read holding registers using optimized batch reading."""
         data = {}
+
+        if self.client is None:
+            try:
+                await self._ensure_connection()
+            except Exception as exc:  # pragma: no cover - defensive
+                raise ConnectionException("Modbus client is not connected") from exc
+            if self.client is None:
+                raise ConnectionException("Modbus client is not connected")
 
         if "holding_registers" not in self._register_groups:
             return data
@@ -567,6 +587,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read coil registers using optimized batch reading."""
         data = {}
 
+        if self.client is None:
+            try:
+                await self._ensure_connection()
+            except Exception as exc:  # pragma: no cover - defensive
+                raise ConnectionException("Modbus client is not connected") from exc
+            if self.client is None:
+                raise ConnectionException("Modbus client is not connected")
+
         if "coil_registers" not in self._register_groups:
             return data
 
@@ -626,6 +654,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
     async def _read_discrete_inputs_optimized(self) -> Dict[str, Any]:
         """Read discrete input registers using optimized batch reading."""
         data = {}
+
+        if self.client is None:
+            try:
+                await self._ensure_connection()
+            except Exception as exc:  # pragma: no cover - defensive
+                raise ConnectionException("Modbus client is not connected") from exc
+            if self.client is None:
+                raise ConnectionException("Modbus client is not connected")
 
         if "discrete_inputs" not in self._register_groups:
             return data
@@ -778,7 +814,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         _LOGGER.error(
                             "Register %s expects %d values",
                             register_name,
-                            "Register %s expects %d values", 
+                            "Register %s expects %d values",
                             start_register,
                             MULTI_REGISTER_SIZES[start_register],
                         )
