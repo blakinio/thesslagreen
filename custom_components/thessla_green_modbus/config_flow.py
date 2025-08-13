@@ -190,22 +190,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception as err:  # pragma: no cover - defensive
             _LOGGER.debug("Translation load failed: %s", err)
 
-        if register_count > 0:
-            auto_detected_note = translations.get("auto_detected_note_success") or translations.get(
-                f"component.{DOMAIN}.auto_detected_note_success",
-                "Auto-detection successful!",
-            )
-        else:
-            auto_detected_note = translations.get("auto_detected_note_limited") or translations.get(
-                f"component.{DOMAIN}.auto_detected_note_limited",
-            auto_detected_note = translations.get(
-                "auto_detected_note_success", "Auto-detection successful!"
-            )
-        else:
-            auto_detected_note = translations.get(
-                "auto_detected_note_limited",
-                "Limited auto-detection - some registers may be missing.",
-            )
+        key = (
+            "auto_detected_note_success"
+            if register_count > 0
+            else "auto_detected_note_limited"
+        )
+        auto_detected_note = translations.get(
+            f"component.{DOMAIN}.{key}",
+            "Auto-detection successful!"
+            if register_count > 0
+            else "Limited auto-detection - some registers may be missing.",
+        )
 
         description_placeholders = {
             "host": self._data[CONF_HOST],
