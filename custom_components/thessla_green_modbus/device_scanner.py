@@ -138,6 +138,8 @@ class ThesslaGreenDeviceScanner:
         # can avoid retrying them repeatedly during scanning. The value is
         # a failure counter per register address.
         self._holding_failures: Dict[int, int] = {}
+        # Cache holding registers that have exceeded retry attempts
+        self._failed_holding: Set[int] = set()
 
         # Track input registers that consistently fail to respond so we can
         # avoid retrying them repeatedly during scanning
