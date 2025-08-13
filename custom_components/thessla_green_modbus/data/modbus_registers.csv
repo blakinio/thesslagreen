@@ -346,7 +346,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x2008,8200,R/W,S8,Sygnalizacja konieczności wprowadzenia klucza produktu,0,1,,1,"0 - brak; 1 - jest",,
 03,0x2009,8201,R/W,S9,Centrala zatrzymana z panelu AirS,0,1,,1,"0 - brak; 1 - jest",,
 03,0x200A,8202,R/W,S10,Zadziałał czujnik PPOŻ,0,1,,1,"0 - brak; 1 - jest",,
-03,0x200D,8205,R/W,S13,Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile,0,1,,1,"0 - brak; 1 - jest",,
+03,0x200D,8205,R/W,S13,"Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile",0,1,,1,,"0 - brak; 1 - jest",,
 03,0x200E,8206,R/W,S14,Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej zadziałało maksymalną ilość razy,0,1,,1,"0 - brak; 1 - jest",,
 03,0x200F,8207,R/W,S15,Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej nie przyniosło oczekiwanych rezultatów,0,1,,1,"0 - brak; 1 - jest",,
 03,0x2010,8208,R/W,S16,Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali przy aktywnym systemie FPX,0,1,,1,"0 - brak; 1 - jest",,
