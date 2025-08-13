@@ -31,52 +31,30 @@ async def test_device_scanner_initialization():
     assert scanner.backoff == 0
 
 
-async def test_read_holding_skips_after_consecutive_failures(caplog):
-    """Registers are skipped only after repeated failures across scans."""
+async def test_read_holding_skips_after_failure():
+    """Holding registers are cached after a failed read."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
 
-    caplog.set_level(logging.WARNING)
-
-
-    # First failing scan increments failure counter
+    # Initial failing scan
     with patch(
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
         AsyncMock(side_effect=ModbusException("boom")),
-    ) as call_mock1:
-
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", AsyncMock()),
-    ):
-
+    ) as call_mock1, patch("asyncio.sleep", AsyncMock()):
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
         assert call_mock1.await_count == scanner.retry
 
-    # Second failing scan reaches skip threshold
-    with patch(
-        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-        AsyncMock(side_effect=ModbusException("boom")),
-    ) as call_mock2:
-        result = await scanner._read_holding(mock_client, 0x00A8, 1)
-        assert result is None
-        assert call_mock2.await_count == scanner.retry
-
-    # Third call should be skipped entirely
+    # Subsequent call should be skipped
     with patch(
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
         AsyncMock(),
-    ) as call_mock3:
+    ) as call_mock2:
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
-        call_mock3.assert_not_called()
+        call_mock2.assert_not_called()
 
-    assert scanner._holding_failures[0x00A8] >= scanner.retry
-    assert "Skipping unsupported holding register 0x00A8" in caplog.text
+    assert 0x00A8 in scanner._failed_holding
 
 
 async def test_read_input_backoff():
@@ -117,6 +95,34 @@ async def test_read_input_logs_warning_on_failure(caplog):
         assert call_mock.await_count == scanner.retry
 
     assert "Failed to read input registers 0x0001-0x0003 after 3 retries" in caplog.text
+
+
+async def test_read_input_skips_cached_failures():
+    """Input registers are cached after repeated failures."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock,
+        patch("asyncio.sleep", AsyncMock()),
+    ):
+        result = await scanner._read_input(mock_client, 0x0001, 2)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    assert {0x0001, 0x0002} <= scanner._failed_input
+
+    # Subsequent call should be skipped
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(),
+    ) as call_mock2:
+        result = await scanner._read_input(mock_client, 0x0001, 2)
+        assert result is None
+        call_mock2.assert_not_called()
 
 
 async def test_scan_device_success_dynamic():
