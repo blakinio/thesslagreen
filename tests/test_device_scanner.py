@@ -53,6 +53,25 @@ async def test_read_holding_skips_unresponsive_register(caplog):
     assert "0x00A8" in caplog.text
 
 
+async def test_read_input_logs_warning_on_failure(caplog):
+    """Warn when input registers cannot be read after retries."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    mock_client = AsyncMock()
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(side_effect=ModbusException("boom")),
+    ) as call_mock:
+        result = await scanner._read_input(mock_client, 0x0001, 3)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    assert (
+        "Failed to read input registers 0x0001-0x0003 after 3 retries" in caplog.text
+    )
+
+
 async def test_scan_device_success_dynamic():
     """Test successful device scan with dynamic register scanning."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)

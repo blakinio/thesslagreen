@@ -267,7 +267,10 @@ class ThesslaGreenDeviceScanner:
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-        """Read input registers."""
+        """Read input registers with retry."""
+        start = address
+        end = address + count - 1
+
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -277,24 +280,27 @@ class ThesslaGreenDeviceScanner:
                     return response.registers
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Failed to read input 0x%04X on attempt %d: %s",
-                    address,
+                    "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
                     attempt,
                     exc,
                     exc_info=True,
                 )
             except (OSError, asyncio.TimeoutError) as exc:
                 _LOGGER.error(
-                    "Unexpected error reading input 0x%04X on attempt %d: %s",
-                    address,
+                    "Unexpected error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
                     attempt,
                     exc,
                     exc_info=True,
                 )
+
         _LOGGER.warning(
             "Failed to read input registers 0x%04X-0x%04X after %d retries",
-            address,
-            address + count - 1,
+            start,
+            end,
             self.retry,
         )
         return None
