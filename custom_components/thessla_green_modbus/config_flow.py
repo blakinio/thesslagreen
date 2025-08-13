@@ -76,8 +76,6 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     except (OSError, asyncio.TimeoutError) as exc:
         _LOGGER.exception("Unexpected error during device validation: %s", exc)
         raise CannotConnect from exc
-    finally:
-        await scanner.close()
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

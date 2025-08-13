@@ -103,14 +103,19 @@ async def test_unique_id_sanitized():
         "scan_result": {},
     }
 
-    with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
-        return_value=validation_result,
-    ), patch(
-        "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
-    ), patch(
-        "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-    ) as mock_set_unique_id:
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured",
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+        ) as mock_set_unique_id,
+    ):
         await flow.async_step_user(
             {
                 CONF_HOST: "fe80::1",
@@ -121,6 +126,7 @@ async def test_unique_id_sanitized():
         )
 
     mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
+
 
 async def test_form_user_cannot_connect():
     """Test we handle cannot connect error."""
@@ -301,7 +307,6 @@ async def test_validate_input_success():
         }
         mock_scanner_cls.return_value = scanner_instance
         result = await validate_input(hass, data)
-        scanner_instance.close.assert_awaited_once()
 
     assert result["title"] == "Test"
     assert "device_info" in result
