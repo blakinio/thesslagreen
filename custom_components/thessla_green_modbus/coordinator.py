@@ -776,6 +776,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         )
                         return False
                     if len(value) != MULTI_REGISTER_SIZES[start_register]:
+                        _LOGGER.error(
+                            "Register %s expects %d values", 
+                            start_register,
+                            MULTI_REGISTER_SIZES[start_register],
+                        )
+                        return False
 
                 if register_name in MULTI_REGISTER_SIZES:
                     if (

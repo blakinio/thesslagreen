@@ -235,6 +235,22 @@ async def test_async_write_multi_register_non_start(coordinator):
     coordinator.async_request_refresh.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_async_write_multi_register_wrong_length(coordinator):
+    """Reject writes with incorrect number of values."""
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_registers = AsyncMock()
+    coordinator.client = client
+
+    result = await coordinator.async_write_register("date_time_1", [1, 2, 3])
+
+    assert result is False
+    client.write_registers.assert_not_awaited()
+    coordinator.async_request_refresh.assert_not_called()
+
+
 def test_performance_stats(coordinator):
     """Test performance statistics."""
     stats = coordinator.performance_stats
