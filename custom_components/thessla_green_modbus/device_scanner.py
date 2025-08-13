@@ -201,9 +201,8 @@ class ThesslaGreenDeviceScanner:
                         except ValueError:
                             max_val = None
                         # Warn if a range is expected but Min/Max is missing
-                        if (
-                            (min_raw not in (None, "") or max_raw not in (None, ""))
-                            and (min_val is None or max_val is None)
+                        if (min_raw not in (None, "") or max_raw not in (None, "")) and (
+                            min_val is None or max_val is None
                         ):
                             _LOGGER.warning(
                                 "Incomplete range for %s: Min=%s Max=%s",
@@ -401,6 +400,7 @@ class ThesslaGreenDeviceScanner:
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
             if value == SENSOR_UNAVAILABLE:
+                _LOGGER.debug("Temperature sensor %s unavailable: %s", register_name, value)
                 _LOGGER.debug(
                     "Temperature register %s unavailable: %s",
                     register_name,
