@@ -238,20 +238,20 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x1082,4226,R/W,hoodSupplyCoef,Intensywność wentylacji dla funkcji OKAP (nawiew),100,150,100,1,%,"Dotyczy funkcji OKAP: typ 1 (bez wentylatora) oraz typ 2 (z went.) załączanej wejściem sygnałowym OK (przełącznik ON/OFF)",,
 03,0x1083,4227,R/W,hoodExhaustCoef,Intensywność wentylacji dla funkcji OKAP (wywiew),100,150,100,1,%,"Dotyczy funkcji OKAP: typ 1 (bez wentylatora) załączanej wejściem sygnałowym OK (przełącznik ON/OFF)",,
 03,0x1084,4228,R/W,fireplaceSupplyCoef,Różnicowanie strumieni dla funkcji KOMINEK,5,50,20,1,%,"Nastawa wartości, o jaką zwiększana jest intensywność nawiewu względem wywiewu",,
-03,0x1085,4229,R/W,airingBathroomCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4, 5 (łazienka),100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem lub sygnałem z higrostatu",,
-03,0x1086,4230,R/W,airingCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje),100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
+03,0x1085,4229,R/W,airingBathroomCoef,"Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4, 5 (łazienka)",100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem lub sygnałem z higrostatu",,
+03,0x1086,4230,R/W,airingCoef,"Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)",100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
 03,0x1087,4231,R/W,contaminationCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 6 (usuwanie zanieczyszczeń),100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej sygnałem z czujnika jakości powietrza",,
 03,0x1088,4232,R/W,emptyHouseCoef,Intensywność wentylacji dla funkcji PUSTY DOM,10,50,20,1,%,"Dotyczy funkcji PUSTY DOM załączanej wejściem sygnałowym PD lub ręcznie",,
-03,0x1089,4233,R/W,airingPanelModeTime,Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje),1,45,5,1,min,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
+03,0x1089,4233,R/W,airingPanelModeTime,"Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)",1,45,5,1,min,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
 03,0x108A,4234,R/W,airingSwitchModeTime,Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 3 (łazienka),1,45,5,1,min,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem dzwonkowym",,
 03,0x108B,4235,R/W,airingSwitchModeOnDelay,Opóźnienie załączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka),0,20,0,1,min,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF",,
 03,0x108C,4236,R/W,airingSwitchModeOffDelay,Opóźnienie wyłączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka),0,20,0,1,min,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF",,
 03,0x108D,4237,R/W,fireplaceModeTime,Czas działania funkcji KOMINEK,1,10,1,1,min,"Dotyczy funkcji KOMINEK załączanej wejściem sygnałowym K (przełącznik) lub z panelu",,
-03,0x108E,4238,R/W,airingSwitchCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4,100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF lub przełącznikiem dzwonkowym",4.85,
+03,0x108E,4238,R/W,airingSwitchCoef,"Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4",100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF lub przełącznikiem dzwonkowym",4.85,
 03,0x108F,4239,R/W,openWindowCoef,Intensywność wentylacji dla funkcji OTWARTE OKNA (wywiew),10,100,100,1,%,"0-100 - nastawa intensywności wentylacji; 101 - intensywność wentylacji z aktywnego trybu automatycznego / manualnego",3.72,
 
 # KONTROLA FILTRÓW
-03,0x1094,4244,R/W,presCheckDay,Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów,0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central wyposażonych w presostat / filtr kanałowy z presostatem"
+03,0x1094,4244,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central wyposażonych w presostat / filtr kanałowy z presostatem"
 03,0x1095,4245,R/W,presCheckTime,Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM],0,23,12,1,h,"Rejestr zawiera godzinę [GG] i minutę [MM] rozpoczęcia procedury",,
 
 # GWC SYSTEM
@@ -306,7 +306,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x113E,4414,R/W,hard_reset_schedule,Reset ustawień trybów pracy,0,1,,1,"0 - brak; 1 - jest",,
 
 # KONTROLA FILTRÓW - DODATKOWE
-03,0x1150,4432,R/W,presCheckDay,Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów,0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central w presostat / filtr kanałowy z presostatem"
+03,0x1150,4432,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central w presostat / filtr kanałowy z presostatem"
 03,0x1151,4433,R/W,presCheckTime,Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM],0,23,12,1,h,"Rejestr zawiera godzinę [GG] i minutę [MM] rozpoczęcia procedury",,
 
 # KOMUNIKACJA MODBUS
@@ -346,7 +346,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x2008,8200,R/W,S8,Sygnalizacja konieczności wprowadzenia klucza produktu,0,1,,1,"0 - brak; 1 - jest",,
 03,0x2009,8201,R/W,S9,Centrala zatrzymana z panelu AirS,0,1,,1,"0 - brak; 1 - jest",,
 03,0x200A,8202,R/W,S10,Zadziałał czujnik PPOŻ,0,1,,1,"0 - brak; 1 - jest",,
-03,0x200D,8205,R/W,S13,Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile,0,1,,1,"0 - brak; 1 - jest",,
+03,0x200D,8205,R/W,S13,"Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile",0,1,,1,,"0 - brak; 1 - jest",,
 03,0x200E,8206,R/W,S14,Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej zadziałało maksymalną ilość razy,0,1,,1,"0 - brak; 1 - jest",,
 03,0x200F,8207,R/W,S15,Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej nie przyniosło oczekiwanych rezultatów,0,1,,1,"0 - brak; 1 - jest",,
 03,0x2010,8208,R/W,S16,Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali przy aktywnym systemie FPX,0,1,,1,"0 - brak; 1 - jest",,
@@ -369,7 +369,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x2065,8293,R/W,E101,Brak odczytu z czujnika temperatury powietrza nawiewanego - NAWIEW (TN1),0,1,,1,"0 - brak; 1 - jest",,
 03,0x2066,8294,R/W,E102,Brak odczytu z czujnika temperatury powietrza usuwanego z pomieszczeń - WYWIEW (TP),0,1,,1,"0 - brak; 1 - jest",,
 03,0x2067,8295,R/W,E103,Brak odczytu z czujnika temperatury powietrza na wlocie do wymiennika rekuperacyjnego - FPX (TZ2),0,1,,1,"0 - brak; 1 - jest",,
-03,0x2068,8296,R/W,E104,Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO),0,1,,1,"0 - brak; 1 - jest",,
+03,0x2068,8296,R/W,E104,"Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO)",0,1,,1,,"0 - brak; 1 - jest",,
 03,0x2069,8297,R/W,E105,Brak odczytu z czujnika temperatury powietrza nawiewanego za wymiennikiem kanałowym (TN2),0,1,,1,"0 - brak; 1 - jest",,
 03,0x206A,8298,R/W,E106,Brak odczytu z czujnika temperatury powietrza zewnętrznego glikolowego GWC (TZ3),0,1,,1,"0 - brak; 1 - jest",,
 03,0x208A,8330,R/W,E138,Awaria czujnika CF wentylatora nawiewnego - Brak komunikacji z przetwornikiem ciśnienia wentylatora,0,1,,1,"0 - brak; 1 - jest",,
