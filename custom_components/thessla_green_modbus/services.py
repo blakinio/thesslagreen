@@ -27,6 +27,7 @@ from .const import (
     SPECIAL_FUNCTION_MAP,
     SPECIAL_MODE_OPTIONS,
 )
+from .entity_mappings import map_legacy_entity_id
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -601,9 +602,16 @@ async def async_unload_services(hass: HomeAssistant) -> None:
 def _get_coordinator_from_entity_id(
     hass: HomeAssistant, entity_id: str
 ) -> ThesslaGreenModbusCoordinator | None:
-    """Get coordinator from entity ID using entity registry."""
+    """Get coordinator from entity ID using entity registry.
+
+    Legacy entity IDs are transparently mapped to their new counterparts to
+    maintain backward compatibility with older automations.
+    """
+
+    mapped_entity_id = map_legacy_entity_id(entity_id)
+
     entity_registry = er.async_get(hass)
-    entry = entity_registry.async_get(entity_id) if entity_registry else None
+    entry = entity_registry.async_get(mapped_entity_id) if entity_registry else None
     if not entry:
         return None
     return hass.data.get(DOMAIN, {}).get(entry.config_entry_id)

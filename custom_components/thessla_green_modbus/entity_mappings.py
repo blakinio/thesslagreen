@@ -1,6 +1,60 @@
-"""Entity mapping definitions for the ThesslaGreen Modbus integration."""
+"""Entity mapping definitions for the ThesslaGreen Modbus integration.
+
+This module also provides helpers for handling legacy entity IDs that were
+renamed in newer versions of the integration.
+"""
 
 from typing import Any, Dict
+import logging
+
+
+_LOGGER = logging.getLogger(__name__)
+
+# Map legacy entity suffixes to new domain and suffix pairs. Only a small
+# subset of legacy names existed in early versions of the integration. These
+# mappings allow services to transparently use the new entity IDs while warning
+# users to update their automations.
+LEGACY_ENTITY_ID_ALIASES: Dict[str, tuple[str, str]] = {
+    # "number.rekuperator_predkosc" / "number.rekuperator_speed" → fan entity
+    "rekuperator_predkosc": ("fan", "fan"),
+    "rekuperator_speed": ("fan", "fan"),
+}
+
+_alias_warning_logged = False
+
+
+def map_legacy_entity_id(entity_id: str) -> str:
+    """Map a legacy entity ID to the new format.
+
+    If the provided ``entity_id`` matches one of the known legacy aliases, the
+    corresponding new entity ID is returned and a warning is logged exactly
+    once to inform the user about the change.
+    """
+
+    global _alias_warning_logged
+
+    if "." not in entity_id:
+        return entity_id
+
+    domain, object_id = entity_id.split(".", 1)
+    suffix = object_id.rsplit("_", 1)[-1]
+    if suffix not in LEGACY_ENTITY_ID_ALIASES:
+        return entity_id
+
+    new_domain, new_suffix = LEGACY_ENTITY_ID_ALIASES[suffix]
+    parts = object_id.split("_")
+    new_object_id = "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
+    new_entity_id = f"{new_domain}.{new_object_id}"
+
+    if not _alias_warning_logged:
+        _LOGGER.warning(
+            "Legacy entity ID '%s' detected. Please update your automations to use '%s'",
+            entity_id,
+            new_entity_id,
+        )
+        _alias_warning_logged = True
+
+    return new_entity_id
 
 NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     "required_temperature": {
