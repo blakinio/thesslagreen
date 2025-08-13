@@ -105,6 +105,7 @@ class ThesslaGreenDeviceScanner:
         slave_id: int = DEFAULT_SLAVE_ID,
         timeout: int = 10,
         retry: int = 3,
+        verbose_invalid_values: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         self.host = host
@@ -112,6 +113,7 @@ class ThesslaGreenDeviceScanner:
         self.slave_id = slave_id
         self.timeout = timeout
         self.retry = retry
+        self.verbose_invalid_values = verbose_invalid_values
 
         # Available registers storage
         self.available_registers: Dict[str, Set[str]] = {
@@ -128,6 +130,9 @@ class ThesslaGreenDeviceScanner:
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
 
+        # Track registers for which invalid values have been reported
+        self._reported_invalid: Set[str] = set()
+
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
         self._registers, self._register_ranges = await self._load_registers()
@@ -140,9 +145,10 @@ class ThesslaGreenDeviceScanner:
         slave_id: int = DEFAULT_SLAVE_ID,
         timeout: int = 10,
         retry: int = 3,
+        verbose_invalid_values: bool = False,
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
-        self = cls(host, port, slave_id, timeout, retry)
+        self = cls(host, port, slave_id, timeout, retry, verbose_invalid_values)
         await self._async_setup()
         return self
 
@@ -310,6 +316,14 @@ class ThesslaGreenDeviceScanner:
             )
         return None
 
+    def _log_invalid_value(self, register_name: str, value: int) -> None:
+        """Log invalid register value once per scan session."""
+        if register_name not in self._reported_invalid:
+            _LOGGER.info("Invalid value for %s: %s", register_name, value)
+            self._reported_invalid.add(register_name)
+        elif self.verbose_invalid_values:
+            _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
@@ -318,28 +332,28 @@ class ThesslaGreenDeviceScanner:
         if name.startswith(BCD_TIME_PREFIXES):
             decoded = _decode_bcd_time(value)
             if decoded is None:
-                _LOGGER.debug("Invalid BCD time for %s: %s", register_name, value)
+                self._log_invalid_value(register_name, value)
                 return False
             value = decoded
 
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
             if value == SENSOR_UNAVAILABLE:
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                self._log_invalid_value(register_name, value)
                 return False
             return True
 
         # Air flow sensors use the same sentinel for no sensor
         if any(x in name for x in ["flow", "air_flow", "flow_rate"]):
             if value in (SENSOR_UNAVAILABLE, 65535):
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                self._log_invalid_value(register_name, value)
                 return False
             return True
 
         # Discrete allowed values for specific registers
         if name in REGISTER_ALLOWED_VALUES:
             if value not in REGISTER_ALLOWED_VALUES[name]:
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                self._log_invalid_value(register_name, value)
                 return False
             return True
 
@@ -347,10 +361,10 @@ class ThesslaGreenDeviceScanner:
         if name in self._register_ranges:
             min_val, max_val = self._register_ranges[name]
             if min_val is not None and value < min_val:
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                self._log_invalid_value(register_name, value)
                 return False
             if max_val is not None and value > max_val:
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+                self._log_invalid_value(register_name, value)
                 return False
 
         # Default: consider valid
@@ -486,6 +500,7 @@ class ThesslaGreenDeviceScanner:
                 raise ConnectionException(f"Failed to connect to {self.host}:{self.port}")
 
             _LOGGER.debug("Connected successfully, starting device scan")
+            self._reported_invalid.clear()
 
             info = DeviceInfo()
             present_blocks = {}
