@@ -30,6 +30,18 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
     "antifreez_mode": {0, 1},
 }
 
+# Registers storing times as BCD HHMM values
+BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "setting_", "airing_")
+
+
+def _decode_bcd_time(value: int) -> Optional[int]:
+    """Decode a BCD encoded HHMM value to an integer."""
+    hours = ((value >> 12) & 0xF) * 10 + ((value >> 8) & 0xF)
+    minutes = ((value >> 4) & 0xF) * 10 + (value & 0xF)
+    if hours > 23 or minutes > 59:
+        return None
+    return hours * 100 + minutes
+
 
 # Maximum registers per batch read (Modbus limit)
 MAX_BATCH_REGISTERS = 16
@@ -248,6 +260,14 @@ class ThesslaGreenDeviceScanner:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
+        # Decode BCD time values before validation
+        if name.startswith(BCD_TIME_PREFIXES):
+            decoded = _decode_bcd_time(value)
+            if decoded is None:
+                _LOGGER.debug("Invalid BCD time for %s: %s", register_name, value)
+                return False
+            value = decoded
+
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
             if value == SENSOR_UNAVAILABLE:
@@ -373,9 +393,10 @@ class ThesslaGreenDeviceScanner:
             or "contamination_sensor" in self.available_registers["discrete_inputs"]
         )
 
-        # Weekly schedule features
+        # Weekly schedule features - look for any scheduling related registers
+        schedule_keywords = {"schedule", "weekly", "airing", "setting"}
         caps.weekly_schedule = any(
-            "schedule" in reg.lower() or "weekly" in reg.lower()
+            any(keyword in reg.lower() for keyword in schedule_keywords)
             for registers in self.available_registers.values()
             for reg in registers
         )

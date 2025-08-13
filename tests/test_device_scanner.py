@@ -197,6 +197,19 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("supply_percentage", 100) is True
     assert scanner._is_valid_register_value("supply_percentage", 200) is False
 
+    # BCD time registers
+    scanner._register_ranges["schedule_start_time"] = (0, 2359)
+    assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
+
+
+async def test_capabilities_detect_schedule_keywords():
+    """Ensure capability detection considers scheduling related registers."""
+    scanner = ThesslaGreenDeviceScanner("host", 502, 10)
+    scanner.available_registers["holding_registers"].add("airing_start_time")
+    caps = scanner._analyze_capabilities()
+    assert caps.weekly_schedule is True
+
 
 async def test_load_registers_duplicate_warning(tmp_path, caplog):
     """Warn when duplicate register addresses are encountered."""
