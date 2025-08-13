@@ -6,7 +6,6 @@ import inspect
 import logging
 from typing import Any, Awaitable, Callable, Dict
 
-
 _LOGGER = logging.getLogger(__name__)
 
 # Cache which keyword ("slave" or "unit") a given function accepts
@@ -21,12 +20,12 @@ async def _call_modbus(
     *args: Any,
     **kwargs: Any,
 ) -> Any:
-    """Invoke a Modbus function handling slave/unit compatibility.
+    """Invoke a Modbus function handling ``slave``/``unit`` compatibility.
 
-    The call is first attempted using ``slave=<id>``.  If the underlying
-    function does not accept the ``slave`` keyword (raising ``TypeError``),
-    the helper retries with ``unit=<id>``.  The successful keyword is cached
-    per function for subsequent invocations.
+    The function signature is inspected to determine whether the wrapped
+    callable expects a ``slave`` or ``unit`` keyword argument.  If neither is
+    present the function is called without either keyword.  The chosen keyword
+    (or lack thereof) is cached per callable for subsequent invocations.
     """
 
     # Fetch and cache the function signature
@@ -54,29 +53,18 @@ async def _call_modbus(
             positional.append(arg)
 
     kwarg = _KWARG_CACHE.get(func)
+    if kwarg is None:
+        # Determine which keyword the function accepts
+        if "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "slave"
+        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "unit"
+        else:
+            kwarg = ""
+        _KWARG_CACHE[func] = kwarg
+
     if kwarg == "slave":
         return await func(*positional, slave=slave_id, **kwargs)
     if kwarg == "unit":
         return await func(*positional, unit=slave_id, **kwargs)
-    if kwarg == "":
-        return await func(*positional, **kwargs)
-
-    # No cached keyword: try "slave" first then "unit"
-    try:
-        result = await func(*positional, slave=slave_id, **kwargs)
-    except TypeError as err:
-        if "unexpected keyword" not in str(err):
-            raise
-        try:
-            result = await func(*positional, unit=slave_id, **kwargs)
-        except TypeError as err2:
-            if "unexpected keyword" not in str(err2):
-                raise
-            _KWARG_CACHE[func] = ""
-            return await func(*positional, **kwargs)
-        else:
-            _KWARG_CACHE[func] = "unit"
-            return result
-    else:
-        _KWARG_CACHE[func] = "slave"
-        return result
+    return await func(*positional, **kwargs)
