@@ -1,4 +1,5 @@
 """Fan platform for the ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import logging
@@ -133,7 +134,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Turn on the fan."""
         try:
             # First ensure system is on
-            if "on_off_panel_mode" in HOLDING_REGISTERS:
+            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
+            if "on_off_panel_mode" in HOLDING_REGISTERS and "on_off_panel_mode" in holding_regs:
                 await self._write_register("on_off_panel_mode", 1)
 
             # Set flow rate
@@ -152,7 +154,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
         try:
-            if "on_off_panel_mode" in HOLDING_REGISTERS:
+            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
+            if "on_off_panel_mode" in HOLDING_REGISTERS and "on_off_panel_mode" in holding_regs:
                 # If system power control is available, use it to turn off
                 await self._write_register("on_off_panel_mode", 0)
                 self.coordinator.data["on_off_panel_mode"] = 0
@@ -164,7 +167,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     if current_mode == "manual" or not current_mode
                     else "air_flow_rate_temporary_2"
                 )
-                if register in HOLDING_REGISTERS:
+                if register in HOLDING_REGISTERS and register in holding_regs:
                     await self._write_register(register, 0)
                     self.coordinator.data[register] = 0
 
@@ -191,16 +194,23 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
+            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
 
             if current_mode == "manual" or not current_mode:
                 # Set manual mode and flow rate
-                if "mode" in HOLDING_REGISTERS:
+                if "mode" in HOLDING_REGISTERS and "mode" in holding_regs:
                     await self._write_register("mode", 1)  # Manual mode
-                if "air_flow_rate_manual" in HOLDING_REGISTERS:
+                if (
+                    "air_flow_rate_manual" in HOLDING_REGISTERS
+                    and "air_flow_rate_manual" in holding_regs
+                ):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
                 # Auto mode - set auto flow rate
-                if "air_flow_rate_temporary_2" in HOLDING_REGISTERS:
+                if (
+                    "air_flow_rate_temporary_2" in HOLDING_REGISTERS
+                    and "air_flow_rate_temporary_2" in holding_regs
+                ):
                     await self._write_register("air_flow_rate_temporary_2", actual_percentage)
 
             _LOGGER.info("Set fan speed to %d%%", actual_percentage)
@@ -225,6 +235,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Write value to register."""
         if register_name not in HOLDING_REGISTERS:
             raise ValueError(f"Register {register_name} is not writable")
+
+        holding_regs = self.coordinator.available_registers.get("holding_registers", set())
+        if register_name not in holding_regs:
+            _LOGGER.debug("Register %s unavailable, skipping write", register_name)
+            return
 
         success = await self.coordinator.async_write_register(register_name, value, refresh=False)
         if not success:

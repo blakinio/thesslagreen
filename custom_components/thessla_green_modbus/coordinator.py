@@ -66,6 +66,12 @@ _LOGGER = logging.getLogger(__name__)
 MULTI_REGISTER_SIZES = {
     "date_time_1": 4,
     "lock_date_1": 3,
+    "date_time_2": 4,
+    "date_time_3": 4,
+    "date_time_4": 4,
+    "lock_date_1": 3,
+    "lock_date_2": 3,
+    "lock_date_3": 3,
 }
 
 # Map each register belonging to a multi-register block to its starting register
@@ -748,6 +754,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         refresh after the write. Set to ``False`` when performing multiple writes
         in sequence and manually refresh at the end.
         """
+        refresh_after_write = False
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
@@ -769,6 +776,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         )
                         return False
                     if len(value) != MULTI_REGISTER_SIZES[start_register]:
+
+                if register_name in MULTI_REGISTER_SIZES:
+                    if (
+                        not isinstance(value, (list, tuple))
+                        or len(value) != MULTI_REGISTER_SIZES[register_name]
+                    ):
                         _LOGGER.error(
                             "Register %s expects %d values",
                             register_name,
@@ -823,16 +836,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
                 _LOGGER.info("Successfully wrote %s to register %s", original_value, register_name)
 
-                if refresh:
-                    await self.async_request_refresh()
-                return True
-
+                refresh_after_write = refresh
             except (ModbusException, ConnectionException):
                 _LOGGER.exception("Failed to write register %s", register_name)
                 return False
             except (OSError, asyncio.TimeoutError, ValueError):
                 _LOGGER.exception("Unexpected error writing register %s", register_name)
                 return False
+
+        if refresh_after_write:
+            await self.async_request_refresh()
+        return True
 
     async def _disconnect(self) -> None:
         """Disconnect from Modbus device."""

@@ -1,8 +1,10 @@
 """Tests for ThesslaGreen sensor platform setup."""
+
 import sys
 import types
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -59,11 +61,11 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.sensor import (
+from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
     async_setup_entry,
 )
-from custom_components.thessla_green_modbus.const import DOMAIN
 
 
 @pytest.mark.asyncio

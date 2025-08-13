@@ -174,8 +174,7 @@ async def test_async_write_invalid_register(coordinator):
 
 @pytest.mark.asyncio
 async def test_async_write_valid_register(coordinator):
-    """Test successful register write."""
-    coordinator.async_request_refresh = AsyncMock()
+    """Test successful register write and refresh outside lock."""
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     response = MagicMock()
@@ -183,10 +182,19 @@ async def test_async_write_valid_register(coordinator):
     client.write_register = AsyncMock(return_value=response)
     coordinator.client = client
 
+    lock_state_during_refresh = None
+
+    async def refresh_side_effect():
+        nonlocal lock_state_during_refresh
+        lock_state_during_refresh = coordinator._connection_lock.locked()
+
+    coordinator.async_request_refresh = AsyncMock(side_effect=refresh_side_effect)
+
     result = await coordinator.async_write_register("mode", 1)
 
     assert result is True
     coordinator.async_request_refresh.assert_called_once()
+    assert lock_state_during_refresh is False
 
 
 @pytest.mark.asyncio

@@ -1,20 +1,17 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 
 import logging
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+import pytest
+
 from custom_components.thessla_green_modbus.const import (
-    SENSOR_UNAVAILABLE,
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
+    SENSOR_UNAVAILABLE,
 )
-from custom_components.thessla_green_modbus.registers import (
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-)
-
+from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 pytestmark = pytest.mark.asyncio
 
@@ -28,7 +25,7 @@ async def test_device_scanner_initialization():
     assert scanner.slave_id == 10
 
 
-async def test_scan_device_success():
+async def test_scan_device_success_dynamic():
     """Test successful device scan with dynamic register scanning."""
     scanner = ThesslaGreenDeviceScanner("192.168.1.1", 502, 10)
 

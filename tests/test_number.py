@@ -64,9 +64,7 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-helpers = sys.modules.setdefault(
-    "homeassistant.helpers", types.ModuleType("homeassistant.helpers")
-)
+helpers = sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
 if not hasattr(helpers, "__path__"):
     helpers.__path__ = []  # mark as package
 entity_helper = types.ModuleType("homeassistant.helpers.entity")
@@ -136,12 +134,12 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.number import (
+from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+from custom_components.thessla_green_modbus.number import (  # noqa: E402
     ENTITY_MAPPINGS,
     ThesslaGreenNumber,
     async_setup_entry,
 )
-from custom_components.thessla_green_modbus.const import DOMAIN
 
 
 def test_number_creation_and_state(mock_coordinator):

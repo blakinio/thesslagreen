@@ -1,8 +1,8 @@
 """Tests for ThesslaGreenSelect entity."""
+
+import asyncio
 import sys
 import types
-import asyncio
-import pytest
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -34,7 +34,7 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.select import (
+from custom_components.thessla_green_modbus.select import (  # noqa: E402
     SELECT_DEFINITIONS,
     ThesslaGreenSelect,
 )

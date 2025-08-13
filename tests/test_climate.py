@@ -100,15 +100,16 @@ sys.modules["homeassistant.helpers.device_registry"] = device_registry
 # Actual imports after stubbing
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.climate import (
+from custom_components.thessla_green_modbus.climate import (  # noqa: E402
     HVAC_MODE_MAP,
     HVAC_MODE_REVERSE_MAP,
     ThesslaGreenClimate,
 )
-from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+    ThesslaGreenModbusCoordinator,
+)
+from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS  # noqa: E402
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS  # noqa: E402
 
 
 class DummyClient:

@@ -1,9 +1,11 @@
 """Tests for ThesslaGreenFan entity."""
+
+import asyncio
 import sys
 import types
-import asyncio
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
@@ -61,7 +63,7 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.fan import ThesslaGreenFan
+from custom_components.thessla_green_modbus.fan import ThesslaGreenFan  # noqa: E402
 
 
 def test_fan_creation_and_state(mock_coordinator):
@@ -81,9 +83,7 @@ def test_fan_creation_and_state(mock_coordinator):
 def test_fan_turn_on_modbus_failure(mock_coordinator):
     """Ensure connection errors during turn on are raised."""
     fan = ThesslaGreenFan(mock_coordinator)
-    mock_coordinator.async_write_register = AsyncMock(
-        side_effect=ConnectionException("fail")
-    )
+    mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
         asyncio.run(fan.async_turn_on(percentage=40))
 
