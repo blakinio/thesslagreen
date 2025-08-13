@@ -7,7 +7,6 @@ import pytest
 
 import custom_components.thessla_green_modbus.services as services
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
-from custom_components.thessla_green_modbus.services import _scale_for_register
 
 
 class DummyCoordinator:
@@ -37,8 +36,8 @@ class Services:
 
 
 @pytest.mark.asyncio
-async def test_airflow_schedule_service_scaling(monkeypatch):
-    """Ensure set_airflow_schedule scales values before writing."""
+async def test_airflow_schedule_service_passes_user_values(monkeypatch):
+    """Ensure set_airflow_schedule passes user values to coordinator."""
 
     hass = SimpleNamespace()
     hass.services = Services()
@@ -67,28 +66,24 @@ async def test_airflow_schedule_service_scaling(monkeypatch):
     await handler(call)
 
     writes = coordinator.writes
-    expected_start = _scale_for_register("schedule_monday_period1_start", 630)
-    expected_end = _scale_for_register("schedule_monday_period1_end", 800)
-    expected_flow = _scale_for_register("schedule_monday_period1_flow", 55)
-    expected_temp = _scale_for_register("schedule_monday_period1_temp", 21.5)
 
     assert writes[0] == (
         HOLDING_REGISTERS["schedule_monday_period1_start"],
-        expected_start,
+        630,
         1,
-    )
+    )  # nosec: B101
     assert writes[1] == (
         HOLDING_REGISTERS["schedule_monday_period1_end"],
-        expected_end,
+        800,
         1,
-    )
+    )  # nosec: B101
     assert writes[2] == (
         HOLDING_REGISTERS["schedule_monday_period1_flow"],
-        expected_flow,
+        55,
         1,
-    )
+    )  # nosec: B101
     assert writes[3] == (
         HOLDING_REGISTERS["schedule_monday_period1_temp"],
-        expected_temp,
+        21.5,
         1,
-    )
+    )  # nosec: B101
