@@ -101,6 +101,7 @@ async def test_scan_device_success_dynamic():
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+            patch.object(scanner, "_is_valid_register_value", return_value=True),
         ):
             result = await scanner.scan_device()
 
@@ -146,16 +147,17 @@ async def test_scan_device_success_static(mock_modbus_response):
             mock_client.read_discrete_inputs.return_value = mock_modbus_response
             mock_client_class.return_value = mock_client
 
-            result = await scanner.scan_device()
+            with patch.object(scanner, "_is_valid_register_value", return_value=True):
+                result = await scanner.scan_device()
 
-            assert "available_registers" in result
-            assert "device_info" in result
-            assert "capabilities" in result
-            assert result["device_info"]["firmware"] == "4.85.0"
-            assert "outside_temperature" in result["available_registers"]["input_registers"]
-            assert "mode" in result["available_registers"]["holding_registers"]
-            assert "power_supply_fans" in result["available_registers"]["coil_registers"]
-            assert "expansion" in result["available_registers"]["discrete_inputs"]
+                assert "available_registers" in result
+                assert "device_info" in result
+                assert "capabilities" in result
+                assert result["device_info"]["firmware"] == "4.85.0"
+                assert "outside_temperature" in result["available_registers"]["input_registers"]
+                assert "mode" in result["available_registers"]["holding_registers"]
+                assert "power_supply_fans" in result["available_registers"]["coil_registers"]
+                assert "expansion" in result["available_registers"]["discrete_inputs"]
 
 
 async def test_scan_device_connection_failure():
@@ -491,6 +493,65 @@ async def test_load_registers_missing_range_warning(tmp_path, caplog):
         await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
     assert any("Incomplete range" in record.message for record in caplog.records)
+
+
+async def test_load_registers_sanitize_range_values(tmp_path):
+    """Ensure Min/Max values are sanitized before conversion."""
+    csv_content = (
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n"
+        "04,1,reg_a,0 # comment,10abc\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_a": 1},
+        ),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    assert scanner._register_ranges["reg_a"] == (0, 10)
+
+
+async def test_load_registers_invalid_range_logs(tmp_path, caplog):
+    """Warn when Min/Max cannot be parsed even after sanitization."""
+    csv_content = (
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n"
+        "04,1,reg_a,abc,#comment\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_a": 1},
+        ),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+        caplog.at_level(logging.WARNING),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    assert "reg_a" not in scanner._register_ranges
+    assert any("Invalid Min" in record.message for record in caplog.records)
+    assert any("Invalid Max" in record.message for record in caplog.records)
 
 
 async def test_load_registers_missing_required_register(tmp_path):

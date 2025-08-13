@@ -6,6 +6,7 @@ import asyncio
 import csv
 import inspect
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
@@ -190,16 +191,25 @@ class ThesslaGreenDeviceScanner:
                             continue
                         min_raw = row.get("Min")
                         max_raw = row.get("Max")
-                        min_val: Optional[int]
-                        max_val: Optional[int]
-                        try:
-                            min_val = int(float(min_raw)) if min_raw not in (None, "") else None
-                        except ValueError:
-                            min_val = None
-                        try:
-                            max_val = int(float(max_raw)) if max_raw not in (None, "") else None
-                        except ValueError:
-                            max_val = None
+
+                        def _parse_range(
+                            label: str, raw: Optional[str]
+                        ) -> Optional[int]:
+                            if raw in (None, ""):
+                                return None
+                            text = str(raw).split("#", 1)[0]
+                            text = re.sub(r"[^0-9+\-\.]+", "", text)
+                            if not text:
+                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                return None
+                            try:
+                                return int(float(text))
+                            except ValueError:
+                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                return None
+
+                        min_val = _parse_range("Min", min_raw)
+                        max_val = _parse_range("Max", max_raw)
                         # Warn if a range is expected but Min/Max is missing
                         if (min_raw not in (None, "") or max_raw not in (None, "")) and (
                             min_val is None or max_val is None
