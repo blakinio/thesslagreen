@@ -119,9 +119,6 @@
       "dac_cooler": {
         "name": "Sterowanie chłodnicą"
       },
-      "exp_version": {
-        "name": "Wersja modułu Expansion"
-      },
       "firmware_major": {
         "name": "Wersja firmware (główna)"
       },
@@ -133,15 +130,6 @@
       },
       "expansion_version": {
         "name": "Wersja modułu Expansion"
-      },
-      "version_major": {
-        "name": "Wersja firmware (główna)"
-      },
-      "version_minor": {
-        "name": "Wersja firmware (podrzędna)"
-      },
-      "version_patch": {
-        "name": "Wersja firmware (poprawka)"
       },
       "day_of_week": {
         "name": "Dzień tygodnia"
@@ -198,9 +186,6 @@
       },
       "heating_cable": {
         "name": "Kabel grzejny"
-      },
-      "ppoz": {
-        "name": "Alarm pożarowy"
       },
       "fire_alarm": {
         "name": "Alarm pożarowy"
