@@ -35,15 +35,23 @@ BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "setting_", "airing_")
 
 
 def _decode_bcd_time(value: int) -> Optional[int]:
-    """Decode a BCD encoded HHMM value to an integer.
+    """Decode a BCD encoded or decimal HHMM value to an integer.
 
-    Returns ``None`` if the input is negative, any nibble exceeds 9, or
-    the resulting hour/minute values fall outside their valid range.
+    The return value is ``HHMM`` (e.g. ``0x1234`` or ``1234`` -> ``1234``).
+    ``None`` is returned if the input is negative or cannot be parsed as a
+    valid time value.
     """
 
     if value < 0:
         return None
 
+    # First try plain decimal HHMM representation (e.g. 800 -> 08:00)
+    hours_dec = value // 100
+    minutes_dec = value % 100
+    if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
+        return hours_dec * 100 + minutes_dec
+
+    # Fall back to BCD decoding
     nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
     if any(nibble > 9 for nibble in nibbles):
         return None

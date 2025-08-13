@@ -10,7 +10,10 @@ from custom_components.thessla_green_modbus.const import (
     DISCRETE_INPUT_REGISTERS,
     SENSOR_UNAVAILABLE,
 )
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.device_scanner import (
+    ThesslaGreenDeviceScanner,
+    _decode_bcd_time,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
@@ -67,9 +70,7 @@ async def test_read_input_logs_warning_on_failure(caplog):
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert (
-        "Failed to read input registers 0x0001-0x0003 after 3 retries" in caplog.text
-    )
+    assert "Failed to read input registers 0x0001-0x0003 after 3 retries" in caplog.text
 
 
 async def test_scan_device_success_dynamic():
@@ -300,6 +301,8 @@ async def test_scan_device_batch_fallback():
     batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
     assert any(call.args[2] == 2 for call in batch_calls)
     assert any(call.args[2] == 1 for call in batch_calls)
+
+
 async def test_temperature_register_unavailable_kept():
     """Temperature registers with SENSOR_UNAVAILABLE should remain available."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
@@ -348,11 +351,7 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
     # Temperature sensor unavailable value should be considered valid
-    assert (
-        scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-        is True
-    )
-
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
@@ -374,6 +373,16 @@ async def test_is_valid_register_value():
     scanner._register_ranges["schedule_start_time"] = (0, 2359)
     assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
+    assert scanner._is_valid_register_value("schedule_start_time", 800) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
+
+
+async def test_decode_bcd_time():
+    """Verify time decoding for both BCD and decimal values."""
+    assert _decode_bcd_time(0x1234) == 1234
+    assert _decode_bcd_time(800) == 800
+    assert _decode_bcd_time(0x2460) is None
+    assert _decode_bcd_time(2400) is None
 
 
 async def test_scan_includes_unavailable_temperature():
