@@ -10,7 +10,10 @@ from custom_components.thessla_green_modbus.const import (
     DISCRETE_INPUT_REGISTERS,
     SENSOR_UNAVAILABLE,
 )
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.device_scanner import (
+    ThesslaGreenDeviceScanner,
+    _decode_bcd_time,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
@@ -456,6 +459,16 @@ async def test_is_valid_register_value():
     scanner._register_ranges["schedule_start_time"] = (0, 2359)
     assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
+    assert scanner._is_valid_register_value("schedule_start_time", 800) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
+
+
+async def test_decode_bcd_time():
+    """Verify time decoding for both BCD and decimal values."""
+    assert _decode_bcd_time(0x1234) == 1234
+    assert _decode_bcd_time(800) == 800
+    assert _decode_bcd_time(0x2460) is None
+    assert _decode_bcd_time(2400) is None
 
 
 async def test_scan_includes_unavailable_temperature():
