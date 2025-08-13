@@ -10,51 +10,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import COIL_REGISTERS, DOMAIN, SPECIAL_FUNCTION_MAP
+from .const import COIL_REGISTERS, DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
 from .registers import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
-# Switch entities that can be controlled
-SWITCH_ENTITIES: Dict[str, Dict[str, Any]] = {
-    # System control switches from holding registers
-    "on_off_panel_mode": {
-        "icon": "mdi:power",
-        "register": "on_off_panel_mode",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "on_off_panel_mode",
-    },
-}
-
-# Icon mapping for special modes
-SPECIAL_MODE_ICONS = {
-    "boost": "mdi:rocket-launch",
-    "eco": "mdi:leaf",
-    "away": "mdi:airplane",
-    "fireplace": "mdi:fireplace",
-    "hood": "mdi:range-hood",
-    "sleep": "mdi:weather-night",
-    "party": "mdi:party-popper",
-    "bathroom": "mdi:shower",
-    "kitchen": "mdi:chef-hat",
-    "summer": "mdi:white-balance-sunny",
-    "winter": "mdi:snowflake",
-}
-
-# Dynamically create switch entries for each special mode bit
-for mode, bit in SPECIAL_FUNCTION_MAP.items():
-    SWITCH_ENTITIES[mode] = {
-        "icon": SPECIAL_MODE_ICONS.get(mode, "mdi:toggle-switch"),
-        "register": "special_mode",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": mode,
-        "bit": bit,
-    }
+SWITCH_ENTITIES: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("switch", {})
 
 
 async def async_setup_entry(
