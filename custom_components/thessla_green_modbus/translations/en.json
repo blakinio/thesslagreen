@@ -38,18 +38,20 @@
     "step": {
       "init": {
         "title": "ThesslaGreen Modbus Options",
-        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}.",
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}.",
         "data": {
           "scan_interval": "Scan Interval (seconds)",
           "timeout": "Connection Timeout (seconds)",
           "retry": "Retry Attempts",
-          "force_full_register_list": "Force Full Register List (skip scanning)"
+          "force_full_register_list": "Force Full Register List (skip scanning)",
+          "skip_missing_registers": "Skip Known Missing Registers"
         },
         "data_description": {
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
-          "force_full_register_list": "Skip scanning and load all registers (may cause errors)"
+          "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
+          "skip_missing_registers": "Do not poll registers known to be unavailable"
         }
       }
     }

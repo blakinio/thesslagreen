@@ -11,12 +11,18 @@ from dataclasses import asdict, dataclass, field
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from .modbus_exceptions import ConnectionException, ModbusException
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
-from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS, SENSOR_UNAVAILABLE
+from .const import (
+    COIL_REGISTERS,
+    DEFAULT_SLAVE_ID,
+    DISCRETE_INPUT_REGISTERS,
+    KNOWN_MISSING_REGISTERS,
+    SENSOR_UNAVAILABLE,
+)
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .utils import _to_snake_case
@@ -31,8 +37,14 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
     "antifreez_mode": {0, 1},
 }
 
+
 # Registers storing times encoded as HH:MM bytes
 TIME_REGISTER_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
+# Registers storing times as BCD HHMM values
+BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
+
+# Registers storing combined airflow and temperature settings
+SETTING_PREFIX = "setting_"
 
 
 def _decode_register_time(value: int) -> Optional[int]:
@@ -46,12 +58,70 @@ def _decode_register_time(value: int) -> Optional[int]:
     if value < 0:
         return None
 
+
     hour = (value >> 8) & 0xFF
     minute = value & 0xFF
     if 0 <= hour <= 23 and 0 <= minute <= 59:
         return hour * 100 + minute
 
     return None
+
+    # First attempt BCD decoding
+    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
+    if all(nibble <= 9 for nibble in nibbles):
+        hours = nibbles[0] * 10 + nibbles[1]
+        minutes = nibbles[2] * 10 + nibbles[3]
+        if hours <= 23 and minutes <= 59:
+            return hours * 100 + minutes
+
+    # Fallback to plain decimal HHMM representation (e.g. 800 -> 08:00)
+    hours_dec = value // 100
+    minutes_dec = value % 100
+    if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
+        return hours_dec * 100 + minutes_dec
+
+    return None
+
+
+def _decode_setting_value(value: int) -> Optional[Tuple[int, float]]:
+    """Decode a register storing airflow and temperature as ``0xAATT``.
+
+    ``AA`` is the airflow in percent and ``TT`` is twice the desired supply
+    temperature in degrees Celsius. ``None`` is returned if the value cannot be
+    decoded or falls outside expected ranges.
+    """
+
+    if value < 0:
+        return None
+
+    airflow = (value >> 8) & 0xFF
+    temp_double = value & 0xFF
+
+    if airflow > 100 or temp_double > 200:
+        return None
+
+    return airflow, temp_double / 2
+
+
+def _format_register_value(name: str, value: int) -> int | str:
+    """Return a human-readable representation of a register value."""
+
+    if name.startswith(BCD_TIME_PREFIXES):
+        decoded = _decode_bcd_time(value)
+        if decoded is None:
+            return value
+        return f"{decoded // 100:02d}:{decoded % 100:02d}"
+
+    if name.startswith(SETTING_PREFIX):
+        decoded = _decode_setting_value(value)
+        if decoded is None:
+            return value
+        airflow, temp = decoded
+        temp_str = f"{temp:g}"
+        return f"{airflow}% @ {temp_str}°C"
+
+    return value
+
 
 
 # Maximum registers per batch read (Modbus limit)
@@ -109,6 +179,7 @@ class ThesslaGreenDeviceScanner:
         backoff: float = 0,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
+        skip_known_missing: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         self.host = host
@@ -119,6 +190,7 @@ class ThesslaGreenDeviceScanner:
         self.backoff = backoff
         self.verbose_invalid_values = verbose_invalid_values
         self.scan_uart_settings = scan_uart_settings
+        self.skip_known_missing = skip_known_missing
 
         # Available registers storage
         self.available_registers: Dict[str, Set[str]] = {
@@ -137,6 +209,7 @@ class ThesslaGreenDeviceScanner:
 
         # Track input registers that consistently fail to respond so we can
         # avoid retrying them repeatedly during scanning
+        self._input_failures: Dict[int, int] = {}
         self._failed_input: Set[int] = set()
 
         # Placeholder for register map and value ranges loaded asynchronously
@@ -164,6 +237,7 @@ class ThesslaGreenDeviceScanner:
         backoff: float = 0,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
+        skip_known_missing: bool = False,
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -175,6 +249,7 @@ class ThesslaGreenDeviceScanner:
             backoff,
             verbose_invalid_values,
             scan_uart_settings,
+            skip_known_missing,
         )
         await self._async_setup()
         return self
@@ -217,15 +292,26 @@ class ThesslaGreenDeviceScanner:
                         def _parse_range(label: str, raw: Optional[str]) -> Optional[int]:
                             if raw in (None, ""):
                                 return None
-                            text = str(raw).split("#", 1)[0]
-                            text = re.sub(r"[^0-9+\-\.]+", "", text)
+
+                            text = str(raw).split("#", 1)[0].strip()
                             if not text:
-                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                _LOGGER.warning(
+                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                )
                                 return None
+
+                            if not re.fullmatch(r"[+-]?\d+(?:\.\d+)?", text):
+                                _LOGGER.warning(
+                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                )
+                                return None
+
                             try:
                                 return int(float(text))
                             except ValueError:
-                                _LOGGER.warning("Invalid %s for %s: %s", label, name, raw)
+                                _LOGGER.warning(
+                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                )
                                 return None
 
                         min_val = _parse_range("Min", min_raw)
@@ -315,6 +401,23 @@ class ThesslaGreenDeviceScanner:
                 )
                 if response is not None and not response.isError():
                     return response.registers
+            except ModbusIOException as exc:
+                _LOGGER.debug(
+                    "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._input_failures.get(address, 0) + 1
+                    self._input_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_input:
+                        self._failed_input.add(address)
+                        _LOGGER.warning(
+                            "Device does not expose register 0x%04X", address
+                        )
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
@@ -354,6 +457,13 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
+
+        """Read holding registers with retry, backoff and failure tracking."""
+        if address in self._failed_holding:
+            _LOGGER.debug(
+                "Skipping cached failed holding register 0x%04X", address
+            )
+
         """Read holding registers with retry and per-register failure tracking."""
         failures = self._holding_failures.get(address, 0)
         if failures >= self.retry:
@@ -375,6 +485,23 @@ class ThesslaGreenDeviceScanner:
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers
+            except ModbusIOException as exc:
+                _LOGGER.debug(
+                    "Modbus IO error reading holding 0x%04X (attempt %d/%d): %s",
+                    address,
+                    attempt,
+                    self.retry,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        _LOGGER.warning(
+                            "Device does not expose register 0x%04X", address
+                        )
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read holding 0x%04X (attempt %d/%d): %s",
@@ -395,17 +522,8 @@ class ThesslaGreenDeviceScanner:
 
             if self.backoff and attempt < self.retry:
                 await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
-
-        self._holding_failures[address] = failures + 1
-        if self._holding_failures[address] >= self.retry:
-            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
-
             if attempt < self.retry:
                 await asyncio.sleep(2 ** (attempt - 1))
-
-        # After retry attempts mark register as unsupported to avoid future retries
-        self._failed_holding.add(address)
-        _LOGGER.debug("Caching failed holding register 0x%04X", address)
 
         return None
 
@@ -485,24 +603,38 @@ class ThesslaGreenDeviceScanner:
         flag is ``True`` the first occurrence is logged at ``INFO`` level and
         further occurrences are logged at ``DEBUG`` level.
         """
+        formatted = _format_register_value(register_name, value)
         if register_name not in self._reported_invalid:
             level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
-            _LOGGER.log(level, "Invalid value for %s: %s", register_name, value)
+            _LOGGER.log(level, "Invalid value for %s: %s", register_name, formatted)
             self._reported_invalid.add(register_name)
         elif self.verbose_invalid_values:
-            _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+            _LOGGER.debug("Invalid value for %s: %s", register_name, formatted)
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
+
         # Decode schedule/airing time values before validation
         if name.startswith(TIME_REGISTER_PREFIXES):
             decoded = _decode_register_time(value)
             if decoded is None:
+
+        # Validate registers storing schedule times
+        if name.startswith(BCD_TIME_PREFIXES):
+            if _decode_bcd_time(value) is None:
+
                 self._log_invalid_value(register_name, value)
                 return False
-            value = decoded
+            return True
+
+        # Validate registers storing combined airflow/temperature settings
+        if name.startswith(SETTING_PREFIX):
+            if _decode_setting_value(value) is None:
+                self._log_invalid_value(register_name, value)
+                return False
+            return True
 
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
@@ -713,6 +845,12 @@ class ThesslaGreenDeviceScanner:
             for reg_type, (reg_map, read_fn) in register_maps.items():
                 addr_to_name = {addr: name for name, addr in reg_map.items()}
                 addresses = sorted(addr_to_name)
+                if self.skip_known_missing:
+                    addresses = [
+                        a
+                        for a in addresses
+                        if addr_to_name[a] not in KNOWN_MISSING_REGISTERS.get(reg_type, set())
+                    ]
                 if reg_type == "holding_registers" and not self.scan_uart_settings:
                     addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
                 if not addresses:
@@ -774,6 +912,12 @@ class ThesslaGreenDeviceScanner:
             for reg_type, (code, read_fn) in csv_register_maps.items():
                 addr_to_name = self._registers.get(code, {})
                 addresses = sorted(addr_to_name)
+                if self.skip_known_missing:
+                    addresses = [
+                        a
+                        for a in addresses
+                        if addr_to_name[a] not in KNOWN_MISSING_REGISTERS.get(reg_type, set())
+                    ]
                 if reg_type == "holding_registers" and not self.scan_uart_settings:
                     addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
                 if not addresses:
