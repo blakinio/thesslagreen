@@ -176,6 +176,21 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
 
+        if register_count > 0:
+            auto_detected_note = await self.hass.helpers.translation.async_translate(
+                f"{DOMAIN}.auto_detected_note_success"
+            )
+            if auto_detected_note is None:
+                auto_detected_note = "Auto-detection successful!"
+        else:
+            auto_detected_note = await self.hass.helpers.translation.async_translate(
+                f"{DOMAIN}.auto_detected_note_limited"
+            )
+            if auto_detected_note is None:
+                auto_detected_note = (
+                    "Limited auto-detection - some registers may be missing."
+                )
+
         description_placeholders = {
             "host": self._data[CONF_HOST],
             "port": str(self._data[CONF_PORT]),
@@ -187,15 +202,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "scan_success_rate": scan_success_rate,
             "capabilities_count": str(len(capabilities_list)),
             "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
-            "auto_detected_note": (
-                self.hass.helpers.translation.async_translate(
-                    f"{DOMAIN}.auto_detected_note_success"
-                )
-                if register_count > 0
-                else self.hass.helpers.translation.async_translate(
-                    f"{DOMAIN}.auto_detected_note_limited"
-                )
-            ),
+            "auto_detected_note": auto_detected_note,
         }
 
         return self.async_show_form(
