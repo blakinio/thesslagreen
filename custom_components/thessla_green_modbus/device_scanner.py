@@ -114,6 +114,7 @@ class ThesslaGreenDeviceScanner:
         slave_id: int = DEFAULT_SLAVE_ID,
         timeout: int = 10,
         retry: int = 3,
+        backoff: float = 0,
         verbose_invalid_values: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
@@ -122,6 +123,7 @@ class ThesslaGreenDeviceScanner:
         self.slave_id = slave_id
         self.timeout = timeout
         self.retry = retry
+        self.backoff = backoff
         self.verbose_invalid_values = verbose_invalid_values
 
         # Available registers storage
@@ -133,8 +135,9 @@ class ThesslaGreenDeviceScanner:
         }
 
         # Track holding registers that consistently fail to respond so we
-        # can avoid retrying them repeatedly during scanning
-        self._failed_holding: Set[int] = set()
+        # can avoid retrying them repeatedly during scanning. The value is
+        # a failure counter per register address.
+        self._holding_failures: Dict[int, int] = {}
 
         # Track input registers that consistently fail to respond so we can
         # avoid retrying them repeatedly during scanning
@@ -162,10 +165,11 @@ class ThesslaGreenDeviceScanner:
         slave_id: int = DEFAULT_SLAVE_ID,
         timeout: int = 10,
         retry: int = 3,
+        backoff: float = 0,
         verbose_invalid_values: bool = False,
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
-        self = cls(host, port, slave_id, timeout, retry, verbose_invalid_values)
+        self = cls(host, port, slave_id, timeout, retry, backoff, verbose_invalid_values)
         await self._async_setup()
         return self
 
@@ -330,6 +334,9 @@ class ThesslaGreenDeviceScanner:
             if attempt < self.retry:
                 await asyncio.sleep(2 ** (attempt - 1))
 
+            if self.backoff and attempt < self.retry:
+                await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
+
         _LOGGER.warning(
             "Failed to read input registers 0x%04X-0x%04X after %d retries",
             start,
@@ -345,11 +352,18 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
+
+        """Read holding registers with retry and per-register failure tracking."""
+        failures = self._holding_failures.get(address, 0)
+        if failures >= self.retry:
+            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+
         """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
             _LOGGER.debug(
                 "Skipping cached failed holding register 0x%04X", address
             )
+
             return None
 
         for attempt in range(1, self.retry + 1):
@@ -359,6 +373,8 @@ class ThesslaGreenDeviceScanner:
                 )
                 if response is None or response.isError():
                     raise ModbusException("No response")
+                if address in self._holding_failures:
+                    del self._holding_failures[address]
                 return response.registers
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
@@ -378,12 +394,21 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
+
+            if self.backoff and attempt < self.retry:
+                await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
+
+        self._holding_failures[address] = failures + 1
+        if self._holding_failures[address] >= self.retry:
+            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+
             if attempt < self.retry:
                 await asyncio.sleep(2 ** (attempt - 1))
 
         # After retry attempts mark register as unsupported to avoid future retries
         self._failed_holding.add(address)
         _LOGGER.debug("Caching failed holding register 0x%04X", address)
+
         return None
 
     async def _read_coil(

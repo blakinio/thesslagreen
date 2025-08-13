@@ -27,14 +27,24 @@ async def test_device_scanner_initialization():
     assert scanner.host == "192.168.3.17"
     assert scanner.port == 8899
     assert scanner.slave_id == 10
+    assert scanner.retry == 3
+    assert scanner.backoff == 0
 
 
-async def test_read_holding_skips_unresponsive_register(caplog):
-    """Registers that fail repeatedly should be skipped on subsequent scans."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+async def test_read_holding_skips_after_consecutive_failures(caplog):
+    """Registers are skipped only after repeated failures across scans."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
 
     caplog.set_level(logging.WARNING)
+
+
+    # First failing scan increments failure counter
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(side_effect=ModbusException("boom")),
+    ) as call_mock1:
+
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
@@ -42,21 +52,51 @@ async def test_read_holding_skips_unresponsive_register(caplog):
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
     ):
+
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
+        assert call_mock1.await_count == scanner.retry
 
-    # Second call should be skipped without calling modbus again
+    # Second failing scan reaches skip threshold
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(side_effect=ModbusException("boom")),
+    ) as call_mock2:
+        result = await scanner._read_holding(mock_client, 0x00A8, 1)
+        assert result is None
+        assert call_mock2.await_count == scanner.retry
+
+    # Third call should be skipped entirely
     with patch(
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
         AsyncMock(),
-    ) as call_mock:
+    ) as call_mock3:
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
-        call_mock.assert_not_called()
+        call_mock3.assert_not_called()
 
-    assert 0x00A8 in scanner._failed_holding
-    assert "0x00A8" in caplog.text
+    assert scanner._holding_failures[0x00A8] >= scanner.retry
+    assert "Skipping unsupported holding register 0x00A8" in caplog.text
+
+
+async def test_read_input_backoff():
+    """Ensure exponential backoff delays between retries."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
+    mock_client = AsyncMock()
+
+    sleep_mock = AsyncMock()
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock,
+        patch("asyncio.sleep", sleep_mock),
+    ):
+        result = await scanner._read_input(mock_client, 0x0001, 1)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]
 
 
 async def test_read_input_logs_warning_on_failure(caplog):
@@ -92,7 +132,7 @@ async def test_scan_device_success_dynamic():
         return [1] * count
 
     async def fake_read_holding(client, address, count):
-        return [1] * count
+        return [10] * count
 
     async def fake_read_coil(client, address, count):
         return [False] * count
@@ -113,7 +153,6 @@ async def test_scan_device_success_dynamic():
             patch.object(scanner, "_is_valid_register_value", return_value=True),
         ):
             result = await scanner.scan_device()
-
     assert set(result["available_registers"]["input_registers"]) == set(INPUT_REGISTERS.keys())
     assert set(result["available_registers"]["holding_registers"]) == set(HOLDING_REGISTERS.keys())
     assert set(result["available_registers"]["coil_registers"]) == set(COIL_REGISTERS.keys())
@@ -187,7 +226,10 @@ async def test_scan_device_success_static(mock_modbus_response):
             mock_client = AsyncMock()
             mock_client.connect.return_value = True
             mock_client.read_input_registers.return_value = mock_modbus_response
-            mock_client.read_holding_registers.return_value = mock_modbus_response
+            holding_response = MagicMock()
+            holding_response.isError.return_value = False
+            holding_response.registers = [1]
+            mock_client.read_holding_registers.return_value = holding_response
             mock_client.read_coils.return_value = mock_modbus_response
             mock_client.read_discrete_inputs.return_value = mock_modbus_response
             mock_client_class.return_value = mock_client
