@@ -14,29 +14,6 @@ with open(ROOT / "translations" / "pl.json", "r", encoding="utf-8") as f:
     PL = json.load(f)
 
 
-def _load_keys(file: Path, var_name: str):
-    tree = ast.parse(file.read_text(), filename=str(file))
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            target = node.targets[0]
-        elif isinstance(node, ast.AnnAssign):
-            target = node.target
-        else:
-            continue
-        if (
-            isinstance(target, ast.Name)
-            and target.id == var_name
-            and isinstance(node.value, ast.Dict)
-        ):
-            return [k.value for k in node.value.keys if isinstance(k, ast.Constant)]
-    return []
-
-
-SENSOR_KEYS = _load_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
-BINARY_KEYS = _load_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
-SWITCH_KEYS = ["on_off_panel_mode"] + list(SPECIAL_FUNCTION_MAP.keys())
-
-
 def _load_translation_keys(file: Path, var_name: str):
     tree = ast.parse(file.read_text(), filename=str(file))
     for node in tree.body:
@@ -65,9 +42,27 @@ def _load_translation_keys(file: Path, var_name: str):
     return []
 
 
+def _load_keys(file: Path, var_name: str):
+    tree = ast.parse(file.read_text(), filename=str(file))
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            target = node.targets[0]
+        elif isinstance(node, ast.AnnAssign):
+            target = node.target
+        else:
+            continue
+        if (
+            isinstance(target, ast.Name)
+            and target.id == var_name
+            and isinstance(node.value, ast.Dict)
+        ):
+            return [k.value for k in node.value.keys if isinstance(k, ast.Constant)]
+    return []
+
+
 SENSOR_KEYS = _load_translation_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
 BINARY_KEYS = _load_translation_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
-SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
+SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES") + list(SPECIAL_FUNCTION_MAP.keys())
 SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
@@ -95,7 +90,9 @@ with open(ROOT / "services.yaml", "r", encoding="utf-8") as f:
 def _assert_keys(trans, entity_type, keys):
     section = trans["entity"][entity_type]
     missing = [k for k in keys if k not in section]
+    extra = [k for k in section if k not in keys]
     assert not missing, f"Missing {entity_type} translations: {missing}"  # nosec B101
+    assert not extra, f"Extra {entity_type} translations: {extra}"  # nosec B101
 
 
 def _assert_error_keys(trans, keys):
