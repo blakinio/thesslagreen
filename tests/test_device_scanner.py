@@ -10,7 +10,10 @@ from custom_components.thessla_green_modbus.const import (
     DISCRETE_INPUT_REGISTERS,
     SENSOR_UNAVAILABLE,
 )
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.device_scanner import (
+    DeviceCapabilities,
+    ThesslaGreenDeviceScanner,
+)
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 pytestmark = pytest.mark.asyncio
@@ -54,6 +57,7 @@ async def test_scan_device_success_dynamic():
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+            patch.object(scanner, "_is_valid_register_value", return_value=True),
         ):
             result = await scanner.scan_device()
 
@@ -99,7 +103,8 @@ async def test_scan_device_success_static(mock_modbus_response):
             mock_client.read_discrete_inputs.return_value = mock_modbus_response
             mock_client_class.return_value = mock_client
 
-            result = await scanner.scan_device()
+            with patch.object(scanner, "_is_valid_register_value", return_value=True):
+                result = await scanner.scan_device()
 
             assert "available_registers" in result
             assert "device_info" in result
@@ -303,6 +308,41 @@ async def test_analyze_capabilities_flag_presence():
 
     assert capabilities.constant_flow is False
     assert capabilities.sensor_outside_temperature is False
+
+
+async def test_capability_count_includes_booleans(caplog):
+    """Log should count boolean capabilities even though bool is an int subclass."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with patch.object(
+        ThesslaGreenDeviceScanner,
+        "_load_registers",
+        AsyncMock(return_value=(empty_regs, {})),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    caps = DeviceCapabilities(
+        basic_control=True,
+        expansion_module=True,
+        temperature_sensors={"outside"},
+        temperature_sensors_count=1,
+    )
+
+    with patch.object(scanner, "_analyze_capabilities", return_value=caps):
+        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.connect.return_value = True
+            mock_client_class.return_value = mock_client
+
+            with (
+                patch.object(scanner, "_read_input", AsyncMock(return_value=[])),
+                patch.object(scanner, "_read_holding", AsyncMock(return_value=[])),
+                patch.object(scanner, "_read_coil", AsyncMock(return_value=[])),
+                patch.object(scanner, "_read_discrete", AsyncMock(return_value=[])),
+            ):
+                with caplog.at_level(logging.INFO):
+                    await scanner.scan_device()
+
+    assert any("2 capabilities" in record.message for record in caplog.records)
 
 
 @pytest.mark.parametrize("async_close", [True, False])
