@@ -31,7 +31,12 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
 }
 
 # Registers storing times as BCD HHMM values
-BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "setting_", "airing_")
+BCD_TIME_PREFIXES: Tuple[str, ...] = (
+    "schedule_",
+    "setting_",
+    "airing_",
+    "manual_airing_",
+)
 
 
 def _decode_bcd_time(value: int) -> Optional[int]:
@@ -648,10 +653,7 @@ class ThesslaGreenDeviceScanner:
                     1
                     for v in caps.as_dict().values()
                     if (isinstance(v, bool) and v)
-                    or (
-                        bool(v)
-                        and not isinstance(v, (set, int, bool))
-                    )
+                    or (bool(v) and not isinstance(v, (set, int, bool)))
                 ),
             )
 
@@ -694,10 +696,7 @@ class ThesslaGreenDeviceScanner:
                     1
                     for v in caps.as_dict().values()
                     if (isinstance(v, bool) and v)
-                    or (
-                        bool(v)
-                        and not isinstance(v, (set, int, bool))
-                    )
+                    or (bool(v) and not isinstance(v, (set, int, bool)))
                 ),
             )
 
