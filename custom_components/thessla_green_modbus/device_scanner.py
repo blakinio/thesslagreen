@@ -68,6 +68,9 @@ def _decode_bcd_time(value: int) -> Optional[int]:
 # Maximum registers per batch read (Modbus limit)
 MAX_BATCH_REGISTERS = 16
 
+# Optional UART configuration registers (Air++ port)
+UART_OPTIONAL_REGS = range(0x1168, 0x116C)
+
 
 @dataclass
 class DeviceInfo:
@@ -116,6 +119,7 @@ class ThesslaGreenDeviceScanner:
         retry: int = 3,
         backoff: float = 0,
         verbose_invalid_values: bool = False,
+        scan_uart_settings: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         self.host = host
@@ -125,6 +129,7 @@ class ThesslaGreenDeviceScanner:
         self.retry = retry
         self.backoff = backoff
         self.verbose_invalid_values = verbose_invalid_values
+        self.scan_uart_settings = scan_uart_settings
 
         # Available registers storage
         self.available_registers: Dict[str, Set[str]] = {
@@ -169,9 +174,12 @@ class ThesslaGreenDeviceScanner:
         retry: int = 3,
         backoff: float = 0,
         verbose_invalid_values: bool = False,
+        scan_uart_settings: bool = False,
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
-        self = cls(host, port, slave_id, timeout, retry, backoff, verbose_invalid_values)
+        self = cls(
+            host, port, slave_id, timeout, retry, backoff, verbose_invalid_values, scan_uart_settings
+        )
         await self._async_setup()
         return self
 
@@ -717,6 +725,8 @@ class ThesslaGreenDeviceScanner:
             for reg_type, (reg_map, read_fn) in register_maps.items():
                 addr_to_name = {addr: name for name, addr in reg_map.items()}
                 addresses = sorted(addr_to_name)
+                if reg_type == "holding_registers" and not self.scan_uart_settings:
+                    addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
                 if not addresses:
                     continue
 
@@ -776,6 +786,8 @@ class ThesslaGreenDeviceScanner:
             for reg_type, (code, read_fn) in csv_register_maps.items():
                 addr_to_name = self._registers.get(code, {})
                 addresses = sorted(addr_to_name)
+                if reg_type == "holding_registers" and not self.scan_uart_settings:
+                    addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
                 if not addresses:
                     continue
 

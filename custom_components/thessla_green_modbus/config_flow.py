@@ -17,12 +17,14 @@ from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,
     CONF_RETRY,
     CONF_SCAN_INTERVAL,
+    CONF_SCAN_UART_SETTINGS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SCAN_UART_SETTINGS,
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
     DOMAIN,
@@ -242,6 +244,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_timeout = self.config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
         current_retry = self.config_entry.options.get(CONF_RETRY, DEFAULT_RETRY)
         force_full = self.config_entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+        current_scan_uart = self.config_entry.options.get(
+            CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS
+        )
 
         data_schema = vol.Schema(
             {
@@ -261,6 +266,10 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_FORCE_FULL_REGISTER_LIST,
                     default=force_full,
                 ): bool,
+                vol.Optional(
+                    CONF_SCAN_UART_SETTINGS,
+                    default=current_scan_uart,
+                ): bool,
             }
         )
 
@@ -272,5 +281,6 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "current_timeout": str(current_timeout),
                 "current_retry": str(current_retry),
                 "force_full_enabled": "Yes" if force_full else "No",
+                "scan_uart_enabled": "Yes" if current_scan_uart else "No",
             },
         )

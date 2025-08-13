@@ -314,10 +314,11 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x1165,4453,R/W,uart0Baud,Nastawy komunikacji Modbus - port Air-B Szybkość transmisji,0,8,1,3,"0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",4.76,
 03,0x1166,4454,R/W,uart0Parity,Nastawy komunikacji Modbus - port Air-B Parzystość,0,2,0,1,"0 - brak; 1 - parzysty; 2 - nieparzysty",4.76,
 03,0x1167,4455,R/W,uart0Stop,Nastawy komunikacji Modbus - port Air-B Bity stopu,0,1,0,1,"0 - jeden; 1 - dwa",4.76,
-03,0x1168,4456,R/W,uart1Id,Nastawy komunikacji Modbus - port Air++ ID urządzenia,10,19,10,1,,4.76,
-03,0x1169,4457,R/W,uart1Baud,Nastawy komunikacji Modbus - port Air++ Szybkość transmisji,0,8,1,3,"0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",4.76,
-03,0x116A,4458,R/W,uart1Parity,Nastawy komunikacji Modbus - port Air++ Parzystość,0,2,0,1,"0 - brak; 1 - parzysty; 2 - nieparzysty",4.76,
-03,0x116B,4459,R/W,uart1Stop,Nastawy komunikacji Modbus - port Air++ Bity stopu,0,1,0,1,"0 - jeden; 1 - dwa",4.76,
+# OPCJONALNE USTAWIENIA UART
+03,0x1168,4456,R/W,uart1Id,Nastawy komunikacji Modbus - port Air++ ID urządzenia,10,19,10,1,,4.76,opcjonalny
+03,0x1169,4457,R/W,uart1Baud,Nastawy komunikacji Modbus - port Air++ Szybkość transmisji,0,8,1,3,"0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",4.76,opcjonalny
+03,0x116A,4458,R/W,uart1Parity,Nastawy komunikacji Modbus - port Air++ Parzystość,0,2,0,1,"0 - brak; 1 - parzysty; 2 - nieparzysty",4.76,opcjonalny
+03,0x116B,4459,R/W,uart1Stop,Nastawy komunikacji Modbus - port Air++ Bity stopu,0,1,0,1,"0 - jeden; 1 - dwa",4.76,opcjonalny
 
 # NAZWA URZĄDZENIA
 03,0x1FD0,8144,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,"Znaki zapisane w systemie ASCII",,
