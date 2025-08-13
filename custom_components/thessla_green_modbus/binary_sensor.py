@@ -61,8 +61,8 @@ BINARY_SENSOR_DEFINITIONS = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
     },
-    "hood": {
-        "translation_key": "hood",
+    "hood_output": {
+        "translation_key": "hood_output",
         "icon": "mdi:stove",
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",

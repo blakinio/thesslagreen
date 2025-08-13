@@ -190,8 +190,8 @@
       "work_permit": {
         "name": "Potwierdzenie pracy (Expansion)"
       },
-      "hood": {
-        "name": "Okap"
+      "hood_output": {
+        "name": "Wyjście okapu"
       },
       "contamination_sensor": {
         "name": "Czujnik zanieczyszczenia"

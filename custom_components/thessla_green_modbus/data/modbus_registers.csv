@@ -8,13 +8,13 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 01,0x000C,12,R/-,heating_cable,Stan wyjścia przekaźnika zasilania kabla grzejnego,0,1,,,"0 - OFF; 1 - ON",,
 01,0x000D,13,R/-,work_permit,Stan wyjścia przekaźnika potwierdzenia pracy (Expansion),0,1,,,"0 - OFF; 1 - ON",,
 01,0x000E,14,R/-,gwc,Stan wyjścia przekaźnika GWC,0,1,,,"0 - OFF; 1 - ON",,
-01,0x000F,15,R/-,hood,Stan wyjścia zasilającego przepustnicę okapu,0,1,,,"0 - OFF; 1 - ON",,
+01,0x000F,15,R/-,hood_output,Stan wyjścia zasilającego przepustnicę okapu,0,1,,,"0 - OFF; 1 - ON",,
 
 # 02 - READ DISCRETE INPUTS
 02,0x0000,0,R/-,duct_heater_protection,Stan wejścia zabezpieczenia termicznego elektrycznej nagrzewnicy kanałowej,0,1,,,"0 - OFF; 1 - ON",,
 02,0x0001,1,R/-,expansion,Komunikacja z modułem Expansion,0,1,,,"0 - brak; 1 - jest",,
 02,0x0003,3,R/-,dp_duct_filter_overflow,Stan wejścia presostatu filtra kanałowego,0,1,,,"0 - OFF; 1 - ON",,
-02,0x0004,4,R/-,hood,Stan wejścia włącznika funkcji OKAP,0,1,,,"0 - OFF; 1 - ON",,
+02,0x0004,4,R/-,hood_switch,Stan wejścia włącznika funkcji OKAP,0,1,,,"0 - OFF; 1 - ON",,
 02,0x0005,5,R/-,contamination_sensor,Stan wejścia dwustanowego czujnika jakości powietrza,0,1,,,"0 - OFF; 1 - ON",,
 02,0x0006,6,R/-,airing_sensor,Stan wejścia dwustanowego czujnika wilgotności,0,1,,,"0 - OFF; 1 - ON",,
 02,0x0007,7,R/-,airing_switch,Stan wejścia włącznika funkcji WIETRZENIE,0,1,,,"0 - OFF; 1 - ON",,
