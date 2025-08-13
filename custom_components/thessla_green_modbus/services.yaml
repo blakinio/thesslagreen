@@ -1,6 +1,6 @@
 # Complete services for ThesslaGreen Modbus Integration
 # Compatibility: Home Assistant 2025.* + pymodbus 3.5.*+
-# All models: thessla green AirPack Home series 4
+# All models: ThesslaGreen AirPack Home series 4
 
 set_special_mode:
   name: Set Special Mode
