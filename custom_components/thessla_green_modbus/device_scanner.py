@@ -108,83 +108,106 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
-        # Load register map and value ranges from CSV
-        self._registers: Dict[str, Dict[int, str]]
-        self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]]
-        self._registers, self._register_ranges = self._load_registers()
+        # Placeholder for register map and value ranges loaded asynchronously
+        self._registers: Dict[str, Dict[int, str]] = {}
+        self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
 
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
 
-    def _load_registers(
+    async def _async_setup(self) -> None:
+        """Asynchronously load register definitions."""
+        self._registers, self._register_ranges = await self._load_registers()
+
+    @classmethod
+    async def create(
+        cls,
+        host: str,
+        port: int,
+        slave_id: int = DEFAULT_SLAVE_ID,
+        timeout: int = 10,
+        retry: int = 3,
+    ) -> "ThesslaGreenDeviceScanner":
+        """Factory to create an initialized scanner instance."""
+        self = cls(host, port, slave_id, timeout, retry)
+        await self._async_setup()
+        return self
+
+    async def _load_registers(
         self,
     ) -> Tuple[Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]]:
         """Load Modbus register definitions and value ranges from CSV file."""
-        register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-        register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
         csv_path = files(__package__) / "data" / "modbus_registers.csv"
-        try:
-            with csv_path.open(newline="", encoding="utf-8") as csvfile:
-                reader = csv.DictReader(csvfile)
-                rows: Dict[str, List[Tuple[str, int, Optional[int], Optional[int]]]] = {
-                    "03": [],
-                    "04": [],
-                    "01": [],
-                    "02": [],
-                }
-                for row in reader:
-                    code = row.get("Function_Code")
-                    if not code or code.startswith("#"):
-                        continue
-                    name_raw = row.get("Register_Name")
-                    if not isinstance(name_raw, str) or not name_raw.strip():
-                        continue
-                    name = _to_snake_case(name_raw)
-                    try:
-                        addr = int(row.get("Address_DEC", 0))
-                    except (TypeError, ValueError):
-                        continue
-                    min_raw = row.get("Min")
-                    max_raw = row.get("Max")
-                    min_val: Optional[int]
-                    max_val: Optional[int]
-                    try:
-                        min_val = int(float(min_raw)) if min_raw not in (None, "") else None
-                    except ValueError:
-                        min_val = None
-                    try:
-                        max_val = int(float(max_raw)) if max_raw not in (None, "") else None
-                    except ValueError:
-                        max_val = None
-                    if code in rows:
-                        rows[code].append((name, addr, min_val, max_val))
 
-                for code, items in rows.items():
-                    # Sort by address to ensure deterministic numbering
-                    items.sort(key=lambda item: item[1])
-                    counts: Dict[str, int] = {}
-                    for name, *_ in items:
-                        counts[name] = counts.get(name, 0) + 1
-                    seen: Dict[str, int] = {}
-                    for name, addr, min_val, max_val in items:
-                        if addr in register_map[code]:
-                            _LOGGER.warning(
-                                "Duplicate register address %s for function code %s: %s",
-                                addr,
-                                code,
-                                name,
-                            )
+        def _read_csv() -> Tuple[
+            Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]
+        ]:
+            register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+            register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+            try:
+                with csv_path.open(newline="", encoding="utf-8") as csvfile:
+                    reader = csv.DictReader(csvfile)
+                    rows: Dict[str, List[Tuple[str, int, Optional[int], Optional[int]]]] = {
+                        "03": [],
+                        "04": [],
+                        "01": [],
+                        "02": [],
+                    }
+                    for row in reader:
+                        code = row.get("Function_Code")
+                        if not code or code.startswith("#"):
                             continue
-                        if counts[name] > 1:
-                            idx = seen.get(name, 0) + 1
-                            seen[name] = idx
-                            name = f"{name}_{idx}"
-                        register_map[code][addr] = name
-                        if min_val is not None or max_val is not None:
-                            register_ranges[name] = (min_val, max_val)
-        except FileNotFoundError:
-            _LOGGER.error("Register definition file not found: %s", csv_path)
-        return register_map, register_ranges
+                        name_raw = row.get("Register_Name")
+                        if not isinstance(name_raw, str) or not name_raw.strip():
+                            continue
+                        name = _to_snake_case(name_raw)
+                        try:
+                            addr = int(row.get("Address_DEC", 0))
+                        except (TypeError, ValueError):
+                            continue
+                        min_raw = row.get("Min")
+                        max_raw = row.get("Max")
+                        min_val: Optional[int]
+                        max_val: Optional[int]
+                        try:
+                            min_val = int(float(min_raw)) if min_raw not in (None, "") else None
+                        except ValueError:
+                            min_val = None
+                        try:
+                            max_val = int(float(max_raw)) if max_raw not in (None, "") else None
+                        except ValueError:
+                            max_val = None
+                        if code in rows:
+                            rows[code].append((name, addr, min_val, max_val))
+
+                    for code, items in rows.items():
+                        # Sort by address to ensure deterministic numbering
+                        items.sort(key=lambda item: item[1])
+                        counts: Dict[str, int] = {}
+                        for name, *_ in items:
+                            counts[name] = counts.get(name, 0) + 1
+                        seen: Dict[str, int] = {}
+                        for name, addr, min_val, max_val in items:
+                            if addr in register_map[code]:
+                                _LOGGER.warning(
+                                    "Duplicate register address %s for function code %s: %s",
+                                    addr,
+                                    code,
+                                    name,
+                                )
+                                continue
+                            if counts[name] > 1:
+                                idx = seen.get(name, 0) + 1
+                                seen[name] = idx
+                                name = f"{name}_{idx}"
+                            register_map[code][addr] = name
+                            if min_val is not None or max_val is not None:
+                                register_ranges[name] = (min_val, max_val)
+            except FileNotFoundError:
+                _LOGGER.error("Register definition file not found: %s", csv_path)
+            return register_map, register_ranges
+
+        return await asyncio.to_thread(_read_csv)
 
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int

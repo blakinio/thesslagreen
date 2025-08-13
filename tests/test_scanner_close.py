@@ -266,7 +266,7 @@ def test_scan_device_closes_client_on_failure():
     """Ensure scan_device closes the client even when scan fails."""
 
     async def run_test():
-        scanner = ThesslaGreenDeviceScanner("localhost", 502)
+        scanner = await ThesslaGreenDeviceScanner.create("localhost", 502)
         scanner.scan = AsyncMock(side_effect=ConnectionException("fail"))
         scanner.close = AsyncMock()
 
