@@ -35,11 +35,24 @@ BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "setting_", "airing_")
 
 
 def _decode_bcd_time(value: int) -> Optional[int]:
-    """Decode a BCD encoded HHMM value to an integer."""
-    hours = ((value >> 12) & 0xF) * 10 + ((value >> 8) & 0xF)
-    minutes = ((value >> 4) & 0xF) * 10 + (value & 0xF)
+    """Decode a BCD encoded HHMM value to an integer.
+
+    Returns ``None`` if the input is negative, any nibble exceeds 9, or
+    the resulting hour/minute values fall outside their valid range.
+    """
+
+    if value < 0:
+        return None
+
+    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
+    if any(nibble > 9 for nibble in nibbles):
+        return None
+
+    hours = nibbles[0] * 10 + nibbles[1]
+    minutes = nibbles[2] * 10 + nibbles[3]
     if hours > 23 or minutes > 59:
         return None
+
     return hours * 100 + minutes
 
 
@@ -139,9 +152,9 @@ class ThesslaGreenDeviceScanner:
         """Load Modbus register definitions and value ranges from CSV file."""
         csv_path = files(__package__) / "data" / "modbus_registers.csv"
 
-        def _read_csv() -> Tuple[
-            Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]
-        ]:
+        def _read_csv() -> (
+            Tuple[Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]]
+        ):
             register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
             register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
             try:
