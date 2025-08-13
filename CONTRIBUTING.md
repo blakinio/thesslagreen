@@ -159,6 +159,16 @@ custom_components/thessla_green_modbus/
     └── pl.json
 ```
 
+### Regenerating register definitions
+
+Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` is modified, regenerate `custom_components/thessla_green_modbus/registers.py`:
+
+```bash
+python tools/generate_registers.py
+```
+
+Commit the updated CSV and Python files together.
+
 ## Testing
 
 ### Running Tests
