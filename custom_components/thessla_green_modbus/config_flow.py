@@ -177,6 +177,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         capabilities_list = [k.replace("_", " ").title() for k, v in capabilities.items() if v]
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
+        translations = await translation.async_get_translations(
+            self.hass, self.hass.config.language, DOMAIN
+        )
 
         language = getattr(getattr(self.hass, "config", None), "language", "en")
         translations: dict[str, str] = {}
@@ -189,6 +192,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if register_count > 0:
             auto_detected_note = translations.get(
+                "auto_detected_note_success", "Auto-detection successful!"
+            )
+        else:
+            auto_detected_note = translations.get(
+                "auto_detected_note_limited",
                 f"component.{DOMAIN}.auto_detected_note_success",
                 "Auto-detection successful!",
             )
