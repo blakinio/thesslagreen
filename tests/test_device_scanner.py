@@ -32,10 +32,13 @@ async def test_read_holding_skips_unresponsive_register(caplog):
     mock_client = AsyncMock()
 
     caplog.set_level(logging.WARNING)
-    with patch(
-        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-        AsyncMock(side_effect=ModbusException("boom")),
-    ) as call_mock:
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock,
+        patch("asyncio.sleep", AsyncMock()),
+    ):
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
@@ -59,10 +62,13 @@ async def test_read_input_logs_warning_on_failure(caplog):
     mock_client = AsyncMock()
 
     caplog.set_level(logging.WARNING)
-    with patch(
-        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-        AsyncMock(side_effect=ModbusException("boom")),
-    ) as call_mock:
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock,
+        patch("asyncio.sleep", AsyncMock()),
+    ):
         result = await scanner._read_input(mock_client, 0x0001, 3)
         assert result is None
         assert call_mock.await_count == scanner.retry
@@ -75,10 +81,12 @@ async def test_scan_device_success_dynamic():
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
     async def fake_read_input(client, address, count):
-        data = [1] * count
         if address == 0:
-            data[0:3] = [4, 85, 0]
-        return data
+            data = [4, 85, 0, 0, 0]
+            return data[:count]
+        if address == 0x0018:
+            return [0x001A, 0x002B, 0x003C, 0x004D, 0x005E, 0x006F][:count]
+        return [1] * count
 
     async def fake_read_holding(client, address, count):
         return [1] * count
@@ -116,9 +124,45 @@ async def test_scan_device_success_dynamic():
 def mock_modbus_response():
     response = MagicMock()
     response.isError.return_value = False
-    response.registers = [4, 85, 0]
+    response.registers = [4, 85, 0, 0, 0, 0]
     response.bits = [False]
     return response
+
+
+async def test_read_coil_retries_on_failure(caplog):
+    """Coil reads should retry on failure."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+    mock_client = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock,
+        caplog.at_level(logging.DEBUG),
+        patch("asyncio.sleep", AsyncMock()),
+    ):
+        result = await scanner._read_coil(mock_client, 0x0000, 1)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+
+async def test_read_discrete_retries_on_failure(caplog):
+    """Discrete input reads should retry on failure."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+    mock_client = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock,
+        caplog.at_level(logging.DEBUG),
+        patch("asyncio.sleep", AsyncMock()),
+    ):
+        result = await scanner._read_discrete(mock_client, 0x0000, 1)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
 
 
 async def test_scan_device_success_static(mock_modbus_response):
