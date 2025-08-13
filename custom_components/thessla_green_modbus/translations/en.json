@@ -735,5 +735,11 @@
       "name": "Refresh Device Data",
       "description": "Forces immediate refresh of device data"
     }
+  },
+  "issues": {
+    "modbus_write_failed": {
+      "title": "Modbus write failed",
+      "description": "Failed to write to register {register}. Check the connection and device permissions."
+    }
   }
 }
