@@ -1,5 +1,5 @@
 [
-  "user_settings",
-  "schedule_settings",
-  "all_settings"
+  "thessla_green_modbus.reset_type_user_settings",
+  "thessla_green_modbus.reset_type_schedule_settings",
+  "thessla_green_modbus.reset_type_all_settings"
 ]
