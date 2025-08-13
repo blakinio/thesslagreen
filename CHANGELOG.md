@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pre-commit hooks for code quality
 - Example configuration file
 - Contributing guidelines
+- Constant Flow register names (`cf_version`, `supply_air_flow`, `exhaust_air_flow`) for Series 4 units
+- Capability detection for Constant Flow and HEWR water removal
 
 ### Changed
 - Bumped minimum Home Assistant version to 2025.7.1

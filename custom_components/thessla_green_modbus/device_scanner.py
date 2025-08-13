@@ -272,14 +272,22 @@ class ThesslaGreenDeviceScanner:
         caps = DeviceCapabilities()
 
         # Constant flow detection
-        caps.constant_flow = any(
-            "constant_flow" in reg or "cf_" in reg
-            for reg in (
-                self.available_registers["input_registers"].union(
-                    self.available_registers["holding_registers"]
-                )
-            )
+        cf_indicators = {
+            "constant_flow_active",
+            "cf_version",
+            "supply_air_flow",
+            "exhaust_air_flow",
+            "supply_flow_rate",
+            "exhaust_flow_rate",
+            "supply_percentage",
+            "exhaust_percentage",
+            "min_percentage",
+            "max_percentage",
+        }
+        cf_registers = self.available_registers["input_registers"].union(
+            self.available_registers["holding_registers"]
         )
+        caps.constant_flow = bool(cf_indicators.intersection(cf_registers))
 
         # Systems detection
         caps.gwc_system = any(
@@ -325,9 +333,15 @@ class ThesslaGreenDeviceScanner:
                 setattr(caps, f"sensor_{sensor}", True)
         caps.temperature_sensors_count = len(caps.temperature_sensors)
 
-        # Flow sensors (simple pattern match)
+        # Flow sensors (simple pattern match across register types)
         caps.flow_sensors = {
-            reg for reg in self.available_registers["input_registers"] if "flow" in reg
+            reg
+            for regs in (
+                self.available_registers["input_registers"],
+                self.available_registers["holding_registers"],
+            )
+            for reg in regs
+            if "flow" in reg
         }
 
         # Air quality sensors
@@ -354,10 +368,12 @@ class ThesslaGreenDeviceScanner:
         # Basic control availability
         caps.basic_control = "mode" in self.available_registers["holding_registers"]
 
-        # Special functions from discrete inputs
+        # Special functions from discrete inputs or input registers
         for func in ["fireplace", "airing_switch"]:
             if func in self.available_registers["discrete_inputs"]:
                 caps.special_functions.add(func)
+        if "water_removal_active" in self.available_registers["input_registers"]:
+            caps.special_functions.add("water_removal")
 
         return caps
 
