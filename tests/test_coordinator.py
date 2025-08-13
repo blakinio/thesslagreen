@@ -134,7 +134,9 @@ for name, module in modules.items():
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # ✅ FIXED: Import correct coordinator class name
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+    ThesslaGreenModbusCoordinator,
+)
 
 
 @pytest.fixture
@@ -171,8 +173,7 @@ async def test_async_write_invalid_register(coordinator):
 
 @pytest.mark.asyncio
 async def test_async_write_valid_register(coordinator):
-    """Test successful register write."""
-    coordinator.async_request_refresh = AsyncMock()
+    """Test successful register write and refresh outside lock."""
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     response = MagicMock()
@@ -180,10 +181,19 @@ async def test_async_write_valid_register(coordinator):
     client.write_register = AsyncMock(return_value=response)
     coordinator.client = client
 
+    lock_state_during_refresh = None
+
+    async def refresh_side_effect():
+        nonlocal lock_state_during_refresh
+        lock_state_during_refresh = coordinator._connection_lock.locked()
+
+    coordinator.async_request_refresh = AsyncMock(side_effect=refresh_side_effect)
+
     result = await coordinator.async_write_register("mode", 1)
 
     assert result is True
     coordinator.async_request_refresh.assert_called_once()
+    assert lock_state_during_refresh is False
 
 
 def test_performance_stats(coordinator):
@@ -375,6 +385,6 @@ def cleanup_modules():
 
 
 # Register cleanup
-import atexit
+import atexit  # noqa: E402
 
 atexit.register(cleanup_modules)
