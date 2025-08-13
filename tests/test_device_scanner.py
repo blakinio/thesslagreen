@@ -53,6 +53,25 @@ async def test_read_holding_skips_unresponsive_register(caplog):
     assert "0x00A8" in caplog.text
 
 
+async def test_read_input_logs_warning_on_failure(caplog):
+    """Warn when input registers cannot be read after retries."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    mock_client = AsyncMock()
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(side_effect=ModbusException("boom")),
+    ) as call_mock:
+        result = await scanner._read_input(mock_client, 0x0001, 3)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    assert (
+        "Failed to read input registers 0x0001-0x0003 after 3 retries" in caplog.text
+    )
+
+
 async def test_scan_device_success_dynamic():
     """Test successful device scan with dynamic register scanning."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
@@ -281,6 +300,40 @@ async def test_scan_device_batch_fallback():
     batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
     assert any(call.args[2] == 2 for call in batch_calls)
     assert any(call.args[2] == 1 for call in batch_calls)
+async def test_temperature_register_unavailable_kept():
+    """Temperature registers with SENSOR_UNAVAILABLE should remain available."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+
+    async def fake_read_input(client, address, count):
+        data = [1] * count
+        outside_addr = INPUT_REGISTERS["outside_temperature"]
+        if address <= outside_addr < address + count:
+            data[outside_addr - address] = SENSOR_UNAVAILABLE
+        return data
+
+    async def fake_read_holding(client, address, count):
+        return [1] * count
+
+    async def fake_read_coil(client, address, count):
+        return [False] * count
+
+    async def fake_read_discrete(client, address, count):
+        return [False] * count
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
+
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+        ):
+            result = await scanner.scan_device()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
 
 
 async def test_is_valid_register_value():
@@ -291,8 +344,15 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-    # Invalid temperature sensor value
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+    # SENSOR_UNAVAILABLE should still be considered valid for temperature sensors
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+
+    # Temperature sensor unavailable value should be considered valid
+    assert (
+        scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        is True
+    )
+
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
@@ -314,6 +374,44 @@ async def test_is_valid_register_value():
     scanner._register_ranges["schedule_start_time"] = (0, 2359)
     assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
+
+
+async def test_scan_includes_unavailable_temperature():
+    """Temperature register with SENSOR_UNAVAILABLE should remain available."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+
+    async def fake_read_input(client, address, count):
+        data = [1] * count
+        if address == 0:
+            data[0:3] = [4, 85, 0]
+        temp_addr = INPUT_REGISTERS["outside_temperature"]
+        if address <= temp_addr < address + count:
+            data[temp_addr - address] = SENSOR_UNAVAILABLE
+        return data
+
+    async def fake_read_holding(client, address, count):
+        return [1] * count
+
+    async def fake_read_coil(client, address, count):
+        return [False] * count
+
+    async def fake_read_discrete(client, address, count):
+        return [False] * count
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
+
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+        ):
+            result = await scanner.scan_device()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
 
 
 async def test_capabilities_detect_schedule_keywords():

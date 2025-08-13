@@ -266,7 +266,10 @@ class ThesslaGreenDeviceScanner:
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-        """Read input registers."""
+        """Read input registers with retry."""
+        start = address
+        end = address + count - 1
+
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -276,24 +279,27 @@ class ThesslaGreenDeviceScanner:
                     return response.registers
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Failed to read input 0x%04X on attempt %d: %s",
-                    address,
+                    "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
                     attempt,
                     exc,
                     exc_info=True,
                 )
             except (OSError, asyncio.TimeoutError) as exc:
                 _LOGGER.error(
-                    "Unexpected error reading input 0x%04X on attempt %d: %s",
-                    address,
+                    "Unexpected error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
                     attempt,
                     exc,
                     exc_info=True,
                 )
+
         _LOGGER.warning(
             "Failed to read input registers 0x%04X-0x%04X after %d retries",
-            address,
-            address + count - 1,
+            start,
+            end,
             self.retry,
         )
         return None
@@ -394,8 +400,12 @@ class ThesslaGreenDeviceScanner:
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
             if value == SENSOR_UNAVAILABLE:
-                self._log_invalid_value(register_name, value)
-                return False
+                _LOGGER.debug("Temperature sensor %s unavailable: %s", register_name, value)
+                _LOGGER.debug(
+                    "Temperature register %s unavailable: %s",
+                    register_name,
+                    value,
+                )
             return True
 
         # Air flow sensors use the same sentinel for no sensor
@@ -605,6 +615,20 @@ class ThesslaGreenDeviceScanner:
                                     self.available_registers[reg_type].add(name)
                             else:
                                 self.available_registers[reg_type].add(name)
+                        if count > 1:
+                            for addr in range(start, start + count):
+                                single = await read_fn(client, addr, 1)
+                                if single is None:
+                                    continue
+                                name = addr_to_name.get(addr)
+                                if not name:
+                                    continue
+                                value = single[0]
+                                if reg_type in ("input_registers", "holding_registers"):
+                                    if self._is_valid_register_value(name, value):
+                                        self.available_registers[reg_type].add(name)
+                                else:
+                                    self.available_registers[reg_type].add(name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
@@ -650,6 +674,20 @@ class ThesslaGreenDeviceScanner:
                                     self.available_registers[reg_type].add(reg_name)
                             else:
                                 self.available_registers[reg_type].add(reg_name)
+                        if count > 1:
+                            for addr in range(start, start + count):
+                                single = await read_fn(client, addr, 1)
+                                if single is None:
+                                    continue
+                                reg_name = addr_to_name.get(addr)
+                                if not reg_name:
+                                    continue
+                                value = single[0]
+                                if reg_type in ("input_registers", "holding_registers"):
+                                    if self._is_valid_register_value(reg_name, value):
+                                        self.available_registers[reg_type].add(reg_name)
+                                else:
+                                    self.available_registers[reg_type].add(reg_name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
