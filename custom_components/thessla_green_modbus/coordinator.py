@@ -69,7 +69,6 @@ MULTI_REGISTER_SIZES = {
     "date_time_2": 4,
     "date_time_3": 4,
     "date_time_4": 4,
-    "lock_date_1": 3,
     "lock_date_2": 3,
     "lock_date_3": 3,
 }
@@ -776,6 +775,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         )
                         return False
                     if len(value) != MULTI_REGISTER_SIZES[start_register]:
+                        _LOGGER.error(
+                            "Register %s expects %d values",
+                            register_name,
+                            MULTI_REGISTER_SIZES[start_register],
+                        )
+                        return False
 
                 if register_name in MULTI_REGISTER_SIZES:
                     if (
