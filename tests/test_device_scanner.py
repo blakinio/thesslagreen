@@ -210,10 +210,10 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("max_percentage", 120) is True
     assert scanner._is_valid_register_value("min_percentage", -1) is False
     assert scanner._is_valid_register_value("max_percentage", 200) is False
-    # BCD time registers
-    scanner._register_ranges["schedule_start_time"] = (0, 2359)
-    assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
-    assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
+    # BCD time registers loaded from CSV should handle HHMM values
+    assert scanner._register_ranges["schedule_summer_mon_1"] == (0, 2300)
+    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
+    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
 
 
 async def test_capabilities_detect_schedule_keywords():

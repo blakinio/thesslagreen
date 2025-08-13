@@ -177,6 +177,12 @@ class ThesslaGreenDeviceScanner:
                             max_val = int(float(max_raw)) if max_raw not in (None, "") else None
                         except ValueError:
                             max_val = None
+
+                        # Adjust ranges for registers storing BCD times
+                        if name.startswith(BCD_TIME_PREFIXES):
+                            min_val = (min_val * 100) if min_val is not None else 0
+                            max_val = (max_val * 100) if max_val is not None else 2359
+
                         if code in rows:
                             rows[code].append((name, addr, min_val, max_val))
 
