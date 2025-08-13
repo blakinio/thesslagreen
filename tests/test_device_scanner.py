@@ -12,6 +12,7 @@ from custom_components.thessla_green_modbus.const import (
 )
 from custom_components.thessla_green_modbus.device_scanner import (
     ThesslaGreenDeviceScanner,
+    _decode_register_time,
     _decode_bcd_time,
     _decode_setting_value,
     _format_register_value,
@@ -536,20 +537,27 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("max_percentage", 120) is True
     assert scanner._is_valid_register_value("min_percentage", -1) is False
     assert scanner._is_valid_register_value("max_percentage", 200) is False
-    # BCD time registers
+    # HH:MM time registers
     scanner._register_ranges["schedule_start_time"] = (0, 2359)
-    assert scanner._is_valid_register_value("schedule_start_time", 0x1234) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 0x081E) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 0x0800) is True
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
-    assert scanner._is_valid_register_value("schedule_start_time", 800) is True
-    assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
+    assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
 
 
+async def test_decode_register_time():
+    """Verify time decoding for HH:MM byte-encoded values."""
+    assert _decode_register_time(0x081E) == 830
+    assert _decode_register_time(0x1234) == 1852
+    assert _decode_register_time(0x2460) is None
+    assert _decode_register_time(0x0960) is None
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
     assert _decode_bcd_time(0x1234) == 1234
     assert _decode_bcd_time(0x0800) == 800
     assert _decode_bcd_time(0x2460) is None
     assert _decode_bcd_time(2400) is None
+
 
 
 async def test_decode_setting_value():

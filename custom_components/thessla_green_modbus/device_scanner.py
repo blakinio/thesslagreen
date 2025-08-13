@@ -37,6 +37,9 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
     "antifreez_mode": {0, 1},
 }
 
+
+# Registers storing times encoded as HH:MM bytes
+TIME_REGISTER_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
 # Registers storing times as BCD HHMM values
 BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
 
@@ -44,16 +47,24 @@ BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
 SETTING_PREFIX = "setting_"
 
 
-def _decode_bcd_time(value: int) -> Optional[int]:
-    """Decode a BCD encoded or decimal HHMM value to an integer.
+def _decode_register_time(value: int) -> Optional[int]:
+    """Decode a 16-bit register with HH:MM byte encoding to ``HHMM``.
 
-    The return value is ``HHMM`` (e.g. ``0x1234`` or ``1234`` -> ``1234``).
-    ``None`` is returned if the input is negative or cannot be parsed as a
-    valid time value.
+    The most significant byte stores the hour and the least significant byte
+    stores the minute. ``None`` is returned if the value is negative or if the
+    extracted hour/minute fall outside of valid ranges.
     """
 
     if value < 0:
         return None
+
+
+    hour = (value >> 8) & 0xFF
+    minute = value & 0xFF
+    if 0 <= hour <= 23 and 0 <= minute <= 59:
+        return hour * 100 + minute
+
+    return None
 
     # First attempt BCD decoding
     nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
@@ -110,6 +121,7 @@ def _format_register_value(name: str, value: int) -> int | str:
         return f"{airflow}% @ {temp_str}°C"
 
     return value
+
 
 
 # Maximum registers per batch read (Modbus limit)
@@ -445,11 +457,13 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
+
         """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
             _LOGGER.debug(
                 "Skipping cached failed holding register 0x%04X", address
             )
+
         """Read holding registers with retry and per-register failure tracking."""
         failures = self._holding_failures.get(address, 0)
         if failures >= self.retry:
@@ -601,9 +615,16 @@ class ThesslaGreenDeviceScanner:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
+
+        # Decode schedule/airing time values before validation
+        if name.startswith(TIME_REGISTER_PREFIXES):
+            decoded = _decode_register_time(value)
+            if decoded is None:
+
         # Validate registers storing schedule times
         if name.startswith(BCD_TIME_PREFIXES):
             if _decode_bcd_time(value) is None:
+
                 self._log_invalid_value(register_name, value)
                 return False
             return True
