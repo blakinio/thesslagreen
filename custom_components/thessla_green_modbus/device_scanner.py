@@ -32,7 +32,10 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
 }
 
 # Registers storing times as BCD HHMM values
-BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "setting_", "airing_")
+BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
+
+# Registers storing combined airflow and temperature settings
+SETTING_PREFIX = "setting_"
 
 
 def _decode_bcd_time(value: int) -> Optional[int]:
@@ -46,23 +49,61 @@ def _decode_bcd_time(value: int) -> Optional[int]:
     if value < 0:
         return None
 
-    # First try plain decimal HHMM representation (e.g. 800 -> 08:00)
+    # First attempt BCD decoding
+    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
+    if all(nibble <= 9 for nibble in nibbles):
+        hours = nibbles[0] * 10 + nibbles[1]
+        minutes = nibbles[2] * 10 + nibbles[3]
+        if hours <= 23 and minutes <= 59:
+            return hours * 100 + minutes
+
+    # Fallback to plain decimal HHMM representation (e.g. 800 -> 08:00)
     hours_dec = value // 100
     minutes_dec = value % 100
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
         return hours_dec * 100 + minutes_dec
 
-    # Fall back to BCD decoding
-    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
-    if any(nibble > 9 for nibble in nibbles):
+    return None
+
+
+def _decode_setting_value(value: int) -> Optional[Tuple[int, float]]:
+    """Decode a register storing airflow and temperature as ``0xAATT``.
+
+    ``AA`` is the airflow in percent and ``TT`` is twice the desired supply
+    temperature in degrees Celsius. ``None`` is returned if the value cannot be
+    decoded or falls outside expected ranges.
+    """
+
+    if value < 0:
         return None
 
-    hours = nibbles[0] * 10 + nibbles[1]
-    minutes = nibbles[2] * 10 + nibbles[3]
-    if hours > 23 or minutes > 59:
+    airflow = (value >> 8) & 0xFF
+    temp_double = value & 0xFF
+
+    if airflow > 100 or temp_double > 200:
         return None
 
-    return hours * 100 + minutes
+    return airflow, temp_double / 2
+
+
+def _format_register_value(name: str, value: int) -> int | str:
+    """Return a human-readable representation of a register value."""
+
+    if name.startswith(BCD_TIME_PREFIXES):
+        decoded = _decode_bcd_time(value)
+        if decoded is None:
+            return value
+        return f"{decoded // 100:02d}:{decoded % 100:02d}"
+
+    if name.startswith(SETTING_PREFIX):
+        decoded = _decode_setting_value(value)
+        if decoded is None:
+            return value
+        airflow, temp = decoded
+        temp_str = f"{temp:g}"
+        return f"{airflow}% @ {temp_str}°C"
+
+    return value
 
 
 # Maximum registers per batch read (Modbus limit)
@@ -178,7 +219,14 @@ class ThesslaGreenDeviceScanner:
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
         self = cls(
-            host, port, slave_id, timeout, retry, backoff, verbose_invalid_values, scan_uart_settings
+            host,
+            port,
+            slave_id,
+            timeout,
+            retry,
+            backoff,
+            verbose_invalid_values,
+            scan_uart_settings,
         )
         await self._async_setup()
         return self
@@ -218,9 +266,7 @@ class ThesslaGreenDeviceScanner:
                         min_raw = row.get("Min")
                         max_raw = row.get("Max")
 
-                        def _parse_range(
-                            label: str, raw: Optional[str]
-                        ) -> Optional[int]:
+                        def _parse_range(label: str, raw: Optional[str]) -> Optional[int]:
                             if raw in (None, ""):
                                 return None
                             text = str(raw).split("#", 1)[0]
@@ -354,15 +400,12 @@ class ThesslaGreenDeviceScanner:
             self.retry,
         )
         self._failed_input.update(range(start, end + 1))
-        _LOGGER.debug(
-            "Caching failed input registers 0x%04X-0x%04X", start, end
-        )
+        _LOGGER.debug("Caching failed input registers 0x%04X-0x%04X", start, end)
         return None
 
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-
         """Read holding registers with retry and per-register failure tracking."""
         failures = self._holding_failures.get(address, 0)
         if failures >= self.retry:
@@ -370,9 +413,7 @@ class ThesslaGreenDeviceScanner:
 
         """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
-            _LOGGER.debug(
-                "Skipping cached failed holding register 0x%04X", address
-            )
+            _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
 
             return None
 
@@ -403,7 +444,6 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-
 
             if self.backoff and attempt < self.retry:
                 await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
@@ -497,24 +537,31 @@ class ThesslaGreenDeviceScanner:
         flag is ``True`` the first occurrence is logged at ``INFO`` level and
         further occurrences are logged at ``DEBUG`` level.
         """
+        formatted = _format_register_value(register_name, value)
         if register_name not in self._reported_invalid:
             level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
-            _LOGGER.log(level, "Invalid value for %s: %s", register_name, value)
+            _LOGGER.log(level, "Invalid value for %s: %s", register_name, formatted)
             self._reported_invalid.add(register_name)
         elif self.verbose_invalid_values:
-            _LOGGER.debug("Invalid value for %s: %s", register_name, value)
+            _LOGGER.debug("Invalid value for %s: %s", register_name, formatted)
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
-        # Decode BCD time values before validation
+        # Validate registers storing schedule times
         if name.startswith(BCD_TIME_PREFIXES):
-            decoded = _decode_bcd_time(value)
-            if decoded is None:
+            if _decode_bcd_time(value) is None:
                 self._log_invalid_value(register_name, value)
                 return False
-            value = decoded
+            return True
+
+        # Validate registers storing combined airflow/temperature settings
+        if name.startswith(SETTING_PREFIX):
+            if _decode_setting_value(value) is None:
+                self._log_invalid_value(register_name, value)
+                return False
+            return True
 
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
