@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
 from typing import Any, Dict
-import ipaddress
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import translation
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
@@ -26,8 +27,8 @@ async def async_get_config_entry_diagnostics(
     diagnostics = coordinator.get_diagnostic_data()
 
     # Add human-readable descriptions for active error/status registers
-    translations = await hass.helpers.translation.async_get_translations(
-        hass.config.language, f"component.{DOMAIN}"
+    translations = await translation.async_get_translations(
+        hass, hass.config.language, f"component.{DOMAIN}"
     )
     active_errors: Dict[str, str] = {}
     if coordinator.data:

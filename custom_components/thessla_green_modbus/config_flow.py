@@ -1,4 +1,5 @@
 """Config flow for ThesslaGreen Modbus integration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -10,6 +11,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import translation
 
 from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,
@@ -177,19 +179,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         scan_success_rate = "100%" if register_count > 0 else "0%"
 
         if register_count > 0:
-            auto_detected_note = await self.hass.helpers.translation.async_translate(
-                f"{DOMAIN}.auto_detected_note_success"
+            auto_detected_note = await translation.async_translate(
+                self.hass, f"{DOMAIN}.auto_detected_note_success"
             )
             if auto_detected_note is None:
                 auto_detected_note = "Auto-detection successful!"
         else:
-            auto_detected_note = await self.hass.helpers.translation.async_translate(
-                f"{DOMAIN}.auto_detected_note_limited"
+            auto_detected_note = await translation.async_translate(
+                self.hass, f"{DOMAIN}.auto_detected_note_limited"
             )
             if auto_detected_note is None:
-                auto_detected_note = (
-                    "Limited auto-detection - some registers may be missing."
-                )
+                auto_detected_note = "Limited auto-detection - some registers may be missing."
 
         description_placeholders = {
             "host": self._data[CONF_HOST],
