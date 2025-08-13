@@ -200,6 +200,17 @@ class ThesslaGreenDeviceScanner:
                             max_val = int(float(max_raw)) if max_raw not in (None, "") else None
                         except ValueError:
                             max_val = None
+                        # Warn if a range is expected but Min/Max is missing
+                        if (
+                            (min_raw not in (None, "") or max_raw not in (None, ""))
+                            and (min_val is None or max_val is None)
+                        ):
+                            _LOGGER.warning(
+                                "Incomplete range for %s: Min=%s Max=%s",
+                                name,
+                                min_raw,
+                                max_raw,
+                            )
                         if code in rows:
                             rows[code].append((name, addr, min_val, max_val))
 
@@ -226,6 +237,27 @@ class ThesslaGreenDeviceScanner:
                             register_map[code][addr] = name
                             if min_val is not None or max_val is not None:
                                 register_ranges[name] = (min_val, max_val)
+
+                    # Ensure all required registers are defined in the CSV
+                    required_maps = {
+                        "04": INPUT_REGISTERS,
+                        "03": HOLDING_REGISTERS,
+                        "01": COIL_REGISTERS,
+                        "02": DISCRETE_INPUT_REGISTERS,
+                    }
+                    missing: Dict[str, Set[str]] = {}
+                    for code, reg_map in required_maps.items():
+                        defined = set(register_map.get(code, {}).values())
+                        missing_regs = set(reg_map) - defined
+                        if missing_regs:
+                            missing[code] = missing_regs
+                    if missing:
+                        messages = [
+                            f"{code}: {sorted(list(names))}" for code, names in missing.items()
+                        ]
+                        raise ValueError(
+                            "Required registers missing from CSV: " + ", ".join(messages)
+                        )
             except FileNotFoundError:
                 _LOGGER.error("Register definition file not found: %s", csv_path)
             return register_map, register_ranges
