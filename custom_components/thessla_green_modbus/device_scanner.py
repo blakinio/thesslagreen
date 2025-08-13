@@ -266,7 +266,7 @@ class ThesslaGreenDeviceScanner:
     async def _read_input(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-        """Read input registers with retry."""
+        """Read input registers with retry and backoff."""
         start = address
         end = address + count - 1
 
@@ -277,7 +277,7 @@ class ThesslaGreenDeviceScanner:
                 )
                 if response is not None and not response.isError():
                     return response.registers
-            except (ModbusException, ConnectionException) as exc:
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
                     start,
@@ -286,7 +286,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-            except (OSError, asyncio.TimeoutError) as exc:
+            except OSError as exc:
                 _LOGGER.error(
                     "Unexpected error reading input registers 0x%04X-0x%04X on attempt %d: %s",
                     start,
@@ -295,6 +295,10 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                break
+
+            if attempt < self.retry:
+                await asyncio.sleep(2 ** (attempt - 1))
 
         _LOGGER.warning(
             "Failed to read input registers 0x%04X-0x%04X after %d retries",
@@ -307,7 +311,7 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-        """Read holding registers with retry and failure tracking."""
+        """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
             # We've already determined this register does not respond
             return None
@@ -320,7 +324,7 @@ class ThesslaGreenDeviceScanner:
                 if response is None or response.isError():
                     raise ModbusException("No response")
                 return response.registers
-            except (ModbusException, ConnectionException) as exc:
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read holding 0x%04X (attempt %d/%d): %s",
                     address,
@@ -329,7 +333,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-            except (OSError, asyncio.TimeoutError) as exc:
+            except OSError as exc:
                 _LOGGER.error(
                     "Unexpected error reading holding 0x%04X: %s",
                     address,
@@ -337,6 +341,9 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
+
+            if attempt < self.retry:
+                await asyncio.sleep(2 ** (attempt - 1))
 
         # After retry attempts mark register as unsupported to avoid future retries
         self._failed_holding.add(address)
@@ -346,35 +353,69 @@ class ThesslaGreenDeviceScanner:
     async def _read_coil(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[bool]]:
-        """Read coil registers."""
-        try:
-            response = await _call_modbus(client.read_coils, self.slave_id, address, count=count)
-            if response is None or response.isError():
-                return None
-            return response.bits[:count]
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug("Failed to read coil 0x%04X: %s", address, exc, exc_info=True)
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error("Unexpected error reading coil 0x%04X: %s", address, exc, exc_info=True)
+        """Read coil registers with retry and backoff."""
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_coils, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.bits[:count]
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read coil 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading coil 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            if attempt < self.retry:
+                await asyncio.sleep(2 ** (attempt - 1))
+
         return None
 
     async def _read_discrete(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[bool]]:
-        """Read discrete input registers."""
-        try:
-            response = await _call_modbus(
-                client.read_discrete_inputs, self.slave_id, address, count=count
-            )
-            if response is None or response.isError():
-                return None
-            return response.bits[:count]
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug("Failed to read discrete 0x%04X: %s", address, exc, exc_info=True)
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error(
-                "Unexpected error reading discrete 0x%04X: %s", address, exc, exc_info=True
-            )
+        """Read discrete input registers with retry and backoff."""
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_discrete_inputs, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.bits[:count]
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read discrete 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading discrete 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            if attempt < self.retry:
+                await asyncio.sleep(2 ** (attempt - 1))
+
         return None
 
     def _log_invalid_value(self, register_name: str, value: int) -> None:
@@ -569,12 +610,19 @@ class ThesslaGreenDeviceScanner:
 
             info = DeviceInfo()
             present_blocks = {}
-            # Read firmware version
+            # Read firmware version (0x0000, 0x0001, 0x0004)
             fw_data = await self._read_input(client, 0x0000, 5)
-            if fw_data and len(fw_data) >= 3:
-                fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
+            if fw_data and len(fw_data) >= 5:
+                fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[4]}"
                 info.firmware = fw
                 _LOGGER.debug("Firmware version: %s", fw)
+
+            # Read controller serial number (0x0018-0x001D)
+            sn_data = await self._read_input(client, 0x0018, 6)
+            if sn_data and len(sn_data) >= 6:
+                pairs = [f"{sn_data[i]:02X}{sn_data[i+1]:02X}" for i in range(0, 6, 2)]
+                info.serial_number = " ".join(pairs)
+                _LOGGER.debug("Serial number: %s", info.serial_number)
 
             # Determine model based on firmware features
             model = "AirPack Home Series 4"
