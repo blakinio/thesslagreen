@@ -35,9 +35,12 @@ async def test_form_user():
 async def test_form_user_success():
     """Test successful configuration with confirm step."""
     flow = ConfigFlow()
-    flow.hass = SimpleNamespace(
-        helpers=SimpleNamespace(translation=SimpleNamespace(async_translate=lambda key: key))
-    )
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    translations = {
+        "auto_detected_note_success": "Auto-detection successful!",
+        "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
+    }
 
     validation_result = {
         "title": "ThesslaGreen 192.168.1.100",
@@ -67,6 +70,10 @@ async def test_form_user_success():
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured"
         ),
+        patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            new=AsyncMock(return_value=translations),
+        ),
     ):
         result = await flow.async_step_user(
             {
@@ -79,6 +86,10 @@ async def test_form_user_success():
 
     assert result["type"] == "form"
     assert result["step_id"] == "confirm"
+    assert (
+        result["description_placeholders"]["auto_detected_note"]
+        == translations["auto_detected_note_success"]
+    )
 
     result2 = await flow.async_step_confirm({})
     assert result2["type"] == "create_entry"
