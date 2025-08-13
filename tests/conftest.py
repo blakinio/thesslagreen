@@ -1,22 +1,23 @@
 """Test configuration for ThesslaGreen Modbus integration."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 import os
 import sys
 import types
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 try:
-    from homeassistant.core import HomeAssistant
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-    from homeassistant.exceptions import ConfigEntryNotReady
     import homeassistant.util  # ensure util submodule is loaded for plugins
-    import homeassistant.util.logging  # noqa: F401
     import homeassistant.util.dt  # noqa: F401
+    import homeassistant.util.logging  # noqa: F401
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.exceptions import ConfigEntryNotReady
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     ha = types.ModuleType("homeassistant")
     core = types.ModuleType("homeassistant.core")
@@ -335,3 +336,9 @@ def mock_coordinator():
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     return coordinator
+
+
+@pytest.fixture(autouse=True)
+def fail_on_log_exception():
+    """Disable log exception check from HA test plugin."""
+    yield

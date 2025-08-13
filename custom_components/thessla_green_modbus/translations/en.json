@@ -119,9 +119,6 @@
       "dac_cooler": {
         "name": "Cooler DAC"
       },
-      "exp_version": {
-        "name": "Expansion Version"
-      },
       "firmware_major": {
         "name": "Firmware Major"
       },
@@ -133,15 +130,6 @@
       },
       "expansion_version": {
         "name": "Expansion Version"
-      },
-      "version_major": {
-        "name": "Firmware Major"
-      },
-      "version_minor": {
-        "name": "Firmware Minor"
-      },
-      "version_patch": {
-        "name": "Firmware Patch"
       },
       "day_of_week": {
         "name": "Day of Week"
@@ -258,9 +246,6 @@
       },
       "water_removal_active": {
         "name": "Water Removal Active"
-      },
-      "ppoz": {
-        "name": "Fire Alarm"
       },
       "fire_alarm": {
         "name": "Fire Alarm"
