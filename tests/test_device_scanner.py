@@ -13,6 +13,8 @@ from custom_components.thessla_green_modbus.const import (
 from custom_components.thessla_green_modbus.device_scanner import (
     ThesslaGreenDeviceScanner,
     _decode_bcd_time,
+    _decode_setting_value,
+    _format_register_value,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
@@ -37,10 +39,13 @@ async def test_read_holding_skips_after_failure():
     mock_client = AsyncMock()
 
     # Initial failing scan
-    with patch(
-        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-        AsyncMock(side_effect=ModbusException("boom")),
-    ) as call_mock1, patch("asyncio.sleep", AsyncMock()):
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ) as call_mock1,
+        patch("asyncio.sleep", AsyncMock()),
+    ):
         result = await scanner._read_holding(mock_client, 0x00A8, 1)
         assert result is None
         assert call_mock1.await_count == scanner.retry
@@ -443,8 +448,11 @@ async def test_scan_device_batch_fallback():
     batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
     assert any(call.args[2] == 2 for call in batch_calls)
     assert any(call.args[2] == 1 for call in batch_calls)
+
+
 async def test_temperature_register_unavailable_skipped():
     """Temperature registers with SENSOR_UNAVAILABLE should be skipped."""
+
 
 async def test_temperature_register_unavailable_kept():
     """Temperature registers with SENSOR_UNAVAILABLE should remain available."""
@@ -490,7 +498,6 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-
     # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
 
@@ -527,9 +534,26 @@ async def test_is_valid_register_value():
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
     assert _decode_bcd_time(0x1234) == 1234
-    assert _decode_bcd_time(800) == 800
+    assert _decode_bcd_time(0x0800) == 800
     assert _decode_bcd_time(0x2460) is None
     assert _decode_bcd_time(2400) is None
+
+
+async def test_decode_setting_value():
+    """Verify decoding of combined airflow and temperature settings."""
+    assert _decode_setting_value(0x3C28) == (60, 20.0)
+    assert _decode_setting_value(-1) is None
+    assert _decode_setting_value(0xFF28) is None
+
+
+async def test_format_register_value_schedule():
+    """Formatted schedule registers should render as HH:MM."""
+    assert _format_register_value("schedule_summer_mon_1", 0x0615) == "06:15"
+
+
+async def test_format_register_value_setting():
+    """Formatted setting registers should show percent and temperature."""
+    assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
 
 
 async def test_scan_excludes_unavailable_temperature():
@@ -661,8 +685,7 @@ async def test_load_registers_missing_range_warning(tmp_path, caplog):
 async def test_load_registers_sanitize_range_values(tmp_path):
     """Ensure Min/Max values are sanitized before conversion."""
     csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n"
-        "04,1,reg_a,0 # comment,10abc\n"
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0 # comment,10abc\n"
     )
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -688,10 +711,7 @@ async def test_load_registers_sanitize_range_values(tmp_path):
 
 async def test_load_registers_invalid_range_logs(tmp_path, caplog):
     """Warn when Min/Max cannot be parsed even after sanitization."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n"
-        "04,1,reg_a,abc,#comment\n"
-    )
+    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,abc,#comment\n"
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)
