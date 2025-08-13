@@ -378,9 +378,16 @@ class ThesslaGreenDeviceScanner:
         return None
 
     def _log_invalid_value(self, register_name: str, value: int) -> None:
-        """Log invalid register value once per scan session."""
+        """Log invalid register value once per scan session.
+
+        When ``verbose_invalid_values`` is ``False`` the first invalid value is
+        logged at ``DEBUG`` level and subsequent ones are suppressed. If the
+        flag is ``True`` the first occurrence is logged at ``INFO`` level and
+        further occurrences are logged at ``DEBUG`` level.
+        """
         if register_name not in self._reported_invalid:
-            _LOGGER.info("Invalid value for %s: %s", register_name, value)
+            level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
+            _LOGGER.log(level, "Invalid value for %s: %s", register_name, value)
             self._reported_invalid.add(register_name)
         elif self.verbose_invalid_values:
             _LOGGER.debug("Invalid value for %s: %s", register_name, value)
