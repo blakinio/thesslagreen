@@ -8,7 +8,6 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "min": 16,
         "max": 26,
         "step": 0.5,
-        "scale": 0.5,
     },
     # Temperature limit registers
     "min_gwc_air_temperature": {
@@ -16,21 +15,18 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "min": -20,
         "max": 50,
         "step": 0.5,
-        "scale": 0.5,
     },
     "max_gwc_air_temperature": {
         "unit": "°C",
         "min": -20,
         "max": 50,
         "step": 0.5,
-        "scale": 0.5,
     },
     "min_bypass_temperature": {
         "unit": "°C",
         "min": 0,
         "max": 40,
         "step": 0.5,
-        "scale": 0.5,
     },
     # Airflow coefficient registers
     "fan_speed_1_coef": {
