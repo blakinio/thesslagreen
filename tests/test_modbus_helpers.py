@@ -4,7 +4,6 @@ import pytest
 
 from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus
 
-
 pytestmark = pytest.mark.asyncio
 
 
@@ -15,7 +14,7 @@ async def test_call_modbus_supports_unit_keyword():
         return address, count, unit
 
     result = await _call_modbus(func, 1, 10, 2)
-    assert result == (10, 2, 1)
+    assert result == (10, 2, 1)  # nosec B101
 
 
 async def test_call_modbus_supports_slave_keyword():
@@ -25,4 +24,14 @@ async def test_call_modbus_supports_slave_keyword():
         return address, count, slave
 
     result = await _call_modbus(func, 1, 20, 3)
-    assert result == (20, 3, 1)
+    assert result == (20, 3, 1)  # nosec B101
+
+
+async def test_call_modbus_supports_no_slave_or_unit():
+    """Functions expecting neither keyword should be handled."""
+
+    async def func(address, *, count):
+        return address, count
+
+    result = await _call_modbus(func, 1, 30, 4)
+    assert result == (30, 4)  # nosec B101
