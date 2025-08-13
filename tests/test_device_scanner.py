@@ -231,8 +231,15 @@ async def test_load_registers_duplicate_warning(tmp_path, caplog):
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)
 
-    with patch(
-        "custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch("custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
     ):
         with caplog.at_level(logging.WARNING):
             await ThesslaGreenDeviceScanner.create("host", 502, 10)
@@ -247,12 +254,71 @@ async def test_load_registers_duplicate_names(tmp_path):
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)
 
-    with patch(
-        "custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch("custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
     assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
+
+
+async def test_load_registers_missing_range_warning(tmp_path, caplog):
+    """Warn when Min/Max range is incomplete."""
+    csv_content = (
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0,\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_a": 1},
+        ),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+        caplog.at_level(logging.WARNING),
+    ):
+        await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    assert any("Incomplete range" in record.message for record in caplog.records)
+
+
+async def test_load_registers_missing_required_register(tmp_path):
+    """Fail fast when a required register is absent from CSV."""
+    csv_content = "Function_Code,Address_DEC,Register_Name\n"
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_a": 1},
+        ),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+    ):
+        with pytest.raises(ValueError, match="reg_a"):
+            await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
 
 async def test_analyze_capabilities():
