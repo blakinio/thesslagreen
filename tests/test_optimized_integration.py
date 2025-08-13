@@ -1,7 +1,7 @@
 """Comprehensive test suite for ThesslaGreen Modbus integration - OPTIMIZED VERSION."""
 
-import logging
 import asyncio
+import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -457,8 +457,8 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
         assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
 
-        # Invalid temperature sensor value
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+        # Missing temperature sensor value should still mark register present
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
         # Invalid air flow value
         assert scanner._is_valid_register_value("supply_air_flow", 65535) is False

@@ -266,6 +266,12 @@ class ThesslaGreenDeviceScanner:
                 break
             if attempt < self.retry:
                 await asyncio.sleep(0.5)
+        _LOGGER.warning(
+            "Failed to read input registers 0x%04X-0x%04X after %d attempts",
+            address,
+            address + count - 1,
+            self.retry,
+        )
         return None
 
     async def _read_holding(
@@ -397,8 +403,8 @@ class ThesslaGreenDeviceScanner:
         # Temperature sensors use a sentinel value to indicate no sensor
         if "temperature" in name:
             if value == SENSOR_UNAVAILABLE:
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
-                return False
+                _LOGGER.debug("Sensor unavailable for %s", register_name)
+                return True
             return True
 
         # Air flow sensors use the same sentinel for no sensor
@@ -593,6 +599,26 @@ class ThesslaGreenDeviceScanner:
                 for start, count in self._group_registers_for_batch_read(addresses):
                     values = await read_fn(client, start, count)
                     if values is None:
+                        _LOGGER.debug(
+                            "Batch read failed for %s at 0x%04X-0x%04X, attempting single reads",
+                            reg_type,
+                            start,
+                            start + count - 1,
+                        )
+                        for addr in range(start, start + count):
+                            single = await read_fn(client, addr, 1)
+                            if single is None:
+                                _LOGGER.debug("Failed to read %s register 0x%04X", reg_type, addr)
+                                continue
+                            value = single[0]
+                            name = addr_to_name.get(addr)
+                            if not name:
+                                continue
+                            if reg_type in ("input_registers", "holding_registers"):
+                                if self._is_valid_register_value(name, value):
+                                    self.available_registers[reg_type].add(name)
+                            else:
+                                self.available_registers[reg_type].add(name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
@@ -624,6 +650,26 @@ class ThesslaGreenDeviceScanner:
                 for start, count in self._group_registers_for_batch_read(addresses):
                     values = await read_fn(client, start, count)
                     if values is None:
+                        _LOGGER.debug(
+                            "Batch read failed for %s at 0x%04X-0x%04X, attempting single reads",
+                            reg_type,
+                            start,
+                            start + count - 1,
+                        )
+                        for addr in range(start, start + count):
+                            single = await read_fn(client, addr, 1)
+                            if single is None:
+                                _LOGGER.debug("Failed to read %s register 0x%04X", reg_type, addr)
+                                continue
+                            value = single[0]
+                            reg_name = addr_to_name.get(addr)
+                            if not reg_name:
+                                continue
+                            if reg_type in ("input_registers", "holding_registers"):
+                                if self._is_valid_register_value(reg_name, value):
+                                    self.available_registers[reg_type].add(reg_name)
+                            else:
+                                self.available_registers[reg_type].add(reg_name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
@@ -648,10 +694,7 @@ class ThesslaGreenDeviceScanner:
                     1
                     for v in caps.as_dict().values()
                     if (isinstance(v, bool) and v)
-                    or (
-                        bool(v)
-                        and not isinstance(v, (set, int, bool))
-                    )
+                    or (bool(v) and not isinstance(v, (set, int, bool)))
                 ),
             )
 
@@ -694,10 +737,7 @@ class ThesslaGreenDeviceScanner:
                     1
                     for v in caps.as_dict().values()
                     if (isinstance(v, bool) and v)
-                    or (
-                        bool(v)
-                        and not isinstance(v, (set, int, bool))
-                    )
+                    or (bool(v) and not isinstance(v, (set, int, bool)))
                 ),
             )
 

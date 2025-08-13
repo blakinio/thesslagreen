@@ -188,6 +188,50 @@ async def test_scan_blocks_propagated():
     assert result["scan_blocks"] == expected_blocks
 
 
+async def test_scan_handles_partial_input_and_missing_temperature():
+    """Ensure scan continues on partial read and records missing temperature sensors."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.50", 502, 10)
+
+    async def fake_read_input(client, address, count):
+        if count > 1:
+            return None
+        if address == INPUT_REGISTERS["outside_temperature"]:
+            return [SENSOR_UNAVAILABLE]
+        return [1]
+
+    async def fake_read_holding(client, address, count):
+        return [1] * count
+
+    async def fake_read_coil(client, address, count):
+        return [False] * count
+
+    async def fake_read_discrete(client, address, count):
+        return [False] * count
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
+
+        orig_valid = scanner._is_valid_register_value
+
+        def fake_is_valid(name, value):
+            if "temperature" in name:
+                return orig_valid(name, value)
+            return True
+
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+            patch.object(scanner, "_is_valid_register_value", side_effect=fake_is_valid),
+        ):
+            result = await scanner.scan_device()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
+
+
 async def test_is_valid_register_value():
     """Test register value validation."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
@@ -196,8 +240,8 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-    # Invalid temperature sensor value
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+    # Missing temperature sensor value should still mark register present
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
