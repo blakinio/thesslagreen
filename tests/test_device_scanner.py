@@ -737,3 +737,34 @@ async def test_close_terminates_client(async_close):
         mock_client.close.assert_called_once()
 
     assert scanner._client is None
+
+
+async def test_log_invalid_value_debug_when_not_verbose(caplog):
+    """Invalid values log at DEBUG level when not verbose."""
+    scanner = ThesslaGreenDeviceScanner("host", 502)
+
+    caplog.set_level(logging.DEBUG)
+    scanner._log_invalid_value("test_register", 1)
+
+    assert caplog.records[0].levelno == logging.DEBUG
+    assert "Invalid value for test_register: 1" in caplog.text
+
+    caplog.clear()
+    scanner._log_invalid_value("test_register", 1)
+
+    assert not caplog.records
+
+
+async def test_log_invalid_value_info_then_debug_when_verbose(caplog):
+    """First invalid value logs INFO when verbose, then DEBUG."""
+    scanner = ThesslaGreenDeviceScanner("host", 502, verbose_invalid_values=True)
+
+    caplog.set_level(logging.DEBUG)
+    scanner._log_invalid_value("test_register", 1)
+
+    assert caplog.records[0].levelno == logging.INFO
+
+    caplog.clear()
+    scanner._log_invalid_value("test_register", 1)
+
+    assert caplog.records[0].levelno == logging.DEBUG
