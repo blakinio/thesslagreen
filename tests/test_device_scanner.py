@@ -11,8 +11,8 @@ from custom_components.thessla_green_modbus.const import (
     SENSOR_UNAVAILABLE,
 )
 from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 pytestmark = pytest.mark.asyncio
 
@@ -211,6 +211,78 @@ async def test_scan_blocks_propagated():
     assert result["scan_blocks"] == expected_blocks
 
 
+async def test_scan_device_batch_fallback():
+    """Batch read failures should fall back to single-register reads."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with (
+        patch.object(
+            ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"ir1": 0x10, "ir2": 0x11},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS",
+            {"hr1": 0x20, "hr2": 0x21},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS",
+            {"cr1": 0x00, "cr2": 0x01},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {"dr1": 0x00, "dr2": 0x01},
+        ),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+
+        async def fake_read_input(client, address, count):
+            if address == 0 and count == 5:
+                return [4, 85, 0, 0, 0]
+            if count > 1:
+                return None
+            return [0]
+
+        async def fake_read_holding(client, address, count):
+            if count > 1:
+                return None
+            return [0]
+
+        async def fake_read_coil(client, address, count):
+            if count > 1:
+                return None
+            return [False]
+
+        async def fake_read_discrete(client, address, count):
+            if count > 1:
+                return None
+            return [False]
+
+        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.connect.return_value = True
+            mock_client_class.return_value = mock_client
+
+            with (
+                patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)) as ri,
+                patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+                patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+                patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+            ):
+                result = await scanner.scan_device()
+
+    assert set(result["available_registers"]["input_registers"]) == {"ir1", "ir2"}
+    assert set(result["available_registers"]["holding_registers"]) == {"hr1", "hr2"}
+    assert set(result["available_registers"]["coil_registers"]) == {"cr1", "cr2"}
+    assert set(result["available_registers"]["discrete_inputs"]) == {"dr1", "dr2"}
+
+    # Ensure batch read was attempted and individual fallback reads occurred
+    batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
+    assert any(call.args[2] == 2 for call in batch_calls)
+    assert any(call.args[2] == 1 for call in batch_calls)
+
+
 async def test_is_valid_register_value():
     """Test register value validation."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
@@ -299,9 +371,7 @@ async def test_load_registers_duplicate_names(tmp_path):
 
 async def test_load_registers_missing_range_warning(tmp_path, caplog):
     """Warn when Min/Max range is incomplete."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0,\n"
-    )
+    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0,\n"
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)

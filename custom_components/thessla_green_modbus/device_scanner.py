@@ -201,9 +201,8 @@ class ThesslaGreenDeviceScanner:
                         except ValueError:
                             max_val = None
                         # Warn if a range is expected but Min/Max is missing
-                        if (
-                            (min_raw not in (None, "") or max_raw not in (None, ""))
-                            and (min_val is None or max_val is None)
+                        if (min_raw not in (None, "") or max_raw not in (None, "")) and (
+                            min_val is None or max_val is None
                         ):
                             _LOGGER.warning(
                                 "Incomplete range for %s: Min=%s Max=%s",
@@ -592,6 +591,20 @@ class ThesslaGreenDeviceScanner:
                 for start, count in self._group_registers_for_batch_read(addresses):
                     values = await read_fn(client, start, count)
                     if values is None:
+                        for addr in range(start, start + count):
+                            single = await read_fn(client, addr, 1)
+                            if single is None:
+                                _LOGGER.debug("Failed to read %s register 0x%04X", reg_type, addr)
+                                continue
+                            name = addr_to_name.get(addr)
+                            if not name:
+                                continue
+                            value = single[0]
+                            if reg_type in ("input_registers", "holding_registers"):
+                                if self._is_valid_register_value(name, value):
+                                    self.available_registers[reg_type].add(name)
+                            else:
+                                self.available_registers[reg_type].add(name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
@@ -623,6 +636,20 @@ class ThesslaGreenDeviceScanner:
                 for start, count in self._group_registers_for_batch_read(addresses):
                     values = await read_fn(client, start, count)
                     if values is None:
+                        for addr in range(start, start + count):
+                            single = await read_fn(client, addr, 1)
+                            if single is None:
+                                _LOGGER.debug("Failed to read %s register 0x%04X", reg_type, addr)
+                                continue
+                            reg_name = addr_to_name.get(addr)
+                            if not reg_name:
+                                continue
+                            value = single[0]
+                            if reg_type in ("input_registers", "holding_registers"):
+                                if self._is_valid_register_value(reg_name, value):
+                                    self.available_registers[reg_type].add(reg_name)
+                            else:
+                                self.available_registers[reg_type].add(reg_name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
