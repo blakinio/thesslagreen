@@ -620,6 +620,9 @@ class ThesslaGreenDeviceScanner:
         if name.startswith(TIME_REGISTER_PREFIXES):
             decoded = _decode_register_time(value)
             if decoded is None:
+                self._log_invalid_value(register_name, value)
+                return False
+            value = decoded
 
         # Validate registers storing schedule times
         if name.startswith(BCD_TIME_PREFIXES):
