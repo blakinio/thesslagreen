@@ -103,6 +103,51 @@ async def test_form_user_success():
     }
 
 
+@pytest.mark.parametrize(
+    "registers,expected_note",
+    [
+        ("holding", "auto_detected_note_success"),
+        (None, "auto_detected_note_limited"),
+    ],
+)
+async def test_async_step_confirm_auto_detected_note(registers, expected_note):
+    """Test confirm step auto detected note for different register counts."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "My Device",
+    }
+    flow._device_info = {
+        "device_name": "ThesslaGreen AirPack",
+        "firmware": "1.0",
+        "serial_number": "123",
+    }
+    available_registers = {registers: [1]} if registers else {}
+    flow._scan_result = {"available_registers": available_registers, "capabilities": {}}
+
+    translations = {
+        "auto_detected_note_success": "Auto-detection successful!",
+        "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value=translations),
+    ):
+        result = await flow.async_step_confirm()
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "confirm"
+    assert (
+        result["description_placeholders"]["auto_detected_note"]
+        == translations[expected_note]
+    )
+
+
 async def test_unique_id_sanitized():
     """Ensure unique ID replaces colons in host with hyphens."""
     flow = ConfigFlow()
