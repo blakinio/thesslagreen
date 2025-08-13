@@ -178,18 +178,25 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
 
+        language = getattr(getattr(self.hass, "config", None), "language", "en")
+        translations: dict[str, str] = {}
+        try:
+            translations = await translation.async_get_translations(
+                self.hass, language, "component", [DOMAIN]
+            )
+        except Exception as err:  # pragma: no cover - defensive
+            _LOGGER.debug("Translation load failed: %s", err)
+
         if register_count > 0:
-            auto_detected_note = await translation.async_translate(
-                self.hass, f"{DOMAIN}.auto_detected_note_success"
+            auto_detected_note = translations.get(
+                f"component.{DOMAIN}.auto_detected_note_success",
+                "Auto-detection successful!",
             )
-            if auto_detected_note is None:
-                auto_detected_note = "Auto-detection successful!"
         else:
-            auto_detected_note = await translation.async_translate(
-                self.hass, f"{DOMAIN}.auto_detected_note_limited"
+            auto_detected_note = translations.get(
+                f"component.{DOMAIN}.auto_detected_note_limited",
+                "Limited auto-detection - some registers may be missing.",
             )
-            if auto_detected_note is None:
-                auto_detected_note = "Limited auto-detection - some registers may be missing."
 
         description_placeholders = {
             "host": self._data[CONF_HOST],
