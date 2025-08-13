@@ -178,8 +178,9 @@ class ThesslaGreenDeviceScanner:
             response = await _call_modbus(
                 client.read_input_registers, self.slave_id, address, count=count
             )
-            if not response.isError():
-                return response.registers
+            if response is None or response.isError():
+                return None
+            return response.registers
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read input 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
@@ -194,8 +195,9 @@ class ThesslaGreenDeviceScanner:
             response = await _call_modbus(
                 client.read_holding_registers, self.slave_id, address, count=count
             )
-            if not response.isError():
-                return response.registers
+            if response is None or response.isError():
+                return None
+            return response.registers
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read holding 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
@@ -210,8 +212,9 @@ class ThesslaGreenDeviceScanner:
         """Read coil registers."""
         try:
             response = await _call_modbus(client.read_coils, self.slave_id, address, count=count)
-            if not response.isError():
-                return response.bits[:count]
+            if response is None or response.isError():
+                return None
+            return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read coil 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
@@ -226,8 +229,9 @@ class ThesslaGreenDeviceScanner:
             response = await _call_modbus(
                 client.read_discrete_inputs, self.slave_id, address, count=count
             )
-            if not response.isError():
-                return response.bits[:count]
+            if response is None or response.isError():
+                return None
+            return response.bits[:count]
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug("Failed to read discrete 0x%04X: %s", address, exc, exc_info=True)
         except (OSError, asyncio.TimeoutError) as exc:
