@@ -358,13 +358,13 @@
         "name": "Wymagana temperatura"
       },
       "min_gwc_air_temperature": {
-        "name": "Min. temperatura GWC"
+        "name": "Minimalna temperatura GWC"
       },
       "max_gwc_air_temperature": {
-        "name": "Maks. temperatura GWC"
+        "name": "Maksymalna temperatura GWC"
       },
       "min_bypass_temperature": {
-        "name": "Min. temperatura bypassu"
+        "name": "Minimalna temperatura bypassu"
       },
       "fan_speed_1_coef": {
         "name": "Współczynnik prędkości wentylatora 1"
@@ -598,11 +598,11 @@
           "description": "Przesunięcie krzywej grzewczej"
         },
         "max_supply_temp": {
-          "name": "Maks. temperatura nawiewu",
+          "name": "Maksymalna temperatura nawiewu",
           "description": "Maksymalna temperatura nawiewu"
         },
         "min_supply_temp": {
-          "name": "Min. temperatura nawiewu",
+          "name": "Minimalna temperatura nawiewu",
           "description": "Minimalna temperatura nawiewu"
         }
       }
