@@ -44,7 +44,10 @@ for domain in PLATFORM_DOMAINS:
     if hasattr(Platform, domain.upper()):
         PLATFORMS.append(getattr(Platform, domain.upper()))
     else:
-        PLATFORMS.append(Platform(domain))
+        try:
+            PLATFORMS.append(Platform(domain))
+        except ValueError:
+            _LOGGER.warning("Skipping unsupported platform: %s", domain)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
