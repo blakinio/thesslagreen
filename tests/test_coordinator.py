@@ -134,7 +134,9 @@ for name, module in modules.items():
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # ✅ FIXED: Import correct coordinator class name
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+    ThesslaGreenModbusCoordinator,
+)
 
 
 @pytest.fixture
