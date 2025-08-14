@@ -186,6 +186,37 @@ async def test_read_input_skips_cached_failures():
         call_mock2.assert_not_called()
 
 
+async def test_read_input_skips_range_on_exception_response(caplog):
+    """Block failures with exception codes skip entire register range."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    error_response.exception_code = 2
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(return_value=error_response),
+    ) as call_mock:
+        result = await scanner._read_input(mock_client, 0x0100, 3)
+
+    assert result is None
+    assert call_mock.await_count == 1
+    assert set(range(0x0100, 0x0103)) <= scanner._failed_input
+    assert "Skipping unsupported input registers 0x0100-0x0102" in caplog.text
+
+    # Further reads within the range should be skipped without new calls
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(),
+    ) as call_mock2:
+        result = await scanner._read_input(mock_client, 0x0101, 1)
+        assert result is None
+        call_mock2.assert_not_called()
+
+
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
@@ -870,6 +901,10 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
     assert scanner._register_ranges["reg_a"] == (0, None)
     assert any("non-numeric Max" in record.message for record in caplog.records)
 
+
+async def test_load_registers_hex_range(tmp_path, caplog):
+    """Parse hexadecimal Min/Max values without warnings."""
+    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
 
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
 async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, caplog):
