@@ -11,6 +11,8 @@ from custom_components.thessla_green_modbus.const import (
     SENSOR_UNAVAILABLE,
 )
 from custom_components.thessla_green_modbus.device_scanner import (
+    DeviceCapabilities,
+    DeviceInfo,
     ThesslaGreenDeviceScanner,
     _decode_bcd_time,
     _decode_register_time,
@@ -186,9 +188,7 @@ async def test_read_input_skips_cached_failures():
 
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=2
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
     scanner._failed_input.update({0x0001, 0x0002, 0x0003})
 
@@ -202,9 +202,7 @@ async def test_read_input_logs_once_per_skipped_range(caplog):
         for record in caplog.records
         if "Skipping cached failed input registers" in record.message
     ]
-    assert messages == [
-        "Skipping cached failed input registers 0x0001-0x0003"
-    ]
+    assert messages == ["Skipping cached failed input registers 0x0001-0x0003"]
 
 
 async def test_scan_device_success_dynamic():
@@ -336,6 +334,7 @@ async def test_scan_device_success_static(mock_modbus_response):
                 assert "available_registers" in result
                 assert "device_info" in result
                 assert "capabilities" in result
+                assert "capabilities" in result["device_info"]
                 assert result["device_info"]["firmware"] == "4.85.0"
                 assert "outside_temperature" in result["available_registers"]["input_registers"]
                 assert "mode" in result["available_registers"]["holding_registers"]
@@ -681,10 +680,7 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
     assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
     # BCD encoded times should also be recognized as valid
-    assert (
-        scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200)
-        is True
-    )
+    assert scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200) is True
 
 
 async def test_decode_register_time():
@@ -875,11 +871,8 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
     assert any("non-numeric Max" in record.message for record in caplog.records)
 
 
-async def test_load_registers_hex_range(tmp_path, caplog):
-    """Parse hexadecimal Min/Max values without warnings."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
-async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
+async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, caplog):
     """Support decimal and hexadecimal ranges."""
     csv_content = (
         "Function_Code,Address_DEC,Register_Name,Min,Max\n" f"04,1,reg_a,{min_raw},{max_raw}\n"
@@ -1010,6 +1003,34 @@ async def test_analyze_capabilities_flag_presence():
     assert capabilities.sensor_outside_temperature is False
 
 
+async def test_capability_rules_detect_heating_and_bypass():
+    """Capability rules infer heating and bypass systems from registers."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+    scanner.available_registers = {
+        "input_registers": {"heater_active"},
+        "holding_registers": {"bypass_position"},
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+
+    capabilities = scanner._analyze_capabilities()
+
+    assert capabilities.heating_system is True
+    assert capabilities.bypass_system is True
+
+
+async def test_scan_device_includes_capabilities_in_device_info():
+    """Detected capabilities are exposed on device info returned by scanner."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    info = DeviceInfo(model="m", firmware="f", serial_number="s", capabilities=["heating_system"])
+    caps = DeviceCapabilities(heating_system=True)
+
+    with patch.object(scanner, "scan", AsyncMock(return_value=(info, caps, {}))):
+        result = await scanner.scan_device()
+
+    assert result["device_info"]["capabilities"] == ["heating_system"]
+
+
 @pytest.mark.parametrize("async_close", [True, False])
 async def test_close_terminates_client(async_close):
     """Ensure close() handles both async and sync client close methods."""
@@ -1036,9 +1057,7 @@ async def test_log_invalid_value_debug_when_not_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert (
-        "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
-    )
+    assert "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
