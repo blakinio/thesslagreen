@@ -16,6 +16,7 @@ from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOExc
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
+from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
     COIL_REGISTERS,
     DEFAULT_SLAVE_ID,
@@ -135,6 +136,7 @@ class DeviceInfo:
     model: str = "Unknown AirPack"
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
+    capabilities: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -577,9 +579,7 @@ class ThesslaGreenDeviceScanner:
                 try:
                     await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
                 except asyncio.CancelledError:
-                    _LOGGER.debug(
-                        "Sleep cancelled while retrying holding 0x%04X", address
-                    )
+                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
                     raise
 
         return None
@@ -794,32 +794,16 @@ class ThesslaGreenDeviceScanner:
         )
         caps.constant_flow = bool(cf_indicators.intersection(cf_registers))
 
-        # Systems detection
-        caps.gwc_system = any(
-            "gwc" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
-        caps.bypass_system = any(
-            "bypass" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
+        # Generic capability detection based on register name patterns
+        all_regs_lower = {
+            reg.lower() for registers in self.available_registers.values() for reg in registers
+        }
+        for attr, keywords in CAPABILITY_PATTERNS.items():
+            if any(any(key in reg for key in keywords) for reg in all_regs_lower):
+                setattr(caps, attr, True)
 
         # Expansion module
         caps.expansion_module = "expansion" in self.available_registers["discrete_inputs"]
-
-        # Heating/Cooling systems
-        caps.heating_system = any(
-            "heating" in reg.lower() or "heater" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
-        caps.cooling_system = any(
-            "cooling" in reg.lower() or "cooler" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
 
         # Temperature sensors
         temp_sensors = [
@@ -1015,6 +999,9 @@ class ThesslaGreenDeviceScanner:
 
             # Analyze capabilities once all register scans are complete
             caps = self._analyze_capabilities()
+            info.capabilities = [
+                name for name, value in caps.as_dict().items() if isinstance(value, bool) and value
+            ]
 
             # Copy the discovered register address blocks so they can be returned
             register_blocks = present_blocks.copy()
@@ -1049,6 +1036,7 @@ class ThesslaGreenDeviceScanner:
                     "model": info.model,
                     "firmware": info.firmware,
                     "serial_number": info.serial_number,
+                    "capabilities": info.capabilities,
                 },
                 "capabilities": caps.as_dict(),
                 "available_registers": self.available_registers,
