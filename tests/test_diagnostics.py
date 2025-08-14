@@ -1,3 +1,5 @@
+import copy
+
 from custom_components.thessla_green_modbus.diagnostics import _redact_sensitive_data
 
 
@@ -21,3 +23,17 @@ def test_redact_ipv6_connection():
     redacted = _redact_sensitive_data(data)
 
     assert redacted["connection"]["host"] == ("2001:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:7334")
+
+
+def test_original_diagnostics_unchanged():
+    """Ensure the input diagnostics dict is not modified by redaction."""
+    data = {
+        "connection": {"host": "192.168.0.17"},
+        "device_info": {"serial_number": "123456"},
+    }
+
+    original = copy.deepcopy(data)
+
+    _redact_sensitive_data(data)
+
+    assert data == original
