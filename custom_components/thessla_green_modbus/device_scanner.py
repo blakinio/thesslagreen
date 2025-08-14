@@ -480,10 +480,7 @@ class ThesslaGreenDeviceScanner:
             end,
             self.retry,
         )
-        if count == 1:
-            self._failed_input.add(address)
-            _LOGGER.debug("Caching failed input register 0x%04X", address)
-        else:
+        if count > 1:
             _LOGGER.debug(
                 "Failed block read 0x%04X-0x%04X, probing individual registers",
                 start,
