@@ -231,6 +231,9 @@
       "dp_duct_filter_overflow": {
         "name": "Duct Filter Overflow"
       },
+      "hood_switch": {
+        "name": "Hood Switch"
+      },
       "airing_sensor": {
         "name": "Airing Sensor"
       },
