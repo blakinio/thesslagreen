@@ -300,9 +300,9 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
                 if "fan" in base_icon:
                     return base_icon.replace("fan", "fan-off")
                 elif "heating" in base_icon:
-                    return "mdi:heating-coil-off"
+                    return "mdi:radiator-off"
                 elif "pipe" in base_icon:
-                    return "mdi:pipe-disconnected"
+                    return "mdi:pipe"
 
         # Dynamic icon for alarms and errors
         if "alarm" in self._register_name or "error" in self._register_name:
