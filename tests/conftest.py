@@ -73,6 +73,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             self.name = name
             self.update_interval = update_interval
 
+        async def async_shutdown(self) -> None:  # pragma: no cover - stub
+            return None
+
     class UpdateFailed(Exception):
         pass
 

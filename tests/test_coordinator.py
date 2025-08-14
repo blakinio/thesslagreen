@@ -81,6 +81,9 @@ class DataUpdateCoordinator:
     async def async_request_refresh(self):
         pass
 
+    async def async_shutdown(self):  # pragma: no cover - stub
+        pass
+
     @classmethod
     def __class_getitem__(cls, item):
         return cls

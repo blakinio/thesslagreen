@@ -6,9 +6,14 @@ import asyncio
 import inspect
 import logging
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
 
 from homeassistant.util import dt as dt_util
+
+try:  # pragma: no cover - used in runtime environments only
+    from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
+    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"  # type: ignore[assignment]
 
 from .modbus_exceptions import ConnectionException, ModbusException
 
@@ -129,6 +134,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self._connection_lock = asyncio.Lock()
         self._last_successful_read = dt_util.utcnow()
 
+        # Stop listener for Home Assistant shutdown
+        self._stop_listener: Optional[Callable[[], None]] = None
+
         # Device info and capabilities
         self.device_info: Dict[str, Any] = {}
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
@@ -229,6 +237,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         # Test initial connection
         await self._test_connection()
+
+        # Ensure we clean up tasks when Home Assistant stops
+        if self._stop_listener is None:
+            self._stop_listener = self.hass.bus.async_listen_once(
+                EVENT_HOMEASSISTANT_STOP, self._async_handle_stop
+            )
 
         return True
 
@@ -885,9 +899,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.client = None
         _LOGGER.debug("Disconnected from Modbus device")
 
+    async def _async_handle_stop(self, _event: Any) -> None:
+        """Handle Home Assistant stop to cancel tasks."""
+        await self.async_shutdown()
+
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and disconnect."""
         _LOGGER.debug("Shutting down ThesslaGreen coordinator")
+        if self._stop_listener is not None:
+            self._stop_listener()
+            self._stop_listener = None
+        shutdown = getattr(super(), "async_shutdown", None)
+        if shutdown is not None:
+            await shutdown()
         await self._disconnect()
 
     @property
