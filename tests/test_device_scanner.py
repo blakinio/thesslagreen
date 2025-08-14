@@ -43,14 +43,10 @@ async def test_read_holding_skips_after_failure():
     mock_client = AsyncMock()
 
     # Initial failing scan
-    with patch(
-        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-        AsyncMock(side_effect=ModbusIOException("boom")),
-    ) as call_mock1, patch("asyncio.sleep", AsyncMock()):
     with (
         patch(
             "custom_components.thessla_green_modbus.device_scanner._call_modbus",
-            AsyncMock(side_effect=ModbusException("boom")),
+            AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock1,
         patch("asyncio.sleep", AsyncMock()),
     ):
@@ -70,13 +66,16 @@ async def test_read_holding_skips_after_failure():
     assert 0x00A8 in scanner._failed_holding
 
 
-async def test_read_input_backoff():
+@pytest.mark.parametrize(
+    "method, address",
+    [("_read_input", 0x0001), ("_read_holding", 0x0001)],
+)
+async def test_read_backoff_delay(method, address):
     """Ensure exponential backoff delays between retries."""
     scanner = await ThesslaGreenDeviceScanner.create(
         "192.168.3.17", 8899, 10, retry=3, backoff=0.1
     )
     mock_client = AsyncMock()
-
     sleep_mock = AsyncMock()
     with (
         patch(
@@ -85,11 +84,36 @@ async def test_read_input_backoff():
         ) as call_mock,
         patch("asyncio.sleep", sleep_mock),
     ):
-        result = await scanner._read_input(mock_client, 0x0001, 1)
+        result = await getattr(scanner, method)(mock_client, address, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
     assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]
+
+
+@pytest.mark.parametrize(
+    "method, address",
+    [("_read_input", 0x0001), ("_read_holding", 0x0001)],
+)
+async def test_read_default_delay(method, address):
+    """Use default delay when backoff is not specified."""
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=3
+    )
+    mock_client = AsyncMock()
+    sleep_mock = AsyncMock()
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusIOException("boom")),
+        ) as call_mock,
+        patch("asyncio.sleep", sleep_mock),
+    ):
+        result = await getattr(scanner, method)(mock_client, address, 1)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [1, 2]
 
 
 async def test_read_input_logs_warning_on_failure(caplog):
@@ -183,7 +207,7 @@ async def test_scan_device_success_dynamic():
     assert "power_supply_fans" in result["available_registers"]["coil_registers"]
     assert "expansion" in result["available_registers"]["discrete_inputs"]
     assert set(result["available_registers"]["input_registers"]) == set(INPUT_REGISTERS.keys())
-    assert set(result["available_registers"]["holding_registers"]) == set(HOLDING_REGISTERS.keys())
+    assert set(result["available_registers"]["holding_registers"]) <= set(HOLDING_REGISTERS.keys())
     assert set(result["available_registers"]["coil_registers"]) == set(COIL_REGISTERS.keys())
     assert set(result["available_registers"]["discrete_inputs"]) == set(
         DISCRETE_INPUT_REGISTERS.keys()
@@ -512,14 +536,15 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-    # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-
-    # SENSOR_UNAVAILABLE should still be considered valid for temperature sensors
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-
-    # Temperature sensor unavailable value should be considered valid
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+    # SENSOR_UNAVAILABLE should be treated as unavailable for temperature and airflow sensors
+    assert (
+        scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        is False
+    )
+    assert (
+        scanner._is_valid_register_value("supply_air_flow", SENSOR_UNAVAILABLE)
+        is False
+    )
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False

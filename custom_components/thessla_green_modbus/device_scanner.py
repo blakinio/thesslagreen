@@ -440,10 +440,7 @@ class ThesslaGreenDeviceScanner:
                 break
 
             if attempt < self.retry:
-                await asyncio.sleep(2 ** (attempt - 1))
-
-            if self.backoff and attempt < self.retry:
-                await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
+                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
 
         _LOGGER.warning(
             "Failed to read input registers 0x%04X-0x%04X after %d retries",
@@ -521,10 +518,8 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if self.backoff and attempt < self.retry:
-                await asyncio.sleep(self.backoff * (2 ** (attempt - 1)))
             if attempt < self.retry:
-                await asyncio.sleep(2 ** (attempt - 1))
+                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
 
         return None
 
