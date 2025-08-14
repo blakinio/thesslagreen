@@ -461,6 +461,8 @@ class ThesslaGreenDeviceScanner:
         start = address
         end = address + count - 1
 
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
         if not skip_cache and any(
             reg in self._failed_input for reg in range(start, end + 1)
         ):
