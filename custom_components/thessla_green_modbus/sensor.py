@@ -197,6 +197,20 @@ SENSOR_DEFINITIONS = {
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
     },
+    "air_flow_rate_manual": {
+        "translation_key": "air_flow_rate_manual",
+        "icon": "mdi:fan",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "holding_registers",
+    },
+    "air_flow_rate_temporary_2": {
+        "translation_key": "air_flow_rate_temporary_2",
+        "icon": "mdi:fan-clock",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "holding_registers",
+    },
     "bypass_off": {
         "translation_key": "bypass_off",
         "icon": "mdi:thermometer-off",

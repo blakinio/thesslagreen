@@ -106,6 +106,12 @@
       "nominal_exhaust_air_flow": {
         "name": "Nominal Exhaust Airflow"
       },
+      "air_flow_rate_manual": {
+        "name": "Manual Airflow Rate"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Temporary Airflow Rate 2"
+      },
       "bypass_off": {
         "name": "Bypass Off Temperature"
       },
