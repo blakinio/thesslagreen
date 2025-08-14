@@ -716,16 +716,16 @@ async def test_is_valid_register_value():
 
 async def test_decode_register_time():
     """Verify time decoding for HH:MM byte-encoded values."""
-    assert _decode_register_time(0x081E) == 830
-    assert _decode_register_time(0x1234) == 1852
+    assert _decode_register_time(0x081E) == 510
+    assert _decode_register_time(0x1234) == 1132
     assert _decode_register_time(0x2460) is None
     assert _decode_register_time(0x0960) is None
 
 
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
-    assert _decode_bcd_time(0x1234) == 1234
-    assert _decode_bcd_time(0x0800) == 800
+    assert _decode_bcd_time(0x1234) == 754
+    assert _decode_bcd_time(0x0800) == 480
     assert _decode_bcd_time(0x2460) is None
     assert _decode_bcd_time(2400) is None
 

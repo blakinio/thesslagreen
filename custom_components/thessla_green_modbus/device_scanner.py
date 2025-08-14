@@ -40,16 +40,23 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
 
 
 # Registers storing times encoded as HH:MM bytes
-TIME_REGISTER_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
+TIME_REGISTER_PREFIXES: Tuple[str, ...] = (
+    "schedule_",
+    "airing_",
+    "manual_airing_time_to_start",
+    "pres_check_time",
+    "start_gwc_regen",
+    "stop_gwc_regen",
+)
 # Registers storing times as BCD HHMM values
-BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
+BCD_TIME_PREFIXES: Tuple[str, ...] = TIME_REGISTER_PREFIXES
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
 
 
 def _decode_register_time(value: int) -> Optional[int]:
-    """Decode a 16-bit register with HH:MM byte encoding to ``HHMM``.
+    """Decode HH:MM byte-encoded value to minutes since midnight.
 
     The most significant byte stores the hour and the least significant byte
     stores the minute. ``None`` is returned if the value is negative or if the
@@ -62,25 +69,28 @@ def _decode_register_time(value: int) -> Optional[int]:
     hour = (value >> 8) & 0xFF
     minute = value & 0xFF
     if 0 <= hour <= 23 and 0 <= minute <= 59:
-        return hour * 100 + minute
+        return hour * 60 + minute
 
     return None
 
 
 def _decode_bcd_time(value: int) -> Optional[int]:
-    """Decode BCD or decimal HHMM values to ``HHMM``."""
+    """Decode BCD or decimal HHMM values to minutes since midnight."""
+
+    if value < 0:
+        return None
 
     nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
     if all(n <= 9 for n in nibbles):
         hours = nibbles[0] * 10 + nibbles[1]
         minutes = nibbles[2] * 10 + nibbles[3]
         if hours <= 23 and minutes <= 59:
-            return hours * 100 + minutes
+            return hours * 60 + minutes
 
     hours_dec = value // 100
     minutes_dec = value % 100
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
-        return hours_dec * 100 + minutes_dec
+        return hours_dec * 60 + minutes_dec
     return None
 
 
@@ -111,7 +121,7 @@ def _format_register_value(name: str, value: int) -> int | str:
         decoded = _decode_bcd_time(value)
         if decoded is None:
             return value
-        return f"{decoded // 100:02d}:{decoded % 100:02d}"
+        return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(SETTING_PREFIX):
         decoded = _decode_setting_value(value)
@@ -728,21 +738,12 @@ class ThesslaGreenDeviceScanner:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
-        # Decode schedule/airing time values before validation
+        # Decode time values before validation
         if name.startswith(TIME_REGISTER_PREFIXES):
             decoded = _decode_register_time(value)
-            # Some registers may store time values in BCD/decimal format
             if decoded is None and name.startswith(BCD_TIME_PREFIXES):
                 decoded = _decode_bcd_time(value)
-            if decoded is None:
-                self._log_invalid_value(register_name, value)
-                return False
-            value = decoded
-
-        # Validate registers storing schedule times
-        if name.startswith(BCD_TIME_PREFIXES):
-            if _decode_bcd_time(value) is None:
-
+            if decoded is None or not 0 <= decoded <= 1439:
                 self._log_invalid_value(register_name, value)
                 return False
             return True
