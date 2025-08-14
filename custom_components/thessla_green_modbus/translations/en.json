@@ -348,6 +348,13 @@
           "forced": "Forced"
         }
       },
+      "season_mode": {
+        "name": "Season Mode",
+        "state": {
+          "winter": "Winter",
+          "summer": "Summer"
+        }
+      },
       "filter_change": {
         "name": "Filter Type",
         "state": {
@@ -385,6 +392,24 @@
       },
       "access_level": {
         "name": "Access Level"
+      },
+      "air_flow_rate_manual": {
+        "name": "Manual Air Flow Rate"
+      },
+      "air_flow_rate_temporary_1": {
+        "name": "Temporary Air Flow Rate 1"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Temporary Air Flow Rate 2"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Manual Supply Air Temperature"
+      },
+      "supply_air_temperature_temporary_1": {
+        "name": "Temporary Supply Air Temperature 1"
+      },
+      "supply_air_temperature_temporary_2": {
+        "name": "Temporary Supply Air Temperature 2"
       },
       "schedule_summer_mon_1": {
         "name": "Schedule Summer Mon 1"
