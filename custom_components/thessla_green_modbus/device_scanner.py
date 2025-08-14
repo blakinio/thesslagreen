@@ -173,6 +173,7 @@ class DeviceInfo:
     model: str = "Unknown AirPack"
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
+    firmware_available: bool = True
     capabilities: List[str] = field(default_factory=list)
 
 
@@ -479,6 +480,7 @@ class ThesslaGreenDeviceScanner:
         start = address
         end = address + count - 1
 
+
         for skip_start, skip_end in self._unsupported_input_ranges:
             if skip_start <= start and end <= skip_end:
                 return None
@@ -489,6 +491,7 @@ class ThesslaGreenDeviceScanner:
             first = next(
                 reg for reg in range(start, end + 1) if reg in self._failed_input
             )
+
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
@@ -990,6 +993,51 @@ class ThesslaGreenDeviceScanner:
 
         return caps
 
+    async def _read_firmware_version(
+        self, client: "AsyncModbusTcpClient", info: DeviceInfo
+    ) -> Optional[List[int]]:
+        """Read firmware registers and update ``info`` accordingly."""
+
+        try:
+            response = await _call_modbus(
+                client.read_input_registers, self.slave_id, 0x0000, count=5
+            )
+            if response is None or response.isError():
+                raise ModbusException("No response")
+            fw_data = response.registers
+        except ModbusException:
+            _LOGGER.info("Firmware version unavailable")
+            info.firmware = "Unknown"
+            info.firmware_available = False
+            return None
+        except (ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug("Failed to read firmware version: %s", exc, exc_info=True)
+            info.firmware = "Unknown"
+            info.firmware_available = False
+            return None
+        except asyncio.CancelledError:
+            _LOGGER.debug("Cancelled reading firmware version")
+            raise
+        except OSError as exc:
+            _LOGGER.error("Unexpected error reading firmware version: %s", exc, exc_info=True)
+            info.firmware = "Unknown"
+            info.firmware_available = False
+            return None
+
+        if len(fw_data) >= 5:
+            info.firmware = f"{fw_data[0]}.{fw_data[1]}.{fw_data[4]}"
+        elif len(fw_data) >= 3:
+            info.firmware = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
+        else:
+            _LOGGER.info("Firmware version unavailable")
+            info.firmware = "Unknown"
+            info.firmware_available = False
+            return None
+
+        info.firmware_available = True
+        _LOGGER.debug("Firmware version: %s", info.firmware)
+        return fw_data
+
     async def scan(self) -> Tuple[DeviceInfo, DeviceCapabilities, Dict[str, Tuple[int, int]]]:
         """Scan device and return device info, capabilities and present blocks."""
         from pymodbus.client import AsyncModbusTcpClient
@@ -1017,19 +1065,7 @@ class ThesslaGreenDeviceScanner:
             info = DeviceInfo()
             present_blocks = {}
             # Read firmware version (0x0000, 0x0001, 0x0004)
-            fw_data = await self._read_input(client, 0x0000, 5)
-            if fw_data and len(fw_data) >= 5:
-                fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[4]}"
-            if not fw_data or len(fw_data) < 3:
-                _LOGGER.info(
-                    "Firmware registers unavailable; firmware version could not be determined"
-                )
-                fw_data = None
-                info.firmware = "Unknown"
-            else:
-                fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
-                info.firmware = fw
-                _LOGGER.debug("Firmware version: %s", fw)
+            fw_data = await self._read_firmware_version(client, info)
 
             # Read controller serial number (0x0018-0x001D)
             sn_data = await self._read_input(client, 0x0018, 6)
@@ -1198,6 +1234,7 @@ class ThesslaGreenDeviceScanner:
                     "device_name": f"ThesslaGreen {info.model}",
                     "model": info.model,
                     "firmware": info.firmware,
+                    "firmware_available": info.firmware_available,
                     "serial_number": info.serial_number,
                     "capabilities": info.capabilities,
                 },
