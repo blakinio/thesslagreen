@@ -1030,12 +1030,13 @@ async def test_analyze_capabilities_flag_presence():
         "input_registers": {"constant_flow_active", "outside_temperature"},
         "holding_registers": set(),
         "coil_registers": set(),
-        "discrete_inputs": set(),
+        "discrete_inputs": {"expansion"},
     }
     capabilities = scanner._analyze_capabilities()
 
     assert capabilities.constant_flow is True
     assert capabilities.sensor_outside_temperature is True
+    assert capabilities.expansion_module is True
 
     # Negative case: registers absent
     scanner.available_registers = {
@@ -1048,6 +1049,7 @@ async def test_analyze_capabilities_flag_presence():
 
     assert capabilities.constant_flow is False
     assert capabilities.sensor_outside_temperature is False
+    assert capabilities.expansion_module is False
 
 
 async def test_capability_rules_detect_heating_and_bypass():
