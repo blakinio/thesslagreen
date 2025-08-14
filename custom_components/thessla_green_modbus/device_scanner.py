@@ -595,12 +595,24 @@ class ThesslaGreenDeviceScanner:
         further occurrences are logged at ``DEBUG`` level.
         """
         formatted = _format_register_value(register_name, value)
+        raw = f"0x{value:04X}"
         if register_name not in self._reported_invalid:
             level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
-            _LOGGER.log(level, "Invalid value for %s: %s", register_name, formatted)
+            _LOGGER.log(
+                level,
+                "Invalid value for %s: raw=%s decoded=%s",
+                register_name,
+                raw,
+                formatted,
+            )
             self._reported_invalid.add(register_name)
         elif self.verbose_invalid_values:
-            _LOGGER.debug("Invalid value for %s: %s", register_name, formatted)
+            _LOGGER.debug(
+                "Invalid value for %s: raw=%s decoded=%s",
+                register_name,
+                raw,
+                formatted,
+            )
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
