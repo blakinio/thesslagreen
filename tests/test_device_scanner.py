@@ -89,13 +89,11 @@ async def test_read_holding_exception_response(caplog):
     assert f"Exception code {error_response.exception_code}" in caplog.text
 
 
-async def test_read_input_backoff():
-
 @pytest.mark.parametrize(
     "method, address",
     [("_read_input", 0x0001), ("_read_holding", 0x0001)],
 )
-async def test_read_backoff_delay(method, address):```````
+async def test_read_backoff_delay(method, address):
     """Ensure exponential backoff delays between retries."""
     scanner = await ThesslaGreenDeviceScanner.create(
         "192.168.3.17", 8899, 10, retry=3, backoff=0.1
@@ -910,7 +908,9 @@ async def test_log_invalid_value_debug_when_not_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert "Invalid value for test_register: 1" in caplog.text
+    assert (
+        "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
+    )
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
@@ -926,8 +926,21 @@ async def test_log_invalid_value_info_then_debug_when_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.INFO
+    assert "raw=0x0001" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
+    assert "raw=0x0001" in caplog.text
+
+
+async def test_log_invalid_value_raw_and_formatted(caplog):
+    """Log includes both raw hex and decoded representation."""
+    scanner = ThesslaGreenDeviceScanner("host", 502)
+
+    caplog.set_level(logging.DEBUG)
+    scanner._log_invalid_value("schedule_time", 0x1600)
+
+    assert "raw=0x1600" in caplog.text
+    assert "decoded=16:00" in caplog.text
