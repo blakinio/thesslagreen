@@ -151,6 +151,14 @@ UART_OPTIONAL_REGS = range(0x1168, 0x116C)
 
 @dataclass
 class DeviceInfo:
+    """Basic identifying information about a ThesslaGreen unit.
+
+    Attributes:
+        model: Reported model name used to identify the device type.
+        firmware: Firmware version string for compatibility checks.
+        serial_number: Unique hardware identifier for the unit.
+    """
+
     model: str = "Unknown AirPack"
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
@@ -159,10 +167,40 @@ class DeviceInfo:
 
 @dataclass
 class DeviceCapabilities:
+    """Feature flags and sensor availability detected on the device.
+
+    Each attribute indicates whether a hardware capability or sensor is
+    available, allowing the integration to enable or disable related
+    features dynamically.
+
+    Attributes:
+        basic_control: Support for fundamental fan and temperature control.
+        temperature_sensors: Names of built-in temperature sensors.
+        flow_sensors: Names of sensors measuring airflow.
+        special_functions: Additional reported feature flags.
+        expansion_module: Presence of an expansion module.
+        constant_flow: Ability to maintain constant airflow.
+        gwc_system: Ground heat exchanger integration.
+        bypass_system: Motorized bypass capability.
+        heating_system: Support for heating modules.
+        cooling_system: Support for cooling modules.
+        air_quality: Availability of air quality sensors.
+        weekly_schedule: Built-in weekly scheduling support.
+        sensor_outside_temperature: Outside temperature sensor present.
+        sensor_supply_temperature: Supply air temperature sensor present.
+        sensor_exhaust_temperature: Exhaust air temperature sensor present.
+        sensor_fpx_temperature: FPX (preheater) temperature sensor present.
+        sensor_duct_supply_temperature: Duct supply temperature sensor present.
+        sensor_gwc_temperature: GWC (ground heat exchanger) temperature sensor present.
+        sensor_ambient_temperature: Ambient room temperature sensor present.
+        sensor_heating_temperature: Heating system temperature sensor present.
+        temperature_sensors_count: Total number of available temperature sensors.
+    """
+
     basic_control: bool = False
-    temperature_sensors: Set[str] = field(default_factory=set)
-    flow_sensors: Set[str] = field(default_factory=set)
-    special_functions: Set[str] = field(default_factory=set)
+    temperature_sensors: Set[str] = field(default_factory=set)  # Names of temperature sensors
+    flow_sensors: Set[str] = field(default_factory=set)  # Airflow sensor identifiers
+    special_functions: Set[str] = field(default_factory=set)  # Optional feature flags
     expansion_module: bool = False
     constant_flow: bool = False
     gwc_system: bool = False
