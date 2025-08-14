@@ -771,6 +771,12 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
 async def test_load_registers_hex_range(tmp_path, caplog):
     """Parse hexadecimal Min/Max values without warnings."""
     csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
+@pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
+async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
+    """Support decimal and hexadecimal ranges."""
+    csv_content = (
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n" f"04,1,reg_a,{min_raw},{max_raw}\n"
+    )
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)
@@ -793,6 +799,10 @@ async def test_load_registers_hex_range(tmp_path, caplog):
 
     assert scanner._register_ranges["reg_a"] == (0x0, 0x423F)
     assert not caplog.records
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    assert scanner._register_ranges["reg_a"] == (1, 10)
 
 
 async def test_load_registers_invalid_range_logs(tmp_path, caplog):
@@ -923,7 +933,9 @@ async def test_log_invalid_value_debug_when_not_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert "Invalid value for test_register: 1" in caplog.text
+    assert (
+        "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
+    )
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
@@ -939,8 +951,21 @@ async def test_log_invalid_value_info_then_debug_when_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.INFO
+    assert "raw=0x0001" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
+    assert "raw=0x0001" in caplog.text
+
+
+async def test_log_invalid_value_raw_and_formatted(caplog):
+    """Log includes both raw hex and decoded representation."""
+    scanner = ThesslaGreenDeviceScanner("host", 502)
+
+    caplog.set_level(logging.DEBUG)
+    scanner._log_invalid_value("schedule_time", 0x1600)
+
+    assert "raw=0x1600" in caplog.text
+    assert "decoded=16:00" in caplog.text

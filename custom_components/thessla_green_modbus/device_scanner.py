@@ -299,14 +299,23 @@ class ThesslaGreenDeviceScanner:
                                 )
                                 return None
 
-                            if not re.fullmatch(r"[+-]?(?:0[xX][0-9A-Fa-f]+|\d+)", text):
+                            if not re.fullmatch(
+                                r"[+-]?(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)",
+                                text,
+                            ):
                                 _LOGGER.warning(
                                     "Ignoring non-numeric %s for %s: %s", label, name, raw
                                 )
                                 return None
 
                             try:
+
                                 return int(text, 0)
+                                return (
+                                    int(text, 0)
+                                    if text.lower().startswith(("0x", "+0x", "-0x"))
+                                    else int(float(text))
+                                )
                             except ValueError:
                                 _LOGGER.warning(
                                     "Ignoring non-numeric %s for %s: %s", label, name, raw
@@ -588,12 +597,24 @@ class ThesslaGreenDeviceScanner:
         further occurrences are logged at ``DEBUG`` level.
         """
         formatted = _format_register_value(register_name, value)
+        raw = f"0x{value:04X}"
         if register_name not in self._reported_invalid:
             level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
-            _LOGGER.log(level, "Invalid value for %s: %s", register_name, formatted)
+            _LOGGER.log(
+                level,
+                "Invalid value for %s: raw=%s decoded=%s",
+                register_name,
+                raw,
+                formatted,
+            )
             self._reported_invalid.add(register_name)
         elif self.verbose_invalid_values:
-            _LOGGER.debug("Invalid value for %s: %s", register_name, formatted)
+            _LOGGER.debug(
+                "Invalid value for %s: raw=%s decoded=%s",
+                register_name,
+                raw,
+                formatted,
+            )
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
