@@ -106,6 +106,12 @@
       "nominal_exhaust_air_flow": {
         "name": "Nominalny przepływ wywiewu"
       },
+      "air_flow_rate_manual": {
+        "name": "Ręczny przepływ powietrza"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Tymczasowy przepływ powietrza 2"
+      },
       "bypass_off": {
         "name": "Temperatura wyłączenia bypassu"
       },

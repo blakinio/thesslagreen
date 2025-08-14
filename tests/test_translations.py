@@ -147,6 +147,8 @@ def test_new_translation_keys_present():
         "nominal_supply_air_flow",
         "nominal_exhaust_air_flow",
         "bypass_off",
+        "air_flow_rate_manual",
+        "air_flow_rate_temporary_2",
     ]
     for trans in (EN, PL):
         for key in new_keys:
