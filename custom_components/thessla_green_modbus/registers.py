@@ -1,9 +1,4 @@
-"""Register definitions for the ThesslaGreen Modbus integration.
-
-By default, multi-byte register values are encoded in big-endian order. A
-notable exception is ``manual_airing_time_to_start``, which stores its HH:MM
-time value in little-endian (minute-hour) format.
-"""
+"""Register definitions for the ThesslaGreen Modbus integration."""
 
 from __future__ import annotations
 
@@ -228,7 +223,7 @@ HOLDING_REGISTERS: dict[str, int] = {
     "fan_speed_1_coef": 4216,
     "fan_speed_2_coef": 4217,
     "fan_speed_3_coef": 4218,
-    "manual_airing_time_to_start": 4219,  # little-endian HH:MM
+    "manual_airing_time_to_start": 4219,
     "special_mode": 4224,
     "hood_supply_coef": 4226,
     "hood_exhaust_coef": 4227,
