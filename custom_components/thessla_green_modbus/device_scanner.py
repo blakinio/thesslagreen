@@ -1065,15 +1065,40 @@ class ThesslaGreenDeviceScanner:
     def _group_registers_for_batch_read(
         self, addresses: List[int], max_gap: int = 10
     ) -> List[Tuple[int, int]]:
-        """Group registers for batch reading optimization."""
+        """Group registers for batch reading optimization.
+
+        Known missing ``input_registers`` are treated as boundaries. When a
+        missing register is encountered, the surrounding registers are split
+        into separate groups so they can still be read together without the
+        missing register causing a batch read failure.
+        """
         if not addresses:
             return []
 
-        groups = []
-        current_start = addresses[0]
-        current_end = addresses[0]
+        missing_addrs = {
+            INPUT_REGISTERS[name]
+            for name in KNOWN_MISSING_REGISTERS.get("input_registers", set())
+            if name in INPUT_REGISTERS
+        }
 
-        for addr in addresses[1:]:
+        groups: List[Tuple[int, int]] = []
+        current_start: Optional[int] = None
+        current_end: Optional[int] = None
+
+        for addr in addresses:
+            if addr in missing_addrs:
+                if current_start is not None:
+                    groups.append((current_start, current_end - current_start + 1))
+                    current_start = None
+                    current_end = None
+                groups.append((addr, 1))
+                continue
+
+            if current_start is None:
+                current_start = addr
+                current_end = addr
+                continue
+
             if (
                 addr - current_end <= max_gap
                 and current_end - current_start + 1 < MAX_BATCH_REGISTERS
@@ -1084,7 +1109,8 @@ class ThesslaGreenDeviceScanner:
                 current_start = addr
                 current_end = addr
 
-        groups.append((current_start, current_end - current_start + 1))
+        if current_start is not None:
+            groups.append((current_start, current_end - current_start + 1))
         return groups
 
 
