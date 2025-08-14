@@ -844,6 +844,9 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
     assert any("non-numeric Max" in record.message for record in caplog.records)
 
 
+async def test_load_registers_hex_range(tmp_path, caplog):
+    """Parse hexadecimal Min/Max values without warnings."""
+    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
 async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
     """Support decimal and hexadecimal ranges."""
@@ -866,6 +869,12 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
         ),
+        caplog.at_level(logging.WARNING),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    assert scanner._register_ranges["reg_a"] == (0x0, 0x423F)
+    assert not caplog.records
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 

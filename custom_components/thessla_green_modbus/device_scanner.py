@@ -309,6 +309,8 @@ class ThesslaGreenDeviceScanner:
                                 return None
 
                             try:
+
+                                return int(text, 0)
                                 return (
                                     int(text, 0)
                                     if text.lower().startswith(("0x", "+0x", "-0x"))
