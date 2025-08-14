@@ -163,7 +163,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.device_scan_result: dict[str, Any] | None = None
 
         # Statistics and diagnostics
-        self.statistics = {
+        self.statistics: Dict[str, Any] = {
             "successful_reads": 0,
             "failed_reads": 0,
             "connection_errors": 0,
@@ -495,7 +495,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if not self.client:
             await self._ensure_connection()
-        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -558,9 +557,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if "holding_registers" not in self._register_groups:
             return data
 
-        if not self.client:
-            await self._ensure_connection()
-        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             _LOGGER.debug("Modbus client is not connected")
@@ -634,7 +630,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if not self.client:
             await self._ensure_connection()
-        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -701,7 +696,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if not self.client:
             await self._ensure_connection()
-        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -854,8 +848,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                         return False
                     if len(value) != MULTI_REGISTER_SIZES[start_register]:
                         _LOGGER.error(
-                            "Register %s expects %d values",
-                            register_name,
                             "Register %s expects %d values",
                             start_register,
                             MULTI_REGISTER_SIZES[start_register],
