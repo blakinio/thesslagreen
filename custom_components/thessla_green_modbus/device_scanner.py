@@ -367,8 +367,6 @@ class ThesslaGreenDeviceScanner:
                                 return None
 
                             try:
-
-                                return int(text, 0)
                                 return (
                                     int(text, 0)
                                     if text.lower().startswith(("0x", "+0x", "-0x"))
@@ -465,6 +463,12 @@ class ThesslaGreenDeviceScanner:
 
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
+        if not skip_cache and any(
+            reg in self._failed_input for reg in range(start, end + 1)
+        ):
+            first = next(
+                reg for reg in range(start, end + 1) if reg in self._failed_input
+            )
             skip_start = skip_end = first
             while skip_start - 1 in self._failed_input:
                 skip_start -= 1
