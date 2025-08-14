@@ -1,462 +1,96 @@
 """Entity mapping definitions for the ThesslaGreen Modbus integration."""
 
+from __future__ import annotations
+
+import csv
+import re
+from pathlib import Path
 from typing import Any, Dict
 
-NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
-    "date_time_1": {"min": 0.0, "max": 99.0, "step": 1.0, "unit": "RRMM"},
-    "date_time_2": {"min": 1.0, "max": 31.0, "step": 1.0, "unit": "DDTT"},
-    "date_time_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "date_time_4": {"min": 0.0, "max": 59.0, "step": 1.0, "unit": "s"},
-    "lock_date_1": {
-        "min": 0.0,
-        "max": 99.0,
-        "step": 1.0,
-        "unit": "[RR] - liczba dziesiątek i jedności roku; [MM] - miesiąc; [DD] - dzień miesiąca",
-    },
-    "lock_date_2": {"min": 1.0, "max": 12.0, "step": 1.0, "unit": "miesiąc"},
-    "lock_date_3": {"min": 1.0, "max": 31.0, "step": 1.0, "unit": "dzień"},
-    "configuration_mode": {
-        "min": 0.0,
-        "max": 242.0,
-        "step": 1.0,
-        "unit": "0 - normalna praca; 47 - kontrola filtra wtórnego kanałowego (presostat); 65 - kontrola filtrów (AFC) + kontrola filtra wtórnego kanałowego",
-    },
-    "access_level": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - użytkownik; 1 - serwis / instalator; 3 - producent",
-    },
-    "schedule_summer_mon_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_mon_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_mon_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_mon_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_tue_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_tue_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_tue_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_tue_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_wed_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_wed_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_wed_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_wed_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_thu_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_thu_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_thu_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_thu_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_fri_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_fri_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_fri_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_fri_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sat_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sat_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sat_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sat_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sun_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sun_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sun_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_summer_sun_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_mon_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_mon_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_mon_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_mon_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_tue_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_tue_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_tue_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_tue_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_wed_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_wed_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_wed_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_wed_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_thu_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_thu_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_thu_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_thu_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_fri_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_fri_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_fri_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_fri_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sat_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sat_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sat_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sat_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sun_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sun_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sun_3": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "schedule_winter_sun_4": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "setting_summer_mon_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_mon_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_mon_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_mon_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_tue_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_tue_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_tue_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_tue_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_wed_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_wed_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_wed_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_wed_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_thu_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_thu_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_thu_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_thu_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_fri_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_fri_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_fri_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_fri_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sat_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sat_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sat_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sat_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sun_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sun_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sun_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_summer_sun_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_mon_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_mon_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_mon_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_mon_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_tue_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_tue_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_tue_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_tue_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_wed_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_wed_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_wed_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_wed_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_thu_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_thu_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_thu_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_thu_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_fri_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_fri_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_fri_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_fri_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sat_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sat_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sat_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sat_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sun_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sun_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sun_3": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "setting_winter_sun_4": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "airing_summer_mon": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_summer_tue": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_summer_wed": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_summer_thu": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_summer_fri": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_summer_sat": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_summer_sun": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_winter_mon": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_winter_tue": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_winter_wed": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_winter_thu": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_winter_fri": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_winter_sat": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "airing_winter_sun": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "rtc_cal": {"min": 0.0, "max": 255.0, "step": 1.0, "unit": "s"},
-    "cf_version": {
-        "min": None,
-        "max": None,
-        "step": 1,
-        "unit": "Format zapisu wersji oprogramowania: [MM].[mm]",
-    },
-    "supply_air_flow": {"min": 0.0, "max": 65535.0, "step": 1.0, "unit": "m3/h"},
-    "exhaust_air_flow": {"min": 0.0, "max": 65535.0, "step": 1.0, "unit": "m3/h"},
-    "dac_supply": {"min": 0.0, "max": 4095.0, "step": 0.00244, "unit": "V", "scale": 0.00244},
-    "dac_exhaust": {"min": 0.0, "max": 4095.0, "step": 0.00244, "unit": "V", "scale": 0.00244},
-    "dac_heater": {"min": 0.0, "max": 4095.0, "step": 0.00244, "unit": "V", "scale": 0.00244},
-    "dac_cooler": {"min": 0.0, "max": 4095.0, "step": 0.00244, "unit": "V", "scale": 0.00244},
-    "max_supply_air_flow_rate": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "max_supply_air_flow_rate_gwc": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "max_exhaust_air_flow_rate": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "max_exhaust_air_flow_rate_gwc": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "antifreez_mode": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "antifreez_stage": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - OFF; 1 - tryb FPX1; 2 - tryb FPX2",
-    },
-    "mode": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - automatyczny; 1 - manualny; 2 - chwilowy",
-    },
-    "season_mode": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - LATO; 1 - ZIMA"},
-    "air_flow_rate_manual": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "air_flow_rate_temporary_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "supply_air_temperature_manual": {
-        "min": 20.0,
-        "max": 90.0,
-        "step": 0.5,
-        "unit": "°C",
-        "scale": 0.5,
-    },
-    "supply_air_temperature_temporary_1": {
-        "min": 20.0,
-        "max": 90.0,
-        "step": 0.5,
-        "unit": "°C",
-        "scale": 0.5,
-    },
-    "fan_speed_1_coef": {"min": 10.0, "max": 45.0, "step": 1.0, "unit": "%"},
-    "fan_speed_2_coef": {"min": 46.0, "max": 75.0, "step": 1.0, "unit": "%"},
-    "fan_speed_3_coef": {"min": 76.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "manual_airing_time_to_start": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "special_mode": {
-        "min": 0.0,
-        "max": 11.0,
-        "step": 1.0,
-        "unit": "0 - brak; 1 - OKAP; 2 - KOMINEK; 3 - WIETRZENIE (przeł. dzwonkowy); 4 - WIETRZENIE (przełącznik ON/OFF); 5 - H2O/WIETRZENIE (higrostat); 6 - JP/WIETRZENIE (cz. jakości pow.); 7 - WIETRZENIE (aktywacja ręczna); 8 - WIETRZENIE (tryb AUTOMATYCZNY); 9 - WIETRZENIE (tryb MANUALNY); 10 - OTWARTE OKNA; 11 - PUSTY DOM",
-    },
-    "hood_supply_coef": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "hood_exhaust_coef": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "fireplace_supply_coef": {"min": 5.0, "max": 50.0, "step": 1.0, "unit": "%"},
-    "airing_bathroom_coef": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "airing_coef": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "contamination_coef": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "empty_house_coef": {"min": 10.0, "max": 50.0, "step": 1.0, "unit": "%"},
-    "airing_panel_mode_time": {"min": 1.0, "max": 45.0, "step": 1.0, "unit": "min"},
-    "airing_switch_mode_time": {"min": 1.0, "max": 45.0, "step": 1.0, "unit": "min"},
-    "airing_switch_mode_on_delay": {"min": 0.0, "max": 20.0, "step": 1.0, "unit": "min"},
-    "airing_switch_mode_off_delay": {"min": 0.0, "max": 20.0, "step": 1.0, "unit": "min"},
-    "fireplace_mode_time": {"min": 1.0, "max": 10.0, "step": 1.0, "unit": "min"},
-    "airing_switch_coef": {"min": 100.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "open_window_coef": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "pres_check_day_1": {
-        "min": 0.0,
-        "max": 6.0,
-        "step": 1.0,
-        "unit": "0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",
-    },
-    "pres_check_time_1": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "gwc_off": {
-        "min": 0.0,
-        "max": 1.0,
-        "step": 1.0,
-        "unit": "0 - aktywny; 1 - nieaktywny (pasywny)",
-    },
-    "min_gwc_air_temperature": {"min": 0.0, "max": 20.0, "step": 0.5, "unit": "°C", "scale": 0.5},
-    "max_gwc_air_temperature": {"min": 30.0, "max": 80.0, "step": 0.5, "unit": "°C", "scale": 0.5},
-    "gwc_regen": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - brak regeneracja nieaktywna; 1 - dobowa regeneracja okresowa (harmonogram); 2 - temperaturowa regeneracja aktywowana różnicą temperatur",
-    },
-    "gwc_mode": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - GWC nieaktywny brak warunków do załączenia GWC; 1 - tryb zima temperatura powietrza zewnętrznego niższa od dolnego progu załączenia GWC; 2 - tryb lato temperatura powietrza zewnętrznego wyższa od górnego progu załączenia GWC",
-    },
-    "gwc_regen_period": {"min": 4.0, "max": 8.0, "step": 1.0, "unit": "h"},
-    "delta_tgwc": {"min": 0.0, "max": 10.0, "step": 0.5, "unit": "°C", "scale": 0.5},
-    "start_gwc_regen_winter_time": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "stop_gwc_regen_winter_time": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "start_gwc_regen_summer_time": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "stop_gwc_regen_summer_time": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "gwc_regen_flag": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "comfort_mode_panel": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - EKO; 1 - KOMFORT"},
-    "comfort_mode": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - KOMFORT nieaktywny; 1 - funkcja grzania; 2 - funkcja chłodzenia",
-    },
-    "bypass_off": {
-        "min": 0.0,
-        "max": 1.0,
-        "step": 1.0,
-        "unit": "0 - aktywny; 1 - nieaktywny (pasywny)",
-    },
-    "min_bypass_temperature": {"min": 10.0, "max": 40.0, "step": 0.5, "unit": "°C", "scale": 0.5},
-    "air_temperature_summer_free_heating": {
-        "min": 30.0,
-        "max": 60.0,
-        "step": 0.5,
-        "unit": "°C",
-        "scale": 0.5,
-    },
-    "air_temperature_summer_free_cooling": {
-        "min": 30.0,
-        "max": 60.0,
-        "step": 0.5,
-        "unit": "°C",
-        "scale": 0.5,
-    },
-    "bypass_mode": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - bypass nieaktywny; 1 - funkcja grzania (freeheating); 2 - funkcja chłodzenia (freecooling)",
-    },
-    "bypass_user_mode": {
-        "min": 1.0,
-        "max": 3.0,
-        "step": 1.0,
-        "unit": "1 - tryb 1 tylko zmiana położenia przepustnicy; 2 - tryb 2 praca przepustn.+ różnicowanie strumieni; 3 - tryb 3 praca przepustn. + wyłączenie went. wywiewu",
-    },
-    "bypass_coef_1": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "bypass_coef_2": {"min": 10.0, "max": 150.0, "step": 1.0, "unit": "%"},
-    "nominal_supply_air_flow": {"min": 110.0, "max": 1900.0, "step": 1.0, "unit": "m3/h"},
-    "nominal_exhaust_air_flow": {"min": 110.0, "max": 1900.0, "step": 1.0, "unit": "m3/h"},
-    "nominal_supply_air_flow_gwc": {"min": 110.0, "max": 1900.0, "step": 1.0, "unit": "m3/h"},
-    "nominal_exhaust_air_flow_gwc": {"min": 110.0, "max": 1900.0, "step": 1.0, "unit": "m3/h"},
-    "stop_ahu_code": {
-        "min": 0.0,
-        "max": 98.0,
-        "step": 1.0,
-        "unit": "0 - brak alarmu blokującego (typ S); 1-98 - numer alarmu typu S",
-    },
-    "on_off_panel_mode": {
-        "min": 0.0,
-        "max": 1.0,
-        "step": 1.0,
-        "unit": "0 - OFF (urządzenie wyłączone); 1 - ON (urządzenie włączone)",
-    },
-    "language": {
-        "min": 0.0,
-        "max": 4.0,
-        "step": 1.0,
-        "unit": "0 - PL; 1 - EN; 2 - RU; 3 - UK; 4 - SK",
-    },
-    "cfg_mode_1": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - automatyczny; 1 - manualny; 2 - chwilowy",
-    },
-    "air_flow_rate_temporary_2": {"min": 10.0, "max": 100.0, "step": 1.0, "unit": "%"},
-    "airflow_rate_change_flag": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "cfg_mode_2": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - automatyczny; 1 - manualny; 2 - chwilowy",
-    },
-    "supply_air_temperature_temporary_2": {
-        "min": 20.0,
-        "max": 90.0,
-        "step": 0.5,
-        "unit": "°C",
-        "scale": 0.5,
-    },
-    "temperature_change_flag": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "hard_reset_settings": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "hard_reset_schedule": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "pres_check_day_2": {
-        "min": 0.0,
-        "max": 6.0,
-        "step": 1.0,
-        "unit": "0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",
-    },
-    "pres_check_time_2": {"min": 0.0, "max": 23.0, "step": 1.0, "unit": "h"},
-    "uart_0_id": {"min": 10.0, "max": 19.0, "step": 1.0, "unit": "id"},
-    "uart_0_baud": {
-        "min": 0.0,
-        "max": 8.0,
-        "step": 3.0,
-        "unit": "0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",
-        "scale": 3.0,
-    },
-    "uart_0_parity": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - brak; 1 - parzysty; 2 - nieparzysty",
-    },
-    "uart_0_stop": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - jeden; 1 - dwa"},
-    "uart_1_id": {"min": 10.0, "max": 19.0, "step": 1.0, "unit": "id"},
-    "uart_1_baud": {
-        "min": 0.0,
-        "max": 8.0,
-        "step": 3.0,
-        "unit": "0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",
-        "scale": 3.0,
-    },
-    "uart_1_parity": {
-        "min": 0.0,
-        "max": 2.0,
-        "step": 1.0,
-        "unit": "0 - brak; 1 - parzysty; 2 - nieparzysty",
-    },
-    "uart_1_stop": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - jeden; 1 - dwa"},
-    "device_name_1": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "device_name_2": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "device_name_3": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "device_name_4": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "device_name_5": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "device_name_6": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "device_name_7": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "device_name_8": {"min": 0.0, "max": 65535.0, "step": 1.0},
-    "lock_pass_1": {
-        "min": 0.0,
-        "max": 16959,
-        "step": 1.0,
-        "unit": "Pod tymi adresami można zapisać klucz produktu wprowadzony przez użytkownika",
-    },
-    "lock_pass_2": {"min": 0.0, "max": 15, "step": 1.0},
-    "lock_flag": {
-        "min": 0.0,
-        "max": 1.0,
-        "step": 1.0,
-        "unit": "0 - blokada nieaktywna; 1 - blokada aktywna",
-    },
-    "required_temperature": {"min": 20.0, "max": 90.0, "step": 0.5, "unit": "°C", "scale": 0.5},
-    "filter_change": {
-        "min": 1.0,
-        "max": 4.0,
-        "step": 1.0,
-        "unit": "1 - presostat; 2 - filtry płaskie; 3 - filtry CleanPad; 4 - filtry CleanPad Pure",
-    },
-    "alarm": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "error": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_2": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_6": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_7": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_8": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_9": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_10": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_13": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "bool"},
-    "s_14": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_15": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_16": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_17": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_19": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_20": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_22": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_23": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_24": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_25": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_26": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_29": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_30": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_31": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "s_32": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_99": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_100": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_101": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_102": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_103": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_104": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_105": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_106": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_138": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_139": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_152": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_196": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_197": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_198": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_199": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_200": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_201": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_249": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_250": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_251": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-    "e_252": {"min": 0.0, "max": 1.0, "step": 1.0, "unit": "0 - brak; 1 - jest"},
-}
+CSV_PATH = Path(__file__).parent / "data" / "modbus_registers.csv"
+
+
+def _to_snake_case(name: str) -> str:
+    """Convert a register name from the CSV to ``snake_case``."""
+    replacements = {"flowrate": "flow_rate"}
+    for old, new in replacements.items():
+        name = name.replace(old, new)
+    name = re.sub(r"[\s\-/]", "_", name)
+    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
+    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
+    name = re.sub(r"__+", "_", name)
+    name = name.lower()
+    token_map = {"temp": "temperature"}
+    tokens = [token_map.get(token, token) for token in name.split("_")]
+    return "_".join(tokens)
+
+
+def _parse_float(value: str) -> float:
+    """Parse a numeric value which may be in decimal or hexadecimal format."""
+    if not value:
+        return 0.0
+    try:
+        return float(value)
+    except ValueError:
+        try:
+            return float(int(value, 0))
+        except ValueError:
+            return 0.0
+
+
+def _load_number_mappings() -> Dict[str, Dict[str, Any]]:
+    """Load writable register metadata from the CSV file."""
+    with CSV_PATH.open(encoding="utf-8", newline="") as csvfile:
+        reader = csv.DictReader(
+            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
+        )
+
+        rows: list[tuple[str, int, Dict[str, Any]]] = []
+        for row in reader:
+            if row["Function_Code"] != "03" or row["Access"] != "R/W":
+                continue
+
+            name = _to_snake_case(row["Register_Name"])
+            addr = int(row["Address_DEC"])
+            step = _parse_float(row["Multiplier"])
+            step = step if step else 1.0
+
+            config: Dict[str, Any] = {
+                "min": _parse_float(row["Min"]),
+                "max": _parse_float(row["Max"]),
+                "step": step,
+            }
+
+            if step not in (0, 1):
+                config["scale"] = step
+
+            unit = row.get("Unit")
+            if unit:
+                config["unit"] = unit
+
+            rows.append((name, addr, config))
+
+    # Ensure unique register names
+    rows.sort(key=lambda r: r[1])
+    counts: Dict[str, int] = {}
+    for name, _, _ in rows:
+        counts[name] = counts.get(name, 0) + 1
+
+    seen: Dict[str, int] = {}
+    mapping: Dict[str, Dict[str, Any]] = {}
+    for name, _, cfg in rows:
+        if counts[name] > 1:
+            idx = seen.get(name, 0) + 1
+            seen[name] = idx
+            key = f"{name}_{idx}"
+        else:
+            key = name
+        mapping[key] = cfg
+
+    return mapping
+
+
+NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = _load_number_mappings()
 SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
 BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
 SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
@@ -469,3 +103,4 @@ ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
     "switch": SWITCH_ENTITY_MAPPINGS,
     "select": SELECT_ENTITY_MAPPINGS,
 }
+
