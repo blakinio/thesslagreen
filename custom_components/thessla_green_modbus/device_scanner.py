@@ -210,6 +210,8 @@ class ThesslaGreenDeviceScanner:
         # avoid retrying them repeatedly during scanning
         self._input_failures: Dict[int, int] = {}
         self._failed_input: Set[int] = set()
+        # Track ranges that have already been logged as skipped in the current scan
+        self._input_skip_log_ranges: Set[Tuple[int, int]] = set()
 
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
@@ -393,13 +395,20 @@ class ThesslaGreenDeviceScanner:
         """Read input registers with retry and backoff."""
         start = address
         end = address + count - 1
-
         if any(reg in self._failed_input for reg in range(start, end + 1)):
-            _LOGGER.debug(
-                "Skipping cached failed input registers 0x%04X-0x%04X",
-                start,
-                end,
-            )
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
+            skip_start = skip_end = first
+            while skip_start - 1 in self._failed_input:
+                skip_start -= 1
+            while skip_end + 1 in self._failed_input:
+                skip_end += 1
+            if (skip_start, skip_end) not in self._input_skip_log_ranges:
+                _LOGGER.debug(
+                    "Skipping cached failed input registers 0x%04X-0x%04X",
+                    skip_start,
+                    skip_end,
+                )
+                self._input_skip_log_ranges.add((skip_start, skip_end))
             return None
 
         for attempt in range(1, self.retry + 1):
@@ -808,6 +817,7 @@ class ThesslaGreenDeviceScanner:
 
             _LOGGER.debug("Connected successfully, starting device scan")
             self._reported_invalid.clear()
+            self._input_skip_log_ranges.clear()
 
             info = DeviceInfo()
             present_blocks = {}

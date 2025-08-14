@@ -184,6 +184,29 @@ async def test_read_input_skips_cached_failures():
         call_mock2.assert_not_called()
 
 
+async def test_read_input_logs_once_per_skipped_range(caplog):
+    """Only one log message is emitted per skipped register range."""
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=2
+    )
+    mock_client = AsyncMock()
+    scanner._failed_input.update({0x0001, 0x0002, 0x0003})
+
+    caplog.set_level(logging.DEBUG)
+    for addr in range(0x0001, 0x0004):
+        result = await scanner._read_input(mock_client, addr, 1)
+        assert result is None
+
+    messages = [
+        record.message
+        for record in caplog.records
+        if "Skipping cached failed input registers" in record.message
+    ]
+    assert messages == [
+        "Skipping cached failed input registers 0x0001-0x0003"
+    ]
+
+
 async def test_scan_device_success_dynamic():
     """Test successful device scan with dynamic register scanning."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
