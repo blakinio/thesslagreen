@@ -1,10 +1,10 @@
 """Tests for ThesslaGreen sensor platform setup."""
 
+import asyncio
 import sys
 import types
 from unittest.mock import MagicMock
 
-import asyncio
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,8 @@ def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
         await async_setup_entry(hass, mock_config_entry, add_entities)
 
         entities = add_entities.call_args[0][0]
-        assert len(entities) == len(SENSOR_DEFINITIONS)  # nosec B101
+        assert len(SENSOR_DEFINITIONS) == 44  # nosec B101
+        assert len(entities) == 44  # nosec B101
 
     asyncio.run(run_test())
 
@@ -118,6 +119,8 @@ def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
         entities = add_entities.call_args[0][0]
         for entity in entities:
             expected = SENSOR_DEFINITIONS[entity._register_name].get("unit")
-            assert getattr(entity, "_attr_native_unit_of_measurement", None) == expected  # nosec B101
+            assert (
+                getattr(entity, "_attr_native_unit_of_measurement", None) == expected
+            )  # nosec B101
 
     asyncio.run(run_test())
