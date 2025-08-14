@@ -396,8 +396,6 @@ async def test_scan_device_firmware_unavailable(caplog):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
     async def fake_read_input(client, address, count):
-        if address == 0x0000:
-            return None
         return [1] * count
 
     async def fake_read_holding(client, address, count):
@@ -414,17 +412,24 @@ async def test_scan_device_firmware_unavailable(caplog):
         mock_client.connect.return_value = True
         mock_client_class.return_value = mock_client
 
+        async def fake_firmware(client, info):
+            logging.getLogger(__name__).info("Firmware version unavailable")
+            info.firmware = "Unknown"
+            info.firmware_available = False
+            return None
+
         with (
             patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+            patch.object(scanner, "_read_firmware_version", AsyncMock(side_effect=fake_firmware)),
         ):
             caplog.set_level(logging.INFO)
             result = await scanner.scan_device()
 
     assert result["device_info"]["firmware"] == "Unknown"
-    assert "Firmware registers unavailable" in caplog.text
+    assert "Firmware version unavailable" in caplog.text
 
 
 async def test_scan_blocks_propagated():
@@ -910,6 +915,7 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
 async def test_load_registers_hex_range(tmp_path, caplog):
     """Parse hexadecimal Min/Max values without warnings."""
     csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
+
 
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
 async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, caplog):
