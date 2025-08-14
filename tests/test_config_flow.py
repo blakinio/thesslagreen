@@ -142,10 +142,7 @@ async def test_async_step_confirm_auto_detected_note(registers, expected_note):
 
     assert result["type"] == "form"
     assert result["step_id"] == "confirm"
-    assert (
-        result["description_placeholders"]["auto_detected_note"]
-        == translations[expected_note]
-    )
+    assert result["description_placeholders"]["auto_detected_note"] == translations[expected_note]
 
 
 async def test_unique_id_sanitized():
@@ -408,3 +405,28 @@ async def test_validate_input_modbus_exception():
     ):
         with pytest.raises(CannotConnect):
             await validate_input(hass, data)
+
+
+async def test_validate_input_scanner_closed_on_exception():
+    """Ensure scanner is closed when scan_device raises an exception."""
+    from custom_components.thessla_green_modbus.config_flow import validate_input
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = AsyncMock()
+    scanner_instance.scan_device.side_effect = ModbusException("error")
+    scanner_instance.close = AsyncMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect):
+            await validate_input(None, data)
+
+    scanner_instance.close.assert_awaited_once()
