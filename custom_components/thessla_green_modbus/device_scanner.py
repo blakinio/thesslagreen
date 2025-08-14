@@ -210,6 +210,8 @@ class ThesslaGreenDeviceScanner:
         # avoid retrying them repeatedly during scanning
         self._input_failures: Dict[int, int] = {}
         self._failed_input: Set[int] = set()
+        # Track ranges that have already been logged as skipped in the current scan
+        self._input_skip_log_ranges: Set[Tuple[int, int]] = set()
 
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
@@ -299,14 +301,23 @@ class ThesslaGreenDeviceScanner:
                                 )
                                 return None
 
-                            if not re.fullmatch(r"[+-]?\d+(?:\.\d+)?", text):
+                            if not re.fullmatch(
+                                r"[+-]?(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)",
+                                text,
+                            ):
                                 _LOGGER.warning(
                                     "Ignoring non-numeric %s for %s: %s", label, name, raw
                                 )
                                 return None
 
                             try:
-                                return int(float(text))
+
+                                return int(text, 0)
+                                return (
+                                    int(text, 0)
+                                    if text.lower().startswith(("0x", "+0x", "-0x"))
+                                    else int(float(text))
+                                )
                             except ValueError:
                                 _LOGGER.warning(
                                     "Ignoring non-numeric %s for %s: %s", label, name, raw
@@ -402,6 +413,20 @@ class ThesslaGreenDeviceScanner:
                 start,
                 end,
             )
+        if any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
+            skip_start = skip_end = first
+            while skip_start - 1 in self._failed_input:
+                skip_start -= 1
+            while skip_end + 1 in self._failed_input:
+                skip_end += 1
+            if (skip_start, skip_end) not in self._input_skip_log_ranges:
+                _LOGGER.debug(
+                    "Skipping cached failed input registers 0x%04X-0x%04X",
+                    skip_start,
+                    skip_end,
+                )
+                self._input_skip_log_ranges.add((skip_start, skip_end))
             return None
 
         for attempt in range(1, self.retry + 1):
@@ -490,9 +515,7 @@ class ThesslaGreenDeviceScanner:
                 if response is None:
                     raise ModbusException("No response")
                 if response.isError():
-                    raise ModbusException(
-                        f"Exception code {response.exception_code}"
-                    )
+                    raise ModbusException(f"Exception code {response.exception_code}")
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers
@@ -611,12 +634,24 @@ class ThesslaGreenDeviceScanner:
         further occurrences are logged at ``DEBUG`` level.
         """
         formatted = _format_register_value(register_name, value)
+        raw = f"0x{value:04X}"
         if register_name not in self._reported_invalid:
             level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
-            _LOGGER.log(level, "Invalid value for %s: %s", register_name, formatted)
+            _LOGGER.log(
+                level,
+                "Invalid value for %s: raw=%s decoded=%s",
+                register_name,
+                raw,
+                formatted,
+            )
             self._reported_invalid.add(register_name)
         elif self.verbose_invalid_values:
-            _LOGGER.debug("Invalid value for %s: %s", register_name, formatted)
+            _LOGGER.debug(
+                "Invalid value for %s: raw=%s decoded=%s",
+                register_name,
+                raw,
+                formatted,
+            )
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
@@ -810,6 +845,7 @@ class ThesslaGreenDeviceScanner:
 
             _LOGGER.debug("Connected successfully, starting device scan")
             self._reported_invalid.clear()
+            self._input_skip_log_ranges.clear()
 
             info = DeviceInfo()
             present_blocks = {}
@@ -882,20 +918,6 @@ class ThesslaGreenDeviceScanner:
                                     self.available_registers[reg_type].add(name)
                             else:
                                 self.available_registers[reg_type].add(name)
-                        if count > 1:
-                            for addr in range(start, start + count):
-                                single = await read_fn(client, addr, 1)
-                                if single is None:
-                                    continue
-                                name = addr_to_name.get(addr)
-                                if not name:
-                                    continue
-                                value = single[0]
-                                if reg_type in ("input_registers", "holding_registers"):
-                                    if self._is_valid_register_value(name, value):
-                                        self.available_registers[reg_type].add(name)
-                                else:
-                                    self.available_registers[reg_type].add(name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
