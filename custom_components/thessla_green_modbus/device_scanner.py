@@ -466,8 +466,12 @@ class ThesslaGreenDeviceScanner:
                 response = await _call_modbus(
                     client.read_holding_registers, self.slave_id, address, count=count
                 )
-                if response is None or response.isError():
+                if response is None:
                     raise ModbusException("No response")
+                if response.isError():
+                    raise ModbusException(
+                        f"Exception code {response.exception_code}"
+                    )
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers

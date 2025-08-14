@@ -65,12 +65,37 @@ async def test_read_holding_skips_after_failure():
 
     assert 0x00A8 in scanner._failed_holding
 
+async def test_read_holding_exception_response(caplog):
+    """Exception responses should include the exception code in logs."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    mock_client = AsyncMock()
+
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    error_response.exception_code = 6
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(return_value=error_response),
+        ) as call_mock,
+        patch("asyncio.sleep", AsyncMock()),
+        caplog.at_level(logging.DEBUG),
+    ):
+        result = await scanner._read_holding(mock_client, 0x0001, 1)
+
+    assert result is None
+    assert call_mock.await_count == scanner.retry
+    assert f"Exception code {error_response.exception_code}" in caplog.text
+
+
+async def test_read_input_backoff():
 
 @pytest.mark.parametrize(
     "method, address",
     [("_read_input", 0x0001), ("_read_holding", 0x0001)],
 )
-async def test_read_backoff_delay(method, address):
+async def test_read_backoff_delay(method, address):```````
     """Ensure exponential backoff delays between retries."""
     scanner = await ThesslaGreenDeviceScanner.create(
         "192.168.3.17", 8899, 10, retry=3, backoff=0.1
