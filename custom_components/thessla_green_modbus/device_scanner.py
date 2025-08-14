@@ -379,13 +379,24 @@ class ThesslaGreenDeviceScanner:
         return await asyncio.to_thread(_read_csv)
 
     async def _read_input(
-        self, client: "AsyncModbusTcpClient", address: int, count: int
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+        *,
+        skip_cache: bool = False,
     ) -> Optional[List[int]]:
-        """Read input registers with retry and backoff."""
+        """Read input registers with retry and backoff.
+
+        ``skip_cache`` is used when probing individual registers after a block
+        read failed. When ``True`` the cached set of failed registers is not
+        checked, allowing each register to be queried once before being cached
+        as missing.
+        """
         start = address
         end = address + count - 1
 
-        if any(reg in self._failed_input for reg in range(start, end + 1)):
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             _LOGGER.debug(
                 "Skipping cached failed input registers 0x%04X-0x%04X",
                 start,
@@ -444,8 +455,18 @@ class ThesslaGreenDeviceScanner:
             end,
             self.retry,
         )
-        self._failed_input.update(range(start, end + 1))
-        _LOGGER.debug("Caching failed input registers 0x%04X-0x%04X", start, end)
+        if count == 1:
+            self._failed_input.add(address)
+            _LOGGER.debug("Caching failed input register 0x%04X", address)
+        else:
+            _LOGGER.debug(
+                "Failed block read 0x%04X-0x%04X, probing individual registers",
+                start,
+                end,
+            )
+            for reg in range(start, end + 1):
+                if reg not in self._failed_input:
+                    await self._read_input(client, reg, 1, skip_cache=True)
         return None
 
     async def _read_holding(
