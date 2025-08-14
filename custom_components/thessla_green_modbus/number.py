@@ -51,24 +51,16 @@ async def async_setup_entry(
         _LOGGER.debug("No number entity mappings found; skipping setup")
         return
 
-    # Create number entities for available writable registers
+    # Create number entities for all defined writable registers
     for register_name, entity_config in number_mappings.items():
-        # Check if this register is available and writable
-        is_available = False
         register_type = None
 
-        # Only check holding registers as they are writable
         if register_name in coordinator.available_registers.get("holding_registers", set()):
-            is_available = True
+            register_type = "holding_registers"
+        elif register_name in HOLDING_REGISTERS:
             register_type = "holding_registers"
 
-        # If force full register list, check against holding registers
-        if not is_available and coordinator.force_full_register_list:
-            if register_name in HOLDING_REGISTERS:
-                is_available = True
-                register_type = "holding_registers"
-
-        if is_available:
+        if register_type is not None:
             entities.append(
                 ThesslaGreenNumber(
                     coordinator=coordinator,
