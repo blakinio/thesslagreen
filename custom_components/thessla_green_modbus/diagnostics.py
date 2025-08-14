@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import ipaddress
 import logging
 import re
@@ -48,8 +49,8 @@ async def async_get_config_entry_diagnostics(
 
 def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
     """Redact sensitive information from diagnostics."""
-    # Create a copy to avoid modifying original data
-    safe_data = data.copy()
+    # Create a deep copy to avoid modifying the original data
+    safe_data = copy.deepcopy(data)
 
     def mask_ip(ip_str: str) -> str:
         """Return a redacted representation of an IP address."""
@@ -64,11 +65,8 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
         return ":".join([segments[0]] + ["xxxx"] * 6 + [segments[-1]])
 
     # Redact sensitive connection information
-    if "connection" in safe_data:
-        connection = safe_data["connection"].copy()
-        if "host" in connection:
-            connection["host"] = mask_ip(connection["host"])
-        safe_data["connection"] = connection
+    if "connection" in safe_data and "host" in safe_data["connection"]:
+        safe_data["connection"]["host"] = mask_ip(safe_data["connection"]["host"])
 
     # Redact serial number if present
     if "device_info" in safe_data and "serial_number" in safe_data["device_info"]:
