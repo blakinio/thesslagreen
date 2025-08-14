@@ -184,11 +184,40 @@ async def test_read_input_skips_cached_failures():
         call_mock2.assert_not_called()
 
 
+async def test_read_input_skips_range_on_exception_response(caplog):
+    """Block failures with exception codes skip entire register range."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    error_response.exception_code = 2
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(return_value=error_response),
+    ) as call_mock:
+        result = await scanner._read_input(mock_client, 0x0100, 3)
+
+    assert result is None
+    assert call_mock.await_count == 1
+    assert set(range(0x0100, 0x0103)) <= scanner._failed_input
+    assert "Skipping unsupported input registers 0x0100-0x0102" in caplog.text
+
+    # Further reads within the range should be skipped without new calls
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(),
+    ) as call_mock2:
+        result = await scanner._read_input(mock_client, 0x0101, 1)
+        assert result is None
+        call_mock2.assert_not_called()
+
+
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=2
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
     scanner._failed_input.update({0x0001, 0x0002, 0x0003})
 
@@ -202,9 +231,7 @@ async def test_read_input_logs_once_per_skipped_range(caplog):
         for record in caplog.records
         if "Skipping cached failed input registers" in record.message
     ]
-    assert messages == [
-        "Skipping cached failed input registers 0x0001-0x0003"
-    ]
+    assert messages == ["Skipping cached failed input registers 0x0001-0x0003"]
 
 
 async def test_scan_device_success_dynamic():
@@ -681,10 +708,7 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
     assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
     # BCD encoded times should also be recognized as valid
-    assert (
-        scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200)
-        is True
-    )
+    assert scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200) is True
 
 
 async def test_decode_register_time():
@@ -878,6 +902,8 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
 async def test_load_registers_hex_range(tmp_path, caplog):
     """Parse hexadecimal Min/Max values without warnings."""
     csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
+
+
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
 async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
     """Support decimal and hexadecimal ranges."""
@@ -1036,9 +1062,7 @@ async def test_log_invalid_value_debug_when_not_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert (
-        "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
-    )
+    assert "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
