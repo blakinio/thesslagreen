@@ -6,9 +6,14 @@ import asyncio
 import inspect
 import logging
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
 
 from homeassistant.util import dt as dt_util
+
+try:  # pragma: no cover - used in runtime environments only
+    from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
+    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"  # type: ignore[assignment]
 
 from .modbus_exceptions import ConnectionException, ModbusException
 
@@ -129,6 +134,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self._connection_lock = asyncio.Lock()
         self._last_successful_read = dt_util.utcnow()
 
+        # Stop listener for Home Assistant shutdown
+        self._stop_listener: Optional[Callable[[], None]] = None
+
         # Device info and capabilities
         self.device_info: Dict[str, Any] = {}
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
@@ -231,6 +239,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         # Test initial connection
         await self._test_connection()
+
+        # Ensure we clean up tasks when Home Assistant stops
+        if self._stop_listener is None:
+            self._stop_listener = self.hass.bus.async_listen_once(
+                EVENT_HOMEASSISTANT_STOP, self._async_handle_stop
+            )
 
         return True
 
@@ -479,6 +493,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             return data
 
         if not self.client:
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
         for start_addr, count in self._register_groups["input_registers"]:
@@ -486,7 +503,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_input_registers,
+                    client.read_input_registers,
                     start_addr,
                     count=count,
                 )
@@ -532,10 +549,20 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read holding registers using optimized batch reading."""
         data = {}
 
+        if self.client is None:
+            _LOGGER.debug("Modbus client not available; skipping holding register read")
+            raise UpdateFailed("Modbus client is not initialized")
+
         if "holding_registers" not in self._register_groups:
             return data
 
         if not self.client:
+        if self.client is None:
+            _LOGGER.debug("Modbus client is not connected")
+            return data
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
         for start_addr, count in self._register_groups["holding_registers"]:
@@ -543,7 +570,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_holding_registers,
+                    client.read_holding_registers,
                     start_addr,
                     count=count,
                 )
@@ -605,6 +632,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             return data
 
         if not self.client:
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
         for start_addr, count in self._register_groups["coil_registers"]:
@@ -612,7 +642,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_coils,
+                    client.read_coils,
                     start_addr,
                     count=count,
                 )
@@ -668,6 +698,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             return data
 
         if not self.client:
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
@@ -675,7 +708,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_discrete_inputs,
+                    client.read_discrete_inputs,
                     start_addr,
                     count=count,
                 )
@@ -905,9 +938,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.client = None
         _LOGGER.debug("Disconnected from Modbus device")
 
+    async def _async_handle_stop(self, _event: Any) -> None:
+        """Handle Home Assistant stop to cancel tasks."""
+        await self.async_shutdown()
+
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and disconnect."""
         _LOGGER.debug("Shutting down ThesslaGreen coordinator")
+        if self._stop_listener is not None:
+            self._stop_listener()
+            self._stop_listener = None
+        shutdown = getattr(super(), "async_shutdown", None)
+        if shutdown is not None:
+            await shutdown()
         await self._disconnect()
 
     @property

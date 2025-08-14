@@ -86,6 +86,9 @@ class DataUpdateCoordinator:
     async def async_request_refresh(self):
         pass
 
+    async def async_shutdown(self):  # pragma: no cover - stub
+        pass
+
 
 helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
 

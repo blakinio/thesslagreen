@@ -1,5 +1,7 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
+import asyncio
+import logging
 import os
 import sys
 import types
@@ -79,6 +81,9 @@ class DataUpdateCoordinator:
         self.update_interval = update_interval
 
     async def async_request_refresh(self):
+        pass
+
+    async def async_shutdown(self):  # pragma: no cover - stub
         pass
 
     @classmethod
@@ -195,6 +200,32 @@ async def test_async_write_valid_register(coordinator):
     assert result is True
     coordinator.async_request_refresh.assert_called_once()
     assert lock_state_during_refresh is False
+
+
+@pytest.mark.asyncio
+async def test_read_holding_registers_none_client(coordinator, caplog):
+    """Return empty data when no Modbus client is present."""
+    coordinator.client = None
+    coordinator._register_groups = {"holding_registers": [(0x0000, 1)]}
+
+    with caplog.at_level(logging.DEBUG):
+        result = await coordinator._read_holding_registers_optimized()
+
+    assert result == {}
+    assert "Modbus client is not connected" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_read_holding_registers_cancelled_error(coordinator, caplog):
+    """Propagate cancellation without logging noise."""
+    coordinator.client = MagicMock()
+    coordinator._register_groups = {"holding_registers": [(0x0000, 1)]}
+    coordinator._call_modbus = AsyncMock(side_effect=asyncio.CancelledError)
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(asyncio.CancelledError):
+            await coordinator._read_holding_registers_optimized()
+    assert caplog.text == ""
 
 
 @pytest.mark.asyncio
