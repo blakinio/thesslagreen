@@ -3,6 +3,10 @@ import importlib.util
 import pathlib
 
 from custom_components.thessla_green_modbus.utils import _to_snake_case
+from custom_components.thessla_green_modbus.device_scanner import (
+    _decode_bcd_time,
+    _decode_register_time,
+)
 
 
 def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
@@ -74,5 +78,18 @@ def test_register_definitions_match_csv() -> None:
     assert csv_discrete == mod_discrete  # nosec B101
     assert csv_input == mod_input  # nosec B101
     assert csv_holding == mod_holding  # nosec B101
-    assert len(mod_input) == 29  # nosec B101
-    assert len(mod_holding) == 282  # nosec B101
+    assert len(mod_input) == 26  # nosec B101
+    assert len(mod_holding) == 281  # nosec B101
+
+
+def test_time_decoding_helpers() -> None:
+    """Ensure time decoding helpers map to minutes since midnight."""
+    assert _decode_register_time(0x081E) == 510
+    assert _decode_register_time(0x1234) == 1132
+    assert _decode_register_time(0x2460) is None
+    assert _decode_register_time(0x0960) is None
+
+    assert _decode_bcd_time(0x1234) == 754
+    assert _decode_bcd_time(0x0800) == 480
+    assert _decode_bcd_time(0x2460) is None
+    assert _decode_bcd_time(2400) is None
