@@ -139,6 +139,15 @@
       "compilation_seconds": {
         "name": "Sekundy kompilacji"
       },
+      "version_major": {
+        "name": "Główna wersja oprogramowania"
+      },
+      "version_minor": {
+        "name": "Wersja poboczna oprogramowania"
+      },
+      "version_patch": {
+        "name": "Wersja poprawki oprogramowania"
+      },
       "serial_number_1": {
         "name": "Numer seryjny część 1"
       },
