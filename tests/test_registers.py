@@ -74,5 +74,19 @@ def test_register_definitions_match_csv() -> None:
     assert csv_discrete == mod_discrete  # nosec B101
     assert csv_input == mod_input  # nosec B101
     assert csv_holding == mod_holding  # nosec B101
-    assert len(mod_input) == 29  # nosec B101
-    assert len(mod_holding) == 282  # nosec B101
+    assert len(mod_input) == 26  # nosec B101
+    assert len(mod_holding) == 281  # nosec B101
+
+
+def test_all_registers_have_units() -> None:
+    """Ensure every register in the CSV specifies a unit."""
+    csv_path = pathlib.Path(
+        "custom_components/thessla_green_modbus/data/modbus_registers.csv"
+    )
+    with csv_path.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            code = row["Function_Code"]
+            if not code or code.startswith("#"):
+                continue
+            assert row["Unit"].strip() != ""  # nosec B101

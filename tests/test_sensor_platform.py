@@ -4,6 +4,7 @@ import sys
 import types
 from unittest.mock import MagicMock
 
+import asyncio
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -72,22 +73,51 @@ from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
 )
 
 
-@pytest.mark.asyncio
-async def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
+def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
     """Ensure entities are created for all available sensor registers."""
-    hass = MagicMock()
-    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
 
-    available = {
-        "input_registers": set(),
-        "holding_registers": set(),
-    }
-    for name, definition in SENSOR_DEFINITIONS.items():
-        available.setdefault(definition["register_type"], set()).add(name)
-    mock_coordinator.available_registers = available
+    async def run_test() -> None:
+        hass = MagicMock()
+        hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
 
-    add_entities = MagicMock()
-    await async_setup_entry(hass, mock_config_entry, add_entities)
+        available = {
+            "input_registers": set(),
+            "holding_registers": set(),
+        }
+        for name, definition in SENSOR_DEFINITIONS.items():
+            available.setdefault(definition["register_type"], set()).add(name)
+        mock_coordinator.available_registers = available
 
-    entities = add_entities.call_args[0][0]
-    assert len(entities) == len(SENSOR_DEFINITIONS)  # nosec B101
+        add_entities = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+
+        entities = add_entities.call_args[0][0]
+        assert len(entities) == len(SENSOR_DEFINITIONS)  # nosec B101
+
+    asyncio.run(run_test())
+
+
+def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
+    """Verify sensors expose the expected native_unit_of_measurement."""
+
+    async def run_test() -> None:
+        hass = MagicMock()
+        hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+        available = {
+            "input_registers": set(),
+            "holding_registers": set(),
+        }
+        for name, definition in SENSOR_DEFINITIONS.items():
+            available.setdefault(definition["register_type"], set()).add(name)
+        mock_coordinator.available_registers = available
+
+        add_entities = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+
+        entities = add_entities.call_args[0][0]
+        for entity in entities:
+            expected = SENSOR_DEFINITIONS[entity._register_name].get("unit")
+            assert getattr(entity, "_attr_native_unit_of_measurement", None) == expected  # nosec B101
+
+    asyncio.run(run_test())
