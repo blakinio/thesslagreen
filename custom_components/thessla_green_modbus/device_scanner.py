@@ -143,8 +143,13 @@ def _format_register_value(name: str, value: int) -> int | str:
 # Maximum registers per batch read (Modbus limit)
 MAX_BATCH_REGISTERS = 16
 
-# Optional UART configuration registers (Air++ port)
-UART_OPTIONAL_REGS = range(0x1168, 0x116C)
+# Optional UART configuration registers (Air-B and Air++ ports)
+# According to the Series 4 Modbus documentation, both the Air-B
+# (0x1164-0x1167) and Air++ (0x1168-0x116B) register blocks are
+# optional and may be absent on devices without the corresponding
+# hardware. They are skipped by default unless UART scanning is
+# explicitly enabled.
+UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 
 
 @dataclass
