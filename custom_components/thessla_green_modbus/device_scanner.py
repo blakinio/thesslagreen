@@ -550,7 +550,13 @@ class ThesslaGreenDeviceScanner:
                 break
 
             if attempt < self.retry:
-                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
+                try:
+                    await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
+                except asyncio.CancelledError:
+                    _LOGGER.debug(
+                        "Sleep cancelled while retrying holding 0x%04X", address
+                    )
+                    raise
 
         return None
 
