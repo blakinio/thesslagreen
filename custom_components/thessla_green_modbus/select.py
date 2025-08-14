@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -91,7 +91,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._attr_options = list(self._states.keys())
 
     @property
-    def current_option(self) -> Optional[str]:
+    def current_option(self) -> str | None:
         """Return current option."""
         value = self.coordinator.data.get(self._register_name)
         if value is None:

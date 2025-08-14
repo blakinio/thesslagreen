@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -46,7 +46,7 @@ async def async_setup_entry(
     entities = []
 
     # Get number entity mappings
-    number_mappings: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
+    number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
     if not number_mappings:
         _LOGGER.debug("No number entity mappings found; skipping setup")
         return
@@ -85,8 +85,8 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        entity_config: Dict[str, Any],
-        register_type: Optional[str] = None,
+        entity_config: dict[str, Any],
+        register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
         super().__init__(coordinator, register_name)
@@ -191,7 +191,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             raise
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {}
 

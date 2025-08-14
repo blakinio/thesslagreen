@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 CSV_PATH = Path(__file__).parent / "data" / "modbus_registers.csv"
 
@@ -38,14 +38,14 @@ def _parse_float(value: str) -> float:
             return 0.0
 
 
-def _load_number_mappings() -> Dict[str, Dict[str, Any]]:
+def _load_number_mappings() -> dict[str, dict[str, Any]]:
     """Load writable register metadata from the CSV file."""
     with CSV_PATH.open(encoding="utf-8", newline="") as csvfile:
         reader = csv.DictReader(
             row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
         )
 
-        rows: list[tuple[str, int, Dict[str, Any]]] = []
+        rows: list[tuple[str, int, dict[str, Any]]] = []
         for row in reader:
             if row["Function_Code"] != "03" or row["Access"] != "R/W":
                 continue
@@ -55,7 +55,7 @@ def _load_number_mappings() -> Dict[str, Dict[str, Any]]:
             step = _parse_float(row["Multiplier"])
             step = step if step else 1.0
 
-            config: Dict[str, Any] = {
+            config: dict[str, Any] = {
                 "min": _parse_float(row["Min"]),
                 "max": _parse_float(row["Max"]),
                 "step": step,
@@ -72,12 +72,12 @@ def _load_number_mappings() -> Dict[str, Dict[str, Any]]:
 
     # Ensure unique register names
     rows.sort(key=lambda r: r[1])
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for name, _, _ in rows:
         counts[name] = counts.get(name, 0) + 1
 
-    seen: Dict[str, int] = {}
-    mapping: Dict[str, Dict[str, Any]] = {}
+    seen: dict[str, int] = {}
+    mapping: dict[str, dict[str, Any]] = {}
     for name, _, cfg in rows:
         if counts[name] > 1:
             idx = seen.get(name, 0) + 1
@@ -90,13 +90,13 @@ def _load_number_mappings() -> Dict[str, Dict[str, Any]]:
     return mapping
 
 
-NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = _load_number_mappings()
-SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
-BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
-SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
-SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
+NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = _load_number_mappings()
+SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
+BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
+SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
+SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
 
-ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
+ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {
     "number": NUMBER_ENTITY_MAPPINGS,
     "sensor": SENSOR_ENTITY_MAPPINGS,
     "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
