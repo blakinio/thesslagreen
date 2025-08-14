@@ -37,6 +37,12 @@ SELECT_DEFINITIONS = {
         "states": {"off": 0, "auto": 1, "forced": 2},
         "register_type": "holding_registers",
     },
+    "season_mode": {
+        "icon": "mdi:weather-partly-snowy",
+        "translation_key": "season_mode",
+        "states": {"winter": 0, "summer": 1},
+        "register_type": "holding_registers",
+    },
     "filter_change": {
         "icon": "mdi:filter-variant",
         "translation_key": "filter_change",

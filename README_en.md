@@ -106,7 +106,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Climate**: full HVAC control with preset modes
 - **Switches**: all systems, modes and configuration
 - **Numbers**: temperatures, intensities, times, alarm limits
-- **Selects**: work modes, schedule, communication, language
+- **Selects**: work modes, season mode, schedule, communication, language
 
 ## 🛠️ Services (13 complete services)
 

@@ -342,6 +342,13 @@
           "forced": "Wymuszony"
         }
       },
+      "season_mode": {
+        "name": "Tryb sezonowy",
+        "state": {
+          "winter": "Zima",
+          "summer": "Lato"
+        }
+      },
       "filter_change": {
         "name": "Typ filtrów",
         "state": {
@@ -379,6 +386,24 @@
       },
       "access_level": {
         "name": "Access Level"
+      },
+      "air_flow_rate_manual": {
+        "name": "Ręczna intensywność wentylacji"
+      },
+      "air_flow_rate_temporary_1": {
+        "name": "Intensywność wentylacji chwilowa 1"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Intensywność wentylacji chwilowa 2"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Ręczna temperatura nawiewu"
+      },
+      "supply_air_temperature_temporary_1": {
+        "name": "Tymczasowa temperatura nawiewu 1"
+      },
+      "supply_air_temperature_temporary_2": {
+        "name": "Tymczasowa temperatura nawiewu 2"
       },
       "schedule_summer_mon_1": {
         "name": "Schedule Summer Mon 1"

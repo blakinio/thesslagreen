@@ -112,7 +112,7 @@ Adresy rejestrów, które wielokrotnie nie odpowiadają, są automatycznie pomij
 - **Climate**: Kompletna kontrola HVAC z preset modes
 - **Switches**: Wszystkie systemy, tryby, konfiguracja
 - **Numbers**: Temperatury, intensywności, czasy, limity alarmów
-- **Selects**: Tryby pracy, harmonogram, komunikacja, język
+- **Selects**: Tryby pracy, tryb sezonowy, harmonogram, komunikacja, język
 
 ## 🛠️ Serwisy (13 kompletnych serwisów)
 
