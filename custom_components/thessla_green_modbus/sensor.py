@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -376,7 +376,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        sensor_definition: Dict[str, Any],
+        sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, register_name)
@@ -401,7 +401,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         )
 
     @property
-    def native_value(self) -> Optional[float | int | str]:
+    def native_value(self) -> float | int | str | None:
         """Return the state of the sensor."""
         value = self.coordinator.data.get(self._register_name)
 
@@ -411,7 +411,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         return value
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -19,7 +19,7 @@ from .registers import HOLDING_REGISTERS
 _LOGGER = logging.getLogger(__name__)
 
 # Switch entities that can be controlled
-SWITCH_ENTITIES: Dict[str, Dict[str, Any]] = {
+SWITCH_ENTITIES: dict[str, dict[str, Any]] = {
     # Output controls from coil registers
     "duct_water_heater_pump": {
         "icon": "mdi:pump",
@@ -134,7 +134,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         key: str,
-        entity_config: Dict[str, Any],
+        entity_config: dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
         super().__init__(coordinator, key)
@@ -210,7 +210,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {}
 

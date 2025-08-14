@@ -9,7 +9,7 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
@@ -31,7 +31,7 @@ from .utils import _to_snake_case
 _LOGGER = logging.getLogger(__name__)
 
 # Specific registers may only accept discrete values
-REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
+REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
     "mode": {0, 1, 2},
     "season_mode": {0, 1},
     "special_mode": set(range(0, 12)),
@@ -40,7 +40,7 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
 
 
 # Registers storing times encoded as HH:MM bytes
-TIME_REGISTER_PREFIXES: Tuple[str, ...] = (
+TIME_REGISTER_PREFIXES: tuple[str, ...] = (
     "schedule_",
     "airing_",
     "manual_airing_time_to_start",
@@ -49,13 +49,13 @@ TIME_REGISTER_PREFIXES: Tuple[str, ...] = (
     "stop_gwc_regen",
 )
 # Registers storing times as BCD HHMM values
-BCD_TIME_PREFIXES: Tuple[str, ...] = TIME_REGISTER_PREFIXES
+BCD_TIME_PREFIXES: tuple[str, ...] = TIME_REGISTER_PREFIXES
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
 
 
-def _decode_register_time(value: int) -> Optional[int]:
+def _decode_register_time(value: int) -> int | None:
     """Decode HH:MM byte-encoded value to minutes since midnight.
 
     The most significant byte stores the hour and the least significant byte
@@ -74,7 +74,7 @@ def _decode_register_time(value: int) -> Optional[int]:
     return None
 
 
-def _decode_bcd_time(value: int) -> Optional[int]:
+def _decode_bcd_time(value: int) -> int | None:
     """Decode BCD or decimal HHMM values to minutes since midnight."""
 
     if value < 0:
@@ -94,7 +94,7 @@ def _decode_bcd_time(value: int) -> Optional[int]:
     return None
 
 
-def _decode_setting_value(value: int) -> Optional[Tuple[int, float]]:
+def _decode_setting_value(value: int) -> tuple[int, float] | None:
     """Decode a register storing airflow and temperature as ``0xAATT``.
 
     ``AA`` is the airflow in percent and ``TT`` is twice the desired supply
@@ -174,7 +174,7 @@ class DeviceInfo:
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
     firmware_available: bool = True
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -210,9 +210,9 @@ class DeviceCapabilities:
     """
 
     basic_control: bool = False
-    temperature_sensors: Set[str] = field(default_factory=set)  # Names of temperature sensors
-    flow_sensors: Set[str] = field(default_factory=set)  # Airflow sensor identifiers
-    special_functions: Set[str] = field(default_factory=set)  # Optional feature flags
+    temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
+    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers
+    special_functions: set[str] = field(default_factory=set)  # Optional feature flags
     expansion_module: bool = False
     constant_flow: bool = False
     gwc_system: bool = False
@@ -262,7 +262,7 @@ class ThesslaGreenDeviceScanner:
         self.skip_known_missing = skip_known_missing
 
         # Available registers storage
-        self.available_registers: Dict[str, Set[str]] = {
+        self.available_registers: dict[str, set[str]] = {
             "input_registers": set(),
             "holding_registers": set(),
             "coil_registers": set(),
@@ -272,31 +272,31 @@ class ThesslaGreenDeviceScanner:
         # Track holding registers that consistently fail to respond so we
         # can avoid retrying them repeatedly during scanning. The value is
         # a failure counter per register address.
-        self._holding_failures: Dict[int, int] = {}
+        self._holding_failures: dict[int, int] = {}
         # Cache holding registers that have exceeded retry attempts
-        self._failed_holding: Set[int] = set()
+        self._failed_holding: set[int] = set()
 
         # Track input registers that consistently fail to respond so we can
         # avoid retrying them repeatedly during scanning
-        self._input_failures: Dict[int, int] = {}
-        self._failed_input: Set[int] = set()
+        self._input_failures: dict[int, int] = {}
+        self._failed_input: set[int] = set()
         # Track ranges that have already been logged as skipped in the current scan
-        self._input_skip_log_ranges: Set[Tuple[int, int]] = set()
+        self._input_skip_log_ranges: set[tuple[int, int]] = set()
 
         # Cache register ranges that returned Modbus exception codes 2-4 so
         # they can be skipped on subsequent reads without additional warnings
-        self._unsupported_input_ranges: Dict[Tuple[int, int], int] = {}
-        self._unsupported_holding_ranges: Dict[Tuple[int, int], int] = {}
+        self._unsupported_input_ranges: dict[tuple[int, int], int] = {}
+        self._unsupported_holding_ranges: dict[tuple[int, int], int] = {}
 
         # Placeholder for register map and value ranges loaded asynchronously
-        self._registers: Dict[str, Dict[int, str]] = {}
-        self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+        self._registers: dict[str, dict[int, str]] = {}
+        self._register_ranges: dict[str, tuple[int | None, int | None]] = {}
 
         # Keep track of the Modbus client so it can be closed later
-        self._client: Optional["AsyncModbusTcpClient"] = None
+        self._client: "AsyncModbusTcpClient" | None = None
 
         # Track registers for which invalid values have been reported
-        self._reported_invalid: Set[str] = set()
+        self._reported_invalid: set[str] = set()
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
@@ -332,19 +332,19 @@ class ThesslaGreenDeviceScanner:
 
     async def _load_registers(
         self,
-    ) -> Tuple[Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]]:
+    ) -> tuple[dict[str, dict[int, str]], dict[str, tuple[int | None, int | None]]]:
         """Load Modbus register definitions and value ranges from CSV file."""
         csv_path = files(__package__) / "data" / "modbus_registers.csv"
 
         def _read_csv() -> (
-            Tuple[Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]]
+            tuple[dict[str, dict[int, str]], dict[str, tuple[int | None, int | None]]]
         ):
-            register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-            register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+            register_map: dict[str, dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+            register_ranges: dict[str, tuple[int | None, int | None]] = {}
             try:
                 with csv_path.open(newline="", encoding="utf-8") as csvfile:
                     reader = csv.DictReader(csvfile)
-                    rows: Dict[str, List[Tuple[str, int, Optional[int], Optional[int]]]] = {
+                    rows: dict[str, list[tuple[str, int, int | None, int | None]]] = {
                         "03": [],
                         "04": [],
                         "01": [],
@@ -365,7 +365,7 @@ class ThesslaGreenDeviceScanner:
                         min_raw = row.get("Min")
                         max_raw = row.get("Max")
 
-                        def _parse_range(label: str, raw: Optional[str]) -> Optional[int]:
+                        def _parse_range(label: str, raw: str | None) -> int | None:
                             if raw in (None, ""):
                                 return None
 
@@ -415,10 +415,10 @@ class ThesslaGreenDeviceScanner:
                     for code, items in rows.items():
                         # Sort by address to ensure deterministic numbering
                         items.sort(key=lambda item: item[1])
-                        counts: Dict[str, int] = {}
+                        counts: dict[str, int] = {}
                         for name, *_ in items:
                             counts[name] = counts.get(name, 0) + 1
-                        seen: Dict[str, int] = {}
+                        seen: dict[str, int] = {}
                         for name, addr, min_val, max_val in items:
                             if addr in register_map[code]:
                                 _LOGGER.warning(
@@ -443,7 +443,7 @@ class ThesslaGreenDeviceScanner:
                         "01": COIL_REGISTERS,
                         "02": DISCRETE_INPUT_REGISTERS,
                     }
-                    missing: Dict[str, Set[str]] = {}
+                    missing: dict[str, set[str]] = {}
                     for code, reg_map in required_maps.items():
                         defined = set(register_map.get(code, {}).values())
                         missing_regs = set(reg_map) - defined
@@ -470,7 +470,7 @@ class ThesslaGreenDeviceScanner:
         *,
         skip_cache: bool = False,
         log_exceptions: bool = True,
-    ) -> Optional[List[int]]:
+    ) -> list[int] | None:
         """Read input registers with retry and backoff.
 
         ``skip_cache`` is used when probing individual registers after a block
@@ -506,7 +506,7 @@ class ThesslaGreenDeviceScanner:
                 self._input_skip_log_ranges.add((skip_start, skip_end))
             return None
 
-        exception_code: Optional[int] = None
+        exception_code: int | None = None
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -620,7 +620,7 @@ class ThesslaGreenDeviceScanner:
         count: int,
         *,
         log_exceptions: bool = True,
-    ) -> Optional[List[int]]:
+    ) -> list[int] | None:
         """Read holding registers with retry, backoff and failure tracking."""
         start = address
         end = address + count - 1
@@ -638,7 +638,7 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
             return None
 
-        exception_code: Optional[int] = None
+        exception_code: int | None = None
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -726,7 +726,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_coil(
         self, client: "AsyncModbusTcpClient", address: int, count: int
-    ) -> Optional[List[bool]]:
+    ) -> list[bool] | None:
         """Read coil registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
@@ -774,7 +774,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_discrete(
         self, client: "AsyncModbusTcpClient", address: int, count: int
-    ) -> Optional[List[bool]]:
+    ) -> list[bool] | None:
         """Read discrete input registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
@@ -1000,7 +1000,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_firmware_version(
         self, client: "AsyncModbusTcpClient", info: DeviceInfo
-    ) -> Optional[List[int]]:
+    ) -> list[int] | None:
         """Read firmware registers and update ``info`` accordingly."""
 
         try:
@@ -1043,7 +1043,7 @@ class ThesslaGreenDeviceScanner:
         _LOGGER.debug("Firmware version: %s", info.firmware)
         return fw_data
 
-    async def scan(self) -> Tuple[DeviceInfo, DeviceCapabilities, Dict[str, Tuple[int, int]]]:
+    async def scan(self) -> tuple[DeviceInfo, DeviceCapabilities, dict[str, tuple[int, int]]]:
         """Scan device and return device info, capabilities and present blocks."""
         from pymodbus.client import AsyncModbusTcpClient
 
@@ -1308,7 +1308,7 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.exception("Unexpected error during device scan: %s", exc)
             raise
 
-    async def scan_device(self) -> Dict[str, Any]:
+    async def scan_device(self) -> dict[str, Any]:
         """Scan device and return formatted result - compatible with coordinator."""
         try:
             info, caps, blocks = await self.scan()
@@ -1369,8 +1369,8 @@ class ThesslaGreenDeviceScanner:
 
     def _aggregate_and_log_unsupported(
         self,
-        before: Dict[Tuple[int, int], int],
-        current: Dict[Tuple[int, int], int],
+        before: dict[tuple[int, int], int],
+        current: dict[tuple[int, int], int],
         reg_label: str,
     ) -> None:
         """Combine newly discovered unsupported ranges and log them once."""
@@ -1397,12 +1397,12 @@ class ThesslaGreenDeviceScanner:
             current[(start, end)] = code
 
     @staticmethod
-    def _merge_adjacent(entries: List[Tuple[int, int, int]]) -> List[Tuple[int, int, int]]:
+    def _merge_adjacent(entries: list[tuple[int, int, int]]) -> list[tuple[int, int, int]]:
         """Merge adjacent or overlapping ranges with the same code."""
         if not entries:
             return []
         entries.sort(key=lambda x: x[0])
-        merged: List[Tuple[int, int, int]] = [entries[0]]
+        merged: list[tuple[int, int, int]] = [entries[0]]
         for start, end, code in entries[1:]:
             last_start, last_end, last_code = merged[-1]
             if code == last_code and start <= last_end + 1:
@@ -1412,8 +1412,8 @@ class ThesslaGreenDeviceScanner:
         return merged
 
     def _group_registers_for_batch_read(
-        self, addresses: List[int], max_gap: int = 10
-    ) -> List[Tuple[int, int]]:
+        self, addresses: list[int], max_gap: int = 10
+    ) -> list[tuple[int, int]]:
         """Group registers for batch reading optimization.
 
         Known missing ``input_registers`` are treated as boundaries. When a
@@ -1430,9 +1430,9 @@ class ThesslaGreenDeviceScanner:
             if name in INPUT_REGISTERS
         }
 
-        groups: List[Tuple[int, int]] = []
-        current_start: Optional[int] = None
-        current_end: Optional[int] = None
+        groups: list[tuple[int, int]] = []
+        current_start: int | None = None
+        current_end: int | None = None
 
         for addr in addresses:
             if addr in missing_addrs:

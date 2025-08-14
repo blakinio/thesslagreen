@@ -6,7 +6,7 @@ found in register names.
 
 from __future__ import annotations
 
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 CAPABILITY_PATTERNS: Mapping[str, Sequence[str]] = {
     "heating_system": ("heating", "heater"),
