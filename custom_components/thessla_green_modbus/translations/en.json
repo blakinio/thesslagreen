@@ -187,7 +187,7 @@
       "cf_version": {
         "name": "CF Module Version"
       },
-      "antifreez_mode": {
+      "antifreeze_mode": {
         "name": "Antifreeze Mode"
       },
       "antifreez_stage": {
@@ -834,8 +834,8 @@
       "max_exhaust_air_flow_rate_gwc": {
         "name": "Max Exhaust Air Flow Rate Gwc"
       },
-      "antifreez_mode": {
-        "name": "Antifreez Mode"
+      "antifreeze_mode": {
+        "name": "Antifreeze Mode"
       },
       "antifreez_stage": {
         "name": "Antifreez Stage"

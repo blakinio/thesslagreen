@@ -35,7 +35,7 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
     "mode": {0, 1, 2},
     "season_mode": {0, 1},
     "special_mode": set(range(0, 12)),
-    "antifreez_mode": {0, 1},
+    "antifreeze_mode": {0, 1},
 }
 
 

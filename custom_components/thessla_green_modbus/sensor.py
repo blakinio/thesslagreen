@@ -321,8 +321,8 @@ SENSOR_DEFINITIONS = {
         "unit": None,
         "register_type": "holding_registers",
     },
-    "antifreez_mode": {
-        "translation_key": "antifreez_mode",
+    "antifreeze_mode": {
+        "translation_key": "antifreeze_mode",
         "icon": "mdi:snowflake",
         "device_class": None,
         "state_class": None,
