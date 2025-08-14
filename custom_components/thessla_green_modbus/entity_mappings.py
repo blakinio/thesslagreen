@@ -13,6 +13,7 @@ from homeassistant.const import (
     PERCENTAGE,
     UnitOfElectricPotential,
     UnitOfTemperature,
+    UnitOfTime,
     UnitOfVolumeFlowRate,
 )
 
@@ -58,7 +59,7 @@ def map_legacy_entity_id(entity_id: str) -> str:
 
     if not _alias_warning_logged:
         _LOGGER.warning(
-            "Legacy entity ID '%s' detected. Please update your automations to use '%s'",
+            "Legacy entity ID '%s' detected. Please update automations to use '%s'.",
             entity_id,
             new_entity_id,
         )
@@ -67,118 +68,133 @@ def map_legacy_entity_id(entity_id: str) -> str:
     return new_entity_id
 
 
+def _load_number_mappings():
+    """Load number entity configurations from CSV data.
+    
+    This function reads register configurations and dynamically creates
+    number entity mappings with proper min/max/step values.
+    """
+    from .data.modbus_registers import get_register_info
+    
+    number_configs = {}
+    
+    # Define registers that should be number entities
+    number_registers = {
+        # Temperature control
+        "required_temperature": {"unit": "°C", "icon": "mdi:thermometer"},
+        "supply_air_temperature_manual": {"unit": "°C", "icon": "mdi:thermometer-plus"},
+        "supply_air_temperature_temporary": {"unit": "°C", "icon": "mdi:thermometer-plus"},
+        "min_bypass_temperature": {"unit": "°C", "icon": "mdi:thermometer-low"},
+        "air_temperature_summer_free_heating": {"unit": "°C", "icon": "mdi:thermometer"},
+        "air_temperature_summer_free_cooling": {"unit": "°C", "icon": "mdi:thermometer"},
+        "bypass_off": {"unit": "°C", "icon": "mdi:thermometer-off"},
+        
+        # Air flow control
+        "air_flow_rate_manual": {"unit": "m³/h", "icon": "mdi:fan"},
+        "max_supply_air_flow_rate": {"unit": "m³/h", "icon": "mdi:fan-plus"},
+        "max_exhaust_air_flow_rate": {"unit": "m³/h", "icon": "mdi:fan-minus"},
+        "nominal_supply_air_flow": {"unit": "m³/h", "icon": "mdi:fan-clock"},
+        "nominal_exhaust_air_flow": {"unit": "m³/h", "icon": "mdi:fan-clock"},
+        "max_supply_air_flow_rate_gwc": {"unit": "m³/h", "icon": "mdi:fan-plus"},
+        "max_exhaust_air_flow_rate_gwc": {"unit": "m³/h", "icon": "mdi:fan-minus"},
+        "nominal_supply_air_flow_gwc": {"unit": "m³/h", "icon": "mdi:fan-clock"},
+        "nominal_exhaust_air_flow_gwc": {"unit": "m³/h", "icon": "mdi:fan-clock"},
+        
+        # Access and timing
+        "access_level": {"unit": None, "icon": "mdi:account-key"},
+        "special_mode_timeout": {"unit": "min", "icon": "mdi:timer"},
+        
+        # GWC parameters
+        "min_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-low"},
+        "max_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-high"},
+        "gwc_regen_period": {"unit": "h", "icon": "mdi:timer"},
+        "delta_t_gwc": {"unit": "°C", "icon": "mdi:thermometer-lines"},
+    }
+    
+    for register, config in number_registers.items():
+        try:
+            reg_info = get_register_info(register)
+            if reg_info:
+                number_configs[register] = {
+                    "unit": config["unit"],
+                    "icon": config["icon"],
+                    "min": reg_info.get("min", 0),
+                    "max": reg_info.get("max", 100),
+                    "step": reg_info.get("step", 1),
+                    "scale": reg_info.get("scale", 1),
+                }
+        except Exception:
+            # Fallback to static configuration
+            number_configs[register] = {
+                "unit": config["unit"],
+                "icon": config["icon"],
+                "min": 0,
+                "max": 100,
+                "step": 1,
+            }
+    
+    return number_configs
+
+
+# Static number entity mappings with fallback values
 NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+    # Temperature control
     "required_temperature": {
         "unit": "°C",
-        "min": 16,
-        "max": 26,
+        "min": 5,
+        "max": 30,
         "step": 0.5,
+        "scale": 0.5,
     },
-    # Temperature limit registers
-    "min_gwc_air_temperature": {
-        "unit": "°C",
-        "min": -20,
-        "max": 50,
+    "supply_air_temperature_manual": {
+        "unit": "°C", 
+        "min": 5,
+        "max": 40,
         "step": 0.5,
+        "scale": 0.5,
     },
-    "max_gwc_air_temperature": {
+    "supply_air_temperature_temporary": {
         "unit": "°C",
-        "min": -20,
-        "max": 50,
+        "min": 5, 
+        "max": 40,
         "step": 0.5,
+        "scale": 0.5,
     },
     "min_bypass_temperature": {
         "unit": "°C",
-        "min": 0,
-        "max": 40,
+        "min": -20,
+        "max": 20,
         "step": 0.5,
+        "scale": 0.5,
     },
-    # Airflow coefficient registers
-    "fan_speed_1_coef": {
-        "unit": "%",
+    "air_temperature_summer_free_heating": {
+        "unit": "°C",
+        "min": 10,
+        "max": 30,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    "air_temperature_summer_free_cooling": {
+        "unit": "°C",
+        "min": 10,
+        "max": 35,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    # Access control
+    "access_level": {
+        "unit": None,
         "min": 0,
-        "max": 200,
+        "max": 2,
         "step": 1,
     },
-    "fan_speed_2_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
+    # Air flow rates
+    "air_flow_rate_manual": {
+        "unit": "m³/h",
+        "min": 50,
+        "max": 500,
+        "step": 5,
     },
-    "fan_speed_3_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "hood_supply_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "hood_exhaust_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "fireplace_supply_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "airing_bathroom_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "airing_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "contamination_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "empty_house_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "airing_switch_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "open_window_coef": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "bypass_coef_1": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    "bypass_coef_2": {
-        "unit": "%",
-        "min": 0,
-        "max": 200,
-        "step": 1,
-    },
-    # Airflow limit registers
     "max_supply_air_flow_rate": {
         "unit": "m³/h",
         "min": 0,
@@ -235,10 +251,45 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "step": 0.5,
         "scale": 0.5,
     },
+    # Special mode timeout
+    "special_mode_timeout": {
+        "unit": "min",
+        "min": 1,
+        "max": 480,
+        "step": 1,
+    },
+    # GWC parameters
+    "min_gwc_air_temperature": {
+        "unit": "°C",
+        "min": -20,
+        "max": 10,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    "max_gwc_air_temperature": {
+        "unit": "°C", 
+        "min": 30,
+        "max": 80,
+        "step": 0.5,
+        "scale": 0.5,
+    },
+    "gwc_regen_period": {
+        "unit": "h",
+        "min": 4,
+        "max": 8,
+        "step": 1,
+    },
+    "delta_t_gwc": {
+        "unit": "°C",
+        "min": 0,
+        "max": 10,
+        "step": 0.5,
+        "scale": 0.5,
+    },
 }
 
 SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
-    # Temperature sensors
+    # Temperature sensors (Input Registers) 
     "outside_temperature": {
         "translation_key": "outside_temperature",
         "icon": "mdi:thermometer",
@@ -273,7 +324,7 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
     "duct_supply_temperature": {
         "translation_key": "duct_supply_temperature",
-        "icon": "mdi:thermometer-lines",
+        "icon": "mdi:thermometer-plus",
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfTemperature.CELSIUS,
@@ -281,7 +332,7 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
     "gwc_temperature": {
         "translation_key": "gwc_temperature",
-        "icon": "mdi:thermometer-low",
+        "icon": "mdi:thermometer",
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfTemperature.CELSIUS,
@@ -289,21 +340,74 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
     "ambient_temperature": {
         "translation_key": "ambient_temperature",
-        "icon": "mdi:home-thermometer",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "heating_temperature": {
-        "translation_key": "heating_temperature",
         "icon": "mdi:thermometer",
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "input_registers",
     },
-    # System information
+    
+    # Air flow sensors
+    "supply_flow_rate": {
+        "translation_key": "supply_flow_rate", 
+        "icon": "mdi:fan-plus",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "exhaust_flow_rate": {
+        "translation_key": "exhaust_flow_rate",
+        "icon": "mdi:fan-minus", 
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "supply_air_flow": {
+        "translation_key": "supply_air_flow",
+        "icon": "mdi:fan-plus",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    "exhaust_air_flow": {
+        "translation_key": "exhaust_air_flow",
+        "icon": "mdi:fan-minus",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "register_type": "input_registers",
+    },
+    
+    # Percentage sensors
+    "supply_percentage": {
+        "translation_key": "supply_percentage",
+        "icon": "mdi:fan-plus",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "exhaust_percentage": {
+        "translation_key": "exhaust_percentage",
+        "icon": "mdi:fan-minus",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "min_percentage": {
+        "translation_key": "min_percentage",
+        "icon": "mdi:percent-outline",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    "max_percentage": {
+        "translation_key": "max_percentage",
+        "icon": "mdi:percent-outline",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
+    
+    # System information sensors
     "day_of_week": {
         "translation_key": "day_of_week",
         "icon": "mdi:calendar-week",
@@ -317,89 +421,146 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     "compilation_days": {
         "translation_key": "compilation_days",
         "icon": "mdi:calendar",
+        "state_class": SensorStateClass.TOTAL,
+        "unit": UnitOfTime.DAYS,
         "register_type": "input_registers",
     },
     "compilation_seconds": {
         "translation_key": "compilation_seconds",
         "icon": "mdi:timer",
+        "state_class": SensorStateClass.TOTAL,
+        "unit": UnitOfTime.SECONDS,
         "register_type": "input_registers",
     },
-    "serial_number_1": {
-        "translation_key": "serial_number_1",
-        "icon": "mdi:identifier",
+    "version_major": {
+        "translation_key": "version_major",
+        "icon": "mdi:information",
         "register_type": "input_registers",
     },
-    "serial_number_2": {
-        "translation_key": "serial_number_2",
-        "icon": "mdi:identifier",
+    "version_minor": {
+        "translation_key": "version_minor",
+        "icon": "mdi:information",
         "register_type": "input_registers",
     },
-    "serial_number_3": {
-        "translation_key": "serial_number_3",
-        "icon": "mdi:identifier",
-        "register_type": "input_registers",
-    },
-    "serial_number_4": {
-        "translation_key": "serial_number_4",
-        "icon": "mdi:identifier",
+    "version_patch": {
+        "translation_key": "version_patch",
+        "icon": "mdi:information",
         "register_type": "input_registers",
     },
     "serial_number_5": {
         "translation_key": "serial_number_5",
-        "icon": "mdi:identifier",
+        "icon": "mdi:barcode",
         "register_type": "input_registers",
     },
     "serial_number_6": {
         "translation_key": "serial_number_6",
-        "icon": "mdi:identifier",
+        "icon": "mdi:barcode",
         "register_type": "input_registers",
     },
-    # Flow sensors
-    "supply_flow_rate": {
-        "translation_key": "supply_flow_rate",
-        "icon": "mdi:fan",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+    
+    # Mode and status sensors  
+    "antifreez_mode": {
+        "translation_key": "antifreez_mode",
+        "icon": "mdi:snowflake-alert",
         "register_type": "input_registers",
     },
-    "exhaust_flow_rate": {
-        "translation_key": "exhaust_flow_rate",
-        "icon": "mdi:fan-clock",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+    "mode": {
+        "translation_key": "mode",
+        "icon": "mdi:cog",
         "register_type": "input_registers",
     },
-    "supply_air_flow": {
-        "translation_key": "supply_air_flow",
-        "icon": "mdi:fan",
+    "season_mode": {
+        "translation_key": "season_mode",
+        "icon": "mdi:weather-sunny",
+        "register_type": "input_registers",
+    },
+    "gwc_mode": {
+        "translation_key": "gwc_mode", 
+        "icon": "mdi:pipe",
+        "register_type": "input_registers",
+    },
+    "bypass_mode": {
+        "translation_key": "bypass_mode",
+        "icon": "mdi:pipe-leak",
+        "register_type": "input_registers",
+    },
+    "comfort_mode": {
+        "translation_key": "comfort_mode",
+        "icon": "mdi:home-heart",
+        "register_type": "input_registers",
+    },
+    "constant_flow_active": {
+        "translation_key": "constant_flow_active",
+        "icon": "mdi:waves",
+        "register_type": "input_registers",
+    },
+    
+    # Configuration sensors from holding registers
+    "supply_air_temperature_manual": {
+        "translation_key": "supply_air_temperature_manual",
+        "icon": "mdi:thermometer-plus",
+        "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    "exhaust_air_flow": {
-        "translation_key": "exhaust_air_flow",
-        "icon": "mdi:fan-clock",
+    "supply_air_temperature_temporary": {
+        "translation_key": "supply_air_temperature_temporary",
+        "icon": "mdi:thermometer-plus",
+        "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
+    "min_bypass_temperature": {
+        "translation_key": "min_bypass_temperature",
+        "icon": "mdi:thermometer-low",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
+    "air_temperature_summer_free_heating": {
+        "translation_key": "air_temperature_summer_free_heating",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
+    "air_temperature_summer_free_cooling": {
+        "translation_key": "air_temperature_summer_free_cooling",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
+    "required_temp": {
+        "translation_key": "required_temp",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
-        "icon": "mdi:fan",
+        "icon": "mdi:fan-plus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
     },
     "max_exhaust_air_flow_rate": {
         "translation_key": "max_exhaust_air_flow_rate",
-        "icon": "mdi:fan-clock",
+        "icon": "mdi:fan-minus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
     },
     "nominal_supply_air_flow": {
         "translation_key": "nominal_supply_air_flow",
-        "icon": "mdi:fan",
+        "icon": "mdi:fan-clock",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
@@ -419,7 +580,8 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    # PWM control values
+    
+    # PWM control values (napięcia wentylatorów)
     "dac_supply": {
         "translation_key": "dac_supply",
         "icon": "mdi:sine-wave",
@@ -452,34 +614,56 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfElectricPotential.VOLT,
         "register_type": "holding_registers",
     },
-    # Percentage sensors
-    "supply_percentage": {
-        "translation_key": "supply_percentage",
+    
+    # Coefficients and intensive settings
+    "fan_speed_1_coef": {
+        "translation_key": "fan_speed_1_coef",
+        "icon": "mdi:speedometer",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "holding_registers",
+    },
+    "fan_speed_2_coef": {
+        "translation_key": "fan_speed_2_coef",
+        "icon": "mdi:speedometer",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "holding_registers",
+    },
+    "fan_speed_3_coef": {
+        "translation_key": "fan_speed_3_coef",
+        "icon": "mdi:speedometer",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "holding_registers",
+    },
+    "hood_supply_coef": {
+        "translation_key": "hood_supply_coef",
+        "icon": "mdi:stove",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "holding_registers",
+    },
+    "hood_exhaust_coef": {
+        "translation_key": "hood_exhaust_coef",
+        "icon": "mdi:stove",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "holding_registers",
+    },
+    "intensive_supply": {
+        "translation_key": "intensive_supply",
         "icon": "mdi:fan-plus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
-    "exhaust_percentage": {
-        "translation_key": "exhaust_percentage",
+    "intensive_exhaust": {
+        "translation_key": "intensive_exhaust",
         "icon": "mdi:fan-minus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
-        "register_type": "input_registers",
-    },
-    "min_percentage": {
-        "translation_key": "min_percentage",
-        "icon": "mdi:percent-outline",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "input_registers",
-    },
-    "max_percentage": {
-        "translation_key": "max_percentage",
-        "icon": "mdi:percent-outline",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
 }
 
@@ -533,6 +717,7 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
     },
+    
     # System status (from discrete inputs)
     "expansion": {
         "translation_key": "expansion",
@@ -612,6 +797,12 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
+    "hood_switch": {
+        "translation_key": "hood_switch",
+        "icon": "mdi:stove",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
     "empty_house": {
         "translation_key": "empty_house",
         "icon": "mdi:home-outline",
@@ -624,19 +815,15 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.SAFETY,
         "register_type": "discrete_inputs",
     },
+    
     # Active modes (from input registers)
-    "constant_flow_active": {
-        "translation_key": "constant_flow_active",
-        "icon": "mdi:waves",
-        "device_class": BinarySensorDeviceClass.RUNNING,
-        "register_type": "input_registers",
-    },
     "water_removal_active": {
         "translation_key": "water_removal_active",
         "icon": "mdi:water-off",
         "device_class": BinarySensorDeviceClass.MOISTURE,
         "register_type": "input_registers",
     },
+    
     # Device main status (from holding registers)
     "on_off_panel_mode": {
         "translation_key": "on_off_panel_mode",
