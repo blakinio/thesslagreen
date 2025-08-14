@@ -523,6 +523,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         """Read holding registers using optimized batch reading."""
         data = {}
 
+        if self.client is None:
+            _LOGGER.debug("Modbus client not available; skipping holding register read")
+            raise UpdateFailed("Modbus client is not initialized")
+
         if "holding_registers" not in self._register_groups:
             return data
 
