@@ -524,7 +524,10 @@ async def test_scan_device_batch_fallback():
     # Ensure batch read was attempted and individual fallback reads occurred
     batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
     assert any(call.args[2] == 2 for call in batch_calls)
-    assert any(call.args[2] == 1 for call in batch_calls)
+
+    single_calls = [call.args[1] for call in ri.await_args_list if call.args[2] == 1]
+    assert single_calls.count(0x10) == 1
+    assert single_calls.count(0x11) == 1
 
 
 async def test_missing_register_logged_once(caplog):
