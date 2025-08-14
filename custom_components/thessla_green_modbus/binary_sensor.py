@@ -164,6 +164,19 @@ BINARY_SENSOR_DEFINITIONS = {
         "device_class": BinarySensorDeviceClass.SAFETY,
         "register_type": "discrete_inputs",
     },
+    # System modes (from input registers)
+    "constant_flow_active": {
+        "translation_key": "constant_flow_active",
+        "icon": "mdi:waves",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "water_removal_active": {
+        "translation_key": "water_removal_active",
+        "icon": "mdi:water-off",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
 }
 
 

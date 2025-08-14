@@ -297,22 +297,6 @@ SENSOR_DEFINITIONS = {
         "register_type": "input_registers",
     },
     # System modes and versions
-    "constant_flow_active": {
-        "translation_key": "constant_flow_active",
-        "icon": "mdi:waves",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "input_registers",
-    },
-    "water_removal_active": {
-        "translation_key": "water_removal_active",
-        "icon": "mdi:water-off",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "input_registers",
-    },
     "cf_version": {
         "translation_key": "cf_version",
         "icon": "mdi:chip",
