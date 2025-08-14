@@ -193,8 +193,37 @@
       "antifreez_stage": {
         "name": "Antifreeze Stage"
       },
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "auto": "Auto",
+          "manual": "Manual",
+          "temporary": "Temporary"
+        }
+      },
+      "season_mode": {
+        "name": "Season Mode",
+        "state": {
+          "winter": "Winter",
+          "summer": "Summer"
+        }
+      },
+      "filter_change": {
+        "name": "Filter Type",
+        "state": {
+          "presostat": "Pressure switch",
+          "flat_filters": "Flat Filters",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      },
       "gwc_mode": {
-        "name": "GWC Mode"
+        "name": "GWC Mode",
+        "state": {
+          "off": "Off",
+          "auto": "Automatic",
+          "forced": "Forced"
+        }
       },
       "gwc_regen_flag": {
         "name": "GWC Regeneration Active"
@@ -203,7 +232,12 @@
         "name": "Comfort Mode Status"
       },
       "bypass_mode": {
-        "name": "Bypass Mode Status"
+        "name": "Bypass Mode Status",
+        "state": {
+          "auto": "Automatic",
+          "open": "Open",
+          "closed": "Closed"
+        }
       }
     },
     "binary_sensor": {
