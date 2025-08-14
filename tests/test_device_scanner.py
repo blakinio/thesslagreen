@@ -217,6 +217,37 @@ async def test_read_input_skips_range_on_exception_response(caplog):
         call_mock2.assert_not_called()
 
 
+async def test_read_holding_skips_range_on_exception_response(caplog):
+    """Block failures with exception codes skip entire holding register range."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    error_response.exception_code = 2
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(return_value=error_response),
+    ) as call_mock:
+        result = await scanner._read_holding(mock_client, 0x0200, 2)
+
+    assert result is None
+    assert call_mock.await_count == 1
+    assert (0x0200, 0x0201) in scanner._unsupported_holding_ranges
+    assert "Skipping unsupported holding registers 0x0200-0x0201" in caplog.text
+
+    # Further reads within the range should be skipped without new calls
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(),
+    ) as call_mock2:
+        result = await scanner._read_holding(mock_client, 0x0201, 1)
+        assert result is None
+        call_mock2.assert_not_called()
+
+
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
@@ -944,7 +975,7 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
-    assert scanner._register_ranges["reg_a"] == (0x0, 0x423F)
+    assert scanner._register_ranges["reg_a"] == (1, 10)
     assert not caplog.records
 
 
