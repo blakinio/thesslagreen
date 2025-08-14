@@ -526,6 +526,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if "holding_registers" not in self._register_groups:
             return data
 
+        if self.client is None:
+            _LOGGER.debug("Modbus client is not connected")
+            return data
+
         for start_addr, count in self._register_groups["holding_registers"]:
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
