@@ -121,7 +121,7 @@ def _format_register_value(name: str, value: int) -> int | str:
         decoded = _decode_bcd_time(value)
         if decoded is None:
             return f"0x{value:04X} (invalid)"
-        return f"{decoded // 100:02d}:{decoded % 100:02d}"
+        return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(TIME_REGISTER_PREFIXES):
         decoded = _decode_register_time(value)
@@ -461,14 +461,12 @@ class ThesslaGreenDeviceScanner:
         start = address
         end = address + count - 1
 
-        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
-            _LOGGER.debug(
-                "Skipping cached failed input registers 0x%04X-0x%04X",
-                start,
-                end,
+        if not skip_cache and any(
+            reg in self._failed_input for reg in range(start, end + 1)
+        ):
+            first = next(
+                reg for reg in range(start, end + 1) if reg in self._failed_input
             )
-        if any(reg in self._failed_input for reg in range(start, end + 1)):
-            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
             skip_start = skip_end = first
             while skip_start - 1 in self._failed_input:
                 skip_start -= 1
