@@ -472,12 +472,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if "input_registers" not in self._register_groups:
             return data
 
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
+            raise ConnectionException("Modbus client is not connected")
+
         for start_addr, count in self._register_groups["input_registers"]:
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_input_registers,
+                    client.read_input_registers,
                     start_addr,
                     count=count,
                 )
@@ -526,12 +531,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if "holding_registers" not in self._register_groups:
             return data
 
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
+            raise ConnectionException("Modbus client is not connected")
+
         for start_addr, count in self._register_groups["holding_registers"]:
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_holding_registers,
+                    client.read_holding_registers,
                     start_addr,
                     count=count,
                 )
@@ -592,12 +602,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if "coil_registers" not in self._register_groups:
             return data
 
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
+            raise ConnectionException("Modbus client is not connected")
+
         for start_addr, count in self._register_groups["coil_registers"]:
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_coils,
+                    client.read_coils,
                     start_addr,
                     count=count,
                 )
@@ -652,12 +667,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if "discrete_inputs" not in self._register_groups:
             return data
 
+        await self._ensure_connection()
+        client = self.client
+        if client is None or not client.connected:
+            raise ConnectionException("Modbus client is not connected")
+
         for start_addr, count in self._register_groups["discrete_inputs"]:
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
-                    self.client.read_discrete_inputs,
+                    client.read_discrete_inputs,
                     start_addr,
                     count=count,
                 )
