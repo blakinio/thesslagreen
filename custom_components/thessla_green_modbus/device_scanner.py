@@ -463,12 +463,8 @@ class ThesslaGreenDeviceScanner:
 
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
-        if not skip_cache and any(
-            reg in self._failed_input for reg in range(start, end + 1)
-        ):
-            first = next(
-                reg for reg in range(start, end + 1) if reg in self._failed_input
-            )
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
             skip_start = skip_end = first
             while skip_start - 1 in self._failed_input:
                 skip_start -= 1
@@ -626,6 +622,12 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading holding 0x%04X on attempt %d/%d",
