@@ -16,6 +16,7 @@ from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOExc
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
+from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
     COIL_REGISTERS,
     DEFAULT_SLAVE_ID,
@@ -39,16 +40,23 @@ REGISTER_ALLOWED_VALUES: Dict[str, Set[int]] = {
 
 
 # Registers storing times encoded as HH:MM bytes
-TIME_REGISTER_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
+TIME_REGISTER_PREFIXES: Tuple[str, ...] = (
+    "schedule_",
+    "airing_",
+    "manual_airing_time_to_start",
+    "pres_check_time",
+    "start_gwc_regen",
+    "stop_gwc_regen",
+)
 # Registers storing times as BCD HHMM values
-BCD_TIME_PREFIXES: Tuple[str, ...] = ("schedule_", "airing_")
+BCD_TIME_PREFIXES: Tuple[str, ...] = TIME_REGISTER_PREFIXES
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
 
 
 def _decode_register_time(value: int) -> Optional[int]:
-    """Decode a 16-bit register with HH:MM byte encoding to ``HHMM``.
+    """Decode HH:MM byte-encoded value to minutes since midnight.
 
     The most significant byte stores the hour and the least significant byte
     stores the minute. ``None`` is returned if the value is negative or if the
@@ -61,25 +69,28 @@ def _decode_register_time(value: int) -> Optional[int]:
     hour = (value >> 8) & 0xFF
     minute = value & 0xFF
     if 0 <= hour <= 23 and 0 <= minute <= 59:
-        return hour * 100 + minute
+        return hour * 60 + minute
 
     return None
 
 
 def _decode_bcd_time(value: int) -> Optional[int]:
-    """Decode BCD or decimal HHMM values to ``HHMM``."""
+    """Decode BCD or decimal HHMM values to minutes since midnight."""
+
+    if value < 0:
+        return None
 
     nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
     if all(n <= 9 for n in nibbles):
         hours = nibbles[0] * 10 + nibbles[1]
         minutes = nibbles[2] * 10 + nibbles[3]
         if hours <= 23 and minutes <= 59:
-            return hours * 100 + minutes
+            return hours * 60 + minutes
 
     hours_dec = value // 100
     minutes_dec = value % 100
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
-        return hours_dec * 100 + minutes_dec
+        return hours_dec * 60 + minutes_dec
     return None
 
 
@@ -117,6 +128,8 @@ def _format_register_value(name: str, value: int) -> int | str:
         if decoded is None:
             return f"0x{value:04X} (invalid)"
         return f"{decoded // 100:02d}:{decoded % 100:02d}"
+            return value
+        return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(SETTING_PREFIX):
         decoded = _decode_setting_value(value)
@@ -141,6 +154,7 @@ class DeviceInfo:
     model: str = "Unknown AirPack"
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
+    capabilities: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -435,12 +449,16 @@ class ThesslaGreenDeviceScanner:
                 self._input_skip_log_ranges.add((skip_start, skip_end))
             return None
 
+        exception_code: Optional[int] = None
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
                     client.read_input_registers, self.slave_id, address, count=count
                 )
-                if response is not None and not response.isError():
+                if response is not None:
+                    if response.isError():
+                        exception_code = getattr(response, "exception_code", None)
+                        break
                     return response.registers
             except ModbusIOException as exc:
                 _LOGGER.debug(
@@ -485,7 +503,7 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if attempt < self.retry:
+            if attempt < self.retry and exception_code is None:
                 try:
                     await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
                 except asyncio.CancelledError:
@@ -495,6 +513,18 @@ class ThesslaGreenDeviceScanner:
                         end,
                     )
                     raise
+
+        if exception_code is not None:
+            self._failed_input.update(range(start, end + 1))
+            if (start, end) not in self._input_skip_log_ranges:
+                _LOGGER.warning(
+                    "Skipping unsupported input registers 0x%04X-0x%04X (exception code %d)",
+                    start,
+                    end,
+                    exception_code,
+                )
+                self._input_skip_log_ranges.add((start, end))
+            return None
 
         _LOGGER.warning(
             "Failed to read input registers 0x%04X-0x%04X after %d retries",
@@ -716,21 +746,12 @@ class ThesslaGreenDeviceScanner:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
-        # Decode schedule/airing time values before validation
+        # Decode time values before validation
         if name.startswith(TIME_REGISTER_PREFIXES):
             decoded = _decode_register_time(value)
-            # Some registers may store time values in BCD/decimal format
             if decoded is None and name.startswith(BCD_TIME_PREFIXES):
                 decoded = _decode_bcd_time(value)
-            if decoded is None:
-                self._log_invalid_value(register_name, value)
-                return False
-            value = decoded
-
-        # Validate registers storing schedule times
-        if name.startswith(BCD_TIME_PREFIXES):
-            if _decode_bcd_time(value) is None:
-
+            if decoded is None or not 0 <= decoded <= 1439:
                 self._log_invalid_value(register_name, value)
                 return False
             return True
@@ -798,32 +819,16 @@ class ThesslaGreenDeviceScanner:
         )
         caps.constant_flow = bool(cf_indicators.intersection(cf_registers))
 
-        # Systems detection
-        caps.gwc_system = any(
-            "gwc" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
-        caps.bypass_system = any(
-            "bypass" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
+        # Generic capability detection based on register name patterns
+        all_regs_lower = {
+            reg.lower() for registers in self.available_registers.values() for reg in registers
+        }
+        for attr, keywords in CAPABILITY_PATTERNS.items():
+            if any(any(key in reg for key in keywords) for reg in all_regs_lower):
+                setattr(caps, attr, True)
 
         # Expansion module
         caps.expansion_module = "expansion" in self.available_registers["discrete_inputs"]
-
-        # Heating/Cooling systems
-        caps.heating_system = any(
-            "heating" in reg.lower() or "heater" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
-        caps.cooling_system = any(
-            "cooling" in reg.lower() or "cooler" in reg.lower()
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
 
         # Temperature sensors
         temp_sensors = [
@@ -1019,6 +1024,9 @@ class ThesslaGreenDeviceScanner:
 
             # Analyze capabilities once all register scans are complete
             caps = self._analyze_capabilities()
+            info.capabilities = [
+                name for name, value in caps.as_dict().items() if isinstance(value, bool) and value
+            ]
 
             # Copy the discovered register address blocks so they can be returned
             register_blocks = present_blocks.copy()
@@ -1053,6 +1061,7 @@ class ThesslaGreenDeviceScanner:
                     "model": info.model,
                     "firmware": info.firmware,
                     "serial_number": info.serial_number,
+                    "capabilities": info.capabilities,
                 },
                 "capabilities": caps.as_dict(),
                 "available_registers": self.available_registers,
