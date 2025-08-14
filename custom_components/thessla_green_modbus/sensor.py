@@ -212,7 +212,7 @@ SENSOR_DEFINITIONS = {
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "dac_exhaust": {
         "translation_key": "dac_exhaust",
@@ -220,7 +220,7 @@ SENSOR_DEFINITIONS = {
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "dac_heater": {
         "translation_key": "dac_heater",
@@ -228,7 +228,7 @@ SENSOR_DEFINITIONS = {
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "dac_cooler": {
         "translation_key": "dac_cooler",
@@ -236,7 +236,7 @@ SENSOR_DEFINITIONS = {
         "device_class": SensorDeviceClass.VOLTAGE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     # Percentage sensors
     "supply_percentage": {
