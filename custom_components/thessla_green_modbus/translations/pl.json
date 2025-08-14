@@ -263,15 +263,6 @@
       },
       "empty_house": {
         "name": "Pusty dom"
-      },
-      "water_removal_active": {
-        "name": "Aktywne odprowadzanie wody"
-      },
-      "constant_flow_active": {
-        "name": "Stały przepływ"
-      },
-      "on_off_panel_mode": {
-        "name": "Zasilanie główne"
       }
     },
     "climate": {
