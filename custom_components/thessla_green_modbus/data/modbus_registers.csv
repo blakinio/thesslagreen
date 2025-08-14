@@ -220,7 +220,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x1016,4118,R/W,maxSupplyAirFlowRateGwc,Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (nawiew),100,150,100,1,%,"Wartość wyznaczona podczas procedury kalibracji",,
 03,0x1017,4119,R/W,maxExhaustAirFlowRate,Maksymalna możliwa do ustawienia intensywność wentylacji (wywiew),100,150,100,1,%,"Wartość wyznaczona podczas procedury kalibracji",,
 03,0x1018,4120,R/W,maxExhaustAirFlowRateGwc,Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (wywiew),100,150,100,1,%,"Wartość wyznaczona podczas procedury kalibracji",,
-03,0x1060,4192,R/-,antifreezMode,Flaga uruchomienia systemu FPX,0,1,,1,"0 - brak; 1 - jest",,
+03,0x1060,4192,R/-,antifreezeMode,Flaga uruchomienia systemu FPX,0,1,,1,"0 - brak; 1 - jest",,
 03,0x1066,4198,R/-,antifreezStage,Tryb działania systemu FPX,0,2,,1,"0 - OFF; 1 - tryb FPX1; 2 - tryb FPX2",,
 03,0x1070,4208,R/W,mode,Tryb pracy AirPack,0,2,0,1,"0 - automatyczny; 1 - manualny; 2 - chwilowy",,
 03,0x1071,4209,R/W,seasonMode,Wybór harmonogramu - tryb AUTOMATYCZNY,0,1,0,1,"0 - LATO; 1 - ZIMA",,

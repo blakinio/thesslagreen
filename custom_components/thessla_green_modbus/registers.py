@@ -212,7 +212,7 @@ HOLDING_REGISTERS: dict[str, int] = {
     "max_supply_air_flow_rate_gwc": 4118,
     "max_exhaust_air_flow_rate": 4119,
     "max_exhaust_air_flow_rate_gwc": 4120,
-    "antifreez_mode": 4192,
+    "antifreeze_mode": 4192,
     "antifreez_stage": 4198,
     "mode": 4208,
     "season_mode": 4209,
