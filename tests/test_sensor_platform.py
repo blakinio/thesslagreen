@@ -88,6 +88,11 @@ def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
             available.setdefault(definition["register_type"], set()).add(name)
         mock_coordinator.available_registers = available
 
+        # Ensure DAC sensors come from holding registers
+        dac_sensors = {"dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"}
+        assert dac_sensors <= available["holding_registers"]  # nosec B101
+        assert dac_sensors.isdisjoint(available["input_registers"])  # nosec B101
+
         add_entities = MagicMock()
         await async_setup_entry(hass, mock_config_entry, add_entities)
 
@@ -124,3 +129,19 @@ def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
             )  # nosec B101
 
     asyncio.run(run_test())
+
+
+def test_sensor_registers_match_definition():
+    """Cross-check register_type against registers module."""
+
+    from custom_components.thessla_green_modbus import registers
+
+    mapping = {
+        "input_registers": registers.INPUT_REGISTERS,
+        "holding_registers": registers.HOLDING_REGISTERS,
+    }
+
+    for name, definition in SENSOR_DEFINITIONS.items():
+        reg_type = definition["register_type"]
+        assert reg_type in mapping, f"Unknown register type {reg_type}"
+        assert name in mapping[reg_type], f"{name} not in {reg_type}"
