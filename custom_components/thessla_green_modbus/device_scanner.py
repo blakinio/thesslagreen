@@ -117,6 +117,14 @@ def _decode_setting_value(value: int) -> Optional[Tuple[int, float]]:
 def _format_register_value(name: str, value: int) -> int | str:
     """Return a human-readable representation of a register value."""
 
+    if name == "manual_airing_time_to_start":
+        raw_value = value
+        value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
+        decoded = _decode_register_time(value)
+        if decoded is None:
+            return f"0x{raw_value:04X} (invalid)"
+        return f"{decoded // 60:02d}:{decoded % 60:02d}"
+
     if name.startswith(BCD_TIME_PREFIXES):
         decoded = _decode_bcd_time(value)
         if decoded is None:
