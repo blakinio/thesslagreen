@@ -12,8 +12,8 @@ from custom_components.thessla_green_modbus.const import (
 )
 from custom_components.thessla_green_modbus.device_scanner import (
     ThesslaGreenDeviceScanner,
-    _decode_register_time,
     _decode_bcd_time,
+    _decode_register_time,
     _decode_setting_value,
     _format_register_value,
 )
@@ -65,6 +65,7 @@ async def test_read_holding_skips_after_failure():
 
     assert 0x00A8 in scanner._failed_holding
 
+
 async def test_read_holding_exception_response(caplog):
     """Exception responses should include the exception code in logs."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -89,17 +90,13 @@ async def test_read_holding_exception_response(caplog):
     assert f"Exception code {error_response.exception_code}" in caplog.text
 
 
-async def test_read_input_backoff():
-
 @pytest.mark.parametrize(
     "method, address",
     [("_read_input", 0x0001), ("_read_holding", 0x0001)],
 )
-async def test_read_backoff_delay(method, address):```````
+async def test_read_backoff_delay(method, address):
     """Ensure exponential backoff delays between retries."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=3, backoff=0.1
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
     sleep_mock = AsyncMock()
     with (
@@ -122,9 +119,7 @@ async def test_read_backoff_delay(method, address):```````
 )
 async def test_read_default_delay(method, address):
     """Use default delay when backoff is not specified."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=3
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
     mock_client = AsyncMock()
     sleep_mock = AsyncMock()
     with (
@@ -143,9 +138,7 @@ async def test_read_default_delay(method, address):
 
 async def test_read_input_logs_warning_on_failure(caplog):
     """Warn when input registers cannot be read after retries."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=2
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
 
     caplog.set_level(logging.WARNING)
@@ -165,9 +158,7 @@ async def test_read_input_logs_warning_on_failure(caplog):
 
 async def test_read_input_skips_cached_failures():
     """Input registers are cached after repeated failures."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=2
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
 
     with (
@@ -562,14 +553,8 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 0) is True
 
     # SENSOR_UNAVAILABLE should be treated as unavailable for temperature and airflow sensors
-    assert (
-        scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-        is False
-    )
-    assert (
-        scanner._is_valid_register_value("supply_air_flow", SENSOR_UNAVAILABLE)
-        is False
-    )
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+    assert scanner._is_valid_register_value("supply_air_flow", SENSOR_UNAVAILABLE) is False
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
@@ -601,13 +586,14 @@ async def test_decode_register_time():
     assert _decode_register_time(0x1234) == 1852
     assert _decode_register_time(0x2460) is None
     assert _decode_register_time(0x0960) is None
+
+
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
     assert _decode_bcd_time(0x1234) == 1234
     assert _decode_bcd_time(0x0800) == 800
     assert _decode_bcd_time(0x2460) is None
     assert _decode_bcd_time(2400) is None
-
 
 
 async def test_decode_setting_value():
@@ -780,6 +766,34 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
 
     assert scanner._register_ranges["reg_a"] == (0, None)
     assert any("non-numeric Max" in record.message for record in caplog.records)
+
+
+@pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
+async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
+    """Support decimal and hexadecimal ranges."""
+    csv_content = (
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n" f"04,1,reg_a,{min_raw},{max_raw}\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_a": 1},
+        ),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    assert scanner._register_ranges["reg_a"] == (1, 10)
 
 
 async def test_load_registers_invalid_range_logs(tmp_path, caplog):
