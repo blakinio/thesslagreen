@@ -549,6 +549,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if "holding_registers" not in self._register_groups:
             return data
 
+        if self.client is None:
+            _LOGGER.debug("Modbus client is not connected")
+            return data
         await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
