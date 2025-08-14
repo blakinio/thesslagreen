@@ -271,41 +271,29 @@
       }
     },
     "switch": {
-      "on_off_panel_mode": {
-        "name": "Panel Power"
+      "duct_water_heater_pump": {
+        "name": "Water Heater Pump"
       },
-      "boost": {
-        "name": "Boost Mode"
+      "bypass": {
+        "name": "Bypass"
       },
-      "eco": {
-        "name": "Eco Mode"
+      "info": {
+        "name": "Unit Operation Confirmation"
       },
-      "sleep": {
-        "name": "Sleep Mode"
+      "power_supply_fans": {
+        "name": "Fan Power"
       },
-      "party": {
-        "name": "Party Mode"
+      "heating_cable": {
+        "name": "Heating Cable"
       },
-      "fireplace": {
-        "name": "Fireplace Mode"
+      "work_permit": {
+        "name": "Work Permit"
       },
-      "away": {
-        "name": "Away Mode"
+      "gwc": {
+        "name": "GWC"
       },
-      "hood": {
-        "name": "Hood Mode"
-      },
-      "bathroom": {
-        "name": "Bathroom Mode"
-      },
-      "kitchen": {
-        "name": "Kitchen Mode"
-      },
-      "summer": {
-        "name": "Summer Mode"
-      },
-      "winter": {
-        "name": "Winter Mode"
+      "hood_output": {
+        "name": "Hood Output"
       }
     },
     "select": {
