@@ -469,9 +469,7 @@ class ThesslaGreenDeviceScanner:
                 if response is None:
                     raise ModbusException("No response")
                 if response.isError():
-                    raise ModbusException(
-                        f"Exception code {response.exception_code}"
-                    )
+                    raise ModbusException(f"Exception code {response.exception_code}")
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers
@@ -861,20 +859,6 @@ class ThesslaGreenDeviceScanner:
                                     self.available_registers[reg_type].add(name)
                             else:
                                 self.available_registers[reg_type].add(name)
-                        if count > 1:
-                            for addr in range(start, start + count):
-                                single = await read_fn(client, addr, 1)
-                                if single is None:
-                                    continue
-                                name = addr_to_name.get(addr)
-                                if not name:
-                                    continue
-                                value = single[0]
-                                if reg_type in ("input_registers", "holding_registers"):
-                                    if self._is_valid_register_value(name, value):
-                                        self.available_registers[reg_type].add(name)
-                                else:
-                                    self.available_registers[reg_type].add(name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
@@ -928,20 +912,6 @@ class ThesslaGreenDeviceScanner:
                                     self.available_registers[reg_type].add(reg_name)
                             else:
                                 self.available_registers[reg_type].add(reg_name)
-                        if count > 1:
-                            for addr in range(start, start + count):
-                                single = await read_fn(client, addr, 1)
-                                if single is None:
-                                    continue
-                                reg_name = addr_to_name.get(addr)
-                                if not reg_name:
-                                    continue
-                                value = single[0]
-                                if reg_type in ("input_registers", "holding_registers"):
-                                    if self._is_valid_register_value(reg_name, value):
-                                        self.available_registers[reg_type].add(reg_name)
-                                else:
-                                    self.available_registers[reg_type].add(reg_name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
