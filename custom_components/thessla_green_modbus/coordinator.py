@@ -495,6 +495,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if not self.client:
             await self._ensure_connection()
+        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -559,6 +560,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if not self.client:
             await self._ensure_connection()
+        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             _LOGGER.debug("Modbus client is not connected")
@@ -632,6 +634,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if not self.client:
             await self._ensure_connection()
+        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -698,6 +701,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if not self.client:
             await self._ensure_connection()
+        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
