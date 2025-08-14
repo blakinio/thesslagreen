@@ -162,6 +162,33 @@
       },
       "max_percentage": {
         "name": "Maksymalny procent"
+      },
+      "constant_flow_active": {
+        "name": "Status Constant Flow"
+      },
+      "water_removal_active": {
+        "name": "Status usuwania wody"
+      },
+      "cf_version": {
+        "name": "Wersja modułu CF"
+      },
+      "antifreez_mode": {
+        "name": "Tryb antyzamrożeniowy"
+      },
+      "antifreez_stage": {
+        "name": "Etap antyzamrożeniowy"
+      },
+      "gwc_mode": {
+        "name": "Tryb GWC"
+      },
+      "gwc_regen_flag": {
+        "name": "Regeneracja GWC aktywna"
+      },
+      "comfort_mode": {
+        "name": "Status trybu komfort"
+      },
+      "bypass_mode": {
+        "name": "Tryb bypassu"
       }
     },
     "binary_sensor": {
