@@ -773,6 +773,13 @@ async def test_format_register_value_schedule():
     assert _format_register_value("schedule_summer_mon_1", 0x0615) == "06:15"
 
 
+async def test_format_register_value_manual_airing_le():
+    """Little-endian manual airing times should decode correctly."""
+    assert (
+        _format_register_value("manual_airing_time_to_start", 0x1E08) == "08:30"
+    )
+
+
 async def test_format_register_value_setting():
     """Formatted setting registers should show percent and temperature."""
     assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
@@ -1054,12 +1061,13 @@ async def test_analyze_capabilities_flag_presence():
         "input_registers": {"constant_flow_active", "outside_temperature"},
         "holding_registers": set(),
         "coil_registers": set(),
-        "discrete_inputs": set(),
+        "discrete_inputs": {"expansion"},
     }
     capabilities = scanner._analyze_capabilities()
 
     assert capabilities.constant_flow is True
     assert capabilities.sensor_outside_temperature is True
+    assert capabilities.expansion_module is True
 
     # Negative case: registers absent
     scanner.available_registers = {
@@ -1072,6 +1080,7 @@ async def test_analyze_capabilities_flag_presence():
 
     assert capabilities.constant_flow is False
     assert capabilities.sensor_outside_temperature is False
+    assert capabilities.expansion_module is False
 
 
 async def test_capability_rules_detect_heating_and_bypass():

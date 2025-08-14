@@ -4,8 +4,6 @@ from pathlib import Path
 
 import yaml
 
-from custom_components.thessla_green_modbus.const import SPECIAL_FUNCTION_MAP
-
 ROOT = Path(__file__).resolve().parent.parent / "custom_components" / "thessla_green_modbus"
 
 with open(ROOT / "translations" / "en.json", "r", encoding="utf-8") as f:
@@ -62,7 +60,7 @@ def _load_keys(file: Path, var_name: str):
 
 SENSOR_KEYS = _load_translation_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
 BINARY_KEYS = _load_translation_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
-SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES") + list(SPECIAL_FUNCTION_MAP.keys())
+SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
 SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")

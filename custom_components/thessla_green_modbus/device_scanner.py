@@ -117,6 +117,14 @@ def _decode_setting_value(value: int) -> Optional[Tuple[int, float]]:
 def _format_register_value(name: str, value: int) -> int | str:
     """Return a human-readable representation of a register value."""
 
+    if name == "manual_airing_time_to_start":
+        raw_value = value
+        value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
+        decoded = _decode_register_time(value)
+        if decoded is None:
+            return f"0x{raw_value:04X} (invalid)"
+        return f"{decoded // 60:02d}:{decoded % 60:02d}"
+
     if name.startswith(BCD_TIME_PREFIXES):
         decoded = _decode_bcd_time(value)
         if decoded is None:
@@ -143,8 +151,13 @@ def _format_register_value(name: str, value: int) -> int | str:
 # Maximum registers per batch read (Modbus limit)
 MAX_BATCH_REGISTERS = 16
 
-# Optional UART configuration registers (Air++ port)
-UART_OPTIONAL_REGS = range(0x1168, 0x116C)
+# Optional UART configuration registers (Air-B and Air++ ports)
+# According to the Series 4 Modbus documentation, both the Air-B
+# (0x1164-0x1167) and Air++ (0x1168-0x116B) register blocks are
+# optional and may be absent on devices without the corresponding
+# hardware. They are skipped by default unless UART scanning is
+# explicitly enabled.
+UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 
 
 @dataclass
@@ -476,6 +489,10 @@ class ThesslaGreenDeviceScanner:
             first = next(
                 reg for reg in range(start, end + 1) if reg in self._failed_input
             )
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
             skip_start = skip_end = first
             while skip_start - 1 in self._failed_input:
                 skip_start -= 1
@@ -655,6 +672,12 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading holding 0x%04X on attempt %d/%d",
