@@ -52,6 +52,16 @@ sensor_mod.SensorDeviceClass = SensorDeviceClass
 sensor_mod.SensorStateClass = SensorStateClass
 sys.modules["homeassistant.components.sensor"] = sensor_mod
 
+select_mod = types.ModuleType("homeassistant.components.select")
+
+
+class SelectEntity:  # pragma: no cover - simple stub
+    pass
+
+
+select_mod.SelectEntity = SelectEntity
+sys.modules["homeassistant.components.select"] = select_mod
+
 entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
 
 
@@ -70,6 +80,9 @@ from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
     async_setup_entry,
+)
+from custom_components.thessla_green_modbus.select import (  # noqa: E402
+    async_setup_entry as select_async_setup_entry,
 )
 
 
@@ -97,8 +110,8 @@ def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
         await async_setup_entry(hass, mock_config_entry, add_entities)
 
         entities = add_entities.call_args[0][0]
-        assert len(SENSOR_DEFINITIONS) == 46  # nosec B101
-        assert len(entities) == 46  # nosec B101
+        assert len(SENSOR_DEFINITIONS) == 49  # nosec B101
+        assert len(entities) == 49  # nosec B101
 
     asyncio.run(run_test())
 
@@ -145,3 +158,52 @@ def test_sensor_registers_match_definition():
         reg_type = definition["register_type"]
         assert reg_type in mapping, f"Unknown register type {reg_type}"
         assert name in mapping[reg_type], f"{name} not in {reg_type}"
+
+
+def test_sensor_value_map(mock_coordinator, mock_config_entry):
+    """Sensors with value_map return mapped state."""
+
+    async def run_test() -> None:
+        hass = MagicMock()
+        hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+        mock_coordinator.available_registers = {
+            "input_registers": set(),
+            "holding_registers": {"mode"},
+        }
+        mock_coordinator.data["mode"] = 0
+
+        add_entities = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+
+        sensor = add_entities.call_args[0][0][0]
+        assert sensor.native_value == "auto"
+
+        mock_coordinator.data["mode"] = 2
+        assert sensor.native_value == "temporary"
+
+    asyncio.run(run_test())
+
+
+def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
+    """Register remains available for both select and sensor entities."""
+
+    async def run_test() -> None:
+        hass = MagicMock()
+        hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+        mock_coordinator.available_registers = {
+            "input_registers": set(),
+            "holding_registers": {"mode"},
+        }
+
+        add_sensor = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_sensor)
+
+        add_select = MagicMock()
+        await select_async_setup_entry(hass, mock_config_entry, add_select)
+
+        assert any(ent._register_name == "mode" for ent in add_sensor.call_args[0][0])
+        assert any(ent._register_name == "mode" for ent in add_select.call_args[0][0])
+
+    asyncio.run(run_test())

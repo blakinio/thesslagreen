@@ -184,8 +184,37 @@
       "antifreez_stage": {
         "name": "Etap antyzamrożeniowy"
       },
+      "mode": {
+        "name": "Tryb pracy",
+        "state": {
+          "auto": "Automatyczny",
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
+        }
+      },
+      "season_mode": {
+        "name": "Tryb sezonowy",
+        "state": {
+          "winter": "Zima",
+          "summer": "Lato"
+        }
+      },
+      "filter_change": {
+        "name": "Typ filtrów",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Filtry płaskie",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      },
       "gwc_mode": {
-        "name": "Tryb GWC"
+        "name": "Tryb GWC",
+        "state": {
+          "off": "Wyłączony",
+          "auto": "Automatyczny",
+          "forced": "Wymuszony"
+        }
       },
       "gwc_regen_flag": {
         "name": "Regeneracja GWC aktywna"
@@ -194,7 +223,12 @@
         "name": "Status trybu komfort"
       },
       "bypass_mode": {
-        "name": "Tryb bypassu"
+        "name": "Tryb bypassu",
+        "state": {
+          "auto": "Automatyczny",
+          "open": "Otwarty",
+          "closed": "Zamknięty"
+        }
       }
     },
     "binary_sensor": {

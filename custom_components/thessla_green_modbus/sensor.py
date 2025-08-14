@@ -322,6 +322,33 @@ SENSOR_DEFINITIONS = {
         "unit": None,
         "register_type": "holding_registers",
     },
+    "mode": {
+        "translation_key": "mode",
+        "icon": "mdi:cog",
+        "device_class": None,
+        "state_class": None,
+        "unit": None,
+        "register_type": "holding_registers",
+        "value_map": {0: "auto", 1: "manual", 2: "temporary"},
+    },
+    "season_mode": {
+        "translation_key": "season_mode",
+        "icon": "mdi:weather-partly-snowy",
+        "device_class": None,
+        "state_class": None,
+        "unit": None,
+        "register_type": "holding_registers",
+        "value_map": {0: "winter", 1: "summer"},
+    },
+    "filter_change": {
+        "translation_key": "filter_change",
+        "icon": "mdi:filter-variant",
+        "device_class": None,
+        "state_class": None,
+        "unit": None,
+        "register_type": "holding_registers",
+        "value_map": {1: "presostat", 2: "flat_filters", 3: "cleanpad", 4: "cleanpad_pure"},
+    },
     "gwc_mode": {
         "translation_key": "gwc_mode",
         "icon": "mdi:pipe",
@@ -329,6 +356,7 @@ SENSOR_DEFINITIONS = {
         "state_class": None,
         "unit": None,
         "register_type": "holding_registers",
+        "value_map": {0: "off", 1: "auto", 2: "forced"},
     },
     "gwc_regen_flag": {
         "translation_key": "gwc_regen_flag",
@@ -353,6 +381,7 @@ SENSOR_DEFINITIONS = {
         "state_class": None,
         "unit": None,
         "register_type": "holding_registers",
+        "value_map": {0: "auto", 1: "open", 2: "closed"},
     },
 }
 
@@ -421,7 +450,9 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         if value is None:
             return None
-
+        value_map = self._sensor_def.get("value_map")
+        if value_map is not None:
+            return value_map.get(value, value)
         return value
 
     @property
