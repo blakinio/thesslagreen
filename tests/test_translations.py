@@ -150,7 +150,10 @@ def test_new_translation_keys_present():
         "air_flow_rate_manual",
         "air_flow_rate_temporary_2",
     ]
+    new_binary_keys = ["constant_flow_active", "water_removal_active"]
     for trans in (EN, PL):
         for key in new_keys:
             assert key in trans["entity"]["sensor"]
             assert key in trans["entity"]["number"]
+        for key in new_binary_keys:
+            assert key in trans["entity"]["binary_sensor"]

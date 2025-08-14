@@ -178,12 +178,6 @@
       "max_percentage": {
         "name": "Maximum Percentage"
       },
-      "constant_flow_active": {
-        "name": "Constant Flow Status"
-      },
-      "water_removal_active": {
-        "name": "Water Removal Status"
-      },
       "cf_version": {
         "name": "CF Module Version"
       },
@@ -312,6 +306,12 @@
       },
       "fire_alarm": {
         "name": "Fire Alarm"
+      },
+      "constant_flow_active": {
+        "name": "Constant Flow Status"
+      },
+      "water_removal_active": {
+        "name": "Water Removal Status"
       }
     },
     "climate": {
