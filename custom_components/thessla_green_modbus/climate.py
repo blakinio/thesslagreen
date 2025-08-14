@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -119,7 +119,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         _LOGGER.debug("Climate entity initialized")
 
     @property
-    def current_temperature(self) -> Optional[float]:
+    def current_temperature(self) -> float | None:
         """Return current temperature from supply sensor."""
         value = self.coordinator.data.get("supply_temperature")
         if isinstance(value, (int, float)):
@@ -130,7 +130,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         return None
 
     @property
-    def target_temperature(self) -> Optional[float]:
+    def target_temperature(self) -> float | None:
         """Return target temperature if available."""
         data = self.coordinator.data
 
@@ -176,7 +176,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         return HVACAction.IDLE
 
     @property
-    def fan_mode(self) -> Optional[str]:
+    def fan_mode(self) -> str | None:
         """Return current fan mode."""
         # Get airflow rate from manual or current setting
         airflow = (
@@ -189,7 +189,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         return f"{max(10, min(100, rounded))}%"
 
     @property
-    def preset_mode(self) -> Optional[str]:
+    def preset_mode(self) -> str | None:
         """Return current preset mode."""
         special_mode = self.coordinator.data.get("special_mode", 0)
 
@@ -204,7 +204,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         return "none"
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
 

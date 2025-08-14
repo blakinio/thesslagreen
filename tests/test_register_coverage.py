@@ -23,18 +23,34 @@ CSV_PATH = (
 )
 
 
+def _build_map(rows: list[tuple[str, int]]) -> dict[str, int]:
+    """Return register mapping with numbered duplicates."""
+    rows.sort(key=lambda item: item[1])
+    counts: dict[str, int] = {}
+    for name, _ in rows:
+        counts[name] = counts.get(name, 0) + 1
+    seen: dict[str, int] = {}
+    mapping: dict[str, int] = {}
+    for name, addr in rows:
+        if counts[name] > 1:
+            seen[name] = seen.get(name, 0) + 1
+            name = f"{name}_{seen[name]}"
+        mapping[name] = addr
+    return mapping
+
+
 def load_csv_mappings() -> dict[str, dict[str, int]]:
-    result: dict[str, dict[str, int]] = {code: {} for code in FUNCTION_MAP}
+    rows: dict[str, list[tuple[str, int]]] = {code: [] for code in FUNCTION_MAP}
     with CSV_PATH.open(newline="") as csvfile:
         reader = csv.DictReader(
             row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
         )
         for row in reader:
             func = row["Function_Code"]
-            if func in result:
+            if func in rows:
                 name = _to_snake_case(row["Register_Name"])
-                result[func][name] = int(row["Address_DEC"])
-    return result
+                rows[func].append((name, int(row["Address_DEC"])))
+    return {code: _build_map(items) for code, items in rows.items()}
 
 
 def test_all_registers_covered() -> None:
