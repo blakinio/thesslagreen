@@ -271,41 +271,29 @@
       }
     },
     "switch": {
-      "on_off_panel_mode": {
-        "name": "Główne zasilanie"
+      "duct_water_heater_pump": {
+        "name": "Pompa obiegowa nagrzewnicy"
       },
-      "boost": {
-        "name": "Tryb boost"
+      "bypass": {
+        "name": "Obejście (bypass)"
       },
-      "eco": {
-        "name": "Tryb eco"
+      "info": {
+        "name": "Potwierdzenie pracy centrali"
       },
-      "sleep": {
-        "name": "Tryb nocny"
+      "power_supply_fans": {
+        "name": "Zasilanie wentylatorów"
       },
-      "party": {
-        "name": "Tryb party"
+      "heating_cable": {
+        "name": "Kabel grzejny"
       },
-      "fireplace": {
-        "name": "Tryb kominkowy"
+      "work_permit": {
+        "name": "Potwierdzenie pracy (Expansion)"
       },
-      "away": {
-        "name": "Tryb urlopowy"
+      "gwc": {
+        "name": "GWC"
       },
-      "hood": {
-        "name": "Tryb okapu"
-      },
-      "bathroom": {
-        "name": "Tryb łazienkowy"
-      },
-      "kitchen": {
-        "name": "Tryb kuchenny"
-      },
-      "summer": {
-        "name": "Tryb letni"
-      },
-      "winter": {
-        "name": "Tryb zimowy"
+      "hood_output": {
+        "name": "Wyjście okapu"
       }
     },
     "select": {

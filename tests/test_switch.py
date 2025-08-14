@@ -63,35 +63,33 @@ from custom_components.thessla_green_modbus.switch import (  # noqa: E402
 
 
 def test_switch_creation_and_state(mock_coordinator):
-    """Test creation and state changes of special mode switch."""
-    bit = SWITCH_ENTITIES["boost"]["bit"]
-    mock_coordinator.data["special_mode"] = bit
-    switch = ThesslaGreenSwitch(mock_coordinator, "boost", SWITCH_ENTITIES["boost"])
+    """Test creation and state changes of coil switch."""
+    mock_coordinator.data["bypass"] = 1
+    switch = ThesslaGreenSwitch(mock_coordinator, "bypass", SWITCH_ENTITIES["bypass"])
     assert switch.is_on is True  # nosec B101
 
-    mock_coordinator.data["special_mode"] = 0
+    mock_coordinator.data["bypass"] = 0
     assert switch.is_on is False  # nosec B101
 
 
 def test_switch_turn_on_off(mock_coordinator):
-    bit = SWITCH_ENTITIES["boost"]["bit"]
-    mock_coordinator.data["special_mode"] = 0
-    switch = ThesslaGreenSwitch(mock_coordinator, "boost", SWITCH_ENTITIES["boost"])
+    mock_coordinator.data["bypass"] = 0
+    switch = ThesslaGreenSwitch(mock_coordinator, "bypass", SWITCH_ENTITIES["bypass"])
     asyncio.run(switch.async_turn_on())
-    mock_coordinator.async_write_register.assert_awaited_with("special_mode", bit, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=False)
     mock_coordinator.async_request_refresh.assert_awaited_once()
     mock_coordinator.async_write_register.reset_mock()
     mock_coordinator.async_request_refresh.reset_mock()
 
-    mock_coordinator.data["special_mode"] = bit
+    mock_coordinator.data["bypass"] = 1
     asyncio.run(switch.async_turn_off())
-    mock_coordinator.async_write_register.assert_awaited_with("special_mode", 0, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with("bypass", 0, refresh=False)
     mock_coordinator.async_request_refresh.assert_awaited_once()
 
 
 def test_switch_turn_on_modbus_failure(mock_coordinator):
     """Ensure Modbus errors are surfaced when turning on the switch."""
-    switch = ThesslaGreenSwitch(mock_coordinator, "boost", SWITCH_ENTITIES["boost"])
+    switch = ThesslaGreenSwitch(mock_coordinator, "bypass", SWITCH_ENTITIES["bypass"])
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
         asyncio.run(switch.async_turn_on())
