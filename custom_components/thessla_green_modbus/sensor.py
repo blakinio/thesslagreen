@@ -90,6 +90,21 @@ SENSOR_DEFINITIONS = {
         "register_type": "input_registers",
     },
     # System information
+    "version_major": {
+        "translation_key": "version_major",
+        "icon": "mdi:counter",
+        "register_type": "input_registers",
+    },
+    "version_minor": {
+        "translation_key": "version_minor",
+        "icon": "mdi:counter",
+        "register_type": "input_registers",
+    },
+    "version_patch": {
+        "translation_key": "version_patch",
+        "icon": "mdi:counter",
+        "register_type": "input_registers",
+    },
     "day_of_week": {
         "translation_key": "day_of_week",
         "icon": "mdi:calendar-week",

@@ -139,6 +139,15 @@
       "compilation_seconds": {
         "name": "Compilation Seconds"
       },
+      "version_major": {
+        "name": "Firmware Version Major"
+      },
+      "version_minor": {
+        "name": "Firmware Version Minor"
+      },
+      "version_patch": {
+        "name": "Firmware Version Patch"
+      },
       "serial_number_1": {
         "name": "Serial Number Part 1"
       },

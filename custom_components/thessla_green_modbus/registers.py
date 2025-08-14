@@ -35,8 +35,11 @@ DISCRETE_INPUT_REGISTERS: dict[str, int] = {
 }
 
 INPUT_REGISTERS: dict[str, int] = {
+    "version_major": 0,
+    "version_minor": 1,
     "day_of_week": 2,
     "period": 3,
+    "version_patch": 4,
     "compilation_days": 14,
     "compilation_seconds": 15,
     "outside_temperature": 16,
