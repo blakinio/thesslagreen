@@ -217,6 +217,37 @@ async def test_read_input_skips_range_on_exception_response(caplog):
         call_mock2.assert_not_called()
 
 
+async def test_read_holding_skips_range_on_exception_response(caplog):
+    """Block failures with exception codes skip entire holding register range."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    error_response.exception_code = 2
+
+    caplog.set_level(logging.WARNING)
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(return_value=error_response),
+    ) as call_mock:
+        result = await scanner._read_holding(mock_client, 0x0200, 2)
+
+    assert result is None
+    assert call_mock.await_count == 1
+    assert (0x0200, 0x0201) in scanner._unsupported_holding_ranges
+    assert "Skipping unsupported holding registers 0x0200-0x0201" in caplog.text
+
+    # Further reads within the range should be skipped without new calls
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(),
+    ) as call_mock2:
+        result = await scanner._read_holding(mock_client, 0x0201, 1)
+        assert result is None
+        call_mock2.assert_not_called()
+
+
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
@@ -747,6 +778,13 @@ async def test_format_register_value_schedule():
     assert _format_register_value("schedule_summer_mon_1", 0x0615) == "06:15"
 
 
+async def test_format_register_value_manual_airing_le():
+    """Little-endian manual airing times should decode correctly."""
+    assert (
+        _format_register_value("manual_airing_time_to_start", 0x1E08) == "08:30"
+    )
+
+
 async def test_format_register_value_setting():
     """Formatted setting registers should show percent and temperature."""
     assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
@@ -943,7 +981,7 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
-    assert scanner._register_ranges["reg_a"] == (0x0, 0x423F)
+    assert scanner._register_ranges["reg_a"] == (1, 10)
     assert not caplog.records
 
 
@@ -1029,12 +1067,13 @@ async def test_analyze_capabilities_flag_presence():
         "input_registers": {"constant_flow_active", "outside_temperature"},
         "holding_registers": set(),
         "coil_registers": set(),
-        "discrete_inputs": set(),
+        "discrete_inputs": {"expansion"},
     }
     capabilities = scanner._analyze_capabilities()
 
     assert capabilities.constant_flow is True
     assert capabilities.sensor_outside_temperature is True
+    assert capabilities.expansion_module is True
 
     # Negative case: registers absent
     scanner.available_registers = {
@@ -1047,6 +1086,7 @@ async def test_analyze_capabilities_flag_presence():
 
     assert capabilities.constant_flow is False
     assert capabilities.sensor_outside_temperature is False
+    assert capabilities.expansion_module is False
 
 
 async def test_capability_rules_detect_heating_and_bypass():

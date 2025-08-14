@@ -92,6 +92,12 @@ BINARY_SENSOR_DEFINITIONS = {
         "device_class": BinarySensorDeviceClass.PROBLEM,
         "register_type": "discrete_inputs",
     },
+    "hood_switch": {
+        "translation_key": "hood_switch",
+        "icon": "mdi:toggle-switch",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
     "airing_sensor": {
         "translation_key": "airing_sensor",
         "icon": "mdi:motion-sensor",

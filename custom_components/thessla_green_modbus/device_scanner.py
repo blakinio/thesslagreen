@@ -117,6 +117,14 @@ def _decode_setting_value(value: int) -> Optional[Tuple[int, float]]:
 def _format_register_value(name: str, value: int) -> int | str:
     """Return a human-readable representation of a register value."""
 
+    if name == "manual_airing_time_to_start":
+        raw_value = value
+        value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
+        decoded = _decode_register_time(value)
+        if decoded is None:
+            return f"0x{raw_value:04X} (invalid)"
+        return f"{decoded // 60:02d}:{decoded % 60:02d}"
+
     if name.startswith(BCD_TIME_PREFIXES):
         decoded = _decode_bcd_time(value)
         if decoded is None:
@@ -143,8 +151,13 @@ def _format_register_value(name: str, value: int) -> int | str:
 # Maximum registers per batch read (Modbus limit)
 MAX_BATCH_REGISTERS = 16
 
-# Optional UART configuration registers (Air++ port)
-UART_OPTIONAL_REGS = range(0x1168, 0x116C)
+# Optional UART configuration registers (Air-B and Air++ ports)
+# According to the Series 4 Modbus documentation, both the Air-B
+# (0x1164-0x1167) and Air++ (0x1168-0x116B) register blocks are
+# optional and may be absent on devices without the corresponding
+# hardware. They are skipped by default unless UART scanning is
+# explicitly enabled.
+UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 
 
 @dataclass
@@ -269,6 +282,11 @@ class ThesslaGreenDeviceScanner:
         self._failed_input: Set[int] = set()
         # Track ranges that have already been logged as skipped in the current scan
         self._input_skip_log_ranges: Set[Tuple[int, int]] = set()
+
+        # Cache register ranges that returned Modbus exception codes 2-4 so
+        # they can be skipped on subsequent reads without additional warnings
+        self._unsupported_input_ranges: Set[Tuple[int, int]] = set()
+        self._unsupported_holding_ranges: Set[Tuple[int, int]] = set()
 
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
@@ -462,6 +480,18 @@ class ThesslaGreenDeviceScanner:
         start = address
         end = address + count - 1
 
+
+        for skip_start, skip_end in self._unsupported_input_ranges:
+            if skip_start <= start and end <= skip_end:
+                return None
+
+        if not skip_cache and any(
+            reg in self._failed_input for reg in range(start, end + 1)
+        ):
+            first = next(
+                reg for reg in range(start, end + 1) if reg in self._failed_input
+            )
+
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
@@ -547,14 +577,24 @@ class ThesslaGreenDeviceScanner:
 
         if exception_code is not None:
             self._failed_input.update(range(start, end + 1))
-            if (start, end) not in self._input_skip_log_ranges:
-                _LOGGER.warning(
-                    "Skipping unsupported input registers 0x%04X-0x%04X (exception code %d)",
-                    start,
-                    end,
-                    exception_code,
-                )
-                self._input_skip_log_ranges.add((start, end))
+            if exception_code in (2, 3, 4):
+                if (start, end) not in self._unsupported_input_ranges:
+                    self._unsupported_input_ranges.add((start, end))
+                    _LOGGER.warning(
+                        "Skipping unsupported input registers 0x%04X-0x%04X (exception code %d)",
+                        start,
+                        end,
+                        exception_code,
+                    )
+            else:
+                if (start, end) not in self._input_skip_log_ranges:
+                    _LOGGER.warning(
+                        "Skipping unsupported input registers 0x%04X-0x%04X (exception code %d)",
+                        start,
+                        end,
+                        exception_code,
+                    )
+                    self._input_skip_log_ranges.add((start, end))
             return None
 
         _LOGGER.warning(
@@ -578,6 +618,13 @@ class ThesslaGreenDeviceScanner:
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
         """Read holding registers with retry, backoff and failure tracking."""
+        start = address
+        end = address + count - 1
+
+        for skip_start, skip_end in self._unsupported_holding_ranges:
+            if skip_start <= start and end <= skip_end:
+                return None
+
         if address in self._failed_holding:
             _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
             return None
@@ -587,6 +634,7 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
             return None
 
+        exception_code: Optional[int] = None
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -595,7 +643,11 @@ class ThesslaGreenDeviceScanner:
                 if response is None:
                     raise ModbusException("No response")
                 if response.isError():
-                    raise ModbusException(f"Exception code {response.exception_code}")
+                    exc_code = getattr(response, "exception_code", None)
+                    if exc_code in (2, 3, 4):
+                        exception_code = exc_code
+                        break
+                    raise ModbusException(f"Exception code {exc_code}")
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers
@@ -623,6 +675,12 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading holding 0x%04X on attempt %d/%d",
@@ -640,12 +698,24 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if attempt < self.retry:
+            if attempt < self.retry and exception_code is None:
                 try:
                     await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
                 except asyncio.CancelledError:
                     _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
                     raise
+
+        if exception_code is not None:
+            self._failed_holding.update(range(start, end + 1))
+            if (start, end) not in self._unsupported_holding_ranges:
+                self._unsupported_holding_ranges.add((start, end))
+                _LOGGER.warning(
+                    "Skipping unsupported holding registers 0x%04X-0x%04X (exception code %d)",
+                    start,
+                    end,
+                    exception_code,
+                )
+            return None
 
         return None
 
@@ -989,6 +1059,8 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.debug("Connected successfully, starting device scan")
             self._reported_invalid.clear()
             self._input_skip_log_ranges.clear()
+            self._unsupported_input_ranges.clear()
+            self._unsupported_holding_ranges.clear()
 
             info = DeviceInfo()
             present_blocks = {}
@@ -1035,6 +1107,25 @@ class ThesslaGreenDeviceScanner:
                 for start, count in self._group_registers_for_batch_read(addresses):
                     values = await read_fn(client, start, count)
                     if values is None:
+                        if count > 1:
+                            for addr in range(start, start + count):
+                                single = await read_fn(client, addr, 1)
+                                if single is None:
+                                    _LOGGER.debug(
+                                        "Failed to read %s register 0x%04X",
+                                        reg_type,
+                                        addr,
+                                    )
+                                    continue
+                                name = addr_to_name.get(addr)
+                                if not name:
+                                    continue
+                                val = single[0]
+                                if reg_type in ("input_registers", "holding_registers"):
+                                    if self._is_valid_register_value(name, val):
+                                        self.available_registers[reg_type].add(name)
+                                else:
+                                    self.available_registers[reg_type].add(name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset
@@ -1074,6 +1165,25 @@ class ThesslaGreenDeviceScanner:
                 for start, count in self._group_registers_for_batch_read(addresses):
                     values = await read_fn(client, start, count)
                     if values is None:
+                        if count > 1:
+                            for addr in range(start, start + count):
+                                single = await read_fn(client, addr, 1)
+                                if single is None:
+                                    _LOGGER.debug(
+                                        "Failed to read %s register 0x%04X",
+                                        reg_type,
+                                        addr,
+                                    )
+                                    continue
+                                reg_name = addr_to_name.get(addr)
+                                if not reg_name:
+                                    continue
+                                val = single[0]
+                                if reg_type in ("input_registers", "holding_registers"):
+                                    if self._is_valid_register_value(reg_name, val):
+                                        self.available_registers[reg_type].add(reg_name)
+                                else:
+                                    self.available_registers[reg_type].add(reg_name)
                         continue
                     for offset, value in enumerate(values):
                         addr = start + offset

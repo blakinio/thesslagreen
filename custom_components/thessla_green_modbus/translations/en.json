@@ -162,6 +162,33 @@
       },
       "max_percentage": {
         "name": "Maximum Percentage"
+      },
+      "constant_flow_active": {
+        "name": "Constant Flow Status"
+      },
+      "water_removal_active": {
+        "name": "Water Removal Status"
+      },
+      "cf_version": {
+        "name": "CF Module Version"
+      },
+      "antifreez_mode": {
+        "name": "Antifreeze Mode"
+      },
+      "antifreez_stage": {
+        "name": "Antifreeze Stage"
+      },
+      "gwc_mode": {
+        "name": "GWC Mode"
+      },
+      "gwc_regen_flag": {
+        "name": "GWC Regeneration Active"
+      },
+      "comfort_mode": {
+        "name": "Comfort Mode Status"
+      },
+      "bypass_mode": {
+        "name": "Bypass Mode Status"
       }
     },
     "binary_sensor": {
@@ -203,6 +230,9 @@
       },
       "dp_duct_filter_overflow": {
         "name": "Duct Filter Overflow"
+      },
+      "hood_switch": {
+        "name": "Hood Switch"
       },
       "airing_sensor": {
         "name": "Airing Sensor"
@@ -271,41 +301,29 @@
       }
     },
     "switch": {
-      "on_off_panel_mode": {
-        "name": "Panel Power"
+      "duct_water_heater_pump": {
+        "name": "Water Heater Pump"
       },
-      "boost": {
-        "name": "Boost Mode"
+      "bypass": {
+        "name": "Bypass"
       },
-      "eco": {
-        "name": "Eco Mode"
+      "info": {
+        "name": "Unit Operation Confirmation"
       },
-      "sleep": {
-        "name": "Sleep Mode"
+      "power_supply_fans": {
+        "name": "Fan Power"
       },
-      "party": {
-        "name": "Party Mode"
+      "heating_cable": {
+        "name": "Heating Cable"
       },
-      "fireplace": {
-        "name": "Fireplace Mode"
+      "work_permit": {
+        "name": "Work Permit"
       },
-      "away": {
-        "name": "Away Mode"
+      "gwc": {
+        "name": "GWC"
       },
-      "hood": {
-        "name": "Hood Mode"
-      },
-      "bathroom": {
-        "name": "Bathroom Mode"
-      },
-      "kitchen": {
-        "name": "Kitchen Mode"
-      },
-      "summer": {
-        "name": "Summer Mode"
-      },
-      "winter": {
-        "name": "Winter Mode"
+      "hood_output": {
+        "name": "Hood Output"
       }
     },
     "select": {
@@ -344,74 +362,848 @@
       }
     },
     "number": {
-      "required_temperature": {
-        "name": "Required Temperature"
+      "date_time_1": {
+        "name": "Date Time 1"
+      },
+      "date_time_2": {
+        "name": "Date Time 2"
+      },
+      "date_time_3": {
+        "name": "Date Time 3"
+      },
+      "date_time_4": {
+        "name": "Date Time 4"
+      },
+      "lock_date_1": {
+        "name": "Lock Date 1"
+      },
+      "lock_date_2": {
+        "name": "Lock Date 2"
+      },
+      "lock_date_3": {
+        "name": "Lock Date 3"
+      },
+      "configuration_mode": {
+        "name": "Configuration Mode"
+      },
+      "access_level": {
+        "name": "Access Level"
+      },
+      "schedule_summer_mon_1": {
+        "name": "Schedule Summer Mon 1"
+      },
+      "schedule_summer_mon_2": {
+        "name": "Schedule Summer Mon 2"
+      },
+      "schedule_summer_mon_3": {
+        "name": "Schedule Summer Mon 3"
+      },
+      "schedule_summer_mon_4": {
+        "name": "Schedule Summer Mon 4"
+      },
+      "schedule_summer_tue_1": {
+        "name": "Schedule Summer Tue 1"
+      },
+      "schedule_summer_tue_2": {
+        "name": "Schedule Summer Tue 2"
+      },
+      "schedule_summer_tue_3": {
+        "name": "Schedule Summer Tue 3"
+      },
+      "schedule_summer_tue_4": {
+        "name": "Schedule Summer Tue 4"
+      },
+      "schedule_summer_wed_1": {
+        "name": "Schedule Summer Wed 1"
+      },
+      "schedule_summer_wed_2": {
+        "name": "Schedule Summer Wed 2"
+      },
+      "schedule_summer_wed_3": {
+        "name": "Schedule Summer Wed 3"
+      },
+      "schedule_summer_wed_4": {
+        "name": "Schedule Summer Wed 4"
+      },
+      "schedule_summer_thu_1": {
+        "name": "Schedule Summer Thu 1"
+      },
+      "schedule_summer_thu_2": {
+        "name": "Schedule Summer Thu 2"
+      },
+      "schedule_summer_thu_3": {
+        "name": "Schedule Summer Thu 3"
+      },
+      "schedule_summer_thu_4": {
+        "name": "Schedule Summer Thu 4"
+      },
+      "schedule_summer_fri_1": {
+        "name": "Schedule Summer Fri 1"
+      },
+      "schedule_summer_fri_2": {
+        "name": "Schedule Summer Fri 2"
+      },
+      "schedule_summer_fri_3": {
+        "name": "Schedule Summer Fri 3"
+      },
+      "schedule_summer_fri_4": {
+        "name": "Schedule Summer Fri 4"
+      },
+      "schedule_summer_sat_1": {
+        "name": "Schedule Summer Sat 1"
+      },
+      "schedule_summer_sat_2": {
+        "name": "Schedule Summer Sat 2"
+      },
+      "schedule_summer_sat_3": {
+        "name": "Schedule Summer Sat 3"
+      },
+      "schedule_summer_sat_4": {
+        "name": "Schedule Summer Sat 4"
+      },
+      "schedule_summer_sun_1": {
+        "name": "Schedule Summer Sun 1"
+      },
+      "schedule_summer_sun_2": {
+        "name": "Schedule Summer Sun 2"
+      },
+      "schedule_summer_sun_3": {
+        "name": "Schedule Summer Sun 3"
+      },
+      "schedule_summer_sun_4": {
+        "name": "Schedule Summer Sun 4"
+      },
+      "schedule_winter_mon_1": {
+        "name": "Schedule Winter Mon 1"
+      },
+      "schedule_winter_mon_2": {
+        "name": "Schedule Winter Mon 2"
+      },
+      "schedule_winter_mon_3": {
+        "name": "Schedule Winter Mon 3"
+      },
+      "schedule_winter_mon_4": {
+        "name": "Schedule Winter Mon 4"
+      },
+      "schedule_winter_tue_1": {
+        "name": "Schedule Winter Tue 1"
+      },
+      "schedule_winter_tue_2": {
+        "name": "Schedule Winter Tue 2"
+      },
+      "schedule_winter_tue_3": {
+        "name": "Schedule Winter Tue 3"
+      },
+      "schedule_winter_tue_4": {
+        "name": "Schedule Winter Tue 4"
+      },
+      "schedule_winter_wed_1": {
+        "name": "Schedule Winter Wed 1"
+      },
+      "schedule_winter_wed_2": {
+        "name": "Schedule Winter Wed 2"
+      },
+      "schedule_winter_wed_3": {
+        "name": "Schedule Winter Wed 3"
+      },
+      "schedule_winter_wed_4": {
+        "name": "Schedule Winter Wed 4"
+      },
+      "schedule_winter_thu_1": {
+        "name": "Schedule Winter Thu 1"
+      },
+      "schedule_winter_thu_2": {
+        "name": "Schedule Winter Thu 2"
+      },
+      "schedule_winter_thu_3": {
+        "name": "Schedule Winter Thu 3"
+      },
+      "schedule_winter_thu_4": {
+        "name": "Schedule Winter Thu 4"
+      },
+      "schedule_winter_fri_1": {
+        "name": "Schedule Winter Fri 1"
+      },
+      "schedule_winter_fri_2": {
+        "name": "Schedule Winter Fri 2"
+      },
+      "schedule_winter_fri_3": {
+        "name": "Schedule Winter Fri 3"
+      },
+      "schedule_winter_fri_4": {
+        "name": "Schedule Winter Fri 4"
+      },
+      "schedule_winter_sat_1": {
+        "name": "Schedule Winter Sat 1"
+      },
+      "schedule_winter_sat_2": {
+        "name": "Schedule Winter Sat 2"
+      },
+      "schedule_winter_sat_3": {
+        "name": "Schedule Winter Sat 3"
+      },
+      "schedule_winter_sat_4": {
+        "name": "Schedule Winter Sat 4"
+      },
+      "schedule_winter_sun_1": {
+        "name": "Schedule Winter Sun 1"
+      },
+      "schedule_winter_sun_2": {
+        "name": "Schedule Winter Sun 2"
+      },
+      "schedule_winter_sun_3": {
+        "name": "Schedule Winter Sun 3"
+      },
+      "schedule_winter_sun_4": {
+        "name": "Schedule Winter Sun 4"
+      },
+      "setting_summer_mon_1": {
+        "name": "Setting Summer Mon 1"
+      },
+      "setting_summer_mon_2": {
+        "name": "Setting Summer Mon 2"
+      },
+      "setting_summer_mon_3": {
+        "name": "Setting Summer Mon 3"
+      },
+      "setting_summer_mon_4": {
+        "name": "Setting Summer Mon 4"
+      },
+      "setting_summer_tue_1": {
+        "name": "Setting Summer Tue 1"
+      },
+      "setting_summer_tue_2": {
+        "name": "Setting Summer Tue 2"
+      },
+      "setting_summer_tue_3": {
+        "name": "Setting Summer Tue 3"
+      },
+      "setting_summer_tue_4": {
+        "name": "Setting Summer Tue 4"
+      },
+      "setting_summer_wed_1": {
+        "name": "Setting Summer Wed 1"
+      },
+      "setting_summer_wed_2": {
+        "name": "Setting Summer Wed 2"
+      },
+      "setting_summer_wed_3": {
+        "name": "Setting Summer Wed 3"
+      },
+      "setting_summer_wed_4": {
+        "name": "Setting Summer Wed 4"
+      },
+      "setting_summer_thu_1": {
+        "name": "Setting Summer Thu 1"
+      },
+      "setting_summer_thu_2": {
+        "name": "Setting Summer Thu 2"
+      },
+      "setting_summer_thu_3": {
+        "name": "Setting Summer Thu 3"
+      },
+      "setting_summer_thu_4": {
+        "name": "Setting Summer Thu 4"
+      },
+      "setting_summer_fri_1": {
+        "name": "Setting Summer Fri 1"
+      },
+      "setting_summer_fri_2": {
+        "name": "Setting Summer Fri 2"
+      },
+      "setting_summer_fri_3": {
+        "name": "Setting Summer Fri 3"
+      },
+      "setting_summer_fri_4": {
+        "name": "Setting Summer Fri 4"
+      },
+      "setting_summer_sat_1": {
+        "name": "Setting Summer Sat 1"
+      },
+      "setting_summer_sat_2": {
+        "name": "Setting Summer Sat 2"
+      },
+      "setting_summer_sat_3": {
+        "name": "Setting Summer Sat 3"
+      },
+      "setting_summer_sat_4": {
+        "name": "Setting Summer Sat 4"
+      },
+      "setting_summer_sun_1": {
+        "name": "Setting Summer Sun 1"
+      },
+      "setting_summer_sun_2": {
+        "name": "Setting Summer Sun 2"
+      },
+      "setting_summer_sun_3": {
+        "name": "Setting Summer Sun 3"
+      },
+      "setting_summer_sun_4": {
+        "name": "Setting Summer Sun 4"
+      },
+      "setting_winter_mon_1": {
+        "name": "Setting Winter Mon 1"
+      },
+      "setting_winter_mon_2": {
+        "name": "Setting Winter Mon 2"
+      },
+      "setting_winter_mon_3": {
+        "name": "Setting Winter Mon 3"
+      },
+      "setting_winter_mon_4": {
+        "name": "Setting Winter Mon 4"
+      },
+      "setting_winter_tue_1": {
+        "name": "Setting Winter Tue 1"
+      },
+      "setting_winter_tue_2": {
+        "name": "Setting Winter Tue 2"
+      },
+      "setting_winter_tue_3": {
+        "name": "Setting Winter Tue 3"
+      },
+      "setting_winter_tue_4": {
+        "name": "Setting Winter Tue 4"
+      },
+      "setting_winter_wed_1": {
+        "name": "Setting Winter Wed 1"
+      },
+      "setting_winter_wed_2": {
+        "name": "Setting Winter Wed 2"
+      },
+      "setting_winter_wed_3": {
+        "name": "Setting Winter Wed 3"
+      },
+      "setting_winter_wed_4": {
+        "name": "Setting Winter Wed 4"
+      },
+      "setting_winter_thu_1": {
+        "name": "Setting Winter Thu 1"
+      },
+      "setting_winter_thu_2": {
+        "name": "Setting Winter Thu 2"
+      },
+      "setting_winter_thu_3": {
+        "name": "Setting Winter Thu 3"
+      },
+      "setting_winter_thu_4": {
+        "name": "Setting Winter Thu 4"
+      },
+      "setting_winter_fri_1": {
+        "name": "Setting Winter Fri 1"
+      },
+      "setting_winter_fri_2": {
+        "name": "Setting Winter Fri 2"
+      },
+      "setting_winter_fri_3": {
+        "name": "Setting Winter Fri 3"
+      },
+      "setting_winter_fri_4": {
+        "name": "Setting Winter Fri 4"
+      },
+      "setting_winter_sat_1": {
+        "name": "Setting Winter Sat 1"
+      },
+      "setting_winter_sat_2": {
+        "name": "Setting Winter Sat 2"
+      },
+      "setting_winter_sat_3": {
+        "name": "Setting Winter Sat 3"
+      },
+      "setting_winter_sat_4": {
+        "name": "Setting Winter Sat 4"
+      },
+      "setting_winter_sun_1": {
+        "name": "Setting Winter Sun 1"
+      },
+      "setting_winter_sun_2": {
+        "name": "Setting Winter Sun 2"
+      },
+      "setting_winter_sun_3": {
+        "name": "Setting Winter Sun 3"
+      },
+      "setting_winter_sun_4": {
+        "name": "Setting Winter Sun 4"
+      },
+      "airing_summer_mon": {
+        "name": "Airing Summer Mon"
+      },
+      "airing_summer_tue": {
+        "name": "Airing Summer Tue"
+      },
+      "airing_summer_wed": {
+        "name": "Airing Summer Wed"
+      },
+      "airing_summer_thu": {
+        "name": "Airing Summer Thu"
+      },
+      "airing_summer_fri": {
+        "name": "Airing Summer Fri"
+      },
+      "airing_summer_sat": {
+        "name": "Airing Summer Sat"
+      },
+      "airing_summer_sun": {
+        "name": "Airing Summer Sun"
+      },
+      "airing_winter_mon": {
+        "name": "Airing Winter Mon"
+      },
+      "airing_winter_tue": {
+        "name": "Airing Winter Tue"
+      },
+      "airing_winter_wed": {
+        "name": "Airing Winter Wed"
+      },
+      "airing_winter_thu": {
+        "name": "Airing Winter Thu"
+      },
+      "airing_winter_fri": {
+        "name": "Airing Winter Fri"
+      },
+      "airing_winter_sat": {
+        "name": "Airing Winter Sat"
+      },
+      "airing_winter_sun": {
+        "name": "Airing Winter Sun"
+      },
+      "rtc_cal": {
+        "name": "Rtc Cal"
+      },
+      "cf_version": {
+        "name": "Cf Version"
+      },
+      "supply_air_flow": {
+        "name": "Supply Air Flow"
+      },
+      "exhaust_air_flow": {
+        "name": "Exhaust Air Flow"
+      },
+      "dac_supply": {
+        "name": "Dac Supply"
+      },
+      "dac_exhaust": {
+        "name": "Dac Exhaust"
+      },
+      "dac_heater": {
+        "name": "Dac Heater"
+      },
+      "dac_cooler": {
+        "name": "Dac Cooler"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Max Supply Air Flow Rate"
+      },
+      "max_supply_air_flow_rate_gwc": {
+        "name": "Max Supply Air Flow Rate Gwc"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Max Exhaust Air Flow Rate"
+      },
+      "max_exhaust_air_flow_rate_gwc": {
+        "name": "Max Exhaust Air Flow Rate Gwc"
+      },
+      "antifreez_mode": {
+        "name": "Antifreez Mode"
+      },
+      "antifreez_stage": {
+        "name": "Antifreez Stage"
+      },
+      "mode": {
+        "name": "Mode"
+      },
+      "season_mode": {
+        "name": "Season Mode"
+      },
+      "air_flow_rate_manual": {
+        "name": "Air Flow Rate Manual"
+      },
+      "air_flow_rate_temporary_1": {
+        "name": "Air Flow Rate Temporary 1"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Supply Air Temperature Manual"
+      },
+      "supply_air_temperature_temporary_1": {
+        "name": "Supply Air Temperature Temporary 1"
+      },
+      "fan_speed_1_coef": {
+        "name": "Fan Speed 1 Coef"
+      },
+      "fan_speed_2_coef": {
+        "name": "Fan Speed 2 Coef"
+      },
+      "fan_speed_3_coef": {
+        "name": "Fan Speed 3 Coef"
+      },
+      "manual_airing_time_to_start": {
+        "name": "Manual Airing Time To Start"
+      },
+      "special_mode": {
+        "name": "Special Mode"
+      },
+      "hood_supply_coef": {
+        "name": "Hood Supply Coef"
+      },
+      "hood_exhaust_coef": {
+        "name": "Hood Exhaust Coef"
+      },
+      "fireplace_supply_coef": {
+        "name": "Fireplace Supply Coef"
+      },
+      "airing_bathroom_coef": {
+        "name": "Airing Bathroom Coef"
+      },
+      "airing_coef": {
+        "name": "Airing Coef"
+      },
+      "contamination_coef": {
+        "name": "Contamination Coef"
+      },
+      "empty_house_coef": {
+        "name": "Empty House Coef"
+      },
+      "airing_panel_mode_time": {
+        "name": "Airing Panel Mode Time"
+      },
+      "airing_switch_mode_time": {
+        "name": "Airing Switch Mode Time"
+      },
+      "airing_switch_mode_on_delay": {
+        "name": "Airing Switch Mode On Delay"
+      },
+      "airing_switch_mode_off_delay": {
+        "name": "Airing Switch Mode Off Delay"
+      },
+      "fireplace_mode_time": {
+        "name": "Fireplace Mode Time"
+      },
+      "airing_switch_coef": {
+        "name": "Airing Switch Coef"
+      },
+      "open_window_coef": {
+        "name": "Open Window Coef"
+      },
+      "pres_check_day_1": {
+        "name": "Pres Check Day 1"
+      },
+      "pres_check_time_1": {
+        "name": "Pres Check Time 1"
+      },
+      "gwc_off": {
+        "name": "Gwc Off"
       },
       "min_gwc_air_temperature": {
-        "name": "Min GWC Air Temperature"
+        "name": "Min Gwc Air Temperature"
       },
       "max_gwc_air_temperature": {
-        "name": "Max GWC Air Temperature"
+        "name": "Max Gwc Air Temperature"
+      },
+      "gwc_regen": {
+        "name": "Gwc Regen"
+      },
+      "gwc_mode": {
+        "name": "Gwc Mode"
+      },
+      "gwc_regen_period": {
+        "name": "Gwc Regen Period"
+      },
+      "delta_tgwc": {
+        "name": "Delta Tgwc"
+      },
+      "start_gwc_regen_winter_time": {
+        "name": "Start Gwc Regen Winter Time"
+      },
+      "stop_gwc_regen_winter_time": {
+        "name": "Stop Gwc Regen Winter Time"
+      },
+      "start_gwc_regen_summer_time": {
+        "name": "Start Gwc Regen Summer Time"
+      },
+      "stop_gwc_regen_summer_time": {
+        "name": "Stop Gwc Regen Summer Time"
+      },
+      "gwc_regen_flag": {
+        "name": "Gwc Regen Flag"
+      },
+      "comfort_mode_panel": {
+        "name": "Comfort Mode Panel"
+      },
+      "comfort_mode": {
+        "name": "Comfort Mode"
+      },
+      "bypass_off": {
+        "name": "Bypass Off"
       },
       "min_bypass_temperature": {
         "name": "Min Bypass Temperature"
       },
-      "fan_speed_1_coef": {
-        "name": "Fan Speed 1 Coefficient"
+      "air_temperature_summer_free_heating": {
+        "name": "Air Temperature Summer Free Heating"
       },
-      "fan_speed_2_coef": {
-        "name": "Fan Speed 2 Coefficient"
+      "air_temperature_summer_free_cooling": {
+        "name": "Air Temperature Summer Free Cooling"
       },
-      "fan_speed_3_coef": {
-        "name": "Fan Speed 3 Coefficient"
+      "bypass_mode": {
+        "name": "Bypass Mode"
       },
-      "hood_supply_coef": {
-        "name": "Hood Supply Coefficient"
-      },
-      "hood_exhaust_coef": {
-        "name": "Hood Exhaust Coefficient"
-      },
-      "fireplace_supply_coef": {
-        "name": "Fireplace Supply Coefficient"
-      },
-      "airing_bathroom_coef": {
-        "name": "Bathroom Airing Coefficient"
-      },
-      "airing_coef": {
-        "name": "Airing Coefficient"
-      },
-      "contamination_coef": {
-        "name": "Contamination Coefficient"
-      },
-      "empty_house_coef": {
-        "name": "Empty House Coefficient"
-      },
-      "airing_switch_coef": {
-        "name": "Airing Switch Coefficient"
-      },
-      "open_window_coef": {
-        "name": "Open Window Coefficient"
+      "bypass_user_mode": {
+        "name": "Bypass User Mode"
       },
       "bypass_coef_1": {
-        "name": "Bypass Coefficient 1"
+        "name": "Bypass Coef 1"
       },
       "bypass_coef_2": {
-        "name": "Bypass Coefficient 2"
-      },
-      "max_supply_air_flow_rate": {
-        "name": "Max Supply Airflow"
-      },
-      "max_exhaust_air_flow_rate": {
-        "name": "Max Exhaust Airflow"
+        "name": "Bypass Coef 2"
       },
       "nominal_supply_air_flow": {
-        "name": "Nominal Supply Airflow"
+        "name": "Nominal Supply Air Flow"
       },
       "nominal_exhaust_air_flow": {
-        "name": "Nominal Exhaust Airflow"
+        "name": "Nominal Exhaust Air Flow"
       },
-      "bypass_off": {
-        "name": "Bypass Off Temperature"
+      "nominal_supply_air_flow_gwc": {
+        "name": "Nominal Supply Air Flow Gwc"
+      },
+      "nominal_exhaust_air_flow_gwc": {
+        "name": "Nominal Exhaust Air Flow Gwc"
+      },
+      "stop_ahu_code": {
+        "name": "Stop Ahu Code"
+      },
+      "on_off_panel_mode": {
+        "name": "On Off Panel Mode"
+      },
+      "language": {
+        "name": "Language"
+      },
+      "cfg_mode_1": {
+        "name": "Cfg Mode 1"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Air Flow Rate Temporary 2"
+      },
+      "airflow_rate_change_flag": {
+        "name": "Airflow Rate Change Flag"
+      },
+      "cfg_mode_2": {
+        "name": "Cfg Mode 2"
+      },
+      "supply_air_temperature_temporary_2": {
+        "name": "Supply Air Temperature Temporary 2"
+      },
+      "temperature_change_flag": {
+        "name": "Temperature Change Flag"
+      },
+      "hard_reset_settings": {
+        "name": "Hard Reset Settings"
+      },
+      "hard_reset_schedule": {
+        "name": "Hard Reset Schedule"
+      },
+      "pres_check_day_2": {
+        "name": "Pres Check Day 2"
+      },
+      "pres_check_time_2": {
+        "name": "Pres Check Time 2"
+      },
+      "uart_0_id": {
+        "name": "Uart 0 Id"
+      },
+      "uart_0_baud": {
+        "name": "Uart 0 Baud"
+      },
+      "uart_0_parity": {
+        "name": "Uart 0 Parity"
+      },
+      "uart_0_stop": {
+        "name": "Uart 0 Stop"
+      },
+      "uart_1_id": {
+        "name": "Uart 1 Id"
+      },
+      "uart_1_baud": {
+        "name": "Uart 1 Baud"
+      },
+      "uart_1_parity": {
+        "name": "Uart 1 Parity"
+      },
+      "uart_1_stop": {
+        "name": "Uart 1 Stop"
+      },
+      "device_name_1": {
+        "name": "Device Name 1"
+      },
+      "device_name_2": {
+        "name": "Device Name 2"
+      },
+      "device_name_3": {
+        "name": "Device Name 3"
+      },
+      "device_name_4": {
+        "name": "Device Name 4"
+      },
+      "device_name_5": {
+        "name": "Device Name 5"
+      },
+      "device_name_6": {
+        "name": "Device Name 6"
+      },
+      "device_name_7": {
+        "name": "Device Name 7"
+      },
+      "device_name_8": {
+        "name": "Device Name 8"
+      },
+      "lock_pass_1": {
+        "name": "Lock Pass 1"
+      },
+      "lock_pass_2": {
+        "name": "Lock Pass 2"
+      },
+      "lock_flag": {
+        "name": "Lock Flag"
+      },
+      "required_temperature": {
+        "name": "Required Temperature"
+      },
+      "filter_change": {
+        "name": "Filter Change"
+      },
+      "alarm": {
+        "name": "Alarm"
+      },
+      "error": {
+        "name": "Error"
+      },
+      "s_2": {
+        "name": "S 2"
+      },
+      "s_6": {
+        "name": "S 6"
+      },
+      "s_7": {
+        "name": "S 7"
+      },
+      "s_8": {
+        "name": "S 8"
+      },
+      "s_9": {
+        "name": "S 9"
+      },
+      "s_10": {
+        "name": "S 10"
+      },
+      "s_13": {
+        "name": "S 13"
+      },
+      "s_14": {
+        "name": "S 14"
+      },
+      "s_15": {
+        "name": "S 15"
+      },
+      "s_16": {
+        "name": "S 16"
+      },
+      "s_17": {
+        "name": "S 17"
+      },
+      "s_19": {
+        "name": "S 19"
+      },
+      "s_20": {
+        "name": "S 20"
+      },
+      "s_22": {
+        "name": "S 22"
+      },
+      "s_23": {
+        "name": "S 23"
+      },
+      "s_24": {
+        "name": "S 24"
+      },
+      "s_25": {
+        "name": "S 25"
+      },
+      "s_26": {
+        "name": "S 26"
+      },
+      "s_29": {
+        "name": "S 29"
+      },
+      "s_30": {
+        "name": "S 30"
+      },
+      "s_31": {
+        "name": "S 31"
+      },
+      "s_32": {
+        "name": "S 32"
+      },
+      "e_99": {
+        "name": "E 99"
+      },
+      "e_100": {
+        "name": "E 100"
+      },
+      "e_101": {
+        "name": "E 101"
+      },
+      "e_102": {
+        "name": "E 102"
+      },
+      "e_103": {
+        "name": "E 103"
+      },
+      "e_104": {
+        "name": "E 104"
+      },
+      "e_105": {
+        "name": "E 105"
+      },
+      "e_106": {
+        "name": "E 106"
+      },
+      "e_138": {
+        "name": "E 138"
+      },
+      "e_139": {
+        "name": "E 139"
+      },
+      "e_152": {
+        "name": "E 152"
+      },
+      "e_196": {
+        "name": "E 196"
+      },
+      "e_197": {
+        "name": "E 197"
+      },
+      "e_198": {
+        "name": "E 198"
+      },
+      "e_199": {
+        "name": "E 199"
+      },
+      "e_200": {
+        "name": "E 200"
+      },
+      "e_201": {
+        "name": "E 201"
+      },
+      "e_249": {
+        "name": "E 249"
+      },
+      "e_250": {
+        "name": "E 250"
+      },
+      "e_251": {
+        "name": "E 251"
+      },
+      "e_252": {
+        "name": "E 252"
       }
     }
   },
@@ -495,7 +1287,7 @@
         },
         "temperature": {
           "name": "Temperature",
-          "description": "Target temperature (\u00b0C)"
+          "description": "Target temperature (°C)"
         }
       }
     },
