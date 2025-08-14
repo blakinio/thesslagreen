@@ -120,6 +120,14 @@ def _format_register_value(name: str, value: int) -> int | str:
     if name.startswith(BCD_TIME_PREFIXES):
         decoded = _decode_bcd_time(value)
         if decoded is None:
+            return f"0x{value:04X} (invalid)"
+        return f"{decoded // 100:02d}:{decoded % 100:02d}"
+
+    if name.startswith(TIME_REGISTER_PREFIXES):
+        decoded = _decode_register_time(value)
+        if decoded is None:
+            return f"0x{value:04X} (invalid)"
+        return f"{decoded // 100:02d}:{decoded % 100:02d}"
             return value
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 

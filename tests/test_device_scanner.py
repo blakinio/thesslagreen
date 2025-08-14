@@ -747,6 +747,11 @@ async def test_format_register_value_setting():
     assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
 
 
+async def test_format_register_value_invalid_time():
+    """Invalid time registers should show raw hex with invalid marker."""
+    assert _format_register_value("schedule_summer_mon_1", 0x2400) == "0x2400 (invalid)"
+
+
 async def test_scan_excludes_unavailable_temperature():
     """Temperature register with SENSOR_UNAVAILABLE should be excluded."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
@@ -1126,3 +1131,14 @@ async def test_log_invalid_value_raw_and_formatted(caplog):
 
     assert "raw=0x1600" in caplog.text
     assert "decoded=16:00" in caplog.text
+
+
+async def test_log_invalid_value_invalid_time(caplog):
+    """Logs include formatted string for invalid time values."""
+    scanner = ThesslaGreenDeviceScanner("host", 502)
+
+    caplog.set_level(logging.DEBUG)
+    scanner._log_invalid_value("schedule_time", 0x2400)
+
+    assert "raw=0x2400" in caplog.text
+    assert "decoded=0x2400 (invalid)" in caplog.text
