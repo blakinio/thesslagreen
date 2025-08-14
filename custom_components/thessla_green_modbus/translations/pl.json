@@ -204,6 +204,9 @@
       "dp_duct_filter_overflow": {
         "name": "Przepełnienie filtra kanałowego"
       },
+      "hood_switch": {
+        "name": "Przełącznik okapu"
+      },
       "airing_sensor": {
         "name": "Czujnik przewietrzania"
       },
