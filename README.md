@@ -374,10 +374,12 @@ python3 tools/cleanup_old_entities.py \
 - 🤝 [Contributing](CONTRIBUTING.md)
 
 ### Regenerating registers.py
-If you modify `custom_components/thessla_green_modbus/data/modbus_registers.csv`, rebuild the generated module:
+Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` changes, regenerate and
+validate the Python module:
 
 ```bash
 python tools/generate_registers.py
+python tools/validate_registers.py  # optional consistency check
 ```
 
 Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
