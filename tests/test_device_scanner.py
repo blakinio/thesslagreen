@@ -89,13 +89,11 @@ async def test_read_holding_exception_response(caplog):
     assert f"Exception code {error_response.exception_code}" in caplog.text
 
 
-async def test_read_input_backoff():
-
 @pytest.mark.parametrize(
     "method, address",
     [("_read_input", 0x0001), ("_read_holding", 0x0001)],
 )
-async def test_read_backoff_delay(method, address):```````
+async def test_read_backoff_delay(method, address):
     """Ensure exponential backoff delays between retries."""
     scanner = await ThesslaGreenDeviceScanner.create(
         "192.168.3.17", 8899, 10, retry=3, backoff=0.1
@@ -511,6 +509,82 @@ async def test_scan_device_batch_fallback():
     batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
     assert any(call.args[2] == 2 for call in batch_calls)
     assert any(call.args[2] == 1 for call in batch_calls)
+
+
+async def test_missing_register_logged_once(caplog):
+    """Each missing register should trigger only one read and log entry."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with patch.object(
+        ThesslaGreenDeviceScanner,
+        "_load_registers",
+        AsyncMock(return_value=(empty_regs, {})),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+
+    call_log: list[tuple[int, int]] = []
+
+    async def fake_read_input(client, address, count):
+        call_log.append((address, count))
+        if address == 0x0000 and count == 5:
+            return [4, 85, 0, 0, 0]
+        if address == 0x0018 and count == 6:
+            return [0] * 6
+        if address == 1 and count == 2:
+            return None
+        if address == 1 and count == 1:
+            return [1]
+        if address == 2 and count == 1:
+            return None
+        return [0] * count
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_ok": 1, "reg_missing": 2},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS",
+            {},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS",
+            {},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.KNOWN_MISSING_REGISTERS",
+            {},
+        ),
+        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
+    ):
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
+
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(return_value=[0])),
+            patch.object(scanner, "_read_coil", AsyncMock(return_value=[False])),
+            patch.object(scanner, "_read_discrete", AsyncMock(return_value=[False])),
+            patch.object(scanner, "_is_valid_register_value", return_value=True),
+        ):
+            caplog.set_level(logging.DEBUG)
+            result = await scanner.scan_device()
+
+    # Block read + single read for each register
+    assert call_log.count((1, 2)) == 1
+    assert call_log.count((1, 1)) == 1
+    assert call_log.count((2, 1)) == 1
+
+    # Missing register logged only once
+    assert caplog.text.count("Failed to read input_registers register 0x0002") == 1
+
+    # Only valid register is reported as available
+    assert "reg_ok" in result["available_registers"]["input_registers"]
+    assert "reg_missing" not in result["available_registers"]["input_registers"]
 
 
 async def test_temperature_register_unavailable_skipped():
