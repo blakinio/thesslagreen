@@ -58,7 +58,6 @@ def _decode_register_time(value: int) -> Optional[int]:
     if value < 0:
         return None
 
-
     hour = (value >> 8) & 0xFF
     minute = value & 0xFF
     if 0 <= hour <= 23 and 0 <= minute <= 59:
@@ -122,7 +121,6 @@ def _format_register_value(name: str, value: int) -> int | str:
         return f"{airflow}% @ {temp_str}°C"
 
     return value
-
 
 
 # Maximum registers per batch read (Modbus limit)
@@ -416,9 +414,7 @@ class ThesslaGreenDeviceScanner:
                     self._input_failures[address] = failures
                     if failures >= self.retry and address not in self._failed_input:
                         self._failed_input.add(address)
-                        _LOGGER.warning(
-                            "Device does not expose register 0x%04X", address
-                        )
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
@@ -455,22 +451,14 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-
-        """Read holding registers with retry, backoff and failure tracking."""
-        if address in self._failed_holding:
-            _LOGGER.debug(
-                "Skipping cached failed holding register 0x%04X", address
-            )
-
-        """Read holding registers with retry and per-register failure tracking."""
-        failures = self._holding_failures.get(address, 0)
-        if failures >= self.retry:
-            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
-
         """Read holding registers with retry, backoff and failure tracking."""
         if address in self._failed_holding:
             _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
+            return None
 
+        failures = self._holding_failures.get(address, 0)
+        if failures >= self.retry:
+            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
             return None
 
         for attempt in range(1, self.retry + 1):
@@ -497,9 +485,7 @@ class ThesslaGreenDeviceScanner:
                     self._holding_failures[address] = failures
                     if failures >= self.retry and address not in self._failed_holding:
                         self._failed_holding.add(address)
-                        _LOGGER.warning(
-                            "Device does not expose register 0x%04X", address
-                        )
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read holding 0x%04X (attempt %d/%d): %s",
@@ -610,7 +596,6 @@ class ThesslaGreenDeviceScanner:
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
-
 
         # Decode schedule/airing time values before validation
         if name.startswith(TIME_REGISTER_PREFIXES):
