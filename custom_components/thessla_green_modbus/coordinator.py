@@ -176,17 +176,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         # Scan device to discover available registers and capabilities
         if not self.force_full_register_list:
             _LOGGER.info("Scanning device for available registers...")
-            scanner = await ThesslaGreenDeviceScanner.create(
-                host=self.host,
-                port=self.port,
-                slave_id=self.slave_id,
-                timeout=self.timeout,
-                retry=self.retry,
-                scan_uart_settings=self.scan_uart_settings,
-                skip_known_missing=self.skip_missing_registers,
-            )
-
+            scanner = None
             try:
+                scanner = await ThesslaGreenDeviceScanner.create(
+                    host=self.host,
+                    port=self.port,
+                    slave_id=self.slave_id,
+                    timeout=self.timeout,
+                    retry=self.retry,
+                    scan_uart_settings=self.scan_uart_settings,
+                    skip_known_missing=self.skip_missing_registers,
+                )
+
                 self.device_scan_result = await scanner.scan_device()
                 self.available_registers = self.device_scan_result.get("available_registers", {})
                 if self.skip_missing_registers:
@@ -203,6 +204,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     self.device_info.get("model", "Unknown"),
                     self.device_info.get("firmware", "Unknown"),
                 )
+            except asyncio.CancelledError:
+                _LOGGER.debug("Device scan cancelled")
+                if scanner is not None:
+                    await scanner.close()
+                    scanner = None
+                raise
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.exception("Device scan failed: %s", exc)
                 raise
@@ -210,7 +217,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 _LOGGER.exception("Unexpected error during device scan: %s", exc)
                 raise
             finally:
-                await scanner.close()
+                if scanner is not None:
+                    await scanner.close()
         else:
             _LOGGER.info("Using full register list (skipping scan)")
             # Load all registers if forced
