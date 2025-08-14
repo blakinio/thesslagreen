@@ -491,8 +491,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if "input_registers" not in self._register_groups:
             return data
-
-        if not self.client:
         await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
@@ -554,11 +552,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             raise UpdateFailed("Modbus client is not initialized")
 
         if "holding_registers" not in self._register_groups:
-            return data
-
-        if not self.client:
-        if self.client is None:
-            _LOGGER.debug("Modbus client is not connected")
             return data
         await self._ensure_connection()
         client = self.client
@@ -630,8 +623,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if "coil_registers" not in self._register_groups:
             return data
-
-        if not self.client:
         await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
@@ -696,8 +687,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if "discrete_inputs" not in self._register_groups:
             return data
-
-        if not self.client:
         await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
