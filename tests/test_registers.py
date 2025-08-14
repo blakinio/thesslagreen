@@ -81,7 +81,6 @@ def test_register_definitions_match_csv() -> None:
     assert len(mod_input) == 26  # nosec B101
     assert len(mod_holding) == 281  # nosec B101
 
-
 def test_time_decoding_helpers() -> None:
     """Ensure time decoding helpers map to minutes since midnight."""
     assert _decode_register_time(0x081E) == 510
@@ -93,3 +92,15 @@ def test_time_decoding_helpers() -> None:
     assert _decode_bcd_time(0x0800) == 480
     assert _decode_bcd_time(0x2460) is None
     assert _decode_bcd_time(2400) is None
+def test_all_registers_have_units() -> None:
+    """Ensure every register in the CSV specifies a unit."""
+    csv_path = pathlib.Path(
+        "custom_components/thessla_green_modbus/data/modbus_registers.csv"
+    )
+    with csv_path.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            code = row["Function_Code"]
+            if not code or code.startswith("#"):
+                continue
+            assert row["Unit"].strip() != ""  # nosec B101
