@@ -299,14 +299,14 @@ class ThesslaGreenDeviceScanner:
                                 )
                                 return None
 
-                            if not re.fullmatch(r"[+-]?\d+(?:\.\d+)?", text):
+                            if not re.fullmatch(r"[+-]?(?:0[xX][0-9A-Fa-f]+|\d+)", text):
                                 _LOGGER.warning(
                                     "Ignoring non-numeric %s for %s: %s", label, name, raw
                                 )
                                 return None
 
                             try:
-                                return int(float(text))
+                                return int(text, 0)
                             except ValueError:
                                 _LOGGER.warning(
                                     "Ignoring non-numeric %s for %s: %s", label, name, raw
@@ -469,9 +469,7 @@ class ThesslaGreenDeviceScanner:
                 if response is None:
                     raise ModbusException("No response")
                 if response.isError():
-                    raise ModbusException(
-                        f"Exception code {response.exception_code}"
-                    )
+                    raise ModbusException(f"Exception code {response.exception_code}")
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers
