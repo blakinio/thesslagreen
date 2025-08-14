@@ -657,6 +657,9 @@ class ThesslaGreenDeviceScanner:
         # Decode schedule/airing time values before validation
         if name.startswith(TIME_REGISTER_PREFIXES):
             decoded = _decode_register_time(value)
+            # Some registers may store time values in BCD/decimal format
+            if decoded is None and name.startswith(BCD_TIME_PREFIXES):
+                decoded = _decode_bcd_time(value)
             if decoded is None:
                 self._log_invalid_value(register_name, value)
                 return False

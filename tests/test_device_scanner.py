@@ -680,6 +680,11 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("schedule_start_time", 0x0800) is True
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
     assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
+    # BCD encoded times should also be recognized as valid
+    assert (
+        scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200)
+        is True
+    )
 
 
 async def test_decode_register_time():
@@ -901,10 +906,6 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
 
     assert scanner._register_ranges["reg_a"] == (0x0, 0x423F)
     assert not caplog.records
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert scanner._register_ranges["reg_a"] == (1, 10)
 
 
 async def test_load_registers_invalid_range_logs(tmp_path, caplog):
