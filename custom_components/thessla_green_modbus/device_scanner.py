@@ -109,7 +109,13 @@ def _format_register_value(name: str, value: int) -> int | str:
     if name.startswith(BCD_TIME_PREFIXES):
         decoded = _decode_bcd_time(value)
         if decoded is None:
-            return value
+            return f"0x{value:04X} (invalid)"
+        return f"{decoded // 100:02d}:{decoded % 100:02d}"
+
+    if name.startswith(TIME_REGISTER_PREFIXES):
+        decoded = _decode_register_time(value)
+        if decoded is None:
+            return f"0x{value:04X} (invalid)"
         return f"{decoded // 100:02d}:{decoded % 100:02d}"
 
     if name.startswith(SETTING_PREFIX):
@@ -577,9 +583,7 @@ class ThesslaGreenDeviceScanner:
                 try:
                     await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
                 except asyncio.CancelledError:
-                    _LOGGER.debug(
-                        "Sleep cancelled while retrying holding 0x%04X", address
-                    )
+                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
                     raise
 
         return None

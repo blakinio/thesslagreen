@@ -186,9 +186,7 @@ async def test_read_input_skips_cached_failures():
 
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=2
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
     scanner._failed_input.update({0x0001, 0x0002, 0x0003})
 
@@ -202,9 +200,7 @@ async def test_read_input_logs_once_per_skipped_range(caplog):
         for record in caplog.records
         if "Skipping cached failed input registers" in record.message
     ]
-    assert messages == [
-        "Skipping cached failed input registers 0x0001-0x0003"
-    ]
+    assert messages == ["Skipping cached failed input registers 0x0001-0x0003"]
 
 
 async def test_scan_device_success_dynamic():
@@ -681,10 +677,7 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
     assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
     # BCD encoded times should also be recognized as valid
-    assert (
-        scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200)
-        is True
-    )
+    assert scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200) is True
 
 
 async def test_decode_register_time():
@@ -718,6 +711,11 @@ async def test_format_register_value_schedule():
 async def test_format_register_value_setting():
     """Formatted setting registers should show percent and temperature."""
     assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
+
+
+async def test_format_register_value_invalid_time():
+    """Invalid time registers should show raw hex with invalid marker."""
+    assert _format_register_value("schedule_summer_mon_1", 0x2400) == "0x2400 (invalid)"
 
 
 async def test_scan_excludes_unavailable_temperature():
@@ -878,6 +876,8 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
 async def test_load_registers_hex_range(tmp_path, caplog):
     """Parse hexadecimal Min/Max values without warnings."""
     csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
+
+
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
 async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw):
     """Support decimal and hexadecimal ranges."""
@@ -1036,9 +1036,7 @@ async def test_log_invalid_value_debug_when_not_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert (
-        "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
-    )
+    assert "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
@@ -1072,3 +1070,14 @@ async def test_log_invalid_value_raw_and_formatted(caplog):
 
     assert "raw=0x1600" in caplog.text
     assert "decoded=16:00" in caplog.text
+
+
+async def test_log_invalid_value_invalid_time(caplog):
+    """Logs include formatted string for invalid time values."""
+    scanner = ThesslaGreenDeviceScanner("host", 502)
+
+    caplog.set_level(logging.DEBUG)
+    scanner._log_invalid_value("schedule_time", 0x2400)
+
+    assert "raw=0x2400" in caplog.text
+    assert "decoded=0x2400 (invalid)" in caplog.text
