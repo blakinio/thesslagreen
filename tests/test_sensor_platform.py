@@ -110,8 +110,7 @@ def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
         await async_setup_entry(hass, mock_config_entry, add_entities)
 
         entities = add_entities.call_args[0][0]
-        assert len(SENSOR_DEFINITIONS) == 49  # nosec B101
-        assert len(entities) == 49  # nosec B101
+        assert len(entities) == len(SENSOR_DEFINITIONS)  # nosec B101
 
     asyncio.run(run_test())
 

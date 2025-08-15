@@ -1,4 +1,5 @@
-"""Test cancellation during platform setup for ThesslaGreen Modbus."""
+
+"""Tests for cancellation during platform setup."""
 
 import asyncio
 import logging
@@ -14,7 +15,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_platform_setup_cancellation(caplog):
-    """Cancellation during platform setup should not log errors."""
+    """Cancellation during platform setup is logged without errors."""
     hass = MagicMock()
     hass.data = {}
     hass.config_entries.async_forward_entry_setups = AsyncMock(side_effect=asyncio.CancelledError)
@@ -22,14 +23,19 @@ async def test_platform_setup_cancellation(caplog):
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
     entry.data = {
-        CONF_HOST: "192.168.1.100",
-        CONF_PORT: 502,
+        CONF_HOST: "192.168.3.17",
+        CONF_PORT: 8899,
         "slave_id": 10,
     }
     entry.options = {}
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
     entry.title = "Test Entry"
+    entry.title = "Test Entry"
+    entry.data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 10}
+    entry.options = {}
+    entry.add_update_listener = MagicMock()
+    entry.async_on_unload = MagicMock()
 
     with (
         patch(
@@ -55,3 +61,19 @@ async def test_platform_setup_cancellation(caplog):
                 await async_setup_entry(hass, entry)
 
     assert not any(record.levelno >= logging.ERROR for record in caplog.records)  # nosec B101
+
+            "custom_components.thessla_green_modbus._async_migrate_unique_ids",
+            AsyncMock(),
+        ),
+        caplog.at_level(logging.DEBUG),
+    ):
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_setup = AsyncMock()
+        mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator_class.return_value = mock_coordinator
+
+        with pytest.raises(asyncio.CancelledError):
+            await async_setup_entry(hass, entry)
+
+    assert not any(record.levelno >= logging.ERROR for record in caplog.records)
+    assert any("cancelled" in record.message.lower() for record in caplog.records)

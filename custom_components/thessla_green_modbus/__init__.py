@@ -159,6 +159,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except asyncio.CancelledError:
         _LOGGER.info("Platform setup cancelled for %s", PLATFORMS)
+    _LOGGER.debug("Setting up platforms: %s", PLATFORMS)
+    try:
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    except asyncio.CancelledError:
+        _LOGGER.debug("Platform setup cancelled: %s", PLATFORMS)
         raise
 
     # Setup services (only once for first entry)

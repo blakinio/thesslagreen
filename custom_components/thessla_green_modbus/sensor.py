@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import csv
+import json
 import logging
+from dataclasses import asdict, dataclass
 from typing import Any
+from importlib import resources
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -19,370 +24,91 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from . import registers
 
 _LOGGER = logging.getLogger(__name__)
 
-# Complete sensor definitions with enhanced metadata
-SENSOR_DEFINITIONS = {
-    # Temperature sensors
-    "outside_temperature": {
-        "translation_key": "outside_temperature",
-        "icon": "mdi:thermometer",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "supply_temperature": {
-        "translation_key": "supply_temperature",
-        "icon": "mdi:thermometer-plus",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "exhaust_temperature": {
-        "translation_key": "exhaust_temperature",
-        "icon": "mdi:thermometer-minus",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "fpx_temperature": {
-        "translation_key": "fpx_temperature",
-        "icon": "mdi:thermometer",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "duct_supply_temperature": {
-        "translation_key": "duct_supply_temperature",
-        "icon": "mdi:thermometer-lines",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "gwc_temperature": {
-        "translation_key": "gwc_temperature",
-        "icon": "mdi:thermometer-low",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "ambient_temperature": {
-        "translation_key": "ambient_temperature",
-        "icon": "mdi:home-thermometer",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    "heating_temperature": {
-        "translation_key": "heating_temperature",
-        "icon": "mdi:thermometer",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "input_registers",
-    },
-    # System information
-    "version_major": {
-        "translation_key": "version_major",
-        "icon": "mdi:counter",
-        "register_type": "input_registers",
-    },
-    "version_minor": {
-        "translation_key": "version_minor",
-        "icon": "mdi:counter",
-        "register_type": "input_registers",
-    },
-    "version_patch": {
-        "translation_key": "version_patch",
-        "icon": "mdi:counter",
-        "register_type": "input_registers",
-    },
-    "day_of_week": {
-        "translation_key": "day_of_week",
-        "icon": "mdi:calendar-week",
-        "register_type": "input_registers",
-    },
-    "period": {
-        "translation_key": "period",
-        "icon": "mdi:clock-outline",
-        "register_type": "input_registers",
-    },
-    "compilation_days": {
-        "translation_key": "compilation_days",
-        "icon": "mdi:calendar",
-        "register_type": "input_registers",
-    },
-    "compilation_seconds": {
-        "translation_key": "compilation_seconds",
-        "icon": "mdi:timer",
-        "register_type": "input_registers",
-    },
-    "serial_number_1": {
-        "translation_key": "serial_number_1",
-        "icon": "mdi:identifier",
-        "register_type": "input_registers",
-    },
-    "serial_number_2": {
-        "translation_key": "serial_number_2",
-        "icon": "mdi:identifier",
-        "register_type": "input_registers",
-    },
-    "serial_number_3": {
-        "translation_key": "serial_number_3",
-        "icon": "mdi:identifier",
-        "register_type": "input_registers",
-    },
-    "serial_number_4": {
-        "translation_key": "serial_number_4",
-        "icon": "mdi:identifier",
-        "register_type": "input_registers",
-    },
-    "serial_number_5": {
-        "translation_key": "serial_number_5",
-        "icon": "mdi:identifier",
-        "register_type": "input_registers",
-    },
-    "serial_number_6": {
-        "translation_key": "serial_number_6",
-        "icon": "mdi:identifier",
-        "register_type": "input_registers",
-    },
-    # Flow sensors
-    "supply_flow_rate": {
-        "translation_key": "supply_flow_rate",
-        "icon": "mdi:fan",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
-    },
-    "exhaust_flow_rate": {
-        "translation_key": "exhaust_flow_rate",
-        "icon": "mdi:fan-clock",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
-    },
-    "supply_air_flow": {
-        "translation_key": "supply_air_flow",
-        "icon": "mdi:fan",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "exhaust_air_flow": {
-        "translation_key": "exhaust_air_flow",
-        "icon": "mdi:fan-clock",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "max_supply_air_flow_rate": {
-        "translation_key": "max_supply_air_flow_rate",
-        "icon": "mdi:fan",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "max_exhaust_air_flow_rate": {
-        "translation_key": "max_exhaust_air_flow_rate",
-        "icon": "mdi:fan-clock",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "nominal_supply_air_flow": {
-        "translation_key": "nominal_supply_air_flow",
-        "icon": "mdi:fan",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "nominal_exhaust_air_flow": {
-        "translation_key": "nominal_exhaust_air_flow",
-        "icon": "mdi:fan-clock",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "air_flow_rate_manual": {
-        "translation_key": "air_flow_rate_manual",
-        "icon": "mdi:fan",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "air_flow_rate_temporary_2": {
-        "translation_key": "air_flow_rate_temporary_2",
-        "icon": "mdi:fan-clock",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "bypass_off": {
-        "translation_key": "bypass_off",
-        "icon": "mdi:thermometer-off",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "holding_registers",
-    },
-    # PWM control values
-    "dac_supply": {
-        "translation_key": "dac_supply",
-        "icon": "mdi:sine-wave",
-        "device_class": SensorDeviceClass.VOLTAGE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "holding_registers",
-    },
-    "dac_exhaust": {
-        "translation_key": "dac_exhaust",
-        "icon": "mdi:sine-wave",
-        "device_class": SensorDeviceClass.VOLTAGE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "holding_registers",
-    },
-    "dac_heater": {
-        "translation_key": "dac_heater",
-        "icon": "mdi:sine-wave",
-        "device_class": SensorDeviceClass.VOLTAGE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "holding_registers",
-    },
-    "dac_cooler": {
-        "translation_key": "dac_cooler",
-        "icon": "mdi:sine-wave",
-        "device_class": SensorDeviceClass.VOLTAGE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfElectricPotential.VOLT,
-        "register_type": "holding_registers",
-    },
-    # Percentage sensors
-    "supply_percentage": {
-        "translation_key": "supply_percentage",
-        "icon": "mdi:fan-plus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "input_registers",
-    },
-    "exhaust_percentage": {
-        "translation_key": "exhaust_percentage",
-        "icon": "mdi:fan-minus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "input_registers",
-    },
-    "min_percentage": {
-        "translation_key": "min_percentage",
-        "icon": "mdi:percent-outline",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "input_registers",
-    },
-    "max_percentage": {
-        "translation_key": "max_percentage",
-        "icon": "mdi:percent-outline",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "input_registers",
-    },
-    # System modes and versions
-    "cf_version": {
-        "translation_key": "cf_version",
-        "icon": "mdi:chip",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-    },
-    "antifreeze_mode": {
-        "translation_key": "antifreeze_mode",
-        "icon": "mdi:snowflake",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-    },
-    "antifreez_stage": {
-        "translation_key": "antifreez_stage",
-        "icon": "mdi:snowflake-thermometer",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-    },
-    "mode": {
-        "translation_key": "mode",
-        "icon": "mdi:cog",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-        "value_map": {0: "auto", 1: "manual", 2: "temporary"},
-    },
-    "season_mode": {
-        "translation_key": "season_mode",
-        "icon": "mdi:weather-partly-snowy",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-        "value_map": {0: "winter", 1: "summer"},
-    },
-    "filter_change": {
-        "translation_key": "filter_change",
-        "icon": "mdi:filter-variant",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-        "value_map": {1: "presostat", 2: "flat_filters", 3: "cleanpad", 4: "cleanpad_pure"},
-    },
-    "gwc_mode": {
-        "translation_key": "gwc_mode",
-        "icon": "mdi:pipe",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-        "value_map": {0: "off", 1: "auto", 2: "forced"},
-    },
-    "gwc_regen_flag": {
-        "translation_key": "gwc_regen_flag",
-        "icon": "mdi:autorenew",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-    },
-    "comfort_mode": {
-        "translation_key": "comfort_mode",
-        "icon": "mdi:sofa",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-    },
-    "bypass_mode": {
-        "translation_key": "bypass_mode",
-        "icon": "mdi:swap-horizontal",
-        "device_class": None,
-        "state_class": None,
-        "unit": None,
-        "register_type": "holding_registers",
-        "value_map": {0: "auto", 1: "open", 2: "closed"},
-    },
+
+@dataclass
+class SensorDefinition:
+    """Dataclass representing sensor metadata."""
+
+    translation_key: str
+    register_type: str
+    unit: str | None
+    icon: str | None = None
+    device_class: SensorDeviceClass | None = None
+    state_class: SensorStateClass | None = None
+    value_map: dict[int, str] | None = None
+
+
+UNIT_MAP = {
+    "°C": UnitOfTemperature.CELSIUS,
+    "m³/h": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+    "m3/h": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+    "%": PERCENTAGE,
+    "V": UnitOfElectricPotential.VOLT,
 }
+
+DEVICE_CLASS_MAP = {
+    UnitOfTemperature.CELSIUS: SensorDeviceClass.TEMPERATURE,
+    UnitOfElectricPotential.VOLT: SensorDeviceClass.VOLTAGE,
+}
+
+VALUE_MAPS: dict[str, dict[int, str]] = {
+    "mode": {0: "auto", 1: "manual", 2: "temporary"},
+    "season_mode": {0: "winter", 1: "summer"},
+    "filter_change": {
+        1: "presostat",
+        2: "flat_filters",
+        3: "cleanpad",
+        4: "cleanpad_pure",
+    },
+    "gwc_mode": {0: "off", 1: "auto", 2: "forced"},
+    "bypass_mode": {0: "auto", 1: "open", 2: "closed"},
+}
+
+
+def _load_translation_keys() -> set[str]:
+    """Load sensor translation keys from the English translation file."""
+    path = resources.files(__package__).joinpath("translations/en.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return set(data.get("entity", {}).get("sensor", {}))
+
+
+def load_sensor_definitions() -> dict[str, dict[str, Any]]:
+    """Generate SENSOR_DEFINITIONS from the registers CSV."""
+    sensor_keys = _load_translation_keys()
+    csv_path = resources.files(__package__).joinpath("data/modbus_registers.csv")
+    definitions: dict[str, dict[str, Any]] = {}
+    with csv_path.open(encoding="utf-8") as csvfile:
+        reader = csv.DictReader(row for row in csvfile if not row.startswith("#"))
+        for row in reader:
+            name = row["Register_Name"]
+            if name not in sensor_keys:
+                continue
+            unit_raw = row["Unit"].strip()
+            unit = UNIT_MAP.get(unit_raw) if unit_raw else None
+            device_class = DEVICE_CLASS_MAP.get(unit)
+            state_class = SensorStateClass.MEASUREMENT if unit is not None else None
+            register_type = (
+                "input_registers"
+                if name in registers.INPUT_REGISTERS
+                else "holding_registers"
+            )
+            definition = SensorDefinition(
+                translation_key=name,
+                register_type=register_type,
+                unit=unit,
+                device_class=device_class,
+                state_class=state_class,
+                value_map=VALUE_MAPS.get(name),
+            )
+            definitions[name] = asdict(definition)
+    return definitions
+
+
+SENSOR_DEFINITIONS = load_sensor_definitions()
 
 
 async def async_setup_entry(
@@ -405,8 +131,16 @@ async def async_setup_entry(
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
 
     if entities:
-        async_add_entities(entities, True)
-        _LOGGER.info("Created %d sensor entities for %s", len(entities), coordinator.device_name)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning("Entity addition cancelled, adding without initial update")
+            async_add_entities(entities, False)
+        _LOGGER.info(
+            "Created %d sensor entities for %s",
+            len(entities),
+            coordinator.device_name,
+        )
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
 
