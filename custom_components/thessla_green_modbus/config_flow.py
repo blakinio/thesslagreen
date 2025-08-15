@@ -156,6 +156,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the confirm step."""
         if user_input is not None:
+            # Ensure unique ID is set and not already configured
+            unique_host = self._data[CONF_HOST].replace(":", "-")
+            await self.async_set_unique_id(
+                f"{unique_host}:{self._data[CONF_PORT]}:{self._data[CONF_SLAVE_ID]}"
+            )
+            self._abort_if_unique_id_configured()
+
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility
             return self.async_create_entry(

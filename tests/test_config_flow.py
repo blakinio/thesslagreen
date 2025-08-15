@@ -181,6 +181,46 @@ async def test_unique_id_sanitized():
     mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
 
 
+async def test_duplicate_configuration_aborts():
+    """Test configuring same host/port/slave twice aborts the flow."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    user_input = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "My Device",
+    }
+
+    validation_result = {"title": "Device", "device_info": {}, "scan_result": {}}
+
+    # First pass through user step to store data
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id",
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured",
+        ),
+    ):
+        await flow.async_step_user(user_input)
+
+    # Attempt to confirm after a duplicate has been configured elsewhere
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+        "_abort_if_unique_id_configured",
+        side_effect=RuntimeError("already_configured"),
+    ):
+        with pytest.raises(RuntimeError):
+            await flow.async_step_confirm({})
+
+
 async def test_form_user_cannot_connect():
     """Test we handle cannot connect error."""
     flow = ConfigFlow()
