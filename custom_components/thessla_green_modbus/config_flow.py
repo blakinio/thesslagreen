@@ -163,6 +163,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             self._abort_if_unique_id_configured()
 
+            self._abort_if_unique_id_configured()````````````````````
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility
             return self.async_create_entry(
