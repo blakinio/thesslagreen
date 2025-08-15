@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -405,8 +406,16 @@ async def async_setup_entry(
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
 
     if entities:
-        async_add_entities(entities, True)
-        _LOGGER.info("Created %d sensor entities for %s", len(entities), coordinator.device_name)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning("Entity addition cancelled, adding without initial update")
+            async_add_entities(entities, False)
+        _LOGGER.info(
+            "Created %d sensor entities for %s",
+            len(entities),
+            coordinator.device_name,
+        )
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
 
