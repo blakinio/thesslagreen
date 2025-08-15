@@ -329,8 +329,10 @@ skryptu `tools/cleanup_old_entities.py`.
 python3 tools/cleanup_old_entities.py
 ```
 
-Skrypt domyślnie obsługuje polskie i angielskie nazwy encji
-(`rekuperator_predkosc`, `rekuperator_speed`).
+Skrypt domyślnie obsługuje polskie i angielskie nazwy **starych** encji
+(`number.rekuperator_predkosc`, `number.rekuperator_speed`).
+Aktualna encja wentylatora to `fan.rekuperator_fan` – upewnij się, że Twoje
+automatyzacje odwołują się do niej zamiast do usuniętej `number.rekuperator_predkosc`.
 
 ### Dodatkowe wzorce
 

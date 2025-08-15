@@ -26,9 +26,10 @@ _LOGGER = logging.getLogger(__name__)
 # mappings allow services to transparently use the new entity IDs while warning
 # users to update their automations.
 LEGACY_ENTITY_ID_ALIASES: Dict[str, tuple[str, str]] = {
+    # Keys are suffixes of legacy entity_ids.
     # "number.rekuperator_predkosc" / "number.rekuperator_speed" → fan entity
-    "rekuperator_predkosc": ("fan", "fan"),
-    "rekuperator_speed": ("fan", "fan"),
+    "predkosc": ("fan", "fan"),
+    "speed": ("fan", "fan"),
 }
 
 _alias_warning_logged = False
