@@ -9,6 +9,7 @@ import logging
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
 from .modbus_exceptions import ConnectionException, ModbusException
 
@@ -144,16 +145,22 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
-        # Placeholder for register map and value ranges loaded asynchronously
+        # Placeholder for register map, value ranges and firmware versions loaded
+        # asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
         self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+        self._register_versions: Dict[str, Tuple[int, ...]] = {}
 
         # Keep track of the Modbus client so it can be closed later
         self._client: Optional["AsyncModbusTcpClient"] = None
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
-        self._registers, self._register_ranges = await self._load_registers()
+        (
+            self._registers,
+            self._register_ranges,
+            self._register_versions,
+        ) = await self._load_registers()
 
     @classmethod
     async def create(
@@ -171,19 +178,37 @@ class ThesslaGreenDeviceScanner:
 
     async def _load_registers(
         self,
-    ) -> Tuple[Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]]:
-        """Load Modbus register definitions and value ranges from CSV file."""
+    ) -> Tuple[
+        Dict[str, Dict[int, str]],
+        Dict[str, Tuple[Optional[int], Optional[int]]],
+        Dict[str, Tuple[int, ...]],
+    ]:
+        """Load Modbus register definitions, ranges and firmware versions."""
         csv_path = files(__package__) / "data" / "modbus_registers.csv"
 
-        def _read_csv() -> (
-            Tuple[Dict[str, Dict[int, str]], Dict[str, Tuple[Optional[int], Optional[int]]]]
-        ):
+        def _read_csv() -> Tuple[
+            Dict[str, Dict[int, str]],
+            Dict[str, Tuple[Optional[int], Optional[int]]],
+            Dict[str, Tuple[int, ...]],
+        ]:
             register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
             register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+            register_versions: Dict[str, Tuple[int, ...]] = {}
             try:
                 with csv_path.open(newline="", encoding="utf-8") as csvfile:
                     reader = csv.DictReader(csvfile)
-                    rows: Dict[str, List[Tuple[str, int, Optional[int], Optional[int]]]] = {
+                    rows: Dict[
+                        str,
+                        List[
+                            Tuple[
+                                str,
+                                int,
+                                Optional[int],
+                                Optional[int],
+                                Optional[Tuple[int, ...]],
+                            ]
+                        ],
+                    ] = {
                         "03": [],
                         "04": [],
                         "01": [],
@@ -213,6 +238,17 @@ class ThesslaGreenDeviceScanner:
                             max_val = int(float(max_raw)) if max_raw not in (None, "") else None
                         except ValueError:
                             max_val = None
+                        version_raw = row.get("Software_Version")
+                        version_tuple: Optional[Tuple[int, ...]]
+                        if version_raw:
+                            try:
+                                version_tuple = tuple(
+                                    int(part) for part in str(version_raw).split(".")
+                                )
+                            except ValueError:
+                                version_tuple = None
+                        else:
+                            version_tuple = None
 
                         # Adjust ranges for registers storing BCD times
                         if name.startswith(BCD_TIME_PREFIXES):
@@ -220,7 +256,7 @@ class ThesslaGreenDeviceScanner:
                             max_val = (max_val * 100) if max_val is not None else 2359
 
                         if code in rows:
-                            rows[code].append((name, addr, min_val, max_val))
+                            rows[code].append((name, addr, min_val, max_val, version_tuple))
 
                     for code, items in rows.items():
                         # Sort by address to ensure deterministic numbering
@@ -229,7 +265,7 @@ class ThesslaGreenDeviceScanner:
                         for name, *_ in items:
                             counts[name] = counts.get(name, 0) + 1
                         seen: Dict[str, int] = {}
-                        for name, addr, min_val, max_val in items:
+                        for name, addr, min_val, max_val, ver in items:
                             if addr in register_map[code]:
                                 _LOGGER.warning(
                                     "Duplicate register address %s for function code %s: %s",
@@ -245,9 +281,11 @@ class ThesslaGreenDeviceScanner:
                             register_map[code][addr] = name
                             if min_val is not None or max_val is not None:
                                 register_ranges[name] = (min_val, max_val)
+                            if ver is not None:
+                                register_versions[name] = ver
             except FileNotFoundError:
                 _LOGGER.error("Register definition file not found: %s", csv_path)
-            return register_map, register_ranges
+            return register_map, register_ranges, register_versions
 
         return await asyncio.to_thread(_read_csv)
 
@@ -329,7 +367,11 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-        """Read holding registers with retry logic."""
+        """Read holding registers with retry logic and exponential backoff."""
+
+        delay = 0.5
+        last_error: Optional[Exception] = None
+
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -337,6 +379,9 @@ class ThesslaGreenDeviceScanner:
                 )
                 if response is not None and not response.isError():
                     return response.registers
+
+                if response is None:
+                    last_error = ConnectionException("No response")
                 _LOGGER.debug(
                     "Attempt %d failed to read holding 0x%04X: %s",
                     attempt,
@@ -344,6 +389,7 @@ class ThesslaGreenDeviceScanner:
                     response,
                 )
             except (ModbusException, ConnectionException) as exc:
+                last_error = exc
                 _LOGGER.debug(
                     "Attempt %d failed to read holding 0x%04X: %s",
                     attempt,
@@ -352,6 +398,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
             except (OSError, asyncio.TimeoutError) as exc:
+                last_error = exc
                 _LOGGER.error(
                     "Unexpected error reading holding 0x%04X on attempt %d: %s",
                     address,
@@ -360,8 +407,23 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
+
             if attempt < self.retry:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(delay)
+                delay *= 2
+
+        if last_error is not None:
+            _LOGGER.error(
+                "Failed to read holding 0x%04X after %d attempts: %s",
+                address,
+                self.retry,
+                last_error,
+            )
+            raise ConnectionException(
+                f"Failed to read holding 0x{address:04X}: {last_error}"
+            ) from last_error
+
+        _LOGGER.error("Failed to read holding 0x%04X after %d attempts", address, self.retry)
         return None
 
     async def _read_coil(
@@ -494,6 +556,42 @@ class ThesslaGreenDeviceScanner:
 
         # Default: consider valid
         return True
+
+    async def _scan_registers(
+        self,
+        client: "AsyncModbusTcpClient",
+        addr_to_name: Dict[int, str],
+        read_fn: Callable[["AsyncModbusTcpClient", int, int], Awaitable[Optional[List[Any]]]],
+        reg_type: str,
+    ) -> None:
+        """Read registers while skipping ranges that raise exceptions."""
+        addresses = sorted(addr_to_name)
+        if not addresses:
+            return
+
+        for start, count in self._group_registers_for_batch_read(addresses):
+            pending: List[Tuple[int, int]] = [(start, count)]
+            while pending:
+                s, c = pending.pop(0)
+                values = await read_fn(client, s, c)
+                if values is None:
+                    if c == 1:
+                        _LOGGER.debug("Skipping register 0x%04X due to read error", s)
+                        continue
+                    half = c // 2
+                    pending.insert(0, (s + half, c - half))
+                    pending.insert(0, (s, half))
+                    continue
+                for offset, value in enumerate(values):
+                    addr = s + offset
+                    name = addr_to_name.get(addr)
+                    if not name:
+                        continue
+                    if reg_type in ("input_registers", "holding_registers"):
+                        if self._is_valid_register_value(name, value):
+                            self.available_registers[reg_type].add(name)
+                    else:
+                        self.available_registers[reg_type].add(name)
 
     def _analyze_capabilities(self) -> DeviceCapabilities:
         """Analyze available registers to determine device capabilities."""
@@ -630,7 +728,9 @@ class ThesslaGreenDeviceScanner:
             present_blocks = {}
             # Read firmware version
             fw_data = await self._read_input(client, 0x0000, 5)
+            device_fw: Optional[Tuple[int, ...]] = None
             if fw_data and len(fw_data) >= 3:
+                device_fw = (fw_data[0], fw_data[1], fw_data[2])
                 fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
                 info.firmware = fw
                 _LOGGER.debug("Firmware version: %s", fw)
@@ -653,26 +753,10 @@ class ThesslaGreenDeviceScanner:
 
             for reg_type, (reg_map, read_fn) in register_maps.items():
                 addr_to_name = {addr: name for name, addr in reg_map.items()}
-                addresses = sorted(addr_to_name)
-                if not addresses:
-                    continue
-
-                for start, count in self._group_registers_for_batch_read(addresses):
-                    values = await read_fn(client, start, count)
-                    if values is None:
-                        continue
-                    for offset, value in enumerate(values):
-                        addr = start + offset
-                        name = addr_to_name.get(addr)
-                        if not name:
-                            continue
-                        if reg_type in ("input_registers", "holding_registers"):
-                            if self._is_valid_register_value(name, value):
-                                self.available_registers[reg_type].add(name)
-                        else:
-                            self.available_registers[reg_type].add(name)
-
-                present_blocks[reg_type] = (addresses[0], addresses[-1])
+                await self._scan_registers(client, addr_to_name, read_fn, reg_type)
+                if addr_to_name:
+                    addresses = sorted(addr_to_name)
+                    present_blocks[reg_type] = (addresses[0], addresses[-1])
 
             # Dynamically scan registers based on CSV definitions
             csv_register_maps = {
@@ -684,24 +768,13 @@ class ThesslaGreenDeviceScanner:
 
             for reg_type, (code, read_fn) in csv_register_maps.items():
                 addr_to_name = self._registers.get(code, {})
-                addresses = sorted(addr_to_name)
-                if not addresses:
-                    continue
-
-                for start, count in self._group_registers_for_batch_read(addresses):
-                    values = await read_fn(client, start, count)
-                    if values is None:
-                        continue
-                    for offset, value in enumerate(values):
-                        addr = start + offset
-                        reg_name = addr_to_name.get(addr)
-                        if not reg_name:
-                            continue
-                        if reg_type in ("input_registers", "holding_registers"):
-                            if self._is_valid_register_value(reg_name, value):
-                                self.available_registers[reg_type].add(reg_name)
-                        else:
-                            self.available_registers[reg_type].add(reg_name)
+                if device_fw is not None:
+                    addr_to_name = {
+                        addr: name
+                        for addr, name in addr_to_name.items()
+                        if ((ver := self._register_versions.get(name)) is None or device_fw >= ver)
+                    }
+                await self._scan_registers(client, addr_to_name, read_fn, reg_type)
 
             # Analyze capabilities once all register scans are complete
             caps = self._analyze_capabilities()
