@@ -7,8 +7,8 @@ import csv
 import json
 import logging
 from dataclasses import asdict, dataclass
-from typing import Any
 from importlib import resources
+from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -21,10 +21,11 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import registers
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from . import registers
+from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,10 +82,12 @@ def load_sensor_definitions() -> dict[str, dict[str, Any]]:
     sensor_keys = _load_translation_keys()
     csv_path = resources.files(__package__).joinpath("data/modbus_registers.csv")
     definitions: dict[str, dict[str, Any]] = {}
-    with csv_path.open(encoding="utf-8") as csvfile:
-        reader = csv.DictReader(row for row in csvfile if not row.startswith("#"))
+    with csv_path.open(newline="", encoding="utf-8") as csvfile:  # type: ignore[call-overload]
+        reader = csv.DictReader(
+            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
+        )
         for row in reader:
-            name = row["Register_Name"]
+            name = _to_snake_case(row["Register_Name"])
             if name not in sensor_keys:
                 continue
             unit_raw = row["Unit"].strip()
@@ -92,9 +95,7 @@ def load_sensor_definitions() -> dict[str, dict[str, Any]]:
             device_class = DEVICE_CLASS_MAP.get(unit)
             state_class = SensorStateClass.MEASUREMENT if unit is not None else None
             register_type = (
-                "input_registers"
-                if name in registers.INPUT_REGISTERS
-                else "holding_registers"
+                "input_registers" if name in registers.INPUT_REGISTERS else "holding_registers"
             )
             definition = SensorDefinition(
                 translation_key=name,
