@@ -844,7 +844,13 @@ class ThesslaGreenDeviceScanner:
             )
 
     def _is_valid_register_value(self, register_name: str, value: int) -> bool:
-        """Check if register value is valid (not a sensor error/missing value)."""
+        """Check if a register value should be considered valid.
+
+        Values used to represent missing sensors are treated as unavailable
+        without logging. Percentage registers may report values outside their
+        current device-defined range; such out-of-range percentages are ignored
+        rather than being logged as invalid.
+        """
         name = register_name.lower()
 
         # Decode time values before validation. Some registers store times as
@@ -885,6 +891,17 @@ class ThesslaGreenDeviceScanner:
         if name in REGISTER_ALLOWED_VALUES:
             if value not in REGISTER_ALLOWED_VALUES[name]:
                 self._log_invalid_value(register_name, value)
+                return False
+            return True
+
+        # Percentage registers can have dynamic device-provided ranges. Ignore
+        # values outside the known bounds without logging to avoid noisy
+        # warnings when devices temporarily report out-of-range percentages.
+        if "percentage" in name:
+            min_val, max_val = self._register_ranges.get(name, (0, 100))
+            if (min_val is not None and value < min_val) or (
+                max_val is not None and value > max_val
+            ):
                 return False
             return True
 

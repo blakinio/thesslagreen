@@ -745,13 +745,17 @@ async def test_is_valid_register_value():
 
     # Range from CSV
     assert scanner._is_valid_register_value("supply_percentage", 100) is True
-    assert scanner._is_valid_register_value("supply_percentage", 200) is False
+    with patch.object(scanner, "_log_invalid_value") as log_mock:
+        assert scanner._is_valid_register_value("supply_percentage", 200) is False
+        log_mock.assert_not_called()
 
     # Dynamic percentage limits should accept device-provided values
     assert scanner._is_valid_register_value("min_percentage", 20) is True
     assert scanner._is_valid_register_value("max_percentage", 120) is True
-    assert scanner._is_valid_register_value("min_percentage", -1) is False
-    assert scanner._is_valid_register_value("max_percentage", 200) is False
+    with patch.object(scanner, "_log_invalid_value") as log_mock:
+        assert scanner._is_valid_register_value("min_percentage", -1) is False
+        assert scanner._is_valid_register_value("max_percentage", 200) is False
+        log_mock.assert_not_called()
     # HH:MM time registers
     scanner._register_ranges["schedule_start_time"] = (0, 2359)
     assert scanner._is_valid_register_value("schedule_start_time", 0x081E) is True
@@ -798,9 +802,7 @@ async def test_format_register_value_schedule():
 
 async def test_format_register_value_manual_airing_le():
     """Little-endian manual airing times should decode correctly."""
-    assert (
-        _format_register_value("manual_airing_time_to_start", 0x1E08) == "08:30"
-    )
+    assert _format_register_value("manual_airing_time_to_start", 0x1E08) == "08:30"
 
 
 async def test_format_register_value_setting():
@@ -987,7 +989,7 @@ async def test_load_registers_sanitize_range_values(tmp_path, caplog):
 
 async def test_load_registers_hex_range(tmp_path, caplog):
     """Parse hexadecimal Min/Max values without warnings."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
+    _ = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
 
 
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
