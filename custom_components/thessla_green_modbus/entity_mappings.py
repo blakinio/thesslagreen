@@ -344,6 +344,14 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "input_registers",
     },
+    "heating_temperature": {
+        "translation_key": "heating_temperature",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
     # Air flow sensors
     "supply_flow_rate": {
         "translation_key": "supply_flow_rate",
