@@ -31,11 +31,6 @@ async def test_platform_setup_cancellation(caplog):
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
     entry.title = "Test Entry"
-    entry.title = "Test Entry"
-    entry.data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 10}
-    entry.options = {}
-    entry.add_update_listener = MagicMock()
-    entry.async_on_unload = MagicMock()
 
     with (
         patch(
@@ -50,25 +45,14 @@ async def test_platform_setup_cancellation(caplog):
             return_value=[],
             create=True,
         ),
-    ):
-        mock_coordinator = MagicMock()
-        mock_coordinator.async_setup = AsyncMock(return_value=True)
-        mock_coordinator.async_config_entry_first_refresh = AsyncMock()
-        mock_coordinator_class.return_value = mock_coordinator
-
-        with caplog.at_level(logging.DEBUG):
-            with pytest.raises(asyncio.CancelledError):
-                await async_setup_entry(hass, entry)
-
-    assert not any(record.levelno >= logging.ERROR for record in caplog.records)  # nosec B101
-
+        patch(
             "custom_components.thessla_green_modbus._async_migrate_unique_ids",
             AsyncMock(),
         ),
         caplog.at_level(logging.DEBUG),
     ):
         mock_coordinator = MagicMock()
-        mock_coordinator.async_setup = AsyncMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
         mock_coordinator_class.return_value = mock_coordinator
 
