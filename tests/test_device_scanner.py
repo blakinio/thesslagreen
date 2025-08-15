@@ -748,10 +748,14 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
     # BCD encoded times should also be recognized as valid
     assert scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200) is True
+    # Typical schedule and setting values
+    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
+    assert scanner._is_valid_register_value("setting_winter_mon_1", 0x322C) is True
 
 
 async def test_decode_register_time():
     """Verify time decoding for HH:MM byte-encoded values."""
+    assert _decode_register_time(0x0400) == 240
     assert _decode_register_time(0x081E) == 510
     assert _decode_register_time(0x1234) == 1132
     assert _decode_register_time(0x2460) is None
@@ -760,6 +764,7 @@ async def test_decode_register_time():
 
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
+    assert _decode_bcd_time(0x0400) == 240
     assert _decode_bcd_time(0x1234) == 754
     assert _decode_bcd_time(0x0800) == 480
     assert _decode_bcd_time(0x2460) is None
@@ -769,6 +774,7 @@ async def test_decode_bcd_time():
 async def test_decode_setting_value():
     """Verify decoding of combined airflow and temperature settings."""
     assert _decode_setting_value(0x3C28) == (60, 20.0)
+    assert _decode_setting_value(0x322C) == (50, 22.0)
     assert _decode_setting_value(-1) is None
     assert _decode_setting_value(0xFF28) is None
 

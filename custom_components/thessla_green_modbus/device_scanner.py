@@ -847,11 +847,14 @@ class ThesslaGreenDeviceScanner:
         """Check if register value is valid (not a sensor error/missing value)."""
         name = register_name.lower()
 
-        # Decode time values before validation
+        # Decode time values before validation. Some registers store times as
+        # BCD-encoded ``HHMM`` values while others use separate ``HH:MM``
+        # bytes. We attempt BCD decoding first as byte encoded values will
+        # simply fall back to the standard decoder if BCD decoding fails.
         if name.startswith(TIME_REGISTER_PREFIXES):
-            decoded = _decode_register_time(value)
-            if decoded is None and name.startswith(BCD_TIME_PREFIXES):
-                decoded = _decode_bcd_time(value)
+            decoded = _decode_bcd_time(value)
+            if decoded is None:
+                decoded = _decode_register_time(value)
             if decoded is None or not 0 <= decoded <= 1439:
                 self._log_invalid_value(register_name, value)
                 return False
