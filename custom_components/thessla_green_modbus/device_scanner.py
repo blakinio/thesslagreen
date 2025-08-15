@@ -8,7 +8,7 @@ import inspect
 import logging
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
 
 from .modbus_exceptions import ConnectionException, ModbusException
 
@@ -61,6 +61,22 @@ def _decode_bcd_time(value: int) -> Optional[int]:
     if hours > 23 or minutes > 59:
         return None
     return hours * 100 + minutes
+
+
+def _decode_season_mode(value: int) -> Optional[int]:
+    """Decode season mode register which may place value in high byte."""
+    if value in (0xFF00, 0xFFFF):
+        return None
+    high = (value >> 8) & 0xFF
+    low = value & 0xFF
+    if high and low:
+        return None
+    return high or low
+
+
+SPECIAL_VALUE_DECODERS: Dict[str, Callable[[int], Optional[int]]] = {
+    "season_mode": _decode_season_mode,
+}
 
 
 # Maximum registers per batch read (Modbus limit)
@@ -433,6 +449,15 @@ class ThesslaGreenDeviceScanner:
             decoded = _decode_bcd_time(value)
             if decoded is None:
                 _LOGGER.debug("Invalid BCD time for %s: %s", register_name, value)
+                return False
+            value = decoded
+
+        # Apply special decoders for registers with non-standard encoding
+        decoder = SPECIAL_VALUE_DECODERS.get(name)
+        if decoder is not None:
+            decoded = decoder(value)
+            if decoded is None:
+                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
                 return False
             value = decoded
 
