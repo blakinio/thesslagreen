@@ -313,7 +313,11 @@ class ThesslaGreenDeviceScanner:
     async def _read_holding(
         self, client: "AsyncModbusTcpClient", address: int, count: int
     ) -> Optional[List[int]]:
-        """Read holding registers with retry logic."""
+        """Read holding registers with retry logic and exponential backoff."""
+
+        delay = 0.5
+        last_error: Optional[Exception] = None
+
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -321,6 +325,9 @@ class ThesslaGreenDeviceScanner:
                 )
                 if response is not None and not response.isError():
                     return response.registers
+
+                if response is None:
+                    last_error = ConnectionException("No response")
                 _LOGGER.debug(
                     "Attempt %d failed to read holding 0x%04X: %s",
                     attempt,
@@ -328,6 +335,7 @@ class ThesslaGreenDeviceScanner:
                     response,
                 )
             except (ModbusException, ConnectionException) as exc:
+                last_error = exc
                 _LOGGER.debug(
                     "Attempt %d failed to read holding 0x%04X: %s",
                     attempt,
@@ -336,6 +344,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
             except (OSError, asyncio.TimeoutError) as exc:
+                last_error = exc
                 _LOGGER.error(
                     "Unexpected error reading holding 0x%04X on attempt %d: %s",
                     address,
@@ -344,8 +353,23 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
+
             if attempt < self.retry:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(delay)
+                delay *= 2
+
+        if last_error is not None:
+            _LOGGER.error(
+                "Failed to read holding 0x%04X after %d attempts: %s",
+                address,
+                self.retry,
+                last_error,
+            )
+            raise ConnectionException(
+                f"Failed to read holding 0x{address:04X}: {last_error}"
+            ) from last_error
+
+        _LOGGER.error("Failed to read holding 0x%04X after %d attempts", address, self.retry)
         return None
 
     async def _read_coil(

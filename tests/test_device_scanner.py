@@ -1,7 +1,7 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -13,6 +13,10 @@ from custom_components.thessla_green_modbus.const import (
 from custom_components.thessla_green_modbus.device_scanner import (
     DeviceCapabilities,
     ThesslaGreenDeviceScanner,
+)
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
 )
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
@@ -26,6 +30,53 @@ async def test_device_scanner_initialization():
     assert scanner.host == "192.168.3.17"
     assert scanner.port == 8899
     assert scanner.slave_id == 10
+
+
+async def test_read_holding_exponential_backoff(caplog):
+    """Ensure exponential backoff and error reporting when device fails to respond."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, retry=3)
+    client = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.asyncio.sleep",
+            AsyncMock(),
+        ) as sleep_mock,
+        caplog.at_level(logging.ERROR),
+    ):
+        with pytest.raises(ConnectionException):
+            await scanner._read_holding(client, 0x0001, 1)
+
+    assert sleep_mock.await_args_list == [call(0.5), call(1.0)]
+    assert any("Failed to read holding 0x0001" in record.message for record in caplog.records)
+
+
+async def test_read_holding_returns_none_on_modbus_error():
+    """A Modbus error response should return None without raising."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    client = AsyncMock()
+    response = MagicMock()
+    response.isError.return_value = True
+    call_modbus = AsyncMock(return_value=response)
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            call_modbus,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.asyncio.sleep",
+            AsyncMock(),
+        ),
+    ):
+        result = await scanner._read_holding(client, 0x0001, 1)
+
+    assert result is None
+    assert call_modbus.await_count == scanner.retry
 
 
 async def test_scan_device_success_dynamic():
@@ -197,10 +248,7 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 0) is True
 
     # Temperature sensor marked unavailable should still be considered valid
-    assert (
-        scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-        is True
-    )
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
