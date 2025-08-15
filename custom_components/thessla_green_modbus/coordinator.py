@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from datetime import timedelta
 from collections.abc import Callable
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.util import dt as dt_util
@@ -346,7 +346,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                if not self.client:
+                if self.client is None or not self.client.connected:
+                    _LOGGER.debug("Modbus client missing; attempting reconnection")
+                    await self._ensure_connection()
+                if self.client is None or not self.client.connected:
                     raise ConnectionException("Modbus client is not connected")
                 # Try to read a basic register to verify communication. "count" must
                 # always be passed as a keyword argument to ``_call_modbus`` to avoid
@@ -419,7 +422,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                if not self.client:
+                if self.client is None or not self.client.connected:
+                    _LOGGER.debug("Modbus client missing; attempting reconnection")
+                    await self._ensure_connection()
+                if self.client is None or not self.client.connected:
                     raise ConnectionException("Modbus client is not connected")
 
                 # Read all register types
@@ -443,6 +449,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
                 # Post-process data (calculate derived values)
                 data = self._post_process_data(data)
+
+                if self.client is None or not self.client.connected:
+                    _LOGGER.debug(
+                        "Modbus client disconnected during update; attempting reconnection"
+                    )
+                    await self._ensure_connection()
+                    if self.client is None or not self.client.connected:
+                        raise ConnectionException("Modbus client is not connected")
 
                 # Update statistics
                 self.statistics["successful_reads"] += 1
@@ -552,7 +566,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
         if self.client is None:
             _LOGGER.debug("Modbus client not available; skipping holding register read")
-            raise UpdateFailed("Modbus client is not initialized")
+            return {}
 
         if "holding_registers" not in self._register_groups:
             return data

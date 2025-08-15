@@ -299,6 +299,25 @@ logger:
     pymodbus: info
 ```
 
+### Komunikaty „Skipping unsupported … registers”
+Podczas skanowania integracja próbuje odczytać grupy rejestrów.  
+Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
+
+```
+Skipping unsupported input registers 0x0100-0x0102 (exception code 2)
+```
+
+Kody wyjątków Modbus informują, dlaczego odczyt się nie powiódł:
+
+- **2 – Illegal Data Address** – rejestry nie istnieją w tym modelu
+- **3 – Illegal Data Value** – rejestry istnieją, ale urządzenie odrzuciło żądanie (np. funkcja wyłączona)
+- **4 – Slave Device Failure** – urządzenie nie potrafiło obsłużyć żądania
+
+Jednorazowe ostrzeżenia pojawiające się przy początkowym skanowaniu lub
+dotyczące opcjonalnych funkcji można zwykle zignorować.  
+Jeśli jednak powtarzają się dla kluczowych rejestrów, sprawdź konfigurację,
+podłączenie i wersję firmware.
+
 ## 📋 Specyfikacja techniczna
 
 ### Obsługiwane rejestry
