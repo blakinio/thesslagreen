@@ -163,7 +163,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         self.device_scan_result: dict[str, Any] | None = None
 
         # Statistics and diagnostics
-        self.statistics: Dict[str, Any] = {
+        self.statistics: dict[str, Any] = {
             "successful_reads": 0,
             "failed_reads": 0,
             "connection_errors": 0,
