@@ -89,9 +89,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
     retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
     force_full_register_list = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-    scan_uart_settings = entry.options.get(
-        CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS
-    )
+    scan_uart_settings = entry.options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
     skip_missing_registers = entry.options.get(
         CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
     )
@@ -156,7 +154,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_migrate_unique_ids(hass, entry)
 
     # Setup platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    try:
+        _LOGGER.debug("Forwarding setup to platforms: %s", PLATFORMS)
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    except asyncio.CancelledError:
+        _LOGGER.info("Platform setup cancelled for %s", PLATFORMS)
+        raise
 
     # Setup services (only once for first entry)
     if len(hass.data[DOMAIN]) == 1:
