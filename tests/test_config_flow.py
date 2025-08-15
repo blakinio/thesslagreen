@@ -21,6 +21,14 @@ CONF_NAME = "name"
 pytestmark = pytest.mark.asyncio
 
 
+class AbortFlow(Exception):
+    """Mock AbortFlow to simulate Home Assistant aborts."""
+
+    def __init__(self, reason: str) -> None:  # pragma: no cover - simple container
+        super().__init__(reason)
+        self.reason = reason
+
+
 async def test_form_user():
     """Test we get the initial form."""
     flow = ConfigFlow()
@@ -101,6 +109,37 @@ async def test_form_user_success():
         "unit": 10,
         CONF_NAME: "My Device",
     }
+
+
+async def test_duplicate_entry_aborts():
+    """Attempting to add a duplicate entry should abort the flow."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    validation_result = {"title": "ThesslaGreen 192.168.1.100", "device_info": {}, "scan_result": {}}
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
+            side_effect=[None, AbortFlow("already_configured")],
+        ),
+    ):
+        await flow.async_step_user(
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_PORT: 502,
+                "slave_id": 10,
+                CONF_NAME: "My Device",
+            }
+        )
+
+        with pytest.raises(AbortFlow):
+            await flow.async_step_confirm({})
 
 
 @pytest.mark.parametrize(
