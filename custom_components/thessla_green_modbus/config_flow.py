@@ -162,8 +162,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 f"{unique_host}:{self._data[CONF_PORT]}:{self._data[CONF_SLAVE_ID]}"
             )
             self._abort_if_unique_id_configured()
-
-            self._abort_if_unique_id_configured()````````````````````
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility
             return self.async_create_entry(
