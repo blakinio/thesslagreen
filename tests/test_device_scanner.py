@@ -271,6 +271,11 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
     assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
 
+    # Season mode may be encoded in high byte or low byte
+    assert scanner._is_valid_register_value("season_mode", 0x0100) is True
+    assert scanner._is_valid_register_value("season_mode", 0x0001) is True
+    assert scanner._is_valid_register_value("season_mode", 0xFF00) is False
+
 
 async def test_capabilities_detect_schedule_keywords():
     """Ensure capability detection considers scheduling related registers."""
