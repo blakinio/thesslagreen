@@ -13,4 +13,11 @@ CAPABILITY_PATTERNS: Mapping[str, Sequence[str]] = {
     "cooling_system": ("cooling", "cooler"),
     "bypass_system": ("bypass",),
     "gwc_system": ("gwc",),
+    # Constant flow capable devices expose registers related to airflow and
+    # flow rates. These keywords cover typical naming variations used by the
+    # firmware for that feature.
+    "constant_flow": ("constant_flow", "cf_", "air_flow", "flow_rate"),
+    # Weekly schedule functionality is indicated by registers referencing
+    # schedules, airing or related settings.
+    "weekly_schedule": ("schedule", "weekly", "airing", "setting"),
 }
