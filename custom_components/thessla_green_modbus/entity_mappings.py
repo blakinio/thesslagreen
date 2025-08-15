@@ -70,14 +70,14 @@ def map_legacy_entity_id(entity_id: str) -> str:
 
 def _load_number_mappings():
     """Load number entity configurations from CSV data.
-    
+
     This function reads register configurations and dynamically creates
     number entity mappings with proper min/max/step values.
     """
     from .data.modbus_registers import get_register_info
-    
+
     number_configs = {}
-    
+
     # Define registers that should be number entities
     number_registers = {
         # Temperature control
@@ -88,7 +88,6 @@ def _load_number_mappings():
         "air_temperature_summer_free_heating": {"unit": "°C", "icon": "mdi:thermometer"},
         "air_temperature_summer_free_cooling": {"unit": "°C", "icon": "mdi:thermometer"},
         "bypass_off": {"unit": "°C", "icon": "mdi:thermometer-off"},
-        
         # Air flow control
         "air_flow_rate_manual": {"unit": "m³/h", "icon": "mdi:fan"},
         "max_supply_air_flow_rate": {"unit": "m³/h", "icon": "mdi:fan-plus"},
@@ -99,18 +98,16 @@ def _load_number_mappings():
         "max_exhaust_air_flow_rate_gwc": {"unit": "m³/h", "icon": "mdi:fan-minus"},
         "nominal_supply_air_flow_gwc": {"unit": "m³/h", "icon": "mdi:fan-clock"},
         "nominal_exhaust_air_flow_gwc": {"unit": "m³/h", "icon": "mdi:fan-clock"},
-        
         # Access and timing
         "access_level": {"unit": None, "icon": "mdi:account-key"},
         "special_mode_timeout": {"unit": "min", "icon": "mdi:timer"},
-        
         # GWC parameters
         "min_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-low"},
         "max_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-high"},
         "gwc_regen_period": {"unit": "h", "icon": "mdi:timer"},
         "delta_t_gwc": {"unit": "°C", "icon": "mdi:thermometer-lines"},
     }
-    
+
     for register, config in number_registers.items():
         try:
             reg_info = get_register_info(register)
@@ -132,7 +129,7 @@ def _load_number_mappings():
                 "max": 100,
                 "step": 1,
             }
-    
+
     return number_configs
 
 
@@ -147,7 +144,7 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "scale": 0.5,
     },
     "supply_air_temperature_manual": {
-        "unit": "°C", 
+        "unit": "°C",
         "min": 5,
         "max": 40,
         "step": 0.5,
@@ -155,7 +152,7 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
     "supply_air_temperature_temporary": {
         "unit": "°C",
-        "min": 5, 
+        "min": 5,
         "max": 40,
         "step": 0.5,
         "scale": 0.5,
@@ -267,7 +264,7 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "scale": 0.5,
     },
     "max_gwc_air_temperature": {
-        "unit": "°C", 
+        "unit": "°C",
         "min": 30,
         "max": 80,
         "step": 0.5,
@@ -289,7 +286,7 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
 }
 
 SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
-    # Temperature sensors (Input Registers) 
+    # Temperature sensors (Input Registers)
     "outside_temperature": {
         "translation_key": "outside_temperature",
         "icon": "mdi:thermometer",
@@ -346,10 +343,17 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "input_registers",
     },
-    
+    "heating_temperature": {
+        "translation_key": "heating_temperature",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "input_registers",
+    },
     # Air flow sensors
     "supply_flow_rate": {
-        "translation_key": "supply_flow_rate", 
+        "translation_key": "supply_flow_rate",
         "icon": "mdi:fan-plus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
@@ -357,7 +361,7 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
     "exhaust_flow_rate": {
         "translation_key": "exhaust_flow_rate",
-        "icon": "mdi:fan-minus", 
+        "icon": "mdi:fan-minus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
@@ -376,7 +380,6 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
-    
     # Percentage sensors
     "supply_percentage": {
         "translation_key": "supply_percentage",
@@ -406,7 +409,6 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": PERCENTAGE,
         "register_type": "input_registers",
     },
-    
     # System information sensors
     "day_of_week": {
         "translation_key": "day_of_week",
@@ -457,8 +459,7 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "icon": "mdi:barcode",
         "register_type": "input_registers",
     },
-    
-    # Mode and status sensors  
+    # Mode and status sensors
     "antifreez_mode": {
         "translation_key": "antifreez_mode",
         "icon": "mdi:snowflake-alert",
@@ -475,7 +476,7 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "register_type": "input_registers",
     },
     "gwc_mode": {
-        "translation_key": "gwc_mode", 
+        "translation_key": "gwc_mode",
         "icon": "mdi:pipe",
         "register_type": "input_registers",
     },
@@ -494,7 +495,6 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "icon": "mdi:waves",
         "register_type": "input_registers",
     },
-    
     # Configuration sensors from holding registers
     "supply_air_temperature_manual": {
         "translation_key": "supply_air_temperature_manual",
@@ -580,7 +580,6 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    
     # PWM control values (napięcia wentylatorów)
     "dac_supply": {
         "translation_key": "dac_supply",
@@ -614,7 +613,6 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfElectricPotential.VOLT,
         "register_type": "holding_registers",
     },
-    
     # Coefficients and intensive settings
     "fan_speed_1_coef": {
         "translation_key": "fan_speed_1_coef",
@@ -717,7 +715,6 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "coil_registers",
     },
-    
     # System status (from discrete inputs)
     "expansion": {
         "translation_key": "expansion",
@@ -815,7 +812,6 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.SAFETY,
         "register_type": "discrete_inputs",
     },
-    
     # Active modes (from input registers)
     "water_removal_active": {
         "translation_key": "water_removal_active",
@@ -823,7 +819,6 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.MOISTURE,
         "register_type": "input_registers",
     },
-    
     # Device main status (from holding registers)
     "on_off_panel_mode": {
         "translation_key": "on_off_panel_mode",
