@@ -487,11 +487,6 @@ class ThesslaGreenDeviceScanner:
 
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
-
-        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
-            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
-        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
-            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
             skip_start = skip_end = first
             while skip_start - 1 in self._failed_input:
                 skip_start -= 1
