@@ -221,6 +221,10 @@ async def test_unique_id_sanitized():
     mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
 
 
+async def test_duplicate_configuration_aborts():
+    """Test configuring same host/port/slave twice aborts the flow."""
+    flow = ConfigFlow()
+    flow.hass = None
 async def test_confirm_step_aborts_on_existing_entry():
     """Ensure confirming a second flow aborts if unique ID already configured."""
 
@@ -231,6 +235,9 @@ async def test_confirm_step_aborts_on_existing_entry():
         CONF_NAME: "My Device",
     }
 
+    validation_result = {"title": "Device", "device_info": {}, "scan_result": {}}
+
+    # First pass through user step to store data```````````````````````
     validation_result = {
         "title": "ThesslaGreen 192.168.1.100",
         "device_info": {},
@@ -250,12 +257,32 @@ async def test_confirm_step_aborts_on_existing_entry():
         if getattr(self, "_unique_id", None) in entries:
             raise AbortFlow("already_configured")
 
+
     with (
         patch(
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
         patch(
+
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id",
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured",
+        ),
+    ):
+        await flow.async_step_user(user_input)
+
+    # Attempt to confirm after a duplicate has been configured elsewhere
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+        "_abort_if_unique_id_configured",
+        side_effect=RuntimeError("already_configured"),
+    ):
+        with pytest.raises(RuntimeError):
+            await flow.async_step_confirm({})
+```
             "homeassistant.helpers.translation.async_get_translations",
             new=AsyncMock(return_value={}),
         ),
@@ -279,6 +306,7 @@ async def test_confirm_step_aborts_on_existing_entry():
         with pytest.raises(AbortFlow) as err:
             await flow2.async_step_confirm({})
         assert err.value.reason == "already_configured"
+
 
 
 async def test_form_user_cannot_connect():
