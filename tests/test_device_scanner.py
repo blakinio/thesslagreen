@@ -271,7 +271,7 @@ async def test_scan_device_success_dynamic():
     """Test successful device scan with dynamic register scanning."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    async def fake_read_input(client, address, count):
+    async def fake_read_input(client, address, count, **kwargs):
         if address == 0:
             data = [4, 85, 0, 0, 0]
             return data[:count]
@@ -279,18 +279,21 @@ async def test_scan_device_success_dynamic():
             return [0x001A, 0x002B, 0x003C, 0x004D, 0x005E, 0x006F][:count]
         return [1] * count
 
-    async def fake_read_holding(client, address, count):
+    async def fake_read_holding(client, address, count, **kwargs):
         return [10] * count
 
-    async def fake_read_coil(client, address, count):
+    async def fake_read_coil(client, address, count, **kwargs):
         return [False] * count
 
-    async def fake_read_discrete(client, address, count):
+    async def fake_read_discrete(client, address, count, **kwargs):
         return [False] * count
 
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
+        mock_client.read_input_registers = AsyncMock(
+            return_value=MagicMock(isError=lambda: False, registers=[4, 85, 0, 0, 0])
+        )
         mock_client_class.return_value = mock_client
 
         with (
@@ -489,6 +492,9 @@ async def test_scan_blocks_propagated():
         with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.connect.return_value = True
+            mock_client.read_input_registers = AsyncMock(
+                return_value=MagicMock(isError=lambda: False, registers=[4, 85, 0, 0, 0])
+            )
             mock_client_class.return_value = mock_client
 
             with (
@@ -547,24 +553,24 @@ async def test_scan_device_batch_fallback():
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-        async def fake_read_input(client, address, count):
+        async def fake_read_input(client, address, count, **kwargs):
             if address == 0 and count == 5:
                 return [4, 85, 0, 0, 0]
             if count > 1:
                 return None
             return [0]
 
-        async def fake_read_holding(client, address, count):
+        async def fake_read_holding(client, address, count, **kwargs):
             if count > 1:
                 return None
             return [0]
 
-        async def fake_read_coil(client, address, count):
+        async def fake_read_coil(client, address, count, **kwargs):
             if count > 1:
                 return None
             return [False]
 
-        async def fake_read_discrete(client, address, count):
+        async def fake_read_discrete(client, address, count, **kwargs):
             if count > 1:
                 return None
             return [False]
@@ -572,6 +578,9 @@ async def test_scan_device_batch_fallback():
         with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.connect.return_value = True
+            mock_client.read_input_registers = AsyncMock(
+                return_value=MagicMock(isError=lambda: False, registers=[4, 85, 0, 0, 0])
+            )
             mock_client_class.return_value = mock_client
 
             with (
@@ -608,7 +617,7 @@ async def test_missing_register_logged_once(caplog):
 
     call_log: list[tuple[int, int]] = []
 
-    async def fake_read_input(client, address, count):
+    async def fake_read_input(client, address, count, **kwargs):
         call_log.append((address, count))
         if address == 0x0000 and count == 5:
             return [4, 85, 0, 0, 0]
@@ -647,6 +656,9 @@ async def test_missing_register_logged_once(caplog):
     ):
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
+        mock_client.read_input_registers = AsyncMock(
+            return_value=MagicMock(isError=lambda: False, registers=[4, 85, 0, 0, 0])
+        )
         mock_client_class.return_value = mock_client
 
         with (
@@ -854,6 +866,23 @@ async def test_capabilities_detect_schedule_keywords():
     scanner.available_registers["holding_registers"].add("airing_start_time")
     caps = scanner._analyze_capabilities()
     assert caps.weekly_schedule is True
+
+
+@pytest.mark.parametrize(
+    "register",
+    ["constant_flow_active", "supply_air_flow", "supply_flow_rate", "cf_version"],
+)
+async def test_constant_flow_detected_from_various_registers(register):
+    """Constant flow capability is detected from different register names."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    scanner.available_registers = {
+        "input_registers": {register},
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+    caps = scanner._analyze_capabilities()
+    assert caps.constant_flow is True
 
 
 async def test_load_registers_duplicate_warning(tmp_path, caplog):
@@ -1071,7 +1100,7 @@ async def test_analyze_capabilities_flag_presence():
     # Positive case: registers exist
     scanner.available_registers = {
         "input_registers": {"constant_flow_active", "outside_temperature"},
-        "holding_registers": set(),
+        "holding_registers": {"gwc_mode", "airing_start_time"},
         "coil_registers": set(),
         "discrete_inputs": {"expansion"},
     }
@@ -1080,6 +1109,8 @@ async def test_analyze_capabilities_flag_presence():
     assert capabilities.constant_flow is True
     assert capabilities.sensor_outside_temperature is True
     assert capabilities.expansion_module is True
+    assert capabilities.gwc_system is True
+    assert capabilities.weekly_schedule is True
 
     # Negative case: registers absent
     scanner.available_registers = {
@@ -1093,6 +1124,8 @@ async def test_analyze_capabilities_flag_presence():
     assert capabilities.constant_flow is False
     assert capabilities.sensor_outside_temperature is False
     assert capabilities.expansion_module is False
+    assert capabilities.gwc_system is False
+    assert capabilities.weekly_schedule is False
 
 
 async def test_capability_rules_detect_heating_and_bypass():

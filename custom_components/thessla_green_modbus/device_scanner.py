@@ -976,14 +976,6 @@ class ThesslaGreenDeviceScanner:
             or "contamination_sensor" in self.available_registers["discrete_inputs"]
         )
 
-        # Weekly schedule features - look for any scheduling related registers
-        schedule_keywords = {"schedule", "weekly", "airing", "setting"}
-        caps.weekly_schedule = any(
-            any(keyword in reg.lower() for keyword in schedule_keywords)
-            for registers in self.available_registers.values()
-            for reg in registers
-        )
-
         # Basic control availability
         caps.basic_control = "mode" in self.available_registers["holding_registers"]
 
