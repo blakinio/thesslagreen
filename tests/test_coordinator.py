@@ -1,5 +1,6 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
+import logging
 import os
 import sys
 import types
@@ -7,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -377,6 +379,7 @@ def test_register_value_processing(coordinator):
     assert mode_result == 1
 
 
+
 @pytest.mark.parametrize(
     "register_name,value,expected",
     [
@@ -414,6 +417,25 @@ def test_process_register_value_dac_boundaries(coordinator, register_name, value
     expected = value * REGISTER_MULTIPLIERS[register_name]
     result = coordinator._process_register_value(register_name, value)
     assert result == pytest.approx(expected)
+
+def test_register_value_logging(coordinator, caplog):
+    """Test debug and warning logging for register processing."""
+
+    with caplog.at_level(logging.DEBUG):
+        caplog.clear()
+        coordinator._process_register_value("outside_temperature", 250)
+        assert "raw=250" in caplog.text
+        assert "value=25.0" in caplog.text
+
+    with caplog.at_level(logging.WARNING):
+        caplog.clear()
+        coordinator._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        assert "SENSOR_UNAVAILABLE" in caplog.text
+
+        caplog.clear()
+        coordinator._process_register_value("supply_percentage", 150)
+        assert "Out-of-range value for supply_percentage" in caplog.text
+
 
 def test_post_process_data(coordinator):
     """Test data post-processing."""
