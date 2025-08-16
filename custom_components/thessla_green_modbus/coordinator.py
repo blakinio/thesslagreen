@@ -666,16 +666,32 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
+        raw_value = value
+        name = register_name.lower()
+
         # Check for sensor error values
-        if value == SENSOR_UNAVAILABLE and "temperature" in register_name.lower():
+        if value == SENSOR_UNAVAILABLE and ("temperature" in name or "flow" in name):
+            _LOGGER.warning("Register %s returned SENSOR_UNAVAILABLE", register_name)
+            _LOGGER.debug("Processed %s: raw=%s, value=None", register_name, raw_value)
             return None  # No sensor
-        if value == SENSOR_UNAVAILABLE and "flow" in register_name.lower():
-            return None  # No sensor
+
+        # Convert negative values for signed 16-bit registers (e.g. temperatures)
+        if "temperature" in name and value > 0x7FFF:
+            value -= 0x10000
 
         # Apply multiplier
         if register_name in REGISTER_MULTIPLIERS:
             value = value * REGISTER_MULTIPLIERS[register_name]
 
+        # Emit warnings for out-of-range values
+        if "temperature" in name and not (-50 <= value <= 150):
+            _LOGGER.warning("Out-of-range value for %s: %s", register_name, value)
+        if "percentage" in name and not (0 <= value <= 100):
+            _LOGGER.warning("Out-of-range value for %s: %s", register_name, value)
+        if ("flow" in name or "flow_rate" in name) and value < 0:
+            _LOGGER.warning("Out-of-range value for %s: %s", register_name, value)
+
+        _LOGGER.debug("Processed %s: raw=%s, value=%s", register_name, raw_value, value)
         return value
 
     def _post_process_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
