@@ -1,7 +1,7 @@
 """Comprehensive test suite for ThesslaGreen Modbus integration - OPTIMIZED VERSION."""
 
-import logging
 import asyncio
+import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -275,6 +275,10 @@ class TestThesslaGreenModbusCoordinator:
         result = coordinator_data._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
         assert result is None
 
+        # Another sensor register using the sentinel value
+        result = coordinator_data._process_register_value("heating_temperature", SENSOR_UNAVAILABLE)
+        assert result is None
+
         # Negative temperature (-5.0°C -> raw value 65486)
         result = coordinator_data._process_register_value("outside_temperature", 65486)
         assert result == -5.0
@@ -286,6 +290,10 @@ class TestThesslaGreenModbusCoordinator:
         # Flow rate register (-100 -> raw value 65436)
         result = coordinator_data._process_register_value("supply_flow_rate", 65436)
         assert result == -100
+
+        # Missing flow sensor
+        result = coordinator_data._process_register_value("exhaust_flow_rate", SENSOR_UNAVAILABLE)
+        assert result is None
 
     def test_register_grouping(self, coordinator_data):
         """Test register grouping algorithm."""
@@ -467,10 +475,7 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
 
         # Temperature sensor marked unavailable should still be considered valid
-        assert (
-            scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-            is True
-        )
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
         # Invalid air flow value
         assert scanner._is_valid_register_value("supply_air_flow", 65535) is False

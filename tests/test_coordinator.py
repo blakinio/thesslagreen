@@ -8,14 +8,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.const import (
+    SENSOR_UNAVAILABLE,
+    SENSOR_UNAVAILABLE_REGISTERS,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -379,7 +381,6 @@ def test_register_value_processing(coordinator):
     assert mode_result == 1
 
 
-
 def test_dac_value_processing(coordinator, caplog):
     """Test DAC register value processing and validation."""
     # Valid mid-range value converts to approximately 5V
@@ -398,25 +399,13 @@ def test_dac_value_processing(coordinator, caplog):
 
 
 @pytest.mark.parametrize(
-    "register_name,value,expected",
-    [
-        pytest.param(
-            "outside_temperature",
-            SENSOR_UNAVAILABLE,
-            None,
-            id="temperature-sensor-unavailable",
-        ),
-        pytest.param(
-            "supply_flow_rate",
-            SENSOR_UNAVAILABLE,
-            None,
-            id="flow-sensor-unavailable",
-        ),
-    ],
+    "register_name",
+    sorted(SENSOR_UNAVAILABLE_REGISTERS),
+    ids=sorted(SENSOR_UNAVAILABLE_REGISTERS),
 )
-def test_process_register_value_sensor_unavailable(coordinator, register_name, value, expected):
-    """Return None when sensors report unavailable for temperature or flow."""
-    assert coordinator._process_register_value(register_name, value) is expected
+def test_process_register_value_sensor_unavailable(coordinator, register_name):
+    """Return None when sensors report unavailable for known sensor registers."""
+    assert coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) is None
 
 
 @pytest.mark.parametrize(
@@ -435,6 +424,7 @@ def test_process_register_value_dac_boundaries(coordinator, register_name, value
     result = coordinator._process_register_value(register_name, value)
     assert result == pytest.approx(expected)
 
+
 def test_register_value_logging(coordinator, caplog):
     """Test debug and warning logging for register processing."""
 
@@ -452,6 +442,7 @@ def test_register_value_logging(coordinator, caplog):
         caplog.clear()
         coordinator._process_register_value("supply_percentage", 150)
         assert "Out-of-range value for supply_percentage" in caplog.text
+
 
 def test_post_process_data(coordinator):
     """Test data post-processing."""
