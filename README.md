@@ -86,6 +86,17 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Retry**: 1-5 prób (domyślnie 3)
 - **Pełna lista rejestrów**: Pomiń skanowanie (może powodować błędy)
 
+### Włączanie logów debug
+W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
+
+```yaml
+logger:
+  logs:
+    custom_components.thessla_green_modbus: debug
+```
+
+Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów oraz ostrzeżenia o niedostępnych czujnikach lub wartościach poza zakresem.
+
 ## 📊 Dostępne encje
 
 ### Sensory (50+ automatycznie wykrywanych)

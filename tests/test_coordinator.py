@@ -8,11 +8,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -376,6 +379,7 @@ def test_register_value_processing(coordinator):
     assert mode_result == 1
 
 
+
 def test_dac_value_processing(coordinator, caplog):
     """Test DAC register value processing and validation."""
     # Valid mid-range value converts to approximately 5V
@@ -392,6 +396,62 @@ def test_dac_value_processing(coordinator, caplog):
         assert coordinator._process_register_value("dac_supply", -1) is None
         assert "out of range" in caplog.text
 
+
+@pytest.mark.parametrize(
+    "register_name,value,expected",
+    [
+        pytest.param(
+            "outside_temperature",
+            SENSOR_UNAVAILABLE,
+            None,
+            id="temperature-sensor-unavailable",
+        ),
+        pytest.param(
+            "supply_flow_rate",
+            SENSOR_UNAVAILABLE,
+            None,
+            id="flow-sensor-unavailable",
+        ),
+    ],
+)
+def test_process_register_value_sensor_unavailable(coordinator, register_name, value, expected):
+    """Return None when sensors report unavailable for temperature or flow."""
+    assert coordinator._process_register_value(register_name, value) is expected
+
+
+@pytest.mark.parametrize(
+    "register_name",
+    ["dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"],
+    ids=["supply", "exhaust", "heater", "cooler"],
+)
+@pytest.mark.parametrize(
+    "value",
+    [0, 4095, -1, 5000],
+    ids=["min", "max", "below_min", "above_max"],
+)
+def test_process_register_value_dac_boundaries(coordinator, register_name, value):
+    """Process DAC registers across boundary and out-of-range values."""
+    expected = value * REGISTER_MULTIPLIERS[register_name]
+    result = coordinator._process_register_value(register_name, value)
+    assert result == pytest.approx(expected)
+
+def test_register_value_logging(coordinator, caplog):
+    """Test debug and warning logging for register processing."""
+
+    with caplog.at_level(logging.DEBUG):
+        caplog.clear()
+        coordinator._process_register_value("outside_temperature", 250)
+        assert "raw=250" in caplog.text
+        assert "value=25.0" in caplog.text
+
+    with caplog.at_level(logging.WARNING):
+        caplog.clear()
+        coordinator._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        assert "SENSOR_UNAVAILABLE" in caplog.text
+
+        caplog.clear()
+        coordinator._process_register_value("supply_percentage", 150)
+        assert "Out-of-range value for supply_percentage" in caplog.text
 
 def test_post_process_data(coordinator):
     """Test data post-processing."""
