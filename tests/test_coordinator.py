@@ -13,9 +13,8 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -379,7 +378,6 @@ def test_register_value_processing(coordinator):
     assert mode_result == 1
 
 
-
 def test_dac_value_processing(coordinator, caplog):
     """Test DAC register value processing and validation."""
     # Valid mid-range value converts to approximately 5V
@@ -420,6 +418,22 @@ def test_process_register_value_sensor_unavailable(coordinator, register_name, v
 
 
 @pytest.mark.parametrize(
+    ("register_name", "value", "expected"),
+    [
+        ("supply_flow_rate", 0xFFFB, -5),
+        ("outside_temperature", 0x8000, None),
+    ],
+)
+def test_process_register_value_extremes(coordinator, register_name, value, expected):
+    """Handle extreme raw register values correctly."""
+    result = coordinator._process_register_value(register_name, value)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == expected
+
+
+@pytest.mark.parametrize(
     "register_name",
     ["dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"],
     ids=["supply", "exhaust", "heater", "cooler"],
@@ -434,6 +448,7 @@ def test_process_register_value_dac_boundaries(coordinator, register_name, value
     expected = value * REGISTER_MULTIPLIERS[register_name]
     result = coordinator._process_register_value(register_name, value)
     assert result == pytest.approx(expected)
+
 
 def test_register_value_logging(coordinator, caplog):
     """Test debug and warning logging for register processing."""
@@ -452,6 +467,7 @@ def test_register_value_logging(coordinator, caplog):
         caplog.clear()
         coordinator._process_register_value("supply_percentage", 150)
         assert "Out-of-range value for supply_percentage" in caplog.text
+
 
 def test_post_process_data(coordinator):
     """Test data post-processing."""
