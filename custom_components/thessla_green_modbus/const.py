@@ -32,6 +32,24 @@ DEFAULT_RETRY = 3
 # Sensor constants
 SENSOR_UNAVAILABLE = 0x8000  # Indicates missing/invalid sensor reading
 
+# Registers that may report SENSOR_UNAVAILABLE (0x8000) when a sensor
+# is missing or disconnected. Derived from the Thessla Green Modbus
+# specification where each of these registers documents this sentinel
+# value. The list is intentionally explicit to also serve as inline
+# documentation for developers.
+SENSOR_UNAVAILABLE_REGISTERS = {
+    "outside_temperature",
+    "supply_temperature",
+    "exhaust_temperature",
+    "fpx_temperature",
+    "duct_supply_temperature",
+    "gwc_temperature",
+    "ambient_temperature",
+    "heating_temperature",
+    "supply_flow_rate",
+    "exhaust_flow_rate",
+}
+
 
 # Registers using signed 16-bit values
 SIGNED_REGISTERS = {

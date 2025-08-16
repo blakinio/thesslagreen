@@ -8,7 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.const import (
+    SENSOR_UNAVAILABLE,
+    SENSOR_UNAVAILABLE_REGISTERS,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -396,25 +399,13 @@ def test_dac_value_processing(coordinator, caplog):
 
 
 @pytest.mark.parametrize(
-    "register_name,value,expected",
-    [
-        pytest.param(
-            "outside_temperature",
-            SENSOR_UNAVAILABLE,
-            None,
-            id="temperature-sensor-unavailable",
-        ),
-        pytest.param(
-            "supply_flow_rate",
-            SENSOR_UNAVAILABLE,
-            None,
-            id="flow-sensor-unavailable",
-        ),
-    ],
+    "register_name",
+    sorted(SENSOR_UNAVAILABLE_REGISTERS),
+    ids=sorted(SENSOR_UNAVAILABLE_REGISTERS),
 )
-def test_process_register_value_sensor_unavailable(coordinator, register_name, value, expected):
-    """Return None when sensors report unavailable for temperature or flow."""
-    assert coordinator._process_register_value(register_name, value) is expected
+def test_process_register_value_sensor_unavailable(coordinator, register_name):
+    """Return None when sensors report unavailable for known sensor registers."""
+    assert coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) is None
 
 
 @pytest.mark.parametrize(

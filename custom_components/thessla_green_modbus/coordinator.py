@@ -58,6 +58,7 @@ from .const import (
     MANUFACTURER,
     MODEL,
     SENSOR_UNAVAILABLE,
+    SENSOR_UNAVAILABLE_REGISTERS,
     SIGNED_REGISTERS,
 )
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
@@ -673,22 +674,34 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             return self._discrete_inputs_rev.get(address)
         return None
 
-    def _process_register_value(self, register_name: str, value: int) -> Any:
-        """Process register value according to its type and multiplier."""
+    def _process_register_value(
+        self,
+        register_name: str,
+        value: int,
+        *,
+        unavailable_registers: Set[str] | None = None,
+    ) -> Any:
+        """Process register value according to its type and multiplier.
+
+        Args:
+            register_name: Name of the register being processed.
+            value: Raw integer value read from the device.
+            unavailable_registers: Optional set of register names that use
+                ``SENSOR_UNAVAILABLE`` (0x8000) to indicate a missing sensor.
+                Defaults to ``SENSOR_UNAVAILABLE_REGISTERS``.
+        """
         raw_value = value
         name = register_name.lower()
 
-        # Check for sensor error values
-        if value == SENSOR_UNAVAILABLE and ("temperature" in name or "flow" in name):
+        check_set = unavailable_registers or SENSOR_UNAVAILABLE_REGISTERS
+        if value == SENSOR_UNAVAILABLE and register_name in check_set:
             _LOGGER.warning("Register %s returned SENSOR_UNAVAILABLE", register_name)
             _LOGGER.debug("Processed %s: raw=%s, value=None", register_name, raw_value)
             return None  # No sensor
 
-
         # Convert to signed integer where applicable
         if register_name in SIGNED_REGISTERS:
             value = _to_signed_int16(value)
-
 
         # DAC registers are unsigned 0-4095 values representing 0-10V
         if register_name in DAC_REGISTERS:
@@ -704,7 +717,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         # Convert negative values for signed 16-bit registers (e.g. temperatures)
         if "temperature" in name and value > 0x7FFF:
             value -= 0x10000
-
 
         # Apply multiplier
 
