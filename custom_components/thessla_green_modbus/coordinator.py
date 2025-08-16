@@ -914,7 +914,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                     _LOGGER.error("Unknown register for writing: %s", register_name)
                     return False
 
-                if response.isError():
+                if response is None or response.isError():
                     _LOGGER.error("Error writing to register %s: %s", register_name, response)
                     return False
 
