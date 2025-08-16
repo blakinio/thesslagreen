@@ -112,6 +112,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # Priority order for reading current flow rate
         flow_registers = [
             "supply_air_flow",  # Supply air flow rate
+            "supply_flow_rate",  # CF measured supply flow rate
             "supply_percentage",  # Supply air percentage
             "air_flow_rate_manual",  # Manual flow rate setting
             "air_flow_rate_temporary_2",  # Temporary flow rate setting
