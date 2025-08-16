@@ -46,10 +46,13 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
                 raise AttributeError(item) from exc
 
 
+from ctypes import c_short
+
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     COIL_REGISTERS,
+    DAC_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
     DOMAIN,
     MANUFACTURER,
@@ -672,7 +675,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if value == SENSOR_UNAVAILABLE and "flow" in register_name.lower():
             return None  # No sensor
 
-        # Apply multiplier
+        # DAC registers are unsigned 0-4095 values representing 0-10V
+        if register_name in DAC_REGISTERS:
+            if not 0 <= value <= 4095:
+                _LOGGER.warning("DAC value %s for %s out of range", value, register_name)
+                return None
+        else:
+            # Convert to signed 16-bit for all other registers
+            value = c_short(value).value
+
+        # Apply multiplier if defined
         if register_name in REGISTER_MULTIPLIERS:
             value = value * REGISTER_MULTIPLIERS[register_name]
 

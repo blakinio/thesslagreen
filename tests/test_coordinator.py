@@ -1,5 +1,6 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
+import logging
 import os
 import sys
 import types
@@ -373,6 +374,23 @@ def test_register_value_processing(coordinator):
 
     mode_result = coordinator._process_register_value("mode", 1)
     assert mode_result == 1
+
+
+def test_dac_value_processing(coordinator, caplog):
+    """Test DAC register value processing and validation."""
+    # Valid mid-range value converts to approximately 5V
+    result = coordinator._process_register_value("dac_supply", 2048)
+    assert result == pytest.approx(5.0, abs=0.01)
+
+    # Zero value stays zero
+    result = coordinator._process_register_value("dac_supply", 0)
+    assert result == 0
+
+    # Invalid values outside 0-4095 are rejected
+    with caplog.at_level(logging.WARNING):
+        assert coordinator._process_register_value("dac_supply", 5000) is None
+        assert coordinator._process_register_value("dac_supply", -1) is None
+        assert "out of range" in caplog.text
 
 
 def test_post_process_data(coordinator):
