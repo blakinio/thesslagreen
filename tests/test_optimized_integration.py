@@ -210,6 +210,7 @@ class TestThesslaGreenModbusCoordinator:
             host="192.168.1.100",
             port=502,
             slave_id=10,
+            name="Test",
             scan_interval=30,
             timeout=10,
             retry=3,
@@ -264,8 +265,8 @@ class TestThesslaGreenModbusCoordinator:
         result = await coordinator_data.async_write_register("invalid_register", 1)
         assert result is False
 
-    def test_temperature_value_processing(self, coordinator_data):
-        """Test temperature value processing."""
+    def test_signed_value_processing(self, coordinator_data):
+        """Test signed register value processing."""
         # Valid temperature (20.5°C -> raw value 205)
         result = coordinator_data._process_register_value("outside_temperature", 205)
         assert result == 20.5
@@ -277,6 +278,14 @@ class TestThesslaGreenModbusCoordinator:
         # Negative temperature (-5.0°C -> raw value 65486)
         result = coordinator_data._process_register_value("outside_temperature", 65486)
         assert result == -5.0
+
+        # Another temperature register (-2.5°C -> raw value 65511)
+        result = coordinator_data._process_register_value("supply_temperature", 65511)
+        assert result == -2.5
+
+        # Flow rate register (-100 -> raw value 65436)
+        result = coordinator_data._process_register_value("supply_flow_rate", 65436)
+        assert result == -100
 
     def test_register_grouping(self, coordinator_data):
         """Test register grouping algorithm."""

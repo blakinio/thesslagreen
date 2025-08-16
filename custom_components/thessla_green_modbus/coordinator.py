@@ -58,6 +58,7 @@ from .const import (
     MANUFACTURER,
     MODEL,
     SENSOR_UNAVAILABLE,
+    SIGNED_REGISTERS,
 )
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_helpers import _call_modbus
@@ -87,6 +88,11 @@ for start, size in MULTI_REGISTER_SIZES.items():
             if reg_addr == addr:
                 MULTI_REGISTER_STARTS[name] = start
                 break
+
+
+def _to_signed_int16(value: int) -> int:
+    """Convert unsigned 16-bit to signed integer."""
+    return value - 0x10000 if value >= 0x8000 else value
 
 
 class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
@@ -679,6 +685,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             return None  # No sensor
 
 
+        # Convert to signed integer where applicable
+        if register_name in SIGNED_REGISTERS:
+            value = _to_signed_int16(value)
+
+
         # DAC registers are unsigned 0-4095 values representing 0-10V
         if register_name in DAC_REGISTERS:
             if not 0 <= value <= 4095:
@@ -693,6 +704,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         # Convert negative values for signed 16-bit registers (e.g. temperatures)
         if "temperature" in name and value > 0x7FFF:
             value -= 0x10000
+
 
         # Apply multiplier
 
