@@ -573,7 +573,24 @@ class ThesslaGreenDeviceScanner:
             pending: List[Tuple[int, int]] = [(start, count)]
             while pending:
                 s, c = pending.pop(0)
-                values = await read_fn(client, s, c)
+                try:
+                    values = await read_fn(client, s, c)
+                except (ModbusException, ConnectionException) as exc:
+                    if c == 1:
+                        _LOGGER.debug("Skipping register 0x%04X due to read error", s)
+                        continue
+                    code = getattr(exc, "code", getattr(exc, "exception_code", None))
+                    if code is None and getattr(exc, "__cause__", None) is not None:
+                        cause = exc.__cause__
+                        code = getattr(cause, "code", getattr(cause, "exception_code", None))
+                    _LOGGER.warning(
+                        "Skipping unsupported %s 0x%04X-0x%04X (exception code %s)",
+                        reg_type.replace("_", " "),
+                        s,
+                        s + c - 1,
+                        code,
+                    )
+                    continue
                 if values is None:
                     if c == 1:
                         _LOGGER.debug("Skipping register 0x%04X due to read error", s)
