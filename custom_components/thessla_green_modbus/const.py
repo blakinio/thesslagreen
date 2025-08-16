@@ -32,6 +32,7 @@ DEFAULT_RETRY = 3
 # Sensor constants
 SENSOR_UNAVAILABLE = 0x8000  # Indicates missing/invalid sensor reading
 
+
 # Registers using signed 16-bit values
 SIGNED_REGISTERS = {
     "outside_temperature",
@@ -45,6 +46,10 @@ SIGNED_REGISTERS = {
     "supply_flow_rate",
     "exhaust_flow_rate",
 }
+
+# DAC output registers that use 0-10V scaling
+DAC_REGISTERS = {"dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"}
+
 
 # Configuration options
 CONF_SLAVE_ID = "slave_id"
