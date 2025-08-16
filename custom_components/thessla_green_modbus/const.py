@@ -32,6 +32,20 @@ DEFAULT_RETRY = 3
 # Sensor constants
 SENSOR_UNAVAILABLE = 0x8000  # Indicates missing/invalid sensor reading
 
+# Registers using signed 16-bit values
+SIGNED_REGISTERS = {
+    "outside_temperature",
+    "supply_temperature",
+    "exhaust_temperature",
+    "fpx_temperature",
+    "duct_supply_temperature",
+    "gwc_temperature",
+    "ambient_temperature",
+    "heating_temperature",
+    "supply_flow_rate",
+    "exhaust_flow_rate",
+}
+
 # Configuration options
 CONF_SLAVE_ID = "slave_id"
 CONF_SCAN_INTERVAL = "scan_interval"
