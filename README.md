@@ -306,6 +306,23 @@ logger:
     pymodbus: info
 ```
 
+### Kody wyjątków Modbus i brakujące rejestry
+Podczas skanowania urządzenia mogą pojawić się odpowiedzi z kodami wyjątków Modbus,
+gdy dany rejestr nie jest obsługiwany. Najczęściej spotykane kody to:
+
+- `2` – Illegal Data Address (rejestr nie istnieje)
+- `3` – Illegal Data Value (wartość poza zakresem)
+- `4` – Slave Device Failure (błąd urządzenia)
+
+W takich przypadkach integracja zapisuje w logach komunikaty w stylu:
+
+```
+Skipping unsupported input registers 120-130
+```
+
+Są to wpisy informacyjne i zazwyczaj oznaczają, że urządzenie po prostu nie posiada
+tych rejestrów. Można je bezpiecznie zignorować.
+
 ## 📋 Specyfikacja techniczna
 
 ### Obsługiwane rejestry
