@@ -8,7 +8,6 @@ import inspect
 import logging
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
 from .modbus_exceptions import ConnectionException, ModbusException
