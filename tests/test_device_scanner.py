@@ -1041,8 +1041,46 @@ async def test_read_input_fallback_detects_temperature(caplog):
             "custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS",
             {},
         ),
+
     ):
         await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+        from custom_components.thessla_green_modbus.modbus_exceptions import (
+            ModbusException,
+        )
+
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client.read_input_registers.side_effect = ModbusException("fail")
+
+        resp_fw = MagicMock()
+        resp_fw.isError.return_value = False
+        resp_fw.registers = [4, 85, 0, 0, 0]
+        resp_temp = MagicMock()
+        resp_temp.isError.return_value = False
+        resp_temp.registers = [10]
+        mock_client.read_holding_registers.side_effect = [resp_fw, resp_temp]
+
+        mock_client_class.return_value = mock_client
+
+        with caplog.at_level(logging.DEBUG):
+            result = await scanner.scan_device()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert any(
+        "Falling back to holding registers" in record.message
+        for record in caplog.records
+    )
+
+
 
 async def test_load_registers_missing_range_warning(tmp_path, caplog):
     """Warn when Min/Max range is incomplete."""
@@ -1126,6 +1164,56 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
         ),
+
+        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+        from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client.read_input_registers.side_effect = ModbusException("fail")
+
+        resp_fw = MagicMock()
+        resp_fw.isError.return_value = False
+        resp_fw.registers = [4, 85, 0, 0, 0]
+        resp_temp = MagicMock()
+        resp_temp.isError.return_value = False
+        resp_temp.registers = [10]
+        mock_client.read_holding_registers.side_effect = [resp_fw, resp_temp]
+
+        mock_client_class.return_value = mock_client
+
+    with caplog.at_level(logging.DEBUG):
+        result = await scanner.scan_device()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert any("Falling back to holding registers" in record.message for record in caplog.records)
+
+
+async def test_load_registers_complete_range_no_warning(tmp_path, caplog):
+    """No warning when both Min and Max are provided."""
+    csv_content = (
+        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,1,10\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"reg_a": 1},
+        ),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+
         caplog.at_level(logging.WARNING),
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
