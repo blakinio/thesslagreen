@@ -1041,10 +1041,6 @@ async def test_read_input_fallback_detects_temperature(caplog):
             "custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS",
             {},
         ),
-
-    ):
-        await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
         patch(
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
