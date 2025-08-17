@@ -67,6 +67,7 @@ def _decode_bcd_time(value: int) -> int | None:
     return None
 
 
+
 # Registers storing times as BCD HHMM values
 BCD_TIME_PREFIXES: tuple[str, ...] = (
     "schedule_",
@@ -79,11 +80,14 @@ BCD_TIME_PREFIXES: tuple[str, ...] = (
 
 # Registers storing times encoded as HH:MM bytes
 TIME_REGISTER_PREFIXES: tuple[str, ...] = (
+
     "schedule_",
     "airing_summer_",
     "airing_winter_",
-    "manual_airing_time_to_start",
     "pres_check_time",
     "start_gwc_regen",
     "stop_gwc_regen",
 )
+
+# All registers storing times; used for generic time validation
+TIME_REGISTER_PREFIXES: tuple[str, ...] = BCD_TIME_PREFIXES + ("manual_airing_time_to_start",)

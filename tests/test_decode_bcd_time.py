@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.thessla_green_modbus.device_scanner import _decode_bcd_time
+from custom_components.thessla_green_modbus.utils import _decode_bcd_time
 
 
 def test_decode_bcd_time_valid():
