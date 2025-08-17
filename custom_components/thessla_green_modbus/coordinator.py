@@ -207,6 +207,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if self.skip_missing_registers:
                     for reg_type, names in KNOWN_MISSING_REGISTERS.items():
                         self.available_registers[reg_type].difference_update(names)
+
                 self.device_info = self.device_scan_result.get("device_info", {})
                 self.capabilities = DeviceCapabilities(
                     **self.device_scan_result.get("capabilities", {})
@@ -259,9 +260,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.available_registers["input_registers"].update(INPUT_REGISTERS.keys())
         self.available_registers["holding_registers"].update(HOLDING_REGISTERS.keys())
         self.available_registers["coil_registers"].update(COIL_REGISTERS.keys())
-        self.available_registers["discrete_inputs"].update(
-            DISCRETE_INPUT_REGISTERS.keys()
-        )
+        self.available_registers["discrete_inputs"].update(DISCRETE_INPUT_REGISTERS.keys())
 
         if self.skip_missing_registers:
             for reg_type, names in KNOWN_MISSING_REGISTERS.items():
