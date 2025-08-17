@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import timedelta
 from typing import Any
 
@@ -155,7 +155,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Optimization: Pre-computed register groups for batch reading
         self._register_groups: dict[str, list[tuple[int, int]]] = {}
-        self._failed_registers: set[str] = set()
         self._consecutive_failures = 0
         self._max_failures = 5
 
@@ -351,6 +350,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         groups.append((current_start, current_end - current_start + 1))
         return groups
 
+    def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
+        """Record registers that failed to read."""
+        failed = getattr(self, "_failed_registers", set())
+        failed.update(name for name in names if name)
+        self._failed_registers = failed
+
+    def _clear_register_failure(self, name: str) -> None:
+        """Remove register from failed list on successful read."""
+        if hasattr(self, "_failed_registers"):
+            self._failed_registers.discard(name)
+
     async def _test_connection(self) -> None:
         """Test initial connection to the device."""
         async with self._connection_lock:
@@ -513,7 +523,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
+        failed = getattr(self, "_failed_registers", set())
+
         for start_addr, count in self._register_groups["input_registers"]:
+            register_names = [
+                self._find_register_name(INPUT_REGISTERS, start_addr + i) for i in range(count)
+            ]
+            if all(name in failed for name in register_names if name):
+                continue
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
@@ -522,16 +539,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     start_addr,
                     count=count,
                 )
-                if response is None:
-                    _LOGGER.error(
-                        "No response reading input registers at 0x%04X",
-                        start_addr,
-                    )
-                    continue
-                if response.isError():
+                if response is None or response.isError():
                     _LOGGER.debug(
-                        "Failed to read input registers at 0x%04X: %s", start_addr, response
+                        "Failed to read input registers at 0x%04X", start_addr, exc_info=True
                     )
+                    self._mark_registers_failed(register_names)
                     continue
 
                 # Process each register in the batch
@@ -546,11 +558,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if processed_value is not None:
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
+                            self._clear_register_failure(register_name)
+
+                if len(response.registers) < count:
+                    missing = register_names[len(response.registers) :]  # noqa: E203
+                    self._mark_registers_failed(missing)
 
             except (ModbusException, ConnectionException):
+                self._mark_registers_failed(register_names)
                 _LOGGER.debug("Error reading input registers at 0x%04X", start_addr, exc_info=True)
                 continue
             except (OSError, asyncio.TimeoutError, ValueError):
+                self._mark_registers_failed(register_names)
                 _LOGGER.error(
                     "Unexpected error reading input registers at 0x%04X",
                     start_addr,
@@ -572,7 +591,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Modbus client not available; skipping holding register read")
             return data
 
+        failed = getattr(self, "_failed_registers", set())
+
         for start_addr, count in self._register_groups["holding_registers"]:
+            register_names = [
+                self._find_register_name(HOLDING_REGISTERS, start_addr + i) for i in range(count)
+            ]
+            if all(name in failed for name in register_names if name):
+                continue
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
@@ -581,16 +607,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     start_addr,
                     count=count,
                 )
-                if response is None:
-                    _LOGGER.error(
-                        "No response reading holding registers at 0x%04X",
-                        start_addr,
-                    )
-                    continue
-                if response.isError():
+                if response is None or response.isError():
                     _LOGGER.debug(
-                        "Failed to read holding registers at 0x%04X: %s", start_addr, response
+                        "Failed to read holding registers at 0x%04X", start_addr, exc_info=True
                     )
+                    self._mark_registers_failed(register_names)
                     continue
 
                 # Process each register in the batch
@@ -606,6 +627,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         ):
                             data[register_name] = values
                             self.statistics["total_registers_read"] += size
+                            self._clear_register_failure(register_name)
                         continue
                     if (
                         register_name
@@ -615,13 +637,20 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if processed_value is not None:
                             data[register_name] = processed_value
                             self.statistics["total_registers_read"] += 1
+                            self._clear_register_failure(register_name)
+
+                if len(response.registers) < count:
+                    missing = register_names[len(response.registers) :]  # noqa: E203
+                    self._mark_registers_failed(missing)
 
             except (ModbusException, ConnectionException):
+                self._mark_registers_failed(register_names)
                 _LOGGER.debug(
                     "Error reading holding registers at 0x%04X", start_addr, exc_info=True
                 )
                 continue
             except (OSError, asyncio.TimeoutError, ValueError):
+                self._mark_registers_failed(register_names)
                 _LOGGER.error(
                     "Unexpected error reading holding registers at 0x%04X",
                     start_addr,
@@ -643,7 +672,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
+        failed = getattr(self, "_failed_registers", set())
+
         for start_addr, count in self._register_groups["coil_registers"]:
+            register_names = [
+                self._find_register_name(COIL_REGISTERS, start_addr + i) for i in range(count)
+            ]
+            if all(name in failed for name in register_names if name):
+                continue
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
@@ -652,16 +688,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     start_addr,
                     count=count,
                 )
-                if response is None:
-                    _LOGGER.error(
-                        "No response reading coil registers at 0x%04X",
-                        start_addr,
-                    )
-                    continue
-                if response.isError():
+                if response is None or response.isError():
                     _LOGGER.debug(
-                        "Failed to read coil registers at 0x%04X: %s", start_addr, response
+                        "Failed to read coil registers at 0x%04X", start_addr, exc_info=True
                     )
+                    self._mark_registers_failed(register_names)
                     continue
 
                 if not response.bits:
@@ -670,6 +701,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             "No bits returned reading coil registers at 0x%04X",
                             start_addr,
                         )
+                    self._mark_registers_failed(register_names)
                     continue
 
                 # Process each bit in the batch
@@ -682,11 +714,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     ):
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
+                        self._clear_register_failure(register_name)
+
+                if len(response.bits) < count:
+                    missing = register_names[len(response.bits) :]  # noqa: E203
+                    self._mark_registers_failed(missing)
 
             except (ModbusException, ConnectionException):
+                self._mark_registers_failed(register_names)
                 _LOGGER.debug("Error reading coil registers at 0x%04X", start_addr, exc_info=True)
                 continue
             except (OSError, asyncio.TimeoutError, ValueError):
+                self._mark_registers_failed(register_names)
                 _LOGGER.error(
                     "Unexpected error reading coil registers at 0x%04X",
                     start_addr,
@@ -708,7 +747,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
+        failed = getattr(self, "_failed_registers", set())
+
         for start_addr, count in self._register_groups["discrete_inputs"]:
+            register_names = [
+                self._find_register_name(DISCRETE_INPUT_REGISTERS, start_addr + i)
+                for i in range(count)
+            ]
+            if all(name in failed for name in register_names if name):
+                continue
             try:
                 # Pass "count" as a keyword argument to ensure compatibility with
                 # Modbus helpers that expect keyword-only parameters.
@@ -717,16 +764,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     start_addr,
                     count=count,
                 )
-                if response is None:
-                    _LOGGER.error(
-                        "No response reading discrete inputs at 0x%04X",
-                        start_addr,
-                    )
-                    continue
-                if response.isError():
+                if response is None or response.isError():
                     _LOGGER.debug(
-                        "Failed to read discrete inputs at 0x%04X: %s", start_addr, response
+                        "Failed to read discrete inputs at 0x%04X", start_addr, exc_info=True
                     )
+                    self._mark_registers_failed(register_names)
                     continue
 
                 if not response.bits:
@@ -735,6 +777,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             "No bits returned reading discrete inputs at 0x%04X",
                             start_addr,
                         )
+                    self._mark_registers_failed(register_names)
                     continue
 
                 # Process each bit in the batch
@@ -747,11 +790,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     ):
                         data[register_name] = response.bits[i]
                         self.statistics["total_registers_read"] += 1
+                        self._clear_register_failure(register_name)
+
+                if len(response.bits) < count:
+                    missing = register_names[len(response.bits) :]  # noqa: E203
+                    self._mark_registers_failed(missing)
 
             except (ModbusException, ConnectionException):
+                self._mark_registers_failed(register_names)
                 _LOGGER.debug("Error reading discrete inputs at 0x%04X", start_addr, exc_info=True)
                 continue
             except (OSError, asyncio.TimeoutError, ValueError):
+                self._mark_registers_failed(register_names)
                 _LOGGER.error(
                     "Unexpected error reading discrete inputs at 0x%04X",
                     start_addr,
