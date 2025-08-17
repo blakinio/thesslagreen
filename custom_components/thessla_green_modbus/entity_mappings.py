@@ -533,7 +533,43 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {}
+SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+    "mode": {
+        "icon": "mdi:cog",
+        "translation_key": "mode",
+        "states": {"auto": 0, "manual": 1, "temporary": 2},
+        "register_type": "holding_registers",
+    },
+    "bypass_mode": {
+        "icon": "mdi:pipe-leak",
+        "translation_key": "bypass_mode",
+        "states": {"auto": 0, "open": 1, "closed": 2},
+        "register_type": "holding_registers",
+    },
+    "gwc_mode": {
+        "icon": "mdi:pipe",
+        "translation_key": "gwc_mode",
+        "states": {"off": 0, "auto": 1, "forced": 2},
+        "register_type": "holding_registers",
+    },
+    "season_mode": {
+        "icon": "mdi:weather-partly-snowy",
+        "translation_key": "season_mode",
+        "states": {"winter": 0, "summer": 1},
+        "register_type": "holding_registers",
+    },
+    "filter_change": {
+        "icon": "mdi:filter-variant",
+        "translation_key": "filter_change",
+        "states": {
+            "presostat": 1,
+            "flat_filters": 2,
+            "cleanpad": 3,
+            "cleanpad_pure": 4,
+        },
+        "register_type": "holding_registers",
+    },
+}
 
 BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     # System status (from coil registers)

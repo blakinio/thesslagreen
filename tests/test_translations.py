@@ -112,12 +112,14 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS  # noqa: E402
+from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
+    SENSOR_DEFINITIONS,
+)
 
 SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()]
 BINARY_KEYS = _load_translation_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
-SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
-SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
+SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS")
+SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
 # Error codes translations are not currently enforced
