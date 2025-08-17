@@ -805,6 +805,20 @@ async def test_format_register_value_manual_airing_le():
     assert _format_register_value("manual_airing_time_to_start", 0x1E08) == "08:30"
 
 
+async def test_format_register_value_airing_schedule():
+    """Airing schedule registers should render as HH:MM."""
+    assert _format_register_value("airing_summer_mon", 0x0615) == "06:15"
+
+
+async def test_format_register_value_airing_durations():
+    """Airing mode duration registers should return raw minute values."""
+    assert _format_register_value("airing_panel_mode_time", 15) == 15
+    assert _format_register_value("airing_switch_mode_time", 30) == 30
+    assert _format_register_value("airing_switch_mode_on_delay", 5) == 5
+    assert _format_register_value("airing_switch_mode_off_delay", 10) == 10
+    assert _format_register_value("airing_switch_coef", 2) == 2
+
+
 async def test_format_register_value_setting():
     """Formatted setting registers should show percent and temperature."""
     assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
