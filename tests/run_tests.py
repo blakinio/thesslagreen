@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 """Test runner for ThesslaGreen Modbus integration."""
+import subprocess  # nosec B404
 import sys
-import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_tests():
+def run_tests() -> int:
     """Run all tests for the integration."""
     print("🧪 Running ThesslaGreen Modbus Integration Tests...")
-    
+
     try:
+        # Ensure registers are generated from the CSV
+        subprocess.run(  # nosec B603
+            [sys.executable, str(ROOT / "tools" / "generate_registers.py")],
+            check=True,
+        )
+
         # Run pytest with coverage
-        subprocess.run(
+        subprocess.run(  # nosec B603
             [
                 sys.executable,
                 "-m",
@@ -25,7 +34,7 @@ def run_tests():
 
         print("✅ All tests passed!")
         return 0
-        
+
     except subprocess.CalledProcessError as e:
         print(f"❌ Tests failed with exit code {e.returncode}")
         return e.returncode

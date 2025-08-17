@@ -18,7 +18,11 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install pytest
+      - name: Generate registers
+        run: python tools/generate_registers.py
       - name: Validate register definitions
         run: python tools/validate_registers.py
+      - name: Run register coverage test
+        run: pytest tests/test_register_coverage.py -ra
       - name: Run tests
-        run: pytest -ra
+        run: pytest -ra --ignore=tests/test_register_coverage.py
