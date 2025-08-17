@@ -192,6 +192,9 @@ python -m pytest tests/test_register_coverage.py -v
 # Verify CSV and registers.py are in sync
 python tools/validate_registers.py
 
+# Validate translation files
+python -m json.tool custom_components/thessla_green_modbus/translations/*.json
+
 # Run optimization validation
 python run_optimization_tests.py
 ```
@@ -240,6 +243,7 @@ Run `pre-commit install` once to activate these checks. Before committing, the f
 - **bandit** - Security scanning
 - **yamllint** - YAML validation
 - **check-merge-conflict** - Prevents committing unresolved merge conflicts
+ - **check-json** - Validates translation files
 
 ### Manual Quality Checks
 

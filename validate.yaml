@@ -22,6 +22,9 @@ jobs:
         run: python tools/generate_registers.py
       - name: Validate register definitions
         run: python tools/validate_registers.py
+      - name: Validate translations
+        run: |
+          find custom_components -path '*/translations/*.json' -exec python -m json.tool {} \;
       - name: Run register coverage test
         run: pytest tests/test_register_coverage.py -ra
       - name: Run tests
