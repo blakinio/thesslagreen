@@ -713,23 +713,6 @@ async def _read_input(
                 address,
                 response,
             )
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug(
-                "Attempt %d failed to read input 0x%04X: %s",
-                attempt,
-                address,
-                exc,
-                exc_info=True,
-            )
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error(
-                "Unexpected error reading input 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            break
         except ModbusIOException as exc:
             _LOGGER.debug(
                 "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
@@ -745,11 +728,21 @@ async def _read_input(
                 if failures >= self.retry and address not in self._failed_input:
                     self._failed_input.add(address)
                     _LOGGER.warning("Device does not expose register 0x%04X", address)
-        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            if attempt < self.retry:
+                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
+            continue
+        except (ModbusException, ConnectionException) as exc:
             _LOGGER.debug(
-                "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
-                start,
-                end,
+                "Attempt %d failed to read input 0x%04X: %s",
+                attempt,
+                address,
+                exc,
+                exc_info=True,
+            )
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.error(
+                "Unexpected error reading input 0x%04X on attempt %d: %s",
+                address,
                 attempt,
                 exc,
                 exc_info=True,
