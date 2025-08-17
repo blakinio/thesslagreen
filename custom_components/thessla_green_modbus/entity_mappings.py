@@ -97,7 +97,8 @@ def _load_number_mappings():
         # Temperature control
         "required_temperature": {"unit": "°C", "icon": "mdi:thermometer"},
         "supply_air_temperature_manual": {"unit": "°C", "icon": "mdi:thermometer-plus"},
-        "supply_air_temperature_temporary": {"unit": "°C", "icon": "mdi:thermometer-plus"},
+        "supply_air_temperature_temporary_1": {"unit": "°C", "icon": "mdi:thermometer-plus"},
+        "supply_air_temperature_temporary_2": {"unit": "°C", "icon": "mdi:thermometer-plus"},
         "min_bypass_temperature": {"unit": "°C", "icon": "mdi:thermometer-low"},
         "air_temperature_summer_free_heating": {"unit": "°C", "icon": "mdi:thermometer"},
         "air_temperature_summer_free_cooling": {"unit": "°C", "icon": "mdi:thermometer"},
@@ -114,7 +115,6 @@ def _load_number_mappings():
         "nominal_exhaust_air_flow_gwc": {"unit": "m³/h", "icon": "mdi:fan-clock"},
         # Access and timing
         "access_level": {"unit": None, "icon": "mdi:account-key"},
-        "special_mode_timeout": {"unit": "min", "icon": "mdi:timer"},
         # GWC parameters
         "min_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-low"},
         "max_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-high"},
@@ -372,8 +372,16 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    "supply_air_temperature_temporary": {
-        "translation_key": "supply_air_temperature_temporary",
+    "supply_air_temperature_temporary_1": {
+        "translation_key": "supply_air_temperature_temporary_1",
+        "icon": "mdi:thermometer-plus",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
+    "supply_air_temperature_temporary_2": {
+        "translation_key": "supply_air_temperature_temporary_2",
         "icon": "mdi:thermometer-plus",
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,

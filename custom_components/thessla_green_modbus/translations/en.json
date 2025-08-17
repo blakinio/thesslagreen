@@ -94,7 +94,7 @@
 
       "supply_percentage": {
         "name": "Supply Percentage"
-
+      },
       "nominal_exhaust_air_flow": {
         "name": "Nominal Exhaust Airflow"
       },
@@ -188,8 +188,11 @@
       "supply_air_temperature_manual": {
         "name": "Supply Air Temperature Manual"
       },
-      "supply_air_temperature_temporary": {
-        "name": "Supply Air Temperature Temporary"
+      "supply_air_temperature_temporary_1": {
+        "name": "Supply Air Temperature Temporary 1"
+      },
+      "supply_air_temperature_temporary_2": {
+        "name": "Supply Air Temperature Temporary 2"
       },
       "min_bypass_temperature": {
         "name": "Minimum Bypass Temperature"
@@ -404,19 +407,16 @@
         "name": "On/Off Panel Mode"
       }
     },
-    "number": {
-      "required_temperature": {
-        "name": "Required Temperature"
-      },
-      "supply_air_temperature_manual": {
-        "name": "Supply Air Temperature Manual"
-      },
-      "supply_air_temperature_temporary": {
-        "name": "Supply Air Temperature Temporary"
-      },
-      "min_bypass_temperature": {
-        "name": "Minimum Bypass Temperature"
-      },
+      "number": {
+        "required_temperature": {
+          "name": "Required Temperature"
+        },
+        "supply_air_temperature_manual": {
+          "name": "Supply Air Temperature Manual"
+        },
+        "min_bypass_temperature": {
+          "name": "Minimum Bypass Temperature"
+        },
       "air_temperature_summer_free_heating": {
         "name": "Air Temperature Summer Free Heating"
       },
@@ -523,13 +523,10 @@
       "nominal_exhaust_air_flow_gwc": {
         "name": "Nominal Exhaust Air Flow GWC"
       },
-      "bypass_off": {
-        "name": "Bypass Off"
-      },
-      "special_mode_timeout": {
-        "name": "Special Mode Timeout"
-      },
-      "min_gwc_air_temperature": {
+        "bypass_off": {
+          "name": "Bypass Off"
+        },
+        "min_gwc_air_temperature": {
         "name": "Minimum GWC Air Temperature"
       },
       "max_gwc_air_temperature": {

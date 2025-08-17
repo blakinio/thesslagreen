@@ -154,13 +154,16 @@
       "constant_flow_active": {
         "name": "Stały przepływ aktywny"
       },
-      "supply_air_temperature_manual": {
-        "name": "Temperatura nawiewu manualnie"
-      },
-      "supply_air_temperature_temporary": {
-        "name": "Temperatura nawiewu tymczasowo"
-      },
-      "min_bypass_temperature": {
+        "supply_air_temperature_manual": {
+          "name": "Temperatura nawiewu manualnie"
+        },
+        "supply_air_temperature_temporary_1": {
+          "name": "Tymczasowa temperatura nawiewu 1"
+        },
+        "supply_air_temperature_temporary_2": {
+          "name": "Tymczasowa temperatura nawiewu 2"
+        },
+        "min_bypass_temperature": {
         "name": "Minimalna temperatura bypass"
       },
       "air_temperature_summer_free_heating": {
@@ -399,19 +402,16 @@
         "name": "Tryb panelu wł/wył"
       }
     },
-    "number": {
-      "required_temperature": {
-        "name": "Temperatura zadana"
-      },
-      "supply_air_temperature_manual": {
-        "name": "Temperatura nawiewu manualnie"
-      },
-      "supply_air_temperature_temporary": {
-        "name": "Temperatura nawiewu tymczasowo"
-      },
-      "min_bypass_temperature": {
-        "name": "Minimalna temperatura bypass"
-      },
+      "number": {
+        "required_temperature": {
+          "name": "Temperatura zadana"
+        },
+        "supply_air_temperature_manual": {
+          "name": "Temperatura nawiewu manualnie"
+        },
+        "min_bypass_temperature": {
+          "name": "Minimalna temperatura bypass"
+        },
       "air_temperature_summer_free_heating": {
         "name": "Temperatura lato grzanie free"
       },
@@ -518,13 +518,10 @@
       "nominal_exhaust_air_flow_gwc": {
         "name": "Nominalny przepływ wywiewu GWC"
       },
-      "bypass_off": {
-        "name": "Wyłączenie bypass"
-      },
-      "special_mode_timeout": {
-        "name": "Timeout trybu specjalnego"
-      },
-      "min_gwc_air_temperature": {
+        "bypass_off": {
+          "name": "Wyłączenie bypass"
+        },
+        "min_gwc_air_temperature": {
         "name": "Minimalna temperatura powietrza GWC"
       },
       "max_gwc_air_temperature": {
