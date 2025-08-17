@@ -138,6 +138,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except KeyError as err:
                 _LOGGER.error("Missing required data: %s", err)
                 errors["base"] = "invalid_input"
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected error during configuration: %s", err)
+                errors["base"] = "unknown"
 
         # Show form
         data_schema = vol.Schema(
