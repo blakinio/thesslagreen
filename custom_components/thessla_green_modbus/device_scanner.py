@@ -15,7 +15,13 @@ from .modbus_exceptions import ConnectionException, ModbusException
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
-from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS, SENSOR_UNAVAILABLE
+from .const import (
+    COIL_REGISTERS,
+    DEFAULT_SLAVE_ID,
+    DISCRETE_INPUT_REGISTERS,
+    SENSOR_UNAVAILABLE,
+    SENSOR_UNAVAILABLE_REGISTERS,
+)
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .utils import _to_snake_case
@@ -522,16 +528,20 @@ class ThesslaGreenDeviceScanner:
                 return False
             value = decoded
 
-        # Temperature sensors may report a sentinel value when the sensor is unavailable.
-        # Log the condition but still treat the register as valid so it is discovered.
-        if "temperature" in name:
-            if value == SENSOR_UNAVAILABLE:
-                _LOGGER.debug("Sensor unavailable for %s: %s", register_name, value)
+        # Handle registers that may report SENSOR_UNAVAILABLE (0x8000)
+        if name in SENSOR_UNAVAILABLE_REGISTERS and value in (
+            SENSOR_UNAVAILABLE,
+            -32768,
+        ):
+            _LOGGER.debug("Sensor unavailable for %s: %s", register_name, value)
+            # Flow sensors should be skipped when the sensor isn't present
+            if any(x in name for x in ["flow", "air_flow", "flow_rate"]):
+                return False
             return True
 
-        # Air flow sensors use the same sentinel for no sensor
+        # Air flow sensors may use 65535 as an additional sentinel for no sensor
         if any(x in name for x in ["flow", "air_flow", "flow_rate"]):
-            if value in (SENSOR_UNAVAILABLE, 65535):
+            if value == 65535:
                 _LOGGER.debug("Invalid value for %s: %s", register_name, value)
                 return False
             return True
