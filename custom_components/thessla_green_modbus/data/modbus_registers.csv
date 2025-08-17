@@ -323,14 +323,14 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x116B,4459,R/W,uart1Stop,Nastawy komunikacji Modbus - port Air++ Bity stopu,0,1,0,1,"0 - jeden; 1 - dwa",4.76,opcjonalny
 
 # NAZWA URZĄDZENIA
-03,0x1FD0,8144,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,"Znaki zapisane w systemie ASCII",,
-03,0x1FD1,8145,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,"W jednym rejestrze zapisane są dwa znaki: bity b15-b8 -> znak pierwszy od lewej; bity b7-b0 -> znak drugi od lewej",,
-03,0x1FD2,8146,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
-03,0x1FD3,8147,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
-03,0x1FD4,8148,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
-03,0x1FD5,8149,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
-03,0x1FD6,8150,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
-03,0x1FD7,8151,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD0,8144,R/W,device_name_1,Nazwa urządzenia,0,65535,0,1,ASCII,"Znaki zapisane w systemie ASCII",,
+03,0x1FD1,8145,R/W,device_name_2,Nazwa urządzenia,0,65535,0,1,ASCII,"W jednym rejestrze zapisane są dwa znaki: bity b15-b8 -> znak pierwszy od lewej; bity b7-b0 -> znak drugi od lewej",,
+03,0x1FD2,8146,R/W,device_name_3,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD3,8147,R/W,device_name_4,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD4,8148,R/W,device_name_5,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD5,8149,R/W,device_name_6,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD6,8150,R/W,device_name_7,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD7,8151,R/W,device_name_8,Nazwa urządzenia,0,65535,0,1,ASCII,,,
 
 # KLUCZ PRODUKTU
 03,0x1FFB,8187,R/W,lockPass1,Klucz produktu użytkownika słowo młodsze,0,0x423f,0,1,"Pod tymi adresami można zapisać klucz produktu wprowadzony przez użytkownika",,

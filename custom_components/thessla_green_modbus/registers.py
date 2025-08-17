@@ -40,11 +40,14 @@ DISCRETE_INPUT_REGISTERS: dict[str, int] = {
 MULTI_REGISTER_SIZES: dict[str, int] = {
     "date_time_1": 4,
     "lock_date_1": 3,
-    "date_time_2": 4,
-    "date_time_3": 4,
-    "date_time_4": 4,
-    "lock_date_2": 3,
-    "lock_date_3": 3,
+    "device_name_1": 8,
+}
+
+# Base aliases for multi-register blocks where registers share a common name.
+BASE_REGISTER_ALIASES: dict[str, str] = {
+    "date_time": "date_time_1",
+    "lock_date": "lock_date_1",
+    "device_name": "device_name_1",
 }
 
 INPUT_REGISTERS: dict[str, int] = {
@@ -79,12 +82,13 @@ INPUT_REGISTERS: dict[str, int] = {
     "water_removal_active": 298,
 }
 
-
 HOLDING_REGISTERS: dict[str, int] = {
+    "date_time": 0,
     "date_time_1": 0,
     "date_time_2": 1,
     "date_time_3": 2,
     "date_time_4": 3,
+    "lock_date": 7,
     "lock_date_1": 7,
     "lock_date_2": 8,
     "lock_date_3": 9,
@@ -304,6 +308,7 @@ HOLDING_REGISTERS: dict[str, int] = {
     "uart_1_baud": 4457,
     "uart_1_parity": 4458,
     "uart_1_stop": 4459,
+    "device_name": 8144,
     "device_name_1": 8144,
     "device_name_2": 8145,
     "device_name_3": 8146,
@@ -363,3 +368,4 @@ HOLDING_REGISTERS: dict[str, int] = {
     "e_251": 8443,
     "e_252": 8444,
 }
+

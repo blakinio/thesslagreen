@@ -1,4 +1,6 @@
 {
+  "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
+  "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
   "config": {
     "step": {
       "user": {
@@ -12,10 +14,715 @@
       }
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje ThesslaGreen Modbus",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}.",
+        "data": {
+          "scan_interval": "Interwał skanowania (s)",
+          "timeout": "Limit czasu połączenia (s)",
+          "retry": "Liczba prób",
+          "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)",
+          "skip_missing_registers": "Pomijaj znane brakujące rejestry"
+        },
+        "data_description": {
+          "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
+          "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
+          "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
+          "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne"
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "outside_temperature": {
         "name": "Temperatura zewnętrzna"
+      },
+      "supply_temperature": {
+        "name": "Temperatura nawiewu"
+      },
+      "exhaust_temperature": {
+        "name": "Temperatura wywiewu"
+      },
+      "fpx_temperature": {
+        "name": "Temperatura FPX"
+      },
+      "duct_supply_temperature": {
+        "name": "Temperatura kanału nawiewnego"
+      },
+      "gwc_temperature": {
+        "name": "Temperatura GWC"
+      },
+      "ambient_temperature": {
+        "name": "Temperatura otoczenia"
+      },
+      "supply_flow_rate": {
+        "name": "Przepływ nawiewu"
+      },
+      "exhaust_flow_rate": {
+        "name": "Przepływ wywiewu"
+      },
+      "supply_air_flow": {
+        "name": "Strumień powietrza nawiewnego"
+      },
+      "exhaust_air_flow": {
+        "name": "Strumień powietrza wywiewnego"
+      },
+      "supply_percentage": {
+        "name": "Procentowo nawiew"
+      },
+      "exhaust_percentage": {
+        "name": "Procentowo wywiew"
+      },
+      "min_percentage": {
+        "name": "Minimalny procent"
+      },
+      "max_percentage": {
+        "name": "Maksymalny procent"
+      },
+      "day_of_week": {
+        "name": "Dzień tygodnia"
+      },
+      "period": {
+        "name": "Okres czasowy"
+      },
+      "compilation_days": {
+        "name": "Dni kompilacji"
+      },
+      "compilation_seconds": {
+        "name": "Sekundy kompilacji"
+      },
+      "version_major": {
+        "name": "Wersja główna"
+      },
+      "version_minor": {
+        "name": "Wersja poboczna"
+      },
+      "version_patch": {
+        "name": "Wersja łatki"
+      },
+      "serial_number_5": {
+        "name": "Numer seryjny 5"
+      },
+      "serial_number_6": {
+        "name": "Numer seryjny 6"
+      },
+        "antifreeze_mode": {
+          "name": "Tryb przeciwzamrożeniowy"
+        },
+      "mode": {
+        "name": "Tryb pracy"
+      },
+      "season_mode": {
+        "name": "Tryb sezonowy"
+      },
+      "gwc_mode": {
+        "name": "Tryb GWC"
+      },
+      "bypass_mode": {
+        "name": "Tryb bypass"
+      },
+      "comfort_mode": {
+        "name": "Tryb komfort"
+      },
+      "constant_flow_active": {
+        "name": "Stały przepływ aktywny"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Temperatura nawiewu manualnie"
+      },
+      "supply_air_temperature_temporary_1": {
+        "name": "Tymczasowa temperatura nawiewu 1"
+      },
+      "supply_air_temperature_temporary_2": {
+        "name": "Tymczasowa temperatura nawiewu 2"
+      },
+      "min_bypass_temperature": {
+        "name": "Minimalna temperatura bypass"
+      },
+      "air_temperature_summer_free_heating": {
+        "name": "Temperatura lato grzanie free"
+      },
+      "air_temperature_summer_free_cooling": {
+        "name": "Temperatura lato chłodzenie free"
+      },
+      "required_temp": {
+        "name": "Temperatura zadana"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Maksymalny przepływ nawiewu"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Maksymalny przepływ wywiewu"
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominalny przepływ nawiewu"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominalny przepływ wywiewu"
+      },
+      "air_flow_rate_manual": {
+        "name": "Ręczny przepływ powietrza"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Tymczasowy przepływ powietrza 2"
+      },
+      "bypass_off": {
+        "name": "Wyłączenie bypass"
+      },
+      "dac_supply": {
+        "name": "Napięcie wentylatora nawiewnego"
+      },
+      "dac_exhaust": {
+        "name": "Napięcie wentylatora wywiewnego"
+      },
+      "dac_heater": {
+        "name": "Napięcie nagrzewnicy"
+      },
+      "dac_cooler": {
+        "name": "Napięcie chłodnicy"
+      },
+      "serial_number_1": {
+        "name": "Numer seryjny część 1"
+      },
+      "fan_speed_1_coef": {
+        "name": "Współczynnik prędkości 1"
+      },
+      "fan_speed_2_coef": {
+        "name": "Współczynnik prędkości 2"
+      },
+      "fan_speed_3_coef": {
+        "name": "Współczynnik prędkości 3"
+      },
+      "hood_supply_coef": {
+        "name": "Współczynnik okapu nawiew"
+      },
+      "hood_exhaust_coef": {
+        "name": "Współczynnik okapu wywiew"
+      },
+      "intensive_supply": {
+        "name": "Intensywność nawiewu"
+      },
+      "intensive_exhaust": {
+        "name": "Intensywność wywiewu"
+      },
+      "cf_version": {
+        "name": "Wersja modułu CF"
+      },
+      "antifreeze_mode": {
+        "name": "Tryb antyzamrożeniowy"
+      },
+      "antifreez_stage": {
+        "name": "Etap antyzamrożeniowy"
+      },
+      "filter_change": {
+        "name": "Typ filtrów",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Filtry płaskie",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      },
+      "gwc_regen_flag": {
+        "name": "Regeneracja GWC aktywna"
+      }
+    },
+    "binary_sensor": {
+      "duct_water_heater_pump": {
+        "name": "Pompa nagrzewnicy kanałowej"
+      },
+      "bypass": {
+        "name": "Bypass"
+      },
+      "info": {
+        "name": "Informacja"
+      },
+      "power_supply_fans": {
+        "name": "Zasilanie wentylatorów"
+      },
+      "heating_cable": {
+        "name": "Kabel grzejny"
+      },
+      "work_permit": {
+        "name": "Zezwolenie pracy"
+      },
+      "gwc": {
+        "name": "GWC"
+      },
+      "hood_output": {
+        "name": "Wyjście okapu"
+      },
+      "expansion": {
+        "name": "Ekspansja"
+      },
+      "contamination_sensor": {
+        "name": "Czujnik zanieczyszczeń"
+      },
+      "duct_heater_protection": {
+        "name": "Ochrona nagrzewnicy kanałowej"
+      },
+      "dp_duct_filter_overflow": {
+        "name": "Przepełnienie filtra kanałowego"
+      },
+      "hood_switch": {
+        "name": "Przełącznik okapu"
+      },
+      "airing_sensor": {
+        "name": "Czujnik wietrzenia"
+      },
+      "airing_switch": {
+        "name": "Przełącznik wietrzenia"
+      },
+      "airing_mini": {
+        "name": "Wietrzenie mini"
+      },
+      "fan_speed_3": {
+        "name": "Prędkość wentylatora 3"
+      },
+      "fan_speed_2": {
+        "name": "Prędkość wentylatora 2"
+      },
+      "fan_speed_1": {
+        "name": "Prędkość wentylatora 1"
+      },
+      "fireplace": {
+        "name": "Kominek"
+      },
+      "dp_ahu_filter_overflow": {
+        "name": "Przepełnienie filtra AHU"
+      },
+      "ahu_filter_protection": {
+        "name": "Ochrona filtra AHU"
+      },
+      "empty_house": {
+        "name": "Pusty dom"
+      },
+      "fire_alarm": {
+        "name": "Alarm pożarowy"
+      },
+      "water_removal_active": {
+        "name": "Usuwanie wody aktywne"
+      },
+      "on_off_panel_mode": {
+        "name": "Tryb panelu wł/wył"
+      }
+    },
+    "number": {
+      "required_temperature": {
+        "name": "Temperatura zadana"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Temperatura nawiewu manualnie"
+      },
+      "min_bypass_temperature": {
+        "name": "Minimalna temperatura bypass"
+      },
+      "air_temperature_summer_free_heating": {
+        "name": "Temperatura lato grzanie free"
+      },
+      "air_temperature_summer_free_cooling": {
+        "name": "Temperatura lato chłodzenie free"
+      },
+      "access_level": {
+        "name": "Poziom dostępu"
+      },
+      "air_flow_rate_manual": {
+        "name": "Przepływ powietrza manualnie"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Maksymalny przepływ nawiewu"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Maksymalny przepływ wywiewu"
+      },
+      "constant_flow_active": {
+        "name": "Status Constant Flow"
+      },
+      "water_removal_active": {
+        "name": "Status usuwania wody"
+      }
+    },
+    "climate": {
+      "thessla_green_climate": {
+        "name": "Sterowanie klimatem",
+        "state_attributes": {
+          "preset_mode": {
+            "none": "Brak",
+            "eco": "Eco",
+            "boost": "Boost",
+            "away": "Nieobecność",
+            "sleep": "Sen",
+            "fireplace": "Kominek",
+            "hood": "Okap",
+            "party": "Impreza",
+            "bathroom": "Łazienka",
+            "kitchen": "Kuchnia",
+            "summer": "Lato",
+            "winter": "Zima"
+          }
+        }
+      }
+    },
+    "fan": {
+      "thessla_green_fan": {
+        "name": "Wentylacja"
+      }
+    },
+    "switch": {
+      "duct_water_heater_pump": {
+        "name": "Pompa obiegowa nagrzewnicy"
+      },
+      "bypass": {
+        "name": "Obejście (bypass)"
+      },
+      "info": {
+        "name": "Potwierdzenie pracy centrali"
+      },
+      "power_supply_fans": {
+        "name": "Zasilanie wentylatorów"
+      },
+      "heating_cable": {
+        "name": "Kabel grzejny"
+      },
+      "work_permit": {
+        "name": "Potwierdzenie pracy (Expansion)"
+      },
+      "gwc": {
+        "name": "GWC"
+      },
+      "hood_output": {
+        "name": "Wyjście okapu"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Tryb pracy",
+        "state": {
+          "auto": "Automatyczny",
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
+        }
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominalny przepływ nawiewu"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominalny przepływ wywiewu"
+      },
+      "max_supply_air_flow_rate_gwc": {
+        "name": "Maksymalny przepływ nawiewu GWC"
+      },
+      "max_exhaust_air_flow_rate_gwc": {
+        "name": "Maksymalny przepływ wywiewu GWC"
+      },
+      "nominal_supply_air_flow_gwc": {
+        "name": "Nominalny przepływ nawiewu GWC"
+      },
+      "nominal_exhaust_air_flow_gwc": {
+        "name": "Nominalny przepływ wywiewu GWC"
+      },
+      "bypass_off": {
+        "name": "Wyłączenie bypass"
+      },
+      "min_gwc_air_temperature": {
+        "name": "Minimalna temperatura powietrza GWC"
+      },
+      "max_gwc_air_temperature": {
+        "name": "Maksymalna temperatura powietrza GWC"
+      },
+      "gwc_regen_period": {
+        "name": "Okres regeneracji GWC"
+      },
+      "delta_t_gwc": {
+        "name": "Delta T GWC"
+      }
+    }
+  },
+  "services": {
+    "set_special_mode": {
+      "name": "Ustaw tryb specjalny",
+      "description": "Ustawia specjalny tryb pracy rekuperatora (boost, eco, kominek, okap itd.)",
+      "fields": {
+        "mode": {
+          "name": "Tryb specjalny",
+          "description": "Rodzaj trybu specjalnego do aktywacji",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.special_mode_none": "Brak",
+                "thessla_green_modbus.special_mode_boost": "Boost",
+                "thessla_green_modbus.special_mode_eco": "Eco",
+                "thessla_green_modbus.special_mode_away": "Nieobecność",
+                "thessla_green_modbus.special_mode_sleep": "Sen",
+                "thessla_green_modbus.special_mode_fireplace": "Kominek",
+                "thessla_green_modbus.special_mode_hood": "Okap",
+                "thessla_green_modbus.special_mode_party": "Impreza",
+                "thessla_green_modbus.special_mode_bathroom": "Łazienka",
+                "thessla_green_modbus.special_mode_kitchen": "Kuchnia",
+                "thessla_green_modbus.special_mode_summer": "Lato",
+                "thessla_green_modbus.special_mode_winter": "Zima"
+              }
+            }
+          }
+        },
+        "duration": {
+          "name": "Czas trwania (minuty)",
+          "description": "Czas trwania trybu specjalnego w minutach (krok co 1 minutę, 0 = bez limitu)"
+        }
+      }
+    },
+    "set_airflow_schedule": {
+      "name": "Ustaw harmonogram przepływu powietrza",
+      "description": "Konfiguruje tygodniowy harmonogram przepływu powietrza",
+      "fields": {
+        "day": {
+          "name": "Dzień tygodnia",
+          "description": "Dzień tygodnia do konfiguracji",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.day_monday": "Poniedziałek",
+                "thessla_green_modbus.day_tuesday": "Wtorek",
+                "thessla_green_modbus.day_wednesday": "Środa",
+                "thessla_green_modbus.day_thursday": "Czwartek",
+                "thessla_green_modbus.day_friday": "Piątek",
+                "thessla_green_modbus.day_saturday": "Sobota",
+                "thessla_green_modbus.day_sunday": "Niedziela"
+              }
+            }
+          }
+        },
+        "period": {
+          "name": "Okres",
+          "description": "Okres dnia (1 lub 2)",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.period_1": "Okres 1",
+                "thessla_green_modbus.period_2": "Okres 2"
+              }
+            }
+          }
+        },
+        "start_time": {
+          "name": "Czas rozpoczęcia",
+          "description": "Czas rozpoczęcia okresu (HH:MM)"
+        },
+        "end_time": {
+          "name": "Czas zakończenia",
+          "description": "Czas zakończenia okresu (HH:MM)"
+        },
+        "airflow_rate": {
+          "name": "Przepływ powietrza",
+          "description": "Docelowy przepływ powietrza (%)"
+        },
+        "temperature": {
+          "name": "Temperatura",
+          "description": "Docelowa temperatura (°C)"
+        }
+      }
+    },
+    "set_bypass_parameters": {
+      "name": "Ustaw parametry bypassu",
+      "description": "Konfiguruje parametry systemu obejścia (bypassu)",
+      "fields": {
+        "mode": {
+          "name": "Tryb bypassu",
+          "description": "Tryb pracy obejścia",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.bypass_mode_auto": "Automatyczny",
+                "thessla_green_modbus.bypass_mode_open": "Otwarty",
+                "thessla_green_modbus.bypass_mode_closed": "Zamknięty"
+              }
+            }
+          }
+        },
+        "min_outdoor_temperature": {
+          "name": "Minimalna temperatura zewnętrzna",
+          "description": "Minimalna temperatura zewnętrzna włączająca bypass"
+        }
+      }
+    },
+    "set_gwc_parameters": {
+      "name": "Ustaw parametry GWC",
+      "description": "Konfiguruje parametry gruntowego wymiennika ciepła",
+      "fields": {
+        "mode": {
+          "name": "Tryb GWC",
+          "description": "Tryb pracy gruntowego wymiennika ciepła",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.gwc_mode_off": "Wyłączony",
+                "thessla_green_modbus.gwc_mode_auto": "Automatyczny",
+                "thessla_green_modbus.gwc_mode_forced": "Wymuszony"
+              }
+            }
+          }
+        },
+        "min_air_temperature": {
+          "name": "Minimalna temperatura powietrza",
+          "description": "Dolny próg temperatury powietrza zewnętrznego"
+        },
+        "max_air_temperature": {
+          "name": "Maksymalna temperatura powietrza",
+          "description": "Górny próg temperatury powietrza zewnętrznego"
+        }
+      }
+    },
+    "set_air_quality_thresholds": {
+      "name": "Ustaw progi jakości powietrza",
+      "description": "Konfiguruje progi dla systemu kontroli jakości powietrza",
+      "fields": {
+        "co2_low": {
+          "name": "Próg CO2 niski",
+          "description": "Niski próg stężenia CO2 (ppm)"
+        },
+        "co2_medium": {
+          "name": "Próg CO2 średni",
+          "description": "Średni próg stężenia CO2 (ppm)"
+        },
+        "co2_high": {
+          "name": "Próg CO2 wysoki",
+          "description": "Wysoki próg stężenia CO2 (ppm)"
+        },
+        "humidity_target": {
+          "name": "Docelowa wilgotność",
+          "description": "Docelowy poziom wilgotności (%)"
+        }
+      }
+    },
+    "set_temperature_curve": {
+      "name": "Ustaw krzywą grzewczą",
+      "description": "Konfiguruje krzywą grzewczą dla systemu ogrzewania",
+      "fields": {
+        "slope": {
+          "name": "Nachylenie",
+          "description": "Nachylenie krzywej grzewczej"
+        },
+        "offset": {
+          "name": "Przesunięcie",
+          "description": "Przesunięcie krzywej grzewczej"
+        },
+        "max_supply_temp": {
+          "name": "Maksymalna temperatura nawiewu",
+          "description": "Maksymalna temperatura nawiewu"
+        },
+        "min_supply_temp": {
+          "name": "Minimalna temperatura nawiewu",
+          "description": "Minimalna temperatura nawiewu"
+        }
+      }
+    },
+    "reset_filters": {
+      "name": "Resetuj licznik filtrów",
+      "description": "Resetuje licznik czasu pracy filtrów",
+      "fields": {
+        "filter_type": {
+          "name": "Typ filtra",
+          "description": "Typ filtra do zresetowania",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.filter_type_presostat": "Presostat",
+                "thessla_green_modbus.filter_type_flat_filters": "Filtry płaskie",
+                "thessla_green_modbus.filter_type_cleanpad": "CleanPad",
+                "thessla_green_modbus.filter_type_cleanpad_pure": "CleanPad Pure"
+              }
+            }
+          }
+        }
+      }
+    },
+    "reset_settings": {
+      "name": "Resetuj ustawienia",
+      "description": "Przywraca ustawienia użytkownika do wartości domyślnych",
+      "fields": {
+        "reset_type": {
+          "name": "Rodzaj resetu",
+          "description": "Zakres ustawień do zresetowania",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.reset_type_user_settings": "Ustawienia użytkownika",
+                "thessla_green_modbus.reset_type_schedule_settings": "Ustawienia harmonogramu",
+                "thessla_green_modbus.reset_type_all_settings": "Wszystkie ustawienia"
+              }
+            }
+          }
+        }
+      }
+    },
+    "start_pressure_test": {
+      "name": "Rozpocznij test ciśnienia",
+      "description": "Uruchamia automatyczny test kontroli filtrów/ciśnienia"
+    },
+    "set_modbus_parameters": {
+      "name": "Ustaw parametry Modbus",
+      "description": "Konfiguruje parametry komunikacji Modbus (tylko dla zaawansowanych użytkowników)",
+      "fields": {
+        "port": {
+          "name": "Port",
+          "description": "Port Modbus (Air-B lub Air++)",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_port_air_b": "Air-B",
+                "thessla_green_modbus.modbus_port_air_plus": "Air++"
+              }
+            }
+          }
+        },
+        "baud_rate": {
+          "name": "Szybkość transmisji",
+          "description": "Prędkość transmisji Modbus",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
+                "thessla_green_modbus.modbus_baud_rate_9600": "9600",
+                "thessla_green_modbus.modbus_baud_rate_14400": "14400",
+                "thessla_green_modbus.modbus_baud_rate_19200": "19200",
+                "thessla_green_modbus.modbus_baud_rate_28800": "28800",
+                "thessla_green_modbus.modbus_baud_rate_38400": "38400",
+                "thessla_green_modbus.modbus_baud_rate_57600": "57600",
+                "thessla_green_modbus.modbus_baud_rate_76800": "76800",
+                "thessla_green_modbus.modbus_baud_rate_115200": "115200"
+              }
+            }
+          }
+        },
+        "parity": {
+          "name": "Parzystość",
+          "description": "Bit parzystości",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_parity_none": "Brak",
+                "thessla_green_modbus.modbus_parity_even": "Parzysta",
+                "thessla_green_modbus.modbus_parity_odd": "Nieparzysta"
+              }
+            }
+          }
+        },
+        "stop_bits": {
+          "name": "Bity stopu",
+          "description": "Liczba bitów stopu",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_stop_bits_1": "1",
+                "thessla_green_modbus.modbus_stop_bits_2": "2"
+              }
+            }
+          }
+        }
       }
     }
   }

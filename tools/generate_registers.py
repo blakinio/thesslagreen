@@ -10,6 +10,16 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbus_registers.csv"
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
+MULTI_REGISTER_SIZES: dict[str, int] = {
+    "date_time_1": 4,
+    "lock_date_1": 3,
+    "date_time_2": 4,
+    "date_time_3": 4,
+    "date_time_4": 4,
+    "lock_date_2": 3,
+    "lock_date_3": 3,
+}
+
 
 def to_snake_case(name: str) -> str:
     """Convert a register name from the CSV to ``snake_case``."""
@@ -89,22 +99,37 @@ def write_file(
         f.write('"""Register definitions for the ThesslaGreen Modbus integration."""\n\n')
         f.write("from __future__ import annotations\n\n")
         f.write("# Generated from modbus_registers.csv\n\n")
+
+        # Coils and discrete inputs
         sections = [
             ("COIL_REGISTERS", coils),
             ("DISCRETE_INPUT_REGISTERS", discrete_inputs),
-            ("INPUT_REGISTERS", input_regs),
-            ("HOLDING_REGISTERS", holding_regs),
         ]
-        for idx, (name, mapping) in enumerate(sections):
+        for name, mapping in sections:
             f.write(f"{name}: dict[str, int] = {{\n")
             for key, addr in mapping.items():
                 f.write(f'    "{key}": {addr},\n')
-            if name == "HOLDING_REGISTERS":
-                f.write("}\n")
-            elif name == "INPUT_REGISTERS":
-                f.write("}\n\n\n")
-            else:
-                f.write("}\n\n")
+            f.write("}\n\n")
+
+        # Multi-register block sizes
+        f.write("# Sizes of holding register blocks that span multiple consecutive registers.\n")
+        f.write("# Each key is the starting register name and the value is the number of\n")
+        f.write("# registers in that block.\n")
+        f.write("MULTI_REGISTER_SIZES: dict[str, int] = {\n")
+        for key, size in MULTI_REGISTER_SIZES.items():
+            f.write(f'    "{key}": {size},\n')
+        f.write("}\n\n")
+
+        # Input and holding registers
+        sections = [
+            ("INPUT_REGISTERS", input_regs),
+            ("HOLDING_REGISTERS", holding_regs),
+        ]
+        for name, mapping in sections:
+            f.write(f"{name}: dict[str, int] = {{\n")
+            for key, addr in mapping.items():
+                f.write(f'    "{key}": {addr},\n')
+            f.write("}\n\n")
 
 
 def main() -> None:
