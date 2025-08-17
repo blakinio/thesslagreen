@@ -62,7 +62,10 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     )
 
     try:
-        scan_result = await scanner.scan_device()
+        if hasattr(scanner, "scan_device"):
+            scan_result = await scanner.scan_device()
+        else:
+            scan_result = await scanner.scan()
 
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
@@ -82,7 +85,8 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         _LOGGER.exception("Unexpected error during device validation: %s", exc)
         raise CannotConnect from exc
     finally:
-        await scanner.close()
+        if hasattr(scanner, "close"):
+            await scanner.close()
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
