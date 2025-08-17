@@ -1013,7 +1013,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return diagnostics
 
     def get_device_info(self) -> DeviceInfo:
-        """Get device information for Home Assistant."""
+        """Return a ``DeviceInfo`` object for the connected unit.
+
+        The data is used by Home Assistant to uniquely identify the device
+        and to group all entities originating from it in the device registry.
+        """
+
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.host}:{self.port}:{self.slave_id}")},
             name=self.device_name,
