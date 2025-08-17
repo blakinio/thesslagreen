@@ -20,6 +20,7 @@ from typing import (
     Tuple,
 )
 
+from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
     COIL_REGISTERS,
     DEFAULT_SLAVE_ID,
@@ -425,6 +426,14 @@ class ThesslaGreenDeviceScanner:
             ]
         ):
             caps.constant_flow = True
+
+        # Generic capability detection based on register name patterns
+        all_registers = inputs | holdings | coils | discretes
+        for attr, patterns in CAPABILITY_PATTERNS.items():
+            if getattr(caps, attr):
+                continue
+            if any(pat in reg for reg in all_registers for pat in patterns):
+                setattr(caps, attr, True)
 
         return caps
 
@@ -843,12 +852,8 @@ class ThesslaGreenDeviceScanner:
         for skip_start, skip_end in self._unsupported_input_ranges:
             if skip_start <= start and end <= skip_end:
                 return None
-        if not skip_cache and any(
-            reg in self._failed_input for reg in range(start, end + 1)
-        ):
-            first = next(
-                reg for reg in range(start, end + 1) if reg in self._failed_input
-            )
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
             skip_start = skip_end = first
             while skip_start - 1 in self._failed_input:
                 skip_start -= 1
@@ -959,6 +964,7 @@ class ThesslaGreenDeviceScanner:
 
         return None
 
+
 async def _read_holding(
     self,
     client: "AsyncModbusTcpClient",
@@ -973,83 +979,69 @@ async def _read_holding(
 
     for skip_start, skip_end in self._unsupported_holding_ranges:
         if skip_start <= start and end <= skip_end:
-    async def _read_holding(
-        self,
-        client: "AsyncModbusTcpClient",
-        address: int,
-        count: int,
-        *,
-        log_exceptions: bool = True,
-    ) -> list[int] | None:
-        """Read holding registers with retry, backoff and failure tracking."""
-        start = address
-        end = address + count - 1
-
-        for skip_start, skip_end in self._unsupported_holding_ranges:
-            if skip_start <= start and end <= skip_end:
-                return None
-
-        if address in self._failed_holding:
-            _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
             return None
 
-        failures = self._holding_failures.get(address, 0)
-        if failures >= self.retry:
-            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
-            return None
+    if address in self._failed_holding:
+        _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
+        return None
 
-        exception_code: int | None = None
-        for attempt in range(1, self.retry + 1):
+    failures = self._holding_failures.get(address, 0)
+    if failures >= self.retry:
+        _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+        return None
+
+    exception_code: int | None = None
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(
+                client.read_holding_registers, self.slave_id, address, count=count
+            )
+            if response is not None:
+                if response.isError():
+                    exception_code = getattr(response, "exception_code", None)
+                    break
+                if address in self._holding_failures:
+                    del self._holding_failures[address]
+                return response.registers
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read holding 0x%04X (attempt %d/%d): %s",
+                address,
+                attempt,
+                self.retry,
+                exc,
+                exc_info=True,
+            )
+            if count == 1:
+                failures = self._holding_failures.get(address, 0) + 1
+                self._holding_failures[address] = failures
+                if failures >= self.retry and address not in self._failed_holding:
+                    self._failed_holding.add(address)
+                    _LOGGER.warning("Device does not expose register 0x%04X", address)
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Cancelled reading holding 0x%04X on attempt %d/%d",
+                address,
+                attempt,
+                self.retry,
+            )
+            raise
+        except OSError as exc:
+            _LOGGER.error(
+                "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+
+        if attempt < self.retry and exception_code is None:
             try:
-                response = await _call_modbus(
-                    client.read_holding_registers, self.slave_id, address, count=count
-                )
-                if response is not None:
-                    if response.isError():
-                        exception_code = getattr(response, "exception_code", None)
-                        break
-                    if address in self._holding_failures:
-                        del self._holding_failures[address]
-                    return response.registers
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-                _LOGGER.debug(
-                    "Failed to read holding 0x%04X (attempt %d/%d): %s",
-                    address,
-                    attempt,
-                    self.retry,
-                    exc,
-                    exc_info=True,
-                )
-                if count == 1:
-                    failures = self._holding_failures.get(address, 0) + 1
-                    self._holding_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_holding:
-                        self._failed_holding.add(address)
-                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
             except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading holding 0x%04X on attempt %d/%d",
-                    address,
-                    attempt,
-                    self.retry,
-                )
+                _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
                 raise
-            except OSError as exc:
-                _LOGGER.error(
-                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-
-            if attempt < self.retry and exception_code is None:
-                try:
-                    await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
-                    raise
 
         if exception_code is not None:
             self._failed_holding.update(range(start, end + 1))
@@ -1147,14 +1139,6 @@ async def _read_holding(
                     attempt,
                 )
                 raise
-    return None
-
-
-# Bind module-level helpers to the scanner class and expose _read_input for tests
-ThesslaGreenDeviceScanner._read_holding = _read_holding
-ThesslaGreenDeviceScanner._read_coil = _read_coil
-ThesslaGreenDeviceScanner._read_discrete = _read_discrete
-_read_input = ThesslaGreenDeviceScanner._read_input
             except OSError as exc:
                 _LOGGER.error(
                     "Unexpected error reading discrete 0x%04X on attempt %d: %s",
@@ -1171,3 +1155,8 @@ _read_input = ThesslaGreenDeviceScanner._read_input
                     _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
                     raise
         return None
+
+
+# Bind module-level helpers to the scanner class and expose _read_input for tests
+ThesslaGreenDeviceScanner._read_holding = _read_holding
+_read_input = ThesslaGreenDeviceScanner._read_input
