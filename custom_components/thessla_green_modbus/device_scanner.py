@@ -954,8 +954,8 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-        if attempt < self.retry:
-            await asyncio.sleep(0.5)
+            if attempt < self.retry:
+                await asyncio.sleep(0.5)
 
         return None
 
@@ -1147,6 +1147,14 @@ async def _read_holding(
                     attempt,
                 )
                 raise
+    return None
+
+
+# Bind module-level helpers to the scanner class and expose _read_input for tests
+ThesslaGreenDeviceScanner._read_holding = _read_holding
+ThesslaGreenDeviceScanner._read_coil = _read_coil
+ThesslaGreenDeviceScanner._read_discrete = _read_discrete
+_read_input = ThesslaGreenDeviceScanner._read_input
             except OSError as exc:
                 _LOGGER.error(
                     "Unexpected error reading discrete 0x%04X on attempt %d: %s",
