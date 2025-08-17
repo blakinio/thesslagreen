@@ -6,6 +6,7 @@ import asyncio
 import csv
 import logging
 import re
+import inspect
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
 from typing import (
@@ -339,6 +340,20 @@ class ThesslaGreenDeviceScanner:
         return self
 
     async def close(self) -> None:
+
+        """Close the underlying Modbus client connection."""
+        client = self._client
+        # Prevent further use even if closing fails
+        self._client = None
+        if client is None:
+            return
+        try:
+            result = client.close()
+            if inspect.isawaitable(result):
+                await result
+        except (OSError, ConnectionException, ModbusIOException):
+            _LOGGER.debug("Error closing Modbus client", exc_info=True)
+
         """Close the underlying Modbus client if it is open."""
         if self._client is not None:
             try:
@@ -535,6 +550,7 @@ class ThesslaGreenDeviceScanner:
             return await self.scan()
         finally:
             await self.close()
+
 
     async def _load_registers(
         self,

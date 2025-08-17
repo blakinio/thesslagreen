@@ -6,12 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
+    ModbusIOException,
 )
+
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -88,6 +88,10 @@ class DataUpdateCoordinator:
 
     async def async_shutdown(self):  # pragma: no cover - stub
         pass
+
+    # Allow subscripting like DataUpdateCoordinator[dict[str, Any]]
+    def __class_getitem__(cls, _):  # pragma: no cover - simple stub
+        return cls
 
 
 helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
@@ -186,6 +190,13 @@ sys.modules.update(
         "voluptuous": vol,
         "custom_components.thessla_green_modbus.services": cc_services,
     }
+)
+
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
 )
 
 
@@ -347,6 +358,26 @@ def test_scan_device_closes_client_on_failure():
             await scanner.scan_device()
 
         scanner.close.assert_awaited_once()
+
+    import asyncio
+
+    asyncio.run(run_test())
+
+
+def test_close_handles_io_error():
+    """Scanner.close should swallow errors from client.close."""
+
+    async def run_test():
+        scanner = await ThesslaGreenDeviceScanner.create("localhost", 502)
+        client = AsyncMock()
+        client.close.side_effect = OSError("boom")
+        scanner._client = client
+
+        # Should not raise despite underlying error
+        await scanner.close()
+
+        client.close.assert_called_once()
+        assert scanner._client is None
 
     import asyncio
 
