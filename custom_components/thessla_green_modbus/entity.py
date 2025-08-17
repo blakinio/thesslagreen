@@ -23,9 +23,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
         host = self.coordinator.host.replace(":", "-")
-        return (
-            f"{DOMAIN}_{host}_{self.coordinator.port}_" f"{self.coordinator.slave_id}_{self._key}"
-        )
+        return f"{DOMAIN}_{host}_{self.coordinator.port}_{self.coordinator.slave_id}_{self._key}"
 
     @property
     def available(self) -> bool:
