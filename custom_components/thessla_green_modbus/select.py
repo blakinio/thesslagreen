@@ -13,48 +13,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
-
-# Select entity definitions
-SELECT_DEFINITIONS = {
-    "mode": {
-        "icon": "mdi:cog",
-        "translation_key": "mode",
-        "states": {"auto": 0, "manual": 1, "temporary": 2},
-        "register_type": "holding_registers",
-    },
-    "bypass_mode": {
-        "icon": "mdi:pipe-leak",
-        "translation_key": "bypass_mode",
-        "states": {"auto": 0, "open": 1, "closed": 2},
-        "register_type": "holding_registers",
-    },
-    "gwc_mode": {
-        "icon": "mdi:pipe",
-        "translation_key": "gwc_mode",
-        "states": {"off": 0, "auto": 1, "forced": 2},
-        "register_type": "holding_registers",
-    },
-    "season_mode": {
-        "icon": "mdi:weather-partly-snowy",
-        "translation_key": "season_mode",
-        "states": {"winter": 0, "summer": 1},
-        "register_type": "holding_registers",
-    },
-    "filter_change": {
-        "icon": "mdi:filter-variant",
-        "translation_key": "filter_change",
-        "states": {
-            "presostat": 1,
-            "flat_filters": 2,
-            "cleanpad": 3,
-            "cleanpad_pure": 4,
-        },
-        "register_type": "holding_registers",
-    },
-}
 
 
 async def async_setup_entry(
@@ -68,7 +30,7 @@ async def async_setup_entry(
     entities = []
     # Only create selects for registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()
-    for register_name, select_def in SELECT_DEFINITIONS.items():
+    for register_name, select_def in ENTITY_MAPPINGS["select"].items():
         register_type = select_def["register_type"]
         if register_name in coordinator.available_registers.get(register_type, set()):
             entities.append(ThesslaGreenSelect(coordinator, register_name, select_def))
