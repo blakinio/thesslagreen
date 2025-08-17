@@ -9,8 +9,8 @@ from custom_components.thessla_green_modbus.device_scanner import (
 
 def test_decode_register_time_valid():
     """Ensure byte-encoded HH:MM values decode correctly."""
-    assert _decode_register_time(0x081E) == 830
-    assert _decode_register_time(0x1234) == 1852
+    assert _decode_register_time(0x081E) == 510
+    assert _decode_register_time(0x1234) == 1132
     assert _decode_register_time(0x0000) == 0
 
 
@@ -22,10 +22,10 @@ def test_decode_register_time_invalid(value):
 
 def test_decode_bcd_time_valid():
     """BCD and decimal HHMM values should be decoded correctly."""
-    assert _decode_bcd_time(0x1234) == 1234
-    assert _decode_bcd_time(0x0800) == 800
+    assert _decode_bcd_time(0x1234) == 754
+    assert _decode_bcd_time(0x0800) == 480
     # Decimal fallback: BCD path invalid due to minutes > 59
-    assert _decode_bcd_time(615) == 615
+    assert _decode_bcd_time(615) == 375
 
 
 @pytest.mark.parametrize("value", [0x2460, 2400, -1, 0x1A59])

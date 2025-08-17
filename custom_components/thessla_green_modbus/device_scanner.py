@@ -42,14 +42,22 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 # Registers storing times encoded as HH:MM bytes
 TIME_REGISTER_PREFIXES: tuple[str, ...] = (
     "schedule_",
-    "airing_",
+    "airing_summer_",
+    "airing_winter_",
     "manual_airing_time_to_start",
     "pres_check_time",
     "start_gwc_regen",
     "stop_gwc_regen",
 )
 # Registers storing times as BCD HHMM values
-BCD_TIME_PREFIXES: tuple[str, ...] = TIME_REGISTER_PREFIXES
+BCD_TIME_PREFIXES: tuple[str, ...] = (
+    "schedule_",
+    "airing_summer_",
+    "airing_winter_",
+    "pres_check_time",
+    "start_gwc_regen",
+    "stop_gwc_regen",
+)
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
