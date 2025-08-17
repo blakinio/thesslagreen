@@ -9,9 +9,17 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfVolumeFlowRate
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfTemperature,
+    UnitOfVolumeFlowRate,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -136,7 +144,6 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, register_name)
-        self._attr_device_info = coordinator.get_device_info()
 
         self._register_name = register_name
         self._sensor_def = sensor_definition
