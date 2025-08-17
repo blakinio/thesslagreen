@@ -19,7 +19,13 @@ from typing import (
     Tuple,
 )
 
-from . import utils
+from .utils import (
+    BCD_TIME_PREFIXES,
+    TIME_REGISTER_PREFIXES,
+    _decode_bcd_time,
+    _decode_register_time,
+    _to_snake_case,
+)
 from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS
 from .modbus_exceptions import (
     ConnectionException,
