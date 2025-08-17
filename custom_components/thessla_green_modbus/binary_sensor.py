@@ -134,26 +134,29 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
     @property
     def icon(self) -> str:
         """Return the icon for the binary sensor."""
-        base_icon = self._attr_icon
+        # Ensure base_icon is a string before using it
+        base_icon = self._attr_icon if isinstance(self._attr_icon, str) else None
 
         # Dynamic icon changes for certain sensors
-        if self._register_name in ["bypass", "gwc", "power_supply_fans", "heating_cable"]:
+        if base_icon and self._register_name in [
+            "bypass",
+            "gwc",
+            "power_supply_fans",
+            "heating_cable",
+        ]:
             if self.is_on:
                 return base_icon
-            else:
-                # Return "off" version of icon
-                if "fan" in base_icon:
-                    return base_icon.replace("fan", "fan-off")
-                elif "heating" in base_icon:
-                    return "mdi:radiator-off"
-                elif "pipe" in base_icon:
-                    return "mdi:pipe"
+            # Return "off" version of icon
+            if "fan" in base_icon:
+                return base_icon.replace("fan", "fan-off")
+            if "heating" in base_icon:
+                return "mdi:radiator-off"
+            if "pipe" in base_icon:
+                return "mdi:pipe"
 
         # Dynamic icon for alarms and errors
         if "alarm" in self._register_name or "error" in self._register_name:
-            if self.is_on:
-                return "mdi:alert-circle"
-            else:
-                return "mdi:check-circle"
+            return "mdi:alert-circle" if self.is_on else "mdi:check-circle"
 
-        return base_icon
+        # Fallback icon when no icon is configured
+        return base_icon or "mdi:fan-off"

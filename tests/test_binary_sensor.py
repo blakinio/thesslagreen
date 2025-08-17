@@ -100,6 +100,17 @@ def test_binary_sensor_icons(mock_coordinator):
     assert bypass_sensor.icon == "mdi:pipe"  # nosec B101
 
 
+def test_binary_sensor_icon_fallback(mock_coordinator):
+    """Sensors without icons should return a sensible default."""
+    mock_coordinator.data["bypass"] = 1
+    sensor_def = BINARY_SENSOR_DEFINITIONS["bypass"].copy()
+    sensor_def.pop("icon", None)
+    sensor_without_icon = ThesslaGreenBinarySensor(
+        mock_coordinator, "bypass", sensor_def
+    )
+    assert sensor_without_icon.icon == "mdi:fan-off"  # nosec B101
+
+
 @pytest.mark.asyncio
 async def test_async_setup_creates_all_binary_sensors(mock_coordinator, mock_config_entry):
     """Ensure entities are created for all available binary sensor registers."""
