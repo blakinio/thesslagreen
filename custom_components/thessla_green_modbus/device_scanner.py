@@ -848,36 +848,10 @@ class ThesslaGreenDeviceScanner:
         end = address + count - 1
 
 
-    async def _read_input(
-        self,
-        client: "AsyncModbusTcpClient",
-        address: int,
-        count: int,
-        *,
-        skip_cache: bool = False,
-        log_exceptions: bool = True,
-    ) -> list[int] | None:
-        """Read input registers with retry and backoff.
-
-        ``skip_cache`` is used when probing individual registers after a block
-        read failed. When ``True`` the cached set of failed registers is not
-        checked, allowing each register to be queried once before being cached
-        as missing.
-        """
-        start = address
-        end = address + count - 1
-
-
         for skip_start, skip_end in self._unsupported_input_ranges:
             if skip_start <= start and end <= skip_end:
                 return None
 
-
-        if not skip_cache and any(
-            reg in self._failed_input for reg in range(start, end + 1)
-        ):
-            first = next(
-                reg for reg in range(start, end + 1) if reg in self._failed_input
 
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
