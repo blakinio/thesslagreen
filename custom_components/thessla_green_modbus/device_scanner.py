@@ -9,12 +9,9 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-
-if TYPE_CHECKING:  # pragma: no cover
-    from pymodbus.client import AsyncModbusTcpClient
 
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
@@ -22,12 +19,17 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DISCRETE_INPUT_REGISTERS,
     KNOWN_MISSING_REGISTERS,
-    SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
 )
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
-from .utils import TIME_REGISTER_PREFIXES, _decode_bcd_time, _decode_register_time, _to_snake_case
+from .utils import (
+    BCD_TIME_PREFIXES,
+    TIME_REGISTER_PREFIXES,
+    _decode_bcd_time,
+    _decode_register_time,
+    _to_snake_case,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,17 +41,6 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
     "antifreeze_mode": {0, 1},
 }
 
-
-# Registers storing times as BCD HHMM values
-
-BCD_TIME_PREFIXES: tuple[str, ...] = (
-    "schedule_",
-    "airing_summer_",
-    "airing_winter_",
-    "pres_check_time",
-    "start_gwc_regen",
-    "stop_gwc_regen",
-)
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
