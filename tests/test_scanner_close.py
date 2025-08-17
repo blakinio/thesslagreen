@@ -382,3 +382,26 @@ def test_close_handles_io_error():
     import asyncio
 
     asyncio.run(run_test())
+
+
+def test_close_closes_existing_client():
+    """Scanner.close should await client.close and clear reference."""
+
+    async def run_test():
+        scanner = await ThesslaGreenDeviceScanner.create("localhost", 502)
+        client = AsyncMock()
+
+        async def close_side_effect():
+            # _client should still point to client when close is called
+            assert scanner._client is client
+            return None
+
+        client.close.side_effect = close_side_effect
+        scanner._client = client
+
+        await scanner.close()
+
+        client.close.assert_awaited_once()
+        assert scanner._client is None
+
+    asyncio.run(run_test())
