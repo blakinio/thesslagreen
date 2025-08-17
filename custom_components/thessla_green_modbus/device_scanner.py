@@ -9,31 +9,21 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
-
-from typing import TYPE_CHECKING, Any
-
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
-
 from .capability_rules import CAPABILITY_PATTERNS
-
 from .const import (
     COIL_REGISTERS,
     DEFAULT_SLAVE_ID,
     DISCRETE_INPUT_REGISTERS,
-
-    SENSOR_UNAVAILABLE,
-    SENSOR_UNAVAILABLE_REGISTERS,
-
     KNOWN_MISSING_REGISTERS,
     SENSOR_UNAVAILABLE,
-
+    SENSOR_UNAVAILABLE_REGISTERS,
 )
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
@@ -52,35 +42,6 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 
 # Registers storing times as BCD HHMM values
 
-BCD_TIME_PREFIXES: Tuple[str, ...] = (
-    "schedule_",
-    "setting_",
-    "airing_",
-    "manual_airing_",
-)
-
-
-def _decode_bcd_time(value: int) -> Optional[int]:
-    """Decode a BCD encoded HHMM value to an integer.
-
-    Each nibble is treated as a separate decimal digit.  If any nibble is
-    greater than 9 the value is considered malformed and ``None`` is returned.
-    The device represents midnight at the end of the day as ``0x2400`` which
-    is treated as ``00:00``.
-    """
-
-    h_tens = (value >> 12) & 0xF
-    h_units = (value >> 8) & 0xF
-    m_tens = (value >> 4) & 0xF
-    m_units = value & 0xF
-    if any(n > 9 for n in (h_tens, h_units, m_tens, m_units)):
-        return None
-    hours = h_tens * 10 + h_units
-    minutes = m_tens * 10 + m_units
-    if hours == 24 and minutes == 0:
-        return 0
-    if hours > 23 or minutes > 59:
-
 BCD_TIME_PREFIXES: tuple[str, ...] = (
     "schedule_",
     "airing_summer_",
@@ -92,48 +53,6 @@ BCD_TIME_PREFIXES: tuple[str, ...] = (
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
-
-
-
-def _decode_register_time(value: int) -> int | None:
-    """Decode HH:MM byte-encoded value to minutes since midnight.
-
-    The most significant byte stores the hour and the least significant byte
-    stores the minute. ``None`` is returned if the value is negative or if the
-    extracted hour/minute fall outside of valid ranges.
-    """
-
-    if value < 0:
-        return None
-
-    hour = (value >> 8) & 0xFF
-    minute = value & 0xFF
-    if 0 <= hour <= 23 and 0 <= minute <= 59:
-        return hour * 60 + minute
-
-    return None
-
-
-def _decode_bcd_time(value: int) -> int | None:
-    """Decode BCD or decimal HHMM values to minutes since midnight."""
-
-    if value < 0:
-
-        return None
-
-    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
-    if all(n <= 9 for n in nibbles):
-        hours = nibbles[0] * 10 + nibbles[1]
-        minutes = nibbles[2] * 10 + nibbles[3]
-        if hours <= 23 and minutes <= 59:
-            return hours * 60 + minutes
-
-    hours_dec = value // 100
-    minutes_dec = value % 100
-    if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
-        return hours_dec * 60 + minutes_dec
-    return None
-
 
 
 def _decode_setting_value(value: int) -> tuple[int, float] | None:
@@ -327,7 +246,6 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
-
         # Placeholder for register map, value ranges and firmware versions loaded
         # asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
@@ -353,11 +271,6 @@ class ThesslaGreenDeviceScanner:
         self._unsupported_input_ranges: dict[tuple[int, int], int] = {}
         self._unsupported_holding_ranges: dict[tuple[int, int], int] = {}
 
-        # Placeholder for register map and value ranges loaded asynchronously
-        self._registers: dict[str, dict[int, str]] = {}
-        self._register_ranges: dict[str, tuple[int | None, int | None]] = {}
-
-
         # Keep track of the Modbus client so it can be closed later
         self._client: "AsyncModbusTcpClient" | None = None
 
@@ -366,11 +279,12 @@ class ThesslaGreenDeviceScanner:
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
-        (
-            self._registers,
-            self._register_ranges,
-            self._register_versions,
-        ) = await self._load_registers()
+        result = await self._load_registers()
+        if len(result) == 3:
+            self._registers, self._register_ranges, self._register_versions = result
+        else:
+            self._registers, self._register_ranges = result  # type: ignore[misc]
+            self._register_versions = {}
 
     @classmethod
     async def create(
@@ -402,7 +316,6 @@ class ThesslaGreenDeviceScanner:
 
     async def _load_registers(
         self,
-
     ) -> Tuple[
         Dict[str, Dict[int, str]],
         Dict[str, Tuple[Optional[int], Optional[int]]],
@@ -411,7 +324,7 @@ class ThesslaGreenDeviceScanner:
         """Load Modbus register definitions, ranges and firmware versions."""
         csv_path = files(__package__) / "data" / "modbus_registers.csv"
 
-        def _read_csv() -> Tuple[
+        def _parse_csv() -> Tuple[
             Dict[str, Dict[int, str]],
             Dict[str, Tuple[Optional[int], Optional[int]]],
             Dict[str, Tuple[int, ...]],
@@ -425,35 +338,9 @@ class ThesslaGreenDeviceScanner:
                     rows: Dict[
                         str,
                         List[
-                            Tuple[
-                                str,
-                                int,
-                                Optional[int],
-                                Optional[int],
-                                Optional[Tuple[int, ...]],
-                            ]
+                            Tuple[str, int, Optional[int], Optional[int], Optional[Tuple[int, ...]]]
                         ],
-                    ] = {
-
-    ) -> tuple[dict[str, dict[int, str]], dict[str, tuple[int | None, int | None]]]:
-        """Load Modbus register definitions and value ranges from CSV file."""
-        csv_path = files(__package__) / "data" / "modbus_registers.csv"
-
-        def _read_csv() -> (
-            tuple[dict[str, dict[int, str]], dict[str, tuple[int | None, int | None]]]
-        ):
-            register_map: dict[str, dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-            register_ranges: dict[str, tuple[int | None, int | None]] = {}
-            try:
-                with csv_path.open(newline="", encoding="utf-8") as csvfile:
-                    reader = csv.DictReader(csvfile)
-                    rows: dict[str, list[tuple[str, int, int | None, int | None]]] = {
-
-                        "03": [],
-                        "04": [],
-                        "01": [],
-                        "02": [],
-                    }
+                    ] = {"03": [], "04": [], "01": [], "02": []}
                     for row in reader:
                         code = row.get("Function_Code")
                         if not code or code.startswith("#"):
@@ -468,48 +355,13 @@ class ThesslaGreenDeviceScanner:
                             continue
                         min_raw = row.get("Min")
                         max_raw = row.get("Max")
-
-                        min_val: Optional[int]
-                        max_val: Optional[int]
-                        try:
-                            min_val = int(float(min_raw)) if min_raw not in (None, "") else None
-                        except ValueError:
-                            min_val = None
-                        try:
-                            max_val = int(float(max_raw)) if max_raw not in (None, "") else None
-                        except ValueError:
-                            max_val = None
                         version_raw = row.get("Software_Version")
-                        version_tuple: Optional[Tuple[int, ...]]
-                        if version_raw:
-                            try:
-                                version_tuple = tuple(
-                                    int(part) for part in str(version_raw).split(".")
-                                )
-                            except ValueError:
-                                version_tuple = None
-                        else:
-                            version_tuple = None
-
-                        # Adjust ranges for registers storing BCD times
-                        if name.startswith(BCD_TIME_PREFIXES):
-                            min_val = (min_val * 100) if min_val is not None else 0
-                            max_val = (max_val * 100) if max_val is not None else 2359
-
-
 
                         def _parse_range(label: str, raw: str | None) -> int | None:
                             if raw in (None, ""):
                                 return None
-
                             text = str(raw).split("#", 1)[0].strip()
-                            if not text:
-                                _LOGGER.warning(
-                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
-                                )
-                                return None
-
-                            if not re.fullmatch(
+                            if not text or not re.fullmatch(
                                 r"[+-]?(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)",
                                 text,
                             ):
@@ -517,7 +369,6 @@ class ThesslaGreenDeviceScanner:
                                     "Ignoring non-numeric %s for %s: %s", label, name, raw
                                 )
                                 return None
-
                             try:
                                 return (
                                     int(text, 0)
@@ -532,33 +383,36 @@ class ThesslaGreenDeviceScanner:
 
                         min_val = _parse_range("Min", min_raw)
                         max_val = _parse_range("Max", max_raw)
-                        # Warn if a range is expected but Min/Max is missing
                         if (min_raw not in (None, "") or max_raw not in (None, "")) and (
                             min_val is None or max_val is None
                         ):
                             _LOGGER.warning(
-                                "Incomplete range for %s: Min=%s Max=%s",
-                                name,
-                                min_raw,
-                                max_raw,
+                                "Incomplete range for %s: Min=%s Max=%s", name, min_raw, max_raw
                             )
 
-                        if code in rows:
-                            rows[code].append((name, addr, min_val, max_val, version_tuple))
+                        if name.startswith(BCD_TIME_PREFIXES):
+                            min_val = (min_val * 100) if min_val is not None else 0
+                            max_val = (max_val * 100) if max_val is not None else 2359
+
+                        version_tuple: Optional[Tuple[int, ...]] = None
+                        if version_raw:
+                            try:
+                                version_tuple = tuple(
+                                    int(part) for part in str(version_raw).split(".")
+                                )
+                            except ValueError:
+                                version_tuple = None
+
+                        rows[code].append((name, addr, min_val, max_val, version_tuple))
 
                     for code, items in rows.items():
-                        # Sort by address to ensure deterministic numbering
                         items.sort(key=lambda item: item[1])
-                        counts: dict[str, int] = {}
+                        counts: Dict[str, int] = {}
                         for name, *_ in items:
                             counts[name] = counts.get(name, 0) + 1
 
                         seen: Dict[str, int] = {}
                         for name, addr, min_val, max_val, ver in items:
-
-                        seen: dict[str, int] = {}
-                        for name, addr, min_val, max_val in items:
-
                             if addr in register_map[code]:
                                 _LOGGER.warning(
                                     "Duplicate register address %s for function code %s: %s",
@@ -574,19 +428,16 @@ class ThesslaGreenDeviceScanner:
                             register_map[code][addr] = name
                             if min_val is not None or max_val is not None:
                                 register_ranges[name] = (min_val, max_val)
-
                             if ver is not None:
                                 register_versions[name] = ver
 
-
-                    # Ensure all required registers are defined in the CSV
                     required_maps = {
                         "04": INPUT_REGISTERS,
                         "03": HOLDING_REGISTERS,
                         "01": COIL_REGISTERS,
                         "02": DISCRETE_INPUT_REGISTERS,
                     }
-                    missing: dict[str, set[str]] = {}
+                    missing: Dict[str, Set[str]] = {}
                     for code, reg_map in required_maps.items():
                         defined = set(register_map.get(code, {}).values())
                         missing_regs = set(reg_map) - defined
@@ -599,1322 +450,337 @@ class ThesslaGreenDeviceScanner:
                         raise ValueError(
                             "Required registers missing from CSV: " + ", ".join(messages)
                         )
-
             except FileNotFoundError:
                 _LOGGER.error("Register definition file not found: %s", csv_path)
             return register_map, register_ranges, register_versions
 
-        return await asyncio.to_thread(_read_csv)
+        return await asyncio.to_thread(_parse_csv)
 
-    async def _read_input(
 
-        self, client: "AsyncModbusTcpClient", address: int, count: int
-    ) -> Optional[List[int]]:
-        """Read input registers with retry logic."""
+async def _read_input(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+    *,
+    skip_cache: bool = False,
+    log_exceptions: bool = True,
+) -> list[int] | None:
+    """Read input registers with retry and backoff.
 
-        self,
-        client: "AsyncModbusTcpClient",
-        address: int,
-        count: int,
-        *,
-        skip_cache: bool = False,
-        log_exceptions: bool = True,
-    ) -> list[int] | None:
-        """Read input registers with retry and backoff.
+    ``skip_cache`` is used when probing individual registers after a block
+    read failed. When ``True`` the cached set of failed registers is not
+    checked, allowing each register to be queried once before being cached
+    as missing.
+    """
+    start = address
+    end = address + count - 1
 
-        ``skip_cache`` is used when probing individual registers after a block
-        read failed. When ``True`` the cached set of failed registers is not
-        checked, allowing each register to be queried once before being cached
-        as missing.
-        """
-        start = address
-        end = address + count - 1
-
-        for skip_start, skip_end in self._unsupported_input_ranges:
-            if skip_start <= start and end <= skip_end:
-                return None
-
-        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
-            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
-            skip_start = skip_end = first
-            while skip_start - 1 in self._failed_input:
-                skip_start -= 1
-            while skip_end + 1 in self._failed_input:
-                skip_end += 1
-            if (skip_start, skip_end) not in self._input_skip_log_ranges:
-                _LOGGER.debug(
-                    "Skipping cached failed input registers 0x%04X-0x%04X",
-                    skip_start,
-                    skip_end,
-                )
-                self._input_skip_log_ranges.add((skip_start, skip_end))
+    for skip_start, skip_end in self._unsupported_input_ranges:
+        if skip_start <= start and end <= skip_end:
             return None
 
-        exception_code: int | None = None
-
-        for attempt in range(1, self.retry + 1):
-            try:
-                response = await _call_modbus(
-                    client.read_input_registers, self.slave_id, address, count=count
-                )
-
-                if response is not None and not response.isError():
-                    return response.registers
-                _LOGGER.debug(
-                    "Attempt %d failed to read input 0x%04X: %s",
-                    attempt,
-                    address,
-                    response,
-                )
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug(
-                    "Attempt %d failed to read input 0x%04X: %s",
-                    attempt,
-                    address,
-                    exc,
-                    exc_info=True,
-                )
-            except (OSError, asyncio.TimeoutError) as exc:
-                _LOGGER.error(
-                    "Unexpected error reading input 0x%04X on attempt %d: %s",
-                    address,
-
-                if response is not None:
-                    if response.isError():
-                        exception_code = getattr(response, "exception_code", None)
-                        break
-                    return response.registers
-            except ModbusIOException as exc:
-                _LOGGER.debug(
-                    "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
-                    start,
-                    end,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                if count == 1:
-                    failures = self._input_failures.get(address, 0) + 1
-                    self._input_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_input:
-                        self._failed_input.add(address)
-                        _LOGGER.warning("Device does not expose register 0x%04X", address)
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-                _LOGGER.debug(
-                    "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
-                    start,
-                    end,
-
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-
-                break
-
-            # Fallback to holding registers if input read fails
+    if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+        first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
+        skip_start = skip_end = first
+        while skip_start - 1 in self._failed_input:
+            skip_start -= 1
+        while skip_end + 1 in self._failed_input:
+            skip_end += 1
+        if (skip_start, skip_end) not in self._input_skip_log_ranges:
             _LOGGER.debug(
-                "Falling back to holding registers for input 0x%04X (attempt %d)",
+                "Skipping cached failed input registers 0x%04X-0x%04X",
+                skip_start,
+                skip_end,
+            )
+            self._input_skip_log_ranges.add((skip_start, skip_end))
+        return None
+
+    exception_code: int | None = None
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(
+                client.read_input_registers, self.slave_id, address, count=count
+            )
+            if response is not None and not response.isError():
+                return response.registers
+            _LOGGER.debug(
+                "Attempt %d failed to read input 0x%04X: %s",
+                attempt,
+                address,
+                response,
+            )
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug(
+                "Attempt %d failed to read input 0x%04X: %s",
+                attempt,
+                address,
+                exc,
+                exc_info=True,
+            )
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.error(
+                "Unexpected error reading input 0x%04X on attempt %d: %s",
                 address,
                 attempt,
+                exc,
+                exc_info=True,
             )
-            try:
-                response = await _call_modbus(
-                    client.read_holding_registers, self.slave_id, address, count=count
-                )
-                if response is not None and not response.isError():
-                    return response.registers
-                _LOGGER.debug(
-                    "Fallback attempt %d failed to read holding 0x%04X: %s",
-                    attempt,
-                    address,
-                    response,
-                )
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug(
-                    "Fallback attempt %d failed to read holding 0x%04X: %s",
-                    attempt,
-                    address,
-                    exc,
-                    exc_info=True,
-                )
-            except (OSError, asyncio.TimeoutError) as exc:
-                _LOGGER.error(
-                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
-                    address,
-
-            except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading input registers 0x%04X-0x%04X on attempt %d",
-                    start,
-                    end,
-                    attempt,
-                )
-                raise
-            except OSError as exc:
-                _LOGGER.error(
-                    "Unexpected error reading input registers 0x%04X-0x%04X on attempt %d: %s",
-                    start,
-                    end,
-
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-
-
-            if attempt < self.retry:
-                await asyncio.sleep(0.5)
-        return None
-
-    async def _read_holding(
-        self, client: "AsyncModbusTcpClient", address: int, count: int
-    ) -> Optional[List[int]]:
-        """Read holding registers with retry logic and exponential backoff."""
-
-        delay = 0.5
-        last_error: Optional[Exception] = None
-
-
-            if attempt < self.retry and exception_code is None:
-                try:
-                    await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
-                except asyncio.CancelledError:
-                    _LOGGER.debug(
-                        "Sleep cancelled while retrying input registers 0x%04X-0x%04X",
-                        start,
-                        end,
-                    )
-                    raise
-
-        if exception_code is not None:
-            self._failed_input.update(range(start, end + 1))
-            if exception_code in (2, 3, 4):
-                new_range = (start, end) not in self._unsupported_input_ranges
-                self._unsupported_input_ranges[(start, end)] = exception_code
-                if log_exceptions and new_range:
-                    _LOGGER.warning(
-                        "Skipping unsupported input registers 0x%04X-0x%04X (exception code %d)",
-                        start,
-                        end,
-                        exception_code,
-                    )
-            else:
-                if log_exceptions and (start, end) not in self._input_skip_log_ranges:
-                    _LOGGER.warning(
-                        "Skipping unsupported input registers 0x%04X-0x%04X (exception code %d)",
-                        start,
-                        end,
-                        exception_code,
-                    )
-                    self._input_skip_log_ranges.add((start, end))
-            return None
-
-        _LOGGER.warning(
-            "Failed to read input registers 0x%04X-0x%04X after %d retries",
-            start,
-            end,
-            self.retry,
-        )
-        if count > 1:
+            break
+        except ModbusIOException as exc:
             _LOGGER.debug(
-                "Failed block read 0x%04X-0x%04X, probing individual registers",
+                "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
                 start,
                 end,
+                attempt,
+                exc,
+                exc_info=True,
             )
-            for reg in range(start, end + 1):
-                if reg not in self._failed_input:
-                    await self._read_input(
-                        client, reg, 1, skip_cache=True, log_exceptions=log_exceptions
-                    )
+            if count == 1:
+                failures = self._input_failures.get(address, 0) + 1
+                self._input_failures[address] = failures
+                if failures >= self.retry and address not in self._failed_input:
+                    self._failed_input.add(address)
+                    _LOGGER.warning("Device does not expose register 0x%04X", address)
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
+                start,
+                end,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+
+        _LOGGER.debug(
+            "Falling back to holding registers for input 0x%04X (attempt %d)",
+            address,
+            attempt,
+        )
+        try:
+            response = await _call_modbus(
+                client.read_holding_registers, self.slave_id, address, count=count
+            )
+            if response is not None and not response.isError():
+                return response.registers
+            _LOGGER.debug(
+                "Fallback attempt %d failed to read holding 0x%04X: %s",
+                attempt,
+                address,
+                response,
+            )
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.debug(
+                "Fallback attempt %d failed to read holding 0x%04X: %s",
+                attempt,
+                address,
+                exc,
+                exc_info=True,
+            )
+        except (OSError, asyncio.TimeoutError) as exc:
+            _LOGGER.error(
+                "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+
+        if attempt < self.retry:
+            await asyncio.sleep(0.5)
+
+    return None
+
+
+async def _read_holding(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+    *,
+    log_exceptions: bool = True,
+) -> list[int] | None:
+    """Read holding registers with retry, backoff and failure tracking."""
+    start = address
+    end = address + count - 1
+
+    for skip_start, skip_end in self._unsupported_holding_ranges:
+        if skip_start <= start and end <= skip_end:
+            return None
+
+    if address in self._failed_holding:
+        _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
         return None
 
-    async def _read_holding(
-        self,
-        client: "AsyncModbusTcpClient",
-        address: int,
-        count: int,
-        *,
-        log_exceptions: bool = True,
-    ) -> list[int] | None:
-        """Read holding registers with retry, backoff and failure tracking."""
-        start = address
-        end = address + count - 1
+    failures = self._holding_failures.get(address, 0)
+    if failures >= self.retry:
+        _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+        return None
 
-        for skip_start, skip_end in self._unsupported_holding_ranges:
-            if skip_start <= start and end <= skip_end:
-                return None
-
-        if address in self._failed_holding:
-            _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
-            return None
-
-        failures = self._holding_failures.get(address, 0)
-        if failures >= self.retry:
-            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
-            return None
-
-        exception_code: int | None = None
-
-        for attempt in range(1, self.retry + 1):
-            try:
-                response = await _call_modbus(
-                    client.read_holding_registers, self.slave_id, address, count=count
-                )
-
-                if response is not None and not response.isError():
-                    return response.registers
-
-                if response is None:
-                    last_error = ConnectionException("No response")
-                _LOGGER.debug(
-                    "Attempt %d failed to read holding 0x%04X: %s",
-                    attempt,
-                    address,
-                    response,
-                )
-            except (ModbusException, ConnectionException) as exc:
-                last_error = exc
-                _LOGGER.debug(
-                    "Attempt %d failed to read holding 0x%04X: %s",
-                    attempt,
-                    address,
-                    exc,
-                    exc_info=True,
-                )
-            except (OSError, asyncio.TimeoutError) as exc:
-                last_error = exc
-                _LOGGER.error(
-                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-
-                if response is None:
-                    raise ModbusException("No response")
+    exception_code: int | None = None
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(
+                client.read_holding_registers, self.slave_id, address, count=count
+            )
+            if response is not None:
                 if response.isError():
-                    exc_code = getattr(response, "exception_code", None)
-                    if exc_code in (2, 3, 4):
-                        exception_code = exc_code
-                        break
-                    raise ModbusException(f"Exception code {exc_code}")
+                    exception_code = getattr(response, "exception_code", None)
+                    break
                 if address in self._holding_failures:
                     del self._holding_failures[address]
                 return response.registers
-            except ModbusIOException as exc:
-                _LOGGER.debug(
-                    "Modbus IO error reading holding 0x%04X (attempt %d/%d): %s",
-                    address,
-                    attempt,
-                    self.retry,
-                    exc,
-                    exc_info=True,
-                )
-                if count == 1:
-                    failures = self._holding_failures.get(address, 0) + 1
-                    self._holding_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_holding:
-                        self._failed_holding.add(address)
-                        _LOGGER.warning("Device does not expose register 0x%04X", address)
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-                _LOGGER.debug(
-                    "Failed to read holding 0x%04X (attempt %d/%d): %s",
-                    address,
-                    attempt,
-                    self.retry,
-                    exc,
-                    exc_info=True,
-                )
-                if count == 1:
-                    failures = self._holding_failures.get(address, 0) + 1
-                    self._holding_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_holding:
-                        self._failed_holding.add(address)
-                        _LOGGER.warning("Device does not expose register 0x%04X", address)
-            except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading holding 0x%04X on attempt %d/%d",
-                    address,
-                    attempt,
-                    self.retry,
-                )
-                raise
-            except OSError as exc:
-                _LOGGER.error(
-                    "Unexpected error reading holding 0x%04X: %s",
-                    address,
-
-                    exc,
-                    exc_info=True,
-                )
-                break
-
-
-            if attempt < self.retry:
-                await asyncio.sleep(delay)
-                delay *= 2
-
-        if last_error is not None:
-            _LOGGER.error(
-                "Failed to read holding 0x%04X after %d attempts: %s",
-                address,
-                self.retry,
-                last_error,
-            )
-            raise ConnectionException(
-                f"Failed to read holding 0x{address:04X}: {last_error}"
-            ) from last_error
-
-        _LOGGER.error("Failed to read holding 0x%04X after %d attempts", address, self.retry)
-
-            if attempt < self.retry and exception_code is None:
-                try:
-                    await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
-                    raise
-
-        if exception_code is not None:
-            self._failed_holding.update(range(start, end + 1))
-            new_range = (start, end) not in self._unsupported_holding_ranges
-            self._unsupported_holding_ranges[(start, end)] = exception_code
-            if log_exceptions and new_range:
-                _LOGGER.warning(
-                    "Skipping unsupported holding registers 0x%04X-0x%04X (exception code %d)",
-                    start,
-                    end,
-                    exception_code,
-                )
-            return None
-
-
-        return None
-
-    async def _read_coil(
-        self, client: "AsyncModbusTcpClient", address: int, count: int
-
-    ) -> Optional[List[bool]]:
-        """Read coil registers with retry logic."""
-
-    ) -> list[bool] | None:
-        """Read coil registers with retry and backoff."""
-
-        for attempt in range(1, self.retry + 1):
-            try:
-                response = await _call_modbus(
-                    client.read_coils, self.slave_id, address, count=count
-                )
-                if response is not None and not response.isError():
-                    return response.bits[:count]
-
-                _LOGGER.debug(
-                    "Attempt %d failed to read coil 0x%04X: %s",
-                    attempt,
-                    address,
-                    response,
-                )
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug(
-                    "Attempt %d failed to read coil 0x%04X: %s",
-                    attempt,
-                    address,
-                    exc,
-                    exc_info=True,
-                )
-            except (OSError, asyncio.TimeoutError) as exc:
-
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-                _LOGGER.debug(
-                    "Failed to read coil 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-            except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading coil 0x%04X on attempt %d",
-                    address,
-                    attempt,
-                )
-                raise
-            except OSError as exc:
-
-                _LOGGER.error(
-                    "Unexpected error reading coil 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-
-            if attempt < self.retry:
-                await asyncio.sleep(0.5)
-
-
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(2 ** (attempt - 1))
-                except asyncio.CancelledError:
-                    _LOGGER.debug(
-                        "Sleep cancelled while retrying coil 0x%04X",
-                        address,
-                    )
-                    raise
-
-
-        return None
-
-    async def _read_discrete(
-        self, client: "AsyncModbusTcpClient", address: int, count: int
-
-    ) -> Optional[List[bool]]:
-        """Read discrete input registers with retry logic."""
-
-    ) -> list[bool] | None:
-        """Read discrete input registers with retry and backoff."""
-
-        for attempt in range(1, self.retry + 1):
-            try:
-                response = await _call_modbus(
-                    client.read_discrete_inputs, self.slave_id, address, count=count
-                )
-                if response is not None and not response.isError():
-                    return response.bits[:count]
-
-                _LOGGER.debug(
-                    "Attempt %d failed to read discrete 0x%04X: %s",
-                    attempt,
-                    address,
-                    response,
-                )
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug(
-                    "Attempt %d failed to read discrete 0x%04X: %s",
-                    attempt,
-                    address,
-                    exc,
-                    exc_info=True,
-                )
-            except (OSError, asyncio.TimeoutError) as exc:
-
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-                _LOGGER.debug(
-                    "Failed to read discrete 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-            except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading discrete 0x%04X on attempt %d",
-                    address,
-                    attempt,
-                )
-                raise
-            except OSError as exc:
-
-                _LOGGER.error(
-                    "Unexpected error reading discrete 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-
-            if attempt < self.retry:
-                await asyncio.sleep(0.5)
-        return None
-
-
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(2 ** (attempt - 1))
-                except asyncio.CancelledError:
-                    _LOGGER.debug(
-                        "Sleep cancelled while retrying discrete 0x%04X",
-                        address,
-                    )
-                    raise
-
-        return None
-
-    def _log_invalid_value(self, register_name: str, value: int) -> None:
-        """Log invalid register value once per scan session.
-
-        When ``verbose_invalid_values`` is ``False`` the first invalid value is
-        logged at ``DEBUG`` level and subsequent ones are suppressed. If the
-        flag is ``True`` the first occurrence is logged at ``INFO`` level and
-        further occurrences are logged at ``DEBUG`` level.
-        """
-        formatted = _format_register_value(register_name, value)
-        raw = f"0x{value:04X}"
-        if register_name not in self._reported_invalid:
-            level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
-            _LOGGER.log(
-                level,
-                "Invalid value for %s: raw=%s decoded=%s",
-                register_name,
-                raw,
-                formatted,
-            )
-            self._reported_invalid.add(register_name)
-        elif self.verbose_invalid_values:
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
             _LOGGER.debug(
-                "Invalid value for %s: raw=%s decoded=%s",
-                register_name,
-                raw,
-                formatted,
+                "Failed to read holding 0x%04X (attempt %d/%d): %s",
+                address,
+                attempt,
+                self.retry,
+                exc,
+                exc_info=True,
             )
-
-
-    def _is_valid_register_value(self, register_name: str, value: int) -> bool:
-        """Check if a register value should be considered valid.
-
-        Values used to represent missing sensors are treated as unavailable
-        without logging. Percentage registers may report values outside their
-        current device-defined range; such out-of-range percentages are ignored
-        rather than being logged as invalid.
-        """
-        name = register_name.lower()
-
-        # Decode time values before validation. Some registers store times as
-        # BCD-encoded ``HHMM`` values while others use separate ``HH:MM``
-        # bytes. We attempt BCD decoding first as byte encoded values will
-        # simply fall back to the standard decoder if BCD decoding fails.
-        if name.startswith(TIME_REGISTER_PREFIXES):
-            decoded = _decode_bcd_time(value)
-            if decoded is None:
-                decoded = _decode_register_time(value)
-            if decoded is None or not 0 <= decoded <= 1439:
-                self._log_invalid_value(register_name, value)
-                return False
-            return True
-
-        # Validate registers storing combined airflow/temperature settings
-        if name.startswith(SETTING_PREFIX):
-            if _decode_setting_value(value) is None:
-                self._log_invalid_value(register_name, value)
-                return False
-            return True
-
-
-        # Apply special decoders for registers with non-standard encoding
-        decoder = SPECIAL_VALUE_DECODERS.get(name)
-        if decoder is not None:
-            decoded = decoder(value)
-            if decoded is None:
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
-
-        # Temperature sensors use a sentinel value to indicate no sensor
-        if "temperature" in name:
-            if value == SENSOR_UNAVAILABLE:
-                # Treat the register as unavailable without logging
-
-                return False
-            value = decoded
-
-        # Handle registers that may report SENSOR_UNAVAILABLE (0x8000)
-        if name in SENSOR_UNAVAILABLE_REGISTERS and value in (
-            SENSOR_UNAVAILABLE,
-            -32768,
-        ):
-            _LOGGER.debug("Sensor unavailable for %s: %s", register_name, value)
-            # Flow sensors should be skipped when the sensor isn't present
-            if any(x in name for x in ["flow", "air_flow", "flow_rate"]):
-                return False
-            return True
-
-        # Air flow sensors may use 65535 as an additional sentinel for no sensor
-        if any(x in name for x in ["flow", "air_flow", "flow_rate"]):
-
-            if value == 65535:
-                _LOGGER.debug("Invalid value for %s: %s", register_name, value)
-
-            if value in (SENSOR_UNAVAILABLE, 65535):
-                self._log_invalid_value(register_name, value)
-
-                return False
-            return True
-
-        # Discrete allowed values for specific registers
-        if name in REGISTER_ALLOWED_VALUES:
-            if value not in REGISTER_ALLOWED_VALUES[name]:
-                self._log_invalid_value(register_name, value)
-                return False
-            return True
-
-        # Percentage registers can have dynamic device-provided ranges. Ignore
-        # values outside the known bounds without logging to avoid noisy
-        # warnings when devices temporarily report out-of-range percentages.
-        if "percentage" in name:
-            min_val, max_val = self._register_ranges.get(name, (0, 100))
-            if (min_val is not None and value < min_val) or (
-                max_val is not None and value > max_val
-            ):
-                return False
-            return True
-
-        # Use range from CSV if available
-        if name in self._register_ranges:
-            min_val, max_val = self._register_ranges[name]
-            if min_val is not None and value < min_val:
-                self._log_invalid_value(register_name, value)
-                return False
-            if max_val is not None and value > max_val:
-                self._log_invalid_value(register_name, value)
-                return False
-
-        # Default: consider valid
-        return True
-
-    async def _scan_registers(
-        self,
-        client: "AsyncModbusTcpClient",
-        addr_to_name: Dict[int, str],
-        read_fn: Callable[["AsyncModbusTcpClient", int, int], Awaitable[Optional[List[Any]]]],
-        reg_type: str,
-    ) -> None:
-        """Read registers while skipping ranges that raise exceptions."""
-        addresses = sorted(addr_to_name)
-        if not addresses:
-            return
-
-        for start, count in self._group_registers_for_batch_read(addresses):
-            pending: List[Tuple[int, int]] = [(start, count)]
-            while pending:
-                s, c = pending.pop(0)
-                try:
-                    values = await read_fn(client, s, c)
-                except (ModbusException, ConnectionException) as exc:
-                    if c == 1:
-                        _LOGGER.debug("Skipping register 0x%04X due to read error", s)
-                        continue
-                    code = getattr(exc, "code", getattr(exc, "exception_code", None))
-                    if code is None and getattr(exc, "__cause__", None) is not None:
-                        cause = exc.__cause__
-                        code = getattr(cause, "code", getattr(cause, "exception_code", None))
-                    _LOGGER.warning(
-                        "Skipping unsupported %s 0x%04X-0x%04X (exception code %s)",
-                        reg_type.replace("_", " "),
-                        s,
-                        s + c - 1,
-                        code,
-                    )
-                    continue
-                if values is None:
-                    if c == 1:
-                        _LOGGER.debug("Skipping register 0x%04X due to read error", s)
-                        continue
-                    half = c // 2
-                    pending.insert(0, (s + half, c - half))
-                    pending.insert(0, (s, half))
-                    continue
-                for offset, value in enumerate(values):
-                    addr = s + offset
-                    name = addr_to_name.get(addr)
-                    if not name:
-                        continue
-                    if reg_type in ("input_registers", "holding_registers"):
-                        if self._is_valid_register_value(name, value):
-                            self.available_registers[reg_type].add(name)
-                            if reg_type == "input_registers":
-                                _LOGGER.debug(
-                                    "Input register available: %s at address 0x%04X",
-                                    name,
-                                    addr,
-                                )
-                    else:
-                        self.available_registers[reg_type].add(name)
-
-    def _analyze_capabilities(self) -> DeviceCapabilities:
-        """Analyze available registers to determine device capabilities."""
-        caps = DeviceCapabilities()
-
-        # Constant flow detection
-        cf_indicators = {
-            "constant_flow_active",
-            "cf_version",
-            "supply_air_flow",
-            "exhaust_air_flow",
-            "supply_flow_rate",
-            "exhaust_flow_rate",
-            "supply_percentage",
-            "exhaust_percentage",
-            "min_percentage",
-            "max_percentage",
-        }
-        cf_registers = self.available_registers["input_registers"].union(
-            self.available_registers["holding_registers"]
-        )
-        caps.constant_flow = bool(cf_indicators.intersection(cf_registers))
-
-        # Generic capability detection based on register name patterns
-        all_regs_lower = {
-            reg.lower() for registers in self.available_registers.values() for reg in registers
-        }
-        for attr, keywords in CAPABILITY_PATTERNS.items():
-            if any(any(key in reg for key in keywords) for reg in all_regs_lower):
-                setattr(caps, attr, True)
-
-        # Expansion module
-        caps.expansion_module = "expansion" in self.available_registers["discrete_inputs"]
-
-        # Temperature sensors
-        temp_sensors = [
-            "outside_temperature",
-            "supply_temperature",
-            "exhaust_temperature",
-            "fpx_temperature",
-            "duct_supply_temperature",
-            "gwc_temperature",
-            "ambient_temperature",
-            "heating_temperature",
-        ]
-        for sensor in temp_sensors:
-            if sensor in self.available_registers["input_registers"]:
-                caps.temperature_sensors.add(sensor)
-                setattr(caps, f"sensor_{sensor}", True)
-        caps.temperature_sensors_count = len(caps.temperature_sensors)
-
-        # Flow sensors (simple pattern match across register types)
-        caps.flow_sensors = {
-            reg
-            for regs in (
-                self.available_registers["input_registers"],
-                self.available_registers["holding_registers"],
-            )
-            for reg in regs
-            if "flow" in reg
-        }
-
-        # Air quality sensors
-        caps.air_quality = (
-            any(
-                sensor in self.available_registers["input_registers"]
-                for sensor in [
-                    "co2_level",
-                    "voc_level",
-                    "pm25_level",
-                    "air_quality_index",
-                ]
-            )
-            or "contamination_sensor" in self.available_registers["discrete_inputs"]
-        )
-
-        # Basic control availability
-        caps.basic_control = "mode" in self.available_registers["holding_registers"]
-
-        # Special functions from discrete inputs or input registers
-        for func in ["fireplace", "airing_switch"]:
-            if func in self.available_registers["discrete_inputs"]:
-                caps.special_functions.add(func)
-        if "water_removal_active" in self.available_registers["input_registers"]:
-            caps.special_functions.add("water_removal")
-
-        return caps
-
-    async def _read_firmware_version(
-        self, client: "AsyncModbusTcpClient", info: DeviceInfo
-    ) -> list[int] | None:
-        """Read firmware registers and update ``info`` accordingly."""
-
-        try:
-            response = await _call_modbus(
-                client.read_input_registers, self.slave_id, 0x0000, count=5
-            )
-            if response is None or response.isError():
-                raise ModbusException("No response")
-            fw_data = response.registers
-        except ModbusException:
-            _LOGGER.info("Firmware version unavailable")
-            info.firmware = "Unknown"
-            info.firmware_available = False
-            return None
-        except (ConnectionException, asyncio.TimeoutError) as exc:
-            _LOGGER.debug("Failed to read firmware version: %s", exc, exc_info=True)
-            info.firmware = "Unknown"
-            info.firmware_available = False
-            return None
+            if count == 1:
+                failures = self._holding_failures.get(address, 0) + 1
+                self._holding_failures[address] = failures
+                if failures >= self.retry and address not in self._failed_holding:
+                    self._failed_holding.add(address)
+                    _LOGGER.warning("Device does not expose register 0x%04X", address)
         except asyncio.CancelledError:
-            _LOGGER.debug("Cancelled reading firmware version")
+            _LOGGER.debug(
+                "Cancelled reading holding 0x%04X on attempt %d/%d",
+                address,
+                attempt,
+                self.retry,
+            )
             raise
         except OSError as exc:
-            _LOGGER.error("Unexpected error reading firmware version: %s", exc, exc_info=True)
-            info.firmware = "Unknown"
-            info.firmware_available = False
-            return None
-
-        if len(fw_data) >= 5:
-            info.firmware = f"{fw_data[0]}.{fw_data[1]}.{fw_data[4]}"
-        elif len(fw_data) >= 3:
-            info.firmware = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
-        else:
-            _LOGGER.info("Firmware version unavailable")
-            info.firmware = "Unknown"
-            info.firmware_available = False
-            return None
-
-        info.firmware_available = True
-        _LOGGER.debug("Firmware version: %s", info.firmware)
-        return fw_data
-
-    async def scan(self) -> tuple[DeviceInfo, DeviceCapabilities, dict[str, tuple[int, int]]]:
-        """Scan device and return device info, capabilities and present blocks."""
-        from pymodbus.client import AsyncModbusTcpClient
-
-        # Store client instance for later cleanup in close()
-        self._client = AsyncModbusTcpClient(
-            host=self.host,
-            port=self.port,
-            timeout=self.timeout,
-        )
-        client = self._client
-
-        try:
-            _LOGGER.debug("Connecting to ThesslaGreen device at %s:%s", self.host, self.port)
-            connected = await client.connect()
-            if not connected:
-                raise ConnectionException(f"Failed to connect to {self.host}:{self.port}")
-
-            _LOGGER.debug("Connected successfully, starting device scan")
-            self._reported_invalid.clear()
-            self._input_skip_log_ranges.clear()
-            self._unsupported_input_ranges.clear()
-            self._unsupported_holding_ranges.clear()
-
-            info = DeviceInfo()
-            present_blocks = {}
-
-            # Read firmware version
-            fw_data = await self._read_input(client, 0x0000, 5)
-            device_fw: Optional[Tuple[int, ...]] = None
-            if fw_data and len(fw_data) >= 3:
-                device_fw = (fw_data[0], fw_data[1], fw_data[2])
-                fw = f"{fw_data[0]}.{fw_data[1]}.{fw_data[2]}"
-                info.firmware = fw
-                _LOGGER.debug("Firmware version: %s", fw)
-
-            # Read firmware version (0x0000, 0x0001, 0x0004)
-            fw_data = await self._read_firmware_version(client, info)
-
-            # Read controller serial number (0x0018-0x001D)
-            sn_data = await self._read_input(client, 0x0018, 6)
-            if sn_data and len(sn_data) >= 6:
-                pairs = [f"{sn_data[i]:02X}{sn_data[i+1]:02X}" for i in range(0, 6, 2)]
-                info.serial_number = " ".join(pairs)
-                _LOGGER.debug("Serial number: %s", info.serial_number)
-
-
-            # Determine model based on firmware features
-            model = "AirPack Home Series 4"
-            if fw_data and fw_data[0] >= 4:
-                if fw_data[1] >= 85:
-                    model = "AirPack⁴ Energy++"
-                else:
-                    model = "AirPack⁴ Energy+"
-            info.model = model
-            # Dynamically scan all defined registers
-            register_maps = {
-                "input_registers": (INPUT_REGISTERS, self._read_input),
-                "holding_registers": (HOLDING_REGISTERS, self._read_holding),
-                "coil_registers": (COIL_REGISTERS, self._read_coil),
-                "discrete_inputs": (DISCRETE_INPUT_REGISTERS, self._read_discrete),
-            }
-
-            for reg_type, (reg_map, read_fn) in register_maps.items():
-                addr_to_name = {addr: name for name, addr in reg_map.items()}
-
-                await self._scan_registers(client, addr_to_name, read_fn, reg_type)
-                if addr_to_name:
-                    addresses = sorted(addr_to_name)
-                    present_blocks[reg_type] = (addresses[0], addresses[-1])
-
-                addresses = sorted(addr_to_name)
-                if self.skip_known_missing:
-                    addresses = [
-                        a
-                        for a in addresses
-                        if addr_to_name[a] not in KNOWN_MISSING_REGISTERS.get(reg_type, set())
-                    ]
-                if reg_type == "holding_registers" and not self.scan_uart_settings:
-                    addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
-                if not addresses:
-                    continue
-
-                for start, count in self._group_registers_for_batch_read(addresses):
-                    values = await read_fn(client, start, count)
-                    if values is None:
-                        if count > 1:
-                            before_unsupported = {}
-                            if reg_type in ("input_registers", "holding_registers"):
-                                before_unsupported = (
-                                    dict(self._unsupported_input_ranges)
-                                    if reg_type == "input_registers"
-                                    else dict(self._unsupported_holding_ranges)
-                                )
-                            for addr in range(start, start + count):
-                                if reg_type == "input_registers":
-                                    single = await read_fn(
-                                        client,
-                                        addr,
-                                        1,
-                                        skip_cache=True,
-                                        log_exceptions=False,
-                                    )
-                                elif reg_type == "holding_registers":
-                                    single = await read_fn(
-                                        client,
-                                        addr,
-                                        1,
-                                        log_exceptions=False,
-                                    )
-                                else:
-                                    single = await read_fn(client, addr, 1)
-                                if single is None:
-                                    unsupported = False
-                                    if reg_type in ("input_registers", "holding_registers"):
-                                        ranges = (
-                                            self._unsupported_input_ranges
-                                            if reg_type == "input_registers"
-                                            else self._unsupported_holding_ranges
-                                        )
-                                        unsupported = any(s <= addr <= e for s, e in ranges)
-                                    if not unsupported:
-                                        _LOGGER.debug(
-                                            "Failed to read %s register 0x%04X",
-                                            reg_type,
-                                            addr,
-                                        )
-                                    continue
-                                name = addr_to_name.get(addr)
-                                if not name:
-                                    continue
-                                val = single[0]
-                                if reg_type in ("input_registers", "holding_registers"):
-                                    if self._is_valid_register_value(name, val):
-                                        self.available_registers[reg_type].add(name)
-                                else:
-                                    self.available_registers[reg_type].add(name)
-                            if reg_type in ("input_registers", "holding_registers"):
-                                current = (
-                                    self._unsupported_input_ranges
-                                    if reg_type == "input_registers"
-                                    else self._unsupported_holding_ranges
-                                )
-                                self._aggregate_and_log_unsupported(
-                                    before_unsupported, current, reg_type.replace("_", " ")
-                                )
-                        continue
-                    for offset, value in enumerate(values):
-                        addr = start + offset
-                        name = addr_to_name.get(addr)
-                        if not name:
-                            continue
-                        if reg_type in ("input_registers", "holding_registers"):
-                            if self._is_valid_register_value(name, value):
-                                self.available_registers[reg_type].add(name)
-                        else:
-                            self.available_registers[reg_type].add(name)
-
-                present_blocks[reg_type] = (addresses[0], addresses[-1])
-
-
-            # Dynamically scan registers based on CSV definitions
-            csv_register_maps = {
-                "input_registers": ("04", self._read_input),
-                "holding_registers": ("03", self._read_holding),
-                "coil_registers": ("01", self._read_coil),
-                "discrete_inputs": ("02", self._read_discrete),
-            }
-
-            for reg_type, (code, read_fn) in csv_register_maps.items():
-                addr_to_name = self._registers.get(code, {})
-
-                if device_fw is not None:
-                    addr_to_name = {
-                        addr: name
-                        for addr, name in addr_to_name.items()
-                        if ((ver := self._register_versions.get(name)) is None or device_fw >= ver)
-                    }
-                await self._scan_registers(client, addr_to_name, read_fn, reg_type)
-
-                addresses = sorted(addr_to_name)
-                if self.skip_known_missing:
-                    addresses = [
-                        a
-                        for a in addresses
-                        if addr_to_name[a] not in KNOWN_MISSING_REGISTERS.get(reg_type, set())
-                    ]
-                if reg_type == "holding_registers" and not self.scan_uart_settings:
-                    addresses = [a for a in addresses if a not in UART_OPTIONAL_REGS]
-                if not addresses:
-                    continue
-
-                for start, count in self._group_registers_for_batch_read(addresses):
-                    values = await read_fn(client, start, count)
-                    if values is None:
-                        if count > 1:
-                            before_unsupported = {}
-                            if reg_type in ("input_registers", "holding_registers"):
-                                before_unsupported = (
-                                    dict(self._unsupported_input_ranges)
-                                    if reg_type == "input_registers"
-                                    else dict(self._unsupported_holding_ranges)
-                                )
-                            for addr in range(start, start + count):
-                                if reg_type == "input_registers":
-                                    single = await read_fn(
-                                        client,
-                                        addr,
-                                        1,
-                                        skip_cache=True,
-                                        log_exceptions=False,
-                                    )
-                                elif reg_type == "holding_registers":
-                                    single = await read_fn(
-                                        client,
-                                        addr,
-                                        1,
-                                        log_exceptions=False,
-                                    )
-                                else:
-                                    single = await read_fn(client, addr, 1)
-                                if single is None:
-                                    unsupported = False
-                                    if reg_type in ("input_registers", "holding_registers"):
-                                        ranges = (
-                                            self._unsupported_input_ranges
-                                            if reg_type == "input_registers"
-                                            else self._unsupported_holding_ranges
-                                        )
-                                        unsupported = any(s <= addr <= e for s, e in ranges)
-                                    if not unsupported:
-                                        _LOGGER.debug(
-                                            "Failed to read %s register 0x%04X",
-                                            reg_type,
-                                            addr,
-                                        )
-                                    continue
-                                reg_name = addr_to_name.get(addr)
-                                if not reg_name:
-                                    continue
-                                val = single[0]
-                                if reg_type in ("input_registers", "holding_registers"):
-                                    if self._is_valid_register_value(reg_name, val):
-                                        self.available_registers[reg_type].add(reg_name)
-                                else:
-                                    self.available_registers[reg_type].add(reg_name)
-                            if reg_type in ("input_registers", "holding_registers"):
-                                current = (
-                                    self._unsupported_input_ranges
-                                    if reg_type == "input_registers"
-                                    else self._unsupported_holding_ranges
-                                )
-                                self._aggregate_and_log_unsupported(
-                                    before_unsupported, current, reg_type.replace("_", " ")
-                                )
-                        continue
-                    for offset, value in enumerate(values):
-                        addr = start + offset
-                        reg_name = addr_to_name.get(addr)
-                        if not reg_name:
-                            continue
-                        if reg_type in ("input_registers", "holding_registers"):
-                            if self._is_valid_register_value(reg_name, value):
-                                self.available_registers[reg_type].add(reg_name)
-                        else:
-                            self.available_registers[reg_type].add(reg_name)
-
-
-            # Analyze capabilities once all register scans are complete
-            caps = self._analyze_capabilities()
-            info.capabilities = [
-                name for name, value in caps.as_dict().items() if isinstance(value, bool) and value
-            ]
-
-            # Copy the discovered register address blocks so they can be returned
-            register_blocks = present_blocks.copy()
-            _LOGGER.info(
-                "Device scan completed: %d registers detected, %d capabilities detected",
-                sum(len(v) for v in self.available_registers.values()),
-                sum(
-                    1
-                    for v in caps.as_dict().values()
-                    if (isinstance(v, bool) and v)
-                    or (bool(v) and not isinstance(v, (set, int, bool)))
-                ),
+            _LOGGER.error(
+                "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
             )
+            break
 
-            return info, caps, register_blocks
-
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.exception("Device scan failed: %s", exc)
-            raise
-        except (OSError, asyncio.TimeoutError, ValueError) as exc:
-            _LOGGER.exception("Unexpected error during device scan: %s", exc)
-            raise
-
-    async def scan_device(self) -> dict[str, Any]:
-        """Scan device and return formatted result - compatible with coordinator."""
-        try:
-            info, caps, blocks = await self.scan()
-
-            # Count total available registers
-            register_count = sum(len(regs) for regs in self.available_registers.values())
-
-            result = {
-                "device_info": {
-                    "device_name": f"ThesslaGreen {info.model}",
-                    "model": info.model,
-                    "firmware": info.firmware,
-                    "firmware_available": info.firmware_available,
-                    "serial_number": info.serial_number,
-                    "capabilities": info.capabilities,
-                },
-                "capabilities": caps.as_dict(),
-                "available_registers": self.available_registers,
-                "register_count": register_count,
-                "scan_blocks": blocks,
-            }
-
-            _LOGGER.info(
-                "Device scan successful: %s v%s, %d registers, %d capabilities",
-                info.model,
-                info.firmware,
-                register_count,
-                sum(
-                    1
-                    for v in caps.as_dict().values()
-                    if (isinstance(v, bool) and v)
-                    or (bool(v) and not isinstance(v, (set, int, bool)))
-                ),
-            )
-
-            return result
-
-        except (ConnectionException, ModbusException) as exc:
-            _LOGGER.exception("Connection failed during device scan: %s", exc)
-            raise
-        except (OSError, asyncio.TimeoutError, ValueError) as exc:
-            _LOGGER.exception("Device scan failed: %s", exc)
-            raise
-        finally:
-            await self.close()
-
-    async def close(self):
-        """Close the scanner connection if any."""
-        if self._client is not None:
+        if attempt < self.retry and exception_code is None:
             try:
-                result = self._client.close()
-                if inspect.isawaitable(result):
-                    await result
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug("Error closing Modbus client: %s", exc, exc_info=True)
-            except OSError as exc:
-                _LOGGER.debug("Unexpected error closing Modbus client: %s", exc, exc_info=True)
+                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
+            except asyncio.CancelledError:
+                _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
+                raise
 
-        self._client = None
-        _LOGGER.debug("Disconnected from ThesslaGreen device")
-
-    def _aggregate_and_log_unsupported(
-        self,
-        before: dict[tuple[int, int], int],
-        current: dict[tuple[int, int], int],
-        reg_label: str,
-    ) -> None:
-        """Combine newly discovered unsupported ranges and log them once."""
-
-        new_keys = set(current) - set(before)
-        if not new_keys:
-            return
-        new_entries = [(start, end, current[(start, end)]) for start, end in new_keys]
-        for key in new_keys:
-            del current[key]
-        merged_new = self._merge_adjacent(new_entries)
-        for start, end, code in merged_new:
-            current[(start, end)] = code
+    if exception_code is not None:
+        self._failed_holding.update(range(start, end + 1))
+        new_range = (start, end) not in self._unsupported_holding_ranges
+        self._unsupported_holding_ranges[(start, end)] = exception_code
+        if log_exceptions and new_range:
             _LOGGER.warning(
-                "Skipping unsupported %s registers 0x%04X-0x%04X (exception code %d)",
-                reg_label,
+                "Skipping unsupported holding registers 0x%04X-0x%04X (exception code %d)",
                 start,
                 end,
-                code,
+                exception_code,
             )
-        all_entries = [(s, e, c) for (s, e), c in current.items()]
-        current.clear()
-        for start, end, code in self._merge_adjacent(all_entries):
-            current[(start, end)] = code
+        return None
 
-    @staticmethod
-    def _merge_adjacent(entries: list[tuple[int, int, int]]) -> list[tuple[int, int, int]]:
-        """Merge adjacent or overlapping ranges with the same code."""
-        if not entries:
-            return []
-        entries.sort(key=lambda x: x[0])
-        merged: list[tuple[int, int, int]] = [entries[0]]
-        for start, end, code in entries[1:]:
-            last_start, last_end, last_code = merged[-1]
-            if code == last_code and start <= last_end + 1:
-                merged[-1] = (last_start, max(last_end, end), last_code)
-            else:
-                merged.append((start, end, code))
-        return merged
-
-    def _group_registers_for_batch_read(
-        self, addresses: list[int], max_gap: int = 10
-    ) -> list[tuple[int, int]]:
-        """Group registers for batch reading optimization.
-
-        Known missing ``input_registers`` are treated as boundaries. When a
-        missing register is encountered, the surrounding registers are split
-        into separate groups so they can still be read together without the
-        missing register causing a batch read failure.
-        """
-        if not addresses:
-            return []
-
-        missing_addrs = {
-            INPUT_REGISTERS[name]
-            for name in KNOWN_MISSING_REGISTERS.get("input_registers", set())
-            if name in INPUT_REGISTERS
-        }
-
-        groups: list[tuple[int, int]] = []
-        current_start: int | None = None
-        current_end: int | None = None
-
-        for addr in addresses:
-            if addr in missing_addrs:
-                if current_start is not None:
-                    groups.append((current_start, current_end - current_start + 1))
-                    current_start = None
-                    current_end = None
-                groups.append((addr, 1))
-                continue
-
-            if current_start is None:
-                current_start = addr
-                current_end = addr
-                continue
-
-            if (
-                addr - current_end <= max_gap
-                and current_end - current_start + 1 < MAX_BATCH_REGISTERS
-            ):
-                current_end = addr
-            else:
-                groups.append((current_start, current_end - current_start + 1))
-                current_start = addr
-                current_end = addr
-
-        if current_start is not None:
-            groups.append((current_start, current_end - current_start + 1))
-        return groups
+    _LOGGER.warning(
+        "Failed to read holding registers 0x%04X-0x%04X after %d retries",
+        start,
+        end,
+        self.retry,
+    )
+    return None
 
 
-# Legacy compatibility - ThesslaDeviceScanner alias
-ThesslaDeviceScanner = ThesslaGreenDeviceScanner
+async def _read_coil(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+) -> list[bool] | None:
+    """Read coil registers with retry and backoff."""
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(client.read_coils, self.slave_id, address, count=count)
+            if response is not None and not response.isError():
+                return response.bits[:count]
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read coil 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Cancelled reading coil 0x%04X on attempt %d",
+                address,
+                attempt,
+            )
+            raise
+        except OSError as exc:
+            _LOGGER.error(
+                "Unexpected error reading coil 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+        if attempt < self.retry:
+            try:
+                await asyncio.sleep(2 ** (attempt - 1))
+            except asyncio.CancelledError:
+                _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
+                raise
+    return None
+
+
+async def _read_discrete(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+) -> list[bool] | None:
+    """Read discrete input registers with retry and backoff."""
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(
+                client.read_discrete_inputs, self.slave_id, address, count=count
+            )
+            if response is not None and not response.isError():
+                return response.bits[:count]
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read discrete 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Cancelled reading discrete 0x%04X on attempt %d",
+                address,
+                attempt,
+            )
+            raise
+        except OSError as exc:
+            _LOGGER.error(
+                "Unexpected error reading discrete 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+        if attempt < self.retry:
+            try:
+                await asyncio.sleep(2 ** (attempt - 1))
+            except asyncio.CancelledError:
+                _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
+                raise
+    return None
