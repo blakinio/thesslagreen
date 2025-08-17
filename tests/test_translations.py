@@ -112,7 +112,7 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS
+from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS  # noqa: E402
 
 SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()]
 BINARY_KEYS = _load_translation_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
