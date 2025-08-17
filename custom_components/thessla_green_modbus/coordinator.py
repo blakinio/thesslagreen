@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import logging
 from collections.abc import Callable
 from datetime import timedelta
@@ -16,9 +15,9 @@ try:  # pragma: no cover - used in runtime environments only
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
     EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"  # type: ignore[assignment]
 
-from .modbus_exceptions import ConnectionException, ModbusException
-
 from homeassistant.core import HomeAssistant
+
+from .modbus_exceptions import ConnectionException, ModbusException
 
 try:  # pragma: no cover
     from homeassistant.helpers.device_registry import DeviceInfo
@@ -127,11 +126,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=update_interval,
         )
 
-        self.hass = hass
         self.host = host
         self.port = port
         self.slave_id = slave_id
-        self.name = name
+        self._device_name = name
         self.timeout = timeout
         self.retry = retry
         self.force_full_register_list = force_full_register_list
@@ -355,20 +353,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                if self.client is None or not self.client.connected:
-                    _LOGGER.debug("Modbus client missing; attempting reconnection")
-                    await self._ensure_connection()
-                if self.client is None or not self.client.connected:
+                client = self.client
+                if client is None or not client.connected:
                     raise ConnectionException("Modbus client is not connected")
                 # Try to read a basic register to verify communication. "count" must
                 # always be passed as a keyword argument to ``_call_modbus`` to avoid
                 # issues with keyword-only parameters in pymodbus.
                 count = 1
-                response = await self._call_modbus(
-                    self.client.read_input_registers,
-                    0x0000,
-                    count=count,
-                )
+                response = await self._call_modbus(client.read_input_registers, 0x0000, count=count)
                 if response is None or response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
@@ -408,13 +400,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if self.client is not None:
                 await self._disconnect()
             try:
-                self.client = ThesslaGreenModbusClient(
-                    self.host, self.port, timeout=self.timeout
-                )
+                self.client = ThesslaGreenModbusClient(self.host, self.port, timeout=self.timeout)
                 if not await self.client.connect():
-                    raise ConnectionException(
-                        f"Could not connect to {self.host}:{self.port}"
-                    )
+                    raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
                 _LOGGER.debug("Modbus connection established")
             except (ModbusException, ConnectionException) as exc:
                 self.statistics["connection_errors"] += 1
@@ -432,10 +420,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                if self.client is None or not self.client.connected:
-                    _LOGGER.debug("Modbus client missing; attempting reconnection")
-                    await self._ensure_connection()
-                if self.client is None or not self.client.connected:
+                client = self.client
+                if client is None or not client.connected:
                     raise ConnectionException("Modbus client is not connected")
 
                 # Read all register types
@@ -460,12 +446,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 # Post-process data (calculate derived values)
                 data = self._post_process_data(data)
 
-                if self.client is None or not self.client.connected:
+                if not client.connected:
                     _LOGGER.debug(
                         "Modbus client disconnected during update; attempting reconnection"
                     )
                     await self._ensure_connection()
-                    if self.client is None or not self.client.connected:
+                    client = self.client
+                    if client is None or not client.connected:
                         raise ConnectionException("Modbus client is not connected")
 
                 # Update statistics
@@ -951,7 +938,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.client is not None:
             try:
                 result = self.client.close()
-                if inspect.isawaitable(result):
+                if asyncio.iscoroutine(result):
                     await result
             except (ModbusException, ConnectionException):
                 _LOGGER.debug("Error disconnecting", exc_info=True)
@@ -1035,6 +1022,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             sw_version=self.device_info.get("firmware", "Unknown"),
             configuration_url=f"http://{self.host}",
         )
+
+    @property
+    def device_name(self) -> str:
+        """Return the configured or detected device name."""
+        return self.device_info.get("device_name", self._device_name)
 
     @property
     def device_info_dict(self) -> dict[str, Any]:
