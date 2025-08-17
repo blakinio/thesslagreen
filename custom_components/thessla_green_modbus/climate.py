@@ -179,13 +179,15 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def fan_mode(self) -> str | None:
         """Return current fan mode."""
         # Get airflow rate from manual or current setting
-        airflow = (
-            self.coordinator.data.get("air_flow_rate_manual")
-            or self.coordinator.data.get("air_flow_rate_temporary_2")
-            or 50
-        )
+        airflow = self.coordinator.data.get("air_flow_rate_manual")
+        if not airflow:
+            airflow = self.coordinator.data.get("air_flow_rate_temporary_2")
+
+        if not airflow:
+            return None
+
         # Round to nearest 10%
-        rounded = round(airflow / 10) * 10
+        rounded = int((airflow + 5) / 10) * 10
         return f"{max(10, min(100, rounded))}%"
 
     @property
