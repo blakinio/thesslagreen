@@ -312,26 +312,20 @@ class ThesslaGreenDeviceScanner:
         return self
 
     async def close(self) -> None:
-
         """Close the underlying Modbus client connection."""
+
         client = self._client
-        # Prevent further use even if closing fails
-        self._client = None
         if client is None:
             return
+
         try:
             result = client.close()
             if inspect.isawaitable(result):
                 await result
         except (OSError, ConnectionException, ModbusIOException):
             _LOGGER.debug("Error closing Modbus client", exc_info=True)
-
-        """Close the underlying Modbus client if it is open."""
-        if self._client is not None:
-            try:
-                await self._client.close()
-            finally:
-                self._client = None
+        finally:
+            self._client = None
 
     def _is_valid_register_value(self, name: str, value: int) -> bool:
         """Validate a register value against known constraints.
