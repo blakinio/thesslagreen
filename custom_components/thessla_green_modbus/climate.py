@@ -76,7 +76,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the climate entity."""
         super().__init__(coordinator, "climate")
-        self._attr_device_info = coordinator.get_device_info()
         self._attr_translation_key = "thessla_green_climate"
         self._attr_has_entity_name = True
 
