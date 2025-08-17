@@ -1041,6 +1041,10 @@ async def test_read_input_fallback_detects_temperature(caplog):
             "custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS",
             {},
         ),
+
+    ):
+        await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
         patch(
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
@@ -1075,6 +1079,7 @@ async def test_read_input_fallback_detects_temperature(caplog):
         "Falling back to holding registers" in record.message
         for record in caplog.records
     )
+
 
 
 async def test_load_registers_missing_range_warning(tmp_path, caplog):
@@ -1155,7 +1160,6 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
         ),
         patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
         patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
-
         patch(
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
@@ -1209,6 +1213,7 @@ async def test_load_registers_complete_range_no_warning(tmp_path, caplog):
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
         ),
+
         caplog.at_level(logging.WARNING),
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
