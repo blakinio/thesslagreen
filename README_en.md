@@ -257,6 +257,13 @@ python tools/generate_registers.py
 
 Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
 
+### Validate translations
+Ensure translation files contain valid JSON:
+
+```bash
+python -m json.tool custom_components/thessla_green_modbus/translations/*.json
+```
+
 ### Changelog
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 

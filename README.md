@@ -444,6 +444,13 @@ python tools/validate_registers.py  # optional consistency check
 
 Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
 
+### Validate translations
+Ensure translation files are valid JSON:
+
+```bash
+python -m json.tool custom_components/thessla_green_modbus/translations/*.json
+```
+
 ### Changelog
 Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 
