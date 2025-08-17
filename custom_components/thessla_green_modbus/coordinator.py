@@ -214,6 +214,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.capabilities = DeviceCapabilities(
                     **self.device_scan_result.get("capabilities", {})
                 )
+
                 scan_regs = self.device_scan_result.get("available_registers", {})
                 for reg_type in self.available_registers:
                     self.available_registers[reg_type].clear()
@@ -225,6 +226,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.device_info.update(self.device_scan_result.get("device_info", {}))
                 for key, value in self.device_scan_result.get("capabilities", {}).items():
                     setattr(self.capabilities, key, value)
+
 
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",

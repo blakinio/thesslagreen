@@ -26,8 +26,16 @@ from .modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
+
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
+
+from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pymodbus.client import AsyncModbusTcpClient
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
@@ -73,19 +81,19 @@ def _format_register_value(name: str, value: int) -> int | str:
     if name == "manual_airing_time_to_start":
         raw_value = value
         value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
-        decoded = utils._decode_register_time(value)
+        decoded = _decode_register_time(value)
         if decoded is None:
             return f"0x{raw_value:04X} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
-    if name.startswith(utils.BCD_TIME_PREFIXES):
-        decoded = utils._decode_bcd_time(value)
+    if name.startswith(BCD_TIME_PREFIXES):
+        decoded = _decode_bcd_time(value)
         if decoded is None:
             return f"0x{value:04X} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
-    if name.startswith(utils.TIME_REGISTER_PREFIXES):
-        decoded = utils._decode_register_time(value)
+    if name.startswith(TIME_REGISTER_PREFIXES):
+        decoded = _decode_register_time(value)
         if decoded is None:
             return f"0x{value:04X} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
@@ -340,7 +348,7 @@ class ThesslaGreenDeviceScanner:
                         name_raw = row.get("Register_Name")
                         if not isinstance(name_raw, str) or not name_raw.strip():
                             continue
-                        name = utils._to_snake_case(name_raw)
+                        name = _to_snake_case(name_raw)
                         try:
                             addr = int(row.get("Address_DEC", 0))
                         except (TypeError, ValueError):
@@ -382,7 +390,7 @@ class ThesslaGreenDeviceScanner:
                                 "Incomplete range for %s: Min=%s Max=%s", name, min_raw, max_raw
                             )
 
-                        if name.startswith(utils.BCD_TIME_PREFIXES):
+                        if name.startswith(BCD_TIME_PREFIXES):
                             min_val = (min_val * 100) if min_val is not None else 0
                             max_val = (max_val * 100) if max_val is not None else 2359
 
