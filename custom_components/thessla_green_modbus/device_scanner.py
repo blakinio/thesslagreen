@@ -9,25 +9,8 @@ import re
 import inspect
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
 
-
-from .utils import (
-    BCD_TIME_PREFIXES,
-    TIME_REGISTER_PREFIXES,
-    _decode_bcd_time,
-    _decode_register_time,
-    _to_snake_case,
-)
 from .const import (
     COIL_REGISTERS,
     DEFAULT_SLAVE_ID,
@@ -36,24 +19,13 @@ from .const import (
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
 )
-
-from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS
 from .modbus_exceptions import (
     ConnectionException,
     ModbusException,
     ModbusIOException,
 )
-
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
-
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS, MULTI_REGISTER_SIZES
-
-if TYPE_CHECKING:  # pragma: no cover
-    from pymodbus.client import AsyncModbusTcpClient
-
-from .modbus_helpers import _call_modbus
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
