@@ -166,6 +166,11 @@
       "airing_bathroom_coef": {
         "name": "Airing Bathroom Coef"
       },
+        "antifreeze_mode": {
+          "name": "Antifreeze Mode"
+        },
+      "mode": {
+        "name": "Operating Mode"
       "airing_coef": {
         "name": "Airing Coef"
       },

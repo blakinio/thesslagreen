@@ -130,9 +130,9 @@
       "serial_number_6": {
         "name": "Numer seryjny 6"
       },
-      "antifreez_mode": {
-        "name": "Tryb przeciwzamrożeniowy"
-      },
+        "antifreeze_mode": {
+          "name": "Tryb przeciwzamrożeniowy"
+        },
       "mode": {
         "name": "Tryb pracy"
       },

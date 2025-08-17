@@ -328,8 +328,8 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "register_type": "input_registers",
     },
     # Mode and status sensors
-    "antifreez_mode": {
-        "translation_key": "antifreez_mode",
+    "antifreeze_mode": {
+        "translation_key": "antifreeze_mode",
         "icon": "mdi:snowflake-alert",
         "register_type": "input_registers",
     },
