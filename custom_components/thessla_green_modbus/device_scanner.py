@@ -19,12 +19,38 @@ from typing import (
     Tuple,
 )
 
+
+from .utils import (
+    BCD_TIME_PREFIXES,
+    TIME_REGISTER_PREFIXES,
+    _decode_bcd_time,
+    _decode_register_time,
+    _to_snake_case,
+)
+from .const import (
+    COIL_REGISTERS,
+    DEFAULT_SLAVE_ID,
+    DISCRETE_INPUT_REGISTERS,
+    KNOWN_MISSING_REGISTERS,
+    SENSOR_UNAVAILABLE,
+    SENSOR_UNAVAILABLE_REGISTERS,
+)
+
 from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS
 from .modbus_exceptions import (
     ConnectionException,
     ModbusException,
     ModbusIOException,
 )
+
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
+
+from .modbus_helpers import _call_modbus
+from .registers import HOLDING_REGISTERS, INPUT_REGISTERS, MULTI_REGISTER_SIZES
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pymodbus.client import AsyncModbusTcpClient
+
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .utils import (
@@ -311,6 +337,204 @@ class ThesslaGreenDeviceScanner:
         )
         await self._async_setup()
         return self
+
+    async def close(self) -> None:
+        """Close the underlying Modbus client if it is open."""
+        if self._client is not None:
+            try:
+                await self._client.close()
+            finally:
+                self._client = None
+
+    def _is_valid_register_value(self, name: str, value: int) -> bool:
+        """Validate a register value against known constraints.
+
+        This check is intentionally lightweight – it ensures that obvious
+        placeholder values (like ``SENSOR_UNAVAILABLE``) and values outside the
+        ranges loaded from the CSV definition are ignored.  The method mirrors
+        behaviour expected by the tests but does not aim to provide exhaustive
+        validation of every register.
+        """
+
+        if name in SENSOR_UNAVAILABLE_REGISTERS and value == SENSOR_UNAVAILABLE:
+            return False
+
+        allowed = REGISTER_ALLOWED_VALUES.get(name)
+        if allowed is not None and value not in allowed:
+            return False
+
+        if range_vals := self._register_ranges.get(name):
+            min_val, max_val = range_vals
+            if min_val is not None and value < min_val:
+                return False
+            if max_val is not None and value > max_val:
+                return False
+
+        return True
+
+    def _analyze_capabilities(self) -> DeviceCapabilities:
+        """Derive device capabilities from discovered registers."""
+
+        caps = DeviceCapabilities()
+        inputs = self.available_registers["input_registers"]
+        holdings = self.available_registers["holding_registers"]
+        coils = self.available_registers["coil_registers"]
+        discretes = self.available_registers["discrete_inputs"]
+
+        # Temperature sensors
+        temp_map = {
+            "sensor_outside_temperature": "outside_temperature",
+            "sensor_supply_temperature": "supply_temperature",
+            "sensor_exhaust_temperature": "exhaust_temperature",
+            "sensor_fpx_temperature": "fpx_temperature",
+            "sensor_duct_supply_temperature": "duct_supply_temperature",
+            "sensor_gwc_temperature": "gwc_temperature",
+            "sensor_ambient_temperature": "ambient_temperature",
+            "sensor_heating_temperature": "heating_temperature",
+        }
+        for attr, reg in temp_map.items():
+            if reg in inputs:
+                setattr(caps, attr, True)
+                caps.temperature_sensors.add(reg)
+
+        caps.temperature_sensors_count = len(caps.temperature_sensors)
+
+        # Expansion module and GWC detection via discrete inputs/coils
+        if "expansion" in discretes:
+            caps.expansion_module = True
+        if "gwc" in coils or "gwc_temperature" in inputs:
+            caps.gwc_system = True
+
+        if "bypass" in coils:
+            caps.bypass_system = True
+        if any(reg.startswith("schedule_") for reg in holdings):
+            caps.weekly_schedule = True
+
+        if any(
+            reg in inputs
+            for reg in [
+                "constant_flow_active",
+                "supply_flow_rate",
+                "supply_air_flow",
+                "cf_version",
+            ]
+        ):
+            caps.constant_flow = True
+
+        return caps
+
+    async def scan(self) -> dict[str, Any]:
+        """Perform the actual register scan using an established connection."""
+        client = self._client
+        if client is None:
+            raise ConnectionException("Client not connected")
+
+        device = DeviceInfo()
+
+        # Basic firmware/serial information
+        info_regs = await self._read_input(client, 0, 30) or []
+        try:
+            major = info_regs[INPUT_REGISTERS["version_major"]]
+            minor = info_regs[INPUT_REGISTERS["version_minor"]]
+            patch = info_regs[INPUT_REGISTERS["version_patch"]]
+            device.firmware = f"{major}.{minor}.{patch}"
+        except Exception:  # pragma: no cover - best effort
+            pass
+        try:
+            start = INPUT_REGISTERS["serial_number_1"]
+            parts = info_regs[start : start + 6]
+            if parts:
+                device.serial_number = "".join(f"{p:04X}" for p in parts)
+        except Exception:  # pragma: no cover
+            pass
+
+        # Scan Input Registers
+        for name, addr in INPUT_REGISTERS.items():
+            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
+                continue
+            data = await self._read_input(client, addr, 1)
+            if data and self._is_valid_register_value(name, data[0]):
+                self.available_registers["input_registers"].add(name)
+
+        # Scan Holding Registers
+        for name, addr in HOLDING_REGISTERS.items():
+            if not self.scan_uart_settings and addr in UART_OPTIONAL_REGS:
+                continue
+            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["holding_registers"]:
+                continue
+            count = MULTI_REGISTER_SIZES.get(name, 1)
+            data = await self._read_holding(client, addr, count)
+            if data and self._is_valid_register_value(name, data[0]):
+                self.available_registers["holding_registers"].add(name)
+
+        # Scan Coil Registers
+        for name, addr in COIL_REGISTERS.items():
+            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["coil_registers"]:
+                continue
+            data = await self._read_coil(client, addr, 1)
+            if data is not None:
+                self.available_registers["coil_registers"].add(name)
+
+        # Scan Discrete Input Registers
+        for name, addr in DISCRETE_INPUT_REGISTERS.items():
+            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["discrete_inputs"]:
+                continue
+            data = await self._read_discrete(client, addr, 1)
+            if data is not None:
+                self.available_registers["discrete_inputs"].add(name)
+
+        caps = self._analyze_capabilities()
+        device.capabilities = [
+            key for key, val in caps.as_dict().items() if isinstance(val, bool) and val
+        ]
+
+        scan_blocks = {
+            "input_registers": (
+                min(INPUT_REGISTERS.values()),
+                max(INPUT_REGISTERS.values()),
+            )
+            if INPUT_REGISTERS
+            else (None, None),
+            "holding_registers": (
+                min(HOLDING_REGISTERS.values()),
+                max(HOLDING_REGISTERS.values()),
+            )
+            if HOLDING_REGISTERS
+            else (None, None),
+            "coil_registers": (
+                min(COIL_REGISTERS.values()),
+                max(COIL_REGISTERS.values()),
+            )
+            if COIL_REGISTERS
+            else (None, None),
+            "discrete_inputs": (
+                min(DISCRETE_INPUT_REGISTERS.values()),
+                max(DISCRETE_INPUT_REGISTERS.values()),
+            )
+            if DISCRETE_INPUT_REGISTERS
+            else (None, None),
+        }
+
+        return {
+            "available_registers": self.available_registers,
+            "device_info": device.as_dict(),
+            "capabilities": caps.as_dict(),
+            "register_count": sum(len(v) for v in self.available_registers.values()),
+            "scan_blocks": scan_blocks,
+        }
+
+    async def scan_device(self) -> dict[str, Any]:
+        """Open the Modbus connection, perform a scan and close the client."""
+        from pymodbus.client import AsyncModbusTcpClient
+
+        self._client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+
+        try:
+            if not await self._client.connect():
+                raise ConnectionException("Failed to connect")
+            return await self.scan()
+        finally:
+            await self.close()
 
     async def _load_registers(
         self,
