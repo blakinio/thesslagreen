@@ -1,4 +1,6 @@
 {
+
+
   "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
   "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
   "config": {
@@ -56,6 +58,7 @@
       }
     }
   },
+
   "entity": {
     "sensor": {
       "outside_temperature": {
@@ -71,7 +74,7 @@
         "name": "Temperatura FPX"
       },
       "duct_supply_temperature": {
-        "name": "Temperatura kanału nawiewu"
+        "name": "Temperatura kanału nawiewnego"
       },
       "gwc_temperature": {
         "name": "Temperatura GWC"
@@ -79,20 +82,95 @@
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
       },
-      "heating_temperature": {
-        "name": "Temperatura nagrzewnicy"
-      },
       "supply_flow_rate": {
-        "name": "Zadany przepływ nawiewu"
+        "name": "Przepływ nawiewu"
       },
       "exhaust_flow_rate": {
-        "name": "Zadany przepływ wywiewu"
+        "name": "Przepływ wywiewu"
       },
       "supply_air_flow": {
-        "name": "Aktualny przepływ nawiewu"
+        "name": "Strumień powietrza nawiewnego"
       },
       "exhaust_air_flow": {
-        "name": "Aktualny przepływ wywiewu"
+        "name": "Strumień powietrza wywiewnego"
+      },
+      "supply_percentage": {
+        "name": "Procentowo nawiew"
+      },
+      "exhaust_percentage": {
+        "name": "Procentowo wywiew"
+      },
+      "min_percentage": {
+        "name": "Minimalny procent"
+      },
+      "max_percentage": {
+        "name": "Maksymalny procent"
+      },
+      "day_of_week": {
+        "name": "Dzień tygodnia"
+      },
+      "period": {
+        "name": "Okres czasowy"
+      },
+      "compilation_days": {
+        "name": "Dni kompilacji"
+      },
+      "compilation_seconds": {
+        "name": "Sekundy kompilacji"
+      },
+      "version_major": {
+        "name": "Wersja główna"
+      },
+      "version_minor": {
+        "name": "Wersja poboczna"
+      },
+      "version_patch": {
+        "name": "Wersja łatki"
+      },
+      "serial_number_5": {
+        "name": "Numer seryjny 5"
+      },
+      "serial_number_6": {
+        "name": "Numer seryjny 6"
+      },
+      "antifreez_mode": {
+        "name": "Tryb przeciwzamrożeniowy"
+      },
+      "mode": {
+        "name": "Tryb pracy"
+      },
+      "season_mode": {
+        "name": "Tryb sezonowy"
+      },
+      "gwc_mode": {
+        "name": "Tryb GWC"
+      },
+      "bypass_mode": {
+        "name": "Tryb bypass"
+      },
+      "comfort_mode": {
+        "name": "Tryb komfort"
+      },
+      "constant_flow_active": {
+        "name": "Stały przepływ aktywny"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Temperatura nawiewu manualnie"
+      },
+      "supply_air_temperature_temporary": {
+        "name": "Temperatura nawiewu tymczasowo"
+      },
+      "min_bypass_temperature": {
+        "name": "Minimalna temperatura bypass"
+      },
+      "air_temperature_summer_free_heating": {
+        "name": "Temperatura lato grzanie free"
+      },
+      "air_temperature_summer_free_cooling": {
+        "name": "Temperatura lato chłodzenie free"
+      },
+      "required_temp": {
+        "name": "Temperatura zadana"
       },
       "max_supply_air_flow_rate": {
         "name": "Maksymalny przepływ nawiewu"
@@ -113,18 +191,21 @@
         "name": "Tymczasowy przepływ powietrza 2"
       },
       "bypass_off": {
-        "name": "Temperatura wyłączenia bypassu"
+        "name": "Wyłączenie bypass"
       },
       "dac_supply": {
-        "name": "Sterowanie wentylatorem nawiewnym"
+        "name": "Napięcie wentylatora nawiewnego"
       },
       "dac_exhaust": {
-        "name": "Sterowanie wentylatorem wywiewnym"
+        "name": "Napięcie wentylatora wywiewnego"
       },
       "dac_heater": {
-        "name": "Sterowanie nagrzewnicą"
+        "name": "Napięcie nagrzewnicy"
       },
       "dac_cooler": {
+
+        "name": "Napięcie chłodnicy"
+
         "name": "Sterowanie chłodnicą"
       },
       "day_of_week": {
@@ -150,31 +231,30 @@
       },
       "serial_number_1": {
         "name": "Numer seryjny część 1"
+
       },
-      "serial_number_2": {
-        "name": "Numer seryjny część 2"
+      "fan_speed_1_coef": {
+        "name": "Współczynnik prędkości 1"
       },
-      "serial_number_3": {
-        "name": "Numer seryjny część 3"
+      "fan_speed_2_coef": {
+        "name": "Współczynnik prędkości 2"
       },
-      "serial_number_4": {
-        "name": "Numer seryjny część 4"
+      "fan_speed_3_coef": {
+        "name": "Współczynnik prędkości 3"
       },
-      "serial_number_5": {
-        "name": "Numer seryjny część 5"
+      "hood_supply_coef": {
+        "name": "Współczynnik okapu nawiew"
       },
-      "serial_number_6": {
-        "name": "Numer seryjny część 6"
+      "hood_exhaust_coef": {
+        "name": "Współczynnik okapu wywiew"
       },
-      "supply_percentage": {
-        "name": "Procent nawiewu"
+      "intensive_supply": {
+        "name": "Intensywność nawiewu"
       },
-      "exhaust_percentage": {
-        "name": "Procent wywiewu"
-      },
-      "min_percentage": {
-        "name": "Minimalny procent"
-      },
+
+      "intensive_exhaust": {
+        "name": "Intensywność wywiewu"
+
       "max_percentage": {
         "name": "Maksymalny procent"
       },
@@ -232,44 +312,42 @@
           "open": "Otwarty",
           "closed": "Zamknięty"
         }
+
       }
     },
     "binary_sensor": {
-      "power_supply_fans": {
-        "name": "Zasilanie wentylatorów"
+      "duct_water_heater_pump": {
+        "name": "Pompa nagrzewnicy kanałowej"
       },
       "bypass": {
-        "name": "Obejście (bypass)"
+        "name": "Bypass"
       },
-      "gwc": {
-        "name": "GWC"
+      "info": {
+        "name": "Informacja"
+      },
+      "power_supply_fans": {
+        "name": "Zasilanie wentylatorów"
       },
       "heating_cable": {
         "name": "Kabel grzejny"
       },
-      "fire_alarm": {
-        "name": "Alarm pożarowy"
-      },
-      "expansion": {
-        "name": "Moduł rozszerzający"
-      },
-      "duct_water_heater_pump": {
-        "name": "Pompa obiegowa nagrzewnicy"
-      },
-      "info": {
-        "name": "Potwierdzenie pracy centrali"
-      },
       "work_permit": {
-        "name": "Potwierdzenie pracy (Expansion)"
+        "name": "Zezwolenie pracy"
+      },
+      "gwc": {
+        "name": "GWC"
       },
       "hood_output": {
         "name": "Wyjście okapu"
       },
+      "expansion": {
+        "name": "Ekspansja"
+      },
       "contamination_sensor": {
-        "name": "Czujnik zanieczyszczenia"
+        "name": "Czujnik zanieczyszczeń"
       },
       "duct_heater_protection": {
-        "name": "Zabezpieczenie nagrzewnicy kanałowej"
+        "name": "Ochrona nagrzewnicy kanałowej"
       },
       "dp_duct_filter_overflow": {
         "name": "Przepełnienie filtra kanałowego"
@@ -278,13 +356,13 @@
         "name": "Przełącznik okapu"
       },
       "airing_sensor": {
-        "name": "Czujnik przewietrzania"
+        "name": "Czujnik wietrzenia"
       },
       "airing_switch": {
-        "name": "Przełącznik przewietrzania"
+        "name": "Przełącznik wietrzenia"
       },
       "airing_mini": {
-        "name": "Mini przewietrzanie"
+        "name": "Wietrzenie mini"
       },
       "fan_speed_3": {
         "name": "Prędkość wentylatora 3"
@@ -299,14 +377,59 @@
         "name": "Kominek"
       },
       "dp_ahu_filter_overflow": {
-        "name": "Przepełnienie filtra centrali"
+        "name": "Przepełnienie filtra AHU"
       },
       "ahu_filter_protection": {
-        "name": "Zabezpieczenie filtra centrali"
+        "name": "Ochrona filtra AHU"
+      },
+      "hood_switch": {
+        "name": "Przełącznik okapu"
       },
       "empty_house": {
         "name": "Pusty dom"
       },
+
+      "fire_alarm": {
+        "name": "Alarm pożarowy"
+      },
+      "water_removal_active": {
+        "name": "Usuwanie wody aktywne"
+      },
+      "on_off_panel_mode": {
+        "name": "Tryb panelu wł/wył"
+      }
+    },
+    "number": {
+      "required_temperature": {
+        "name": "Temperatura zadana"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Temperatura nawiewu manualnie"
+      },
+      "supply_air_temperature_temporary": {
+        "name": "Temperatura nawiewu tymczasowo"
+      },
+      "min_bypass_temperature": {
+        "name": "Minimalna temperatura bypass"
+      },
+      "air_temperature_summer_free_heating": {
+        "name": "Temperatura lato grzanie free"
+      },
+      "air_temperature_summer_free_cooling": {
+        "name": "Temperatura lato chłodzenie free"
+      },
+      "access_level": {
+        "name": "Poziom dostępu"
+      },
+      "air_flow_rate_manual": {
+        "name": "Przepływ powietrza manualnie"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Maksymalny przepływ nawiewu"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Maksymalny przepływ wywiewu"
+
       "constant_flow_active": {
         "name": "Status Constant Flow"
       },
@@ -374,15 +497,83 @@
           "manual": "Ręczny",
           "temporary": "Tymczasowy"
         }
+
       },
-      "bypass_mode": {
-        "name": "Tryb obejścia (bypass)",
-        "state": {
-          "auto": "Automatyczny",
-          "open": "Otwarty",
-          "closed": "Zamknięty"
-        }
+      "nominal_supply_air_flow": {
+        "name": "Nominalny przepływ nawiewu"
       },
+
+      "nominal_exhaust_air_flow": {
+        "name": "Nominalny przepływ wywiewu"
+      },
+      "max_supply_air_flow_rate_gwc": {
+        "name": "Maksymalny przepływ nawiewu GWC"
+      },
+      "max_exhaust_air_flow_rate_gwc": {
+        "name": "Maksymalny przepływ wywiewu GWC"
+      },
+      "nominal_supply_air_flow_gwc": {
+        "name": "Nominalny przepływ nawiewu GWC"
+      },
+      "nominal_exhaust_air_flow_gwc": {
+        "name": "Nominalny przepływ wywiewu GWC"
+      },
+      "bypass_off": {
+        "name": "Wyłączenie bypass"
+      },
+      "special_mode_timeout": {
+        "name": "Timeout trybu specjalnego"
+      },
+      "min_gwc_air_temperature": {
+        "name": "Minimalna temperatura powietrza GWC"
+      },
+      "max_gwc_air_temperature": {
+        "name": "Maksymalna temperatura powietrza GWC"
+      },
+      "gwc_regen_period": {
+        "name": "Okres regeneracji GWC"
+      },
+      "delta_t_gwc": {
+        "name": "Delta T GWC"
+      }
+    },
+    "switch": {
+      "on_off_panel_mode": {
+        "name": "Tryb panelu wł/wył"
+      },
+      "boost": {
+        "name": "Boost"
+      },
+      "eco": {
+        "name": "Eco"
+      },
+      "away": {
+        "name": "Nieobecność"
+      },
+      "fireplace": {
+        "name": "Kominek"
+      },
+      "hood": {
+        "name": "Okap"
+      },
+      "sleep": {
+        "name": "Sen"
+      },
+      "party": {
+        "name": "Impreza"
+      },
+      "bathroom": {
+        "name": "Łazienka"
+      },
+      "kitchen": {
+        "name": "Kuchnia"
+      },
+      "summer": {
+        "name": "Lato"
+      },
+      "winter": {
+        "name": "Zima"
+
       "gwc_mode": {
         "name": "Tryb GWC",
         "state": {
@@ -1553,21 +1744,8 @@
             }
           }
         }
+
       }
-    },
-    "set_device_name": {
-      "name": "Ustaw nazwę urządzenia",
-      "description": "Ustawia własną nazwę urządzenia (max 16 znaków ASCII)"
-    },
-    "refresh_device_data": {
-      "name": "Odśwież dane urządzenia",
-      "description": "Wymusza natychmiastowe odświeżenie danych urządzenia"
-    }
-  },
-  "issues": {
-    "modbus_write_failed": {
-      "title": "Błąd zapisu Modbus",
-      "description": "Nie udało się zapisać do rejestru {register}. Sprawdź połączenie i uprawnienia urządzenia."
     }
   }
 }

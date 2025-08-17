@@ -228,6 +228,9 @@ async def test_duplicate_configuration_aborts():
 async def test_confirm_step_aborts_on_existing_entry():
     """Ensure confirming a second flow aborts if unique ID already configured."""
 
+    flow = ConfigFlow()
+    flow.hass = None
+
     user_input = {
         CONF_HOST: "192.168.1.100",
         CONF_PORT: 502,
@@ -237,7 +240,7 @@ async def test_confirm_step_aborts_on_existing_entry():
 
     validation_result = {"title": "Device", "device_info": {}, "scan_result": {}}
 
-    # First pass through user step to store data```````````````````````
+    # First pass through user step to store data
     validation_result = {
         "title": "ThesslaGreen 192.168.1.100",
         "device_info": {},
@@ -282,7 +285,13 @@ async def test_confirm_step_aborts_on_existing_entry():
     ):
         with pytest.raises(RuntimeError):
             await flow.async_step_confirm({})
-```
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch(
             "homeassistant.helpers.translation.async_get_translations",
             new=AsyncMock(return_value={}),
         ),

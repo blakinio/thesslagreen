@@ -1,6 +1,9 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
+
+
 import asyncio
+
 import logging
 import os
 import sys
@@ -9,10 +12,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.thessla_green_modbus.const import (
+    SENSOR_UNAVAILABLE,
+    SENSOR_UNAVAILABLE_REGISTERS,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
+from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
@@ -409,6 +417,85 @@ def test_register_value_processing(coordinator):
     assert time_result == 8 * 60 + 15
 
 
+def test_dac_value_processing(coordinator, caplog):
+    """Test DAC register value processing and validation."""
+    # Valid mid-range value converts to approximately 5V
+    result = coordinator._process_register_value("dac_supply", 2048)
+    assert result == pytest.approx(5.0, abs=0.01)
+
+    # Zero value stays zero
+    result = coordinator._process_register_value("dac_supply", 0)
+    assert result == 0
+
+    # Invalid values outside 0-4095 are rejected
+    with caplog.at_level(logging.WARNING):
+        assert coordinator._process_register_value("dac_supply", 5000) is None
+        assert coordinator._process_register_value("dac_supply", -1) is None
+        assert "out of range" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "register_name",
+    sorted(SENSOR_UNAVAILABLE_REGISTERS),
+    ids=sorted(SENSOR_UNAVAILABLE_REGISTERS),
+)
+def test_process_register_value_sensor_unavailable(coordinator, register_name):
+    """Return None when sensors report unavailable for known sensor registers."""
+    assert coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) is None
+
+
+@pytest.mark.parametrize(
+    ("register_name", "value", "expected"),
+    [
+        ("supply_flow_rate", 0xFFFB, -5),
+        ("outside_temperature", 0x8000, None),
+    ],
+)
+def test_process_register_value_extremes(coordinator, register_name, value, expected):
+    """Handle extreme raw register values correctly."""
+    result = coordinator._process_register_value(register_name, value)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == expected
+
+
+@pytest.mark.parametrize(
+    "register_name",
+    ["dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"],
+    ids=["supply", "exhaust", "heater", "cooler"],
+)
+@pytest.mark.parametrize(
+    "value",
+    [0, 4095, -1, 5000],
+    ids=["min", "max", "below_min", "above_max"],
+)
+def test_process_register_value_dac_boundaries(coordinator, register_name, value):
+    """Process DAC registers across boundary and out-of-range values."""
+    expected = value * REGISTER_MULTIPLIERS[register_name]
+    result = coordinator._process_register_value(register_name, value)
+    assert result == pytest.approx(expected)
+
+
+def test_register_value_logging(coordinator, caplog):
+    """Test debug and warning logging for register processing."""
+
+    with caplog.at_level(logging.DEBUG):
+        caplog.clear()
+        coordinator._process_register_value("outside_temperature", 250)
+        assert "raw=250" in caplog.text
+        assert "value=25.0" in caplog.text
+
+    with caplog.at_level(logging.WARNING):
+        caplog.clear()
+        coordinator._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        assert "SENSOR_UNAVAILABLE" in caplog.text
+
+        caplog.clear()
+        coordinator._process_register_value("supply_percentage", 150)
+        assert "Out-of-range value for supply_percentage" in caplog.text
+
+
 def test_post_process_data(coordinator):
     """Test data post-processing."""
     raw_data = {
@@ -465,6 +552,38 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
 
         await coordinator._disconnect()
         assert FakeClient.open_connections == 0
+
+
+@pytest.mark.asyncio
+async def test_missing_client_raises_connection_exception(coordinator):
+    """Missing client should raise ConnectionException instead of AttributeError."""
+    coordinator.client = None
+    coordinator._ensure_connection = AsyncMock(side_effect=ConnectionException("fail"))
+    coordinator._register_groups = {
+        "input_registers": [(0x0000, 1)],
+        "holding_registers": [(0x0000, 1)],
+        "coil_registers": [(0x0000, 1)],
+        "discrete_inputs": [(0x0000, 1)],
+    }
+
+    with pytest.raises(ConnectionException):
+        await coordinator._read_input_registers_optimized()
+    with pytest.raises(ConnectionException):
+        await coordinator._read_holding_registers_optimized()
+    with pytest.raises(ConnectionException):
+        await coordinator._read_coil_registers_optimized()
+    with pytest.raises(ConnectionException):
+        await coordinator._read_discrete_inputs_optimized()
+
+
+@pytest.mark.asyncio
+async def test_async_update_data_missing_client(coordinator):
+    """_async_update_data should raise UpdateFailed when client cannot be established."""
+    coordinator.client = None
+    coordinator._ensure_connection = AsyncMock()
+
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
 
 
 def cleanup_modules():

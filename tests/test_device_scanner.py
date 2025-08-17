@@ -1,7 +1,7 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -12,6 +12,13 @@ from custom_components.thessla_green_modbus.const import (
 )
 from custom_components.thessla_green_modbus.device_scanner import (
     DeviceCapabilities,
+
+    ThesslaGreenDeviceScanner,
+)
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+
     DeviceInfo,
     ThesslaGreenDeviceScanner,
     _decode_setting_value,
@@ -20,6 +27,7 @@ from custom_components.thessla_green_modbus.device_scanner import (
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
+
 )
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from custom_components.thessla_green_modbus.utils import _decode_bcd_time, _decode_register_time
@@ -264,6 +272,53 @@ async def test_read_input_logs_once_per_skipped_range(caplog):
         if "Skipping cached failed input registers" in record.message
     ]
     assert messages == ["Skipping cached failed input registers 0x0001-0x0003"]
+
+
+async def test_read_holding_exponential_backoff(caplog):
+    """Ensure exponential backoff and error reporting when device fails to respond."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, retry=3)
+    client = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusException("boom")),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.asyncio.sleep",
+            AsyncMock(),
+        ) as sleep_mock,
+        caplog.at_level(logging.ERROR),
+    ):
+        with pytest.raises(ConnectionException):
+            await scanner._read_holding(client, 0x0001, 1)
+
+    assert sleep_mock.await_args_list == [call(0.5), call(1.0)]
+    assert any("Failed to read holding 0x0001" in record.message for record in caplog.records)
+
+
+async def test_read_holding_returns_none_on_modbus_error():
+    """A Modbus error response should return None without raising."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    client = AsyncMock()
+    response = MagicMock()
+    response.isError.return_value = True
+    call_modbus = AsyncMock(return_value=response)
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            call_modbus,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.asyncio.sleep",
+            AsyncMock(),
+        ),
+    ):
+        result = await scanner._read_holding(client, 0x0001, 1)
+
+    assert result is None
+    assert call_modbus.await_count == scanner.retry
 
 
 async def test_scan_device_success_dynamic():
@@ -731,9 +786,14 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
+
+    # Temperature sensor marked unavailable should still be considered valid
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+
     # SENSOR_UNAVAILABLE should be treated as unavailable for temperature and airflow sensors
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
     assert scanner._is_valid_register_value("supply_air_flow", SENSOR_UNAVAILABLE) is False
+
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
@@ -751,6 +811,19 @@ async def test_is_valid_register_value():
     # Dynamic percentage limits should accept device-provided values
     assert scanner._is_valid_register_value("min_percentage", 20) is True
     assert scanner._is_valid_register_value("max_percentage", 120) is True
+
+    assert scanner._is_valid_register_value("min_percentage", -1) is False
+    assert scanner._is_valid_register_value("max_percentage", 200) is False
+    # BCD time registers loaded from CSV should handle HHMM values
+    assert scanner._register_ranges["schedule_summer_mon_1"] == (0, 2300)
+    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
+    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
+
+    # Season mode may be encoded in high byte or low byte
+    assert scanner._is_valid_register_value("season_mode", 0x0100) is True
+    assert scanner._is_valid_register_value("season_mode", 0x0001) is True
+    assert scanner._is_valid_register_value("season_mode", 0xFF00) is False
+
     with patch.object(scanner, "_log_invalid_value") as log_mock:
         assert scanner._is_valid_register_value("min_percentage", -1) is False
         assert scanner._is_valid_register_value("max_percentage", 200) is False
@@ -875,6 +948,7 @@ async def test_temperature_unavailable_no_warning(caplog):
     assert "outside_temperature" not in caplog.text
 
 
+
 async def test_capabilities_detect_schedule_keywords():
     """Ensure capability detection considers scheduling related registers."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
@@ -944,6 +1018,29 @@ async def test_load_registers_duplicate_names(tmp_path):
 
     assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
 
+
+
+async def test_read_input_fallback_detects_temperature(caplog):
+    """Fallback to holding registers should discover temperature inputs."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with (
+        patch.object(
+            ThesslaGreenDeviceScanner,
+            "_load_registers",
+            AsyncMock(return_value=(empty_regs, {})),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS",
+            {"outside_temperature": 16},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS",
+            {},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS",
+            {},
+        ),
 
 async def test_load_registers_missing_range_warning(tmp_path, caplog):
     """Warn when Min/Max range is incomplete."""
@@ -1023,10 +1120,38 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
         ),
         patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
         patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+
         patch(
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
         ),
+
+        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+        from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client.read_input_registers.side_effect = ModbusException("fail")
+
+        resp_fw = MagicMock()
+        resp_fw.isError.return_value = False
+        resp_fw.registers = [4, 85, 0, 0, 0]
+        resp_temp = MagicMock()
+        resp_temp.isError.return_value = False
+        resp_temp.registers = [10]
+        mock_client.read_holding_registers.side_effect = [resp_fw, resp_temp]
+
+        mock_client_class.return_value = mock_client
+
+        with caplog.at_level(logging.DEBUG):
+            result = await scanner.scan_device()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert any("Falling back to holding registers" in record.message for record in caplog.records)
+
         caplog.at_level(logging.WARNING),
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
@@ -1085,6 +1210,7 @@ async def test_load_registers_missing_required_register(tmp_path):
     ):
         with pytest.raises(ValueError, match="reg_a"):
             await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
 
 
 async def test_analyze_capabilities():
@@ -1169,6 +1295,41 @@ async def test_scan_device_includes_capabilities_in_device_info():
         result = await scanner.scan_device()
 
     assert result["device_info"]["capabilities"] == ["heating_system"]
+
+
+async def test_capability_count_includes_booleans(caplog):
+    """Log should count boolean capabilities even though bool is an int subclass."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with patch.object(
+        ThesslaGreenDeviceScanner,
+        "_load_registers",
+        AsyncMock(return_value=(empty_regs, {})),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    caps = DeviceCapabilities(
+        basic_control=True,
+        expansion_module=True,
+        temperature_sensors={"outside"},
+        temperature_sensors_count=1,
+    )
+
+    with patch.object(scanner, "_analyze_capabilities", return_value=caps):
+        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.connect.return_value = True
+            mock_client_class.return_value = mock_client
+
+            with (
+                patch.object(scanner, "_read_input", AsyncMock(return_value=[])),
+                patch.object(scanner, "_read_holding", AsyncMock(return_value=[])),
+                patch.object(scanner, "_read_coil", AsyncMock(return_value=[])),
+                patch.object(scanner, "_read_discrete", AsyncMock(return_value=[])),
+            ):
+                with caplog.at_level(logging.INFO):
+                    await scanner.scan_device()
+
+    assert any("2 capabilities" in record.message for record in caplog.records)
 
 
 @pytest.mark.parametrize("async_close", [True, False])

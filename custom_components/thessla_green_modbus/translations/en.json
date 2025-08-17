@@ -71,7 +71,7 @@
         "name": "FPX Temperature"
       },
       "duct_supply_temperature": {
-        "name": "Supply Duct Temperature"
+        "name": "Duct Supply Temperature"
       },
       "gwc_temperature": {
         "name": "GWC Temperature"
@@ -79,30 +79,22 @@
       "ambient_temperature": {
         "name": "Ambient Temperature"
       },
-      "heating_temperature": {
-        "name": "Heating Temperature"
-      },
       "supply_flow_rate": {
-        "name": "Target Supply Airflow"
+        "name": "Supply Flow Rate"
       },
       "exhaust_flow_rate": {
-        "name": "Target Exhaust Airflow"
+        "name": "Exhaust Flow Rate"
       },
       "supply_air_flow": {
-        "name": "Current Supply Airflow"
+        "name": "Supply Air Flow"
       },
       "exhaust_air_flow": {
-        "name": "Current Exhaust Airflow"
+        "name": "Exhaust Air Flow"
       },
-      "max_supply_air_flow_rate": {
-        "name": "Max Supply Airflow"
-      },
-      "max_exhaust_air_flow_rate": {
-        "name": "Max Exhaust Airflow"
-      },
-      "nominal_supply_air_flow": {
-        "name": "Nominal Supply Airflow"
-      },
+
+      "supply_percentage": {
+        "name": "Supply Percentage"
+
       "nominal_exhaust_air_flow": {
         "name": "Nominal Exhaust Airflow"
       },
@@ -117,21 +109,22 @@
       },
       "dac_supply": {
         "name": "Supply DAC"
+
       },
-      "dac_exhaust": {
-        "name": "Exhaust DAC"
+      "exhaust_percentage": {
+        "name": "Exhaust Percentage"
       },
-      "dac_heater": {
-        "name": "Heater DAC"
+      "min_percentage": {
+        "name": "Minimum Percentage"
       },
-      "dac_cooler": {
-        "name": "Cooler DAC"
+      "max_percentage": {
+        "name": "Maximum Percentage"
       },
       "day_of_week": {
         "name": "Day of Week"
       },
       "period": {
-        "name": "Period"
+        "name": "Time Period"
       },
       "compilation_days": {
         "name": "Compilation Days"
@@ -140,6 +133,9 @@
         "name": "Compilation Seconds"
       },
       "version_major": {
+
+        "name": "Major Version"
+
         "name": "Firmware Version Major"
       },
       "version_minor": {
@@ -153,28 +149,108 @@
       },
       "serial_number_2": {
         "name": "Serial Number Part 2"
+
       },
-      "serial_number_3": {
-        "name": "Serial Number Part 3"
+      "version_minor": {
+        "name": "Minor Version"
       },
-      "serial_number_4": {
-        "name": "Serial Number Part 4"
+      "version_patch": {
+        "name": "Patch Version"
       },
       "serial_number_5": {
-        "name": "Serial Number Part 5"
+        "name": "Serial Number 5"
       },
       "serial_number_6": {
-        "name": "Serial Number Part 6"
+        "name": "Serial Number 6"
       },
-      "supply_percentage": {
-        "name": "Supply Percentage"
+      "antifreez_mode": {
+        "name": "Antifreeze Mode"
       },
-      "exhaust_percentage": {
-        "name": "Exhaust Percentage"
+      "mode": {
+        "name": "Operating Mode"
       },
-      "min_percentage": {
-        "name": "Minimum Percentage"
+      "season_mode": {
+        "name": "Season Mode"
       },
+
+      "gwc_mode": {
+        "name": "GWC Mode"
+      },
+      "bypass_mode": {
+        "name": "Bypass Mode"
+      },
+      "comfort_mode": {
+        "name": "Comfort Mode"
+      },
+      "constant_flow_active": {
+        "name": "Constant Flow Active"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Supply Air Temperature Manual"
+      },
+      "supply_air_temperature_temporary": {
+        "name": "Supply Air Temperature Temporary"
+      },
+      "min_bypass_temperature": {
+        "name": "Minimum Bypass Temperature"
+      },
+      "air_temperature_summer_free_heating": {
+        "name": "Air Temperature Summer Free Heating"
+      },
+      "air_temperature_summer_free_cooling": {
+        "name": "Air Temperature Summer Free Cooling"
+      },
+      "required_temp": {
+        "name": "Required Temperature"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Maximum Supply Air Flow Rate"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Maximum Exhaust Air Flow Rate"
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominal Supply Air Flow"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominal Exhaust Air Flow"
+      },
+      "bypass_off": {
+        "name": "Bypass Off"
+      },
+      "dac_supply": {
+        "name": "Supply Fan Voltage"
+      },
+      "dac_exhaust": {
+        "name": "Exhaust Fan Voltage"
+      },
+      "dac_heater": {
+        "name": "Heater Voltage"
+      },
+      "dac_cooler": {
+        "name": "Cooler Voltage"
+      },
+      "fan_speed_1_coef": {
+        "name": "Fan Speed 1 Coefficient"
+      },
+      "fan_speed_2_coef": {
+        "name": "Fan Speed 2 Coefficient"
+      },
+      "fan_speed_3_coef": {
+        "name": "Fan Speed 3 Coefficient"
+      },
+      "hood_supply_coef": {
+        "name": "Hood Supply Coefficient"
+      },
+      "hood_exhaust_coef": {
+        "name": "Hood Exhaust Coefficient"
+      },
+      "intensive_supply": {
+        "name": "Intensive Supply"
+      },
+      "intensive_exhaust": {
+        "name": "Intensive Exhaust"
+
       "max_percentage": {
         "name": "Maximum Percentage"
       },
@@ -232,35 +308,45 @@
           "open": "Open",
           "closed": "Closed"
         }
+
       }
     },
     "binary_sensor": {
-      "power_supply_fans": {
-        "name": "Fan Power"
+      "duct_water_heater_pump": {
+        "name": "Duct Water Heater Pump"
       },
       "bypass": {
         "name": "Bypass"
       },
-      "gwc": {
-        "name": "GWC"
+      "info": {
+        "name": "Info"
+      },
+      "power_supply_fans": {
+        "name": "Power Supply Fans"
       },
       "heating_cable": {
         "name": "Heating Cable"
       },
+
+
       "duct_water_heater_pump": {
         "name": "Water Heater Pump"
       },
       "info": {
         "name": "Unit Operation Confirmation"
       },
+
       "work_permit": {
         "name": "Work Permit"
+      },
+      "gwc": {
+        "name": "GWC"
       },
       "hood_output": {
         "name": "Hood Output"
       },
       "expansion": {
-        "name": "Expansion Module"
+        "name": "Expansion"
       },
       "contamination_sensor": {
         "name": "Contamination Sensor"
@@ -301,12 +387,51 @@
       "ahu_filter_protection": {
         "name": "AHU Filter Protection"
       },
+      "hood_switch": {
+        "name": "Hood Switch"
+      },
       "empty_house": {
         "name": "Empty House"
       },
       "fire_alarm": {
         "name": "Fire Alarm"
       },
+
+      "water_removal_active": {
+        "name": "Water Removal Active"
+      },
+      "on_off_panel_mode": {
+        "name": "On/Off Panel Mode"
+      }
+    },
+    "number": {
+      "required_temperature": {
+        "name": "Required Temperature"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Supply Air Temperature Manual"
+      },
+      "supply_air_temperature_temporary": {
+        "name": "Supply Air Temperature Temporary"
+      },
+      "min_bypass_temperature": {
+        "name": "Minimum Bypass Temperature"
+      },
+      "air_temperature_summer_free_heating": {
+        "name": "Air Temperature Summer Free Heating"
+      },
+      "air_temperature_summer_free_cooling": {
+        "name": "Air Temperature Summer Free Cooling"
+      },
+      "access_level": {
+        "name": "Access Level"
+      },
+      "air_flow_rate_manual": {
+        "name": "Air Flow Rate Manual"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Maximum Supply Air Flow Rate"
+
       "constant_flow_active": {
         "name": "Constant Flow Status"
       },
@@ -374,15 +499,86 @@
           "manual": "Manual",
           "temporary": "Temporary"
         }
+
       },
-      "bypass_mode": {
-        "name": "Bypass Mode",
-        "state": {
-          "auto": "Automatic",
-          "open": "Open",
-          "closed": "Closed"
-        }
+      "max_exhaust_air_flow_rate": {
+        "name": "Maximum Exhaust Air Flow Rate"
       },
+
+      "nominal_supply_air_flow": {
+        "name": "Nominal Supply Air Flow"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominal Exhaust Air Flow"
+      },
+      "max_supply_air_flow_rate_gwc": {
+        "name": "Maximum Supply Air Flow Rate GWC"
+      },
+      "max_exhaust_air_flow_rate_gwc": {
+        "name": "Maximum Exhaust Air Flow Rate GWC"
+      },
+      "nominal_supply_air_flow_gwc": {
+        "name": "Nominal Supply Air Flow GWC"
+      },
+      "nominal_exhaust_air_flow_gwc": {
+        "name": "Nominal Exhaust Air Flow GWC"
+      },
+      "bypass_off": {
+        "name": "Bypass Off"
+      },
+      "special_mode_timeout": {
+        "name": "Special Mode Timeout"
+      },
+      "min_gwc_air_temperature": {
+        "name": "Minimum GWC Air Temperature"
+      },
+      "max_gwc_air_temperature": {
+        "name": "Maximum GWC Air Temperature"
+      },
+      "gwc_regen_period": {
+        "name": "GWC Regeneration Period"
+      },
+      "delta_t_gwc": {
+        "name": "Delta T GWC"
+      }
+    },
+    "switch": {
+      "on_off_panel_mode": {
+        "name": "On/Off Panel Mode"
+      },
+      "boost": {
+        "name": "Boost"
+      },
+      "eco": {
+        "name": "Eco"
+      },
+      "away": {
+        "name": "Away"
+      },
+      "fireplace": {
+        "name": "Fireplace"
+      },
+      "hood": {
+        "name": "Hood"
+      },
+      "sleep": {
+        "name": "Sleep"
+      },
+      "party": {
+        "name": "Party"
+      },
+      "bathroom": {
+        "name": "Bathroom"
+      },
+      "kitchen": {
+        "name": "Kitchen"
+      },
+      "summer": {
+        "name": "Summer"
+      },
+      "winter": {
+        "name": "Winter"
+
       "gwc_mode": {
         "name": "GWC Mode",
         "state": {
@@ -1553,21 +1749,8 @@
             }
           }
         }
+
       }
-    },
-    "set_device_name": {
-      "name": "Set Device Name",
-      "description": "Sets custom device name (max 16 ASCII characters)"
-    },
-    "refresh_device_data": {
-      "name": "Refresh Device Data",
-      "description": "Forces immediate refresh of device data"
-    }
-  },
-  "issues": {
-    "modbus_write_failed": {
-      "title": "Modbus write failed",
-      "description": "Failed to write to register {register}. Check the connection and device permissions."
     }
   }
 }

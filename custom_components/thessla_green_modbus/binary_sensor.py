@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -13,8 +13,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .entity_mappings import ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
+
+
+BINARY_SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("binary_sensor", {})
 
 # Complete binary sensor definitions
 BINARY_SENSOR_DEFINITIONS = {
@@ -178,6 +182,7 @@ BINARY_SENSOR_DEFINITIONS = {
         "register_type": "input_registers",
     },
 }
+
 
 
 async def async_setup_entry(
