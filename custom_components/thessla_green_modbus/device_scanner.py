@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import inspect
 import logging
 import re
-import inspect
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+)
 
 from .const import (
     COIL_REGISTERS,
@@ -485,7 +494,7 @@ class ThesslaGreenDeviceScanner:
             pass
         try:
             start = INPUT_REGISTERS["serial_number_1"]
-            parts = info_regs[start : start + 6]
+            parts = info_regs[start : start + 6]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
         except Exception:  # pragma: no cover
@@ -616,29 +625,37 @@ class ThesslaGreenDeviceScanner:
 
         scan_blocks = {
             "input_registers": (
-                min(INPUT_REGISTERS.values()),
-                max(INPUT_REGISTERS.values()),
-            )
-            if INPUT_REGISTERS
-            else (None, None),
+                (
+                    min(INPUT_REGISTERS.values()),
+                    max(INPUT_REGISTERS.values()),
+                )
+                if INPUT_REGISTERS
+                else (None, None)
+            ),
             "holding_registers": (
-                min(HOLDING_REGISTERS.values()),
-                max(HOLDING_REGISTERS.values()),
-            )
-            if HOLDING_REGISTERS
-            else (None, None),
+                (
+                    min(HOLDING_REGISTERS.values()),
+                    max(HOLDING_REGISTERS.values()),
+                )
+                if HOLDING_REGISTERS
+                else (None, None)
+            ),
             "coil_registers": (
-                min(COIL_REGISTERS.values()),
-                max(COIL_REGISTERS.values()),
-            )
-            if COIL_REGISTERS
-            else (None, None),
+                (
+                    min(COIL_REGISTERS.values()),
+                    max(COIL_REGISTERS.values()),
+                )
+                if COIL_REGISTERS
+                else (None, None)
+            ),
             "discrete_inputs": (
-                min(DISCRETE_INPUT_REGISTERS.values()),
-                max(DISCRETE_INPUT_REGISTERS.values()),
-            )
-            if DISCRETE_INPUT_REGISTERS
-            else (None, None),
+                (
+                    min(DISCRETE_INPUT_REGISTERS.values()),
+                    max(DISCRETE_INPUT_REGISTERS.values()),
+                )
+                if DISCRETE_INPUT_REGISTERS
+                else (None, None)
+            ),
         }
 
         return {
@@ -661,7 +678,6 @@ class ThesslaGreenDeviceScanner:
             return await self.scan()
         finally:
             await self.close()
-
 
     async def _load_registers(
         self,
@@ -804,6 +820,13 @@ class ThesslaGreenDeviceScanner:
             return register_map, register_ranges, register_versions
 
         return await asyncio.to_thread(_parse_csv)
+
+    def _sleep_time(self, attempt: int) -> float:
+        """Return delay for a retry attempt based on backoff."""
+        if self.backoff <= 0:
+            return 0
+        return self.backoff * 2 ** (attempt - 1)
+
 
     async def _read_input(
         self,
@@ -1066,11 +1089,21 @@ class ThesslaGreenDeviceScanner:
             )
             break
 
+
+        if attempt < self.retry:
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying input 0x%04X", address)
+                    raise
             _LOGGER.debug(
                 "Falling back to holding registers for input 0x%04X (attempt %d)",
                 address,
                 attempt,
             )
+
 
             try:
                 response = await _call_modbus(
@@ -1132,6 +1165,15 @@ class ThesslaGreenDeviceScanner:
 
         return None
 
+
+        if attempt < self.retry and exception_code is None:
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
+                    raise
 
     async def _read_holding(
         self,
@@ -1237,6 +1279,7 @@ class ThesslaGreenDeviceScanner:
                 )
             return None
 
+
         _LOGGER.warning(
             "Failed to read holding registers 0x%04X-0x%04X after %d retries",
             start,
@@ -1245,6 +1288,60 @@ class ThesslaGreenDeviceScanner:
         )
         return None
 
+    _LOGGER.warning(
+        "Failed to read holding registers 0x%04X-0x%04X after %d retries",
+        start,
+        end,
+        self.retry,
+    )
+    return None
+
+
+async def _read_coil(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+) -> list[bool] | None:
+    """Read coil registers with retry and backoff."""
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(client.read_coils, self.slave_id, address, count=count)
+            if response is not None and not response.isError():
+                return response.bits[:count]
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read coil 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Cancelled reading coil 0x%04X on attempt %d",
+                address,
+                attempt,
+            )
+            raise
+        except OSError as exc:
+            _LOGGER.error(
+                "Unexpected error reading coil 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+        if attempt < self.retry:
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
+                    raise
+    return None
 
     async def _read_coil(
         self,
@@ -1294,11 +1391,57 @@ class ThesslaGreenDeviceScanner:
                     )
                     raise
         return None
-
                     _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
                     raise
         return None
 
+async def _read_discrete(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+) -> list[bool] | None:
+    """Read discrete input registers with retry and backoff."""
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(
+                client.read_discrete_inputs, self.slave_id, address, count=count
+            )
+            if response is not None and not response.isError():
+                return response.bits[:count]
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read discrete 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Cancelled reading discrete 0x%04X on attempt %d",
+                address,
+                attempt,
+            )
+            raise
+        except OSError as exc:
+            _LOGGER.error(
+                "Unexpected error reading discrete 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+        if attempt < self.retry:
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
+                    raise
+    return None
 
 
     async def _read_discrete(
