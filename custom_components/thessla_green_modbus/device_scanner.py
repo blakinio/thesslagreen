@@ -19,6 +19,14 @@ from typing import (
     Tuple,
 )
 
+from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS
+from .modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
+)
+from .modbus_helpers import _call_modbus
+from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
@@ -26,22 +34,6 @@ from .utils import (
     _decode_register_time,
     _to_snake_case,
 )
-from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS
-from .modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-    ModbusIOException,
-)
-
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
-
-from .const import COIL_REGISTERS, DEFAULT_SLAVE_ID, DISCRETE_INPUT_REGISTERS
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_helpers import _call_modbus
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
-
-if TYPE_CHECKING:  # pragma: no cover
-    from pymodbus.client import AsyncModbusTcpClient
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
