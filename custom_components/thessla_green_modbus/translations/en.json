@@ -1169,9 +1169,6 @@
       "gwc_regen_period": {
         "name": "Gwc Regen Period"
       },
-      "delta_tgwc": {
-        "name": "Delta Tgwc"
-      },
       "start_gwc_regen_winter_time": {
         "name": "Start Gwc Regen Winter Time"
       },

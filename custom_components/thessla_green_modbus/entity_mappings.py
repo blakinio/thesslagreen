@@ -1,6 +1,5 @@
 """Entity mapping definitions for the ThesslaGreen Modbus integration.
 
-
 This module also provides helpers for handling legacy entity IDs that were
 renamed in newer versions of the integration.
 """
@@ -26,6 +25,10 @@ from .const import SPECIAL_FUNCTION_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Legacy entity ID mapping
+# ---------------------------------------------------------------------------
 # Map legacy entity suffixes to new domain and suffix pairs. Only a small
 # subset of legacy names existed in early versions of the integration. These
 # mappings allow services to transparently use the new entity IDs while warning
@@ -72,6 +75,11 @@ def map_legacy_entity_id(entity_id: str) -> str:
         _alias_warning_logged = True
 
     return new_entity_id
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
 
 
 def _load_number_mappings():
@@ -138,6 +146,10 @@ def _load_number_mappings():
 
     return number_configs
 
+
+# ---------------------------------------------------------------------------
+# Entity configurations
+# ---------------------------------------------------------------------------
 
 # Number entity mappings loaded from register metadata
 NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = _load_number_mappings()

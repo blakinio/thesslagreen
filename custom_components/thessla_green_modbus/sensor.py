@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import json
 import logging
+from pathlib import Path
 from typing import Any, Dict
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfVolumeFlowRate
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -15,11 +19,62 @@ from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
-from .utils import TIME_REGISTER_PREFIXES
+from .utils import TIME_REGISTER_PREFIXES, _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
-SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {})
+
+def _load_sensor_definitions() -> Dict[str, Dict[str, Any]]:
+    """Load sensor definitions from ENTITY_MAPPINGS or fallback files."""
+
+    if ENTITY_MAPPINGS.get("sensor"):
+        return ENTITY_MAPPINGS["sensor"]
+
+    # Try JSON definition file
+    json_path = Path(__file__).with_name("sensor_definitions.json")
+    if json_path.exists():
+        try:
+            with json_path.open(encoding="utf-8") as jsonfile:
+                data = json.load(jsonfile)
+            return {k: v for k, v in data.items()}
+        except Exception as err:  # pragma: no cover - fallback path
+            _LOGGER.error("Failed to load sensor definitions from JSON: %s", err)
+
+    # Try CSV definition file
+    csv_path = Path(__file__).with_name("sensor_definitions.csv")
+    definitions: Dict[str, Dict[str, Any]] = {}
+    if csv_path.exists():
+        try:
+            with csv_path.open(encoding="utf-8", newline="") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    name = _to_snake_case(row["register_name"])
+                    unit_raw = row.get("unit")
+                    if unit_raw == "%":
+                        unit = PERCENTAGE
+                    elif unit_raw in {"°C", "C"}:
+                        unit = UnitOfTemperature.CELSIUS
+                    elif unit_raw in {"m3/h", "m³/h"}:
+                        unit = UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR
+                    else:
+                        unit = unit_raw
+                    definitions[name] = {
+                        "translation_key": row.get("translation_key", name),
+                        "icon": row.get("icon"),
+                        "device_class": getattr(
+                            SensorDeviceClass, row.get("device_class", ""), None
+                        ),
+                        "state_class": getattr(SensorStateClass, row.get("state_class", ""), None),
+                        "unit": unit,
+                        "register_type": row.get("register_type", "input_registers"),
+                    }
+        except Exception as err:  # pragma: no cover - fallback path
+            _LOGGER.error("Failed to load sensor definitions from CSV: %s", err)
+
+    return definitions
+
+
+SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = _load_sensor_definitions()
 
 
 async def async_setup_entry(
@@ -34,7 +89,8 @@ async def async_setup_entry(
     temp_created = 0
     temp_skipped = 0
 
-    # Create sensors only for available registers (autoscan result)
+    # Create sensors only for registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE

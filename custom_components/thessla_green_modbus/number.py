@@ -51,7 +51,8 @@ async def async_setup_entry(
         _LOGGER.debug("No number entity mappings found; skipping setup")
         return
 
-    # Create number entities for all defined writable registers
+    # Create number entities for writable registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for register_name, entity_config in number_mappings.items():
         register_type = None
 

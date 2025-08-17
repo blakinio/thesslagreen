@@ -13,11 +13,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .entity_mappings import ENTITY_MAPPINGS
+
+# Binary sensor mappings are defined centrally in entity_mappings
+from .entity_mappings import BINARY_SENSOR_ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 
-BINARY_SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("binary_sensor", {})
+BINARY_SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = BINARY_SENSOR_ENTITY_MAPPINGS
 
 
 async def async_setup_entry(
@@ -30,7 +32,8 @@ async def async_setup_entry(
 
     entities = []
 
-    # Create binary sensors only for available registers (autoscan result)
+    # Create binary sensors only for registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for register_name, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
 

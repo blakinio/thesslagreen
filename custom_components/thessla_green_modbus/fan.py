@@ -27,7 +27,8 @@ async def async_setup_entry(
     """Set up ThesslaGreen fan from config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Check if fan control is available
+    # Check if fan control is available based on registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     fan_registers = [
         "air_flow_rate_manual",
         "air_flow_rate_temporary_2",

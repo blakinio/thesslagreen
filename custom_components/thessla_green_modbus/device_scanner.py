@@ -8,10 +8,13 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
+
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
+
 
 from . import utils
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
@@ -21,6 +24,35 @@ from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
+
+from .capability_rules import CAPABILITY_PATTERNS
+from .const import (
+    COIL_REGISTERS,
+    DEFAULT_SLAVE_ID,
+    DISCRETE_INPUT_REGISTERS,
+    KNOWN_MISSING_REGISTERS,
+    SENSOR_UNAVAILABLE_REGISTERS,
+)
+from .modbus_helpers import _call_modbus
+from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from .utils import (
+    BCD_TIME_PREFIXES,
+    TIME_REGISTER_PREFIXES,
+    _decode_bcd_time,
+    _decode_register_time,
+    _to_snake_case,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+# Specific registers may only accept discrete values
+REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
+    "mode": {0, 1, 2},
+    "season_mode": {0, 1},
+    "special_mode": set(range(0, 12)),
+    "antifreeze_mode": {0, 1},
+}
+
 
 
 # Registers storing combined airflow and temperature settings
