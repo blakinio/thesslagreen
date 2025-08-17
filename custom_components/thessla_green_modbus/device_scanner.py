@@ -606,6 +606,12 @@ class ThesslaGreenDeviceScanner:
                     if reg_type in ("input_registers", "holding_registers"):
                         if self._is_valid_register_value(name, value):
                             self.available_registers[reg_type].add(name)
+                            if reg_type == "input_registers":
+                                _LOGGER.debug(
+                                    "Input register available: %s at address 0x%04X",
+                                    name,
+                                    addr,
+                                )
                     else:
                         self.available_registers[reg_type].add(name)
 
