@@ -197,6 +197,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
 
                 self.device_scan_result = await scanner.scan_device()
+                scan_registers = self.device_scan_result.get("available_registers", {})
+                self.available_registers = {
+                    "input_registers": set(scan_registers.get("input_registers", [])),
+                    "holding_registers": set(scan_registers.get("holding_registers", [])),
+                    "coil_registers": set(scan_registers.get("coil_registers", [])),
+                    "discrete_inputs": set(scan_registers.get("discrete_inputs", [])),
+                }
+                if self.skip_missing_registers:
+                    for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+                        self.available_registers[reg_type].difference_update(names)
+                self.device_info = self.device_scan_result.get("device_info", {})
+                self.capabilities = DeviceCapabilities(
+                    **self.device_scan_result.get("capabilities", {})
                 scan_regs = self.device_scan_result.get("available_registers", {})
                 for reg_type in self.available_registers:
                     self.available_registers[reg_type].clear()

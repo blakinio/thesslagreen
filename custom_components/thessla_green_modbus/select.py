@@ -66,6 +66,8 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities = []
+    # Only create selects for registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for register_name, select_def in SELECT_DEFINITIONS.items():
         register_type = select_def["register_type"]
         if register_name in coordinator.available_registers.get(register_type, set()):
