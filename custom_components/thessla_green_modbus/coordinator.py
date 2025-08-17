@@ -49,7 +49,10 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from .const import (
     COIL_REGISTERS,
@@ -212,6 +215,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.capabilities = DeviceCapabilities(
                     **self.device_scan_result.get("capabilities", {})
                 )
+
+                scan_regs = self.device_scan_result.get("available_registers", {})
+                for reg_type in self.available_registers:
+                    self.available_registers[reg_type].clear()
+                    self.available_registers[reg_type].update(scan_regs.get(reg_type, set()))
+                if self.skip_missing_registers:
+                    for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+                        self.available_registers[reg_type].difference_update(names)
+                self.device_info.clear()
+                self.device_info.update(self.device_scan_result.get("device_info", {}))
+                for key, value in self.device_scan_result.get("capabilities", {}).items():
+                    setattr(self.capabilities, key, value)
+
 
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",

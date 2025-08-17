@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 """Helpers for accessing Modbus register metadata from CSV."""
 
-from pathlib import Path
+from __future__ import annotations
+
 import csv
+from pathlib import Path
 from typing import Any, Dict
 
 from ..utils import _to_snake_case
