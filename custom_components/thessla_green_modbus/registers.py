@@ -34,6 +34,19 @@ DISCRETE_INPUT_REGISTERS: dict[str, int] = {
     "empty_house": 21,
 }
 
+# Sizes of holding register blocks that span multiple consecutive registers.
+# Each key is the starting register name and the value is the number of
+# registers in that block.
+MULTI_REGISTER_SIZES: dict[str, int] = {
+    "date_time_1": 4,
+    "lock_date_1": 3,
+    "date_time_2": 4,
+    "date_time_3": 4,
+    "date_time_4": 4,
+    "lock_date_2": 3,
+    "lock_date_3": 3,
+}
+
 INPUT_REGISTERS: dict[str, int] = {
     "version_major": 0,
     "version_minor": 1,

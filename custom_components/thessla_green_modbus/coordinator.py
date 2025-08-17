@@ -65,20 +65,10 @@ from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_client import ThesslaGreenModbusClient
 from .modbus_helpers import _call_modbus
 from .multipliers import REGISTER_MULTIPLIERS
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from .registers import HOLDING_REGISTERS, INPUT_REGISTERS, MULTI_REGISTER_SIZES
 from .utils import TIME_REGISTER_PREFIXES, _decode_bcd_time
 
 _LOGGER = logging.getLogger(__name__)
-
-MULTI_REGISTER_SIZES = {
-    "date_time_1": 4,
-    "lock_date_1": 3,
-    "date_time_2": 4,
-    "date_time_3": 4,
-    "date_time_4": 4,
-    "lock_date_2": 3,
-    "lock_date_3": 3,
-}
 
 # Map each register belonging to a multi-register block to its starting register
 MULTI_REGISTER_STARTS: dict[str, str] = {}
@@ -207,14 +197,21 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
 
                 self.device_scan_result = await scanner.scan_device()
-                self.available_registers = self.device_scan_result.get("available_registers", {})
+                scan_regs = self.device_scan_result.get("available_registers", {})
+                for reg_type in self.available_registers:
+                    self.available_registers[reg_type].clear()
+                    self.available_registers[reg_type].update(
+                        scan_regs.get(reg_type, set())
+                    )
                 if self.skip_missing_registers:
                     for reg_type, names in KNOWN_MISSING_REGISTERS.items():
-                        self.available_registers.get(reg_type, set()).difference_update(names)
-                self.device_info = self.device_scan_result.get("device_info", {})
-                self.capabilities = DeviceCapabilities(
-                    **self.device_scan_result.get("capabilities", {})
+                        self.available_registers[reg_type].difference_update(names)
+                self.device_info.clear()
+                self.device_info.update(
+                    self.device_scan_result.get("device_info", {})
                 )
+                for key, value in self.device_scan_result.get("capabilities", {}).items():
+                    setattr(self.capabilities, key, value)
 
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",
@@ -258,23 +255,28 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _load_full_register_list(self) -> None:
         """Load full register list when forced."""
-        self.available_registers = {
-            "input_registers": set(INPUT_REGISTERS.keys()),
-            "holding_registers": set(HOLDING_REGISTERS.keys()),
-            "coil_registers": set(COIL_REGISTERS.keys()),
-            "discrete_inputs": set(DISCRETE_INPUT_REGISTERS.keys()),
-        }
+        for reg_type in self.available_registers:
+            self.available_registers[reg_type].clear()
+        self.available_registers["input_registers"].update(INPUT_REGISTERS.keys())
+        self.available_registers["holding_registers"].update(HOLDING_REGISTERS.keys())
+        self.available_registers["coil_registers"].update(COIL_REGISTERS.keys())
+        self.available_registers["discrete_inputs"].update(
+            DISCRETE_INPUT_REGISTERS.keys()
+        )
 
         if self.skip_missing_registers:
             for reg_type, names in KNOWN_MISSING_REGISTERS.items():
                 self.available_registers[reg_type].difference_update(names)
 
-        self.device_info = {
-            "device_name": f"ThesslaGreen {MODEL}",
-            "model": MODEL,
-            "firmware": "Unknown",
-            "serial_number": "Unknown",
-        }
+        self.device_info.clear()
+        self.device_info.update(
+            {
+                "device_name": f"ThesslaGreen {MODEL}",
+                "model": MODEL,
+                "firmware": "Unknown",
+                "serial_number": "Unknown",
+            }
+        )
 
         _LOGGER.info(
             "Loaded full register list: %d total registers",
@@ -561,16 +563,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Read holding registers using optimized batch reading."""
         data = {}
 
-        if self.client is None:
-            _LOGGER.debug("Modbus client not available; skipping holding register read")
-            return {}
-
         if "holding_registers" not in self._register_groups:
             return data
 
         client = self.client
         if client is None or not client.connected:
-            _LOGGER.debug("Modbus client is not connected")
+            _LOGGER.debug("Modbus client not available; skipping holding register read")
             return data
 
         for start_addr, count in self._register_groups["holding_registers"]:
@@ -639,8 +637,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "coil_registers" not in self._register_groups:
             return data
 
-        if not self.client:
-            await self._ensure_connection()
+        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -705,8 +702,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "discrete_inputs" not in self._register_groups:
             return data
 
-        if not self.client:
-            await self._ensure_connection()
+        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
