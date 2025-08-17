@@ -79,7 +79,6 @@ INPUT_REGISTERS: dict[str, int] = {
     "water_removal_active": 298,
 }
 
-
 HOLDING_REGISTERS: dict[str, int] = {
     "date_time_1": 0,
     "date_time_2": 1,
@@ -363,3 +362,4 @@ HOLDING_REGISTERS: dict[str, int] = {
     "e_251": 8443,
     "e_252": 8444,
 }
+
