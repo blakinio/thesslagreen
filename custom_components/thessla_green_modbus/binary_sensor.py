@@ -30,7 +30,8 @@ async def async_setup_entry(
 
     entities = []
 
-    # Create binary sensors only for available registers (autoscan result)
+    # Create binary sensors only for registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for register_name, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
 

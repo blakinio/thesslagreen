@@ -34,7 +34,8 @@ async def async_setup_entry(
     temp_created = 0
     temp_skipped = 0
 
-    # Create sensors only for available registers (autoscan result)
+    # Create sensors only for registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE

@@ -33,7 +33,8 @@ async def async_setup_entry(
 
     entities = []
 
-    # Create switch entities for available writable registers
+    # Create switch entities only for writable registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for key, config in SWITCH_ENTITIES.items():
         register_name = config["register"]
 

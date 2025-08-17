@@ -90,6 +90,15 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 
 Adresy rejestrów, które wielokrotnie nie odpowiadają, są automatycznie pomijane w kolejnych skanach.
 
+### Proces autoskanu
+Podczas dodawania integracji moduł `device_scanner` wykonuje funkcję
+`scan_device()`, która wykrywa dostępne rejestry oraz możliwości
+urządzenia. Wynik skanowania trafia do struktury `available_registers`,
+z której koordynator tworzy jedynie encje obsługiwane przez dane
+urządzenie. Jeśli po aktualizacji firmware pojawią się nowe rejestry,
+ponownie uruchom skanowanie (np. usuń i dodaj integrację), aby
+zaktualizować listę `available_registers`.
+
 ### Włączanie logów debug
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
 
