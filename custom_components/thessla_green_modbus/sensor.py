@@ -10,14 +10,8 @@ from dataclasses import asdict, dataclass
 from importlib import resources
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfElectricPotential,
-    UnitOfTemperature,
-    UnitOfVolumeFlowRate,
-)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -25,6 +19,13 @@ from . import registers
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+
+from .entity_mappings import ENTITY_MAPPINGS
+
+_LOGGER = logging.getLogger(__name__)
+
+SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {})
+
 from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ DEVICE_CLASS_MAP = {
     UnitOfTemperature.CELSIUS: SensorDeviceClass.TEMPERATURE,
     UnitOfElectricPotential.VOLT: SensorDeviceClass.VOLTAGE,
 }
+
 
 VALUE_MAPS: dict[str, dict[int, str]] = {
     "mode": {0: "auto", 1: "manual", 2: "temporary"},
@@ -121,15 +123,22 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities = []
+    temp_created = 0
+    temp_skipped = 0
 
     # Create sensors only for available registers (autoscan result)
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
+        is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
         # Check if this register is available on the device
         if register_name in coordinator.available_registers.get(register_type, set()):
             entities.append(ThesslaGreenSensor(coordinator, register_name, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
+            if is_temp:
+                temp_created += 1
+        elif is_temp:
+            temp_skipped += 1
 
     if entities:
         try:
@@ -144,6 +153,12 @@ async def async_setup_entry(
         )
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
+
+    _LOGGER.info(
+        "Temperature sensors: %d instantiated, %d skipped",
+        temp_created,
+        temp_skipped,
+    )
 
 
 class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):

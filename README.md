@@ -90,6 +90,17 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 
 Adresy rejestrów, które wielokrotnie nie odpowiadają, są automatycznie pomijane w kolejnych skanach.
 
+### Włączanie logów debug
+W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
+
+```yaml
+logger:
+  logs:
+    custom_components.thessla_green_modbus: debug
+```
+
+Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów oraz ostrzeżenia o niedostępnych czujnikach lub wartościach poza zakresem.
+
 ## 📊 Dostępne encje
 
 ### Sensory (50+ automatycznie wykrywanych)
@@ -299,6 +310,24 @@ logger:
     pymodbus: info
 ```
 
+
+### Kody wyjątków Modbus i brakujące rejestry
+Podczas skanowania urządzenia mogą pojawić się odpowiedzi z kodami wyjątków Modbus,
+gdy dany rejestr nie jest obsługiwany. Najczęściej spotykane kody to:
+
+- `2` – Illegal Data Address (rejestr nie istnieje)
+- `3` – Illegal Data Value (wartość poza zakresem)
+- `4` – Slave Device Failure (błąd urządzenia)
+
+W takich przypadkach integracja zapisuje w logach komunikaty w stylu:
+
+```
+Skipping unsupported input registers 120-130
+```
+
+Są to wpisy informacyjne i zazwyczaj oznaczają, że urządzenie po prostu nie posiada
+tych rejestrów. Można je bezpiecznie zignorować.
+=======
 ### Komunikaty „Skipping unsupported … registers”
 Podczas skanowania integracja próbuje odczytać grupy rejestrów.  
 Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
@@ -317,6 +346,7 @@ Jednorazowe ostrzeżenia pojawiające się przy początkowym skanowaniu lub
 dotyczące opcjonalnych funkcji można zwykle zignorować.  
 Jeśli jednak powtarzają się dla kluczowych rejestrów, sprawdź konfigurację,
 podłączenie i wersję firmware.
+
 
 ## 📋 Specyfikacja techniczna
 
@@ -352,8 +382,10 @@ skryptu `tools/cleanup_old_entities.py`.
 python3 tools/cleanup_old_entities.py
 ```
 
-Skrypt domyślnie obsługuje polskie i angielskie nazwy encji
-(`rekuperator_predkosc`, `rekuperator_speed`).
+Skrypt domyślnie obsługuje polskie i angielskie nazwy **starych** encji
+(`number.rekuperator_predkosc`, `number.rekuperator_speed`).
+Aktualna encja wentylatora to `fan.rekuperator_fan` – upewnij się, że Twoje
+automatyzacje odwołują się do niej zamiast do usuniętej `number.rekuperator_predkosc`.
 
 ### Dodatkowe wzorce
 

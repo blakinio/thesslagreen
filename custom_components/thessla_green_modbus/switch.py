@@ -13,10 +13,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import COIL_REGISTERS, DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
 from .registers import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
+
+
+SWITCH_ENTITIES: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("switch", {})
 
 # Switch entities that can be controlled
 SWITCH_ENTITIES: dict[str, dict[str, Any]] = {
@@ -78,6 +82,7 @@ SWITCH_ENTITIES: dict[str, dict[str, Any]] = {
         "translation_key": "hood_output",
     },
 }
+
 
 
 async def async_setup_entry(

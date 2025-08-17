@@ -62,3 +62,42 @@ def test_cleanup_entity_registry_oserror_restores_backup(
         call(backup_path, registry_path),
     ]
     assert json.loads(registry_path.read_text(encoding="utf-8")) == original  # nosec B101
+
+
+def test_cleanup_entity_registry_removes_aliases(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    original = {
+        "data": {
+            "entities": [
+                {
+                    "entity_id": "number.rekuperator_predkosc",
+                    "platform": "thessla_green_modbus",
+                },
+                {
+                    "entity_id": "number.rekuperator_speed",
+                    "platform": "thessla_green_modbus",
+                },
+                {
+                    "entity_id": "fan.valid_entity",
+                    "platform": "thessla_green_modbus",
+                },
+            ]
+        }
+    }
+    registry_path = _setup_registry(tmp_path, json.dumps(original))
+
+    with caplog.at_level(logging.INFO):
+        assert cleanup_entity_registry(tmp_path)  # nosec B101
+
+    result = json.loads(registry_path.read_text(encoding="utf-8"))
+    entities = result["data"]["entities"]
+
+    # Only the valid entity should remain
+    assert entities == [  # nosec B101
+        {
+            "entity_id": "fan.valid_entity",
+            "platform": "thessla_green_modbus",
+        }
+    ]
+    assert "Found 2 old entities to remove" in caplog.text  # nosec B101
