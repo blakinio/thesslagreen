@@ -190,22 +190,22 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x007F,127,R/W,setting_winter_sun_4,ZIMA - Niedziela - 4 [AATT],10,100,25,1,%,,,
 
 # HARMONOGRAM WIETRZENIA LATO (0x0080-0x0098)
-03,0x0080,128,R/W,airing_summer_mon,LATO - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,h,"Rejestry zawierają: godzinę [GG] i minutę [MM] rozpoczęcia wietrzenia w formacie bcd [GGMM]",,
-03,0x0084,132,R/W,airing_summer_tue,LATO - Wtorek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0088,136,R/W,airing_summer_wed,LATO - Środa - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x008C,140,R/W,airing_summer_thu,LATO - Czwartek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0090,144,R/W,airing_summer_fri,LATO - Piątek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0094,148,R/W,airing_summer_sat,LATO - Sobota - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0098,152,R/W,airing_summer_sun,LATO - Niedziela - Wietrzenie [GGMM],0,23,17,1,h,,,
+03,0x0080,128,R/W,airing_summer_mon,LATO - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,hhmm,"Rejestry zawierają: godzinę [GG] i minutę [MM] w formacie BCD [GGMM]; wymagają konwersji do zapisu HH:MM",,
+03,0x0084,132,R/W,airing_summer_tue,LATO - Wtorek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0088,136,R/W,airing_summer_wed,LATO - Środa - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x008C,140,R/W,airing_summer_thu,LATO - Czwartek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0090,144,R/W,airing_summer_fri,LATO - Piątek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0094,148,R/W,airing_summer_sat,LATO - Sobota - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0098,152,R/W,airing_summer_sun,LATO - Niedziela - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
 
 # HARMONOGRAM WIETRZENIA ZIMA (0x009C-0x00B4)
-03,0x009C,156,R/W,airing_winter_mon,ZIMA - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,h,"Rejestry zawierają: godzinę [GG] i minutę [MM] rozpoczęcia wietrzenia w formacie bcd [GGMM]",,
-03,0x00A0,160,R/W,airing_winter_tue,ZIMA - Wtorek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00A4,164,R/W,airing_winter_wed,ZIMA - Środa - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00A8,168,R/W,airing_winter_thu,ZIMA - Czwartek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00AC,172,R/W,airing_winter_fri,ZIMA - Piątek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00B0,176,R/W,airing_winter_sat,ZIMA - Sobota - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00B4,180,R/W,airing_winter_sun,ZIMA - Niedziela - Wietrzenie [GGMM],0,23,17,1,h,,,
+03,0x009C,156,R/W,airing_winter_mon,ZIMA - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,hhmm,"Rejestry zawierają: godzinę [GG] i minutę [MM] w formacie BCD [GGMM]; wymagają konwersji do zapisu HH:MM",,
+03,0x00A0,160,R/W,airing_winter_tue,ZIMA - Wtorek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00A4,164,R/W,airing_winter_wed,ZIMA - Środa - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00A8,168,R/W,airing_winter_thu,ZIMA - Czwartek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00AC,172,R/W,airing_winter_fri,ZIMA - Piątek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00B0,176,R/W,airing_winter_sat,ZIMA - Sobota - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00B4,180,R/W,airing_winter_sun,ZIMA - Niedziela - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
 
 # INNE USTAWIENIA
 03,0x00C0,192,R/W,RTC_cal,Dane kalibracyjne zegara czasu rzeczywistego,0,255,198,1,s,"Zakres wartości rzeczywistych: od (-127) do (+127)",,
