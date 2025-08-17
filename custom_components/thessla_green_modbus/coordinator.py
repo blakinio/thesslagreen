@@ -73,6 +73,7 @@ from .modbus_exceptions import ConnectionException, ModbusException
 from .modbus_helpers import _call_modbus
 from .multipliers import REGISTER_MULTIPLIERS
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from .utils import TIME_REGISTER_PREFIXES, _decode_bcd_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -998,6 +999,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
+
+        # Check for sensor error values
+        if value == SENSOR_UNAVAILABLE and "temperature" in register_name.lower():
+            return None  # No sensor
+        if value == SENSOR_UNAVAILABLE and "flow" in register_name.lower():
+            return None  # No sensor
+
+        if register_name.startswith(TIME_REGISTER_PREFIXES):
+            decoded = _decode_bcd_time(value)
+            return decoded if decoded is not None else value
+
+        # Apply multiplier
+
         if register_name in SIGNED_REGISTERS:
             value = _to_signed_int16(value)
             if value == -32768:
@@ -1009,6 +1023,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         elif value == SENSOR_UNAVAILABLE:
             if "flow" in register_name:
                 return None
+
         if register_name in REGISTER_MULTIPLIERS:
             value = value * REGISTER_MULTIPLIERS[register_name]
         return value

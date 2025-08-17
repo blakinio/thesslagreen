@@ -37,7 +37,7 @@ from .const import (
 )
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
-from .utils import _to_snake_case
+from .utils import TIME_REGISTER_PREFIXES, _decode_bcd_time, _decode_register_time, _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,16 +50,6 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 }
 
 
-# Registers storing times encoded as HH:MM bytes
-TIME_REGISTER_PREFIXES: tuple[str, ...] = (
-    "schedule_",
-    "airing_summer_",
-    "airing_winter_",
-    "manual_airing_time_to_start",
-    "pres_check_time",
-    "start_gwc_regen",
-    "stop_gwc_regen",
-)
 # Registers storing times as BCD HHMM values
 
 BCD_TIME_PREFIXES: Tuple[str, ...] = (
@@ -104,6 +94,7 @@ BCD_TIME_PREFIXES: tuple[str, ...] = (
 SETTING_PREFIX = "setting_"
 
 
+
 def _decode_register_time(value: int) -> int | None:
     """Decode HH:MM byte-encoded value to minutes since midnight.
 
@@ -142,6 +133,7 @@ def _decode_bcd_time(value: int) -> int | None:
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
         return hours_dec * 60 + minutes_dec
     return None
+
 
 
 def _decode_setting_value(value: int) -> tuple[int, float] | None:

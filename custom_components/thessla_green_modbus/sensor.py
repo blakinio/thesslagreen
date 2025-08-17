@@ -20,6 +20,8 @@ from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
+from .utils import TIME_REGISTER_PREFIXES, _to_snake_case
+
 from .entity_mappings import ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {})
 
 from .utils import _to_snake_case
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -199,6 +202,10 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         if value is None:
             return None
+        if self._register_name.startswith(TIME_REGISTER_PREFIXES):
+            if isinstance(value, int):
+                return f"{value // 60:02d}:{value % 60:02d}"
+            return value
         value_map = self._sensor_def.get("value_map")
         if value_map is not None:
             return value_map.get(value, value)

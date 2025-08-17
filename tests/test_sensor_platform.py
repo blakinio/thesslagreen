@@ -64,6 +64,38 @@ sys.modules["homeassistant.components.select"] = select_mod
 
 entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
 
+update_coord = types.ModuleType("homeassistant.helpers.update_coordinator")
+
+
+class CoordinatorEntity:  # pragma: no cover - simple stub
+    def __init__(self, coordinator=None):
+        self.coordinator = coordinator
+
+    @classmethod
+    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
+        return cls
+
+
+class DataUpdateCoordinator:  # pragma: no cover - minimal stub
+    def __init__(self, hass=None, logger=None, name=None, update_interval=None):
+        self.hass = hass
+        self.logger = logger
+        self.name = name
+        self.update_interval = update_interval
+
+    async def async_shutdown(self):  # pragma: no cover - stub
+        return None
+
+
+class UpdateFailed(Exception):  # pragma: no cover - simple stub
+    pass
+
+
+update_coord.CoordinatorEntity = CoordinatorEntity
+update_coord.DataUpdateCoordinator = DataUpdateCoordinator
+update_coord.UpdateFailed = UpdateFailed
+sys.modules["homeassistant.helpers.update_coordinator"] = update_coord
+
 
 class AddEntitiesCallback:  # pragma: no cover - simple stub
     pass
@@ -77,12 +109,13 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
-    SENSOR_DEFINITIONS,
-    async_setup_entry,
-)
 from custom_components.thessla_green_modbus.select import (  # noqa: E402
     async_setup_entry as select_async_setup_entry,
+)
+from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
+    SENSOR_DEFINITIONS,
+    ThesslaGreenSensor,
+    async_setup_entry,
 )
 
 
@@ -182,6 +215,22 @@ def test_sensor_value_map(mock_coordinator, mock_config_entry):
         assert sensor.native_value == "temporary"
 
     asyncio.run(run_test())
+
+
+def test_time_sensor_formats_value(mock_coordinator):
+    """Time-based sensors should format minutes to HH:MM string."""
+    register = "schedule_summer_mon_1"
+    sensor_def = {
+        "translation_key": register,
+        "register_type": "holding_registers",
+        "unit": None,
+        "device_class": None,
+        "state_class": None,
+        "value_map": None,
+    }
+    mock_coordinator.data[register] = 8 * 60 + 5
+    sensor = ThesslaGreenSensor(mock_coordinator, register, sensor_def)
+    assert sensor.native_value == "08:05"
 
 
 def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):

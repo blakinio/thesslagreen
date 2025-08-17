@@ -413,6 +413,9 @@ def test_register_value_processing(coordinator):
     mode_result = coordinator._process_register_value("mode", 1)
     assert mode_result == 1
 
+    time_result = coordinator._process_register_value("schedule_summer_mon_1", 0x0815)
+    assert time_result == 8 * 60 + 15
+
 
 def test_dac_value_processing(coordinator, caplog):
     """Test DAC register value processing and validation."""
