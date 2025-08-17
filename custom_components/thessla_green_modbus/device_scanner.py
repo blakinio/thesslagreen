@@ -843,7 +843,136 @@ class ThesslaGreenDeviceScanner:
         for skip_start, skip_end in self._unsupported_input_ranges:
             if skip_start <= start and end <= skip_end:
                 return None
+        if not skip_cache and any(
+            reg in self._failed_input for reg in range(start, end + 1)
+        ):
+            first = next(
+                reg for reg in range(start, end + 1) if reg in self._failed_input
+            )
+            skip_start = skip_end = first
+            while skip_start - 1 in self._failed_input:
+                skip_start -= 1
+            while skip_end + 1 in self._failed_input:
+                skip_end += 1
+            if (skip_start, skip_end) not in self._input_skip_log_ranges:
+                _LOGGER.debug(
+                    "Skipping cached failed input registers 0x%04X-0x%04X",
+                    skip_start,
+                    skip_end,
+                )
+                self._input_skip_log_ranges.add((skip_start, skip_end))
+            return None
 
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_input_registers, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.registers
+                _LOGGER.debug(
+                    "Attempt %d failed to read input 0x%04X: %s",
+                    attempt,
+                    address,
+                    response,
+                )
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Attempt %d failed to read input 0x%04X: %s",
+                    attempt,
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading input 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            except ModbusIOException as exc:
+                _LOGGER.debug(
+                    "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._input_failures.get(address, 0) + 1
+                    self._input_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_input:
+                        self._failed_input.add(address)
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            _LOGGER.debug(
+                "Falling back to holding registers for input 0x%04X (attempt %d)",
+                address,
+                attempt,
+            )
+            try:
+                response = await _call_modbus(
+                    client.read_holding_registers, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.registers
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    response,
+                )
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+        if attempt < self.retry:
+            await asyncio.sleep(0.5)
+
+        return None
+
+async def _read_holding(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+    *,
+    log_exceptions: bool = True,
+) -> list[int] | None:
+    """Read holding registers with retry, backoff and failure tracking."""
+    start = address
+    end = address + count - 1
+
+    for skip_start, skip_end in self._unsupported_holding_ranges:
+        if skip_start <= start and end <= skip_end:
     async def _read_holding(
         self,
         client: "AsyncModbusTcpClient",
