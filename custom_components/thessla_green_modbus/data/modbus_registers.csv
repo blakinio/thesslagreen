@@ -1,5 +1,4 @@
 Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,Default_Value,Multiplier,Unit,Information,Software_Version,Notes
-
 # 01 - READ COILS
 01,0x0005,5,R/-,duct_water_heater_pump,Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy,0,1,,,"0 - OFF; 1 - ON",,
 01,0x0009,9,R/-,bypass,Stan wyjścia siłownika przepustnicy bypass,0,1,,,"0 - OFF; 1 - ON",,
@@ -29,6 +28,9 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 02,0x0015,21,R/-,empty_house,Stan wejścia sygnału załączenia funkcji PUSTY DOM,0,1,,,"0 - OFF; 1 - ON",,
 
 # 04 - READ INPUT REGISTER
+04,0x0000,0,R/-,version_major,Główna wersja oprogramowania,0,65535,,1,,,,
+04,0x0001,1,R/-,version_minor,Wersja poboczna oprogramowania,0,65535,,1,,,,
+04,0x0004,4,R/-,version_patch,Wersja poprawki oprogramowania,0,65535,,1,,,,
 04,0x0002,2,R/-,day_of_week,Bieżący dzień tygodnia dla trybu automatycznego,0,6,1,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",3.00,
 04,0x0003,3,R/-,period,Bieżący odcinek czasowy dla trybu automatycznego,0,3,1,1,"0 - Odcinek czasowy 1; 1 - Odcinek czasowy 2; 2 - Odcinek czasowy 3; 3 - Odcinek czasowy 4",3.00,
 04,0x000E,14,R/-,compilation_days,Data kompilacji oprogramowania Basic,0,65535,,1,d,"Liczba dni od 01.01.2000",,
@@ -41,12 +43,12 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 04,0x0015,21,R/-,gwc_temperature,Temperatura przed wymiennikiem systemu glikolowego GWC (TZ3),-999,999,,0.1,°C,"Wartość 0x8000 (hex) / 32768 (dec) oznacza brak odczytu temperatury",,"*wartość maksymalna w przypadku odczytu temperatury"
 04,0x0016,22,R/-,ambient_temperature,Temperatura otoczenia (TO),-999,999,,0.1,°C,"Wartość 0x8000 (hex) / 32768 (dec) oznacza brak odczytu temperatury",,"*wartość maksymalna w przypadku odczytu temperatury"
 04,0x0017,23,R/-,heating_temperature,Temperatura nagrzewnicy (TH),-999,999,,0.1,°C,"Wartość 0x8000 (hex) / 32768 (dec) oznacza brak odczytu temperatury",,"*wartość maksymalna w przypadku odczytu temperatury"
-04,0x0018,24,R/-,serial_number_1,Numer seryjny sterownika - liczba 1,,,1,,"Przykład: dla wartości w rejestrach 0x0018 - 0x001D: 0x001a; 0x002b; 0x003c; 0x004d; 0x005e; 0x006f numer seryjny: S/N: 1a2b 3c4d 5e6f",,
-04,0x0019,25,R/-,serial_number_2,Numer seryjny sterownika - liczba 2,,,1,,,,
-04,0x001A,26,R/-,serial_number_3,Numer seryjny sterownika - liczba 3,,,1,,,,
-04,0x001B,27,R/-,serial_number_4,Numer seryjny sterownika - liczba 4,,,1,,,,
-04,0x001C,28,R/-,serial_number_5,Numer seryjny sterownika - liczba 5,,,1,,,,
-04,0x001D,29,R/-,serial_number_6,Numer seryjny sterownika - liczba 6,,,1,,,,
+04,0x0018,24,R/-,serial_number_1,Numer seryjny sterownika - liczba 1,,,1,ASCII,"Przykład: rejestry 0x0018-0x001D tworzą numer seryjny",,
+04,0x0019,25,R/-,serial_number_2,Numer seryjny sterownika - liczba 2,,,,1,ASCII,,,
+04,0x001A,26,R/-,serial_number_3,Numer seryjny sterownika - liczba 3,,,,1,ASCII,,,
+04,0x001B,27,R/-,serial_number_4,Numer seryjny sterownika - liczba 4,,,,1,ASCII,,,
+04,0x001C,28,R/-,serial_number_5,Numer seryjny sterownika - liczba 5,,,,1,ASCII,,,
+04,0x001D,29,R/-,serial_number_6,Numer seryjny sterownika - liczba 6,,,,1,ASCII,,,
 04,0x010F,271,R/-,constant_flow_active,Status aktywności systemu Constant Flow,0,1,,1,"0 - nieaktywny; 1 - aktywny",,
 04,0x0110,272,R/-,supply_percentage,Zadana intensywność wentylacji (nawiew),0,150,,1,%,"Zakres wartości podczas pracy ograniczony wartościami (0x04) 0x0114 oraz 0x0115",,
 04,0x0111,273,R/-,exhaust_percentage,Zadana intensywność wentylacji (nawiew),0,150,,1,%,"Zakres wartości podczas pracy ograniczony wartościami (0x04) 0x0114 oraz 0x0115",,
@@ -57,8 +59,8 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 04,0x012A,298,R/-,water_removal_active,Status działania procedury HEWR,0,1,1,1,"0 - brak (procedura nieaktywna); 1 - jest (trwa procedura)",4.80,
 
 # 03 - READ HOLDING REGISTER
-03,0x0000,0,R/W,date_time,Data i godzina - liczba dziesiątek / jedności roku i miesiąc [RRMM],0,99,,1,"[RR] - liczba dziesiątek i jedności roku; [MM] - miesiąc; [DD] - dzień miesiąca; [GG] - godziny; [mm] - minuty; [ss] - sekundy",,"Uwaga: wszystkie cztery rejestry muszą być odczytywane / zapisywane jednocześnie"
-03,0x0001,1,R/W,date_time,Data i godzina - dzień miesiąca i dzień tygodnia [DDTT],1,31,,1,,"0 - Poniedziałek, ... , 6 - Niedziela",4.75,
+03,0x0000,0,R/W,date_time,Data i godzina - liczba dziesiątek / jedności roku i miesiąc [RRMM],0,99,,1,RRMM,"[RR] - liczba dziesiątek i jedności roku; [MM] - miesiąc; [DD] - dzień miesiąca; [GG] - godziny; [mm] - minuty; [ss] - sekundy",,"Uwaga: wszystkie cztery rejestry muszą być odczytywane / zapisywane jednocześnie"
+03,0x0001,1,R/W,date_time,Data i godzina - dzień miesiąca i dzień tygodnia [DDTT],1,31,,1,DDTT,"0 - Poniedziałek, ... , 6 - Niedziela",4.75,
 03,0x0002,2,R/W,date_time,Data i godzina - godzina i minuta [GGmm],0,23,,1,h,,,
 03,0x0003,3,R/W,date_time,Data i godzina - sekunda i setne części sekundy [sscc],0,59,,1,s,,,
 03,0x0007,7,R/-,lock_date,Data zablokowania centrali kluczem produktu - liczba dziesiątek / jedności roku [00RR],0,99,,1,"[RR] - liczba dziesiątek i jedności roku; [MM] - miesiąc; [DD] - dzień miesiąca",,"Uwaga: wszystkie trzy rejestry muszą być odczytywane jednocześnie"
@@ -188,25 +190,25 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x007F,127,R/W,setting_winter_sun_4,ZIMA - Niedziela - 4 [AATT],10,100,25,1,%,,,
 
 # HARMONOGRAM WIETRZENIA LATO (0x0080-0x0098)
-03,0x0080,128,R/W,airing_summer_mon,LATO - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,h,"Rejestry zawierają: godzinę [GG] i minutę [MM] rozpoczęcia wietrzenia w formacie bcd [GGMM]",,
-03,0x0084,132,R/W,airing_summer_tue,LATO - Wtorek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0088,136,R/W,airing_summer_wed,LATO - Środa - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x008C,140,R/W,airing_summer_thu,LATO - Czwartek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0090,144,R/W,airing_summer_fri,LATO - Piątek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0094,148,R/W,airing_summer_sat,LATO - Sobota - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x0098,152,R/W,airing_summer_sun,LATO - Niedziela - Wietrzenie [GGMM],0,23,17,1,h,,,
+03,0x0080,128,R/W,airing_summer_mon,LATO - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,hhmm,"Rejestry zawierają: godzinę [GG] i minutę [MM] w formacie BCD [GGMM]; wymagają konwersji do zapisu HH:MM",,
+03,0x0084,132,R/W,airing_summer_tue,LATO - Wtorek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0088,136,R/W,airing_summer_wed,LATO - Środa - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x008C,140,R/W,airing_summer_thu,LATO - Czwartek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0090,144,R/W,airing_summer_fri,LATO - Piątek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0094,148,R/W,airing_summer_sat,LATO - Sobota - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x0098,152,R/W,airing_summer_sun,LATO - Niedziela - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
 
 # HARMONOGRAM WIETRZENIA ZIMA (0x009C-0x00B4)
-03,0x009C,156,R/W,airing_winter_mon,ZIMA - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,h,"Rejestry zawierają: godzinę [GG] i minutę [MM] rozpoczęcia wietrzenia w formacie bcd [GGMM]",,
-03,0x00A0,160,R/W,airing_winter_tue,ZIMA - Wtorek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00A4,164,R/W,airing_winter_wed,ZIMA - Środa - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00A8,168,R/W,airing_winter_thu,ZIMA - Czwartek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00AC,172,R/W,airing_winter_fri,ZIMA - Piątek - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00B0,176,R/W,airing_winter_sat,ZIMA - Sobota - Wietrzenie [GGMM],0,23,17,1,h,,,
-03,0x00B4,180,R/W,airing_winter_sun,ZIMA - Niedziela - Wietrzenie [GGMM],0,23,17,1,h,,,
+03,0x009C,156,R/W,airing_winter_mon,ZIMA - Poniedziałek - Wietrzenie [GGMM],0,23,17,1,hhmm,"Rejestry zawierają: godzinę [GG] i minutę [MM] w formacie BCD [GGMM]; wymagają konwersji do zapisu HH:MM",,
+03,0x00A0,160,R/W,airing_winter_tue,ZIMA - Wtorek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00A4,164,R/W,airing_winter_wed,ZIMA - Środa - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00A8,168,R/W,airing_winter_thu,ZIMA - Czwartek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00AC,172,R/W,airing_winter_fri,ZIMA - Piątek - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00B0,176,R/W,airing_winter_sat,ZIMA - Sobota - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
+03,0x00B4,180,R/W,airing_winter_sun,ZIMA - Niedziela - Wietrzenie [GGMM],0,23,17,1,hhmm,,,
 
 # INNE USTAWIENIA
-03,0x00C0,192,R/W,RTC_cal,Dane kalibracyjne zegara czasu rzeczywistego,0,255,198,1,,"Zakres wartości rzeczywistych: od (-127) do (+127)",,
+03,0x00C0,192,R/W,RTC_cal,Dane kalibracyjne zegara czasu rzeczywistego,0,255,198,1,s,"Zakres wartości rzeczywistych: od (-127) do (+127)",,
 03,0x00F0,240,R/-,cf_version,Wersja oprogramowania modułu CF lub (od 4.75) TG-02,,,1,,"Format zapisu wersji oprogramowania: [MM].[mm]",,
 03,0x0100,256,R/-,supply_air_flow,Wartość chwilowa strumienia powietrza - nawiew,0,65535,,1,m3/h,"0 - brak przepływu (CF aktywny); 65535 - CF nieaktywny",,
 03,0x0101,257,R/-,exhaust_air_flow,Wartość chwilowa strumienia powietrza - wywiew,0,65535,,1,m3/h,,,
@@ -220,7 +222,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x1016,4118,R/W,maxSupplyAirFlowRateGwc,Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (nawiew),100,150,100,1,%,"Wartość wyznaczona podczas procedury kalibracji",,
 03,0x1017,4119,R/W,maxExhaustAirFlowRate,Maksymalna możliwa do ustawienia intensywność wentylacji (wywiew),100,150,100,1,%,"Wartość wyznaczona podczas procedury kalibracji",,
 03,0x1018,4120,R/W,maxExhaustAirFlowRateGwc,Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (wywiew),100,150,100,1,%,"Wartość wyznaczona podczas procedury kalibracji",,
-03,0x1060,4192,R/-,antifreezMode,Flaga uruchomienia systemu FPX,0,1,,1,"0 - brak; 1 - jest",,
+03,0x1060,4192,R/-,antifreezeMode,Flaga uruchomienia systemu FPX,0,1,,1,"0 - brak; 1 - jest",,
 03,0x1066,4198,R/-,antifreezStage,Tryb działania systemu FPX,0,2,,1,"0 - OFF; 1 - tryb FPX1; 2 - tryb FPX2",,
 03,0x1070,4208,R/W,mode,Tryb pracy AirPack,0,2,0,1,"0 - automatyczny; 1 - manualny; 2 - chwilowy",,
 03,0x1071,4209,R/W,seasonMode,Wybór harmonogramu - tryb AUTOMATYCZNY,0,1,0,1,"0 - LATO; 1 - ZIMA",,
@@ -238,20 +240,20 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x1082,4226,R/W,hoodSupplyCoef,Intensywność wentylacji dla funkcji OKAP (nawiew),100,150,100,1,%,"Dotyczy funkcji OKAP: typ 1 (bez wentylatora) oraz typ 2 (z went.) załączanej wejściem sygnałowym OK (przełącznik ON/OFF)",,
 03,0x1083,4227,R/W,hoodExhaustCoef,Intensywność wentylacji dla funkcji OKAP (wywiew),100,150,100,1,%,"Dotyczy funkcji OKAP: typ 1 (bez wentylatora) załączanej wejściem sygnałowym OK (przełącznik ON/OFF)",,
 03,0x1084,4228,R/W,fireplaceSupplyCoef,Różnicowanie strumieni dla funkcji KOMINEK,5,50,20,1,%,"Nastawa wartości, o jaką zwiększana jest intensywność nawiewu względem wywiewu",,
-03,0x1085,4229,R/W,airingBathroomCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4, 5 (łazienka),100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem lub sygnałem z higrostatu",,
-03,0x1086,4230,R/W,airingCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje),100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
+03,0x1085,4229,R/W,airingBathroomCoef,"Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4, 5 (łazienka)",100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem lub sygnałem z higrostatu",,
+03,0x1086,4230,R/W,airingCoef,"Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)",100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
 03,0x1087,4231,R/W,contaminationCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 6 (usuwanie zanieczyszczeń),100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej sygnałem z czujnika jakości powietrza",,
 03,0x1088,4232,R/W,emptyHouseCoef,Intensywność wentylacji dla funkcji PUSTY DOM,10,50,20,1,%,"Dotyczy funkcji PUSTY DOM załączanej wejściem sygnałowym PD lub ręcznie",,
-03,0x1089,4233,R/W,airingPanelModeTime,Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje),1,45,5,1,min,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
+03,0x1089,4233,R/W,airingPanelModeTime,"Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)",1,45,5,1,min,"Dotyczy funkcji WIETRZENIE załączanej ręcznie lub na podstawie harmonogramu",,
 03,0x108A,4234,R/W,airingSwitchModeTime,Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 3 (łazienka),1,45,5,1,min,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem dzwonkowym",,
 03,0x108B,4235,R/W,airingSwitchModeOnDelay,Opóźnienie załączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka),0,20,0,1,min,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF",,
 03,0x108C,4236,R/W,airingSwitchModeOffDelay,Opóźnienie wyłączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka),0,20,0,1,min,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF",,
 03,0x108D,4237,R/W,fireplaceModeTime,Czas działania funkcji KOMINEK,1,10,1,1,min,"Dotyczy funkcji KOMINEK załączanej wejściem sygnałowym K (przełącznik) lub z panelu",,
-03,0x108E,4238,R/W,airingSwitchCoef,Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4,100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF lub przełącznikiem dzwonkowym",4.85,
+03,0x108E,4238,R/W,airingSwitchCoef,"Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4",100,150,100,1,%,"Dotyczy funkcji WIETRZENIE załączanej przełącznikiem ON/OFF lub przełącznikiem dzwonkowym",4.85,
 03,0x108F,4239,R/W,openWindowCoef,Intensywność wentylacji dla funkcji OTWARTE OKNA (wywiew),10,100,100,1,%,"0-100 - nastawa intensywności wentylacji; 101 - intensywność wentylacji z aktywnego trybu automatycznego / manualnego",3.72,
 
 # KONTROLA FILTRÓW
-03,0x1094,4244,R/W,presCheckDay,Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów,0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central wyposażonych w presostat / filtr kanałowy z presostatem"
+03,0x1094,4244,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central wyposażonych w presostat / filtr kanałowy z presostatem"
 03,0x1095,4245,R/W,presCheckTime,Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM],0,23,12,1,h,"Rejestr zawiera godzinę [GG] i minutę [MM] rozpoczęcia procedury",,
 
 # GWC SYSTEM
@@ -306,32 +308,33 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x113E,4414,R/W,hard_reset_schedule,Reset ustawień trybów pracy,0,1,,1,"0 - brak; 1 - jest",,
 
 # KONTROLA FILTRÓW - DODATKOWE
-03,0x1150,4432,R/W,presCheckDay,Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów,0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central w presostat / filtr kanałowy z presostatem"
+03,0x1150,4432,R/W,presCheckDay,"Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",0,6,0,1,"0 - Poniedziałek; 1 - Wtorek; 2 - Środa; 3 - Czwartek; 4 - Piątek; 5 - Sobota; 6 - Niedziela",,"dotyczy central w presostat / filtr kanałowy z presostatem"
 03,0x1151,4433,R/W,presCheckTime,Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM],0,23,12,1,h,"Rejestr zawiera godzinę [GG] i minutę [MM] rozpoczęcia procedury",,
 
 # KOMUNIKACJA MODBUS
-03,0x1164,4452,R/W,uart0Id,Nastawy komunikacji Modbus - port Air-B ID urządzenia,10,19,10,1,,4.76,
+03,0x1164,4452,R/W,uart0Id,Nastawy komunikacji Modbus - port Air-B ID urządzenia,10,19,10,1,id,,4.76,
 03,0x1165,4453,R/W,uart0Baud,Nastawy komunikacji Modbus - port Air-B Szybkość transmisji,0,8,1,3,"0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",4.76,
 03,0x1166,4454,R/W,uart0Parity,Nastawy komunikacji Modbus - port Air-B Parzystość,0,2,0,1,"0 - brak; 1 - parzysty; 2 - nieparzysty",4.76,
 03,0x1167,4455,R/W,uart0Stop,Nastawy komunikacji Modbus - port Air-B Bity stopu,0,1,0,1,"0 - jeden; 1 - dwa",4.76,
-03,0x1168,4456,R/W,uart1Id,Nastawy komunikacji Modbus - port Air++ ID urządzenia,10,19,10,1,,4.76,
-03,0x1169,4457,R/W,uart1Baud,Nastawy komunikacji Modbus - port Air++ Szybkość transmisji,0,8,1,3,"0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",4.76,
-03,0x116A,4458,R/W,uart1Parity,Nastawy komunikacji Modbus - port Air++ Parzystość,0,2,0,1,"0 - brak; 1 - parzysty; 2 - nieparzysty",4.76,
-03,0x116B,4459,R/W,uart1Stop,Nastawy komunikacji Modbus - port Air++ Bity stopu,0,1,0,1,"0 - jeden; 1 - dwa",4.76,
+# OPCJONALNE USTAWIENIA UART
+03,0x1168,4456,R/W,uart1Id,Nastawy komunikacji Modbus - port Air++ ID urządzenia,10,19,10,1,id,,4.76,opcjonalny
+03,0x1169,4457,R/W,uart1Baud,Nastawy komunikacji Modbus - port Air++ Szybkość transmisji,0,8,1,3,"0 - 4800; 1 - 9600; 2 - 14400; 3 - 19200; 4 - 28800; 5 - 38400; 6 - 57600; 7 - 76800; 8 - 115200",4.76,opcjonalny
+03,0x116A,4458,R/W,uart1Parity,Nastawy komunikacji Modbus - port Air++ Parzystość,0,2,0,1,"0 - brak; 1 - parzysty; 2 - nieparzysty",4.76,opcjonalny
+03,0x116B,4459,R/W,uart1Stop,Nastawy komunikacji Modbus - port Air++ Bity stopu,0,1,0,1,"0 - jeden; 1 - dwa",4.76,opcjonalny
 
 # NAZWA URZĄDZENIA
-03,0x1FD0,8144,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,"Znaki zapisane w systemie ASCII",,
-03,0x1FD1,8145,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,"W jednym rejestrze zapisane są dwa znaki: bity b15-b8 -> znak pierwszy od lewej; bity b7-b0 -> znak drugi od lewej",,
-03,0x1FD2,8146,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,,,
-03,0x1FD3,8147,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,,,
-03,0x1FD4,8148,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,,,
-03,0x1FD5,8149,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,,,
-03,0x1FD6,8150,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,,,
-03,0x1FD7,8151,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,,,
+03,0x1FD0,8144,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,"Znaki zapisane w systemie ASCII",,
+03,0x1FD1,8145,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,"W jednym rejestrze zapisane są dwa znaki: bity b15-b8 -> znak pierwszy od lewej; bity b7-b0 -> znak drugi od lewej",,
+03,0x1FD2,8146,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD3,8147,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD4,8148,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD5,8149,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD6,8150,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
+03,0x1FD7,8151,R/W,deviceName,Nazwa urządzenia,0,65535,0,1,ASCII,,,
 
 # KLUCZ PRODUKTU
 03,0x1FFB,8187,R/W,lockPass1,Klucz produktu użytkownika słowo młodsze,0,0x423f,0,1,"Pod tymi adresami można zapisać klucz produktu wprowadzony przez użytkownika",,
-03,0x1FFC,8188,R/W,lockPass2,Klucz produktu użytkownika słowo starsze,0,0x000f,0,1,,,
+03,0x1FFC,8188,R/W,lockPass2,Klucz produktu użytkownika słowo starsze,0,0x000f,0,1,ASCII,,,
 03,0x1FFD,8189,R/W,lockFlag,Aktywacja blokady urządzenia,0,1,0,1,"0 - blokada nieaktywna; 1 - blokada aktywna",,
 03,0x1FFE,8190,R/-,requiredTemperature,Temperatura zadana trybu KOMFORT,20,90,40,0.5,°C,,,
 03,0x1FFF,8191,R/W,filterChange,System kontroli filtrów / typ filtrów,1,4,1,1,"1 - presostat; 2 - filtry płaskie; 3 - filtry CleanPad; 4 - filtry CleanPad Pure",,
@@ -345,7 +348,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x2008,8200,R/W,S8,Sygnalizacja konieczności wprowadzenia klucza produktu,0,1,,1,"0 - brak; 1 - jest",,
 03,0x2009,8201,R/W,S9,Centrala zatrzymana z panelu AirS,0,1,,1,"0 - brak; 1 - jest",,
 03,0x200A,8202,R/W,S10,Zadziałał czujnik PPOŻ,0,1,,1,"0 - brak; 1 - jest",,
-03,0x200D,8205,R/W,S13,Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile,0,1,,1,"0 - brak; 1 - jest",,
+03,0x200D,8205,R/W,S13,"Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile",0,1,,1,bool,"0 - brak; 1 - jest",,
 03,0x200E,8206,R/W,S14,Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej zadziałało maksymalną ilość razy,0,1,,1,"0 - brak; 1 - jest",,
 03,0x200F,8207,R/W,S15,Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej nie przyniosło oczekiwanych rezultatów,0,1,,1,"0 - brak; 1 - jest",,
 03,0x2010,8208,R/W,S16,Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali przy aktywnym systemie FPX,0,1,,1,"0 - brak; 1 - jest",,
@@ -368,7 +371,7 @@ Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,D
 03,0x2065,8293,R/W,E101,Brak odczytu z czujnika temperatury powietrza nawiewanego - NAWIEW (TN1),0,1,,1,"0 - brak; 1 - jest",,
 03,0x2066,8294,R/W,E102,Brak odczytu z czujnika temperatury powietrza usuwanego z pomieszczeń - WYWIEW (TP),0,1,,1,"0 - brak; 1 - jest",,
 03,0x2067,8295,R/W,E103,Brak odczytu z czujnika temperatury powietrza na wlocie do wymiennika rekuperacyjnego - FPX (TZ2),0,1,,1,"0 - brak; 1 - jest",,
-03,0x2068,8296,R/W,E104,Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO),0,1,,1,"0 - brak; 1 - jest",,
+03,0x2068,8296,R/W,E104,"Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO)",0,1,,1,"0 - brak; 1 - jest",,
 03,0x2069,8297,R/W,E105,Brak odczytu z czujnika temperatury powietrza nawiewanego za wymiennikiem kanałowym (TN2),0,1,,1,"0 - brak; 1 - jest",,
 03,0x206A,8298,R/W,E106,Brak odczytu z czujnika temperatury powietrza zewnętrznego glikolowego GWC (TZ3),0,1,,1,"0 - brak; 1 - jest",,
 03,0x208A,8330,R/W,E138,Awaria czujnika CF wentylatora nawiewnego - Brak komunikacji z przetwornikiem ciśnienia wentylatora,0,1,,1,"0 - brak; 1 - jest",,

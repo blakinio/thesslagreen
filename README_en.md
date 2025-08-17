@@ -106,7 +106,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Climate**: full HVAC control with preset modes
 - **Switches**: all systems, modes and configuration
 - **Numbers**: temperatures, intensities, times, alarm limits
-- **Selects**: work modes, schedule, communication, language
+- **Selects**: work modes, season mode, schedule, communication, language
 
 ## 🛠️ Services (13 complete services)
 
@@ -192,6 +192,24 @@ logger:
     pymodbus: info
 ```
 
+### "Skipping unsupported … registers" warnings
+During scanning the integration tries many register ranges. If the unit
+doesn't support a range, the logs show a warning like:
+
+```
+Skipping unsupported input registers 0x0100-0x0102 (exception code 2)
+```
+
+Modbus exception codes explain why the read failed:
+
+- **2 – Illegal Data Address** – register range not implemented
+- **3 – Illegal Data Value** – register exists but rejected the request (e.g. feature disabled)
+- **4 – Slave Device Failure** – the device could not process the request
+
+Warnings that only appear during the initial scan or for optional features
+can usually be ignored. Persistent warnings for important registers may
+indicate a configuration or firmware mismatch.
+
 ## 📋 Technical specification
 
 ### Supported registers
@@ -215,7 +233,8 @@ logger:
 - **Optimized reads**: register grouping, 60% fewer Modbus calls
 - **Auto scanning**: only available registers, no errors
 - **Diagnostics**: detailed performance and error metrics
-- **Stability**: retry logic, fallback reads, graceful degradation
+- **Stability**: retry logic, fallback reads, graceful degradation, and automatic
+  skipping of unsupported registers
 
 ## 🤝 Support and development
 

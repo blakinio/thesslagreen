@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -35,6 +35,12 @@ SELECT_DEFINITIONS = {
         "icon": "mdi:pipe",
         "translation_key": "gwc_mode",
         "states": {"off": 0, "auto": 1, "forced": 2},
+        "register_type": "holding_registers",
+    },
+    "season_mode": {
+        "icon": "mdi:weather-partly-snowy",
+        "translation_key": "season_mode",
+        "states": {"winter": 0, "summer": 1},
         "register_type": "holding_registers",
     },
     "filter_change": {
@@ -91,7 +97,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._attr_options = list(self._states.keys())
 
     @property
-    def current_option(self) -> Optional[str]:
+    def current_option(self) -> str | None:
         """Return current option."""
         value = self.coordinator.data.get(self._register_name)
         if value is None:

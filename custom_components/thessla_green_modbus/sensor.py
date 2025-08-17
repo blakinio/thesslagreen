@@ -2,22 +2,116 @@
 
 from __future__ import annotations
 
+import asyncio
+import csv
+import json
 import logging
-from typing import Any, Dict, Optional
+from dataclasses import asdict, dataclass
+from importlib import resources
+from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import registers
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+
 from .entity_mappings import ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 
 SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {})
+
+from .utils import _to_snake_case
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class SensorDefinition:
+    """Dataclass representing sensor metadata."""
+
+    translation_key: str
+    register_type: str
+    unit: str | None
+    icon: str | None = None
+    device_class: SensorDeviceClass | None = None
+    state_class: SensorStateClass | None = None
+    value_map: dict[int, str] | None = None
+
+
+UNIT_MAP = {
+    "°C": UnitOfTemperature.CELSIUS,
+    "m³/h": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+    "m3/h": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+    "%": PERCENTAGE,
+    "V": UnitOfElectricPotential.VOLT,
+}
+
+DEVICE_CLASS_MAP = {
+    UnitOfTemperature.CELSIUS: SensorDeviceClass.TEMPERATURE,
+    UnitOfElectricPotential.VOLT: SensorDeviceClass.VOLTAGE,
+}
+
+
+VALUE_MAPS: dict[str, dict[int, str]] = {
+    "mode": {0: "auto", 1: "manual", 2: "temporary"},
+    "season_mode": {0: "winter", 1: "summer"},
+    "filter_change": {
+        1: "presostat",
+        2: "flat_filters",
+        3: "cleanpad",
+        4: "cleanpad_pure",
+    },
+    "gwc_mode": {0: "off", 1: "auto", 2: "forced"},
+    "bypass_mode": {0: "auto", 1: "open", 2: "closed"},
+}
+
+
+def _load_translation_keys() -> set[str]:
+    """Load sensor translation keys from the English translation file."""
+    path = resources.files(__package__).joinpath("translations/en.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return set(data.get("entity", {}).get("sensor", {}))
+
+
+def load_sensor_definitions() -> dict[str, dict[str, Any]]:
+    """Generate SENSOR_DEFINITIONS from the registers CSV."""
+    sensor_keys = _load_translation_keys()
+    csv_path = resources.files(__package__).joinpath("data/modbus_registers.csv")
+    definitions: dict[str, dict[str, Any]] = {}
+    with csv_path.open(newline="", encoding="utf-8") as csvfile:  # type: ignore[call-overload]
+        reader = csv.DictReader(
+            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
+        )
+        for row in reader:
+            name = _to_snake_case(row["Register_Name"])
+            if name not in sensor_keys:
+                continue
+            unit_raw = row["Unit"].strip()
+            unit = UNIT_MAP.get(unit_raw) if unit_raw else None
+            device_class = DEVICE_CLASS_MAP.get(unit)
+            state_class = SensorStateClass.MEASUREMENT if unit is not None else None
+            register_type = (
+                "input_registers" if name in registers.INPUT_REGISTERS else "holding_registers"
+            )
+            definition = SensorDefinition(
+                translation_key=name,
+                register_type=register_type,
+                unit=unit,
+                device_class=device_class,
+                state_class=state_class,
+                value_map=VALUE_MAPS.get(name),
+            )
+            definitions[name] = asdict(definition)
+    return definitions
+
+
+SENSOR_DEFINITIONS = load_sensor_definitions()
 
 
 async def async_setup_entry(
@@ -47,8 +141,16 @@ async def async_setup_entry(
             temp_skipped += 1
 
     if entities:
-        async_add_entities(entities, True)
-        _LOGGER.info("Created %d sensor entities for %s", len(entities), coordinator.device_name)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning("Entity addition cancelled, adding without initial update")
+            async_add_entities(entities, False)
+        _LOGGER.info(
+            "Created %d sensor entities for %s",
+            len(entities),
+            coordinator.device_name,
+        )
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
 
@@ -66,7 +168,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        sensor_definition: Dict[str, Any],
+        sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, register_name)
@@ -91,17 +193,19 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         )
 
     @property
-    def native_value(self) -> Optional[float | int | str]:
+    def native_value(self) -> float | int | str | None:
         """Return the state of the sensor."""
         value = self.coordinator.data.get(self._register_name)
 
         if value is None:
             return None
-
+        value_map = self._sensor_def.get("value_map")
+        if value_map is not None:
+            return value_map.get(value, value)
         return value
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
 

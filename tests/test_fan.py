@@ -80,6 +80,16 @@ def test_fan_creation_and_state(mock_coordinator):
     assert fan.percentage == 0
 
 
+def test_flow_rate_uses_supply_flow_rate(mock_coordinator):
+    """Ensure supply_flow_rate is used when other registers unavailable."""
+    mock_coordinator.data.pop("supply_percentage", None)
+    mock_coordinator.data["supply_flow_rate"] = 80
+    fan = ThesslaGreenFan(mock_coordinator)
+    assert fan._get_current_flow_rate() == 80.0
+    assert fan.percentage == 80
+    assert fan.is_on is True
+
+
 def test_fan_turn_on_modbus_failure(mock_coordinator):
     """Ensure connection errors during turn on are raised."""
     fan = ThesslaGreenFan(mock_coordinator)

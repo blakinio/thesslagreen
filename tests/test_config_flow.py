@@ -1,6 +1,7 @@
 """Test config flow for ThesslaGreen Modbus integration."""
 
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -19,6 +20,14 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
 CONF_NAME = "name"
 
 pytestmark = pytest.mark.asyncio
+
+
+class AbortFlow(Exception):
+    """Mock AbortFlow to simulate Home Assistant aborts."""
+
+    def __init__(self, reason: str) -> None:  # pragma: no cover - simple container
+        super().__init__(reason)
+        self.reason = reason
 
 
 async def test_form_user():
@@ -103,6 +112,37 @@ async def test_form_user_success():
     }
 
 
+async def test_duplicate_entry_aborts():
+    """Attempting to add a duplicate entry should abort the flow."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    validation_result = {"title": "ThesslaGreen 192.168.1.100", "device_info": {}, "scan_result": {}}
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
+            side_effect=[None, AbortFlow("already_configured")],
+        ),
+    ):
+        await flow.async_step_user(
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_PORT: 502,
+                "slave_id": 10,
+                CONF_NAME: "My Device",
+            }
+        )
+
+        with pytest.raises(AbortFlow):
+            await flow.async_step_confirm({})
+
+
 @pytest.mark.parametrize(
     "registers,expected_note",
     [
@@ -142,10 +182,7 @@ async def test_async_step_confirm_auto_detected_note(registers, expected_note):
 
     assert result["type"] == "form"
     assert result["step_id"] == "confirm"
-    assert (
-        result["description_placeholders"]["auto_detected_note"]
-        == translations[expected_note]
-    )
+    assert result["description_placeholders"]["auto_detected_note"] == translations[expected_note]
 
 
 async def test_unique_id_sanitized():
@@ -182,6 +219,94 @@ async def test_unique_id_sanitized():
         )
 
     mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
+
+
+async def test_duplicate_configuration_aborts():
+    """Test configuring same host/port/slave twice aborts the flow."""
+    flow = ConfigFlow()
+    flow.hass = None
+async def test_confirm_step_aborts_on_existing_entry():
+    """Ensure confirming a second flow aborts if unique ID already configured."""
+
+    user_input = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "My Device",
+    }
+
+    validation_result = {"title": "Device", "device_info": {}, "scan_result": {}}
+
+    # First pass through user step to store data```````````````````````
+    validation_result = {
+        "title": "ThesslaGreen 192.168.1.100",
+        "device_info": {},
+        "scan_result": {},
+    }
+
+    class AbortFlow(Exception):
+        def __init__(self, reason: str) -> None:
+            self.reason = reason
+
+    entries: set[str] = set()
+
+    async def async_set_unique_id(self, unique_id: str, **_: Any) -> None:
+        self._unique_id = unique_id
+
+    def abort_if_unique_id_configured(self) -> None:
+        if getattr(self, "_unique_id", None) in entries:
+            raise AbortFlow("already_configured")
+
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch(
+
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id",
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured",
+        ),
+    ):
+        await flow.async_step_user(user_input)
+
+    # Attempt to confirm after a duplicate has been configured elsewhere
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+        "_abort_if_unique_id_configured",
+        side_effect=RuntimeError("already_configured"),
+    ):
+        with pytest.raises(RuntimeError):
+            await flow.async_step_confirm({})
+```
+            "homeassistant.helpers.translation.async_get_translations",
+            new=AsyncMock(return_value={}),
+        ),
+        patch.object(ConfigFlow, "async_set_unique_id", async_set_unique_id),
+        patch.object(
+            ConfigFlow, "_abort_if_unique_id_configured", abort_if_unique_id_configured
+        ),
+    ):
+        flow1 = ConfigFlow()
+        flow1.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+        flow2 = ConfigFlow()
+        flow2.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+        await flow1.async_step_user(user_input)
+        await flow2.async_step_user(user_input)
+
+        result1 = await flow1.async_step_confirm({})
+        assert result1["type"] == "create_entry"
+        entries.add(f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input['slave_id']}")
+
+        with pytest.raises(AbortFlow) as err:
+            await flow2.async_step_confirm({})
+        assert err.value.reason == "already_configured"
+
 
 
 async def test_form_user_cannot_connect():
@@ -408,3 +533,28 @@ async def test_validate_input_modbus_exception():
     ):
         with pytest.raises(CannotConnect):
             await validate_input(hass, data)
+
+
+async def test_validate_input_scanner_closed_on_exception():
+    """Ensure scanner is closed when scan_device raises an exception."""
+    from custom_components.thessla_green_modbus.config_flow import validate_input
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = AsyncMock()
+    scanner_instance.scan_device.side_effect = ModbusException("error")
+    scanner_instance.close = AsyncMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect):
+            await validate_input(None, data)
+
+    scanner_instance.close.assert_awaited_once()

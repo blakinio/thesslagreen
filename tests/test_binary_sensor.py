@@ -65,11 +65,39 @@ def test_binary_sensor_creation_and_state(mock_coordinator):
     sensor = ThesslaGreenBinarySensor(
         mock_coordinator, "bypass", BINARY_SENSOR_DEFINITIONS["bypass"]
     )
-    assert sensor.is_on is False
+    assert sensor.is_on is False  # nosec B101
 
     # Update coordinator data to trigger state change
     mock_coordinator.data["bypass"] = 1
-    assert sensor.is_on is True
+    assert sensor.is_on is True  # nosec B101
+
+
+def test_binary_sensor_icons(mock_coordinator):
+    """Icon should switch to valid alternatives when sensor is off."""
+
+    # Heating cable uses a heating icon when on
+    mock_coordinator.data["heating_cable"] = 1
+    heating = ThesslaGreenBinarySensor(
+        mock_coordinator,
+        "heating_cable",
+        BINARY_SENSOR_DEFINITIONS["heating_cable"],
+    )
+    assert heating.icon == "mdi:heating-coil"  # nosec B101
+
+    # When off, it should fall back to a valid icon
+    mock_coordinator.data["heating_cable"] = 0
+    assert heating.icon == "mdi:radiator-off"  # nosec B101
+
+    # Bypass uses pipe leak icon when active
+    mock_coordinator.data["bypass"] = 1
+    bypass_sensor = ThesslaGreenBinarySensor(
+        mock_coordinator, "bypass", BINARY_SENSOR_DEFINITIONS["bypass"]
+    )
+    assert bypass_sensor.icon == "mdi:pipe-leak"  # nosec B101
+
+    # When inactive, generic pipe icon should be used
+    mock_coordinator.data["bypass"] = 0
+    assert bypass_sensor.icon == "mdi:pipe"  # nosec B101
 
 
 @pytest.mark.asyncio
@@ -93,4 +121,4 @@ async def test_async_setup_creates_all_binary_sensors(mock_coordinator, mock_con
     await async_setup_entry(hass, mock_config_entry, add_entities)
 
     entities = add_entities.call_args[0][0]
-    assert len(entities) == len(BINARY_SENSOR_DEFINITIONS)
+    assert len(entities) == len(BINARY_SENSOR_DEFINITIONS)  # nosec B101

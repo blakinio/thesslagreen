@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import copy
 import ipaddress
 import logging
 import re
-from typing import Any, Dict
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -19,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
 
@@ -30,7 +31,7 @@ async def async_get_config_entry_diagnostics(
     translations = await translation.async_get_translations(
         hass, hass.config.language, f"component.{DOMAIN}"
     )
-    active_errors: Dict[str, str] = {}
+    active_errors: dict[str, str] = {}
     if coordinator.data:
         for key, value in coordinator.data.items():
             if value and (key.startswith("e_") or key.startswith("s_")):
@@ -46,10 +47,10 @@ async def async_get_config_entry_diagnostics(
     return diagnostics_safe
 
 
-def _redact_sensitive_data(data: Dict[str, Any]) -> Dict[str, Any]:
+def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
     """Redact sensitive information from diagnostics."""
-    # Create a copy to avoid modifying original data
-    safe_data = data.copy()
+    # Create a deep copy to avoid modifying the original data
+    safe_data = copy.deepcopy(data)
 
     def mask_ip(ip_str: str) -> str:
         """Return a redacted representation of an IP address."""
@@ -64,11 +65,8 @@ def _redact_sensitive_data(data: Dict[str, Any]) -> Dict[str, Any]:
         return ":".join([segments[0]] + ["xxxx"] * 6 + [segments[-1]])
 
     # Redact sensitive connection information
-    if "connection" in safe_data:
-        connection = safe_data["connection"].copy()
-        if "host" in connection:
-            connection["host"] = mask_ip(connection["host"])
-        safe_data["connection"] = connection
+    if "connection" in safe_data and "host" in safe_data["connection"]:
+        safe_data["connection"]["host"] = mask_ip(safe_data["connection"]["host"])
 
     # Redact serial number if present
     if "device_info" in safe_data and "serial_number" in safe_data["device_info"]:

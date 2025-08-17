@@ -1,0 +1,81 @@
+"""Validate SENSOR_DEFINITIONS register mapping."""
+
+import sys
+import types
+import pytest
+
+# ---------------------------------------------------------------------------
+# Minimal Home Assistant stubs
+# ---------------------------------------------------------------------------
+
+const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
+const.PERCENTAGE = "%"
+
+
+class UnitOfTemperature:  # pragma: no cover - enum stub
+    CELSIUS = "°C"
+
+
+class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
+    CUBIC_METERS_PER_HOUR = "m³/h"
+
+
+class UnitOfElectricPotential:  # pragma: no cover - enum stub
+    VOLT = "V"
+
+
+const.UnitOfTemperature = UnitOfTemperature
+const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
+const.UnitOfElectricPotential = UnitOfElectricPotential
+
+sensor_mod = types.ModuleType("homeassistant.components.sensor")
+
+
+class SensorEntity:  # pragma: no cover - simple stub
+    pass
+
+
+class SensorDeviceClass:  # pragma: no cover - enum stub
+    TEMPERATURE = "temperature"
+    VOLTAGE = "voltage"
+
+
+class SensorStateClass:  # pragma: no cover - enum stub
+    MEASUREMENT = "measurement"
+
+
+sensor_mod.SensorEntity = SensorEntity
+sensor_mod.SensorDeviceClass = SensorDeviceClass
+sensor_mod.SensorStateClass = SensorStateClass
+sys.modules["homeassistant.components.sensor"] = sensor_mod
+
+entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+
+
+class AddEntitiesCallback:  # pragma: no cover - simple stub
+    pass
+
+
+entity_platform.AddEntitiesCallback = AddEntitiesCallback
+sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+
+# ---------------------------------------------------------------------------
+# Actual test
+# ---------------------------------------------------------------------------
+
+from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS  # noqa: E402
+from custom_components.thessla_green_modbus import registers  # noqa: E402
+
+
+def test_sensor_register_mapping() -> None:
+    """Each sensor must map to the correct register dictionary."""
+    for register_name, sensor_def in SENSOR_DEFINITIONS.items():
+        register_type = sensor_def["register_type"]
+        if register_type == "input_registers":
+            assert register_name in registers.INPUT_REGISTERS
+            assert register_name not in registers.HOLDING_REGISTERS
+        elif register_type == "holding_registers":
+            assert register_name in registers.HOLDING_REGISTERS
+            assert register_name not in registers.INPUT_REGISTERS
+        else:
+            pytest.fail(f"Unknown register_type {register_type} for {register_name}")

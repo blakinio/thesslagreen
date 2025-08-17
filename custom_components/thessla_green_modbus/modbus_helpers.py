@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Any, Awaitable, Callable, Dict
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
 # Cache which keyword ("slave" or "unit") a given function accepts
-_KWARG_CACHE: Dict[Callable[..., Awaitable[Any]], str | None] = {}
+_KWARG_CACHE: dict[Callable[..., Awaitable[Any]], str | None] = {}
 # Cache function signatures to avoid repeated inspection
-_SIG_CACHE: Dict[Callable[..., Awaitable[Any]], inspect.Signature] = {}
+_SIG_CACHE: dict[Callable[..., Awaitable[Any]], inspect.Signature] = {}
 
 
 async def _call_modbus(

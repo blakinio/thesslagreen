@@ -1,15 +1,13 @@
+import asyncio
+import logging
 import sys
 import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenModbusCoordinator,
-)
-from custom_components.thessla_green_modbus.device_scanner import (
-    ThesslaGreenDeviceScanner,
-)
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -62,19 +60,20 @@ def _schedule_stop_scripts_after_shutdown(*_args, **_kwargs):  # pragma: no cove
     return None
 
 
-helpers_script._schedule_stop_scripts_after_shutdown = (
-    _schedule_stop_scripts_after_shutdown
-)
+helpers_script._schedule_stop_scripts_after_shutdown = _schedule_stop_scripts_after_shutdown
 
 const.CONF_HOST = "host"
 const.CONF_NAME = "name"
 const.CONF_PORT = "port"
 
+
 class Platform(str):
     def __new__(cls, value):
         return str.__new__(cls, value)
 
+
 const.Platform = Platform
+
 
 # Stubs for coordinator requirements
 class DataUpdateCoordinator:
@@ -87,85 +86,112 @@ class DataUpdateCoordinator:
     async def async_request_refresh(self):
         pass
 
+    async def async_shutdown(self):  # pragma: no cover - stub
+        pass
+
+
 helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
+
+
 class UpdateFailed(Exception):
     pass
+
 
 helpers_uc.UpdateFailed = UpdateFailed
 helpers_pkg.update_coordinator = helpers_uc
 helpers_pkg.device_registry = helpers_dr
 helpers_pkg.script = helpers_script
 
+
 class DeviceInfo:
     pass
 
+
 helpers_dr.DeviceInfo = DeviceInfo
+
 
 class HomeAssistant:
     pass
 
+
 core.HomeAssistant = HomeAssistant
+
 
 class ServiceCall:
     pass
 
+
 core.ServiceCall = ServiceCall
+
 
 class ConfigEntryNotReady(Exception):
     pass
 
+
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
+
 
 class ConfigEntry:
     pass
 
+
 config_entries.ConfigEntry = ConfigEntry
+
 
 class AsyncModbusTcpClient:
     async def close(self):
         pass
 
+
 class ModbusTcpClient:
     pass
+
 
 pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
 pymodbus_client.ModbusTcpClient = ModbusTcpClient
 
+
 class ModbusIOException(Exception):
     pass
+
 
 pymodbus_exceptions.ModbusException = ModbusException
 pymodbus_exceptions.ConnectionException = ConnectionException
 pymodbus_exceptions.ModbusIOException = ModbusIOException
 
+
 class ExceptionResponse:
     pass
 
+
 pymodbus_pdu.ExceptionResponse = ExceptionResponse
 
-sys.modules.update({
-    "homeassistant": ha,
-    "homeassistant.const": const,
-    "homeassistant.core": core,
-    "homeassistant.helpers": helpers_pkg,
-    "homeassistant.helpers.update_coordinator": helpers_uc,
-    "homeassistant.helpers.device_registry": helpers_dr,
-    "homeassistant.helpers.script": helpers_script,
-    "homeassistant.exceptions": exceptions,
-    "homeassistant.config_entries": config_entries,
-    "homeassistant.util": util,
-    "homeassistant.util.logging": util_logging,
-    "pymodbus": pymodbus,
-    "pymodbus.client": pymodbus_client,
-    "pymodbus.exceptions": pymodbus_exceptions,
-    "pymodbus.pdu": pymodbus_pdu,
-    "voluptuous": vol,
-    "custom_components.thessla_green_modbus.services": cc_services,
-})
+sys.modules.update(
+    {
+        "homeassistant": ha,
+        "homeassistant.const": const,
+        "homeassistant.core": core,
+        "homeassistant.helpers": helpers_pkg,
+        "homeassistant.helpers.update_coordinator": helpers_uc,
+        "homeassistant.helpers.device_registry": helpers_dr,
+        "homeassistant.helpers.script": helpers_script,
+        "homeassistant.exceptions": exceptions,
+        "homeassistant.config_entries": config_entries,
+        "homeassistant.util": util,
+        "homeassistant.util.logging": util_logging,
+        "pymodbus": pymodbus,
+        "pymodbus.client": pymodbus_client,
+        "pymodbus.exceptions": pymodbus_exceptions,
+        "pymodbus.pdu": pymodbus_pdu,
+        "voluptuous": vol,
+        "custom_components.thessla_green_modbus.services": cc_services,
+    }
+)
 
 
 def test_async_setup_closes_scanner():
     """Ensure scanner is closed after async_setup."""
+
     async def run_test():
         hass = MagicMock()
         coordinator = ThesslaGreenModbusCoordinator(
@@ -203,7 +229,52 @@ def test_async_setup_closes_scanner():
         scanner.close.assert_awaited_once()
 
     import asyncio
+
     asyncio.run(run_test())
+
+
+def test_async_setup_cancel_mid_scan(caplog):
+    """Device scan cancellation closes scanner without errors."""
+
+    async def run_test(caplog):
+        hass = MagicMock()
+        coordinator = ThesslaGreenModbusCoordinator(
+            hass=hass,
+            host="localhost",
+            port=502,
+            slave_id=1,
+            name="Test",
+            scan_interval=30,
+            timeout=10,
+            retry=3,
+        )
+
+        scan_event = asyncio.Event()
+        scanner = AsyncMock()
+
+        async def scan_side_effect():
+            await scan_event.wait()
+
+        scanner.scan_device.side_effect = scan_side_effect
+        scanner.close = AsyncMock()
+
+        with patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner),
+        ):
+            with patch.object(coordinator, "_test_connection", AsyncMock()):
+                caplog.set_level(logging.DEBUG)
+                setup_task = asyncio.create_task(coordinator.async_setup())
+                await asyncio.sleep(0)
+                setup_task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await setup_task
+
+        scanner.close.assert_awaited_once()
+        assert not any(record.levelno >= logging.ERROR for record in caplog.records)
+        assert "Device scan cancelled" in caplog.text
+
+    asyncio.run(run_test(caplog))
 
 
 def test_disconnect_closes_client():
@@ -231,6 +302,7 @@ def test_disconnect_closes_client():
         assert coordinator.client is None
 
     import asyncio
+
     asyncio.run(run_test())
 
 
@@ -259,6 +331,7 @@ def test_disconnect_closes_client_sync():
         assert coordinator.client is None
 
     import asyncio
+
     asyncio.run(run_test())
 
 
@@ -276,4 +349,5 @@ def test_scan_device_closes_client_on_failure():
         scanner.close.assert_awaited_once()
 
     import asyncio
+
     asyncio.run(run_test())

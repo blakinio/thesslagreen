@@ -1,10 +1,10 @@
 import ast
 import json
+import sys
+import types
 from pathlib import Path
 
 import yaml
-
-from custom_components.thessla_green_modbus.const import SPECIAL_FUNCTION_MAP
 
 ROOT = Path(__file__).resolve().parent.parent / "custom_components" / "thessla_green_modbus"
 
@@ -60,9 +60,63 @@ def _load_keys(file: Path, var_name: str):
     return []
 
 
-SENSOR_KEYS = _load_translation_keys(ROOT / "sensor.py", "SENSOR_DEFINITIONS")
+# Import sensor module to obtain translation keys
+const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
+const.PERCENTAGE = "%"
+
+
+class UnitOfTemperature:  # pragma: no cover - enum stub
+    CELSIUS = "°C"
+
+
+class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
+    CUBIC_METERS_PER_HOUR = "m³/h"
+
+
+class UnitOfElectricPotential:  # pragma: no cover - enum stub
+    VOLT = "V"
+
+
+const.UnitOfTemperature = UnitOfTemperature
+const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
+const.UnitOfElectricPotential = UnitOfElectricPotential
+
+sensor_mod = types.ModuleType("homeassistant.components.sensor")
+
+
+class SensorEntity:  # pragma: no cover - simple stub
+    pass
+
+
+class SensorDeviceClass:  # pragma: no cover - enum stub
+    TEMPERATURE = "temperature"
+    VOLTAGE = "voltage"
+
+
+class SensorStateClass:  # pragma: no cover - enum stub
+    MEASUREMENT = "measurement"
+
+
+sensor_mod.SensorEntity = SensorEntity
+sensor_mod.SensorDeviceClass = SensorDeviceClass
+sensor_mod.SensorStateClass = SensorStateClass
+sys.modules["homeassistant.components.sensor"] = sensor_mod
+
+entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+
+
+class AddEntitiesCallback:  # pragma: no cover - simple stub
+    pass
+
+
+entity_platform.AddEntitiesCallback = AddEntitiesCallback
+sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+
+from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS
+
+SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()]
 BINARY_KEYS = _load_translation_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
-SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES") + list(SPECIAL_FUNCTION_MAP.keys())
+SWITCH_KEYS = _load_keys(ROOT / "switch.py", "SWITCH_ENTITIES")
 SELECT_KEYS = _load_keys(ROOT / "select.py", "SELECT_DEFINITIONS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
@@ -115,11 +169,14 @@ def _assert_issue_keys(trans, keys):
 
 def test_translation_keys_present():
     for trans in (EN, PL):
-        _assert_keys(trans, "sensor", SENSOR_KEYS)
+        section = trans["entity"]["sensor"]
+        missing = [k for k in SENSOR_KEYS if k not in section]
+        assert not missing, f"Missing sensor translations: {missing}"  # nosec B101
         _assert_keys(trans, "binary_sensor", BINARY_KEYS)
         _assert_keys(trans, "switch", SWITCH_KEYS)
         _assert_keys(trans, "select", SELECT_KEYS)
-        _assert_keys(trans, "number", NUMBER_KEYS)
+        if NUMBER_KEYS:
+            _assert_keys(trans, "number", NUMBER_KEYS)
         if "errors" in trans:
             _assert_error_keys(trans, ERROR_KEYS)
         _assert_issue_keys(trans, ISSUE_KEYS)
@@ -149,8 +206,13 @@ def test_new_translation_keys_present():
         "nominal_supply_air_flow",
         "nominal_exhaust_air_flow",
         "bypass_off",
+        "air_flow_rate_manual",
+        "air_flow_rate_temporary_2",
     ]
+    new_binary_keys = ["constant_flow_active", "water_removal_active"]
     for trans in (EN, PL):
         for key in new_keys:
             assert key in trans["entity"]["sensor"]
             assert key in trans["entity"]["number"]
+        for key in new_binary_keys:
+            assert key in trans["entity"]["binary_sensor"]

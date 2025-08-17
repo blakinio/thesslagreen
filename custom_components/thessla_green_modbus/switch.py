@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -19,7 +19,70 @@ from .registers import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
+
 SWITCH_ENTITIES: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("switch", {})
+
+# Switch entities that can be controlled
+SWITCH_ENTITIES: dict[str, dict[str, Any]] = {
+    # Output controls from coil registers
+    "duct_water_heater_pump": {
+        "icon": "mdi:pump",
+        "register": "duct_water_heater_pump",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "duct_water_heater_pump",
+    },
+    "bypass": {
+        "icon": "mdi:pipe-leak",
+        "register": "bypass",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "bypass",
+    },
+    "info": {
+        "icon": "mdi:information",
+        "register": "info",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "info",
+    },
+    "power_supply_fans": {
+        "icon": "mdi:fan",
+        "register": "power_supply_fans",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "power_supply_fans",
+    },
+    "heating_cable": {
+        "icon": "mdi:heating-coil",
+        "register": "heating_cable",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "heating_cable",
+    },
+    "work_permit": {
+        "icon": "mdi:check-circle",
+        "register": "work_permit",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "work_permit",
+    },
+    "gwc": {
+        "icon": "mdi:pipe",
+        "register": "gwc",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "gwc",
+    },
+    "hood_output": {
+        "icon": "mdi:stove",
+        "register": "hood_output",
+        "register_type": "coil_registers",
+        "category": None,
+        "translation_key": "hood_output",
+    },
+}
+
 
 
 async def async_setup_entry(
@@ -76,7 +139,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         key: str,
-        entity_config: Dict[str, Any],
+        entity_config: dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
         super().__init__(coordinator, key)
@@ -152,7 +215,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {}
 

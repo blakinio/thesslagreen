@@ -1,4 +1,64 @@
 {
+
+
+  "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
+  "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja ThesslaGreen Modbus",
+        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykrywa funkcje i rejestry urządzenia.",
+        "data": {
+          "host": "Adres IP",
+          "port": "Port",
+          "slave_id": "ID urządzenia",
+          "name": "Nazwa"
+        },
+        "data_description": {
+          "host": "Adres IP urządzenia AirPack w sieci lokalnej",
+          "port": "Port Modbus TCP (domyślnie 502)",
+          "slave_id": "ID urządzenia Modbus (domyślnie 10)",
+          "name": "Nazwa urządzenia w Home Assistant"
+        }
+      },
+      "confirm": {
+        "title": "Potwierdź konfigurację",
+        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia: {slave_id}. Wersja oprogramowania: {firmware_version}. Wykryto {register_count} rejestrów. Skuteczność skanowania: {scan_success_rate}. Dostępne funkcje ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Czy chcesz kontynuować tę konfigurację?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port oraz połączenie sieciowe.",
+      "invalid_auth": "Błąd autoryzacji. Sprawdź ustawienia ID urządzenia.",
+      "invalid_input": "Nieprawidłowa konfiguracja. Sprawdź wartości i spróbuj ponownie.",
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi dla szczegółów."
+    },
+    "abort": {
+      "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje ThesslaGreen Modbus",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}.",
+        "data": {
+          "scan_interval": "Interwał skanowania (s)",
+          "timeout": "Limit czasu połączenia (s)",
+          "retry": "Liczba prób",
+          "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)",
+          "skip_missing_registers": "Pomijaj znane brakujące rejestry"
+        },
+        "data_description": {
+          "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
+          "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
+          "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
+          "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne"
+        }
+      }
+    }
+  },
+
   "entity": {
     "sensor": {
       "outside_temperature": {
@@ -124,6 +184,12 @@
       "nominal_exhaust_air_flow": {
         "name": "Nominalny przepływ wywiewu"
       },
+      "air_flow_rate_manual": {
+        "name": "Ręczny przepływ powietrza"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Tymczasowy przepływ powietrza 2"
+      },
       "bypass_off": {
         "name": "Wyłączenie bypass"
       },
@@ -137,7 +203,35 @@
         "name": "Napięcie nagrzewnicy"
       },
       "dac_cooler": {
+
         "name": "Napięcie chłodnicy"
+
+        "name": "Sterowanie chłodnicą"
+      },
+      "day_of_week": {
+        "name": "Dzień tygodnia"
+      },
+      "period": {
+        "name": "Okres"
+      },
+      "compilation_days": {
+        "name": "Dni kompilacji"
+      },
+      "compilation_seconds": {
+        "name": "Sekundy kompilacji"
+      },
+      "version_major": {
+        "name": "Główna wersja oprogramowania"
+      },
+      "version_minor": {
+        "name": "Wersja poboczna oprogramowania"
+      },
+      "version_patch": {
+        "name": "Wersja poprawki oprogramowania"
+      },
+      "serial_number_1": {
+        "name": "Numer seryjny część 1"
+
       },
       "fan_speed_1_coef": {
         "name": "Współczynnik prędkości 1"
@@ -157,8 +251,68 @@
       "intensive_supply": {
         "name": "Intensywność nawiewu"
       },
+
       "intensive_exhaust": {
         "name": "Intensywność wywiewu"
+
+      "max_percentage": {
+        "name": "Maksymalny procent"
+      },
+      "cf_version": {
+        "name": "Wersja modułu CF"
+      },
+      "antifreeze_mode": {
+        "name": "Tryb antyzamrożeniowy"
+      },
+      "antifreez_stage": {
+        "name": "Etap antyzamrożeniowy"
+      },
+      "mode": {
+        "name": "Tryb pracy",
+        "state": {
+          "auto": "Automatyczny",
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
+        }
+      },
+      "season_mode": {
+        "name": "Tryb sezonowy",
+        "state": {
+          "winter": "Zima",
+          "summer": "Lato"
+        }
+      },
+      "filter_change": {
+        "name": "Typ filtrów",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Filtry płaskie",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      },
+      "gwc_mode": {
+        "name": "Tryb GWC",
+        "state": {
+          "off": "Wyłączony",
+          "auto": "Automatyczny",
+          "forced": "Wymuszony"
+        }
+      },
+      "gwc_regen_flag": {
+        "name": "Regeneracja GWC aktywna"
+      },
+      "comfort_mode": {
+        "name": "Status trybu komfort"
+      },
+      "bypass_mode": {
+        "name": "Tryb bypassu",
+        "state": {
+          "auto": "Automatyczny",
+          "open": "Otwarty",
+          "closed": "Zamknięty"
+        }
+
       }
     },
     "binary_sensor": {
@@ -198,6 +352,9 @@
       "dp_duct_filter_overflow": {
         "name": "Przepełnienie filtra kanałowego"
       },
+      "hood_switch": {
+        "name": "Przełącznik okapu"
+      },
       "airing_sensor": {
         "name": "Czujnik wietrzenia"
       },
@@ -231,6 +388,7 @@
       "empty_house": {
         "name": "Pusty dom"
       },
+
       "fire_alarm": {
         "name": "Alarm pożarowy"
       },
@@ -271,10 +429,80 @@
       },
       "max_exhaust_air_flow_rate": {
         "name": "Maksymalny przepływ wywiewu"
+
+      "constant_flow_active": {
+        "name": "Status Constant Flow"
+      },
+      "water_removal_active": {
+        "name": "Status usuwania wody"
+      }
+    },
+    "climate": {
+      "thessla_green_climate": {
+        "name": "Sterowanie klimatem",
+        "state_attributes": {
+          "preset_mode": {
+            "none": "Brak",
+            "eco": "Eco",
+            "boost": "Boost",
+            "away": "Nieobecność",
+            "sleep": "Sen",
+            "fireplace": "Kominek",
+            "hood": "Okap",
+            "party": "Impreza",
+            "bathroom": "Łazienka",
+            "kitchen": "Kuchnia",
+            "summer": "Lato",
+            "winter": "Zima"
+          }
+        }
+      }
+    },
+    "fan": {
+      "thessla_green_fan": {
+        "name": "Wentylacja"
+      }
+    },
+    "switch": {
+      "duct_water_heater_pump": {
+        "name": "Pompa obiegowa nagrzewnicy"
+      },
+      "bypass": {
+        "name": "Obejście (bypass)"
+      },
+      "info": {
+        "name": "Potwierdzenie pracy centrali"
+      },
+      "power_supply_fans": {
+        "name": "Zasilanie wentylatorów"
+      },
+      "heating_cable": {
+        "name": "Kabel grzejny"
+      },
+      "work_permit": {
+        "name": "Potwierdzenie pracy (Expansion)"
+      },
+      "gwc": {
+        "name": "GWC"
+      },
+      "hood_output": {
+        "name": "Wyjście okapu"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Tryb pracy",
+        "state": {
+          "auto": "Automatyczny",
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
+        }
+
       },
       "nominal_supply_air_flow": {
         "name": "Nominalny przepływ nawiewu"
       },
+
       "nominal_exhaust_air_flow": {
         "name": "Nominalny przepływ wywiewu"
       },
@@ -345,6 +573,1178 @@
       },
       "winter": {
         "name": "Zima"
+
+      "gwc_mode": {
+        "name": "Tryb GWC",
+        "state": {
+          "off": "Wyłączony",
+          "auto": "Automatyczny",
+          "forced": "Wymuszony"
+        }
+      },
+      "season_mode": {
+        "name": "Tryb sezonowy",
+        "state": {
+          "winter": "Zima",
+          "summer": "Lato"
+        }
+      },
+      "filter_change": {
+        "name": "Typ filtrów",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Filtry płaskie",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
+      }
+    },
+    "number": {
+      "date_time_1": {
+        "name": "Date Time 1"
+      },
+      "date_time_2": {
+        "name": "Date Time 2"
+      },
+      "date_time_3": {
+        "name": "Date Time 3"
+      },
+      "date_time_4": {
+        "name": "Date Time 4"
+      },
+      "lock_date_1": {
+        "name": "Lock Date 1"
+      },
+      "lock_date_2": {
+        "name": "Lock Date 2"
+      },
+      "lock_date_3": {
+        "name": "Lock Date 3"
+      },
+      "configuration_mode": {
+        "name": "Configuration Mode"
+      },
+      "access_level": {
+        "name": "Access Level"
+      },
+      "air_flow_rate_manual": {
+        "name": "Ręczna intensywność wentylacji"
+      },
+      "air_flow_rate_temporary_1": {
+        "name": "Intensywność wentylacji chwilowa 1"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Intensywność wentylacji chwilowa 2"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Ręczna temperatura nawiewu"
+      },
+      "supply_air_temperature_temporary_1": {
+        "name": "Tymczasowa temperatura nawiewu 1"
+      },
+      "supply_air_temperature_temporary_2": {
+        "name": "Tymczasowa temperatura nawiewu 2"
+      },
+      "schedule_summer_mon_1": {
+        "name": "Schedule Summer Mon 1"
+      },
+      "schedule_summer_mon_2": {
+        "name": "Schedule Summer Mon 2"
+      },
+      "schedule_summer_mon_3": {
+        "name": "Schedule Summer Mon 3"
+      },
+      "schedule_summer_mon_4": {
+        "name": "Schedule Summer Mon 4"
+      },
+      "schedule_summer_tue_1": {
+        "name": "Schedule Summer Tue 1"
+      },
+      "schedule_summer_tue_2": {
+        "name": "Schedule Summer Tue 2"
+      },
+      "schedule_summer_tue_3": {
+        "name": "Schedule Summer Tue 3"
+      },
+      "schedule_summer_tue_4": {
+        "name": "Schedule Summer Tue 4"
+      },
+      "schedule_summer_wed_1": {
+        "name": "Schedule Summer Wed 1"
+      },
+      "schedule_summer_wed_2": {
+        "name": "Schedule Summer Wed 2"
+      },
+      "schedule_summer_wed_3": {
+        "name": "Schedule Summer Wed 3"
+      },
+      "schedule_summer_wed_4": {
+        "name": "Schedule Summer Wed 4"
+      },
+      "schedule_summer_thu_1": {
+        "name": "Schedule Summer Thu 1"
+      },
+      "schedule_summer_thu_2": {
+        "name": "Schedule Summer Thu 2"
+      },
+      "schedule_summer_thu_3": {
+        "name": "Schedule Summer Thu 3"
+      },
+      "schedule_summer_thu_4": {
+        "name": "Schedule Summer Thu 4"
+      },
+      "schedule_summer_fri_1": {
+        "name": "Schedule Summer Fri 1"
+      },
+      "schedule_summer_fri_2": {
+        "name": "Schedule Summer Fri 2"
+      },
+      "schedule_summer_fri_3": {
+        "name": "Schedule Summer Fri 3"
+      },
+      "schedule_summer_fri_4": {
+        "name": "Schedule Summer Fri 4"
+      },
+      "schedule_summer_sat_1": {
+        "name": "Schedule Summer Sat 1"
+      },
+      "schedule_summer_sat_2": {
+        "name": "Schedule Summer Sat 2"
+      },
+      "schedule_summer_sat_3": {
+        "name": "Schedule Summer Sat 3"
+      },
+      "schedule_summer_sat_4": {
+        "name": "Schedule Summer Sat 4"
+      },
+      "schedule_summer_sun_1": {
+        "name": "Schedule Summer Sun 1"
+      },
+      "schedule_summer_sun_2": {
+        "name": "Schedule Summer Sun 2"
+      },
+      "schedule_summer_sun_3": {
+        "name": "Schedule Summer Sun 3"
+      },
+      "schedule_summer_sun_4": {
+        "name": "Schedule Summer Sun 4"
+      },
+      "schedule_winter_mon_1": {
+        "name": "Schedule Winter Mon 1"
+      },
+      "schedule_winter_mon_2": {
+        "name": "Schedule Winter Mon 2"
+      },
+      "schedule_winter_mon_3": {
+        "name": "Schedule Winter Mon 3"
+      },
+      "schedule_winter_mon_4": {
+        "name": "Schedule Winter Mon 4"
+      },
+      "schedule_winter_tue_1": {
+        "name": "Schedule Winter Tue 1"
+      },
+      "schedule_winter_tue_2": {
+        "name": "Schedule Winter Tue 2"
+      },
+      "schedule_winter_tue_3": {
+        "name": "Schedule Winter Tue 3"
+      },
+      "schedule_winter_tue_4": {
+        "name": "Schedule Winter Tue 4"
+      },
+      "schedule_winter_wed_1": {
+        "name": "Schedule Winter Wed 1"
+      },
+      "schedule_winter_wed_2": {
+        "name": "Schedule Winter Wed 2"
+      },
+      "schedule_winter_wed_3": {
+        "name": "Schedule Winter Wed 3"
+      },
+      "schedule_winter_wed_4": {
+        "name": "Schedule Winter Wed 4"
+      },
+      "schedule_winter_thu_1": {
+        "name": "Schedule Winter Thu 1"
+      },
+      "schedule_winter_thu_2": {
+        "name": "Schedule Winter Thu 2"
+      },
+      "schedule_winter_thu_3": {
+        "name": "Schedule Winter Thu 3"
+      },
+      "schedule_winter_thu_4": {
+        "name": "Schedule Winter Thu 4"
+      },
+      "schedule_winter_fri_1": {
+        "name": "Schedule Winter Fri 1"
+      },
+      "schedule_winter_fri_2": {
+        "name": "Schedule Winter Fri 2"
+      },
+      "schedule_winter_fri_3": {
+        "name": "Schedule Winter Fri 3"
+      },
+      "schedule_winter_fri_4": {
+        "name": "Schedule Winter Fri 4"
+      },
+      "schedule_winter_sat_1": {
+        "name": "Schedule Winter Sat 1"
+      },
+      "schedule_winter_sat_2": {
+        "name": "Schedule Winter Sat 2"
+      },
+      "schedule_winter_sat_3": {
+        "name": "Schedule Winter Sat 3"
+      },
+      "schedule_winter_sat_4": {
+        "name": "Schedule Winter Sat 4"
+      },
+      "schedule_winter_sun_1": {
+        "name": "Schedule Winter Sun 1"
+      },
+      "schedule_winter_sun_2": {
+        "name": "Schedule Winter Sun 2"
+      },
+      "schedule_winter_sun_3": {
+        "name": "Schedule Winter Sun 3"
+      },
+      "schedule_winter_sun_4": {
+        "name": "Schedule Winter Sun 4"
+      },
+      "setting_summer_mon_1": {
+        "name": "Setting Summer Mon 1"
+      },
+      "setting_summer_mon_2": {
+        "name": "Setting Summer Mon 2"
+      },
+      "setting_summer_mon_3": {
+        "name": "Setting Summer Mon 3"
+      },
+      "setting_summer_mon_4": {
+        "name": "Setting Summer Mon 4"
+      },
+      "setting_summer_tue_1": {
+        "name": "Setting Summer Tue 1"
+      },
+      "setting_summer_tue_2": {
+        "name": "Setting Summer Tue 2"
+      },
+      "setting_summer_tue_3": {
+        "name": "Setting Summer Tue 3"
+      },
+      "setting_summer_tue_4": {
+        "name": "Setting Summer Tue 4"
+      },
+      "setting_summer_wed_1": {
+        "name": "Setting Summer Wed 1"
+      },
+      "setting_summer_wed_2": {
+        "name": "Setting Summer Wed 2"
+      },
+      "setting_summer_wed_3": {
+        "name": "Setting Summer Wed 3"
+      },
+      "setting_summer_wed_4": {
+        "name": "Setting Summer Wed 4"
+      },
+      "setting_summer_thu_1": {
+        "name": "Setting Summer Thu 1"
+      },
+      "setting_summer_thu_2": {
+        "name": "Setting Summer Thu 2"
+      },
+      "setting_summer_thu_3": {
+        "name": "Setting Summer Thu 3"
+      },
+      "setting_summer_thu_4": {
+        "name": "Setting Summer Thu 4"
+      },
+      "setting_summer_fri_1": {
+        "name": "Setting Summer Fri 1"
+      },
+      "setting_summer_fri_2": {
+        "name": "Setting Summer Fri 2"
+      },
+      "setting_summer_fri_3": {
+        "name": "Setting Summer Fri 3"
+      },
+      "setting_summer_fri_4": {
+        "name": "Setting Summer Fri 4"
+      },
+      "setting_summer_sat_1": {
+        "name": "Setting Summer Sat 1"
+      },
+      "setting_summer_sat_2": {
+        "name": "Setting Summer Sat 2"
+      },
+      "setting_summer_sat_3": {
+        "name": "Setting Summer Sat 3"
+      },
+      "setting_summer_sat_4": {
+        "name": "Setting Summer Sat 4"
+      },
+      "setting_summer_sun_1": {
+        "name": "Setting Summer Sun 1"
+      },
+      "setting_summer_sun_2": {
+        "name": "Setting Summer Sun 2"
+      },
+      "setting_summer_sun_3": {
+        "name": "Setting Summer Sun 3"
+      },
+      "setting_summer_sun_4": {
+        "name": "Setting Summer Sun 4"
+      },
+      "setting_winter_mon_1": {
+        "name": "Setting Winter Mon 1"
+      },
+      "setting_winter_mon_2": {
+        "name": "Setting Winter Mon 2"
+      },
+      "setting_winter_mon_3": {
+        "name": "Setting Winter Mon 3"
+      },
+      "setting_winter_mon_4": {
+        "name": "Setting Winter Mon 4"
+      },
+      "setting_winter_tue_1": {
+        "name": "Setting Winter Tue 1"
+      },
+      "setting_winter_tue_2": {
+        "name": "Setting Winter Tue 2"
+      },
+      "setting_winter_tue_3": {
+        "name": "Setting Winter Tue 3"
+      },
+      "setting_winter_tue_4": {
+        "name": "Setting Winter Tue 4"
+      },
+      "setting_winter_wed_1": {
+        "name": "Setting Winter Wed 1"
+      },
+      "setting_winter_wed_2": {
+        "name": "Setting Winter Wed 2"
+      },
+      "setting_winter_wed_3": {
+        "name": "Setting Winter Wed 3"
+      },
+      "setting_winter_wed_4": {
+        "name": "Setting Winter Wed 4"
+      },
+      "setting_winter_thu_1": {
+        "name": "Setting Winter Thu 1"
+      },
+      "setting_winter_thu_2": {
+        "name": "Setting Winter Thu 2"
+      },
+      "setting_winter_thu_3": {
+        "name": "Setting Winter Thu 3"
+      },
+      "setting_winter_thu_4": {
+        "name": "Setting Winter Thu 4"
+      },
+      "setting_winter_fri_1": {
+        "name": "Setting Winter Fri 1"
+      },
+      "setting_winter_fri_2": {
+        "name": "Setting Winter Fri 2"
+      },
+      "setting_winter_fri_3": {
+        "name": "Setting Winter Fri 3"
+      },
+      "setting_winter_fri_4": {
+        "name": "Setting Winter Fri 4"
+      },
+      "setting_winter_sat_1": {
+        "name": "Setting Winter Sat 1"
+      },
+      "setting_winter_sat_2": {
+        "name": "Setting Winter Sat 2"
+      },
+      "setting_winter_sat_3": {
+        "name": "Setting Winter Sat 3"
+      },
+      "setting_winter_sat_4": {
+        "name": "Setting Winter Sat 4"
+      },
+      "setting_winter_sun_1": {
+        "name": "Setting Winter Sun 1"
+      },
+      "setting_winter_sun_2": {
+        "name": "Setting Winter Sun 2"
+      },
+      "setting_winter_sun_3": {
+        "name": "Setting Winter Sun 3"
+      },
+      "setting_winter_sun_4": {
+        "name": "Setting Winter Sun 4"
+      },
+      "airing_summer_mon": {
+        "name": "Airing Summer Mon"
+      },
+      "airing_summer_tue": {
+        "name": "Airing Summer Tue"
+      },
+      "airing_summer_wed": {
+        "name": "Airing Summer Wed"
+      },
+      "airing_summer_thu": {
+        "name": "Airing Summer Thu"
+      },
+      "airing_summer_fri": {
+        "name": "Airing Summer Fri"
+      },
+      "airing_summer_sat": {
+        "name": "Airing Summer Sat"
+      },
+      "airing_summer_sun": {
+        "name": "Airing Summer Sun"
+      },
+      "airing_winter_mon": {
+        "name": "Airing Winter Mon"
+      },
+      "airing_winter_tue": {
+        "name": "Airing Winter Tue"
+      },
+      "airing_winter_wed": {
+        "name": "Airing Winter Wed"
+      },
+      "airing_winter_thu": {
+        "name": "Airing Winter Thu"
+      },
+      "airing_winter_fri": {
+        "name": "Airing Winter Fri"
+      },
+      "airing_winter_sat": {
+        "name": "Airing Winter Sat"
+      },
+      "airing_winter_sun": {
+        "name": "Airing Winter Sun"
+      },
+      "rtc_cal": {
+        "name": "Rtc Cal"
+      },
+      "cf_version": {
+        "name": "Cf Version"
+      },
+      "supply_air_flow": {
+        "name": "Supply Air Flow"
+      },
+      "exhaust_air_flow": {
+        "name": "Exhaust Air Flow"
+      },
+      "dac_supply": {
+        "name": "Dac Supply"
+      },
+      "dac_exhaust": {
+        "name": "Dac Exhaust"
+      },
+      "dac_heater": {
+        "name": "Dac Heater"
+      },
+      "dac_cooler": {
+        "name": "Dac Cooler"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Max Supply Air Flow Rate"
+      },
+      "max_supply_air_flow_rate_gwc": {
+        "name": "Max Supply Air Flow Rate Gwc"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Max Exhaust Air Flow Rate"
+      },
+      "max_exhaust_air_flow_rate_gwc": {
+        "name": "Max Exhaust Air Flow Rate Gwc"
+      },
+      "antifreeze_mode": {
+        "name": "Antifreeze Mode"
+      },
+      "antifreez_stage": {
+        "name": "Antifreez Stage"
+      },
+      "mode": {
+        "name": "Mode"
+      },
+      "season_mode": {
+        "name": "Season Mode"
+      },
+      "air_flow_rate_manual": {
+        "name": "Air Flow Rate Manual"
+      },
+      "air_flow_rate_temporary_1": {
+        "name": "Air Flow Rate Temporary 1"
+      },
+      "supply_air_temperature_manual": {
+        "name": "Supply Air Temperature Manual"
+      },
+      "supply_air_temperature_temporary_1": {
+        "name": "Supply Air Temperature Temporary 1"
+      },
+      "fan_speed_1_coef": {
+        "name": "Fan Speed 1 Coef"
+      },
+      "fan_speed_2_coef": {
+        "name": "Fan Speed 2 Coef"
+      },
+      "fan_speed_3_coef": {
+        "name": "Fan Speed 3 Coef"
+      },
+      "manual_airing_time_to_start": {
+        "name": "Manual Airing Time To Start"
+      },
+      "special_mode": {
+        "name": "Special Mode"
+      },
+      "hood_supply_coef": {
+        "name": "Hood Supply Coef"
+      },
+      "hood_exhaust_coef": {
+        "name": "Hood Exhaust Coef"
+      },
+      "fireplace_supply_coef": {
+        "name": "Fireplace Supply Coef"
+      },
+      "airing_bathroom_coef": {
+        "name": "Airing Bathroom Coef"
+      },
+      "airing_coef": {
+        "name": "Airing Coef"
+      },
+      "contamination_coef": {
+        "name": "Contamination Coef"
+      },
+      "empty_house_coef": {
+        "name": "Empty House Coef"
+      },
+      "airing_panel_mode_time": {
+        "name": "Airing Panel Mode Time"
+      },
+      "airing_switch_mode_time": {
+        "name": "Airing Switch Mode Time"
+      },
+      "airing_switch_mode_on_delay": {
+        "name": "Airing Switch Mode On Delay"
+      },
+      "airing_switch_mode_off_delay": {
+        "name": "Airing Switch Mode Off Delay"
+      },
+      "fireplace_mode_time": {
+        "name": "Fireplace Mode Time"
+      },
+      "airing_switch_coef": {
+        "name": "Airing Switch Coef"
+      },
+      "open_window_coef": {
+        "name": "Open Window Coef"
+      },
+      "pres_check_day_1": {
+        "name": "Pres Check Day 1"
+      },
+      "pres_check_time_1": {
+        "name": "Pres Check Time 1"
+      },
+      "gwc_off": {
+        "name": "Gwc Off"
+      },
+      "min_gwc_air_temperature": {
+        "name": "Min Gwc Air Temperature"
+      },
+      "max_gwc_air_temperature": {
+        "name": "Max Gwc Air Temperature"
+      },
+      "gwc_regen": {
+        "name": "Gwc Regen"
+      },
+      "gwc_mode": {
+        "name": "Gwc Mode"
+      },
+      "gwc_regen_period": {
+        "name": "Gwc Regen Period"
+      },
+      "delta_tgwc": {
+        "name": "Delta Tgwc"
+      },
+      "start_gwc_regen_winter_time": {
+        "name": "Start Gwc Regen Winter Time"
+      },
+      "stop_gwc_regen_winter_time": {
+        "name": "Stop Gwc Regen Winter Time"
+      },
+      "start_gwc_regen_summer_time": {
+        "name": "Start Gwc Regen Summer Time"
+      },
+      "stop_gwc_regen_summer_time": {
+        "name": "Stop Gwc Regen Summer Time"
+      },
+      "gwc_regen_flag": {
+        "name": "Gwc Regen Flag"
+      },
+      "comfort_mode_panel": {
+        "name": "Comfort Mode Panel"
+      },
+      "comfort_mode": {
+        "name": "Comfort Mode"
+      },
+      "bypass_off": {
+        "name": "Bypass Off"
+      },
+      "min_bypass_temperature": {
+        "name": "Min Bypass Temperature"
+      },
+      "air_temperature_summer_free_heating": {
+        "name": "Air Temperature Summer Free Heating"
+      },
+      "air_temperature_summer_free_cooling": {
+        "name": "Air Temperature Summer Free Cooling"
+      },
+      "bypass_mode": {
+        "name": "Bypass Mode"
+      },
+      "bypass_user_mode": {
+        "name": "Bypass User Mode"
+      },
+      "bypass_coef_1": {
+        "name": "Bypass Coef 1"
+      },
+      "bypass_coef_2": {
+        "name": "Bypass Coef 2"
+      },
+      "nominal_supply_air_flow": {
+        "name": "Nominal Supply Air Flow"
+      },
+      "nominal_exhaust_air_flow": {
+        "name": "Nominal Exhaust Air Flow"
+      },
+      "nominal_supply_air_flow_gwc": {
+        "name": "Nominal Supply Air Flow Gwc"
+      },
+      "nominal_exhaust_air_flow_gwc": {
+        "name": "Nominal Exhaust Air Flow Gwc"
+      },
+      "stop_ahu_code": {
+        "name": "Stop Ahu Code"
+      },
+      "on_off_panel_mode": {
+        "name": "On Off Panel Mode"
+      },
+      "language": {
+        "name": "Language"
+      },
+      "cfg_mode_1": {
+        "name": "Cfg Mode 1"
+      },
+      "air_flow_rate_temporary_2": {
+        "name": "Air Flow Rate Temporary 2"
+      },
+      "airflow_rate_change_flag": {
+        "name": "Airflow Rate Change Flag"
+      },
+      "cfg_mode_2": {
+        "name": "Cfg Mode 2"
+      },
+      "supply_air_temperature_temporary_2": {
+        "name": "Supply Air Temperature Temporary 2"
+      },
+      "temperature_change_flag": {
+        "name": "Temperature Change Flag"
+      },
+      "hard_reset_settings": {
+        "name": "Hard Reset Settings"
+      },
+      "hard_reset_schedule": {
+        "name": "Hard Reset Schedule"
+      },
+      "pres_check_day_2": {
+        "name": "Pres Check Day 2"
+      },
+      "pres_check_time_2": {
+        "name": "Pres Check Time 2"
+      },
+      "uart_0_id": {
+        "name": "Uart 0 Id"
+      },
+      "uart_0_baud": {
+        "name": "Uart 0 Baud"
+      },
+      "uart_0_parity": {
+        "name": "Uart 0 Parity"
+      },
+      "uart_0_stop": {
+        "name": "Uart 0 Stop"
+      },
+      "uart_1_id": {
+        "name": "Uart 1 Id"
+      },
+      "uart_1_baud": {
+        "name": "Uart 1 Baud"
+      },
+      "uart_1_parity": {
+        "name": "Uart 1 Parity"
+      },
+      "uart_1_stop": {
+        "name": "Uart 1 Stop"
+      },
+      "device_name_1": {
+        "name": "Device Name 1"
+      },
+      "device_name_2": {
+        "name": "Device Name 2"
+      },
+      "device_name_3": {
+        "name": "Device Name 3"
+      },
+      "device_name_4": {
+        "name": "Device Name 4"
+      },
+      "device_name_5": {
+        "name": "Device Name 5"
+      },
+      "device_name_6": {
+        "name": "Device Name 6"
+      },
+      "device_name_7": {
+        "name": "Device Name 7"
+      },
+      "device_name_8": {
+        "name": "Device Name 8"
+      },
+      "lock_pass_1": {
+        "name": "Lock Pass 1"
+      },
+      "lock_pass_2": {
+        "name": "Lock Pass 2"
+      },
+      "lock_flag": {
+        "name": "Lock Flag"
+      },
+      "required_temperature": {
+        "name": "Required Temperature"
+      },
+      "filter_change": {
+        "name": "Filter Change"
+      },
+      "alarm": {
+        "name": "Alarm"
+      },
+      "error": {
+        "name": "Error"
+      },
+      "s_2": {
+        "name": "S 2"
+      },
+      "s_6": {
+        "name": "S 6"
+      },
+      "s_7": {
+        "name": "S 7"
+      },
+      "s_8": {
+        "name": "S 8"
+      },
+      "s_9": {
+        "name": "S 9"
+      },
+      "s_10": {
+        "name": "S 10"
+      },
+      "s_13": {
+        "name": "S 13"
+      },
+      "s_14": {
+        "name": "S 14"
+      },
+      "s_15": {
+        "name": "S 15"
+      },
+      "s_16": {
+        "name": "S 16"
+      },
+      "s_17": {
+        "name": "S 17"
+      },
+      "s_19": {
+        "name": "S 19"
+      },
+      "s_20": {
+        "name": "S 20"
+      },
+      "s_22": {
+        "name": "S 22"
+      },
+      "s_23": {
+        "name": "S 23"
+      },
+      "s_24": {
+        "name": "S 24"
+      },
+      "s_25": {
+        "name": "S 25"
+      },
+      "s_26": {
+        "name": "S 26"
+      },
+      "s_29": {
+        "name": "S 29"
+      },
+      "s_30": {
+        "name": "S 30"
+      },
+      "s_31": {
+        "name": "S 31"
+      },
+      "s_32": {
+        "name": "S 32"
+      },
+      "e_99": {
+        "name": "E 99"
+      },
+      "e_100": {
+        "name": "E 100"
+      },
+      "e_101": {
+        "name": "E 101"
+      },
+      "e_102": {
+        "name": "E 102"
+      },
+      "e_103": {
+        "name": "E 103"
+      },
+      "e_104": {
+        "name": "E 104"
+      },
+      "e_105": {
+        "name": "E 105"
+      },
+      "e_106": {
+        "name": "E 106"
+      },
+      "e_138": {
+        "name": "E 138"
+      },
+      "e_139": {
+        "name": "E 139"
+      },
+      "e_152": {
+        "name": "E 152"
+      },
+      "e_196": {
+        "name": "E 196"
+      },
+      "e_197": {
+        "name": "E 197"
+      },
+      "e_198": {
+        "name": "E 198"
+      },
+      "e_199": {
+        "name": "E 199"
+      },
+      "e_200": {
+        "name": "E 200"
+      },
+      "e_201": {
+        "name": "E 201"
+      },
+      "e_249": {
+        "name": "E 249"
+      },
+      "e_250": {
+        "name": "E 250"
+      },
+      "e_251": {
+        "name": "E 251"
+      },
+      "e_252": {
+        "name": "E 252"
+      }
+    }
+  },
+  "services": {
+    "set_special_mode": {
+      "name": "Ustaw tryb specjalny",
+      "description": "Ustawia specjalny tryb pracy rekuperatora (boost, eco, kominek, okap itd.)",
+      "fields": {
+        "mode": {
+          "name": "Tryb specjalny",
+          "description": "Rodzaj trybu specjalnego do aktywacji",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.special_mode_none": "Brak",
+                "thessla_green_modbus.special_mode_boost": "Boost",
+                "thessla_green_modbus.special_mode_eco": "Eco",
+                "thessla_green_modbus.special_mode_away": "Nieobecność",
+                "thessla_green_modbus.special_mode_sleep": "Sen",
+                "thessla_green_modbus.special_mode_fireplace": "Kominek",
+                "thessla_green_modbus.special_mode_hood": "Okap",
+                "thessla_green_modbus.special_mode_party": "Impreza",
+                "thessla_green_modbus.special_mode_bathroom": "Łazienka",
+                "thessla_green_modbus.special_mode_kitchen": "Kuchnia",
+                "thessla_green_modbus.special_mode_summer": "Lato",
+                "thessla_green_modbus.special_mode_winter": "Zima"
+              }
+            }
+          }
+        },
+        "duration": {
+          "name": "Czas trwania (minuty)",
+          "description": "Czas trwania trybu specjalnego w minutach (krok co 1 minutę, 0 = bez limitu)"
+        }
+      }
+    },
+    "set_airflow_schedule": {
+      "name": "Ustaw harmonogram przepływu powietrza",
+      "description": "Konfiguruje tygodniowy harmonogram przepływu powietrza",
+      "fields": {
+        "day": {
+          "name": "Dzień tygodnia",
+          "description": "Dzień tygodnia do konfiguracji",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.day_monday": "Poniedziałek",
+                "thessla_green_modbus.day_tuesday": "Wtorek",
+                "thessla_green_modbus.day_wednesday": "Środa",
+                "thessla_green_modbus.day_thursday": "Czwartek",
+                "thessla_green_modbus.day_friday": "Piątek",
+                "thessla_green_modbus.day_saturday": "Sobota",
+                "thessla_green_modbus.day_sunday": "Niedziela"
+              }
+            }
+          }
+        },
+        "period": {
+          "name": "Okres",
+          "description": "Okres dnia (1 lub 2)",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.period_1": "Okres 1",
+                "thessla_green_modbus.period_2": "Okres 2"
+              }
+            }
+          }
+        },
+        "start_time": {
+          "name": "Czas rozpoczęcia",
+          "description": "Czas rozpoczęcia okresu (HH:MM)"
+        },
+        "end_time": {
+          "name": "Czas zakończenia",
+          "description": "Czas zakończenia okresu (HH:MM)"
+        },
+        "airflow_rate": {
+          "name": "Przepływ powietrza",
+          "description": "Docelowy przepływ powietrza (%)"
+        },
+        "temperature": {
+          "name": "Temperatura",
+          "description": "Docelowa temperatura (°C)"
+        }
+      }
+    },
+    "set_bypass_parameters": {
+      "name": "Ustaw parametry bypassu",
+      "description": "Konfiguruje parametry systemu obejścia (bypassu)",
+      "fields": {
+        "mode": {
+          "name": "Tryb bypassu",
+          "description": "Tryb pracy obejścia",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.bypass_mode_auto": "Automatyczny",
+                "thessla_green_modbus.bypass_mode_open": "Otwarty",
+                "thessla_green_modbus.bypass_mode_closed": "Zamknięty"
+              }
+            }
+          }
+        },
+        "min_outdoor_temperature": {
+          "name": "Minimalna temperatura zewnętrzna",
+          "description": "Minimalna temperatura zewnętrzna włączająca bypass"
+        }
+      }
+    },
+    "set_gwc_parameters": {
+      "name": "Ustaw parametry GWC",
+      "description": "Konfiguruje parametry gruntowego wymiennika ciepła",
+      "fields": {
+        "mode": {
+          "name": "Tryb GWC",
+          "description": "Tryb pracy gruntowego wymiennika ciepła",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.gwc_mode_off": "Wyłączony",
+                "thessla_green_modbus.gwc_mode_auto": "Automatyczny",
+                "thessla_green_modbus.gwc_mode_forced": "Wymuszony"
+              }
+            }
+          }
+        },
+        "min_air_temperature": {
+          "name": "Minimalna temperatura powietrza",
+          "description": "Dolny próg temperatury powietrza zewnętrznego"
+        },
+        "max_air_temperature": {
+          "name": "Maksymalna temperatura powietrza",
+          "description": "Górny próg temperatury powietrza zewnętrznego"
+        }
+      }
+    },
+    "set_air_quality_thresholds": {
+      "name": "Ustaw progi jakości powietrza",
+      "description": "Konfiguruje progi dla systemu kontroli jakości powietrza",
+      "fields": {
+        "co2_low": {
+          "name": "Próg CO2 niski",
+          "description": "Niski próg stężenia CO2 (ppm)"
+        },
+        "co2_medium": {
+          "name": "Próg CO2 średni",
+          "description": "Średni próg stężenia CO2 (ppm)"
+        },
+        "co2_high": {
+          "name": "Próg CO2 wysoki",
+          "description": "Wysoki próg stężenia CO2 (ppm)"
+        },
+        "humidity_target": {
+          "name": "Docelowa wilgotność",
+          "description": "Docelowy poziom wilgotności (%)"
+        }
+      }
+    },
+    "set_temperature_curve": {
+      "name": "Ustaw krzywą grzewczą",
+      "description": "Konfiguruje krzywą grzewczą dla systemu ogrzewania",
+      "fields": {
+        "slope": {
+          "name": "Nachylenie",
+          "description": "Nachylenie krzywej grzewczej"
+        },
+        "offset": {
+          "name": "Przesunięcie",
+          "description": "Przesunięcie krzywej grzewczej"
+        },
+        "max_supply_temp": {
+          "name": "Maksymalna temperatura nawiewu",
+          "description": "Maksymalna temperatura nawiewu"
+        },
+        "min_supply_temp": {
+          "name": "Minimalna temperatura nawiewu",
+          "description": "Minimalna temperatura nawiewu"
+        }
+      }
+    },
+    "reset_filters": {
+      "name": "Resetuj licznik filtrów",
+      "description": "Resetuje licznik czasu pracy filtrów",
+      "fields": {
+        "filter_type": {
+          "name": "Typ filtra",
+          "description": "Typ filtra do zresetowania",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.filter_type_presostat": "Presostat",
+                "thessla_green_modbus.filter_type_flat_filters": "Filtry płaskie",
+                "thessla_green_modbus.filter_type_cleanpad": "CleanPad",
+                "thessla_green_modbus.filter_type_cleanpad_pure": "CleanPad Pure"
+              }
+            }
+          }
+        }
+      }
+    },
+    "reset_settings": {
+      "name": "Resetuj ustawienia",
+      "description": "Przywraca ustawienia użytkownika do wartości domyślnych",
+      "fields": {
+        "reset_type": {
+          "name": "Rodzaj resetu",
+          "description": "Zakres ustawień do zresetowania",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.reset_type_user_settings": "Ustawienia użytkownika",
+                "thessla_green_modbus.reset_type_schedule_settings": "Ustawienia harmonogramu",
+                "thessla_green_modbus.reset_type_all_settings": "Wszystkie ustawienia"
+              }
+            }
+          }
+        }
+      }
+    },
+    "start_pressure_test": {
+      "name": "Rozpocznij test ciśnienia",
+      "description": "Uruchamia automatyczny test kontroli filtrów/ciśnienia"
+    },
+    "set_modbus_parameters": {
+      "name": "Ustaw parametry Modbus",
+      "description": "Konfiguruje parametry komunikacji Modbus (tylko dla zaawansowanych użytkowników)",
+      "fields": {
+        "port": {
+          "name": "Port",
+          "description": "Port Modbus (Air-B lub Air++)",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_port_air_b": "Air-B",
+                "thessla_green_modbus.modbus_port_air_plus": "Air++"
+              }
+            }
+          }
+        },
+        "baud_rate": {
+          "name": "Szybkość transmisji",
+          "description": "Prędkość transmisji Modbus",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
+                "thessla_green_modbus.modbus_baud_rate_9600": "9600",
+                "thessla_green_modbus.modbus_baud_rate_14400": "14400",
+                "thessla_green_modbus.modbus_baud_rate_19200": "19200",
+                "thessla_green_modbus.modbus_baud_rate_28800": "28800",
+                "thessla_green_modbus.modbus_baud_rate_38400": "38400",
+                "thessla_green_modbus.modbus_baud_rate_57600": "57600",
+                "thessla_green_modbus.modbus_baud_rate_76800": "76800",
+                "thessla_green_modbus.modbus_baud_rate_115200": "115200"
+              }
+            }
+          }
+        },
+        "parity": {
+          "name": "Parzystość",
+          "description": "Bit parzystości",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_parity_none": "Brak",
+                "thessla_green_modbus.modbus_parity_even": "Parzysta",
+                "thessla_green_modbus.modbus_parity_odd": "Nieparzysta"
+              }
+            }
+          }
+        },
+        "stop_bits": {
+          "name": "Bity stopu",
+          "description": "Liczba bitów stopu",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.modbus_stop_bits_1": "1",
+                "thessla_green_modbus.modbus_stop_bits_2": "2"
+              }
+            }
+          }
+        }
+
       }
     }
   }

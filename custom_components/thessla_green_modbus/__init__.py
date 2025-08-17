@@ -18,12 +18,16 @@ from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,
     CONF_RETRY,
     CONF_SCAN_INTERVAL,
+    CONF_SCAN_UART_SETTINGS,
+    CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SCAN_UART_SETTINGS,
+    DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
     DOMAIN,
@@ -85,6 +89,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
     retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
     force_full_register_list = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+    scan_uart_settings = entry.options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
+    skip_missing_registers = entry.options.get(
+        CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
+    )
 
     _LOGGER.info(
         "Initializing ThesslaGreen device: %s at %s:%s (slave_id=%s, scan_interval=%ds)",
@@ -108,6 +116,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         timeout=timeout,
         retry=retry,
         force_full_register_list=force_full_register_list,
+        scan_uart_settings=scan_uart_settings,
+        skip_missing_registers=skip_missing_registers,
         entry=entry,
     )
 
@@ -144,7 +154,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_migrate_unique_ids(hass, entry)
 
     # Setup platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _LOGGER.debug("Setting up platforms: %s", PLATFORMS)
+    try:
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    except asyncio.CancelledError:
+        _LOGGER.info("Platform setup cancelled for %s", PLATFORMS)
+        raise
 
     # Setup services (only once for first entry)
     if len(hass.data[DOMAIN]) == 1:

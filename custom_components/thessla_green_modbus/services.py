@@ -232,9 +232,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         }
         day_index = day_map[day]
 
-        # Convert time to HHMM format
-        start_hhmm = start_time.hour * 100 + start_time.minute
-        end_hhmm = end_time.hour * 100 + end_time.minute
+        # Encode time as HH:MM bytes
+        start_value = (start_time.hour << 8) | start_time.minute
+        end_value = (end_time.hour << 8) | end_time.minute
 
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
@@ -259,12 +259,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 # Write schedule values with proper scaling
                 await coordinator.async_write_register(
                     start_register,
-                    start_hhmm,
+                    start_value,
                     refresh=False,
                 )
                 await coordinator.async_write_register(
                     end_register,
-                    end_hhmm,
+                    end_value,
                     refresh=False,
                 )
                 await coordinator.async_write_register(

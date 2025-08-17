@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -17,7 +17,172 @@ from .entity_mappings import ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 
+
 BINARY_SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("binary_sensor", {})
+
+# Complete binary sensor definitions
+BINARY_SENSOR_DEFINITIONS = {
+    # System status (from coil registers)
+    "duct_water_heater_pump": {
+        "translation_key": "duct_water_heater_pump",
+        "icon": "mdi:pump",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "bypass": {
+        "translation_key": "bypass",
+        "icon": "mdi:pipe-leak",
+        "device_class": BinarySensorDeviceClass.OPENING,
+        "register_type": "coil_registers",
+    },
+    "info": {
+        "translation_key": "info",
+        "icon": "mdi:information",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "power_supply_fans": {
+        "translation_key": "power_supply_fans",
+        "icon": "mdi:fan",
+        "device_class": BinarySensorDeviceClass.POWER,
+        "register_type": "coil_registers",
+    },
+    "heating_cable": {
+        "translation_key": "heating_cable",
+        "icon": "mdi:heating-coil",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "register_type": "coil_registers",
+    },
+    "work_permit": {
+        "translation_key": "work_permit",
+        "icon": "mdi:check-circle",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "gwc": {
+        "translation_key": "gwc",
+        "icon": "mdi:pipe",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    "hood_output": {
+        "translation_key": "hood_output",
+        "icon": "mdi:stove",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "coil_registers",
+    },
+    # System status (from discrete inputs)
+    "expansion": {
+        "translation_key": "expansion",
+        "icon": "mdi:expansion-card",
+        "device_class": BinarySensorDeviceClass.CONNECTIVITY,
+        "register_type": "discrete_inputs",
+    },
+    "contamination_sensor": {
+        "translation_key": "contamination_sensor",
+        "icon": "mdi:air-filter",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "duct_heater_protection": {
+        "translation_key": "duct_heater_protection",
+        "icon": "mdi:shield-heat",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "dp_duct_filter_overflow": {
+        "translation_key": "dp_duct_filter_overflow",
+        "icon": "mdi:air-filter",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "hood_switch": {
+        "translation_key": "hood_switch",
+        "icon": "mdi:toggle-switch",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "airing_sensor": {
+        "translation_key": "airing_sensor",
+        "icon": "mdi:motion-sensor",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "airing_switch": {
+        "translation_key": "airing_switch",
+        "icon": "mdi:toggle-switch",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "airing_mini": {
+        "translation_key": "airing_mini",
+        "icon": "mdi:fan",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "fan_speed_3": {
+        "translation_key": "fan_speed_3",
+        "icon": "mdi:fan-speed-3",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "fan_speed_2": {
+        "translation_key": "fan_speed_2",
+        "icon": "mdi:fan-speed-2",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "fan_speed_1": {
+        "translation_key": "fan_speed_1",
+        "icon": "mdi:fan-speed-1",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "fireplace": {
+        "translation_key": "fireplace",
+        "icon": "mdi:fireplace",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "dp_ahu_filter_overflow": {
+        "translation_key": "dp_ahu_filter_overflow",
+        "icon": "mdi:air-filter",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "ahu_filter_protection": {
+        "translation_key": "ahu_filter_protection",
+        "icon": "mdi:shield",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "discrete_inputs",
+    },
+    "empty_house": {
+        "translation_key": "empty_house",
+        "icon": "mdi:home-outline",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "discrete_inputs",
+    },
+    "fire_alarm": {
+        "translation_key": "fire_alarm",
+        "icon": "mdi:fire",
+        "device_class": BinarySensorDeviceClass.SAFETY,
+        "register_type": "discrete_inputs",
+    },
+    # System modes (from input registers)
+    "constant_flow_active": {
+        "translation_key": "constant_flow_active",
+        "icon": "mdi:waves",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+    "water_removal_active": {
+        "translation_key": "water_removal_active",
+        "icon": "mdi:water-off",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "input_registers",
+    },
+}
+
 
 
 async def async_setup_entry(
@@ -55,7 +220,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        sensor_definition: Dict[str, Any],
+        sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator, register_name)
@@ -106,7 +271,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         return False
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
 
@@ -140,9 +305,9 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
                 if "fan" in base_icon:
                     return base_icon.replace("fan", "fan-off")
                 elif "heating" in base_icon:
-                    return "mdi:heating-coil-off"
+                    return "mdi:radiator-off"
                 elif "pipe" in base_icon:
-                    return "mdi:pipe-disconnected"
+                    return "mdi:pipe"
 
         # Dynamic icon for alarms and errors
         if "alarm" in self._register_name or "error" in self._register_name:

@@ -31,11 +31,29 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     data_entry_flow = types.ModuleType("homeassistant.data_entry_flow")
     cv = types.ModuleType("homeassistant.helpers.config_validation")
     selector = types.ModuleType("homeassistant.helpers.selector")
+    translation = types.ModuleType("homeassistant.helpers.translation")
+    async def async_get_translations(*args, **kwargs):  # pragma: no cover - stub
+        return {}
+    translation.async_get_translations = async_get_translations
     pymodbus = types.ModuleType("pymodbus")
     pymodbus_client = types.ModuleType("pymodbus.client")
     pymodbus_client_tcp = types.ModuleType("pymodbus.client.tcp")
     pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
     pymodbus_pdu = types.ModuleType("pymodbus.pdu")
+    hacc_common = types.ModuleType("pytest_homeassistant_custom_component.common")
+
+    class MockConfigEntry:  # pragma: no cover - simplified stub
+        def __init__(self, *, domain, data, options=None):
+            self.domain = domain
+            self.data = data
+            self.options = options or {}
+            self.entry_id = "mock_entry"
+            self.title = data.get("name", "")
+
+        def add_to_hass(self, _hass):
+            return None
+
+    hacc_common.MockConfigEntry = MockConfigEntry
 
     class HomeAssistant:  # type: ignore[override]
         async def async_add_executor_job(self, func, *args):  # minimal stub
@@ -72,6 +90,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             self.logger = logger
             self.name = name
             self.update_interval = update_interval
+
+        async def async_shutdown(self) -> None:  # pragma: no cover - stub
+            return None
 
     class UpdateFailed(Exception):
         pass
@@ -231,11 +252,14 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
     sys.modules["homeassistant.helpers.config_validation"] = cv
     sys.modules["homeassistant.helpers.selector"] = selector
+    sys.modules["homeassistant.helpers.translation"] = translation
+    helpers_pkg.translation = translation
     sys.modules["pymodbus"] = pymodbus
     sys.modules["pymodbus.client"] = pymodbus_client
     sys.modules["pymodbus.client.tcp"] = pymodbus_client_tcp
     sys.modules["pymodbus.exceptions"] = pymodbus_exceptions
     sys.modules["pymodbus.pdu"] = pymodbus_pdu
+    sys.modules["pytest_homeassistant_custom_component.common"] = hacc_common
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -279,6 +303,7 @@ def mock_config_entry():
         "scan_interval": 30,
         "timeout": 10,
         "retry": 3,
+        "scan_uart_settings": False,
     }
     return config_entry
 

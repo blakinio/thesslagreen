@@ -17,12 +17,16 @@ from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,
     CONF_RETRY,
     CONF_SCAN_INTERVAL,
+    CONF_SCAN_UART_SETTINGS,
+    CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SCAN_UART_SETTINGS,
+    DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
     DOMAIN,
@@ -77,6 +81,8 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     except (OSError, asyncio.TimeoutError) as exc:
         _LOGGER.exception("Unexpected error during device validation: %s", exc)
         raise CannotConnect from exc
+    finally:
+        await scanner.close()
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -150,6 +156,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the confirm step."""
         if user_input is not None:
+            # Ensure unique ID is set and not already configured
+            unique_host = self._data[CONF_HOST].replace(":", "-")
+            await self.async_set_unique_id(
+                f"{unique_host}:{self._data[CONF_PORT]}:{self._data[CONF_SLAVE_ID]}"
+            )
+            self._abort_if_unique_id_configured()
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility
             return self.async_create_entry(
@@ -190,16 +202,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception as err:  # pragma: no cover - defensive
             _LOGGER.debug("Translation load failed: %s", err)
 
-        key = (
-            "auto_detected_note_success"
-            if register_count > 0
-            else "auto_detected_note_limited"
-        )
+        key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"
         auto_detected_note = translations.get(
             f"component.{DOMAIN}.{key}",
-            "Auto-detection successful!"
-            if register_count > 0
-            else "Limited auto-detection - some registers may be missing.",
+            (
+                "Auto-detection successful!"
+                if register_count > 0
+                else "Limited auto-detection - some registers may be missing."
+            ),
         )
 
         description_placeholders = {
@@ -242,6 +252,12 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_timeout = self.config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
         current_retry = self.config_entry.options.get(CONF_RETRY, DEFAULT_RETRY)
         force_full = self.config_entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+        current_scan_uart = self.config_entry.options.get(
+            CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS
+        )
+        current_skip_missing = self.config_entry.options.get(
+            CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
+        )
 
         data_schema = vol.Schema(
             {
@@ -261,6 +277,14 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_FORCE_FULL_REGISTER_LIST,
                     default=force_full,
                 ): bool,
+                vol.Optional(
+                    CONF_SCAN_UART_SETTINGS,
+                    default=current_scan_uart,
+                ): bool,
+                vol.Optional(
+                    CONF_SKIP_MISSING_REGISTERS,
+                    default=current_skip_missing,
+                ): bool,
             }
         )
 
@@ -272,5 +296,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "current_timeout": str(current_timeout),
                 "current_retry": str(current_retry),
                 "force_full_enabled": "Yes" if force_full else "No",
+                "scan_uart_enabled": "Yes" if current_scan_uart else "No",
+                "skip_missing_enabled": "Yes" if current_skip_missing else "No",
             },
         )

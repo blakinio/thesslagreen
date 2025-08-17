@@ -34,6 +34,8 @@ pymodbus_client_tcp = types.ModuleType("pymodbus.client.tcp")
 pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
 pymodbus_pdu = types.ModuleType("pymodbus.pdu")
 vol = types.ModuleType("voluptuous")
+
+
 class Schema:
     def __init__(self, *args, **kwargs):
         pass
@@ -91,39 +93,52 @@ class Platform:
 
 const.Platform = Platform
 
+
 class HomeAssistant:
     pass
+
 
 class ServiceCall:
     pass
 
+
 core.HomeAssistant = HomeAssistant
 core.ServiceCall = ServiceCall
+
 
 class ConfigEntry:
     def __init__(self, data=None):
         self.data = data or {}
 
+
 config_entries.ConfigEntry = ConfigEntry
+
 
 class DeviceInfo:
     pass
 
+
 helpers_dr.DeviceInfo = DeviceInfo
 
+
 class DataUpdateCoordinator:
-    pass
+    async def async_shutdown(self):  # pragma: no cover - stub
+        pass
+
 
 helpers.DataUpdateCoordinator = DataUpdateCoordinator
 
+
 class UpdateFailed(Exception):
     pass
+
 
 helpers.UpdateFailed = UpdateFailed
 
 
 async def async_extract_entity_ids(hass, call):
     return []
+
 
 helpers_service.async_extract_entity_ids = async_extract_entity_ids
 
@@ -151,13 +166,17 @@ helpers_cv.entity_ids = entity_ids
 helpers_cv.time = time
 helpers_cv.string = string
 
+
 class ConfigEntryNotReady(Exception):
     pass
 
+
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
+
 
 class AsyncModbusTcpClient:
     pass
+
 
 pymodbus_client_tcp.AsyncModbusTcpClient = AsyncModbusTcpClient
 pymodbus_client.tcp = pymodbus_client_tcp
@@ -165,8 +184,10 @@ pymodbus_client.tcp = pymodbus_client_tcp
 pymodbus_exceptions.ModbusException = ModbusException
 pymodbus_exceptions.ConnectionException = ConnectionException
 
+
 class ExceptionResponse:
     pass
+
 
 pymodbus_pdu.ExceptionResponse = ExceptionResponse
 
@@ -230,11 +251,5 @@ def test_get_coordinator_from_entity_id_multiple_devices():
         }
     )
 
-    assert (
-        services_module._get_coordinator_from_entity_id(hass, "sensor.dev1")
-        is coord1
-    )
-    assert (
-        services_module._get_coordinator_from_entity_id(hass, "sensor.dev2")
-        is coord2
-    )
+    assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev1") is coord1
+    assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev2") is coord2
