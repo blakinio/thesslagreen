@@ -661,329 +661,331 @@ class ThesslaGreenDeviceScanner:
         return await asyncio.to_thread(_parse_csv)
 
 
-async def _read_input(
-    self,
-    client: "AsyncModbusTcpClient",
-    address: int,
-    count: int,
-    *,
-    skip_cache: bool = False,
-    log_exceptions: bool = True,
-) -> list[int] | None:
-    """Read input registers with retry and backoff.
+    async def _read_input(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+        *,
+        skip_cache: bool = False,
+        log_exceptions: bool = True,
+    ) -> list[int] | None:
+        """Read input registers with retry and backoff.
 
-    ``skip_cache`` is used when probing individual registers after a block
-    read failed. When ``True`` the cached set of failed registers is not
-    checked, allowing each register to be queried once before being cached
-    as missing.
-    """
-    start = address
-    end = address + count - 1
+        ``skip_cache`` is used when probing individual registers after a block
+        read failed. When ``True`` the cached set of failed registers is not
+        checked, allowing each register to be queried once before being cached
+        as missing.
+        """
+        start = address
+        end = address + count - 1
 
-    for skip_start, skip_end in self._unsupported_input_ranges:
-        if skip_start <= start and end <= skip_end:
+        for skip_start, skip_end in self._unsupported_input_ranges:
+            if skip_start <= start and end <= skip_end:
+                return None
+
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
+            skip_start = skip_end = first
+            while skip_start - 1 in self._failed_input:
+                skip_start -= 1
+            while skip_end + 1 in self._failed_input:
+                skip_end += 1
+            if (skip_start, skip_end) not in self._input_skip_log_ranges:
+                _LOGGER.debug(
+                    "Skipping cached failed input registers 0x%04X-0x%04X",
+                    skip_start,
+                    skip_end,
+                )
+                self._input_skip_log_ranges.add((skip_start, skip_end))
             return None
 
-    if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
-        first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
-        skip_start = skip_end = first
-        while skip_start - 1 in self._failed_input:
-            skip_start -= 1
-        while skip_end + 1 in self._failed_input:
-            skip_end += 1
-        if (skip_start, skip_end) not in self._input_skip_log_ranges:
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_input_registers, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.registers
+                _LOGGER.debug(
+                    "Attempt %d failed to read input 0x%04X: %s",
+                    attempt,
+                    address,
+                    response,
+                )
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Attempt %d failed to read input 0x%04X: %s",
+                    attempt,
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading input 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            except ModbusIOException as exc:
+                _LOGGER.debug(
+                    "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._input_failures.get(address, 0) + 1
+                    self._input_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_input:
+                        self._failed_input.add(address)
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
             _LOGGER.debug(
-                "Skipping cached failed input registers 0x%04X-0x%04X",
-                skip_start,
-                skip_end,
+                "Falling back to holding registers for input 0x%04X (attempt %d)",
+                address,
+                attempt,
             )
-            self._input_skip_log_ranges.add((skip_start, skip_end))
+            try:
+                response = await _call_modbus(
+                    client.read_holding_registers, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.registers
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    response,
+                )
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            if attempt < self.retry:
+                await asyncio.sleep(0.5)
+
         return None
 
-    for attempt in range(1, self.retry + 1):
-        try:
-            response = await _call_modbus(
-                client.read_input_registers, self.slave_id, address, count=count
-            )
-            if response is not None and not response.isError():
-                return response.registers
-            _LOGGER.debug(
-                "Attempt %d failed to read input 0x%04X: %s",
-                attempt,
-                address,
-                response,
-            )
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug(
-                "Attempt %d failed to read input 0x%04X: %s",
-                attempt,
-                address,
-                exc,
-                exc_info=True,
-            )
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error(
-                "Unexpected error reading input 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            break
-        except ModbusIOException as exc:
-            _LOGGER.debug(
-                "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
-                start,
-                end,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            if count == 1:
-                failures = self._input_failures.get(address, 0) + 1
-                self._input_failures[address] = failures
-                if failures >= self.retry and address not in self._failed_input:
-                    self._failed_input.add(address)
-                    _LOGGER.warning("Device does not expose register 0x%04X", address)
-        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-            _LOGGER.debug(
-                "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
-                start,
-                end,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            break
 
-        _LOGGER.debug(
-            "Falling back to holding registers for input 0x%04X (attempt %d)",
-            address,
-            attempt,
+    async def _read_holding(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+        *,
+        log_exceptions: bool = True,
+    ) -> list[int] | None:
+        """Read holding registers with retry, backoff and failure tracking."""
+        start = address
+        end = address + count - 1
+
+        for skip_start, skip_end in self._unsupported_holding_ranges:
+            if skip_start <= start and end <= skip_end:
+                return None
+
+        if address in self._failed_holding:
+            _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
+            return None
+
+        failures = self._holding_failures.get(address, 0)
+        if failures >= self.retry:
+            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+            return None
+
+        exception_code: int | None = None
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_holding_registers, self.slave_id, address, count=count
+                )
+                if response is not None:
+                    if response.isError():
+                        exception_code = getattr(response, "exception_code", None)
+                        break
+                    if address in self._holding_failures:
+                        del self._holding_failures[address]
+                    return response.registers
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read holding 0x%04X (attempt %d/%d): %s",
+                    address,
+                    attempt,
+                    self.retry,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+            except asyncio.CancelledError:
+                _LOGGER.debug(
+                    "Cancelled reading holding 0x%04X on attempt %d/%d",
+                    address,
+                    attempt,
+                    self.retry,
+                )
+                raise
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            if attempt < self.retry and exception_code is None:
+                try:
+                    await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
+                    raise
+
+        if exception_code is not None:
+            self._failed_holding.update(range(start, end + 1))
+            new_range = (start, end) not in self._unsupported_holding_ranges
+            self._unsupported_holding_ranges[(start, end)] = exception_code
+            if log_exceptions and new_range:
+                _LOGGER.warning(
+                    "Skipping unsupported holding registers 0x%04X-0x%04X (exception code %d)",
+                    start,
+                    end,
+                    exception_code,
+                )
+            return None
+
+        _LOGGER.warning(
+            "Failed to read holding registers 0x%04X-0x%04X after %d retries",
+            start,
+            end,
+            self.retry,
         )
-        try:
-            response = await _call_modbus(
-                client.read_holding_registers, self.slave_id, address, count=count
-            )
-            if response is not None and not response.isError():
-                return response.registers
-            _LOGGER.debug(
-                "Fallback attempt %d failed to read holding 0x%04X: %s",
-                attempt,
-                address,
-                response,
-            )
-        except (ModbusException, ConnectionException) as exc:
-            _LOGGER.debug(
-                "Fallback attempt %d failed to read holding 0x%04X: %s",
-                attempt,
-                address,
-                exc,
-                exc_info=True,
-            )
-        except (OSError, asyncio.TimeoutError) as exc:
-            _LOGGER.error(
-                "Unexpected error reading holding 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            break
-
-        if attempt < self.retry:
-            await asyncio.sleep(0.5)
-
-    return None
-
-
-async def _read_holding(
-    self,
-    client: "AsyncModbusTcpClient",
-    address: int,
-    count: int,
-    *,
-    log_exceptions: bool = True,
-) -> list[int] | None:
-    """Read holding registers with retry, backoff and failure tracking."""
-    start = address
-    end = address + count - 1
-
-    for skip_start, skip_end in self._unsupported_holding_ranges:
-        if skip_start <= start and end <= skip_end:
-            return None
-
-    if address in self._failed_holding:
-        _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
         return None
 
-    failures = self._holding_failures.get(address, 0)
-    if failures >= self.retry:
-        _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+
+    async def _read_coil(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+    ) -> list[bool] | None:
+        """Read coil registers with retry and backoff."""
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await _call_modbus(
+                    client.read_coils, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.bits[:count]
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read coil 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except asyncio.CancelledError:
+                _LOGGER.debug(
+                    "Cancelled reading coil 0x%04X on attempt %d",
+                    address,
+                    attempt,
+                )
+                raise
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading coil 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            if attempt < self.retry:
+                try:
+                    await asyncio.sleep(2 ** (attempt - 1))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
+                    raise
         return None
 
-    exception_code: int | None = None
-    for attempt in range(1, self.retry + 1):
-        try:
-            response = await _call_modbus(
-                client.read_holding_registers, self.slave_id, address, count=count
-            )
-            if response is not None:
-                if response.isError():
-                    exception_code = getattr(response, "exception_code", None)
-                    break
-                if address in self._holding_failures:
-                    del self._holding_failures[address]
-                return response.registers
-        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-            _LOGGER.debug(
-                "Failed to read holding 0x%04X (attempt %d/%d): %s",
-                address,
-                attempt,
-                self.retry,
-                exc,
-                exc_info=True,
-            )
-            if count == 1:
-                failures = self._holding_failures.get(address, 0) + 1
-                self._holding_failures[address] = failures
-                if failures >= self.retry and address not in self._failed_holding:
-                    self._failed_holding.add(address)
-                    _LOGGER.warning("Device does not expose register 0x%04X", address)
-        except asyncio.CancelledError:
-            _LOGGER.debug(
-                "Cancelled reading holding 0x%04X on attempt %d/%d",
-                address,
-                attempt,
-                self.retry,
-            )
-            raise
-        except OSError as exc:
-            _LOGGER.error(
-                "Unexpected error reading holding 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            break
 
-        if attempt < self.retry and exception_code is None:
+    async def _read_discrete(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+    ) -> list[bool] | None:
+        """Read discrete input registers with retry and backoff."""
+        for attempt in range(1, self.retry + 1):
             try:
-                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
+                response = await _call_modbus(
+                    client.read_discrete_inputs, self.slave_id, address, count=count
+                )
+                if response is not None and not response.isError():
+                    return response.bits[:count]
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read discrete 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
             except asyncio.CancelledError:
-                _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
+                _LOGGER.debug(
+                    "Cancelled reading discrete 0x%04X on attempt %d",
+                    address,
+                    attempt,
+                )
                 raise
-
-    if exception_code is not None:
-        self._failed_holding.update(range(start, end + 1))
-        new_range = (start, end) not in self._unsupported_holding_ranges
-        self._unsupported_holding_ranges[(start, end)] = exception_code
-        if log_exceptions and new_range:
-            _LOGGER.warning(
-                "Skipping unsupported holding registers 0x%04X-0x%04X (exception code %d)",
-                start,
-                end,
-                exception_code,
-            )
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading discrete 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            if attempt < self.retry:
+                try:
+                    await asyncio.sleep(2 ** (attempt - 1))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
+                    raise
         return None
-
-    _LOGGER.warning(
-        "Failed to read holding registers 0x%04X-0x%04X after %d retries",
-        start,
-        end,
-        self.retry,
-    )
-    return None
-
-
-async def _read_coil(
-    self,
-    client: "AsyncModbusTcpClient",
-    address: int,
-    count: int,
-) -> list[bool] | None:
-    """Read coil registers with retry and backoff."""
-    for attempt in range(1, self.retry + 1):
-        try:
-            response = await _call_modbus(client.read_coils, self.slave_id, address, count=count)
-            if response is not None and not response.isError():
-                return response.bits[:count]
-        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-            _LOGGER.debug(
-                "Failed to read coil 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-        except asyncio.CancelledError:
-            _LOGGER.debug(
-                "Cancelled reading coil 0x%04X on attempt %d",
-                address,
-                attempt,
-            )
-            raise
-        except OSError as exc:
-            _LOGGER.error(
-                "Unexpected error reading coil 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            break
-        if attempt < self.retry:
-            try:
-                await asyncio.sleep(2 ** (attempt - 1))
-            except asyncio.CancelledError:
-                _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
-                raise
-    return None
-
-
-async def _read_discrete(
-    self,
-    client: "AsyncModbusTcpClient",
-    address: int,
-    count: int,
-) -> list[bool] | None:
-    """Read discrete input registers with retry and backoff."""
-    for attempt in range(1, self.retry + 1):
-        try:
-            response = await _call_modbus(
-                client.read_discrete_inputs, self.slave_id, address, count=count
-            )
-            if response is not None and not response.isError():
-                return response.bits[:count]
-        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-            _LOGGER.debug(
-                "Failed to read discrete 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-        except asyncio.CancelledError:
-            _LOGGER.debug(
-                "Cancelled reading discrete 0x%04X on attempt %d",
-                address,
-                attempt,
-            )
-            raise
-        except OSError as exc:
-            _LOGGER.error(
-                "Unexpected error reading discrete 0x%04X on attempt %d: %s",
-                address,
-                attempt,
-                exc,
-                exc_info=True,
-            )
-            break
-        if attempt < self.retry:
-            try:
-                await asyncio.sleep(2 ** (attempt - 1))
-            except asyncio.CancelledError:
-                _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
-                raise
-    return None
