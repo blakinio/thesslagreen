@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import inspect
 import logging
 import re
-import inspect
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+)
 
 from .const import (
     COIL_REGISTERS,
@@ -423,7 +432,7 @@ class ThesslaGreenDeviceScanner:
             pass
         try:
             start = INPUT_REGISTERS["serial_number_1"]
-            parts = info_regs[start : start + 6]
+            parts = info_regs[start : start + 6]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
         except Exception:  # pragma: no cover
@@ -471,29 +480,37 @@ class ThesslaGreenDeviceScanner:
 
         scan_blocks = {
             "input_registers": (
-                min(INPUT_REGISTERS.values()),
-                max(INPUT_REGISTERS.values()),
-            )
-            if INPUT_REGISTERS
-            else (None, None),
+                (
+                    min(INPUT_REGISTERS.values()),
+                    max(INPUT_REGISTERS.values()),
+                )
+                if INPUT_REGISTERS
+                else (None, None)
+            ),
             "holding_registers": (
-                min(HOLDING_REGISTERS.values()),
-                max(HOLDING_REGISTERS.values()),
-            )
-            if HOLDING_REGISTERS
-            else (None, None),
+                (
+                    min(HOLDING_REGISTERS.values()),
+                    max(HOLDING_REGISTERS.values()),
+                )
+                if HOLDING_REGISTERS
+                else (None, None)
+            ),
             "coil_registers": (
-                min(COIL_REGISTERS.values()),
-                max(COIL_REGISTERS.values()),
-            )
-            if COIL_REGISTERS
-            else (None, None),
+                (
+                    min(COIL_REGISTERS.values()),
+                    max(COIL_REGISTERS.values()),
+                )
+                if COIL_REGISTERS
+                else (None, None)
+            ),
             "discrete_inputs": (
-                min(DISCRETE_INPUT_REGISTERS.values()),
-                max(DISCRETE_INPUT_REGISTERS.values()),
-            )
-            if DISCRETE_INPUT_REGISTERS
-            else (None, None),
+                (
+                    min(DISCRETE_INPUT_REGISTERS.values()),
+                    max(DISCRETE_INPUT_REGISTERS.values()),
+                )
+                if DISCRETE_INPUT_REGISTERS
+                else (None, None)
+            ),
         }
 
         return {
@@ -516,7 +533,6 @@ class ThesslaGreenDeviceScanner:
             return await self.scan()
         finally:
             await self.close()
-
 
     async def _load_registers(
         self,
@@ -660,6 +676,12 @@ class ThesslaGreenDeviceScanner:
 
         return await asyncio.to_thread(_parse_csv)
 
+    def _sleep_time(self, attempt: int) -> float:
+        """Return delay for a retry attempt based on backoff."""
+        if self.backoff <= 0:
+            return 0
+        return self.backoff * 2 ** (attempt - 1)
+
 
 async def _read_input(
     self,
@@ -792,7 +814,13 @@ async def _read_input(
             break
 
         if attempt < self.retry:
-            await asyncio.sleep(0.5)
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying input 0x%04X", address)
+                    raise
 
     return None
 
@@ -869,11 +897,13 @@ async def _read_holding(
             break
 
         if attempt < self.retry and exception_code is None:
-            try:
-                await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
-            except asyncio.CancelledError:
-                _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
-                raise
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
+                    raise
 
     if exception_code is not None:
         self._failed_holding.update(range(start, end + 1))
@@ -934,11 +964,13 @@ async def _read_coil(
             )
             break
         if attempt < self.retry:
-            try:
-                await asyncio.sleep(2 ** (attempt - 1))
-            except asyncio.CancelledError:
-                _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
-                raise
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
+                    raise
     return None
 
 
@@ -981,9 +1013,11 @@ async def _read_discrete(
             )
             break
         if attempt < self.retry:
-            try:
-                await asyncio.sleep(2 ** (attempt - 1))
-            except asyncio.CancelledError:
-                _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
-                raise
+            delay = self._sleep_time(attempt)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
+                    raise
     return None
