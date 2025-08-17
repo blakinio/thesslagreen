@@ -67,6 +67,7 @@ from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_helpers import _call_modbus
 from .multipliers import REGISTER_MULTIPLIERS
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from .utils import TIME_REGISTER_PREFIXES, _decode_bcd_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -786,6 +787,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
             return None  # No sensor
         if value == SENSOR_UNAVAILABLE and "flow" in register_name.lower():
             return None  # No sensor
+
+        if register_name.startswith(TIME_REGISTER_PREFIXES):
+            decoded = _decode_bcd_time(value)
+            return decoded if decoded is not None else value
 
         # Apply multiplier
         if register_name in REGISTER_MULTIPLIERS:

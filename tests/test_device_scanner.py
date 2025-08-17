@@ -14,8 +14,6 @@ from custom_components.thessla_green_modbus.device_scanner import (
     DeviceCapabilities,
     DeviceInfo,
     ThesslaGreenDeviceScanner,
-    _decode_bcd_time,
-    _decode_register_time,
     _decode_setting_value,
     _format_register_value,
 )
@@ -24,6 +22,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusIOException,
 )
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from custom_components.thessla_green_modbus.utils import _decode_bcd_time, _decode_register_time
 
 pytestmark = pytest.mark.asyncio
 

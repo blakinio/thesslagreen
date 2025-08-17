@@ -26,7 +26,7 @@ from .const import (
 )
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS
-from .utils import _to_snake_case
+from .utils import TIME_REGISTER_PREFIXES, _decode_bcd_time, _decode_register_time, _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,16 +39,6 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 }
 
 
-# Registers storing times encoded as HH:MM bytes
-TIME_REGISTER_PREFIXES: tuple[str, ...] = (
-    "schedule_",
-    "airing_summer_",
-    "airing_winter_",
-    "manual_airing_time_to_start",
-    "pres_check_time",
-    "start_gwc_regen",
-    "stop_gwc_regen",
-)
 # Registers storing times as BCD HHMM values
 BCD_TIME_PREFIXES: tuple[str, ...] = (
     "schedule_",
@@ -61,45 +51,6 @@ BCD_TIME_PREFIXES: tuple[str, ...] = (
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
-
-
-def _decode_register_time(value: int) -> int | None:
-    """Decode HH:MM byte-encoded value to minutes since midnight.
-
-    The most significant byte stores the hour and the least significant byte
-    stores the minute. ``None`` is returned if the value is negative or if the
-    extracted hour/minute fall outside of valid ranges.
-    """
-
-    if value < 0:
-        return None
-
-    hour = (value >> 8) & 0xFF
-    minute = value & 0xFF
-    if 0 <= hour <= 23 and 0 <= minute <= 59:
-        return hour * 60 + minute
-
-    return None
-
-
-def _decode_bcd_time(value: int) -> int | None:
-    """Decode BCD or decimal HHMM values to minutes since midnight."""
-
-    if value < 0:
-        return None
-
-    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
-    if all(n <= 9 for n in nibbles):
-        hours = nibbles[0] * 10 + nibbles[1]
-        minutes = nibbles[2] * 10 + nibbles[3]
-        if hours <= 23 and minutes <= 59:
-            return hours * 60 + minutes
-
-    hours_dec = value // 100
-    minutes_dec = value % 100
-    if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
-        return hours_dec * 60 + minutes_dec
-    return None
 
 
 def _decode_setting_value(value: int) -> tuple[int, float] | None:

@@ -1,10 +1,7 @@
 import pytest
 
-from custom_components.thessla_green_modbus.device_scanner import (
-    _decode_bcd_time,
-    _decode_register_time,
-    _decode_setting_value,
-)
+from custom_components.thessla_green_modbus.device_scanner import _decode_setting_value
+from custom_components.thessla_green_modbus.utils import _decode_bcd_time, _decode_register_time
 
 
 def test_decode_register_time_valid():
@@ -32,6 +29,13 @@ def test_decode_bcd_time_valid():
 def test_decode_bcd_time_invalid(value):
     """Invalid BCD or decimal times should return None."""
     assert _decode_bcd_time(value) is None
+
+
+def test_schedule_register_time_format():
+    """Schedule registers decode to HH:MM string representation."""
+    minutes = _decode_bcd_time(0x0815)
+    assert minutes == 8 * 60 + 15
+    assert f"{minutes // 60:02d}:{minutes % 60:02d}" == "08:15"
 
 
 def test_decode_setting_value_valid():
