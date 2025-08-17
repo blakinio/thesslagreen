@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -29,21 +29,34 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities = []
+    temp_created = 0
+    temp_skipped = 0
 
     # Create sensors only for available registers (autoscan result)
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
+        is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
         # Check if this register is available on the device
         if register_name in coordinator.available_registers.get(register_type, set()):
             entities.append(ThesslaGreenSensor(coordinator, register_name, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
+            if is_temp:
+                temp_created += 1
+        elif is_temp:
+            temp_skipped += 1
 
     if entities:
         async_add_entities(entities, True)
         _LOGGER.info("Created %d sensor entities for %s", len(entities), coordinator.device_name)
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
+
+    _LOGGER.info(
+        "Temperature sensors: %d instantiated, %d skipped",
+        temp_created,
+        temp_skipped,
+    )
 
 
 class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
