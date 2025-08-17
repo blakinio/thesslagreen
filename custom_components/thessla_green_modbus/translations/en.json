@@ -163,9 +163,9 @@
       "serial_number_6": {
         "name": "Serial Number 6"
       },
-      "antifreez_mode": {
-        "name": "Antifreeze Mode"
-      },
+        "antifreeze_mode": {
+          "name": "Antifreeze Mode"
+        },
       "mode": {
         "name": "Operating Mode"
       },
