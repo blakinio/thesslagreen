@@ -2,7 +2,20 @@
   "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
   "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
   "config": {
+    "abort": {
+      "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port i połączenie sieciowe.",
+      "invalid_auth": "Błąd uwierzytelniania. Sprawdź ustawienia ID urządzenia.",
+      "invalid_input": "Podano nieprawidłową konfigurację. Sprawdź wartości i spróbuj ponownie.",
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
+    },
     "step": {
+      "confirm": {
+        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia: {slave_id}. Wersja oprogramowania: {firmware_version}. Znalezione rejestry: {register_count}. Skuteczność skanowania: {scan_success_rate}. Możliwości ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Kontynuować z tą konfiguracją?",
+        "title": "Potwierdź konfigurację"
+      },
       "user": {
         "title": "Konfiguracja ThesslaGreen Modbus",
         "data": {
@@ -110,9 +123,6 @@
       "serial_number_6": {
         "name": "Numer seryjny 6"
       },
-        "antifreeze_mode": {
-          "name": "Tryb przeciwzamrożeniowy"
-        },
       "mode": {
         "name": "Tryb pracy"
       },
