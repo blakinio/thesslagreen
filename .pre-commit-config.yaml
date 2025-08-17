@@ -37,6 +37,8 @@ repos:
     rev: v4.5.0
     hooks:
       - id: check-merge-conflict
+      - id: check-json
+        files: ^custom_components/.*/translations/.*\.json$
   - repo: local
     hooks:
       - id: generate-registers

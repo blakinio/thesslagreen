@@ -5,33 +5,13 @@
     "step": {
       "user": {
         "title": "Konfiguracja ThesslaGreen Modbus",
-        "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP. Integracja automatycznie wykrywa funkcje i rejestry urządzenia.",
         "data": {
           "host": "Adres IP",
           "port": "Port",
-          "slave_id": "ID urządzenia",
+          "slave_id": "ID Urządzenia",
           "name": "Nazwa"
-        },
-        "data_description": {
-          "host": "Adres IP urządzenia AirPack w sieci lokalnej",
-          "port": "Port Modbus TCP (domyślnie 502)",
-          "slave_id": "ID urządzenia Modbus (domyślnie 10)",
-          "name": "Nazwa urządzenia w Home Assistant"
         }
-      },
-      "confirm": {
-        "title": "Potwierdź konfigurację",
-        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia: {slave_id}. Wersja oprogramowania: {firmware_version}. Wykryto {register_count} rejestrów. Skuteczność skanowania: {scan_success_rate}. Dostępne funkcje ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Czy chcesz kontynuować tę konfigurację?"
       }
-    },
-    "error": {
-      "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port oraz połączenie sieciowe.",
-      "invalid_auth": "Błąd autoryzacji. Sprawdź ustawienia ID urządzenia.",
-      "invalid_input": "Nieprawidłowa konfiguracja. Sprawdź wartości i spróbuj ponownie.",
-      "unknown": "Nieoczekiwany błąd. Sprawdź logi dla szczegółów."
-    },
-    "abort": {
-      "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
     }
   },
   "options": {

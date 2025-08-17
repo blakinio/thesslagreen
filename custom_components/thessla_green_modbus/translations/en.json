@@ -1,4 +1,14 @@
 {
+  "config": {
+    "step": {
+      "user": {
+        "title": "ThesslaGreen Modbus Configuration",
+        "data": {
+          "host": "IP Address",
+          "port": "Port",
+          "slave_id": "Device ID",
+          "name": "Name"
+        }
   "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
   "auto_detected_note_success": "Auto-detection successful!",
   "config": {
@@ -35,6 +45,10 @@
     }
   },
   "entity": {
+    "sensor": {
+      "outside_temperature": {
+        "name": "Outside Temperature"
+      }
     "binary_sensor": {
       "ahu_filter_protection": {
         "name": "AHU Filter Protection"
