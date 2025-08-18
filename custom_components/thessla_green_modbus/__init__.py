@@ -47,6 +47,14 @@ for _platform in PLATFORM_DOMAINS:
 # Legacy default port used before version 2 when explicit port was optional
 LEGACY_DEFAULT_PORT = 8899
 
+# Legacy entity IDs that were replaced by the fan entity
+LEGACY_FAN_ENTITY_IDS = [
+    "number.rekuperator_predkosc",
+    "number.rekuperator_speed",
+]
+
+_fan_migration_logged = False
+
 # Supported platforms
 # Build platform list compatible with both real Home Assistant enums and test stubs
 PLATFORMS: list[Platform] = []
@@ -150,6 +158,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    # Clean up legacy entity IDs left from early versions
+    await _async_cleanup_legacy_fan_entity(hass, host, port, slave_id)
+
     # Migrate entity unique IDs (replace ':' in host with '-')
     await _async_migrate_unique_ids(hass, entry)
 
@@ -205,6 +216,46 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update options."""
     _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def _async_cleanup_legacy_fan_entity(
+    hass: HomeAssistant, host: str, port: int, slave_id: int
+) -> None:
+    """Remove or rename legacy fan-related entity IDs."""
+    registry = er.async_get(hass)
+    new_entity_id = "fan.rekuperator_fan"
+    migrated = False
+
+    if registry.async_get(new_entity_id):
+        for old_entity_id in LEGACY_FAN_ENTITY_IDS:
+            if registry.async_get(old_entity_id):
+                registry.async_remove(old_entity_id)
+                migrated = True
+    else:
+        for old_entity_id in LEGACY_FAN_ENTITY_IDS:
+            if registry.async_get(old_entity_id):
+                new_unique_id = (
+                    f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_fan"
+                )
+                registry.async_update_entity(
+                    old_entity_id,
+                    new_entity_id=new_entity_id,
+                    new_unique_id=new_unique_id,
+                )
+                migrated = True
+                break
+        for old_entity_id in LEGACY_FAN_ENTITY_IDS:
+            if registry.async_get(old_entity_id):
+                registry.async_remove(old_entity_id)
+                migrated = True
+
+    global _fan_migration_logged
+    if migrated and not _fan_migration_logged:
+        _LOGGER.warning(
+            "Legacy fan entity detected. Renamed to '%s'. Please update automations.",
+            new_entity_id,
+        )
+        _fan_migration_logged = True
 
 
 async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
