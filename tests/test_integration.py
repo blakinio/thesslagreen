@@ -180,3 +180,70 @@ async def test_register_constants():
     assert COIL_REGISTERS["power_supply_fans"] == 0x000B
     assert INPUT_REGISTERS["outside_temperature"] == 0x0010
     assert HOLDING_REGISTERS["mode"] == 0x1070
+
+
+async def test_unload_and_reload_entry():
+    """Test unloading and reloading a config entry reinitializes the integration."""
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
+    hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry"
+    entry.data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+    }
+    entry.options = {}
+    entry.title = "Test Entry"
+    entry.add_update_listener = MagicMock()
+    entry.async_on_unload = MagicMock()
+
+    coordinator1 = MagicMock()
+    coordinator1.async_config_entry_first_refresh = AsyncMock()
+    coordinator1.async_setup = AsyncMock(return_value=True)
+    coordinator1.async_shutdown = AsyncMock()
+
+    coordinator2 = MagicMock()
+    coordinator2.async_config_entry_first_refresh = AsyncMock()
+    coordinator2.async_setup = AsyncMock(return_value=True)
+    coordinator2.async_shutdown = AsyncMock()
+
+    with patch(
+        "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+        return_value=[],
+        create=True,
+    ), patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+        side_effect=[coordinator1, coordinator2],
+    ) as mock_coordinator_class, patch(
+        "custom_components.thessla_green_modbus.services.async_setup_services",
+        AsyncMock(),
+    ) as mock_setup_services, patch(
+        "custom_components.thessla_green_modbus.services.async_unload_services",
+        AsyncMock(),
+    ) as mock_unload_services:
+        # Initial setup
+        assert await async_setup_entry(hass, entry)
+        assert hass.data[DOMAIN][entry.entry_id] is coordinator1
+        hass.config_entries.async_forward_entry_setups.assert_called_once()
+        mock_setup_services.assert_called_once()
+
+        # Unload
+        assert await async_unload_entry(hass, entry)
+        mock_unload_services.assert_called_once()
+        coordinator1.async_shutdown.assert_called_once()
+        assert DOMAIN not in hass.data
+
+        # Reset mocks for reload
+        hass.config_entries.async_forward_entry_setups.reset_mock()
+        mock_setup_services.reset_mock()
+
+        # Reload
+        assert await async_setup_entry(hass, entry)
+        assert hass.data[DOMAIN][entry.entry_id] is coordinator2
+        assert hass.config_entries.async_forward_entry_setups.call_count == 1
+        mock_setup_services.assert_called_once()
+        assert mock_coordinator_class.call_count == 2
