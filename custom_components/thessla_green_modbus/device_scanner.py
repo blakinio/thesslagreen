@@ -728,6 +728,8 @@ class ThesslaGreenDeviceScanner:
                         if not isinstance(name_raw, str) or not name_raw.strip():
                             continue
                         name = _to_snake_case(name_raw)
+                        if name == "none" or re.fullmatch(r"none(_\d+)?$", name):
+                            continue
                         try:
                             addr = int(row.get("Address_DEC", 0))
                         except (TypeError, ValueError):
