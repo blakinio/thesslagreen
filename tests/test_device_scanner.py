@@ -49,6 +49,14 @@ async def test_device_scanner_initialization():
     assert scanner.backoff == 0
 
 
+async def test_create_binds_read_helpers():
+    """Scanner.create binds read helper methods to the instance."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    assert hasattr(scanner, "_read_holding")
+    assert hasattr(scanner, "_read_coil")
+    assert hasattr(scanner, "_read_discrete")
+
+
 async def test_scanner_has_read_coil_method():
     """Ensure scanner exposes coil reading helper."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
