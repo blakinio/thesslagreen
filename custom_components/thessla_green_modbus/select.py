@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -36,7 +37,14 @@ async def async_setup_entry(
             entities.append(ThesslaGreenSelect(coordinator, register_name, select_def))
 
     if entities:
-        async_add_entities(entities, True)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning(
+                "Cancelled while adding select entities, retrying without initial state"
+            )
+            async_add_entities(entities, False)
+            return
         _LOGGER.info("Created %d select entities", len(entities))
 
 

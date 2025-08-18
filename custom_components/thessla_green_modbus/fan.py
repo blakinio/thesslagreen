@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -51,7 +52,13 @@ async def async_setup_entry(
         )  # Only check writable registers
 
     if has_fan_registers:
-        async_add_entities([ThesslaGreenFan(coordinator)])
+        entities = [ThesslaGreenFan(coordinator)]
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning("Cancelled while adding fan entity, retrying without initial state")
+            async_add_entities(entities, False)
+            return
         _LOGGER.info("Added fan entity")
     else:
         _LOGGER.debug("No fan control registers available - skipping fan entity")

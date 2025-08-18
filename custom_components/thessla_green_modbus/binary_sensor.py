@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Dict
 
@@ -46,7 +47,14 @@ async def async_setup_entry(
             _LOGGER.debug("Created binary sensor: %s", sensor_def["translation_key"])
 
     if entities:
-        async_add_entities(entities, True)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning(
+                "Cancelled while adding binary sensor entities, retrying without initial state"
+            )
+            async_add_entities(entities, False)
+            return
         _LOGGER.info(
             "Created %d binary sensor entities for %s", len(entities), coordinator.device_name
         )

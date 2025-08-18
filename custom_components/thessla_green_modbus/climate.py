@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -64,7 +65,12 @@ async def async_setup_entry(
     # Only create climate entity if basic control is available
     if coordinator.capabilities.basic_control:
         entities = [ThesslaGreenClimate(coordinator)]
-        async_add_entities(entities, True)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning("Cancelled while adding climate entity, retrying without initial state")
+            async_add_entities(entities, False)
+            return
         _LOGGER.info("Climate entity created for %s", coordinator.device_name)
     else:
         _LOGGER.warning("Basic control not available, climate entity not created")

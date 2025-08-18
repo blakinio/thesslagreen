@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -62,7 +63,14 @@ async def async_setup_entry(
     if entities:
         # Coordinator already holds initial data from setup, so update entities before add
         # to populate their state without triggering another refresh
-        async_add_entities(entities, True)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning(
+                "Cancelled while adding switch entities, retrying without initial state"
+            )
+            async_add_entities(entities, False)
+            return
         _LOGGER.info("Added %d switch entities", len(entities))
     else:
         _LOGGER.debug("No switch entities were created")
