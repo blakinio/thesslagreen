@@ -2,13 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.device_scanner import (
-    ThesslaGreenDeviceScanner,
-    _read_coil,
-    _read_discrete,
-    _read_holding,
-    _read_input,
-)
+from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusIOException,
 )
@@ -17,10 +11,15 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.mark.parametrize(
-    "func",
-    [_read_input, _read_holding, _read_coil, _read_discrete],
+    "func, expected",
+    [
+        (ThesslaGreenDeviceScanner._read_input, [0.5, 0.5]),
+        (ThesslaGreenDeviceScanner._read_holding, [0.1, 0.2]),
+        (ThesslaGreenDeviceScanner._read_coil, [0.1, 0.2]),
+        (ThesslaGreenDeviceScanner._read_discrete, [0.1, 0.2]),
+    ],
 )
-async def test_backoff_delay(func):
+async def test_backoff_delay(func, expected):
     scanner = await ThesslaGreenDeviceScanner.create("host", 1234, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
     sleep_mock = AsyncMock()
@@ -33,14 +32,18 @@ async def test_backoff_delay(func):
     ):
         result = await func(scanner, mock_client, 0x0001, 1)
         assert result is None  # nosec
-    assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]  # nosec
+    assert [call.args[0] for call in sleep_mock.await_args_list] == expected  # nosec
 
 
 @pytest.mark.parametrize(
-    "func",
-    [_read_input, _read_holding, _read_coil, _read_discrete],
+    "func, expected",
+    [
+        (ThesslaGreenDeviceScanner._read_holding, [1, 2]),
+        (ThesslaGreenDeviceScanner._read_coil, [0, 0]),
+        (ThesslaGreenDeviceScanner._read_discrete, [0, 0]),
+    ],
 )
-async def test_backoff_zero_no_delay(func):
+async def test_backoff_zero_no_delay(func, expected):
     scanner = await ThesslaGreenDeviceScanner.create("host", 1234, 10, retry=3, backoff=0)
     mock_client = AsyncMock()
     sleep_mock = AsyncMock()
@@ -53,4 +56,4 @@ async def test_backoff_zero_no_delay(func):
     ):
         result = await func(scanner, mock_client, 0x0001, 1)
         assert result is None  # nosec
-    assert sleep_mock.await_args_list == []  # nosec
+    assert [call.args[0] for call in sleep_mock.await_args_list] == expected  # nosec
