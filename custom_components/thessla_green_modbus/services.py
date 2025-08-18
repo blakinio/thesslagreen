@@ -43,6 +43,28 @@ AIR_QUALITY_REGISTER_MAP = {
 }
 
 
+def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
+    """Return entity IDs from a service call handling legacy aliases."""
+
+    raw_ids = call.data.get("entity_id")
+    if raw_ids is None:
+        return set()
+
+    if isinstance(raw_ids, str):
+        raw_ids = [raw_ids]
+    else:
+        raw_ids = list(raw_ids)
+
+    mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
+    mapped_call = ServiceCall(
+        getattr(call, "domain", DOMAIN),
+        getattr(call, "service", ""),
+        {**call.data, "entity_id": mapped_ids},
+        getattr(call, "context", None),
+    )
+    return async_extract_entity_ids(hass, mapped_call)
+
+
 # Service schemas
 SET_SPECIAL_MODE_SCHEMA = vol.Schema(
     {
@@ -178,7 +200,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_special_mode(call: ServiceCall) -> None:
         """Service to set special mode."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
         duration = call.data.get("duration", 0)
 
@@ -212,7 +234,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_airflow_schedule(call: ServiceCall) -> None:
         """Service to set airflow schedule."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         day = _normalize_option(call.data["day"])
         period = _normalize_option(call.data["period"])
         start_time = call.data["start_time"]
@@ -285,7 +307,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_bypass_parameters(call: ServiceCall) -> None:
         """Service to set bypass parameters."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
         min_temperature = call.data.get("min_outdoor_temperature")
 
@@ -313,7 +335,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_gwc_parameters(call: ServiceCall) -> None:
         """Service to set GWC parameters."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
         min_air_temperature = call.data.get("min_air_temperature")
         max_air_temperature = call.data.get("max_air_temperature")
@@ -349,7 +371,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_air_quality_thresholds(call: ServiceCall) -> None:
         """Service to set air quality thresholds."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
 
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
@@ -365,7 +387,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_temperature_curve(call: ServiceCall) -> None:
         """Service to set temperature curve."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         slope = call.data["slope"]
         offset = call.data["offset"]
         max_supply_temp = call.data.get("max_supply_temp")
@@ -404,7 +426,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def reset_filters(call: ServiceCall) -> None:
         """Service to reset filter counter."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         filter_type = _normalize_option(call.data["filter_type"])
 
         filter_type_map = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}
@@ -419,7 +441,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def reset_settings(call: ServiceCall) -> None:
         """Service to reset settings."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         reset_type = _normalize_option(call.data["reset_type"])
 
         for entity_id in entity_ids:
@@ -436,7 +458,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def start_pressure_test(call: ServiceCall) -> None:
         """Service to start pressure test."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
 
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
@@ -457,7 +479,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_modbus_parameters(call: ServiceCall) -> None:
         """Service to set Modbus parameters."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         port = _normalize_option(call.data["port"])
         baud_rate = call.data.get("baud_rate")
         parity = call.data.get("parity")
@@ -508,7 +530,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def set_device_name(call: ServiceCall) -> None:
         """Service to set device name."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
         device_name = call.data["device_name"]
 
         for entity_id in entity_ids:
@@ -530,7 +552,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def refresh_device_data(call: ServiceCall) -> None:
         """Service to refresh device data."""
-        entity_ids = async_extract_entity_ids(hass, call)
+        entity_ids = _extract_legacy_entity_ids(hass, call)
 
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
