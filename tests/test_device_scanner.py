@@ -138,6 +138,62 @@ async def test_read_default_delay(method, address):
     assert [call.args[0] for call in sleep_mock.await_args_list] == [1, 2]
 
 
+@pytest.mark.parametrize(
+    "func, address",
+    [
+        (ThesslaGreenDeviceScanner._read_coil, 0x0000),
+        (ThesslaGreenDeviceScanner._read_discrete, 0x0000),
+    ],
+)
+async def test_read_binary_backoff_delay(func, address):
+    """Coil and discrete reads should respect configured backoff."""
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=3, backoff=0.1
+    )
+    mock_client = AsyncMock()
+    sleep_mock = AsyncMock()
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusIOException("boom")),
+        ) as call_mock,
+        patch("asyncio.sleep", sleep_mock),
+    ):
+        result = await func(scanner, mock_client, address, 1)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]
+
+
+@pytest.mark.parametrize(
+    "func, address",
+    [
+        (ThesslaGreenDeviceScanner._read_coil, 0x0000),
+        (ThesslaGreenDeviceScanner._read_discrete, 0x0000),
+    ],
+)
+async def test_read_binary_default_delay(func, address):
+    """Default backoff of zero should not delay retries."""
+    scanner = await ThesslaGreenDeviceScanner.create(
+        "192.168.3.17", 8899, 10, retry=3
+    )
+    mock_client = AsyncMock()
+    sleep_mock = AsyncMock()
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            AsyncMock(side_effect=ModbusIOException("boom")),
+        ) as call_mock,
+        patch("asyncio.sleep", sleep_mock),
+    ):
+        result = await func(scanner, mock_client, address, 1)
+        assert result is None
+        assert call_mock.await_count == scanner.retry
+
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [0, 0]
+
+
 async def test_read_input_logs_warning_on_failure(caplog):
     """Warn when input registers cannot be read after retries."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
