@@ -5,8 +5,6 @@ import sys
 import types
 from unittest.mock import MagicMock
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
 # ---------------------------------------------------------------------------
