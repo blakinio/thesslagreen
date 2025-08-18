@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import traceback
 from typing import Any
 
 import voluptuous as vol
@@ -76,16 +77,21 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         return {"title": name, "device_info": device_info, "scan_result": scan_result}
 
     except ConnectionException as exc:
-        _LOGGER.exception("Connection error: %s", exc)
+        _LOGGER.error("Connection error: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect from exc
     except ModbusException as exc:
-        _LOGGER.exception("Modbus error: %s", exc)
+        _LOGGER.error("Modbus error: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect from exc
     except AttributeError as exc:
-        _LOGGER.exception("Attribute error during device validation: %s", exc)
-        raise CannotConnect from exc
+        _LOGGER.error("Attribute error during device validation: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        # Provide a more helpful message when scanner methods are missing
+        raise CannotConnect("missing_method") from exc
     except (OSError, asyncio.TimeoutError) as exc:
-        _LOGGER.exception("Unexpected error during device validation: %s", exc)
+        _LOGGER.error("Unexpected error during device validation: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect from exc
     finally:
         if hasattr(scanner, "close"):
@@ -128,8 +134,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Show confirmation step with device info
                 return await self.async_step_confirm()
 
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
+            except CannotConnect as exc:
+                errors["base"] = exc.args[0] if exc.args else "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
             except (ConnectionException, ModbusException):
@@ -143,7 +149,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_input"
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected error during configuration: %s", err)
-                errors["base"] = "unknown"
+                raise
 
         # Show form
         data_schema = vol.Schema(

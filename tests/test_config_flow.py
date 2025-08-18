@@ -387,7 +387,7 @@ async def test_form_user_connection_exception():
 
 
 async def test_form_user_attribute_error_scanner():
-    """AttributeError during scanning should return cannot_connect."""
+    """AttributeError during scanning should return missing_method error."""
     flow = ConfigFlow()
     flow.hass = None
 
@@ -409,7 +409,7 @@ async def test_form_user_attribute_error_scanner():
         )
 
     assert result["type"] == "form"
-    assert result["errors"] == {"base": "cannot_connect"}
+    assert result["errors"] == {"base": "missing_method"}
 
 
 async def test_form_user_invalid_auth():
