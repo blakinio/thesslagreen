@@ -390,7 +390,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         Returns True on success, False otherwise.
         """
         try:
-            await self._ensure_connection()
+            async with self._connection_lock:
+                await self._ensure_connection()
             return True
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.exception("Failed to set up Modbus client: %s", exc)
@@ -407,24 +408,21 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Ensure Modbus connection is established."""
         if self.client and self.client.connected:
             return
-        async with self._connection_lock:
-            if self.client and self.client.connected:
-                return
-            if self.client is not None:
-                await self._disconnect()
-            try:
-                self.client = ThesslaGreenModbusClient(self.host, self.port, timeout=self.timeout)
-                if not await self.client.connect():
-                    raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
-                _LOGGER.debug("Modbus connection established")
-            except (ModbusException, ConnectionException) as exc:
-                self.statistics["connection_errors"] += 1
-                _LOGGER.exception("Failed to establish connection: %s", exc)
-                raise
-            except (OSError, asyncio.TimeoutError) as exc:
-                self.statistics["connection_errors"] += 1
-                _LOGGER.exception("Unexpected error establishing connection: %s", exc)
-                raise
+        if self.client is not None:
+            await self._disconnect()
+        try:
+            self.client = ThesslaGreenModbusClient(self.host, self.port, timeout=self.timeout)
+            if not await self.client.connect():
+                raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
+            _LOGGER.debug("Modbus connection established")
+        except (ModbusException, ConnectionException) as exc:
+            self.statistics["connection_errors"] += 1
+            _LOGGER.exception("Failed to establish connection: %s", exc)
+            raise
+        except (OSError, asyncio.TimeoutError) as exc:
+            self.statistics["connection_errors"] += 1
+            _LOGGER.exception("Unexpected error establishing connection: %s", exc)
+            raise
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the device with optimized batch reading."""
@@ -517,8 +515,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "input_registers" not in self._register_groups:
             return data
 
-        if not self.client:
-            await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -667,7 +663,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "coil_registers" not in self._register_groups:
             return data
 
-        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
@@ -742,7 +737,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "discrete_inputs" not in self._register_groups:
             return data
 
-        await self._ensure_connection()
         client = self.client
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")

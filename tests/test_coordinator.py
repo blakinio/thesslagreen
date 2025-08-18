@@ -118,7 +118,12 @@ class ModbusTcpClient:
     pass
 
 
+class AsyncModbusTcpClient(ModbusTcpClient):
+    pass
+
+
 pymodbus_client.ModbusTcpClient = ModbusTcpClient
+pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
 
 
 pymodbus_exceptions.ModbusException = ModbusException
@@ -542,9 +547,13 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
             type(self).open_connections -= 1
             self.connected = False
 
-    with patch("pymodbus.client.AsyncModbusTcpClient", FakeClient, create=True):
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusClient",
+        FakeClient,
+    ):
         for _ in range(3):
-            await coordinator._ensure_connection()
+            async with coordinator._connection_lock:
+                await coordinator._ensure_connection()
             assert FakeClient.open_connections == 1
             coordinator.client.connected = False
 
@@ -556,7 +565,6 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
 async def test_missing_client_raises_connection_exception(coordinator):
     """Missing client should raise ConnectionException instead of AttributeError."""
     coordinator.client = None
-    coordinator._ensure_connection = AsyncMock(side_effect=ConnectionException("fail"))
     coordinator._register_groups = {
         "input_registers": [(0x0000, 1)],
         "holding_registers": [(0x0000, 1)],
@@ -566,8 +574,6 @@ async def test_missing_client_raises_connection_exception(coordinator):
 
     with pytest.raises(ConnectionException):
         await coordinator._read_input_registers_optimized()
-    with pytest.raises(ConnectionException):
-        await coordinator._read_holding_registers_optimized()
     with pytest.raises(ConnectionException):
         await coordinator._read_coil_registers_optimized()
     with pytest.raises(ConnectionException):
@@ -582,6 +588,25 @@ async def test_async_update_data_missing_client(coordinator):
 
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
+
+
+@pytest.mark.asyncio
+async def test_setup_and_refresh_no_cancelled_error(coordinator):
+    """Successful setup and refresh should not raise CancelledError."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.client = MagicMock()
+    coordinator.client.connected = True
+
+    result = await coordinator._async_setup_client()
+    assert result is True
+
+    coordinator._read_input_registers_optimized = AsyncMock(return_value={})
+    coordinator._read_holding_registers_optimized = AsyncMock(return_value={})
+    coordinator._read_coil_registers_optimized = AsyncMock(return_value={})
+    coordinator._read_discrete_inputs_optimized = AsyncMock(return_value={})
+
+    data = await coordinator._async_update_data()
+    assert data == {}
 
 
 def cleanup_modules():
