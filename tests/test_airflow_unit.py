@@ -25,16 +25,16 @@ def _make_coordinator(unit):
     return coord
 
 
-def test_unique_id_suffix_m3h():
-    coord = _make_coordinator(AIRFLOW_UNIT_M3H)
-    entity = ThesslaGreenEntity(coord, "supply_flow_rate")
-    assert entity.unique_id.endswith("supply_flow_rate_m3h")  # nosec
-
-
-def test_unique_id_suffix_percentage():
+def test_unique_id_same_for_all_units():
     coord = _make_coordinator(AIRFLOW_UNIT_PERCENTAGE)
     entity = ThesslaGreenEntity(coord, "supply_flow_rate")
-    assert entity.unique_id.endswith("supply_flow_rate")  # nosec
+    uid_percentage = entity.unique_id
+
+    coord.entry.options[CONF_AIRFLOW_UNIT] = AIRFLOW_UNIT_M3H
+    entity = ThesslaGreenEntity(coord, "supply_flow_rate")
+    uid_m3h = entity.unique_id
+
+    assert uid_percentage == uid_m3h  # nosec
 
 
 def test_sensor_converts_to_percentage():
