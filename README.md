@@ -89,7 +89,17 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Ustawienia UART**: Skanuj opcjonalne rejestry konfiguracji portu (0x1168-0x116B)
 - **Airflow unit**: wybierz `m³/h` (domyślnie) lub `percentage`
 
-Adresy rejestrów, które wielokrotnie nie odpowiadają, są automatycznie pomijane w kolejnych skanach.
+#### Pełna lista rejestrów
+
+Włączenie tej opcji pomija proces autoskanu i tworzy komplet około 300 encji,
+niezależnie od tego, czy dane rejestry są obsługiwane przez urządzenie. Można
+ją aktywować z poziomu interfejsu Home Assistant: **Ustawienia → Integracje →
+ThesslaGreen Modbus → Konfiguruj → Pełna lista rejestrów**. Należy stosować ją
+ostrożnie, ponieważ urządzenie może zgłaszać błędy dla nieobsługiwanych
+rejestrów.
+
+Adresy rejestrów, które wielokrotnie nie odpowiadają, są automatycznie
+pomijane w kolejnych skanach.
 
 Szczegóły migracji z czujników procentowych opisano w pliku [docs/airflow_migration.md](docs/airflow_migration.md).
 
