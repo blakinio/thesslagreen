@@ -1,4 +1,5 @@
 """Test integration setup for ThesslaGreen Modbus integration."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,7 +16,7 @@ async def test_async_setup_entry_success():
     hass = MagicMock()
     hass.data = {}
     hass.config_entries.async_forward_entry_setups = AsyncMock()
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
     entry.data = {
@@ -26,7 +27,7 @@ async def test_async_setup_entry_success():
     entry.options = {}
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
-    
+
     with patch(
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
@@ -34,9 +35,9 @@ async def test_async_setup_entry_success():
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
         mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator_class.return_value = mock_coordinator
-        
+
         result = await async_setup_entry(hass, entry)
-        
+
         assert result is True
         assert DOMAIN in hass.data
         assert entry.entry_id in hass.data[DOMAIN]
@@ -47,7 +48,7 @@ async def test_async_setup_entry_failure():
     """Test setup entry with coordinator failure."""
     hass = MagicMock()
     hass.data = {}
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
     entry.data = {
@@ -56,7 +57,7 @@ async def test_async_setup_entry_failure():
         "slave_id": 10,
     }
     entry.options = {}
-    
+
     with patch(
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
@@ -65,7 +66,7 @@ async def test_async_setup_entry_failure():
             side_effect=Exception("Connection failed")
         )
         mock_coordinator_class.return_value = mock_coordinator
-        
+
         with pytest.raises(ConfigEntryNotReady):
             await async_setup_entry(hass, entry)
 
@@ -108,17 +109,17 @@ async def test_async_unload_entry_success():
     hass = MagicMock()
     hass.data = {DOMAIN: {"test_entry": MagicMock()}}
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
-    
+
     # Mock coordinator with shutdown method
     mock_coordinator = MagicMock()
     mock_coordinator.async_shutdown = AsyncMock()
     hass.data[DOMAIN]["test_entry"] = mock_coordinator
-    
+
     result = await async_unload_entry(hass, entry)
-    
+
     assert result is True
     hass.config_entries.async_unload_platforms.assert_called_once()
     mock_coordinator.async_shutdown.assert_called_once()
@@ -129,12 +130,12 @@ async def test_async_unload_entry_failure():
     hass = MagicMock()
     hass.data = {DOMAIN: {"test_entry": MagicMock()}}
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=False)
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
-    
+
     result = await async_unload_entry(hass, entry)
-    
+
     assert result is False
     hass.config_entries.async_unload_platforms.assert_called_once()
 
@@ -149,7 +150,7 @@ async def test_default_values():
         DEFAULT_TIMEOUT,
         DEFAULT_RETRY,
     )
-    
+
     assert DEFAULT_NAME == "ThesslaGreen"
     assert DEFAULT_PORT == 502
     assert DEFAULT_SLAVE_ID == 10
@@ -168,13 +169,13 @@ async def test_register_constants():
         INPUT_REGISTERS,
         HOLDING_REGISTERS,
     )
-    
+
     # Test that key registers are defined
     assert "power_supply_fans" in COIL_REGISTERS
     assert "outside_temperature" in INPUT_REGISTERS
     assert "mode" in HOLDING_REGISTERS
     assert "expansion" in DISCRETE_INPUT_REGISTERS
-    
+
     # Test address ranges
     assert COIL_REGISTERS["power_supply_fans"] == 0x000B
     assert INPUT_REGISTERS["outside_temperature"] == 0x0010

@@ -11,6 +11,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOExc
 
 pytestmark = pytest.mark.asyncio
 
+
 @pytest.mark.parametrize(
     "method",
     ["_read_input", "_read_holding", "_read_coil", "_read_discrete"],
@@ -33,4 +34,3 @@ async def test_read_cancellation_during_sleep(method, caplog):
             await func(mock_client, 0x0001, 1)
 
     assert not any(record.levelno >= logging.ERROR for record in caplog.records)
-

@@ -32,8 +32,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     cv = types.ModuleType("homeassistant.helpers.config_validation")
     selector = types.ModuleType("homeassistant.helpers.selector")
     translation = types.ModuleType("homeassistant.helpers.translation")
+
     async def async_get_translations(*args, **kwargs):  # pragma: no cover - stub
         return {}
+
     translation.async_get_translations = async_get_translations
     pymodbus = types.ModuleType("pymodbus")
     pymodbus_client = types.ModuleType("pymodbus.client")

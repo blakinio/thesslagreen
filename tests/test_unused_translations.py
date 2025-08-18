@@ -14,11 +14,7 @@ from tests.test_translations import (
     SWITCH_KEYS as SWITCH_ENTITY_KEYS,
 )
 
-SWITCH_KEYS = (
-    SWITCH_ENTITY_KEYS
-    + ["on_off_panel_mode"]
-    + list(SPECIAL_FUNCTION_MAP.keys())
-)
+SWITCH_KEYS = SWITCH_ENTITY_KEYS + ["on_off_panel_mode"] + list(SPECIAL_FUNCTION_MAP.keys())
 
 
 def _assert_no_extra_keys(trans, entity_type, valid_keys) -> None:

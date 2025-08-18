@@ -1,7 +1,5 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
-
-
 import asyncio
 
 import logging
