@@ -670,6 +670,7 @@ class ThesslaGreenDeviceScanner:
                 else (None, None)
             ),
         }
+        self._log_skipped_ranges()
 
         return {
             "available_registers": self.available_registers,
@@ -840,6 +841,21 @@ class ThesslaGreenDeviceScanner:
             return self.backoff * 2 ** (attempt - 1)
         return 0
 
+    def _log_skipped_ranges(self) -> None:
+        """Log summary of ranges skipped due to Modbus exceptions."""
+        if self._unsupported_input_ranges:
+            ranges = ", ".join(
+                f"0x{start:04X}-0x{end:04X} (exception code {code})"
+                for (start, end), code in sorted(self._unsupported_input_ranges.items())
+            )
+            _LOGGER.warning("Skipping unsupported input registers %s", ranges)
+        if self._unsupported_holding_ranges:
+            ranges = ", ".join(
+                f"0x{start:04X}-0x{end:04X} (exception code {code})"
+                for (start, end), code in sorted(self._unsupported_holding_ranges.items())
+            )
+            _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
+
     async def _read_input(
         self,
         client: "AsyncModbusTcpClient",
@@ -847,7 +863,6 @@ class ThesslaGreenDeviceScanner:
         count: int,
         *,
         skip_cache: bool = False,
-        log_exceptions: bool = True,
     ) -> list[int] | None:
         """Read input registers with retry and backoff.
 
@@ -883,7 +898,12 @@ class ThesslaGreenDeviceScanner:
                 response = await _call_modbus(
                     client.read_input_registers, self.slave_id, address, count=count
                 )
-                if response is not None and not response.isError():
+                if response is not None:
+                    if response.isError():
+                        code = getattr(response, "exception_code", None)
+                        self._failed_input.update(range(start, end + 1))
+                        self._unsupported_input_ranges[(start, end)] = code or 0
+                        return None
                     return response.registers
                 _LOGGER.debug(
                     "Attempt %d failed to read input 0x%04X: %s",
@@ -943,7 +963,12 @@ class ThesslaGreenDeviceScanner:
                 response = await _call_modbus(
                     client.read_holding_registers, self.slave_id, address, count=count
                 )
-                if response is not None and not response.isError():
+                if response is not None:
+                    if response.isError():
+                        code = getattr(response, "exception_code", None)
+                        self._failed_input.update(range(start, end + 1))
+                        self._unsupported_input_ranges[(start, end)] = code or 0
+                        return None
                     return response.registers
                 _LOGGER.debug(
                     "Fallback attempt %d failed to read holding 0x%04X: %s",
@@ -970,7 +995,11 @@ class ThesslaGreenDeviceScanner:
                 break
 
             if attempt < self.retry:
-                await asyncio.sleep(0.5)
+                try:
+                    await asyncio.sleep(self._sleep_time(attempt))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying input 0x%04X", address)
+                    raise
 
         return None
 
@@ -979,8 +1008,6 @@ class ThesslaGreenDeviceScanner:
         client: "AsyncModbusTcpClient",
         address: int,
         count: int,
-        *,
-        log_exceptions: bool = True,
     ) -> list[int] | None:
         """Read holding registers with retry, backoff and failure tracking."""
         start = address
@@ -999,7 +1026,6 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
             return None
 
-        exception_code: int | None = None
         for attempt in range(1, self.retry + 1):
             try:
                 response = await _call_modbus(
@@ -1007,8 +1033,10 @@ class ThesslaGreenDeviceScanner:
                 )
                 if response is not None:
                     if response.isError():
-                        exception_code = getattr(response, "exception_code", None)
-                        break
+                        code = getattr(response, "exception_code", None)
+                        self._failed_holding.update(range(start, end + 1))
+                        self._unsupported_holding_ranges[(start, end)] = code or 0
+                        return None
                     if address in self._holding_failures:
                         del self._holding_failures[address]
                     return response.registers
@@ -1045,25 +1073,12 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if attempt < self.retry and exception_code is None:
+            if attempt < self.retry:
                 try:
-                    await asyncio.sleep((self.backoff or 1) * 2 ** (attempt - 1))
+                    await asyncio.sleep(self._sleep_time(attempt))
                 except asyncio.CancelledError:
                     _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
                     raise
-
-            if exception_code is not None:
-                self._failed_holding.update(range(start, end + 1))
-                new_range = (start, end) not in self._unsupported_holding_ranges
-                self._unsupported_holding_ranges[(start, end)] = exception_code
-                if log_exceptions and new_range:
-                    _LOGGER.warning(
-                        "Skipping unsupported holding registers 0x%04X-0x%04X (exception code %d)",
-                        start,
-                        end,
-                        exception_code,
-                    )
-                return None
 
         _LOGGER.warning(
             "Failed to read holding registers 0x%04X-0x%04X after %d retries",

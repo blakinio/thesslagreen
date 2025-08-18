@@ -159,7 +159,7 @@ async def test_read_default_delay(method, address):
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert [call.args[0] for call in sleep_mock.await_args_list] == [1, 2]
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [0, 0]
 
 
 @pytest.mark.parametrize(
@@ -278,10 +278,15 @@ async def test_read_input_skips_range_on_exception_response(caplog):
     ) as call_mock:
         result = await scanner._read_input(mock_client, 0x0100, 3)
 
+    scanner._log_skipped_ranges()
+
     assert result is None
     assert call_mock.await_count == 1
     assert set(range(0x0100, 0x0103)) <= scanner._failed_input
-    assert "Skipping unsupported input registers 0x0100-0x0102" in caplog.text
+    assert (
+        "Skipping unsupported input registers 0x0100-0x0102 (exception code 2)"
+        in caplog.text
+    )
 
     # Further reads within the range should be skipped without new calls
     with patch(
@@ -309,10 +314,15 @@ async def test_read_holding_skips_range_on_exception_response(caplog):
     ) as call_mock:
         result = await scanner._read_holding(mock_client, 0x0200, 2)
 
+    scanner._log_skipped_ranges()
+
     assert result is None
     assert call_mock.await_count == 1
     assert (0x0200, 0x0201) in scanner._unsupported_holding_ranges
-    assert "Skipping unsupported holding registers 0x0200-0x0201" in caplog.text
+    assert (
+        "Skipping unsupported holding registers 0x0200-0x0201 (exception code 2)"
+        in caplog.text
+    )
 
     # Further reads within the range should be skipped without new calls
     with patch(
@@ -345,7 +355,7 @@ async def test_read_input_logs_once_per_skipped_range(caplog):
 
 async def test_read_holding_exponential_backoff(caplog):
     """Ensure exponential backoff and error reporting when device fails to respond."""
-    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, retry=3)
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, retry=3, backoff=0.5)
     client = AsyncMock()
 
     with (
@@ -357,13 +367,16 @@ async def test_read_holding_exponential_backoff(caplog):
             "custom_components.thessla_green_modbus.device_scanner.asyncio.sleep",
             AsyncMock(),
         ) as sleep_mock,
-        caplog.at_level(logging.ERROR),
+        caplog.at_level(logging.WARNING),
     ):
-        with pytest.raises(ConnectionException):
-            await scanner._read_holding(client, 0x0001, 1)
+        result = await scanner._read_holding(client, 0x0001, 1)
 
+    assert result is None
     assert sleep_mock.await_args_list == [call(0.5), call(1.0)]
-    assert any("Failed to read holding 0x0001" in record.message for record in caplog.records)
+    assert any(
+        "Failed to read holding registers 0x0001-0x0001" in record.message
+        for record in caplog.records
+    )
 
 
 async def test_read_holding_returns_none_on_modbus_error():
