@@ -638,34 +638,3 @@ async def test_validate_input_uses_scan_device_and_closes():
     assert result["scan_result"] == scan_result
     scanner_instance.scan_device.assert_awaited_once()
     scanner_instance.close.assert_awaited_once()
-
-
-async def test_validate_input_fallback_to_scan_without_close():
-    """Test validate_input falls back to scan() when scan_device is unavailable."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
-
-    data = {
-        CONF_HOST: "192.168.1.100",
-        CONF_PORT: 502,
-        "slave_id": 10,
-        CONF_NAME: "Test",
-    }
-
-    scan_result = {
-        "device_info": {"device_name": "Device"},
-        "available_registers": {},
-        "capabilities": {},
-    }
-
-    scanner_instance = SimpleNamespace(scan=AsyncMock(return_value=scan_result))
-
-    with patch(
-        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
-        AsyncMock(return_value=scanner_instance),
-    ):
-        result = await validate_input(None, data)
-
-    assert result["scan_result"] == scan_result
-    scanner_instance.scan.assert_awaited_once()

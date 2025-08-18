@@ -62,10 +62,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     )
 
     try:
-        if hasattr(scanner, "scan_device"):
-            scan_result = await scanner.scan_device()
-        else:
-            scan_result = await scanner.scan()
+        scan_result = await scanner.scan_device()
 
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
