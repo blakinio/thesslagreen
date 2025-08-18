@@ -1098,6 +1098,33 @@ async def test_load_registers_duplicate_names(tmp_path):
     assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
 
 
+async def test_load_registers_skips_none_named_registers(tmp_path):
+    """Registers named 'none' or 'none_<num>' should be ignored."""
+    csv_content = (
+        "Function_Code,Register_Name,Address_DEC\n"
+        "04,none,1\n"
+        "04,valid_reg,2\n"
+        "04,none_3,3\n"
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "modbus_registers.csv").write_text(csv_content)
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.files", return_value=tmp_path),
+        patch("custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
+            {},
+        ),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+
+    assert scanner._registers["04"] == {2: "valid_reg"}
+
+
 async def test_read_input_fallback_detects_temperature(caplog):
     """Fallback to holding registers should discover temperature inputs."""
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
