@@ -18,7 +18,6 @@ from custom_components.thessla_green_modbus.device_scanner import (
     _format_register_value,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
     ModbusException,
     ModbusIOException,
 )
@@ -283,10 +282,7 @@ async def test_read_input_skips_range_on_exception_response(caplog):
     assert result is None
     assert call_mock.await_count == 1
     assert set(range(0x0100, 0x0103)) <= scanner._failed_input
-    assert (
-        "Skipping unsupported input registers 0x0100-0x0102 (exception code 2)"
-        in caplog.text
-    )
+    assert "Skipping unsupported input registers 0x0100-0x0102 (exception code 2)" in caplog.text
 
     # Further reads within the range should be skipped without new calls
     with patch(
@@ -319,10 +315,7 @@ async def test_read_holding_skips_range_on_exception_response(caplog):
     assert result is None
     assert call_mock.await_count == 1
     assert (0x0200, 0x0201) in scanner._unsupported_holding_ranges
-    assert (
-        "Skipping unsupported holding registers 0x0200-0x0201 (exception code 2)"
-        in caplog.text
-    )
+    assert "Skipping unsupported holding registers 0x0200-0x0201 (exception code 2)" in caplog.text
 
     # Further reads within the range should be skipped without new calls
     with patch(

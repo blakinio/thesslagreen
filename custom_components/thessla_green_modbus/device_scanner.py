@@ -1176,9 +1176,6 @@ class ThesslaGreenDeviceScanner:
                 try:
                     await asyncio.sleep(self._sleep_time(attempt))
                 except asyncio.CancelledError:
-                    _LOGGER.debug(
-                        "Sleep cancelled while retrying discrete 0x%04X", address
-                    )
+                    _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
                     raise
         return None
-

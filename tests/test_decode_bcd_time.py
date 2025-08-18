@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Tests for BCD time decoding."""
 
 import pytest

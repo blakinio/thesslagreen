@@ -5,6 +5,8 @@ from pathlib import Path
 
 from custom_components.thessla_green_modbus.const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS
 from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
+from typing import Iterator
+
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 CSV_PATH = (
@@ -23,7 +25,7 @@ ALL_REGISTERS = {
 }
 
 
-def _iter_csv_registers() -> list[str]:
+def _iter_csv_registers() -> Iterator[str]:
     """Yield register names from the CSV file."""
     with CSV_PATH.open(newline="") as csvfile:
         reader = csv.DictReader(

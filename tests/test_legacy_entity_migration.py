@@ -81,7 +81,9 @@ async def test_legacy_fan_entity_migrated(hass, caplog):
     dummy_module.ThesslaGreenModbusCoordinator = MagicMock(return_value=coordinator)
 
     with (
-        patch("custom_components.thessla_green_modbus.__init__.er.async_get", return_value=registry),
+        patch(
+            "custom_components.thessla_green_modbus.__init__.er.async_get", return_value=registry
+        ),
         patch(
             "custom_components.thessla_green_modbus.__init__.er.async_entries_for_config_entry",
             return_value=list(registry.entities.values()),

@@ -1,8 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
 
 from custom_components.thessla_green_modbus.const import (
-    DOMAIN,
     CONF_AIRFLOW_UNIT,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,

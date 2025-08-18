@@ -9,6 +9,7 @@ from typing import Any, Dict
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+
 try:  # pragma: no cover - use HA constants when available
     from homeassistant.const import (
         UnitOfElectricPotential,
@@ -17,22 +18,24 @@ try:  # pragma: no cover - use HA constants when available
         UnitOfVolumeFlowRate,
     )
 except Exception:  # pragma: no cover - executed only in tests
-    class UnitOfElectricPotential:  # type: ignore[misc]
+
+    class UnitOfElectricPotential:  # type: ignore[no-redef]
         VOLT = "V"
 
-    class UnitOfTemperature:  # type: ignore[misc]
+    class UnitOfTemperature:  # type: ignore[no-redef]
         CELSIUS = "°C"
 
-    class UnitOfTime:  # type: ignore[misc]
+    class UnitOfTime:  # type: ignore[no-redef]
         HOURS = "h"
         DAYS = "d"
         SECONDS = "s"
 
-    class UnitOfVolumeFlowRate:  # type: ignore[misc]
+    class UnitOfVolumeFlowRate:  # type: ignore[no-redef]
         CUBIC_METERS_PER_HOUR = "m³/h"
 
+
 try:  # pragma: no cover - fallback for tests without full HA constants
-    from homeassistant.const import PERCENTAGE  # type: ignore
+    from homeassistant.const import PERCENTAGE
 except Exception:  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
@@ -97,7 +100,7 @@ def map_legacy_entity_id(entity_id: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _load_number_mappings():
+def _load_number_mappings() -> dict[str, dict[str, Any]]:
     """Load number entity configurations from CSV data.
 
     This function reads register configurations and dynamically creates
@@ -105,10 +108,10 @@ def _load_number_mappings():
     """
     from .data.modbus_registers import get_register_info
 
-    number_configs = {}
+    number_configs: dict[str, dict[str, Any]] = {}
 
     # Define registers that should be number entities
-    number_registers = {
+    number_registers: dict[str, dict[str, str | None]] = {
         # Temperature control
         "required_temperature": {"unit": "°C", "icon": "mdi:thermometer"},
         "supply_air_temperature_manual": {"unit": "°C", "icon": "mdi:thermometer-plus"},
