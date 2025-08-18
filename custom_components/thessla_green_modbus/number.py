@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -74,7 +75,14 @@ async def async_setup_entry(
             _LOGGER.debug("Created number entity: %s", register_name)
 
     if entities:
-        async_add_entities(entities, True)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning(
+                "Cancelled while adding number entities, retrying without initial state"
+            )
+            async_add_entities(entities, False)
+            return
         _LOGGER.info("Added %d number entities", len(entities))
     else:
         _LOGGER.debug("No number entities were created")
