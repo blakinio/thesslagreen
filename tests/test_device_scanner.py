@@ -779,14 +779,12 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-
     # Temperature sensor marked unavailable should still be considered valid
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
     # SENSOR_UNAVAILABLE should be treated as unavailable for temperature and airflow sensors
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
     assert scanner._is_valid_register_value("supply_air_flow", SENSOR_UNAVAILABLE) is False
-
 
     # Invalid air flow value
     assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
@@ -941,7 +939,6 @@ async def test_temperature_unavailable_no_warning(caplog):
     assert "outside_temperature" not in caplog.text
 
 
-
 async def test_capabilities_detect_schedule_keywords():
     """Ensure capability detection considers scheduling related registers."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
@@ -1012,7 +1009,6 @@ async def test_load_registers_duplicate_names(tmp_path):
     assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
 
 
-
 async def test_read_input_fallback_detects_temperature(caplog):
     """Fallback to holding registers should discover temperature inputs."""
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
@@ -1064,11 +1060,7 @@ async def test_read_input_fallback_detects_temperature(caplog):
             result = await scanner.scan_device()
 
     assert "outside_temperature" in result["available_registers"]["input_registers"]
-    assert any(
-        "Falling back to holding registers" in record.message
-        for record in caplog.records
-    )
-
+    assert any("Falling back to holding registers" in record.message for record in caplog.records)
 
 
 async def test_load_registers_missing_range_warning(tmp_path, caplog):
@@ -1153,7 +1145,6 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
         ),
-
         patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
@@ -1183,9 +1174,7 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
 
 async def test_load_registers_complete_range_no_warning(tmp_path, caplog):
     """No warning when both Min and Max are provided."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,1,10\n"
-    )
+    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,1,10\n"
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "modbus_registers.csv").write_text(csv_content)
@@ -1202,7 +1191,6 @@ async def test_load_registers_complete_range_no_warning(tmp_path, caplog):
             "custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS",
             {},
         ),
-
         caplog.at_level(logging.WARNING),
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
@@ -1261,7 +1249,6 @@ async def test_load_registers_missing_required_register(tmp_path):
     ):
         with pytest.raises(ValueError, match="reg_a"):
             await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
 
 
 async def test_analyze_capabilities():

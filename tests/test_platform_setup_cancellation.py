@@ -1,4 +1,3 @@
-
 """Tests for cancellation during platform setup."""
 
 import asyncio

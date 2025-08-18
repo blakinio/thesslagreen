@@ -117,7 +117,11 @@ async def test_duplicate_entry_aborts():
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
 
-    validation_result = {"title": "ThesslaGreen 192.168.1.100", "device_info": {}, "scan_result": {}}
+    validation_result = {
+        "title": "ThesslaGreen 192.168.1.100",
+        "device_info": {},
+        "scan_result": {},
+    }
 
     with (
         patch(
@@ -225,6 +229,8 @@ async def test_duplicate_configuration_aborts():
     """Test configuring same host/port/slave twice aborts the flow."""
     flow = ConfigFlow()
     flow.hass = None
+
+
 async def test_confirm_step_aborts_on_existing_entry():
     """Ensure confirming a second flow aborts if unique ID already configured."""
 
@@ -260,14 +266,12 @@ async def test_confirm_step_aborts_on_existing_entry():
         if getattr(self, "_unique_id", None) in entries:
             raise AbortFlow("already_configured")
 
-
     with (
         patch(
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
         patch(
-
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id",
         ),
         patch(
@@ -296,9 +300,7 @@ async def test_confirm_step_aborts_on_existing_entry():
             new=AsyncMock(return_value={}),
         ),
         patch.object(ConfigFlow, "async_set_unique_id", async_set_unique_id),
-        patch.object(
-            ConfigFlow, "_abort_if_unique_id_configured", abort_if_unique_id_configured
-        ),
+        patch.object(ConfigFlow, "_abort_if_unique_id_configured", abort_if_unique_id_configured),
     ):
         flow1 = ConfigFlow()
         flow1.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
@@ -315,7 +317,6 @@ async def test_confirm_step_aborts_on_existing_entry():
         with pytest.raises(AbortFlow) as err:
             await flow2.async_step_confirm({})
         assert err.value.reason == "already_configured"
-
 
 
 async def test_form_user_cannot_connect():
@@ -619,9 +620,7 @@ async def test_validate_input_fallback_to_scan_without_close():
         "capabilities": {},
     }
 
-    scanner_instance = SimpleNamespace(
-        scan=AsyncMock(return_value=scan_result)
-    )
+    scanner_instance = SimpleNamespace(scan=AsyncMock(return_value=scan_result))
 
     with patch(
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",

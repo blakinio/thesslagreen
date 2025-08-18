@@ -105,9 +105,7 @@ def test_binary_sensor_icon_fallback(mock_coordinator):
     mock_coordinator.data["bypass"] = 1
     sensor_def = BINARY_SENSOR_DEFINITIONS["bypass"].copy()
     sensor_def.pop("icon", None)
-    sensor_without_icon = ThesslaGreenBinarySensor(
-        mock_coordinator, "bypass", sensor_def
-    )
+    sensor_without_icon = ThesslaGreenBinarySensor(mock_coordinator, "bypass", sensor_def)
     assert sensor_without_icon.icon == "mdi:fan-off"  # nosec B101
 
 

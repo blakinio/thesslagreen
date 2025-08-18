@@ -1,4 +1,5 @@
 """Test config entry migrations."""
+
 import pytest
 from unittest.mock import MagicMock
 
@@ -66,7 +67,4 @@ async def test_migrate_entry_updates_unique_id():
     result = await async_migrate_entry(hass, config_entry)
 
     assert result is True
-    assert (
-        hass.config_entries.async_update_entry.call_args.kwargs["unique_id"]
-        == "fe80--1:1234:5"
-    )
+    assert hass.config_entries.async_update_entry.call_args.kwargs["unique_id"] == "fe80--1:1234:5"

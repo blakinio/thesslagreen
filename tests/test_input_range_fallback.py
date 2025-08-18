@@ -6,6 +6,7 @@ from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDe
 
 pytestmark = pytest.mark.asyncio
 
+
 async def test_input_range_read_after_block_failure():
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
     with patch.object(
