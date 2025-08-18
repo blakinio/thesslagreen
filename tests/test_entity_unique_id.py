@@ -6,7 +6,12 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.thessla_green_modbus import async_setup_entry
-from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.const import (
+    DOMAIN,
+    CONF_AIRFLOW_UNIT,
+    AIRFLOW_UNIT_M3H,
+    AIRFLOW_UNIT_PERCENTAGE,
+)
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
 
 
@@ -20,6 +25,26 @@ def test_unique_id_colon_replaced():
 
     entity = ThesslaGreenEntity(coordinator, "test")
     assert entity.unique_id == f"{DOMAIN}_fd00-1-2--1_502_10_test"  # nosec
+
+
+def test_unique_id_not_changed_by_airflow_unit():
+    """Changing airflow unit should not change unique_id."""
+    coordinator = MagicMock()
+    coordinator.host = "1.2.3.4"
+    coordinator.port = 502
+    coordinator.slave_id = 10
+    coordinator.get_device_info.return_value = {}
+    coordinator.entry = MagicMock()
+    coordinator.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}
+
+    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate")
+    uid_percentage = entity.unique_id
+
+    coordinator.entry.options[CONF_AIRFLOW_UNIT] = AIRFLOW_UNIT_M3H
+    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate")
+    uid_m3h = entity.unique_id
+
+    assert uid_percentage == uid_m3h  # nosec
 
 
 @pytest.mark.asyncio
@@ -49,6 +74,9 @@ async def test_migrate_entity_unique_ids(hass):
 
         def async_update_entity(self, entity_id, *, new_unique_id):
             self.entities[entity_id].unique_id = new_unique_id
+
+        def async_get(self, entity_id):
+            return self.entities.get(entity_id)
 
     hass.config_entries = MagicMock()
     hass.config_entries.async_forward_entry_setups = AsyncMock()

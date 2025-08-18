@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migration script for clearing legacy airflow statistics
 
 ### Changed
-- Bumped minimum Home Assistant version to 2025.7.1
+- Bumped minimum Home Assistant version to 2025.1.0
 - Regenerated Modbus register definitions from CSV and updated coverage test
 - Assigned new unique IDs for m³/h airflow sensors
 

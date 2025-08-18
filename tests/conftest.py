@@ -25,6 +25,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     service_helper = types.ModuleType("homeassistant.helpers.service")
     entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
+    def _async_entries_for_config_entry(*args, **kwargs):
+        return []
+    entity_registry.async_entries_for_config_entry = _async_entries_for_config_entry
     script_helper = types.ModuleType("homeassistant.helpers.script")
     script_helper._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
     exceptions = types.ModuleType("homeassistant.exceptions")
@@ -86,6 +89,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     class SensorEntity:  # pragma: no cover - simple stub
         pass
 
+        @property
+        def native_unit_of_measurement(self):
+            return getattr(self, "_attr_native_unit_of_measurement", None)
     sensor_comp.SensorDeviceClass = SensorDeviceClass
     sensor_comp.SensorStateClass = SensorStateClass
     sensor_comp.SensorEntity = SensorEntity
@@ -118,6 +124,12 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
         def add_to_hass(self, _hass):
             return None
+
+        def add_update_listener(self, listener):
+             return listener
+
+        def async_on_unload(self, func):
+            return func
 
     hacc_common.MockConfigEntry = MockConfigEntry
 
