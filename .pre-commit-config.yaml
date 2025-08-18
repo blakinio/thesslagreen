@@ -39,6 +39,18 @@ repos:
       - id: check-merge-conflict
       - id: check-json
         files: ^custom_components/.*/translations/.*\.json$
+  - repo: https://github.com/home-assistant/actions
+    rev: 1.0.0
+    hooks:
+      - id: hassfest
+        args: ["--config=."]
+        pass_filenames: false
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.9.1
+    hooks:
+      - id: vulture
+        args: ["custom_components/thessla_green_modbus", "--min-confidence=80"]
+        pass_filenames: false
   - repo: local
     hooks:
       - id: generate-registers
