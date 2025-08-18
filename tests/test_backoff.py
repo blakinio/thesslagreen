@@ -13,7 +13,7 @@ pytestmark = pytest.mark.asyncio
 @pytest.mark.parametrize(
     "func, expected",
     [
-        (ThesslaGreenDeviceScanner._read_input, [0.5, 0.5]),
+        (ThesslaGreenDeviceScanner._read_input, [0.1, 0.2]),
         (ThesslaGreenDeviceScanner._read_holding, [0.1, 0.2]),
         (ThesslaGreenDeviceScanner._read_coil, [0.1, 0.2]),
         (ThesslaGreenDeviceScanner._read_discrete, [0.1, 0.2]),
@@ -38,7 +38,8 @@ async def test_backoff_delay(func, expected):
 @pytest.mark.parametrize(
     "func, expected",
     [
-        (ThesslaGreenDeviceScanner._read_holding, [1, 2]),
+        (ThesslaGreenDeviceScanner._read_input, [0, 0]),
+        (ThesslaGreenDeviceScanner._read_holding, [0, 0]),
         (ThesslaGreenDeviceScanner._read_coil, [0, 0]),
         (ThesslaGreenDeviceScanner._read_discrete, [0, 0]),
     ],
