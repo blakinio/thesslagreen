@@ -39,6 +39,12 @@ async def test_device_scanner_initialization():
     assert scanner.backoff == 0
 
 
+async def test_scanner_has_read_coil_method():
+    """Ensure scanner exposes coil reading helper."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    assert hasattr(scanner, "_read_coil")
+
+
 async def test_read_holding_skips_after_failure():
     """Holding registers are cached after a failed read."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
