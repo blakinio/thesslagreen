@@ -337,6 +337,13 @@ class ThesslaGreenDeviceScanner:
             skip_known_missing,
         )
         await self._async_setup()
+
+        # Ensure low-level register read helpers are attached to the instance
+        # so tests and callers can patch them as needed.
+        self._read_holding = _read_holding.__get__(self, cls)
+        self._read_coil = _read_coil.__get__(self, cls)
+        self._read_discrete = _read_discrete.__get__(self, cls)
+
         return self
 
     async def close(self) -> None:
@@ -506,7 +513,7 @@ class ThesslaGreenDeviceScanner:
             pass
         try:
             start = INPUT_REGISTERS["serial_number_1"]
-            parts = info_regs[start : start + 6]
+            parts = info_regs[start : start + 6]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
         except Exception:  # pragma: no cover

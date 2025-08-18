@@ -22,8 +22,14 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
-from custom_components.thessla_green_modbus.utils import _decode_bcd_time, _decode_register_time
+from custom_components.thessla_green_modbus.registers import (
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+)
+from custom_components.thessla_green_modbus.utils import (
+    _decode_bcd_time,
+    _decode_register_time,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -31,6 +37,10 @@ pytestmark = pytest.mark.asyncio
 async def test_device_scanner_initialization():
     """Test device scanner initialization."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+
+    assert hasattr(scanner, "_read_coil")
+    assert hasattr(scanner, "_read_holding")
+    assert hasattr(scanner, "_read_discrete")
 
     assert scanner.host == "192.168.3.17"
     assert scanner.port == 8899
@@ -153,9 +163,7 @@ async def test_read_default_delay(method, address):
 )
 async def test_read_binary_backoff_delay(func, address):
     """Coil and discrete reads should respect configured backoff."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=3, backoff=0.1
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
     sleep_mock = AsyncMock()
     with (
@@ -181,9 +189,7 @@ async def test_read_binary_backoff_delay(func, address):
 )
 async def test_read_binary_default_delay(func, address):
     """Default backoff of zero should not delay retries."""
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "192.168.3.17", 8899, 10, retry=3
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
     mock_client = AsyncMock()
     sleep_mock = AsyncMock()
     with (
@@ -1211,7 +1217,9 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
-        from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+        from custom_components.thessla_green_modbus.modbus_exceptions import (
+            ModbusException,
+        )
 
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
