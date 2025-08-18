@@ -9,12 +9,27 @@ from typing import Any, Dict
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import (
-    UnitOfElectricPotential,
-    UnitOfTemperature,
-    UnitOfTime,
-    UnitOfVolumeFlowRate,
-)
+try:  # pragma: no cover - use HA constants when available
+    from homeassistant.const import (
+        UnitOfElectricPotential,
+        UnitOfTemperature,
+        UnitOfTime,
+        UnitOfVolumeFlowRate,
+    )
+except Exception:  # pragma: no cover - executed only in tests
+    class UnitOfElectricPotential:  # type: ignore[misc]
+        VOLT = "V"
+
+    class UnitOfTemperature:  # type: ignore[misc]
+        CELSIUS = "°C"
+
+    class UnitOfTime:  # type: ignore[misc]
+        HOURS = "h"
+        DAYS = "d"
+        SECONDS = "s"
+
+    class UnitOfVolumeFlowRate:  # type: ignore[misc]
+        CUBIC_METERS_PER_HOUR = "m³/h"
 
 try:  # pragma: no cover - fallback for tests without full HA constants
     from homeassistant.const import PERCENTAGE  # type: ignore
@@ -221,14 +236,14 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
     # Air flow sensors
     "supply_flow_rate": {
-        "translation_key": "supply_flow_rate",
+        "translation_key": "supply_flow_rate_m3h",
         "icon": "mdi:fan-plus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
     },
     "exhaust_flow_rate": {
-        "translation_key": "exhaust_flow_rate",
+        "translation_key": "exhaust_flow_rate_m3h",
         "icon": "mdi:fan-minus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,

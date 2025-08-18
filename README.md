@@ -87,8 +87,11 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Backoff**: 0-5s opóźnienia między próbami (domyślnie 0, wykładniczy)
 - **Pełna lista rejestrów**: Pomiń skanowanie (może powodować błędy)
 - **Ustawienia UART**: Skanuj opcjonalne rejestry konfiguracji portu (0x1168-0x116B)
+- **Airflow unit**: wybierz `m³/h` (domyślnie) lub `percentage`
 
 Adresy rejestrów, które wielokrotnie nie odpowiadają, są automatycznie pomijane w kolejnych skanach.
+
+Szczegóły migracji z czujników procentowych opisano w pliku [docs/airflow_migration.md](docs/airflow_migration.md).
 
 ### Proces autoskanu
 Podczas dodawania integracji moduł `device_scanner` wykonuje funkcję
