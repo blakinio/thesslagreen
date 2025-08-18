@@ -234,9 +234,7 @@ async def _async_cleanup_legacy_fan_entity(
     else:
         for old_entity_id in LEGACY_FAN_ENTITY_IDS:
             if registry.async_get(old_entity_id):
-                new_unique_id = (
-                    f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_fan"
-                )
+                new_unique_id = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_fan"
                 registry.async_update_entity(
                     old_entity_id,
                     new_entity_id=new_entity_id,

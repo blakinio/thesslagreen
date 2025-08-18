@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Test configuration for ThesslaGreen Modbus integration."""
 
 import os
@@ -36,8 +37,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     selector = types.ModuleType("homeassistant.helpers.selector")
     translation = types.ModuleType("homeassistant.helpers.translation")
     entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+
     class AddEntitiesCallback:  # pragma: no cover - simple stub
         pass
+
     entity_platform.AddEntitiesCallback = AddEntitiesCallback
 
     const.PERCENTAGE = "%"
@@ -75,18 +78,24 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     components_pkg = types.ModuleType("homeassistant.components")
     sensor_comp = types.ModuleType("homeassistant.components.sensor")
     binary_sensor_comp = types.ModuleType("homeassistant.components.binary_sensor")
+
     class SensorDeviceClass:  # pragma: no cover - enum stub
         TEMPERATURE = "temperature"
         VOLTAGE = "voltage"
+
     class SensorStateClass:  # pragma: no cover - enum stub
         MEASUREMENT = "measurement"
+
     class SensorEntity:  # pragma: no cover - simple stub
+        pass
+
         @property
         def native_unit_of_measurement(self):
             return getattr(self, "_attr_native_unit_of_measurement", None)
     sensor_comp.SensorDeviceClass = SensorDeviceClass
     sensor_comp.SensorStateClass = SensorStateClass
     sensor_comp.SensorEntity = SensorEntity
+
     class _BinaryMeta(type):  # pragma: no cover - generic fallback
         def __getattr__(cls, item):
             return item.lower()
@@ -96,6 +105,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         RUNNING = "running"
         OPENING = "opening"
         CLOSING = "closing"
+
     binary_sensor_comp.BinarySensorDeviceClass = BinarySensorDeviceClass
     components_pkg.sensor = sensor_comp
     components_pkg.binary_sensor = binary_sensor_comp

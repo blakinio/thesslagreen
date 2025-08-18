@@ -9,17 +9,7 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
-)
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfTemperature,
-    UnitOfVolumeFlowRate,
-)
+from homeassistant.const import PERCENTAGE
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -105,15 +95,11 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
-        airflow_unit = (
-            getattr(getattr(coordinator, "entry", None), "options", {})
-            .get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
+        airflow_unit = getattr(getattr(coordinator, "entry", None), "options", {}).get(
+            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
         )
         self._attr_native_unit_of_measurement = sensor_definition.get("unit")
-        if (
-            register_name in AIRFLOW_RATE_REGISTERS
-            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
-        ):
+        if register_name in AIRFLOW_RATE_REGISTERS and airflow_unit == AIRFLOW_UNIT_PERCENTAGE:
             self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_device_class = sensor_definition.get("device_class")
         self._attr_state_class = sensor_definition.get("state_class")
@@ -138,9 +124,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             if isinstance(value, int):
                 return f"{value // 60:02d}:{value % 60:02d}"
             return value
-        airflow_unit = (
-            getattr(getattr(self.coordinator, "entry", None), "options", {})
-            .get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
+        airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
+            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
         )
         if (
             self._register_name in AIRFLOW_RATE_REGISTERS

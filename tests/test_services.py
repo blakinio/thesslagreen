@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Tests for service helper mappings."""
 
 import importlib

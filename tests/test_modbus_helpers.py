@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Tests for the Modbus helper utilities."""
 
 import pytest
