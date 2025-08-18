@@ -826,9 +826,9 @@ class ThesslaGreenDeviceScanner:
 
     def _sleep_time(self, attempt: int) -> float:
         """Return delay for a retry attempt based on backoff."""
-        if self.backoff <= 0:
-            return 0
-        return self.backoff * 2 ** (attempt - 1)
+        if self.backoff:
+            return self.backoff * 2 ** (attempt - 1)
+        return 0
 
     async def _read_input(
         self,
@@ -1064,99 +1064,103 @@ async def _read_holding(
         )
         return None
 
-    async def _read_coil(
-        self,
-        client: "AsyncModbusTcpClient",
-        address: int,
-        count: int,
-    ) -> list[bool] | None:
-        """Read coil registers with retry and backoff."""
-        for attempt in range(1, self.retry + 1):
-            try:
-                response = await _call_modbus(
-                    client.read_coils, self.slave_id, address, count=count
-                )
-                if response is not None and not response.isError():
-                    return response.bits[:count]
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-                _LOGGER.debug(
-                    "Failed to read coil 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-            except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading coil 0x%04X on attempt %d",
-                    address,
-                    attempt,
-                )
-                raise
-            except OSError as exc:
-                _LOGGER.error(
-                    "Unexpected error reading coil 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(2 ** (attempt - 1))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
-                    raise
-        return None
 
-    async def _read_discrete(
-        self,
-        client: "AsyncModbusTcpClient",
-        address: int,
-        count: int,
-    ) -> list[bool] | None:
-        """Read discrete input registers with retry and backoff."""
-        for attempt in range(1, self.retry + 1):
+async def _read_coil(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+) -> list[bool] | None:
+    """Read coil registers with retry and backoff."""
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(
+                client.read_coils, self.slave_id, address, count=count
+            )
+            if response is not None and not response.isError():
+                return response.bits[:count]
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read coil 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Cancelled reading coil 0x%04X on attempt %d",
+                address,
+                attempt,
+            )
+            raise
+        except OSError as exc:
+            _LOGGER.error(
+                "Unexpected error reading coil 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+        if attempt < self.retry:
             try:
-                response = await _call_modbus(
-                    client.read_discrete_inputs, self.slave_id, address, count=count
-                )
-                if response is not None and not response.isError():
-                    return response.bits[:count]
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
-                _LOGGER.debug(
-                    "Failed to read discrete 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
+                await asyncio.sleep(self._sleep_time(attempt))
             except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading discrete 0x%04X on attempt %d",
-                    address,
-                    attempt,
-                )
+                _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
                 raise
-            except OSError as exc:
-                _LOGGER.error(
-                    "Unexpected error reading discrete 0x%04X on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(2 ** (attempt - 1))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
-                    raise
-        return None
+    return None
+
+
+async def _read_discrete(
+    self,
+    client: "AsyncModbusTcpClient",
+    address: int,
+    count: int,
+) -> list[bool] | None:
+    """Read discrete input registers with retry and backoff."""
+    for attempt in range(1, self.retry + 1):
+        try:
+            response = await _call_modbus(
+                client.read_discrete_inputs, self.slave_id, address, count=count
+            )
+            if response is not None and not response.isError():
+                return response.bits[:count]
+        except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            _LOGGER.debug(
+                "Failed to read discrete 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Cancelled reading discrete 0x%04X on attempt %d",
+                address,
+                attempt,
+            )
+            raise
+        except OSError as exc:
+            _LOGGER.error(
+                "Unexpected error reading discrete 0x%04X on attempt %d: %s",
+                address,
+                attempt,
+                exc,
+                exc_info=True,
+            )
+            break
+        if attempt < self.retry:
+            try:
+                await asyncio.sleep(self._sleep_time(attempt))
+            except asyncio.CancelledError:
+                _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
+                raise
+    return None
 
 
 # Bind module-level helpers to the scanner class and expose _read_input for tests
 ThesslaGreenDeviceScanner._read_holding = _read_holding
+ThesslaGreenDeviceScanner._read_coil = _read_coil
+ThesslaGreenDeviceScanner._read_discrete = _read_discrete
 _read_input = ThesslaGreenDeviceScanner._read_input
