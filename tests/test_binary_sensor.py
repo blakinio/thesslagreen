@@ -2,6 +2,7 @@
 
 import sys
 import types
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,9 +11,13 @@ import pytest
 # Minimal Home Assistant stubs
 # ---------------------------------------------------------------------------
 
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
+const = sys.modules.setdefault(
+    "homeassistant.const", types.ModuleType("homeassistant.const")
+)
 
-binary_sensor_mod = types.ModuleType("homeassistant.components.binary_sensor")
+binary_sensor_mod = cast(
+    Any, types.ModuleType("homeassistant.components.binary_sensor")
+)
 
 
 class BinarySensorEntity:  # pragma: no cover - simple stub
@@ -35,7 +40,9 @@ binary_sensor_mod.BinarySensorEntity = BinarySensorEntity
 binary_sensor_mod.BinarySensorDeviceClass = BinarySensorDeviceClass
 sys.modules["homeassistant.components.binary_sensor"] = binary_sensor_mod
 
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+entity_platform = cast(
+    Any, types.ModuleType("homeassistant.helpers.entity_platform")
+)
 
 
 class AddEntitiesCallback:  # pragma: no cover - simple stub
@@ -57,7 +64,7 @@ from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 
 
-def test_binary_sensor_creation_and_state(mock_coordinator):
+def test_binary_sensor_creation_and_state(mock_coordinator: MagicMock) -> None:
     """Test creation and state changes of binary sensor."""
     # Prepare coordinator data
     mock_coordinator.data["bypass"] = 0
@@ -72,7 +79,7 @@ def test_binary_sensor_creation_and_state(mock_coordinator):
     assert sensor.is_on is True  # nosec B101
 
 
-def test_binary_sensor_icons(mock_coordinator):
+def test_binary_sensor_icons(mock_coordinator: MagicMock) -> None:
     """Icon should switch to valid alternatives when sensor is off."""
 
     # Heating cable uses a heating icon when on
@@ -100,7 +107,7 @@ def test_binary_sensor_icons(mock_coordinator):
     assert bypass_sensor.icon == "mdi:pipe"  # nosec B101
 
 
-def test_binary_sensor_icon_fallback(mock_coordinator):
+def test_binary_sensor_icon_fallback(mock_coordinator: MagicMock) -> None:
     """Sensors without icons should return a sensible default."""
     mock_coordinator.data["bypass"] = 1
     sensor_def = BINARY_SENSOR_DEFINITIONS["bypass"].copy()
@@ -110,13 +117,15 @@ def test_binary_sensor_icon_fallback(mock_coordinator):
 
 
 @pytest.mark.asyncio
-async def test_async_setup_creates_all_binary_sensors(mock_coordinator, mock_config_entry):
+async def test_async_setup_creates_all_binary_sensors(
+    mock_coordinator: MagicMock, mock_config_entry: MagicMock
+) -> None:
     """Ensure entities are created for all available binary sensor registers."""
-    hass = MagicMock()
+    hass: MagicMock = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
 
     # Build available register sets from definitions
-    available = {
+    available: dict[str, set[str]] = {
         "coil_registers": set(),
         "discrete_inputs": set(),
         "input_registers": set(),
@@ -126,7 +135,7 @@ async def test_async_setup_creates_all_binary_sensors(mock_coordinator, mock_con
         available[definition["register_type"]].add(name)
     mock_coordinator.available_registers = available
 
-    add_entities = MagicMock()
+    add_entities: MagicMock = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
 
     entities = add_entities.call_args[0][0]
