@@ -160,6 +160,9 @@ class DeviceInfo:
     firmware_available: bool = True
     capabilities: list[str] = field(default_factory=list)
 
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
 
 @dataclass
 class DeviceCapabilities:
@@ -1074,9 +1077,7 @@ async def _read_coil(
     """Read coil registers with retry and backoff."""
     for attempt in range(1, self.retry + 1):
         try:
-            response = await _call_modbus(
-                client.read_coils, self.slave_id, address, count=count
-            )
+            response = await _call_modbus(client.read_coils, self.slave_id, address, count=count)
             if response is not None and not response.isError():
                 return response.bits[:count]
         except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
