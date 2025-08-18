@@ -3,6 +3,42 @@
   "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
   "config": {
     "abort": {
+      "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port i połączenie sieciowe.",
+      "invalid_auth": "Błąd uwierzytelniania. Sprawdź ustawienia ID urządzenia.",
+      "invalid_input": "Podano nieprawidłową konfigurację. Sprawdź wartości i spróbuj ponownie.",
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
+    },
+    "step": {
+      "confirm": {
+        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia: {slave_id}. Wersja oprogramowania: {firmware_version}. Znalezione rejestry: {register_count}. Skuteczność skanowania: {scan_success_rate}. Możliwości ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Kontynuować z tą konfiguracją?",
+        "title": "Potwierdź konfigurację"
+      },
+      "user": {
+        "title": "Konfiguracja ThesslaGreen Modbus",
+        "data": {
+          "host": "Adres IP",
+          "port": "Port",
+          "slave_id": "ID Urządzenia",
+          "name": "Nazwa"
+        },
+        "data_description": {
+          "host": "IP address of the AirPack device on your local network",
+          "name": "Device name in Home Assistant",
+          "port": "Modbus TCP port (default 502)",
+          "slave_id": "Modbus device ID (default 10)"
+        },
+        "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects device functions and registers."
+      },
+      "confirm": {
+        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) at {host}:{port}. Device ID: {slave_id}. Firmware version: {firmware_version}. Registers found: {register_count}. Scan success rate: {scan_success_rate}. Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Continue with this configuration?",
+        "title": "Confirm Configuration"
+      }
+    },
+
+    "abort": {
       "already_configured": "Device with this IP address and Device ID is already configured."
     },
     "error": {

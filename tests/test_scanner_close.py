@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -29,38 +31,8 @@ pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
 pymodbus_pdu = types.ModuleType("pymodbus.pdu")
 vol = types.ModuleType("voluptuous")
 cc_services = types.ModuleType("custom_components.thessla_green_modbus.services")
-
-
-async def async_setup_services(hass):
-    pass
-
-
-async def async_unload_services(hass):
-    pass
-
-
-cc_services.async_setup_services = async_setup_services
-cc_services.async_unload_services = async_unload_services
-
-# Minimal util.logging module required by pytest_homeassistant_custom_component
 util = types.ModuleType("homeassistant.util")
 util_logging = types.ModuleType("homeassistant.util.logging")
-
-
-def log_exception(*_args, **_kwargs):  # pragma: no cover - simple stub
-    return None
-
-
-util_logging.log_exception = log_exception
-util.logging = util_logging
-ha.util = util
-
-
-def _schedule_stop_scripts_after_shutdown(*_args, **_kwargs):  # pragma: no cover
-    return None
-
-
-helpers_script._schedule_stop_scripts_after_shutdown = _schedule_stop_scripts_after_shutdown
 
 const.CONF_HOST = "host"
 const.CONF_NAME = "name"
@@ -155,15 +127,6 @@ pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
 pymodbus_client.ModbusTcpClient = ModbusTcpClient
 
 
-class ModbusIOException(Exception):
-    pass
-
-
-pymodbus_exceptions.ModbusException = ModbusException
-pymodbus_exceptions.ConnectionException = ConnectionException
-pymodbus_exceptions.ModbusIOException = ModbusIOException
-
-
 class ExceptionResponse:
     pass
 
@@ -192,12 +155,37 @@ sys.modules.update(
     }
 )
 
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-)
+pymodbus_exceptions.ModbusException = ModbusException
+pymodbus_exceptions.ConnectionException = ConnectionException
+pymodbus_exceptions.ModbusIOException = ModbusIOException
+
+
+def log_exception(*_args, **_kwargs):  # pragma: no cover - simple stub
+    return None
+
+
+util_logging.log_exception = log_exception
+util.logging = util_logging
+ha.util = util
+
+
+def _schedule_stop_scripts_after_shutdown(*_args, **_kwargs):  # pragma: no cover
+    return None
+
+
+helpers_script._schedule_stop_scripts_after_shutdown = _schedule_stop_scripts_after_shutdown
+
+
+async def async_setup_services(hass):
+    pass
+
+
+async def async_unload_services(hass):
+    pass
+
+
+cc_services.async_setup_services = async_setup_services
+cc_services.async_unload_services = async_unload_services
 
 
 def test_async_setup_closes_scanner():
