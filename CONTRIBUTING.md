@@ -243,7 +243,9 @@ Run `pre-commit install` once to activate these checks. Before committing, the f
 - **bandit** - Security scanning
 - **yamllint** - YAML validation
 - **check-merge-conflict** - Prevents committing unresolved merge conflicts
- - **check-json** - Validates translation files
+- **check-json** - Validates translation files
+- **hassfest** - Validates integration metadata against Home Assistant rules
+- **vulture** - Detects unused code in `custom_components/thessla_green_modbus`
 
 ### Manual Quality Checks
 
@@ -262,6 +264,12 @@ mypy custom_components/thessla_green_modbus/
 
 # Security scan
 bandit -r custom_components/
+
+# Validate integration metadata
+hassfest --config=.
+
+# Dead code detection
+vulture custom_components/thessla_green_modbus --min-confidence=80
 ```
 
 ## Submitting Changes
