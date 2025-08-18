@@ -9,6 +9,7 @@
       "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
       "invalid_auth": "Authentication error. Check Device ID settings.",
       "invalid_input": "Invalid configuration provided. Check values and try again.",
+      "missing_method": "Scanner is missing required method. See logs for details.",
       "unknown": "Unexpected error. Check logs for details."
     },
     "step": {
