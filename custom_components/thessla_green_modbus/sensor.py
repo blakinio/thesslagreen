@@ -24,7 +24,13 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    CONF_AIRFLOW_UNIT,
+    DEFAULT_AIRFLOW_UNIT,
+    AIRFLOW_UNIT_PERCENTAGE,
+    AIRFLOW_RATE_REGISTERS,
+)
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
@@ -99,7 +105,16 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
+        airflow_unit = (
+            getattr(getattr(coordinator, "entry", None), "options", {})
+            .get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
+        )
         self._attr_native_unit_of_measurement = sensor_definition.get("unit")
+        if (
+            register_name in AIRFLOW_RATE_REGISTERS
+            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
+        ):
+            self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_device_class = sensor_definition.get("device_class")
         self._attr_state_class = sensor_definition.get("state_class")
 
@@ -123,6 +138,23 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             if isinstance(value, int):
                 return f"{value // 60:02d}:{value % 60:02d}"
             return value
+        airflow_unit = (
+            getattr(getattr(self.coordinator, "entry", None), "options", {})
+            .get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
+        )
+        if (
+            self._register_name in AIRFLOW_RATE_REGISTERS
+            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
+        ):
+            nominal_key = (
+                "nominal_supply_air_flow"
+                if self._register_name == "supply_flow_rate"
+                else "nominal_exhaust_air_flow"
+            )
+            nominal = self.coordinator.data.get(nominal_key)
+            if nominal:
+                return round((value / nominal) * 100)
+            return None
         value_map = self._sensor_def.get("value_map")
         if value_map is not None:
             return value_map.get(value, value)

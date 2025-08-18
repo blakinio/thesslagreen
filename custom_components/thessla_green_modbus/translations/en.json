@@ -1105,8 +1105,8 @@
       "exhaust_air_flow": {
         "name": "Exhaust Air Flow"
       },
-      "exhaust_flow_rate": {
-        "name": "Exhaust Flow Rate"
+      "exhaust_flow_rate_m3h": {
+        "name": "Exhaust Flow Rate (m³/h)"
       },
       "exhaust_percentage": {
         "name": "Exhaust Percentage"
@@ -1233,8 +1233,8 @@
       "supply_air_temperature_temporary_2": {
         "name": "Supply Air Temperature Temporary 2"
       },
-      "supply_flow_rate": {
-        "name": "Supply Flow Rate"
+      "supply_flow_rate_m3h": {
+        "name": "Supply Flow Rate (m³/h)"
       },
       "supply_percentage": {
         "name": "Supply Percentage"

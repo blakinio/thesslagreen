@@ -15,10 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contributing guidelines
 - Constant Flow register names (`cf_version`, `supply_air_flow`, `exhaust_air_flow`) for Series 4 units
 - Capability detection for Constant Flow and HEWR water removal
+- Airflow unit option allowing `%` or `m³/h` reporting
+- Migration script for clearing legacy airflow statistics
 
 ### Changed
 - Bumped minimum Home Assistant version to 2025.7.1
 - Regenerated Modbus register definitions from CSV and updated coverage test
+- Assigned new unique IDs for m³/h airflow sensors
 
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient

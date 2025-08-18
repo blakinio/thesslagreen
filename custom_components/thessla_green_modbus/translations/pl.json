@@ -1105,8 +1105,8 @@
       "exhaust_air_flow": {
         "name": "Strumień powietrza wywiewnego"
       },
-      "exhaust_flow_rate": {
-        "name": "Przepływ wywiewu"
+      "exhaust_flow_rate_m3h": {
+        "name": "Przepływ wywiewu (m³/h)"
       },
       "exhaust_percentage": {
         "name": "Procentowo wywiew"
@@ -1233,8 +1233,8 @@
       "supply_air_temperature_temporary_2": {
         "name": "Tymczasowa temperatura nawiewu 2"
       },
-      "supply_flow_rate": {
-        "name": "Przepływ nawiewu"
+      "supply_flow_rate_m3h": {
+        "name": "Przepływ nawiewu (m³/h)"
       },
       "supply_percentage": {
         "name": "Procentowo nawiew"

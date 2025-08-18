@@ -22,6 +22,10 @@ from .const import (
     CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
+    CONF_AIRFLOW_UNIT,
+    AIRFLOW_UNIT_M3H,
+    AIRFLOW_UNIT_PERCENTAGE,
+    DEFAULT_AIRFLOW_UNIT,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
@@ -271,6 +275,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_skip_missing = self.config_entry.options.get(
             CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
         )
+        current_airflow_unit = self.config_entry.options.get(
+            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
+        )
 
         data_schema = vol.Schema(
             {
@@ -298,6 +305,10 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_SKIP_MISSING_REGISTERS,
                     default=current_skip_missing,
                 ): bool,
+                vol.Optional(
+                    CONF_AIRFLOW_UNIT,
+                    default=current_airflow_unit,
+                ): vol.In([AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE]),
             }
         )
 
@@ -311,5 +322,6 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "force_full_enabled": "Yes" if force_full else "No",
                 "scan_uart_enabled": "Yes" if current_scan_uart else "No",
                 "skip_missing_enabled": "Yes" if current_skip_missing else "No",
+                "current_airflow_unit": current_airflow_unit,
             },
         )
