@@ -340,9 +340,9 @@ class ThesslaGreenDeviceScanner:
 
         # Ensure low-level register read helpers are attached to the instance
         # so tests and callers can patch them as needed.
-        self._read_holding = _read_holding.__get__(self, cls)
-        self._read_coil = _read_coil.__get__(self, cls)
-        self._read_discrete = _read_discrete.__get__(self, cls)
+        self._read_holding = cls._read_holding.__get__(self, cls)
+        self._read_coil = cls._read_coil.__get__(self, cls)
+        self._read_discrete = cls._read_discrete.__get__(self, cls)
 
         return self
 
