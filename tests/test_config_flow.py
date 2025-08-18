@@ -130,7 +130,8 @@ async def test_duplicate_entry_aborts():
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured",
             side_effect=[None, AbortFlow("already_configured")],
         ),
     ):
@@ -385,6 +386,32 @@ async def test_form_user_connection_exception():
     assert result["errors"] == {"base": "cannot_connect"}
 
 
+async def test_form_user_attribute_error_scanner():
+    """AttributeError during scanning should return cannot_connect."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    scanner_instance = AsyncMock()
+    scanner_instance.scan_device.side_effect = AttributeError
+    scanner_instance.close = AsyncMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        result = await flow.async_step_user(
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_PORT: 502,
+                "slave_id": 10,
+                CONF_NAME: "My Device",
+            }
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
 async def test_form_user_invalid_auth():
     """Test we handle invalid auth error."""
     flow = ConfigFlow()
@@ -473,7 +500,9 @@ async def test_form_user_unexpected_exception():
 
 async def test_validate_input_success():
     """Test validate_input with successful connection."""
-    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
 
     hass = None
     data = {
@@ -505,7 +534,9 @@ async def test_validate_input_success():
 
 async def test_validate_input_no_data():
     """Test validate_input with no device data."""
-    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
 
     hass = None
     data = {
@@ -526,7 +557,9 @@ async def test_validate_input_no_data():
 
 async def test_validate_input_modbus_exception():
     """Test validate_input with Modbus exception."""
-    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
 
     hass = None
     data = {
@@ -547,7 +580,9 @@ async def test_validate_input_modbus_exception():
 
 async def test_validate_input_scanner_closed_on_exception():
     """Ensure scanner is closed when scan_device raises an exception."""
-    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -572,7 +607,9 @@ async def test_validate_input_scanner_closed_on_exception():
 
 async def test_validate_input_uses_scan_device_and_closes():
     """Test validate_input uses scan_device when available and closes scanner."""
-    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -605,7 +642,9 @@ async def test_validate_input_uses_scan_device_and_closes():
 
 async def test_validate_input_fallback_to_scan_without_close():
     """Test validate_input falls back to scan() when scan_device is unavailable."""
-    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
 
     data = {
         CONF_HOST: "192.168.1.100",
