@@ -158,9 +158,8 @@ class DeviceInfo:
         serial_number: Unique hardware identifier for the unit.
     """
 
-    model: str = MODEL
     device_name: str = "Unknown"
-    model: str = "Unknown AirPack"
+    model: str = MODEL
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
     firmware_available: bool = True
