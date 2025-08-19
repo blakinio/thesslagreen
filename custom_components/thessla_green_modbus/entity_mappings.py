@@ -335,6 +335,26 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "icon": "mdi:information",
         "register_type": "input_registers",
     },
+    "serial_number_1": {
+        "translation_key": "serial_number_1",
+        "icon": "mdi:barcode",
+        "register_type": "input_registers",
+    },
+    "serial_number_2": {
+        "translation_key": "serial_number_2",
+        "icon": "mdi:barcode",
+        "register_type": "input_registers",
+    },
+    "serial_number_3": {
+        "translation_key": "serial_number_3",
+        "icon": "mdi:barcode",
+        "register_type": "input_registers",
+    },
+    "serial_number_4": {
+        "translation_key": "serial_number_4",
+        "icon": "mdi:barcode",
+        "register_type": "input_registers",
+    },
     "serial_number_5": {
         "translation_key": "serial_number_5",
         "icon": "mdi:barcode",
