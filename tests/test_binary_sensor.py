@@ -120,6 +120,17 @@ def test_dynamic_problem_registers_present() -> None:
         assert key in BINARY_SENSOR_DEFINITIONS  # nosec B101
 
 
+def test_problem_registers_range_mapped() -> None:
+    """Registers 0x2000-0x20FB should map to binary sensors."""
+    expected = {
+        name
+        for name, addr in HOLDING_REGISTERS.items()
+        if 0x2000 <= addr <= 0x20FB
+    }
+    for key in expected:
+        assert key in BINARY_SENSOR_DEFINITIONS  # nosec B101
+
+
 @pytest.mark.asyncio
 async def test_async_setup_creates_all_binary_sensors(
     mock_coordinator: MagicMock, mock_config_entry: MagicMock

@@ -1002,6 +1002,22 @@ def _extend_entity_mappings_from_csv() -> None:
         scale = info.get("scale", 1)
         step = info.get("step", scale)
 
+        if (
+            register in {"alarm", "error"}
+            or register.startswith("s_")
+            or register.startswith("e_")
+        ):
+            BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
+                register,
+                {
+                    "translation_key": register,
+                    "icon": "mdi:alert-circle",
+                    "register_type": "holding_registers",
+                    "device_class": BinarySensorDeviceClass.PROBLEM,
+                },
+            )
+            continue
+
         if min_val is not None and max_val is not None:
             if max_val <= 1:
                 if "W" in access:
