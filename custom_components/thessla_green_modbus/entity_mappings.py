@@ -103,9 +103,19 @@ def map_legacy_entity_id(entity_id: str) -> str:
     return new_entity_id
 
 
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
+def _infer_icon(name: str, unit: str | None) -> str:
+    """Return a default icon based on register name and unit."""
+    if unit == "°C" or "temperature" in name:
+        return "mdi:thermometer"
+    if unit in {"m³/h", "m3/h"} or "flow" in name or "fan" in name:
+        return "mdi:fan"
+    if unit == "%" or "percentage" in name:
+        return "mdi:percent-outline"
+    if unit in {"s", "min", "h", "d"} or "time" in name:
+        return "mdi:timer"
+    if unit == "V":
+        return "mdi:sine-wave"
+    return "mdi:numeric"
 
 def _get_register_info(name: str) -> dict[str, Any] | None:
     """Return register metadata, handling numeric suffixes."""
@@ -155,6 +165,9 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
     number_configs.update(NUMBER_OVERRIDES)
     return number_configs
 
+    """Load number entity configurations from CSV data."""
+    from .data.modbus_registers import get_register_info, get_register_infos
+    from .registers import HOLDING_REGISTERS
 
 # Manual overrides for number entities (icons, custom units, etc.)
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
@@ -245,6 +258,45 @@ def _load_discrete_mappings() -> tuple[
 
     return binary_configs, switch_configs, select_configs
 
+    # Automatically add all remaining writable numeric registers from CSV
+    for register in HOLDING_REGISTERS:
+        if register in number_configs:
+            continue
+
+        info = get_register_info(register)
+        if not info:
+            continue
+
+        access = info.get("access", "") or ""
+        if "W" not in access:
+            continue
+
+        min_val = info.get("min")
+        max_val = info.get("max")
+        if min_val is None or max_val is None:
+            continue
+
+        # Skip binary or enumerated registers; handled elsewhere
+        if max_val <= 1:
+            continue
+        if (
+            info.get("information")
+            and ";" in info.get("information")
+            and max_val <= 10
+        ):
+            continue
+
+        unit = info.get("unit")
+        number_configs[register] = {
+            "unit": unit,
+            "icon": _infer_icon(register, unit),
+            "min": min_val,
+            "max": max_val,
+            "step": info.get("step", info.get("scale", 1)),
+            "scale": info.get("scale", 1),
+        }
+
+    return number_configs
 
 
 # ---------------------------------------------------------------------------
@@ -937,6 +989,103 @@ for mode, bit in SPECIAL_FUNCTION_MAP.items():
         "translation_key": mode,
         "bit": bit,
     }
+
+
+def _extend_entity_mappings_from_csv() -> None:
+    """Populate entity mappings for registers not explicitly defined."""
+    from .data.modbus_registers import get_register_info
+
+    for register in HOLDING_REGISTERS:
+        if register in NUMBER_ENTITY_MAPPINGS:
+            continue
+        if register in SENSOR_ENTITY_MAPPINGS:
+            continue
+        if register in BINARY_SENSOR_ENTITY_MAPPINGS:
+            continue
+        if register in SWITCH_ENTITY_MAPPINGS:
+            continue
+        if register in SELECT_ENTITY_MAPPINGS:
+            continue
+
+        info = get_register_info(register)
+        if not info:
+            continue
+
+        access = info.get("access", "") or ""
+        min_val = info.get("min")
+        max_val = info.get("max")
+        unit = info.get("unit")
+        info_text = info.get("information") or ""
+        scale = info.get("scale", 1)
+        step = info.get("step", scale)
+
+        if min_val is not None and max_val is not None:
+            if max_val <= 1:
+                if "W" in access:
+                    SWITCH_ENTITY_MAPPINGS.setdefault(
+                        register,
+                        {
+                            "icon": "mdi:toggle-switch",
+                            "register": register,
+                            "register_type": "holding_registers",
+                            "category": None,
+                            "translation_key": register,
+                        },
+                    )
+                else:
+                    BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
+                        register,
+                        {
+                            "translation_key": register,
+                            "icon": "mdi:checkbox-marked-circle-outline",
+                            "register_type": "holding_registers",
+                        },
+                    )
+                continue
+
+            if (
+                "W" in access
+                and info_text
+                and ";" in info_text
+                and max_val <= 10
+            ):
+                states: dict[str, int] = {}
+                for part in info_text.split(";"):
+                    part = part.strip()
+                    if " - " not in part:
+                        continue
+                    val_str, label = part.split(" - ", 1)
+                    try:
+                        states[_to_snake_case(label)] = int(val_str.strip())
+                    except ValueError:
+                        continue
+                if states:
+                    SELECT_ENTITY_MAPPINGS.setdefault(
+                        register,
+                        {
+                            "icon": "mdi:format-list-bulleted",
+                            "translation_key": register,
+                            "states": states,
+                            "register_type": "holding_registers",
+                        },
+                    )
+                    continue
+
+            if "W" in access:
+                NUMBER_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "unit": unit,
+                        "icon": _infer_icon(register, unit),
+                        "min": min_val,
+                        "max": max_val,
+                        "step": step,
+                        "scale": scale,
+                    },
+                )
+
+
+_extend_entity_mappings_from_csv()
 
 ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {
     "number": NUMBER_ENTITY_MAPPINGS,
