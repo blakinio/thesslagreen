@@ -243,6 +243,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     entity_id,
                     "set special mode",
                 )
+                if not await coordinator.async_write_register(
+                    "special_mode", special_mode_value, refresh=False
+                ):
+                    _LOGGER.error(
+                        "Failed to set special mode %s for %s", mode, entity_id
+                    )
+                    continue
 
                 # Set duration if specified and supported
                 if duration > 0 and mode in [
@@ -263,6 +270,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                             entity_id,
                             "set special mode",
                         )
+
+                        if not await coordinator.async_write_register(
+                            duration_register, duration, refresh=False
+                        ):
+                            _LOGGER.error(
+                                "Failed to set duration for %s on %s",
+                                mode,
+                                entity_id,
+                            )
+                            continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set special mode %s for %s", mode, entity_id)
@@ -344,6 +361,38 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set airflow schedule",
                     )
+                if not await coordinator.async_write_register(
+                    start_register,
+                    start_value,
+                    refresh=False,
+                ):
+                    _LOGGER.error("Failed to set schedule start for %s", entity_id)
+                    continue
+                if not await coordinator.async_write_register(
+                    end_register,
+                    end_value,
+                    refresh=False,
+                ):
+                    _LOGGER.error("Failed to set schedule end for %s", entity_id)
+                    continue
+                if not await coordinator.async_write_register(
+                    flow_register,
+                    airflow_rate,
+                    refresh=False,
+                ):
+                    _LOGGER.error("Failed to set schedule flow for %s", entity_id)
+                    continue
+
+                if temperature is not None:
+                    if not await coordinator.async_write_register(
+                        temp_register,
+                        temperature,
+                        refresh=False,
+                    ):
+                        _LOGGER.error(
+                            "Failed to set schedule temperature for %s", entity_id
+                        )
+                        continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set airflow schedule for %s", entity_id)
@@ -376,6 +425,24 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set bypass parameters",
                     )
+                if not await coordinator.async_write_register(
+                    "bypass_mode",
+                    mode_value,
+                    refresh=False,
+                ):
+                    _LOGGER.error("Failed to set bypass mode for %s", entity_id)
+                    continue
+
+                if min_temperature is not None:
+                    if not await coordinator.async_write_register(
+                        "min_bypass_temperature",
+                        min_temperature,
+                        refresh=False,
+                    ):
+                        _LOGGER.error(
+                            "Failed to set bypass min temperature for %s", entity_id
+                        )
+                        continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set bypass parameters for %s", entity_id)
@@ -418,6 +485,35 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set GWC parameters",
                     )
+                if not await coordinator.async_write_register(
+                    "gwc_mode",
+                    mode_value,
+                    refresh=False,
+                ):
+                    _LOGGER.error("Failed to set GWC mode for %s", entity_id)
+                    continue
+
+                if min_air_temperature is not None:
+                    if not await coordinator.async_write_register(
+                        "min_gwc_air_temperature",
+                        min_air_temperature,
+                        refresh=False,
+                    ):
+                        _LOGGER.error(
+                            "Failed to set GWC min air temperature for %s", entity_id
+                        )
+                        continue
+
+                if max_air_temperature is not None:
+                    if not await coordinator.async_write_register(
+                        "max_gwc_air_temperature",
+                        max_air_temperature,
+                        refresh=False,
+                    ):
+                        _LOGGER.error(
+                            "Failed to set GWC max air temperature for %s", entity_id
+                        )
+                        continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set GWC parameters for %s", entity_id)
@@ -429,7 +525,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                for param in ["co2_low", "co2_medium", "co2_high", "humidity_target"]:
+                success = True
+                for param in [
+                    "co2_low",
+                    "co2_medium",
+                    "co2_high",
+                    "humidity_target",
+                ]:
                     value = call.data.get(param)
                     if value is not None:
                         register_name = AIR_QUALITY_REGISTER_MAP[param]
@@ -440,6 +542,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                             entity_id,
                             "set air quality thresholds",
                         )
+                        if not await coordinator.async_write_register(
+                            register_name, value, refresh=False
+                        ):
+                            _LOGGER.error(
+                                "Failed to set %s for %s", param, entity_id
+                            )
+                            success = False
+                            break
+
+                if not success:
+                    continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set air quality thresholds for %s", entity_id)
@@ -487,6 +600,46 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set temperature curve",
                     )
+                if not await coordinator.async_write_register(
+                    "heating_curve_slope",
+                    slope,
+                    refresh=False,
+                ):
+                    _LOGGER.error(
+                        "Failed to set heating curve slope for %s", entity_id
+                    )
+                    continue
+                if not await coordinator.async_write_register(
+                    "heating_curve_offset",
+                    offset,
+                    refresh=False,
+                ):
+                    _LOGGER.error(
+                        "Failed to set heating curve offset for %s", entity_id
+                    )
+                    continue
+
+                if max_supply_temp is not None:
+                    if not await coordinator.async_write_register(
+                        "max_supply_temperature",
+                        max_supply_temp,
+                        refresh=False,
+                    ):
+                        _LOGGER.error(
+                            "Failed to set max supply temperature for %s", entity_id
+                        )
+                        continue
+
+                if min_supply_temp is not None:
+                    if not await coordinator.async_write_register(
+                        "min_supply_temperature",
+                        min_supply_temp,
+                        refresh=False,
+                    ):
+                        _LOGGER.error(
+                            "Failed to set min supply temperature for %s", entity_id
+                        )
+                        continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set temperature curve for %s", entity_id)
@@ -509,6 +662,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     entity_id,
                     "reset filters",
                 )
+                if not await coordinator.async_write_register(
+                    "filter_change", filter_value, refresh=False
+                ):
+                    _LOGGER.error("Failed to reset filters for %s", entity_id)
+                    continue
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Reset filters for %s", entity_id)
 
@@ -537,6 +695,22 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "reset settings",
                     )
+                    if not await coordinator.async_write_register(
+                        "hard_reset_settings", 1, refresh=False
+                    ):
+                        _LOGGER.error(
+                            "Failed to reset user settings for %s", entity_id
+                        )
+                        continue
+
+                if reset_type in ["schedule_settings", "all_settings"]:
+                    if not await coordinator.async_write_register(
+                        "hard_reset_schedule", 1, refresh=False
+                    ):
+                        _LOGGER.error(
+                            "Failed to reset schedule settings for %s", entity_id
+                        )
+                        continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Reset settings (%s) for %s", reset_type, entity_id)
@@ -567,6 +741,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     entity_id,
                     "start pressure test",
                 )
+                if not await coordinator.async_write_register(
+                    "pres_check_day_2", day_of_week, refresh=False
+                ):
+                    _LOGGER.error("Failed to start pressure test for %s", entity_id)
+                    continue
+                if not await coordinator.async_write_register(
+                    "pres_check_time_2", time_hhmm, refresh=False
+                ):
+                    _LOGGER.error("Failed to start pressure test for %s", entity_id)
+                    continue
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Started pressure test for %s", entity_id)
 
@@ -629,6 +813,25 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set Modbus parameters",
                     )
+                    if not await coordinator.async_write_register(
+                        f"{port_prefix}_baud", baud_map[baud_rate], refresh=False
+                    ):
+                        _LOGGER.error("Failed to set baud rate for %s", entity_id)
+                        continue
+
+                if parity:
+                    if not await coordinator.async_write_register(
+                        f"{port_prefix}_parity", parity_map[parity], refresh=False
+                    ):
+                        _LOGGER.error("Failed to set parity for %s", entity_id)
+                        continue
+
+                if stop_bits:
+                    if not await coordinator.async_write_register(
+                        f"{port_prefix}_stop", stop_map[stop_bits], refresh=False
+                    ):
+                        _LOGGER.error("Failed to set stop bits for %s", entity_id)
+                        continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set Modbus parameters for %s", entity_id)
@@ -644,6 +847,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 # Convert string to 16-bit register values (ASCII)
                 name_bytes = device_name.encode("ascii")[:16].ljust(16, b"\x00")
 
+                success = True
                 for i in range(8):  # 8 registers for 16 characters
                     char1 = name_bytes[i * 2]
                     char2 = name_bytes[i * 2 + 1]
@@ -655,6 +859,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set device name",
                     )
+                    if not await coordinator.async_write_register(
+                        f"device_name_{i + 1}", reg_value, refresh=False
+                    ):
+                        _LOGGER.error(
+                            "Failed to set device name for %s", entity_id
+                        )
+                        success = False
+                        break
+
+                if not success:
+                    continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set device name to '%s' for %s", device_name, entity_id)

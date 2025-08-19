@@ -226,6 +226,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         self.available_registers[reg_type].difference_update(names)
 
                 self.device_info = self.device_scan_result.get("device_info", {})
+                self.device_info.setdefault("device_name", self._device_name)
                 self.capabilities = DeviceCapabilities(
                     **self.device_scan_result.get("capabilities", {})
                 )
@@ -416,10 +417,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.exception("Unexpected error setting up Modbus client: %s", exc)
             return False
-
-    async def async_ensure_client(self) -> bool:
-        """Public wrapper ensuring the Modbus client is connected."""
-        return await self._async_setup_client()
 
     async def _ensure_connection(self) -> None:
         """Ensure Modbus connection is established."""
@@ -1142,7 +1139,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @property
     def device_name(self) -> str:
         """Return the configured or detected device name."""
-        return cast(str, self.device_info.get("device_name", self._device_name))
+        return cast(str, self.device_info.get("device_name") or self._device_name)
 
     @property
     def device_info_dict(self) -> dict[str, Any]:
