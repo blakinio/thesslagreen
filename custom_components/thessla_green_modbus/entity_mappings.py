@@ -1,6 +1,12 @@
 """Entity mapping definitions for the ThesslaGreen Modbus integration.
 
-This module also provides helpers for handling legacy entity IDs that were
+Most entity descriptions are generated from metadata in ``modbus_registers.csv``
+and can be extended or overridden by the dictionaries defined in this module.
+This keeps the mapping definitions in sync with the register specification while
+still allowing manual tweaks (for example to change icons or alter the entity
+domain).
+
+The module also provides helpers for handling legacy entity IDs that were
 renamed in newer versions of the integration.
 """
 
@@ -40,7 +46,8 @@ except Exception:  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
 from .const import SPECIAL_FUNCTION_MAP
-from .registers import HOLDING_REGISTERS
+from .registers import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, HOLDING_REGISTERS
+from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,83 +107,144 @@ def map_legacy_entity_id(entity_id: str) -> str:
 # Helper functions
 # ---------------------------------------------------------------------------
 
+def _get_register_info(name: str) -> dict[str, Any] | None:
+    """Return register metadata, handling numeric suffixes."""
+    from .data.modbus_registers import get_register_info
+    info = get_register_info(name)
+    if info is None and (suffix := name.rsplit("_", 1)) and suffix[1].isdigit():
+        info = get_register_info(suffix[0])
+    return info
+
+
+def _parse_states(value: str | None) -> dict[str, int] | None:
+    """Parse ``"0 - off; 1 - on"`` style state strings into a mapping."""
+    if not value or "-" not in value:
+        return None
+    states: dict[str, int] = {}
+    for part in value.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            num_str, label = part.split("-", 1)
+            number = int(num_str.strip())
+        except ValueError:
+            continue
+        states[_to_snake_case(label.strip())] = number
+    return states or None
+
 
 def _load_number_mappings() -> dict[str, dict[str, Any]]:
-    """Load number entity configurations from CSV data.
-
-    This function reads register configurations and dynamically creates
-    number entity mappings with proper min/max/step values.
-    """
-    from .data.modbus_registers import get_register_info, get_register_infos
-
+    """Build number entity configurations from register metadata."""
     number_configs: dict[str, dict[str, Any]] = {}
-
-    # Define registers that should be number entities
-    number_registers: dict[str, dict[str, str | None]] = {
-        # Temperature control
-        "required_temperature": {"unit": None, "icon": "mdi:thermometer"},
-        "supply_air_temperature_manual": {"unit": None, "icon": "mdi:thermometer-plus"},
-        "supply_air_temperature_temporary_1": {"unit": None, "icon": "mdi:thermometer-plus"},
-        "supply_air_temperature_temporary_2": {"unit": None, "icon": "mdi:thermometer-plus"},
-        "min_bypass_temperature": {"unit": None, "icon": "mdi:thermometer-low"},
-        "air_temperature_summer_free_heating": {"unit": None, "icon": "mdi:thermometer"},
-        "air_temperature_summer_free_cooling": {"unit": None, "icon": "mdi:thermometer"},
-        "bypass_off": {"unit": None, "icon": "mdi:thermometer-off"},
-        # Air flow control
-        "air_flow_rate_manual": {"unit": None, "icon": "mdi:fan"},
-        "max_supply_air_flow_rate": {"unit": None, "icon": "mdi:fan-plus"},
-        "max_exhaust_air_flow_rate": {"unit": None, "icon": "mdi:fan-minus"},
-        "nominal_supply_air_flow": {"unit": None, "icon": "mdi:fan-clock"},
-        "nominal_exhaust_air_flow": {"unit": None, "icon": "mdi:fan-clock"},
-        "max_supply_air_flow_rate_gwc": {"unit": None, "icon": "mdi:fan-plus"},
-        "max_exhaust_air_flow_rate_gwc": {"unit": None, "icon": "mdi:fan-minus"},
-        "nominal_supply_air_flow_gwc": {"unit": None, "icon": "mdi:fan-clock"},
-        "nominal_exhaust_air_flow_gwc": {"unit": None, "icon": "mdi:fan-clock"},
-        # Access and timing
-        "access_level": {"unit": None, "icon": "mdi:account-key"},
-        # GWC parameters
-        "min_gwc_air_temperature": {"unit": None, "icon": "mdi:thermometer-low"},
-        "max_gwc_air_temperature": {"unit": None, "icon": "mdi:thermometer-high"},
-        "gwc_regen_period": {"unit": None, "icon": "mdi:timer"},
-        "delta_t_gwc": {"unit": None, "icon": "mdi:thermometer-lines"},
-    }
-
-    for register, config in number_registers.items():
-        try:
-            reg_info = get_register_info(register)
-            if reg_info:
-                unit = config["unit"] if config["unit"] is not None else reg_info.get("unit")
-                number_configs[register] = {
-                    "unit": unit,
-                    "icon": config["icon"],
-                    "min": reg_info.get("min", 0),
-                    "max": reg_info.get("max", 100),
-                    "step": reg_info.get("step", 1),
-                    "scale": reg_info.get("scale", 1),
-                }
-        except Exception:
-            # Fallback to static configuration
-            number_configs[register] = {
-                "unit": config["unit"],
-                "icon": config["icon"],
-                "min": 0,
-                "max": 100,
-                "step": 1,
-            }
-
-    # Date/time registers span multiple addresses with shared name in CSV
-    date_time_infos = get_register_infos("date_time")
-    for idx, info in enumerate(date_time_infos, start=1):
-        number_configs[f"date_time_{idx}"] = {
+    for register in HOLDING_REGISTERS:
+        info=_get_register_info(register)
+        if not info:
+            continue
+        if _parse_states(info.get("unit")):
+            continue
+        if info.get("min") is None and info.get("max") is None:
+            continue
+        number_configs[register]={
             "unit": info.get("unit"),
-            "icon": "mdi:calendar-clock",
-            "min": info.get("min", 0),
-            "max": info.get("max", 100),
-            "step": info.get("step", 1),
-            "scale": info.get("scale", 1),
+            "min": info.get("min",0),
+            "max": info.get("max",0),
+            "step": info.get("step",1),
+            "scale": info.get("scale",1),
+        }
+    number_configs.update(NUMBER_OVERRIDES)
+    return number_configs
+
+
+# Manual overrides for number entities (icons, custom units, etc.)
+NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
+    # Temperature control
+    "required_temperature": {"icon": "mdi:thermometer"},
+    "supply_air_temperature_manual": {"icon": "mdi:thermometer-plus"},
+    "supply_air_temperature_temporary_1": {"icon": "mdi:thermometer-plus"},
+    "supply_air_temperature_temporary_2": {"icon": "mdi:thermometer-plus"},
+    "min_bypass_temperature": {"icon": "mdi:thermometer-low"},
+    "air_temperature_summer_free_heating": {"icon": "mdi:thermometer"},
+    "air_temperature_summer_free_cooling": {"icon": "mdi:thermometer"},
+    "bypass_off": {"icon": "mdi:thermometer-off"},
+    # Air flow control
+    "air_flow_rate_manual": {"icon": "mdi:fan"},
+    "max_supply_air_flow_rate": {"icon": "mdi:fan-plus"},
+    "max_exhaust_air_flow_rate": {"icon": "mdi:fan-minus"},
+    "nominal_supply_air_flow": {"icon": "mdi:fan-clock"},
+    "nominal_exhaust_air_flow": {"icon": "mdi:fan-clock"},
+    "max_supply_air_flow_rate_gwc": {"icon": "mdi:fan-plus"},
+    "max_exhaust_air_flow_rate_gwc": {"icon": "mdi:fan-minus"},
+    "nominal_supply_air_flow_gwc": {"icon": "mdi:fan-clock"},
+    "nominal_exhaust_air_flow_gwc": {"icon": "mdi:fan-clock"},
+    # Access and timing
+    "access_level": {"icon": "mdi:account-key"},
+    # GWC parameters
+    "min_gwc_air_temperature": {"icon": "mdi:thermometer-low"},
+    "max_gwc_air_temperature": {"icon": "mdi:thermometer-high"},
+    "gwc_regen_period": {"icon": "mdi:timer"},
+    "delta_t_gwc": {"icon": "mdi:thermometer-lines"},
+}
+
+
+def _load_discrete_mappings() -> tuple[
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+]:
+    """Generate mappings for binary_sensor, switch and select entities."""
+
+    binary_configs: dict[str, dict[str, Any]] = {}
+    switch_configs: dict[str, dict[str, Any]] = {}
+    select_configs: dict[str, dict[str, Any]] = {}
+
+    # Coil and discrete input registers are always binary sensors
+    for reg in COIL_REGISTERS:
+        binary_configs[reg] = {
+            "translation_key": reg,
+            "register_type": "coil_registers",
+        }
+    for reg in DISCRETE_INPUT_REGISTERS:
+        binary_configs[reg] = {
+            "translation_key": reg,
+            "register_type": "discrete_inputs",
         }
 
-    return number_configs
+    # Holding registers with enumerated states
+    for reg in HOLDING_REGISTERS:
+        info = _get_register_info(reg)
+        if not info:
+            continue
+        states = _parse_states(info.get("unit"))
+        if not states:
+            continue
+        access = (info.get("access") or "").upper()
+        cfg = {"translation_key": reg, "register_type": "holding_registers"}
+        if len(states) == 2 and set(states.values()) == {0, 1}:
+            if "W" in access:
+                switch_configs[reg] = cfg
+            else:
+                binary_configs[reg] = cfg
+        else:
+            cfg["states"] = states
+            select_configs[reg] = cfg
+
+    # Alarm/error registers treated as binary sensors
+    for reg in ("alarm", "error"):
+        if reg in HOLDING_REGISTERS:
+            binary_configs.setdefault(
+                reg,
+                {"translation_key": reg, "register_type": "holding_registers"},
+            )
+    for reg in HOLDING_REGISTERS:
+        if reg.startswith("s_") or reg.startswith("e_"):
+            binary_configs.setdefault(
+                reg,
+                {"translation_key": reg, "register_type": "holding_registers"},
+            )
+
+    return binary_configs, switch_configs, select_configs
+
 
 
 # ---------------------------------------------------------------------------
@@ -820,31 +888,6 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Dynamically extend binary sensor mappings with alarm/error and S_/E_ registers
-for _reg in ["alarm", "error"]:
-    if _reg in HOLDING_REGISTERS:
-        BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
-            _reg,
-            {
-                "translation_key": _reg,
-                "icon": "mdi:alert-circle",
-                "device_class": BinarySensorDeviceClass.PROBLEM,
-                "register_type": "holding_registers",
-            },
-        )
-
-for _reg in HOLDING_REGISTERS:
-    if _reg.startswith("s_") or _reg.startswith("e_"):
-        BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
-            _reg,
-            {
-                "translation_key": _reg,
-                "icon": "mdi:alert-circle",
-                "device_class": BinarySensorDeviceClass.PROBLEM,
-                "register_type": "holding_registers",
-            },
-        )
-
 SPECIAL_MODE_ICONS = {
     "boost": "mdi:rocket-launch",
     "eco": "mdi:leaf",
@@ -869,6 +912,21 @@ SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "translation_key": "on_off_panel_mode",
     },
 }
+
+# Generate discrete entity mappings from register metadata and allow manual overrides
+_gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
+for key in BINARY_SENSOR_ENTITY_MAPPINGS:
+    _gen_switch.pop(key, None)
+    _gen_select.pop(key, None)
+for key in SWITCH_ENTITY_MAPPINGS:
+    _gen_binary.pop(key, None)
+    _gen_select.pop(key, None)
+for key in SELECT_ENTITY_MAPPINGS:
+    _gen_binary.pop(key, None)
+    _gen_switch.pop(key, None)
+BINARY_SENSOR_ENTITY_MAPPINGS = {**_gen_binary, **BINARY_SENSOR_ENTITY_MAPPINGS}
+SWITCH_ENTITY_MAPPINGS = {**_gen_switch, **SWITCH_ENTITY_MAPPINGS}
+SELECT_ENTITY_MAPPINGS = {**_gen_select, **SELECT_ENTITY_MAPPINGS}
 
 for mode, bit in SPECIAL_FUNCTION_MAP.items():
     SWITCH_ENTITY_MAPPINGS[mode] = {
