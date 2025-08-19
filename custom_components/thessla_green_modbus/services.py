@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
@@ -29,6 +30,7 @@ from .const import (
 )
 from .entity_mappings import map_legacy_entity_id
 from .device_scanner import ThesslaGreenDeviceScanner
+from .modbus_exceptions import ConnectionException, ModbusException
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -205,6 +207,24 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 return value[len(prefix) :]  # noqa: E203
         return value
 
+    async def _write_register(
+        coordinator: ThesslaGreenModbusCoordinator,
+        register: str,
+        value: Any,
+        entity_id: str,
+        action: str,
+    ) -> None:
+        """Write to a register with error handling."""
+        try:
+            await coordinator.async_write_register(register, value, refresh=False)
+        except (ModbusException, ConnectionException) as err:
+            _LOGGER.error(
+                "Failed to %s for %s: %s", action, entity_id, err
+            )
+            raise HomeAssistantError(
+                f"Failed to {action} for {entity_id}"
+            ) from err
+
     async def set_special_mode(call: ServiceCall) -> None:
         """Service to set special mode."""
         entity_ids = _extract_legacy_entity_ids(hass, call)
@@ -216,8 +236,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if coordinator:
                 # Set special mode using the special_mode register
                 special_mode_value = SPECIAL_FUNCTION_MAP.get(mode, 0)
-                await coordinator.async_write_register(
-                    "special_mode", special_mode_value, refresh=False
+                await _write_register(
+                    coordinator,
+                    "special_mode",
+                    special_mode_value,
+                    entity_id,
+                    "set special mode",
                 )
 
                 # Set duration if specified and supported
@@ -232,8 +256,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     if duration_register in coordinator.available_registers.get(
                         "holding_registers", set()
                     ):
-                        await coordinator.async_write_register(
-                            duration_register, duration, refresh=False
+                        await _write_register(
+                            coordinator,
+                            duration_register,
+                            duration,
+                            entity_id,
+                            "set special mode",
                         )
 
                 await coordinator.async_request_refresh()
@@ -286,27 +314,35 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 temp_register = f"schedule_{day_name}_period{period}_temp"
 
                 # Write schedule values with proper scaling
-                await coordinator.async_write_register(
+                await _write_register(
+                    coordinator,
                     start_register,
                     start_value,
-                    refresh=False,
+                    entity_id,
+                    "set airflow schedule",
                 )
-                await coordinator.async_write_register(
+                await _write_register(
+                    coordinator,
                     end_register,
                     end_value,
-                    refresh=False,
+                    entity_id,
+                    "set airflow schedule",
                 )
-                await coordinator.async_write_register(
+                await _write_register(
+                    coordinator,
                     flow_register,
                     airflow_rate,
-                    refresh=False,
+                    entity_id,
+                    "set airflow schedule",
                 )
 
                 if temperature is not None:
-                    await coordinator.async_write_register(
+                    await _write_register(
+                        coordinator,
                         temp_register,
                         temperature,
-                        refresh=False,
+                        entity_id,
+                        "set airflow schedule",
                     )
 
                 await coordinator.async_request_refresh()
@@ -324,17 +360,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register(
+                await _write_register(
+                    coordinator,
                     "bypass_mode",
                     mode_value,
-                    refresh=False,
+                    entity_id,
+                    "set bypass parameters",
                 )
 
                 if min_temperature is not None:
-                    await coordinator.async_write_register(
+                    await _write_register(
+                        coordinator,
                         "min_bypass_temperature",
                         min_temperature,
-                        refresh=False,
+                        entity_id,
+                        "set bypass parameters",
                     )
 
                 await coordinator.async_request_refresh()
@@ -353,24 +393,30 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register(
+                await _write_register(
+                    coordinator,
                     "gwc_mode",
                     mode_value,
-                    refresh=False,
+                    entity_id,
+                    "set GWC parameters",
                 )
 
                 if min_air_temperature is not None:
-                    await coordinator.async_write_register(
+                    await _write_register(
+                        coordinator,
                         "min_gwc_air_temperature",
                         min_air_temperature,
-                        refresh=False,
+                        entity_id,
+                        "set GWC parameters",
                     )
 
                 if max_air_temperature is not None:
-                    await coordinator.async_write_register(
+                    await _write_register(
+                        coordinator,
                         "max_gwc_air_temperature",
                         max_air_temperature,
-                        refresh=False,
+                        entity_id,
+                        "set GWC parameters",
                     )
 
                 await coordinator.async_request_refresh()
@@ -387,7 +433,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     value = call.data.get(param)
                     if value is not None:
                         register_name = AIR_QUALITY_REGISTER_MAP[param]
-                        await coordinator.async_write_register(register_name, value, refresh=False)
+                        await _write_register(
+                            coordinator,
+                            register_name,
+                            value,
+                            entity_id,
+                            "set air quality thresholds",
+                        )
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set air quality thresholds for %s", entity_id)
@@ -403,29 +455,37 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register(
+                await _write_register(
+                    coordinator,
                     "heating_curve_slope",
                     slope,
-                    refresh=False,
+                    entity_id,
+                    "set temperature curve",
                 )
-                await coordinator.async_write_register(
+                await _write_register(
+                    coordinator,
                     "heating_curve_offset",
                     offset,
-                    refresh=False,
+                    entity_id,
+                    "set temperature curve",
                 )
 
                 if max_supply_temp is not None:
-                    await coordinator.async_write_register(
+                    await _write_register(
+                        coordinator,
                         "max_supply_temperature",
                         max_supply_temp,
-                        refresh=False,
+                        entity_id,
+                        "set temperature curve",
                     )
 
                 if min_supply_temp is not None:
-                    await coordinator.async_write_register(
+                    await _write_register(
+                        coordinator,
                         "min_supply_temperature",
                         min_supply_temp,
-                        refresh=False,
+                        entity_id,
+                        "set temperature curve",
                     )
 
                 await coordinator.async_request_refresh()
@@ -442,7 +502,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                await coordinator.async_write_register("filter_change", filter_value, refresh=False)
+                await _write_register(
+                    coordinator,
+                    "filter_change",
+                    filter_value,
+                    entity_id,
+                    "reset filters",
+                )
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Reset filters for %s", entity_id)
 
@@ -455,10 +521,22 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
                 if reset_type in ["user_settings", "all_settings"]:
-                    await coordinator.async_write_register("hard_reset_settings", 1, refresh=False)
+                    await _write_register(
+                        coordinator,
+                        "hard_reset_settings",
+                        1,
+                        entity_id,
+                        "reset settings",
+                    )
 
                 if reset_type in ["schedule_settings", "all_settings"]:
-                    await coordinator.async_write_register("hard_reset_schedule", 1, refresh=False)
+                    await _write_register(
+                        coordinator,
+                        "hard_reset_schedule",
+                        1,
+                        entity_id,
+                        "reset settings",
+                    )
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Reset settings (%s) for %s", reset_type, entity_id)
@@ -475,11 +553,19 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 day_of_week = now.weekday()  # 0 = Monday
                 time_hhmm = now.hour * 100 + now.minute
 
-                await coordinator.async_write_register(
-                    "pres_check_day_2", day_of_week, refresh=False
+                await _write_register(
+                    coordinator,
+                    "pres_check_day_2",
+                    day_of_week,
+                    entity_id,
+                    "start pressure test",
                 )
-                await coordinator.async_write_register(
-                    "pres_check_time_2", time_hhmm, refresh=False
+                await _write_register(
+                    coordinator,
+                    "pres_check_time_2",
+                    time_hhmm,
+                    entity_id,
+                    "start pressure test",
                 )
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Started pressure test for %s", entity_id)
@@ -518,18 +604,30 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 port_prefix = "uart0" if port == "air_b" else "uart1"
 
                 if baud_rate:
-                    await coordinator.async_write_register(
-                        f"{port_prefix}_baud", baud_map[baud_rate], refresh=False
+                    await _write_register(
+                        coordinator,
+                        f"{port_prefix}_baud",
+                        baud_map[baud_rate],
+                        entity_id,
+                        "set Modbus parameters",
                     )
 
                 if parity:
-                    await coordinator.async_write_register(
-                        f"{port_prefix}_parity", parity_map[parity], refresh=False
+                    await _write_register(
+                        coordinator,
+                        f"{port_prefix}_parity",
+                        parity_map[parity],
+                        entity_id,
+                        "set Modbus parameters",
                     )
 
                 if stop_bits:
-                    await coordinator.async_write_register(
-                        f"{port_prefix}_stop", stop_map[stop_bits], refresh=False
+                    await _write_register(
+                        coordinator,
+                        f"{port_prefix}_stop",
+                        stop_map[stop_bits],
+                        entity_id,
+                        "set Modbus parameters",
                     )
 
                 await coordinator.async_request_refresh()
@@ -550,8 +648,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     char1 = name_bytes[i * 2]
                     char2 = name_bytes[i * 2 + 1]
                     reg_value = (char1 << 8) | char2
-                    await coordinator.async_write_register(
-                        f"device_name_{i + 1}", reg_value, refresh=False
+                    await _write_register(
+                        coordinator,
+                        f"device_name_{i + 1}",
+                        reg_value,
+                        entity_id,
+                        "set device name",
                     )
 
                 await coordinator.async_request_refresh()
@@ -711,6 +813,6 @@ def _get_coordinator_from_entity_id(
     if not entry:
         return None
     return cast(
-        ThesslaGreenModbusCoordinator | None,
+        "ThesslaGreenModbusCoordinator | None",
         hass.data.get(DOMAIN, {}).get(entry.config_entry_id),
     )
