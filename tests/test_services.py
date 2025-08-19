@@ -175,6 +175,13 @@ class ConfigEntryNotReady(Exception):
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
 
 
+class HomeAssistantError(Exception):
+    pass
+
+
+exceptions.HomeAssistantError = HomeAssistantError
+
+
 class AsyncModbusTcpClient:
     pass
 
