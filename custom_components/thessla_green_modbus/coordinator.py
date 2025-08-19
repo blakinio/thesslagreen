@@ -60,13 +60,14 @@ from homeassistant.helpers.update_coordinator import (
 
 from .const import (
     COIL_REGISTERS,
+    DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
     DISCRETE_INPUT_REGISTERS,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
-    MODEL,
     SENSOR_UNAVAILABLE,
+    UNKNOWN_MODEL,
 )
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_client import ThesslaGreenModbusClient
@@ -234,7 +235,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",
                     self.device_scan_result.get("register_count", 0),
-                    self.device_info.get("model", "Unknown"),
+                    self.device_info.get("model", UNKNOWN_MODEL),
                     self.device_info.get("firmware", "Unknown"),
                 )
             except asyncio.CancelledError:
@@ -257,8 +258,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Load all registers if forced
             self._load_full_register_list()
 
-        model = self.device_info.get("model", "Unknown")
+        model = self.device_info.get("model", UNKNOWN_MODEL)
         firmware = self.device_info.get("firmware", "Unknown")
+        # Warn when any key identification fields are missing
+        if model == UNKNOWN_MODEL or firmware == "Unknown":
         missing: list[str] = []
         if model == "Unknown":
             missing.append("model")
@@ -319,8 +322,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.device_info.clear()
         self.device_info.update(
             {
-                "device_name": f"ThesslaGreen {MODEL}",
-                "model": MODEL,
+                "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
+                "model": UNKNOWN_MODEL,
                 "firmware": "Unknown",
                 "serial_number": "Unknown",
             }
@@ -1158,7 +1161,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             identifiers={(DOMAIN, f"{self.host}:{self.port}:{self.slave_id}")},
             name=self.device_name,
             manufacturer=MANUFACTURER,
-            model=self.device_info.get("model", MODEL),
+            model=self.device_info.get("model", UNKNOWN_MODEL),
             sw_version=self.device_info.get("firmware", "Unknown"),
             configuration_url=f"http://{self.host}",
         )
