@@ -654,7 +654,7 @@ async def test_scan_device_firmware_unavailable(caplog):
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
-            caplog.set_level(logging.ERROR)
+            caplog.set_level(logging.WARNING)
             result = await scanner.scan_device()
 
     assert result["device_info"]["firmware"] == "Unknown"
@@ -678,6 +678,50 @@ async def test_scan_device_firmware_bulk_fallback():
             return [85]
         if count == 1 and address == INPUT_REGISTERS["version_patch"]:
             return [0]
+        return [1] * count
+
+    async def fake_read_holding(client, address, count, **kwargs):
+        return [1] * count
+
+    async def fake_read_coil(client, address, count):
+        return [False] * count
+
+    async def fake_read_discrete(client, address, count):
+        return [False] * count
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
+
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+        ):
+            result = await scanner.scan_device()
+
+    assert result["device_info"]["firmware"] == "4.85.0"
+
+
+async def test_scan_device_firmware_partial_bulk_fallback():
+    """Partial firmware bulk read should fall back to individual reads."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with patch.object(
+        ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+
+    async def fake_read_input(client, address, count, *, skip_cache=False):
+        if address == 0 and count == 30:
+            return [4, 85]
+        if count == 1 and address == INPUT_REGISTERS["version_patch"]:
+            return [0]
+        if count == 1 and address == INPUT_REGISTERS["version_major"]:
+            return [4]
+        if count == 1 and address == INPUT_REGISTERS["version_minor"]:
+            return [85]
         return [1] * count
 
     async def fake_read_holding(client, address, count, **kwargs):

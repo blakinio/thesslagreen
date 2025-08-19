@@ -519,12 +519,21 @@ class ThesslaGreenDeviceScanner:
         info_regs = await self._read_input(client, 0, 30) or []
         major = minor = patch = None
         firmware_err: Exception | None = None
-        try:
-            major = info_regs[INPUT_REGISTERS["version_major"]]
-            minor = info_regs[INPUT_REGISTERS["version_minor"]]
-            patch = info_regs[INPUT_REGISTERS["version_patch"]]
-        except Exception as exc:  # pragma: no cover - best effort
-            firmware_err = exc
+
+        for name in ("version_major", "version_minor", "version_patch"):
+            idx = INPUT_REGISTERS[name]
+            if len(info_regs) > idx:
+                try:
+                    value = info_regs[idx]
+                except Exception as exc:  # pragma: no cover - best effort
+                    firmware_err = exc
+                    continue
+                if name == "version_major":
+                    major = value
+                elif name == "version_minor":
+                    minor = value
+                else:
+                    patch = value
 
         missing_regs: list[str] = []
         if None in (major, minor, patch):
@@ -551,7 +560,6 @@ class ThesslaGreenDeviceScanner:
         if None not in (major, minor, patch):
             device.firmware = f"{major}.{minor}.{patch}"
         else:
-            _LOGGER.error("Failed to read firmware version registers")
             details: list[str] = []
             if missing_regs:
                 details.append("missing " + ", ".join(missing_regs))
