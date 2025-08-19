@@ -6,6 +6,7 @@ import asyncio
 import logging
 from datetime import timedelta
 from importlib import import_module
+from typing import cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
@@ -194,7 +195,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("Unloading ThesslaGreen Modbus integration")
 
     # Unload platforms
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = cast(
+        bool, await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    )
 
     if unload_ok:
         # Shutdown coordinator

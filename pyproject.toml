@@ -102,7 +102,7 @@ warn_unused_ignores = true
 show_error_codes = true
 namespace_packages = true
 explicit_package_bases = true
-exclude = ["tests", "custom_components/thessla_green_modbus"]
+exclude = ["tests"]
 
 [[tool.mypy.overrides]]
 module = [

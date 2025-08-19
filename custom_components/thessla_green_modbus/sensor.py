@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
 
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
@@ -123,7 +123,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         if self._register_name.startswith(TIME_REGISTER_PREFIXES):
             if isinstance(value, int):
                 return f"{value // 60:02d}:{value % 60:02d}"
-            return value
+            return cast(str | float | int, value)
         airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
             CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
         )
@@ -137,13 +137,13 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
                 else "nominal_exhaust_air_flow"
             )
             nominal = self.coordinator.data.get(nominal_key)
-            if nominal:
-                return round((value / nominal) * 100)
+            if isinstance(nominal, (int, float)) and nominal:
+                return round((cast(float, value) / float(nominal)) * 100)
             return None
         value_map = self._sensor_def.get("value_map")
         if value_map is not None:
-            return value_map.get(value, value)
-        return value
+            return cast(float | int | str, value_map.get(value, value))
+        return cast(float | int | str, value)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
