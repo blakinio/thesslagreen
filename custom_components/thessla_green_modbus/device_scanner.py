@@ -28,6 +28,7 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DISCRETE_INPUT_REGISTERS,
     KNOWN_MISSING_REGISTERS,
+    MODEL,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
 )
@@ -157,6 +158,7 @@ class DeviceInfo:
         serial_number: Unique hardware identifier for the unit.
     """
 
+    model: str = MODEL
     device_name: str = "Unknown"
     model: str = "Unknown AirPack"
     firmware: str = "Unknown"
