@@ -1661,6 +1661,20 @@
       },
       "name": "Set Heating Curve"
     },
+    "set_device_name": {
+      "description": "Set device name using only printable ASCII characters (max 16).",
+      "fields": {
+        "device_name": {
+          "description": "Device name (1–16 printable ASCII chars).",
+          "name": "Device Name"
+        }
+      },
+      "name": "Set Device Name"
+    },
+    "refresh_device_data": {
+      "description": "Force immediate data refresh.",
+      "name": "Refresh Device Data"
+    },
     "start_pressure_test": {
       "description": "Starts automatic filter/pressure control test",
       "name": "Start Pressure Test"
