@@ -1189,6 +1189,18 @@
           "winter": "Winter"
         }
       },
+      "serial_number_1": {
+        "name": "Numer seryjny 1"
+      },
+      "serial_number_2": {
+        "name": "Numer seryjny 2"
+      },
+      "serial_number_3": {
+        "name": "Numer seryjny 3"
+      },
+      "serial_number_4": {
+        "name": "Numer seryjny 4"
+      },
       "serial_number_5": {
         "name": "Numer seryjny 5"
       },
