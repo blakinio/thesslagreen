@@ -1064,6 +1064,9 @@
       "bypass_off": {
         "name": "Wyłączenie bypass"
       },
+      "calculated_efficiency": {
+        "name": "Obliczona sprawność"
+      },
       "cf_version": {
         "name": "Wersja modułu CF"
       },

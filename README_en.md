@@ -92,7 +92,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Pressures**: supply, exhaust, differential, alarms
 - **Air quality**: CO₂, VOC, air quality index, humidity
 - **Energy**: consumption, recovery, peak power, average, annual CO₂ reduction (kg)
-- **System**: efficiency, operating hours, filter status, errors
+- **System**: calculated efficiency, operating hours, filter status, errors
 - **Diagnostics**: update time, data quality, statistics
 
 ### Binary sensors (40+ auto detected)
@@ -227,7 +227,7 @@ indicate a configuration or firmware mismatch.
 - ✅ **Advanced systems**: GWC, Bypass, Constant flow
 - ✅ **Diagnostics**: complete error and alarm reporting
 - ✅ **Automation**: full integration with HA services
-- ✅ **Monitoring**: energy efficiency and runtime
+- ✅ **Monitoring**: energy efficiency (`calculated_efficiency` sensor) and runtime
 
 ### Performance
 - **Optimized reads**: register grouping, 60% fewer Modbus calls

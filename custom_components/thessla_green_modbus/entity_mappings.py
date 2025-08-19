@@ -557,6 +557,15 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
+    # Calculated metrics
+    "calculated_efficiency": {
+        "translation_key": "calculated_efficiency",
+        "icon": "mdi:percent",
+        "device_class": getattr(SensorDeviceClass, "EFFICIENCY", "efficiency"),
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "input_registers",
+    },
 }
 
 SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
