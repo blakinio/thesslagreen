@@ -52,9 +52,6 @@
       "bypass": {
         "name": "Bypass"
       },
-      "constant_flow_active": {
-        "name": "Constant Flow Active"
-      },
       "contamination_sensor": {
         "name": "Contamination Sensor"
       },
@@ -988,30 +985,6 @@
       }
     },
     "select": {
-      "bypass_off": {
-        "name": "Bypass Off"
-      },
-      "delta_t_gwc": {
-        "name": "Delta T GWC"
-      },
-      "gwc_regen_period": {
-        "name": "GWC Regeneration Period"
-      },
-      "max_exhaust_air_flow_rate": {
-        "name": "Maximum Exhaust Air Flow Rate"
-      },
-      "max_exhaust_air_flow_rate_gwc": {
-        "name": "Maximum Exhaust Air Flow Rate GWC"
-      },
-      "max_gwc_air_temperature": {
-        "name": "Maximum GWC Air Temperature"
-      },
-      "max_supply_air_flow_rate_gwc": {
-        "name": "Maximum Supply Air Flow Rate GWC"
-      },
-      "min_gwc_air_temperature": {
-        "name": "Minimum GWC Air Temperature"
-      },
       "mode": {
         "name": "Mode",
         "state": {
@@ -1020,17 +993,37 @@
           "temporary": "Temporary"
         }
       },
-      "nominal_exhaust_air_flow": {
-        "name": "Nominal Exhaust Air Flow"
+      "bypass_mode": {
+        "name": "Bypass Mode",
+        "state": {
+          "auto": "Automatic",
+          "open": "Open",
+          "closed": "Closed"
+        }
       },
-      "nominal_exhaust_air_flow_gwc": {
-        "name": "Nominal Exhaust Air Flow GWC"
+      "gwc_mode": {
+        "name": "GWC Mode",
+        "state": {
+          "auto": "Automatic",
+          "forced": "Forced",
+          "off": "Off"
+        }
       },
-      "nominal_supply_air_flow": {
-        "name": "Nominal Supply Air Flow"
+      "season_mode": {
+        "name": "Season Mode",
+        "state": {
+          "winter": "Winter",
+          "summer": "Summer"
+        }
       },
-      "nominal_supply_air_flow_gwc": {
-        "name": "Nominal Supply Air Flow GWC"
+      "filter_change": {
+        "name": "Filter Type",
+        "state": {
+          "presostat": "Pressure switch",
+          "flat_filters": "Flat Filters",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
       }
     },
     "sensor": {
@@ -1265,25 +1258,8 @@
       "eco": {
         "name": "Eco"
       },
-      "filter_change": {
-        "name": "Filter Type",
-        "state": {
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure",
-          "flat_filters": "Flat Filters",
-          "presostat": "Pressure switch"
-        }
-      },
       "fireplace": {
         "name": "Fireplace"
-      },
-      "gwc_mode": {
-        "name": "GWC Mode",
-        "state": {
-          "auto": "Automatic",
-          "forced": "Forced",
-          "off": "Off"
-        }
       },
       "hood": {
         "name": "Hood"
@@ -1296,13 +1272,6 @@
       },
       "party": {
         "name": "Party"
-      },
-      "season_mode": {
-        "name": "Season Mode",
-        "state": {
-          "summer": "Summer",
-          "winter": "Winter"
-        }
       },
       "sleep": {
         "name": "Sleep"
@@ -1359,6 +1328,12 @@
     "s_7": "Device status S 7",
     "s_8": "Device status S 8",
     "s_9": "Device status S 9"
+  },
+  "issues": {
+    "modbus_write_failed": {
+      "title": "Modbus write failed",
+      "description": "Unable to write value via Modbus. Check connection and permissions."
+    }
   },
   "options": {
     "step": {
@@ -1660,6 +1635,20 @@
         }
       },
       "name": "Set Heating Curve"
+    },
+    "set_device_name": {
+      "description": "Set device name using only printable ASCII characters (max 16).",
+      "fields": {
+        "device_name": {
+          "description": "Device name (1–16 printable ASCII chars).",
+          "name": "Device Name"
+        }
+      },
+      "name": "Set Device Name"
+    },
+    "refresh_device_data": {
+      "description": "Force immediate data refresh.",
+      "name": "Refresh Device Data"
     },
     "start_pressure_test": {
       "description": "Starts automatic filter/pressure control test",

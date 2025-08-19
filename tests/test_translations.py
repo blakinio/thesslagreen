@@ -117,8 +117,12 @@ from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
 )
 
 SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()]
-BINARY_KEYS = _load_translation_keys(ROOT / "binary_sensor.py", "BINARY_SENSOR_DEFINITIONS")
-SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS")
+BINARY_KEYS = _load_translation_keys(
+    ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS"
+)
+SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") + _load_keys(
+    ROOT / "const.py", "SPECIAL_FUNCTION_MAP"
+)
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
@@ -211,10 +215,13 @@ def test_new_translation_keys_present():
         "air_flow_rate_manual",
         "air_flow_rate_temporary_2",
     ]
-    new_binary_keys = ["constant_flow_active", "water_removal_active"]
+    new_binary_keys = ["water_removal_active"]
+    new_sensor_keys = ["constant_flow_active"]
     for trans in (EN, PL):
         for key in new_keys:
             assert key in trans["entity"]["sensor"]
             assert key in trans["entity"]["number"]
         for key in new_binary_keys:
             assert key in trans["entity"]["binary_sensor"]
+        for key in new_sensor_keys:
+            assert key in trans["entity"]["sensor"]

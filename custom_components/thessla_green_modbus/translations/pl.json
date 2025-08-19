@@ -52,9 +52,6 @@
       "bypass": {
         "name": "Bypass"
       },
-      "constant_flow_active": {
-        "name": "Aktywny stały przepływ"
-      },
       "contamination_sensor": {
         "name": "Czujnik zanieczyszczeń"
       },
@@ -988,30 +985,6 @@
       }
     },
     "select": {
-      "bypass_off": {
-        "name": "Wyłączenie bypass"
-      },
-      "delta_t_gwc": {
-        "name": "Delta T GWC"
-      },
-      "gwc_regen_period": {
-        "name": "Okres regeneracji GWC"
-      },
-      "max_exhaust_air_flow_rate": {
-        "name": "Maximum Exhaust Air Flow Rate"
-      },
-      "max_exhaust_air_flow_rate_gwc": {
-        "name": "Maksymalny przepływ wywiewu GWC"
-      },
-      "max_gwc_air_temperature": {
-        "name": "Maksymalna temperatura powietrza GWC"
-      },
-      "max_supply_air_flow_rate_gwc": {
-        "name": "Maksymalny przepływ nawiewu GWC"
-      },
-      "min_gwc_air_temperature": {
-        "name": "Minimalna temperatura powietrza GWC"
-      },
       "mode": {
         "name": "Tryb pracy",
         "state": {
@@ -1020,17 +993,37 @@
           "temporary": "Tymczasowy"
         }
       },
-      "nominal_exhaust_air_flow": {
-        "name": "Nominalny przepływ wywiewu"
+      "bypass_mode": {
+        "name": "Tryb bypassu",
+        "state": {
+          "auto": "Automatyczny",
+          "open": "Otwarty",
+          "closed": "Zamknięty"
+        }
       },
-      "nominal_exhaust_air_flow_gwc": {
-        "name": "Nominalny przepływ wywiewu GWC"
+      "gwc_mode": {
+        "name": "Tryb GWC",
+        "state": {
+          "auto": "Automatyczny",
+          "forced": "Wymuszony",
+          "off": "Wyłączony"
+        }
       },
-      "nominal_supply_air_flow": {
-        "name": "Nominalny przepływ nawiewu"
+      "season_mode": {
+        "name": "Tryb sezonowy",
+        "state": {
+          "winter": "Zima",
+          "summer": "Lato"
+        }
       },
-      "nominal_supply_air_flow_gwc": {
-        "name": "Nominalny przepływ nawiewu GWC"
+      "filter_change": {
+        "name": "Typ filtra",
+        "state": {
+          "presostat": "Presostat",
+          "flat_filters": "Filtry płaskie",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
       }
     },
     "sensor": {
@@ -1265,25 +1258,8 @@
       "eco": {
         "name": "Eco"
       },
-      "filter_change": {
-        "name": "Filter Type",
-        "state": {
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure",
-          "flat_filters": "Flat Filters",
-          "presostat": "Pressure switch"
-        }
-      },
       "fireplace": {
         "name": "Fireplace"
-      },
-      "gwc_mode": {
-        "name": "GWC Mode",
-        "state": {
-          "auto": "Automatic",
-          "forced": "Forced",
-          "off": "Off"
-        }
       },
       "hood": {
         "name": "Hood"
@@ -1296,13 +1272,6 @@
       },
       "party": {
         "name": "Party"
-      },
-      "season_mode": {
-        "name": "Season Mode",
-        "state": {
-          "summer": "Summer",
-          "winter": "Winter"
-        }
       },
       "sleep": {
         "name": "Sleep"
@@ -1359,6 +1328,12 @@
     "s_7": "Status urządzenia S 7",
     "s_8": "Status urządzenia S 8",
     "s_9": "Status urządzenia S 9"
+  },
+  "issues": {
+    "modbus_write_failed": {
+      "title": "Błąd zapisu Modbus",
+      "description": "Nie można zapisać wartości przez Modbus. Sprawdź połączenie i uprawnienia."
+    }
   },
   "options": {
     "step": {
@@ -1660,6 +1635,20 @@
         }
       },
       "name": "Ustaw krzywą grzewczą"
+    },
+    "set_device_name": {
+      "description": "Ustaw nazwę urządzenia używając wyłącznie drukowalnych znaków ASCII (maks. 16).",
+      "fields": {
+        "device_name": {
+          "description": "Nazwa urządzenia (1–16 drukowalnych znaków ASCII).",
+          "name": "Nazwa urządzenia"
+        }
+      },
+      "name": "Ustaw nazwę urządzenia"
+    },
+    "refresh_device_data": {
+      "description": "Wymuś natychmiastowe odświeżenie danych.",
+      "name": "Odśwież dane urządzenia"
     },
     "start_pressure_test": {
       "description": "Uruchamia automatyczny test kontroli filtrów/ciśnienia",
