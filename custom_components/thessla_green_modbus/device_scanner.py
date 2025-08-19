@@ -158,9 +158,8 @@ class DeviceInfo:
         serial_number: Unique hardware identifier for the unit.
     """
 
-    model: str = MODEL
     device_name: str = "Unknown"
-    model: str = "Unknown AirPack"
+    model: str = MODEL
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
     firmware_available: bool = True
@@ -519,22 +518,25 @@ class ThesslaGreenDeviceScanner:
         # Basic firmware/serial information
         info_regs = await self._read_input(client, 0, 30) or []
         major = minor = patch = None
+        firmware_err: Exception | None = None
         try:
             major = info_regs[INPUT_REGISTERS["version_major"]]
             minor = info_regs[INPUT_REGISTERS["version_minor"]]
             patch = info_regs[INPUT_REGISTERS["version_patch"]]
-        except Exception:  # pragma: no cover - best effort
-            pass
+        except Exception as exc:  # pragma: no cover - best effort
+            firmware_err = exc
 
+        missing_regs: list[str] = []
         if None in (major, minor, patch):
             for name, value in (
                 ("version_major", major),
                 ("version_minor", minor),
                 ("version_patch", patch),
             ):
-                if value is None:
+                if value is None and name in INPUT_REGISTERS:
+                    addr = INPUT_REGISTERS[name]
                     single = await self._read_input(
-                        client, INPUT_REGISTERS[name], 1, skip_cache=True
+                        client, addr, 1, skip_cache=True
                     )
                     if single:
                         if name == "version_major":
@@ -543,11 +545,21 @@ class ThesslaGreenDeviceScanner:
                             minor = single[0]
                         else:
                             patch = single[0]
+                    else:
+                        missing_regs.append(f"{name} (0x{addr:04X})")
 
         if None not in (major, minor, patch):
             device.firmware = f"{major}.{minor}.{patch}"
         else:  # pragma: no cover - best effort
-            _LOGGER.error("Failed to read firmware version registers")
+            details: list[str] = []
+            if missing_regs:
+                details.append("missing " + ", ".join(missing_regs))
+            if firmware_err is not None:
+                details.append(str(firmware_err))
+            msg = "Failed to read firmware version registers"
+            if details:
+                msg += ": " + "; ".join(details)
+            _LOGGER.warning(msg)
             device.firmware_available = False
         try:
             start = INPUT_REGISTERS["serial_number_1"]
@@ -1054,6 +1066,17 @@ class ThesslaGreenDeviceScanner:
             if end < exist_end:
                 self._unsupported_holding_ranges[(end + 1, exist_end)] = exist_code
         self._unsupported_holding_ranges[(start, end)] = code
+    def _mark_input_unsupported(self, start: int, end: int, code: int | None) -> None:
+        """Cache unsupported input register range, merging overlaps."""
+
+        for (old_start, old_end), _ in list(self._unsupported_input_ranges.items()):
+            if end < old_start or start > old_end:
+                continue
+            del self._unsupported_input_ranges[(old_start, old_end)]
+            start = min(start, old_start)
+            end = max(end, old_end)
+
+        self._unsupported_input_ranges[(start, end)] = code or 0
 
     async def _read_input(
         self,
@@ -1102,7 +1125,7 @@ class ThesslaGreenDeviceScanner:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
                         self._failed_input.update(range(start, end + 1))
-                        self._unsupported_input_ranges[(start, end)] = code or 0
+                        self._mark_input_unsupported(start, end, code)
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
@@ -1169,7 +1192,7 @@ class ThesslaGreenDeviceScanner:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
                         self._failed_input.update(range(start, end + 1))
-                        self._unsupported_input_ranges[(start, end)] = code or 0
+                        self._mark_input_unsupported(start, end, code)
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
