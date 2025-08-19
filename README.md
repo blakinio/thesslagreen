@@ -113,6 +113,15 @@ urządzenie. Jeśli po aktualizacji firmware pojawią się nowe rejestry,
 ponownie uruchom skanowanie (np. usuń i dodaj integrację), aby
 zaktualizować listę `available_registers`.
 
+> 🔎 Wiele wykrytych rejestrów to bloki konfiguracji lub wartości
+> wielorejestrowe, które nie mają bezpośredniego odwzorowania na encje
+> Home Assistant. Domyślnie integracja udostępnia tylko rejestry
+> zdefiniowane w [`entity_mappings.py`](custom_components/thessla_green_modbus/entity_mappings.py).
+> Włączenie opcji **Pełna lista rejestrów** (`force_full_register_list`)
+> tworzy encje dla każdego znalezionego rejestru, lecz może ujawnić
+> niekompletne dane lub pola konfiguracyjne – używaj jej ostrożnie.
+> [Więcej informacji](docs/register_scanning.md).
+
 ### Pełny skan rejestrów
 Dostępny jest serwis `thessla_green_modbus.scan_all_registers`, który wykonuje
 pełne skanowanie wszystkich rejestrów (`full_register_scan=True`) i zwraca
