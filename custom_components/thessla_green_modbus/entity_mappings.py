@@ -165,10 +165,6 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
     number_configs.update(NUMBER_OVERRIDES)
     return number_configs
 
-    """Load number entity configurations from CSV data."""
-    from .data.modbus_registers import get_register_info, get_register_infos
-    from .registers import HOLDING_REGISTERS
-
 # Manual overrides for number entities (icons, custom units, etc.)
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Temperature control
@@ -232,7 +228,7 @@ def _load_discrete_mappings() -> tuple[
         if not states:
             continue
         access = (info.get("access") or "").upper()
-        cfg = {"translation_key": reg, "register_type": "holding_registers"}
+        cfg: dict[str, Any] = {"translation_key": reg, "register_type": "holding_registers"}
         if len(states) == 2 and set(states.values()) == {0, 1}:
             if "W" in access:
                 switch_configs[reg] = cfg
@@ -258,45 +254,6 @@ def _load_discrete_mappings() -> tuple[
 
     return binary_configs, switch_configs, select_configs
 
-    # Automatically add all remaining writable numeric registers from CSV
-    for register in HOLDING_REGISTERS:
-        if register in number_configs:
-            continue
-
-        info = get_register_info(register)
-        if not info:
-            continue
-
-        access = info.get("access", "") or ""
-        if "W" not in access:
-            continue
-
-        min_val = info.get("min")
-        max_val = info.get("max")
-        if min_val is None or max_val is None:
-            continue
-
-        # Skip binary or enumerated registers; handled elsewhere
-        if max_val <= 1:
-            continue
-        if (
-            info.get("information")
-            and ";" in info.get("information")
-            and max_val <= 10
-        ):
-            continue
-
-        unit = info.get("unit")
-        number_configs[register] = {
-            "unit": unit,
-            "icon": _infer_icon(register, unit),
-            "min": min_val,
-            "max": max_val,
-            "step": info.get("step", info.get("scale", 1)),
-            "scale": info.get("scale", 1),
-        }
-
-    return number_configs
 
 
 # ---------------------------------------------------------------------------
