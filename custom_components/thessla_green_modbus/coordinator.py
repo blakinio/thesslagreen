@@ -262,9 +262,34 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         firmware = self.device_info.get("firmware", "Unknown")
         # Warn when any key identification fields are missing
         if model == UNKNOWN_MODEL or firmware == "Unknown":
+        missing: list[str] = []
+        if model == "Unknown":
+            missing.append("model")
+            _LOGGER.debug(
+                "Device model missing for %s:%s%s",
+                self.host,
+                self.port,
+                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+            )
+        if firmware == "Unknown":
+            missing.append("firmware")
+            _LOGGER.debug(
+                "Device firmware missing for %s:%s%s",
+                self.host,
+                self.port,
+                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+            )
+        if missing:
+            device_details = f"{self.host}:{self.port}"
+            if self.slave_id is not None:
+                device_details += f", slave {self.slave_id}"
+            missing_str = " and ".join(missing)
             _LOGGER.warning(
-                "Device model or firmware could not be determined. "
-                "Verify Modbus connectivity or ensure your firmware is supported."
+                "Device %s missing %s (%s). "
+                "Verify Modbus connectivity or ensure your firmware is supported.",
+                self._device_name,
+                missing_str,
+                device_details,
             )
 
         # Pre-compute register groups for batch reading
