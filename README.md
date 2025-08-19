@@ -138,7 +138,7 @@ Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów oraz ost
 - **Ciśnienia**: Nawiew, wywiew, różnicowe, alarmy
 - **Jakość powietrza**: CO2, VOC, indeks jakości, wilgotność
 - **Energie**: Zużycie, odzysk, moc szczytowa, średnia, roczna redukcja CO2 (kg)
-- **System**: Sprawność, godziny pracy, status filtrów, błędy
+- **System**: Obliczona sprawność, godziny pracy, status filtrów, błędy
 - **Diagnostyka**: Czas aktualizacji, jakość danych, statystyki
 
 ### Sensory binarne (40+ automatycznie wykrywanych)
@@ -394,7 +394,7 @@ podłączenie i wersję firmware.
 - ✅ **Systemy zaawansowane**: GWC, Bypass, Stały przepływ
 - ✅ **Diagnostyka**: Kompletne raportowanie błędów i alarmów
 - ✅ **Automatyzacja**: Pełna integracja z serwisami HA
-- ✅ **Monitoring**: Wydajność energetyczna i czas pracy
+- ✅ **Monitoring**: Wydajność energetyczna (`sensor.calculated_efficiency`) i czas pracy
 
 ### Wydajność
 - **Optymalizowane odczyty**: Grupowanie rejestrów, 60% mniej wywołań Modbus

@@ -211,7 +211,7 @@ automation:
 
 ### 2. Add to Energy Dashboard
 - Monitor power consumption estimates
-- Track ventilation efficiency
+- Track ventilation efficiency (`sensor.calculated_efficiency`)
 - Compare seasonal performance
 
 ### 3. Advanced Configuration

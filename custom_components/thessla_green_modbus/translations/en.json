@@ -1052,6 +1052,12 @@
       "bypass_off": {
         "name": "Bypass Off"
       },
+      "calculated_efficiency": {
+        "name": "Calculated Efficiency"
+      },
+      "cf_version": {
+        "name": "CF Module Version"
+      },
       "comfort_mode": {
         "name": "Comfort Mode Status"
       },
