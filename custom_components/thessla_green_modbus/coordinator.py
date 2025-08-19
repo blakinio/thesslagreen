@@ -417,10 +417,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.exception("Unexpected error setting up Modbus client: %s", exc)
             return False
 
-    async def async_ensure_client(self) -> bool:
-        """Public wrapper ensuring the Modbus client is connected."""
-        return await self._async_setup_client()
-
     async def _ensure_connection(self) -> None:
         """Ensure Modbus connection is established."""
         if self.client and self.client.connected:
