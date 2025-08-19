@@ -350,6 +350,48 @@ async def test_read_holding_skip_cache_reads_unsupported_range():
     call_mock.assert_awaited_once()
 
 
+async def test_single_read_clears_failed_holding_cache():
+    """Successful single reads remove addresses from cached failure ranges."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    client = AsyncMock()
+    scanner._mark_holding_unsupported(0x0300, 0x0302, 1)
+    scanner._failed_holding.update({0x0300, 0x0301, 0x0302})
+
+    response = MagicMock()
+    response.isError.return_value = False
+    response.registers = [55]
+
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(return_value=response),
+    ) as call_mock:
+        result = await scanner._read_holding(client, 0x0301, 1, skip_cache=True)
+
+    assert result == [55]
+    call_mock.assert_awaited_once()
+    assert 0x0301 not in scanner._failed_holding
+    assert (0x0300, 0x0300) in scanner._unsupported_holding_ranges
+    assert (0x0302, 0x0302) in scanner._unsupported_holding_ranges
+    assert all(
+        not (start <= 0x0301 <= end)
+        for start, end in scanner._unsupported_holding_ranges
+    )
+
+
+async def test_log_skipped_ranges_no_overlap(caplog):
+    """Logged skipped ranges should not contain overlaps."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    scanner._mark_holding_unsupported(0x0400, 0x0404, 1)
+    scanner._mark_holding_unsupported(0x0402, 0x0406, 2)
+
+    with caplog.at_level(logging.WARNING):
+        scanner._log_skipped_ranges()
+
+    assert "0x0400-0x0401 (exception code 1)" in caplog.text
+    assert "0x0402-0x0406 (exception code 2)" in caplog.text
+    assert "0x0400-0x0404" not in caplog.text
+
+
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)

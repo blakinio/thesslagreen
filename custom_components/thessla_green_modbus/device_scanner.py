@@ -1042,6 +1042,30 @@ class ThesslaGreenDeviceScanner:
                 if address + 1 <= end:
                     self._unsupported_input_ranges[(address + 1, end)] = code
 
+    def _mark_holding_supported(self, address: int) -> None:
+        """Remove address from cached unsupported holding ranges after success."""
+        self._failed_holding.discard(address)
+        for (start, end), code in list(self._unsupported_holding_ranges.items()):
+            if start <= address <= end:
+                del self._unsupported_holding_ranges[(start, end)]
+                if start <= address - 1:
+                    self._unsupported_holding_ranges[(start, address - 1)] = code
+                if address + 1 <= end:
+                    self._unsupported_holding_ranges[(address + 1, end)] = code
+
+    def _mark_holding_unsupported(self, start: int, end: int, code: int) -> None:
+        """Track unsupported holding register range without overlaps."""
+        for (exist_start, exist_end), exist_code in list(
+            self._unsupported_holding_ranges.items()
+        ):
+            if exist_end < start or exist_start > end:
+                continue
+            del self._unsupported_holding_ranges[(exist_start, exist_end)]
+            if exist_start < start:
+                self._unsupported_holding_ranges[(exist_start, start - 1)] = exist_code
+            if end < exist_end:
+                self._unsupported_holding_ranges[(end + 1, exist_end)] = exist_code
+        self._unsupported_holding_ranges[(start, end)] = code
     def _mark_input_unsupported(self, start: int, end: int, code: int | None) -> None:
         """Cache unsupported input register range, merging overlaps."""
 
@@ -1249,8 +1273,10 @@ class ThesslaGreenDeviceScanner:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
                         self._failed_holding.update(range(start, end + 1))
-                        self._unsupported_holding_ranges[(start, end)] = code or 0
+                        self._mark_holding_unsupported(start, end, code or 0)
                         return None
+                    if skip_cache and count == 1:
+                        self._mark_holding_supported(address)
                     if address in self._holding_failures:
                         del self._holding_failures[address]
                     return response.registers
