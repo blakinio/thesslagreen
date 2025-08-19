@@ -31,7 +31,7 @@ async def test_input_range_read_after_block_failure():
             return SimpleNamespace(registers=[1], isError=lambda: False)
         return None
 
-    async def fake_read_holding(client, address, count):
+    async def fake_read_holding(client, address, count, **kwargs):
         return [0]
 
     async def fake_read_coil(client, address, count):

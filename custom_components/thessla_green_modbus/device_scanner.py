@@ -560,7 +560,8 @@ class ThesslaGreenDeviceScanner:
 
             for addr in range(0, holding_max + 1):
                 scanned_registers["holding_registers"] += 1
-                data = await self._read_holding(client, addr, 1)
+                # Re-probe each address individually, ignoring previous cache
+                data = await self._read_holding(client, addr, 1, skip_cache=True)
                 if not data:
                     continue
                 name = self._registers.get("03", {}).get(addr)
@@ -643,7 +644,10 @@ class ThesslaGreenDeviceScanner:
                         if addr not in holding_info:
                             continue
                         name, size = holding_info[addr]
-                        single = await self._read_holding(client, addr, size)
+                        # Retry individual register ignoring cached failures
+                        single = await self._read_holding(
+                            client, addr, size, skip_cache=True
+                        )
                         if single and self._is_valid_register_value(name, single[0]):
                             self.available_registers["holding_registers"].add(name)
                     continue
@@ -1128,18 +1132,29 @@ class ThesslaGreenDeviceScanner:
         client: "AsyncModbusTcpClient",
         address: int,
         count: int,
+        *,
+        skip_cache: bool = False,
     ) -> list[int] | None:
-        """Read holding registers with retry, backoff and failure tracking."""
+        """Read holding registers with retry, backoff and failure tracking.
+
+        ``skip_cache`` is used when probing individual registers after a block
+        read failed. When ``True`` the cached sets of unsupported ranges and
+        failed registers are ignored, allowing each register to be queried
+        once before being cached again.
+        """
         start = address
         end = address + count - 1
 
-        for skip_start, skip_end in self._unsupported_holding_ranges:
-            if skip_start <= start and end <= skip_end:
-                return None
+        if not skip_cache:
+            for skip_start, skip_end in self._unsupported_holding_ranges:
+                if skip_start <= start and end <= skip_end:
+                    return None
 
-        if address in self._failed_holding:
-            _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
-            return None
+            if address in self._failed_holding:
+                _LOGGER.debug(
+                    "Skipping cached failed holding register 0x%04X", address
+                )
+                return None
 
         failures = self._holding_failures.get(address, 0)
         if failures >= self.retry:
