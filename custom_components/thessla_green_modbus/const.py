@@ -20,6 +20,8 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "thessla_green_modbus"
 MANUFACTURER = "ThesslaGreen"
 MODEL = "AirPack Home Series 4"
+# Fallback model name used when the unit does not report one
+UNKNOWN_MODEL = "Unknown"
 
 # Connection defaults
 DEFAULT_NAME = "ThesslaGreen"

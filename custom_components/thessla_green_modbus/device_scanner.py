@@ -28,9 +28,9 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DISCRETE_INPUT_REGISTERS,
     KNOWN_MISSING_REGISTERS,
-    MODEL,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
+    UNKNOWN_MODEL,
 )
 from .modbus_exceptions import (
     ConnectionException,
@@ -158,9 +158,8 @@ class DeviceInfo:
         serial_number: Unique hardware identifier for the unit.
     """
 
-    model: str = MODEL
     device_name: str = "Unknown"
-    model: str = "Unknown AirPack"
+    model: str = UNKNOWN_MODEL
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
     firmware_available: bool = True
@@ -658,9 +657,9 @@ class ThesslaGreenDeviceScanner:
 
                 for offset, value in enumerate(data):
                     addr = start + offset
-                    if (
-                        name := input_addr_to_name.get(addr)
-                    ) and self._is_valid_register_value(name, value):
+                    if (name := input_addr_to_name.get(addr)) and self._is_valid_register_value(
+                        name, value
+                    ):
                         self.available_registers["input_registers"].add(name)
 
             # Scan Holding Registers in batches
@@ -684,9 +683,7 @@ class ThesslaGreenDeviceScanner:
                             continue
                         name, size = holding_info[addr]
                         # Retry individual register ignoring cached failures
-                        single = await self._read_holding(
-                            client, addr, size, skip_cache=True
-                        )
+                        single = await self._read_holding(client, addr, size, skip_cache=True)
                         if single and self._is_valid_register_value(name, single[0]):
                             self.available_registers["holding_registers"].add(name)
                     continue
@@ -716,16 +713,12 @@ class ThesslaGreenDeviceScanner:
                             continue
                         single = await self._read_coil(client, addr, 1)
                         if single is not None:
-                            self.available_registers["coil_registers"].add(
-                                coil_addr_to_name[addr]
-                            )
+                            self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
                     continue
                 for offset, value in enumerate(data):
                     addr = start + offset
                     if addr in coil_addr_to_name and value is not None:
-                        self.available_registers["coil_registers"].add(
-                            coil_addr_to_name[addr]
-                        )
+                        self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
 
             # Scan Discrete Input Registers in batches
             discrete_addr_to_name: dict[int, str] = {}
@@ -752,9 +745,7 @@ class ThesslaGreenDeviceScanner:
                 for offset, value in enumerate(data):
                     addr = start + offset
                     if addr in discrete_addr_to_name and value is not None:
-                        self.available_registers["discrete_inputs"].add(
-                            discrete_addr_to_name[addr]
-                        )
+                        self.available_registers["discrete_inputs"].add(discrete_addr_to_name[addr])
 
         caps = self._analyze_capabilities()
         device.capabilities = [
@@ -1206,9 +1197,7 @@ class ThesslaGreenDeviceScanner:
                     return None
 
             if address in self._failed_holding:
-                _LOGGER.debug(
-                    "Skipping cached failed holding register 0x%04X", address
-                )
+                _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
                 return None
 
         failures = self._holding_failures.get(address, 0)

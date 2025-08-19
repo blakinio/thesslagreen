@@ -60,13 +60,14 @@ from homeassistant.helpers.update_coordinator import (
 
 from .const import (
     COIL_REGISTERS,
+    DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
     DISCRETE_INPUT_REGISTERS,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
-    MODEL,
     SENSOR_UNAVAILABLE,
+    UNKNOWN_MODEL,
 )
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_client import ThesslaGreenModbusClient
@@ -185,9 +186,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_power_timestamp = dt_util.utcnow()
         self._total_energy = 0.0
 
-    async def _call_modbus(
-        self, func: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> Any:
+    async def _call_modbus(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Wrapper around Modbus calls injecting the slave ID."""
         if not self.client:
             raise ConnectionException("Modbus client is not connected")
@@ -236,7 +235,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",
                     self.device_scan_result.get("register_count", 0),
-                    self.device_info.get("model", "Unknown"),
+                    self.device_info.get("model", UNKNOWN_MODEL),
                     self.device_info.get("firmware", "Unknown"),
                 )
             except asyncio.CancelledError:
@@ -259,9 +258,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Load all registers if forced
             self._load_full_register_list()
 
-        model = self.device_info.get("model", "Unknown")
+        model = self.device_info.get("model", UNKNOWN_MODEL)
         firmware = self.device_info.get("firmware", "Unknown")
-        if model == "Unknown" or firmware == "Unknown":
+        # Warn when any key identification fields are missing
+        if model == UNKNOWN_MODEL or firmware == "Unknown":
             _LOGGER.warning(
                 "Device model or firmware could not be determined. "
                 "Verify Modbus connectivity or ensure your firmware is supported."
@@ -297,8 +297,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.device_info.clear()
         self.device_info.update(
             {
-                "device_name": f"ThesslaGreen {MODEL}",
-                "model": MODEL,
+                "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
+                "model": UNKNOWN_MODEL,
                 "firmware": "Unknown",
                 "serial_number": "Unknown",
             }
@@ -918,7 +918,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["total_energy"] = self._total_energy
             self._last_power_timestamp = now
 
-
         return data
 
     async def async_write_register(
@@ -983,9 +982,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     values = [int(v) for v in value]
                 else:
                     if isinstance(value, (list, tuple)):
-                        _LOGGER.error(
-                            "Register %s expects a single numeric value", register_name
-                        )
+                        _LOGGER.error("Register %s expects a single numeric value", register_name)
                         return False
                     # Apply multiplier if defined and convert to integer for Modbus
                     if register_name in REGISTER_MULTIPLIERS:
@@ -1139,7 +1136,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             identifiers={(DOMAIN, f"{self.host}:{self.port}:{self.slave_id}")},
             name=self.device_name,
             manufacturer=MANUFACTURER,
-            model=self.device_info.get("model", MODEL),
+            model=self.device_info.get("model", UNKNOWN_MODEL),
             sw_version=self.device_info.get("firmware", "Unknown"),
             configuration_url=f"http://{self.host}",
         )
