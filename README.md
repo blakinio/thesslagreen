@@ -15,6 +15,7 @@ Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokoł
 - **📱 Tylko aktywne encje** - tworzy tylko te encje, które są rzeczywiście dostępne
 - **🏠 Kompletna kontrola rekuperatora** - wszystkie tryby pracy, temperatury, przepływy
 - **📊 Pełny monitoring** - wszystkie czujniki, statusy, alarmy, diagnostyka
+- **🔋 Szacowanie zużycia energii** - wbudowane czujniki mocy i energii
 - **💨 Obsługa Constant Flow** - wykrywanie rejestrów `supply_air_flow`, `exhaust_air_flow` oraz procedury HEWR
 - **🌡️ Zaawansowana encja Climate** - pełna kontrola z preset modes i trybami specjalnymi
 - **⚡ Wszystkie funkcje specjalne** - OKAP, KOMINEK, WIETRZENIE, PUSTY DOM, BOOST

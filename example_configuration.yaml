@@ -23,15 +23,6 @@ template:
           {% endif %}
         icon: mdi:chart-line
 
-      - name: "ThesslaGreen Power Consumption"
-        unit_of_measurement: "W"
-        device_class: power
-        state: >
-          {% set supply_voltage = states('sensor.thessla_dac_supply') | float(0) %}
-          {% set exhaust_voltage = states('sensor.thessla_dac_exhaust') | float(0) %}
-          {# Approximate power calculation based on voltage output #}
-          {{ ((supply_voltage + exhaust_voltage) * 25) | round(0) }}
-
       - name: "Sprawnosc rekuperatora"
         unit_of_measurement: "%"
         state: >
@@ -53,10 +44,10 @@ template:
 # Utility meter (optional - for energy tracking)
 utility_meter:
   thessla_daily_energy:
-    source: sensor.thessla_total_power_consumption
+    source: sensor.thessla_total_energy
     cycle: daily
   thessla_monthly_energy:
-    source: sensor.thessla_total_power_consumption
+    source: sensor.thessla_total_energy
     cycle: monthly
 
 # Input boolean for manual controls (optional)

@@ -4,6 +4,7 @@ Pełna integracja Home Assistant dla rekuperatorów ThesslaGreen z komunikacją 
 
 ## Funkcje
 - 📊 **50+ czujników** – temperatury, przepływy, ciśnienia, jakość powietrza, energia i statusy systemu
+- 🔋 **Szacowanie zużycia energii** – wbudowany czujnik mocy i energii całkowitej
 - 🔍 **40+ sensory binarne** – statusy, tryby, wejścia, alarmy i zabezpieczenia
 - 🎛️ **30+ kontrolki** – Climate, Switch, Number, Select i inne do pełnej kontroli urządzenia
 - 🌡️ **Zaawansowana encja Climate** z preset modes i funkcjami specjalnymi

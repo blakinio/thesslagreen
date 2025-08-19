@@ -507,6 +507,23 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "unit": UnitOfElectricPotential.VOLT,
         "register_type": "holding_registers",
     },
+    # Derived power sensors
+    "estimated_power": {
+        "translation_key": "estimated_power",
+        "icon": "mdi:flash",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": "W",
+        "register_type": "calculated",
+    },
+    "total_energy": {
+        "translation_key": "total_energy",
+        "icon": "mdi:counter",
+        "device_class": SensorDeviceClass.ENERGY,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "unit": "kWh",
+        "register_type": "calculated",
+    },
     # Coefficients and intensive settings
     "fan_speed_1_coef": {
         "translation_key": "fan_speed_1_coef",

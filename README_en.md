@@ -15,6 +15,7 @@ The most complete integration for ThesslaGreen AirPack heat recovery units over 
 - **📱 Only active entities** – creates only entities that are really available
 - **🏠 Full control of the unit** – all work modes, temperatures and air flows
 - **📊 Complete monitoring** – all sensors, statuses, alarms and diagnostics
+- **🔋 Energy estimation** – built-in power and total energy sensors
 - **🌡️ Advanced Climate entity** – full HVAC control with preset modes and special modes
 - **⚡ Every special function** – HOOD, FIREPLACE, VENTILATION, EMPTY HOUSE, BOOST
 - **🌿 GWC and Bypass systems** – complete control of additional systems
