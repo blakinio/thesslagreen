@@ -622,6 +622,7 @@ class ThesslaGreenDeviceScanner:
                 input_data = await self._read_input(client, addr, 1, skip_cache=True)
                 if not input_data:
                     continue
+
                 reg_name = self._registers.get("04", {}).get(addr)
                 if reg_name and self._is_valid_register_value(reg_name, input_data[0]):
                     self.available_registers["input_registers"].add(reg_name)
