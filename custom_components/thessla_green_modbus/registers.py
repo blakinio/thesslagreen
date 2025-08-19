@@ -40,11 +40,6 @@ DISCRETE_INPUT_REGISTERS: dict[str, int] = {
 MULTI_REGISTER_SIZES: dict[str, int] = {
     "date_time_1": 4,
     "lock_date_1": 3,
-    "date_time_2": 4,
-    "date_time_3": 4,
-    "date_time_4": 4,
-    "lock_date_2": 3,
-    "lock_date_3": 3,
 }
 
 INPUT_REGISTERS: dict[str, int] = {
