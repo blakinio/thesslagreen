@@ -1101,6 +1101,12 @@
       "dac_supply": {
         "name": "Supply Fan Voltage"
       },
+      "estimated_power": {
+        "name": "Estimated Power"
+      },
+      "total_energy": {
+        "name": "Total Energy"
+      },
       "day_of_week": {
         "name": "Day of Week"
       },

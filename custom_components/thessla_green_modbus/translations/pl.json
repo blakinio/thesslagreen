@@ -1029,12 +1029,6 @@
       }
     },
     "sensor": {
-      "air_flow_rate_manual": {
-        "name": "Ręczny przepływ powietrza"
-      },
-      "air_flow_rate_temporary_2": {
-        "name": "Tymczasowy przepływ powietrza 2"
-      },
       "air_temperature_summer_free_cooling": {
         "name": "Temperatura lato chłodzenie free"
       },
@@ -1043,12 +1037,6 @@
       },
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
-      },
-      "antifreez_mode": {
-        "name": "Antifreeze Mode"
-      },
-      "antifreez_stage": {
-        "name": "Etap antyzamrożeniowy"
       },
       "antifreeze_mode": {
         "name": "Tryb antyzamrożeniowy"
@@ -1094,6 +1082,12 @@
       "dac_supply": {
         "name": "Napięcie wentylatora nawiewnego"
       },
+      "estimated_power": {
+        "name": "Szacowana moc"
+      },
+      "total_energy": {
+        "name": "Całkowita energia"
+      },
       "day_of_week": {
         "name": "Dzień tygodnia"
       },
@@ -1121,15 +1115,6 @@
       "fan_speed_3_coef": {
         "name": "Współczynnik prędkości 3"
       },
-      "filter_change": {
-        "name": "Typ filtrów",
-        "state": {
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure",
-          "flat_filters": "Filtry płaskie",
-          "presostat": "Presostat"
-        }
-      },
       "fpx_temperature": {
         "name": "Temperatura FPX"
       },
@@ -1140,9 +1125,6 @@
           "forced": "Forced",
           "off": "Off"
         }
-      },
-      "gwc_regen_flag": {
-        "name": "Regeneracja GWC aktywna"
       },
       "gwc_temperature": {
         "name": "Temperatura GWC"
@@ -1206,12 +1188,6 @@
           "summer": "Summer",
           "winter": "Winter"
         }
-      },
-      "serial_number_1": {
-        "name": "Numer seryjny część 1"
-      },
-      "serial_number_2": {
-        "name": "Serial Number Part 2"
       },
       "serial_number_5": {
         "name": "Numer seryjny 5"
@@ -1660,6 +1636,10 @@
     "start_pressure_test": {
       "description": "Uruchamia automatyczny test kontroli filtrów/ciśnienia",
       "name": "Rozpocznij test ciśnienia"
+    },
+    "scan_all_registers": {
+      "description": "Wykonaj pełny skan rejestrów Modbus do diagnostyki",
+      "name": "Skanuj wszystkie rejestry"
     }
   },
   "title": "ThesslaGreen Modbus"

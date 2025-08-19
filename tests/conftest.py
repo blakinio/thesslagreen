@@ -82,9 +82,12 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     class SensorDeviceClass:  # pragma: no cover - enum stub
         TEMPERATURE = "temperature"
         VOLTAGE = "voltage"
+        POWER = "power"
+        ENERGY = "energy"
 
     class SensorStateClass:  # pragma: no cover - enum stub
         MEASUREMENT = "measurement"
+        TOTAL_INCREASING = "total_increasing"
 
     class SensorEntity:  # pragma: no cover - simple stub
         pass
@@ -424,6 +427,7 @@ def mock_coordinator():
         "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"},
         "coil_registers": {"power_supply_fans", "bypass"},
         "discrete_inputs": {"expansion", "contamination_sensor"},
+        "calculated": {"estimated_power", "total_energy"},
     }
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()

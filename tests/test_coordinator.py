@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import types
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -507,9 +508,18 @@ def test_post_process_data(coordinator):
         "exhaust_temperature": 250,  # 25.0°C
         "supply_flow_rate": 150,
         "exhaust_flow_rate": 140,
+        "dac_supply": 5.0,
+        "dac_exhaust": 4.0,
     }
 
-    processed_data = coordinator._post_process_data(raw_data)
+    fake_now = datetime(2024, 1, 1, 12, 0, 0)
+    coordinator._last_power_timestamp = fake_now - timedelta(hours=1)
+
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.dt_util.utcnow",
+        return_value=fake_now,
+    ):
+        processed_data = coordinator._post_process_data(raw_data)
 
     # Check calculated efficiency
     assert "calculated_efficiency" in processed_data
@@ -524,6 +534,12 @@ def test_post_process_data(coordinator):
     # Check flow balance status
     assert "flow_balance_status" in processed_data
     assert processed_data["flow_balance_status"] == "supply_dominant"
+
+    # Power estimation
+    assert "estimated_power" in processed_data
+    assert processed_data["estimated_power"] > 0
+    assert "total_energy" in processed_data
+    assert processed_data["total_energy"] > 0
 
 
 @pytest.mark.asyncio

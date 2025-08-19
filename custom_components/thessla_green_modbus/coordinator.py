@@ -152,6 +152,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "holding_registers": set(),
             "coil_registers": set(),
             "discrete_inputs": set(),
+            "calculated": {"estimated_power", "total_energy"},
         }
         # Pre-computed reverse register maps for fast lookups
         self._input_registers_rev = {addr: name for name, addr in INPUT_REGISTERS.items()}
@@ -180,6 +181,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "average_response_time": 0.0,
             "total_registers_read": 0,
         }
+
+        self._last_power_timestamp = dt_util.utcnow()
+        self._total_energy = 0.0
 
     async def _call_modbus(
         self, func: Callable[..., Any], *args: Any, **kwargs: Any
@@ -848,6 +852,33 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         return value
 
+    def calculate_power_consumption(self, data: dict[str, Any]) -> float | None:
+        """Estimate power usage from DAC output voltages."""
+        try:
+            supply = float(data["dac_supply"])
+            exhaust = float(data["dac_exhaust"])
+        except (KeyError, TypeError, ValueError):
+            return None
+
+        heater = float(data.get("dac_heater", 0) or 0)
+        cooler = float(data.get("dac_cooler", 0) or 0)
+
+        def _power(voltage: float, max_power: float) -> float:
+            voltage = max(0.0, min(10.0, voltage))
+            return (voltage / 10) ** 3 * max_power
+
+        fan_max = 80.0
+        heater_max = 2000.0
+        cooler_max = 1000.0
+
+        power = _power(supply, fan_max) + _power(exhaust, fan_max)
+        if heater:
+            power += _power(heater, heater_max)
+        if cooler:
+            power += _power(cooler, cooler_max)
+
+        return power
+
     def _post_process_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Post-process data to calculate derived values."""
         # Calculate heat recovery efficiency if temperatures available
@@ -873,6 +904,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if abs(data["flow_balance"]) < 10
                 else "supply_dominant" if data["flow_balance"] > 0 else "exhaust_dominant"
             )
+        power = self.calculate_power_consumption(data)
+        if power is not None:
+            data["estimated_power"] = power
+            now = dt_util.utcnow()
+            elapsed = (now - self._last_power_timestamp).total_seconds()
+            self._total_energy += power * elapsed / 3600000.0
+            data["total_energy"] = self._total_energy
+            self._last_power_timestamp = now
+
 
         return data
 

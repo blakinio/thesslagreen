@@ -38,10 +38,13 @@ class SensorEntity:  # pragma: no cover - simple stub
 class SensorDeviceClass:  # pragma: no cover - enum stub
     TEMPERATURE = "temperature"
     VOLTAGE = "voltage"
+    POWER = "power"
+    ENERGY = "energy"
 
 
 class SensorStateClass:  # pragma: no cover - enum stub
     MEASUREMENT = "measurement"
+    TOTAL_INCREASING = "total_increasing"
 
 
 sensor_mod.SensorEntity = SensorEntity
@@ -77,5 +80,8 @@ def test_sensor_register_mapping() -> None:
         elif register_type == "holding_registers":
             assert register_name in registers.HOLDING_REGISTERS
             assert register_name not in registers.INPUT_REGISTERS
+        elif register_type == "calculated":
+            assert register_name not in registers.INPUT_REGISTERS
+            assert register_name not in registers.HOLDING_REGISTERS
         else:
             pytest.fail(f"Unknown register_type {register_type} for {register_name}")

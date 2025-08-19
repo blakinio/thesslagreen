@@ -39,10 +39,13 @@ class SensorEntity:  # pragma: no cover - simple stub
 class SensorDeviceClass:  # pragma: no cover - enum stubs
     TEMPERATURE = "temperature"
     VOLTAGE = "voltage"
+    POWER = "power"
+    ENERGY = "energy"
 
 
 class SensorStateClass:  # pragma: no cover - enum stubs
     MEASUREMENT = "measurement"
+    TOTAL_INCREASING = "total_increasing"
 
 
 sensor_mod.SensorEntity = SensorEntity

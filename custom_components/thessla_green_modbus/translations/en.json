@@ -1029,12 +1029,6 @@
       }
     },
     "sensor": {
-      "air_flow_rate_manual": {
-        "name": "Manual Airflow Rate"
-      },
-      "air_flow_rate_temporary_2": {
-        "name": "Temporary Airflow Rate 2"
-      },
       "air_temperature_summer_free_cooling": {
         "name": "Air Temperature Summer Free Cooling"
       },
@@ -1043,12 +1037,6 @@
       },
       "ambient_temperature": {
         "name": "Ambient Temperature"
-      },
-      "antifreez_mode": {
-        "name": "Antifreeze Mode"
-      },
-      "antifreez_stage": {
-        "name": "Antifreeze Stage"
       },
       "antifreeze_mode": {
         "name": "Antifreeze Mode"
@@ -1094,6 +1082,12 @@
       "dac_supply": {
         "name": "Supply Fan Voltage"
       },
+      "estimated_power": {
+        "name": "Estimated Power"
+      },
+      "total_energy": {
+        "name": "Total Energy"
+      },
       "day_of_week": {
         "name": "Day of Week"
       },
@@ -1121,15 +1115,6 @@
       "fan_speed_3_coef": {
         "name": "Fan Speed 3 Coefficient"
       },
-      "filter_change": {
-        "name": "Filter Type",
-        "state": {
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure",
-          "flat_filters": "Flat Filters",
-          "presostat": "Pressure switch"
-        }
-      },
       "fpx_temperature": {
         "name": "FPX Temperature"
       },
@@ -1140,9 +1125,6 @@
           "forced": "Forced",
           "off": "Off"
         }
-      },
-      "gwc_regen_flag": {
-        "name": "GWC Regeneration Active"
       },
       "gwc_temperature": {
         "name": "GWC Temperature"
@@ -1206,12 +1188,6 @@
           "summer": "Summer",
           "winter": "Winter"
         }
-      },
-      "serial_number_1": {
-        "name": "Serial Number Part 1"
-      },
-      "serial_number_2": {
-        "name": "Serial Number Part 2"
       },
       "serial_number_5": {
         "name": "Serial Number 5"
@@ -1660,6 +1636,10 @@
     "start_pressure_test": {
       "description": "Starts automatic filter/pressure control test",
       "name": "Start Pressure Test"
+    },
+    "scan_all_registers": {
+      "description": "Perform full Modbus register scan for diagnostics",
+      "name": "Scan All Registers"
     }
   },
   "title": "ThesslaGreen Modbus"

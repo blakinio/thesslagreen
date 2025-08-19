@@ -93,10 +93,13 @@ sensor_mod = types.ModuleType("homeassistant.components.sensor")
 class SensorDeviceClass:  # pragma: no cover - enum stub
     TEMPERATURE = "temperature"
     VOLTAGE = "voltage"
+    POWER = "power"
+    ENERGY = "energy"
 
 
 class SensorStateClass:  # pragma: no cover - enum stub
     MEASUREMENT = "measurement"
+    TOTAL_INCREASING = "total_increasing"
 
 
 sensor_mod.SensorDeviceClass = SensorDeviceClass
