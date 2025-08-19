@@ -32,6 +32,18 @@ template:
           {# Approximate power calculation based on voltage output #}
           {{ ((supply_voltage + exhaust_voltage) * 25) | round(0) }}
 
+      - name: "Sprawnosc rekuperatora"
+        unit_of_measurement: "%"
+        state: >
+          {% set supply  = states('sensor.thessla_supply_temperature')  | float(0) %}
+          {% set outside = states('sensor.thessla_outside_temperature') | float(0) %}
+          {% set exhaust = states('sensor.thessla_exhaust_temperature') | float(0) %}
+          {% if exhaust != outside %}
+            {{ ((supply - outside) / (exhaust - outside) * 100) | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+
   - binary_sensor:
       - name: "ThesslaGreen Winter Mode"
         state: >
