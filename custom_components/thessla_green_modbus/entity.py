@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    CONF_AIRFLOW_UNIT,
+    DEFAULT_AIRFLOW_UNIT,
+    AIRFLOW_RATE_REGISTERS,
+    AIRFLOW_UNIT_M3H,
+)  # noqa: F401
 from .coordinator import ThesslaGreenModbusCoordinator
 
 
@@ -24,15 +30,11 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         """Return unique ID for this entity."""
         host = self.coordinator.host.replace(":", "-")
 
-        base = f"{DOMAIN}_{host}_{self.coordinator.port}_{self.coordinator.slave_id}_{self._key}"
-        airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
+        base = (
+            f"{DOMAIN}_{host}_{self.coordinator.port}_"
+            f"{self.coordinator.slave_id}_{self._key}"
         )
-        if self._key in AIRFLOW_RATE_REGISTERS and airflow_unit == AIRFLOW_UNIT_M3H:
-            return f"{base}_m3h"
         return base
-
-        return f"{DOMAIN}_{host}_{self.coordinator.port}_{self.coordinator.slave_id}_{self._key}"
 
 
     @property
