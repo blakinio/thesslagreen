@@ -5,12 +5,6 @@ from __future__ import annotations
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN,
-    CONF_AIRFLOW_UNIT,
-    DEFAULT_AIRFLOW_UNIT,
-    AIRFLOW_RATE_REGISTERS,
-    AIRFLOW_UNIT_M3H,
-)  # noqa: F401
     AIRFLOW_RATE_REGISTERS,
     AIRFLOW_UNIT_M3H,
     CONF_AIRFLOW_UNIT,

@@ -56,11 +56,11 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
         raw_ids = list(raw_ids)
 
     mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
-    mapped_call = ServiceCall(
-        getattr(call, "domain", DOMAIN),
-        getattr(call, "service", ""),
-        {**call.data, "entity_id": mapped_ids},
-        getattr(call, "context", None),
+    mapped_call = call.__class__(
+        domain=getattr(call, "domain", DOMAIN),
+        service=getattr(call, "service", ""),
+        data={**call.data, "entity_id": mapped_ids},
+        context=getattr(call, "context", None),
     )
     return async_extract_entity_ids(hass, mapped_call)
 
@@ -560,6 +560,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Refreshed device data for %s", entity_id)
 
+    async def get_unknown_registers(call: ServiceCall) -> None:
+        """Service to emit unknown registers via an event."""
+        entity_ids = _extract_legacy_entity_ids(hass, call)
+        for entity_id in entity_ids:
+            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
+            if coordinator:
+                hass.bus.async_fire(
+                    f"{DOMAIN}_unknown_registers",
+                    {
+                        "entity_id": entity_id,
+                        "unknown_registers": coordinator.unknown_registers,
+                        "scanned_registers": coordinator.scanned_registers,
+                    },
+                )
+
     # Register all services
     hass.services.async_register(
         DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
@@ -594,6 +609,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
     )
+    hass.services.async_register(
+        DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
+    )
 
     _LOGGER.info("ThesslaGreen Modbus services registered successfully")
 
@@ -613,6 +631,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         "set_modbus_parameters",
         "set_device_name",
         "refresh_device_data",
+        "get_unknown_registers",
     ]
 
     for service in services:

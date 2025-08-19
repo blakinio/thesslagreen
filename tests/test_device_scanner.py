@@ -656,6 +656,47 @@ async def test_scan_blocks_propagated():
     assert result["scan_blocks"] == expected_blocks
 
 
+async def test_full_register_scan_collects_unknown_registers():
+    """Ensure full register scan returns unknown registers and statistics."""
+    reg_map = {"04": {0: "ir0", 2: "ir2"}, "03": {0: "hr0", 2: "hr2"}, "01": {}, "02": {}}
+    with patch.object(
+        ThesslaGreenDeviceScanner,
+        "_load_registers",
+        AsyncMock(return_value=(reg_map, {}, {})),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create(
+            "192.168.1.1", 502, 10, full_register_scan=True
+        )
+
+        async def fake_read_input(client, address, count, **kwargs):
+            return [address]
+
+        async def fake_read_holding(client, address, count, **kwargs):
+            return [address + 10]
+
+        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.connect.return_value = True
+            mock_client.read_input_registers = AsyncMock(
+                return_value=MagicMock(isError=lambda: False, registers=[0])
+            )
+            mock_client_class.return_value = mock_client
+
+            with (
+                patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+                patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+                patch.object(scanner, "_read_coil", AsyncMock(return_value=[False])),
+                patch.object(scanner, "_read_discrete", AsyncMock(return_value=[False])),
+                patch.object(scanner, "_is_valid_register_value", return_value=True),
+            ):
+                result = await scanner.scan_device()
+
+    assert result["unknown_registers"]["input_registers"] == {1: 1}
+    assert result["unknown_registers"]["holding_registers"] == {1: 11}
+    assert result["scanned_registers"]["input_registers"] == 3
+    assert result["scanned_registers"]["holding_registers"] == 3
+
+
 async def test_scan_device_batch_fallback():
     """Batch read failures should fall back to single-register reads."""
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
