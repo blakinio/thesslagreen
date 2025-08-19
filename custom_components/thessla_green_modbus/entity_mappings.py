@@ -40,6 +40,7 @@ except Exception:  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
 from .const import SPECIAL_FUNCTION_MAP
+from .registers import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -805,6 +806,31 @@ BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "register_type": "holding_registers",
     },
 }
+
+# Dynamically extend binary sensor mappings with alarm/error and S_/E_ registers
+for _reg in ["alarm", "error"]:
+    if _reg in HOLDING_REGISTERS:
+        BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
+            _reg,
+            {
+                "translation_key": _reg,
+                "icon": "mdi:alert-circle",
+                "device_class": BinarySensorDeviceClass.PROBLEM,
+                "register_type": "holding_registers",
+            },
+        )
+
+for _reg in HOLDING_REGISTERS:
+    if _reg.startswith("s_") or _reg.startswith("e_"):
+        BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
+            _reg,
+            {
+                "translation_key": _reg,
+                "icon": "mdi:alert-circle",
+                "device_class": BinarySensorDeviceClass.PROBLEM,
+                "register_type": "holding_registers",
+            },
+        )
 
 SPECIAL_MODE_ICONS = {
     "boost": "mdi:rocket-launch",

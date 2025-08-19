@@ -56,6 +56,7 @@ from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
     async_setup_entry,
 )
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS  # noqa: E402
 
 
 def test_binary_sensor_creation_and_state(mock_coordinator: MagicMock) -> None:
@@ -110,6 +111,15 @@ def test_binary_sensor_icon_fallback(mock_coordinator: MagicMock) -> None:
     assert sensor_without_icon.icon == "mdi:fan-off"  # nosec B101
 
 
+def test_dynamic_problem_registers_present() -> None:
+    """Ensure alarm/error and S_/E_ registers are mapped."""
+    expected = {"alarm", "error"} | {
+        k for k in HOLDING_REGISTERS if k.startswith("s_") or k.startswith("e_")
+    }
+    for key in expected:
+        assert key in BINARY_SENSOR_DEFINITIONS  # nosec B101
+
+
 @pytest.mark.asyncio
 async def test_async_setup_creates_all_binary_sensors(
     mock_coordinator: MagicMock, mock_config_entry: MagicMock
@@ -134,3 +144,23 @@ async def test_async_setup_creates_all_binary_sensors(
 
     entities = add_entities.call_args[0][0]
     assert len(entities) == len(BINARY_SENSOR_DEFINITIONS)  # nosec B101
+
+
+@pytest.mark.asyncio
+async def test_dynamic_register_entity_creation(
+    mock_coordinator: MagicMock, mock_config_entry: MagicMock
+) -> None:
+    """Dynamic S_/E_ registers should create entities when available."""
+    hass: MagicMock = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    mock_coordinator.available_registers = {
+        "holding_registers": {"alarm", "e_99"},
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "input_registers": set(),
+    }
+    add_entities: MagicMock = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+    created = {entity._register_name for entity in add_entities.call_args[0][0]}
+    assert {"alarm", "e_99"} <= created  # nosec B101

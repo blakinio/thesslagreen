@@ -129,6 +129,15 @@ SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") 
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 REGISTER_KEYS = _load_keys(ROOT / "registers.py", "HOLDING_REGISTERS")
+# Add dynamically generated binary sensor keys from holding registers
+BINARY_KEYS = sorted(
+    set(BINARY_KEYS)
+    | {
+        k
+        for k in REGISTER_KEYS
+        if k in {"alarm", "error"} or k.startswith("s_") or k.startswith("e_")
+    }
+)
 # Error codes translations are not currently enforced
 ERROR_KEYS: list[str] = []
 ISSUE_KEYS = ["modbus_write_failed"]
