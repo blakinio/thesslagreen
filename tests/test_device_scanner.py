@@ -1709,6 +1709,39 @@ async def test_scan_populates_device_name():
     assert result["device_info"]["device_name"] == device_name
 
 
+async def test_scan_reports_diagnostic_registers_on_error():
+    """Diagnostic holding registers are reported even when reads fail."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    scanner._client = object()
+    diag_regs = {"alarm": 0, "error": 1, "e_99": 2, "s_2": 3}
+    scanner._registers = {
+        "04": {},
+        "03": {addr: name for name, addr in diag_regs.items()},
+        "01": {},
+        "02": {},
+    }
+    scanner.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS",
+            diag_regs,
+        ),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+        patch.object(scanner, "_analyze_capabilities", return_value=DeviceCapabilities()),
+    ):
+        result = await scanner.scan()
+
+    assert {"alarm", "error", "e_99", "s_2"} <= result["available_registers"]["holding_registers"]
+
+
 @pytest.mark.parametrize("async_close", [True, False])
 async def test_close_terminates_client(async_close):
     """Ensure close() handles both async and sync client close methods."""
