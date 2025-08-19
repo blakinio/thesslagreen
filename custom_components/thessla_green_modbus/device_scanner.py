@@ -533,7 +533,7 @@ class ThesslaGreenDeviceScanner:
                 ("version_minor", minor),
                 ("version_patch", patch),
             ):
-                if value is None:
+                if value is None and name in INPUT_REGISTERS:
                     addr = INPUT_REGISTERS[name]
                     single = await self._read_input(
                         client, addr, 1, skip_cache=True
@@ -1042,6 +1042,18 @@ class ThesslaGreenDeviceScanner:
                 if address + 1 <= end:
                     self._unsupported_input_ranges[(address + 1, end)] = code
 
+    def _mark_input_unsupported(self, start: int, end: int, code: int | None) -> None:
+        """Cache unsupported input register range, merging overlaps."""
+
+        for (old_start, old_end), _ in list(self._unsupported_input_ranges.items()):
+            if end < old_start or start > old_end:
+                continue
+            del self._unsupported_input_ranges[(old_start, old_end)]
+            start = min(start, old_start)
+            end = max(end, old_end)
+
+        self._unsupported_input_ranges[(start, end)] = code or 0
+
     async def _read_input(
         self,
         client: "AsyncModbusTcpClient",
@@ -1089,7 +1101,7 @@ class ThesslaGreenDeviceScanner:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
                         self._failed_input.update(range(start, end + 1))
-                        self._unsupported_input_ranges[(start, end)] = code or 0
+                        self._mark_input_unsupported(start, end, code)
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
@@ -1156,7 +1168,7 @@ class ThesslaGreenDeviceScanner:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
                         self._failed_input.update(range(start, end + 1))
-                        self._unsupported_input_ranges[(start, end)] = code or 0
+                        self._mark_input_unsupported(start, end, code)
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
