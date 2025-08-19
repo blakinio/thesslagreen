@@ -550,6 +550,8 @@ class ThesslaGreenDeviceScanner:
 
         if None not in (major, minor, patch):
             device.firmware = f"{major}.{minor}.{patch}"
+        else:
+            _LOGGER.error("Failed to read firmware version registers")
         else:  # pragma: no cover - best effort
             details: list[str] = []
             if missing_regs:
