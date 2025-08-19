@@ -342,9 +342,7 @@ async def test_read_holding_skip_cache_reads_unsupported_range():
         "custom_components.thessla_green_modbus.device_scanner._call_modbus",
         AsyncMock(return_value=response),
     ) as call_mock:
-        result = await scanner._read_holding(
-            mock_client, 0x0200, 1, skip_cache=True
-        )
+        result = await scanner._read_holding(mock_client, 0x0200, 1, skip_cache=True)
 
     assert result == [123]
     call_mock.assert_awaited_once()
@@ -372,10 +370,7 @@ async def test_single_read_clears_failed_holding_cache():
     assert 0x0301 not in scanner._failed_holding
     assert (0x0300, 0x0300) in scanner._unsupported_holding_ranges
     assert (0x0302, 0x0302) in scanner._unsupported_holding_ranges
-    assert all(
-        not (start <= 0x0301 <= end)
-        for start, end in scanner._unsupported_holding_ranges
-    )
+    assert all(not (start <= 0x0301 <= end) for start, end in scanner._unsupported_holding_ranges)
 
 
 async def test_log_skipped_ranges_no_overlap(caplog):
@@ -1289,10 +1284,7 @@ async def test_load_registers_duplicate_names(tmp_path):
 async def test_load_registers_skips_none_named_registers(tmp_path):
     """Registers named 'none' or 'none_<num>' should be ignored."""
     csv_content = (
-        "Function_Code,Register_Name,Address_DEC\n"
-        "04,none,1\n"
-        "04,valid_reg,2\n"
-        "04,none_3,3\n"
+        "Function_Code,Register_Name,Address_DEC\n" "04,none,1\n" "04,valid_reg,2\n" "04,none_3,3\n"
     )
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -1898,3 +1890,53 @@ async def test_deep_scan_collects_raw_registers():
     expected = 0x012C - 0x000E + 1
     assert len(result["raw_registers"]) == expected
     assert result["total_addresses_scanned"] == expected
+
+
+async def test_scan_logs_missing_expected_registers(caplog):
+    """Scanner warns when expected registers are not found."""
+
+    input_regs = {
+        "version_major": 0,
+        "version_minor": 1,
+        "version_patch": 2,
+        "serial_number_1": 3,
+        "reg_a": 4,
+    }
+
+    async def fake_read_input(client, address, count, **kwargs):
+        data = [0] * count
+        if address <= 4 < address + count:
+            data[4 - address] = SENSOR_UNAVAILABLE
+        return data
+
+    with (
+        patch("custom_components.thessla_green_modbus.device_scanner.INPUT_REGISTERS", input_regs),
+        patch("custom_components.thessla_green_modbus.device_scanner.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.COIL_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.device_scanner.DISCRETE_INPUT_REGISTERS", {}),
+        patch(
+            "custom_components.thessla_green_modbus.device_scanner.KNOWN_MISSING_REGISTERS",
+            {
+                "input_registers": set(),
+                "holding_registers": set(),
+                "coil_registers": set(),
+                "discrete_inputs": set(),
+            },
+        ),
+    ):
+        scanner = ThesslaGreenDeviceScanner("host", 502)
+        scanner._client = object()
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+            patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+            patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+            patch.object(scanner, "_analyze_capabilities", return_value=DeviceCapabilities()),
+            patch.object(
+                scanner, "_is_valid_register_value", side_effect=lambda n, v: n != "reg_a"
+            ),
+            caplog.at_level(logging.WARNING),
+        ):
+            await scanner.scan()
+
+    assert "reg_a=0x0004" in caplog.text

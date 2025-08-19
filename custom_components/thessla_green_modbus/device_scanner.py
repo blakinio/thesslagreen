@@ -327,7 +327,9 @@ class ThesslaGreenDeviceScanner:
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
-        self._registers, self._register_ranges, self._register_versions = await self._load_registers()
+        self._registers, self._register_ranges, self._register_versions = (
+            await self._load_registers()
+        )
 
     @classmethod
     async def create(
@@ -554,9 +556,7 @@ class ThesslaGreenDeviceScanner:
             ):
                 if value is None and name in INPUT_REGISTERS:
                     addr = INPUT_REGISTERS[name]
-                    single = await self._read_input(
-                        client, addr, 1, skip_cache=True
-                    )
+                    single = await self._read_input(client, addr, 1, skip_cache=True)
                     if single:
                         if name == "version_major":
                             major = single[0]
@@ -622,6 +622,9 @@ class ThesslaGreenDeviceScanner:
                 input_data = await self._read_input(client, addr, 1, skip_cache=True)
                 if not input_data:
                     continue
+                if (
+                    reg_name := self._registers.get("04", {}).get(addr)
+                ) and self._is_valid_register_value(reg_name, input_data[0]):
                 reg_name = self._registers.get("04", {}).get(addr)
                 if reg_name and self._is_valid_register_value(reg_name, input_data[0]):
                     self.available_registers["input_registers"].add(reg_name)
@@ -636,6 +639,9 @@ class ThesslaGreenDeviceScanner:
                 holding_data = await self._read_holding(client, addr, 1, skip_cache=True)
                 if not holding_data:
                     continue
+                if (
+                    reg_name := self._registers.get("03", {}).get(addr)
+                ) and self._is_valid_register_value(reg_name, holding_data[0]):
                 reg_name = self._registers.get("03", {}).get(addr)
                 if reg_name and self._is_valid_register_value(reg_name, holding_data[0]):
                     self.available_registers["holding_registers"].add(reg_name)
@@ -878,6 +884,36 @@ class ThesslaGreenDeviceScanner:
                 for offset, value in enumerate(data):
                     raw_registers[start + offset] = value
 
+        # Determine expected registers that were not successfully read
+        register_maps = {
+            "input_registers": INPUT_REGISTERS,
+            "holding_registers": HOLDING_REGISTERS,
+            "coil_registers": COIL_REGISTERS,
+            "discrete_inputs": DISCRETE_INPUT_REGISTERS,
+        }
+        missing_registers: dict[str, dict[str, int]] = {}
+        for reg_type, mapping in register_maps.items():
+            missing: dict[str, int] = {}
+            for name, addr in mapping.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS[reg_type]:
+                    continue
+                if name not in self.available_registers[reg_type]:
+                    missing[name] = addr
+            if missing:
+                missing_registers[reg_type] = missing
+
+        if missing_registers:
+            details = []
+            for reg_type, regs in missing_registers.items():
+                formatted = ", ".join(
+                    f"{name}=0x{addr:04X}"
+                    for name, addr in sorted(regs.items(), key=lambda item: item[1])
+                )
+                details.append(f"{reg_type}: {formatted}")
+            _LOGGER.warning(
+                "The following registers were not found during scan: %s", "; ".join(details)
+            )
+
         result = {
             "available_registers": self.available_registers,
             "device_info": device.as_dict(),
@@ -886,6 +922,7 @@ class ThesslaGreenDeviceScanner:
             "scan_blocks": scan_blocks,
             "unknown_registers": unknown_registers,
             "scanned_registers": scanned_registers,
+            "missing_registers": missing_registers,
             "failed_addresses": {
                 "modbus_exceptions": {
                     k: sorted(v)
@@ -1127,9 +1164,7 @@ class ThesslaGreenDeviceScanner:
 
     def _mark_holding_unsupported(self, start: int, end: int, code: int) -> None:
         """Track unsupported holding register range without overlaps."""
-        for (exist_start, exist_end), exist_code in list(
-            self._unsupported_holding_ranges.items()
-        ):
+        for (exist_start, exist_end), exist_code in list(self._unsupported_holding_ranges.items()):
             if exist_end < start or exist_start > end:
                 continue
             del self._unsupported_holding_ranges[(exist_start, exist_end)]
@@ -1138,6 +1173,7 @@ class ThesslaGreenDeviceScanner:
             if end < exist_end:
                 self._unsupported_holding_ranges[(end + 1, exist_end)] = exist_code
         self._unsupported_holding_ranges[(start, end)] = code
+
     def _mark_input_unsupported(self, start: int, end: int, code: int | None) -> None:
         """Cache unsupported input register range, merging overlaps."""
 
