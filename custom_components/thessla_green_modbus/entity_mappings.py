@@ -1,13 +1,13 @@
 """Entity mapping definitions for the ThesslaGreen Modbus integration.
 
-Most entity descriptions are generated from metadata in ``modbus_registers.csv``
-and can be extended or overridden by the dictionaries defined in this module.
-This keeps the mapping definitions in sync with the register specification while
-still allowing manual tweaks (for example to change icons or alter the entity
-domain).
+Most entity descriptions are generated from metadata in
+``modbus_registers.csv`` and can be extended or overridden by the
+dictionaries defined in this module. This keeps the mapping definitions
+in sync with the register specification while still allowing manual
+tweaks (for example to change icons or alter the entity domain).
 
-The module also provides helpers for handling legacy entity IDs that were
-renamed in newer versions of the integration.
+The module also provides helpers for handling legacy entity IDs that
+were renamed in newer versions of the integration.
 """
 
 import logging
@@ -46,7 +46,11 @@ except Exception:  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
 from .const import SPECIAL_FUNCTION_MAP
-from .registers import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, HOLDING_REGISTERS
+from .registers import (
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+)
 from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
@@ -89,12 +93,15 @@ def map_legacy_entity_id(entity_id: str) -> str:
 
     new_domain, new_suffix = LEGACY_ENTITY_ID_ALIASES[suffix]
     parts = object_id.split("_")
-    new_object_id = "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
+    new_object_id = (
+        "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
+    )
     new_entity_id = f"{new_domain}.{new_object_id}"
 
     if not _alias_warning_logged:
         _LOGGER.warning(
-            "Legacy entity ID '%s' detected. Please update automations to use '%s'.",
+            "Legacy entity ID '%s' detected. Please update automations "
+            "to use '%s'.",
             entity_id,
             new_entity_id,
         )
@@ -117,11 +124,16 @@ def _infer_icon(name: str, unit: str | None) -> str:
         return "mdi:sine-wave"
     return "mdi:numeric"
 
+
 def _get_register_info(name: str) -> dict[str, Any] | None:
     """Return register metadata, handling numeric suffixes."""
     from .data.modbus_registers import get_register_info
     info = get_register_info(name)
-    if info is None and (suffix := name.rsplit("_", 1)) and suffix[1].isdigit():
+    if (
+        info is None
+        and (suffix := name.rsplit("_", 1))
+        and suffix[1].isdigit()
+    ):
         info = get_register_info(suffix[0])
     return info
 
@@ -148,19 +160,19 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
     """Build number entity configurations from register metadata."""
     number_configs: dict[str, dict[str, Any]] = {}
     for register in HOLDING_REGISTERS:
-        info=_get_register_info(register)
+        info = _get_register_info(register)
         if not info:
             continue
         if _parse_states(info.get("unit")):
             continue
         if info.get("min") is None and info.get("max") is None:
             continue
-        number_configs[register]={
+        number_configs[register] = {
             "unit": info.get("unit"),
-            "min": info.get("min",0),
-            "max": info.get("max",0),
-            "step": info.get("step",1),
-            "scale": info.get("scale",1),
+            "min": info.get("min", 0),
+            "max": info.get("max", 0),
+            "step": info.get("step", 1),
+            "scale": info.get("scale", 1),
         }
     number_configs.update(NUMBER_OVERRIDES)
     return number_configs
@@ -253,7 +265,6 @@ def _load_discrete_mappings() -> tuple[
             )
 
     return binary_configs, switch_configs, select_configs
-
 
 
 # ---------------------------------------------------------------------------
@@ -922,7 +933,8 @@ SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Generate discrete entity mappings from register metadata and allow manual overrides
+# Generate discrete entity mappings from register metadata and allow
+# manual overrides
 _gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
 for key in BINARY_SENSOR_ENTITY_MAPPINGS:
     _gen_switch.pop(key, None)
@@ -933,9 +945,18 @@ for key in SWITCH_ENTITY_MAPPINGS:
 for key in SELECT_ENTITY_MAPPINGS:
     _gen_binary.pop(key, None)
     _gen_switch.pop(key, None)
-BINARY_SENSOR_ENTITY_MAPPINGS = {**_gen_binary, **BINARY_SENSOR_ENTITY_MAPPINGS}
-SWITCH_ENTITY_MAPPINGS = {**_gen_switch, **SWITCH_ENTITY_MAPPINGS}
-SELECT_ENTITY_MAPPINGS = {**_gen_select, **SELECT_ENTITY_MAPPINGS}
+BINARY_SENSOR_ENTITY_MAPPINGS = {
+    **_gen_binary,
+    **BINARY_SENSOR_ENTITY_MAPPINGS,
+}
+SWITCH_ENTITY_MAPPINGS = {
+    **_gen_switch,
+    **SWITCH_ENTITY_MAPPINGS,
+}
+SELECT_ENTITY_MAPPINGS = {
+    **_gen_select,
+    **SELECT_ENTITY_MAPPINGS,
+}
 
 for mode, bit in SPECIAL_FUNCTION_MAP.items():
     SWITCH_ENTITY_MAPPINGS[mode] = {
