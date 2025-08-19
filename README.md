@@ -113,6 +113,11 @@ urządzenie. Jeśli po aktualizacji firmware pojawią się nowe rejestry,
 ponownie uruchom skanowanie (np. usuń i dodaj integrację), aby
 zaktualizować listę `available_registers`.
 
+Podczas skanowania rejestry są grupowane według funkcji i tylko część z nich
+przekłada się na utworzone encje. Niektóre służą jedynie do diagnostyki lub
+ustawień i nie mają bezpośredniego odzwierciedlenia w Home Assistant.
+Integracja może wykryć 200+ rejestrów, ale utworzyć ~100 encji.
+
 > 🔎 Wiele wykrytych rejestrów to bloki konfiguracji lub wartości
 > wielorejestrowe, które nie mają bezpośredniego odwzorowania na encje
 > Home Assistant. Domyślnie integracja udostępnia tylko rejestry
