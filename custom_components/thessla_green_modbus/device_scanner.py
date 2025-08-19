@@ -519,13 +519,15 @@ class ThesslaGreenDeviceScanner:
         # Basic firmware/serial information
         info_regs = await self._read_input(client, 0, 30) or []
         major = minor = patch = None
+        firmware_err: Exception | None = None
         try:
             major = info_regs[INPUT_REGISTERS["version_major"]]
             minor = info_regs[INPUT_REGISTERS["version_minor"]]
             patch = info_regs[INPUT_REGISTERS["version_patch"]]
-        except Exception:  # pragma: no cover - best effort
-            pass
+        except Exception as exc:  # pragma: no cover - best effort
+            firmware_err = exc
 
+        missing_regs: list[str] = []
         if None in (major, minor, patch):
             for name, value in (
                 ("version_major", major),
@@ -533,8 +535,9 @@ class ThesslaGreenDeviceScanner:
                 ("version_patch", patch),
             ):
                 if value is None:
+                    addr = INPUT_REGISTERS[name]
                     single = await self._read_input(
-                        client, INPUT_REGISTERS[name], 1, skip_cache=True
+                        client, addr, 1, skip_cache=True
                     )
                     if single:
                         if name == "version_major":
@@ -543,11 +546,21 @@ class ThesslaGreenDeviceScanner:
                             minor = single[0]
                         else:
                             patch = single[0]
+                    else:
+                        missing_regs.append(f"{name} (0x{addr:04X})")
 
         if None not in (major, minor, patch):
             device.firmware = f"{major}.{minor}.{patch}"
         else:  # pragma: no cover - best effort
-            _LOGGER.error("Failed to read firmware version registers")
+            details: list[str] = []
+            if missing_regs:
+                details.append("missing " + ", ".join(missing_regs))
+            if firmware_err is not None:
+                details.append(str(firmware_err))
+            msg = "Failed to read firmware version registers"
+            if details:
+                msg += ": " + "; ".join(details)
+            _LOGGER.warning(msg)
             device.firmware_available = False
         try:
             start = INPUT_REGISTERS["serial_number_1"]
