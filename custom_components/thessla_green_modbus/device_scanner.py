@@ -980,6 +980,17 @@ class ThesslaGreenDeviceScanner:
             )
             _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
 
+    def _mark_input_supported(self, address: int) -> None:
+        """Remove address from cached unsupported input ranges after success."""
+        self._failed_input.discard(address)
+        for (start, end), code in list(self._unsupported_input_ranges.items()):
+            if start <= address <= end:
+                del self._unsupported_input_ranges[(start, end)]
+                if start <= address - 1:
+                    self._unsupported_input_ranges[(start, address - 1)] = code
+                if address + 1 <= end:
+                    self._unsupported_input_ranges[(address + 1, end)] = code
+
     async def _read_input(
         self,
         client: "AsyncModbusTcpClient",
@@ -998,9 +1009,10 @@ class ThesslaGreenDeviceScanner:
         start = address
         end = address + count - 1
 
-        for skip_start, skip_end in self._unsupported_input_ranges:
-            if skip_start <= start and end <= skip_end:
-                return None
+        if not skip_cache:
+            for skip_start, skip_end in self._unsupported_input_ranges:
+                if skip_start <= start and end <= skip_end:
+                    return None
         if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
             first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
             skip_start = skip_end = first
@@ -1028,6 +1040,8 @@ class ThesslaGreenDeviceScanner:
                         self._failed_input.update(range(start, end + 1))
                         self._unsupported_input_ranges[(start, end)] = code or 0
                         return None
+                    if skip_cache and count == 1:
+                        self._mark_input_supported(address)
                     return response.registers
                 _LOGGER.debug(
                     "Attempt %d failed to read input 0x%04X: %s",
@@ -1093,6 +1107,8 @@ class ThesslaGreenDeviceScanner:
                         self._failed_input.update(range(start, end + 1))
                         self._unsupported_input_ranges[(start, end)] = code or 0
                         return None
+                    if skip_cache and count == 1:
+                        self._mark_input_supported(address)
                     return response.registers
                 _LOGGER.debug(
                     "Fallback attempt %d failed to read holding 0x%04X: %s",
