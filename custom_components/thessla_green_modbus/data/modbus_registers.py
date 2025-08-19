@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 from ..utils import _to_snake_case
 
-__all__ = ["get_register_info"]
+__all__ = ["get_register_info", "get_register_infos"]
 
 _REGISTER_CACHE: Dict[str, Dict[str, Any]] | None = None
 
@@ -74,3 +74,44 @@ def get_register_info(register_name: str) -> Dict[str, Any] | None:
     """
     registers = _load_registers()
     return registers.get(register_name)
+
+
+def get_register_infos(register_name: str) -> list[Dict[str, Any]]:
+    """Return metadata for all registers matching a name.
+
+    Some registers such as ``date_time`` span multiple consecutive Modbus
+    addresses but share the same name in the CSV specification.  This helper
+    returns metadata for each matching row preserving their order so callers
+    can create individual mappings (e.g. ``date_time_1`` ... ``date_time_4``).
+    """
+
+    csv_path = Path(__file__).with_name("modbus_registers.csv")
+    results: list[Dict[str, Any]] = []
+    with csv_path.open(encoding="utf-8", newline="") as csvfile:
+        reader = csv.DictReader(
+            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
+        )
+        for row in reader:
+            name = _to_snake_case(row["Register_Name"])
+            if name != register_name:
+                continue
+            scale = _parse_number(row.get("Multiplier")) or 1
+            results.append(
+                {
+                    "function_code": row.get("Function_Code"),
+                    "address_hex": row.get("Address_HEX"),
+                    "address_dec": _parse_number(row.get("Address_DEC")),
+                    "access": row.get("Access"),
+                    "description": row.get("Description"),
+                    "min": _parse_number(row.get("Min")),
+                    "max": _parse_number(row.get("Max")),
+                    "default": _parse_number(row.get("Default_Value")),
+                    "scale": scale,
+                    "step": scale,
+                    "unit": row.get("Unit"),
+                    "information": row.get("Information"),
+                    "software_version": row.get("Software_Version"),
+                    "notes": row.get("Notes"),
+                }
+            )
+    return results

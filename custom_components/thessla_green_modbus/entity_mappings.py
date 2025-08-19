@@ -107,46 +107,47 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
     This function reads register configurations and dynamically creates
     number entity mappings with proper min/max/step values.
     """
-    from .data.modbus_registers import get_register_info
+    from .data.modbus_registers import get_register_info, get_register_infos
 
     number_configs: dict[str, dict[str, Any]] = {}
 
     # Define registers that should be number entities
     number_registers: dict[str, dict[str, str | None]] = {
         # Temperature control
-        "required_temperature": {"unit": "°C", "icon": "mdi:thermometer"},
-        "supply_air_temperature_manual": {"unit": "°C", "icon": "mdi:thermometer-plus"},
-        "supply_air_temperature_temporary_1": {"unit": "°C", "icon": "mdi:thermometer-plus"},
-        "supply_air_temperature_temporary_2": {"unit": "°C", "icon": "mdi:thermometer-plus"},
-        "min_bypass_temperature": {"unit": "°C", "icon": "mdi:thermometer-low"},
-        "air_temperature_summer_free_heating": {"unit": "°C", "icon": "mdi:thermometer"},
-        "air_temperature_summer_free_cooling": {"unit": "°C", "icon": "mdi:thermometer"},
-        "bypass_off": {"unit": "°C", "icon": "mdi:thermometer-off"},
+        "required_temperature": {"unit": None, "icon": "mdi:thermometer"},
+        "supply_air_temperature_manual": {"unit": None, "icon": "mdi:thermometer-plus"},
+        "supply_air_temperature_temporary_1": {"unit": None, "icon": "mdi:thermometer-plus"},
+        "supply_air_temperature_temporary_2": {"unit": None, "icon": "mdi:thermometer-plus"},
+        "min_bypass_temperature": {"unit": None, "icon": "mdi:thermometer-low"},
+        "air_temperature_summer_free_heating": {"unit": None, "icon": "mdi:thermometer"},
+        "air_temperature_summer_free_cooling": {"unit": None, "icon": "mdi:thermometer"},
+        "bypass_off": {"unit": None, "icon": "mdi:thermometer-off"},
         # Air flow control
-        "air_flow_rate_manual": {"unit": "m³/h", "icon": "mdi:fan"},
-        "max_supply_air_flow_rate": {"unit": "m³/h", "icon": "mdi:fan-plus"},
-        "max_exhaust_air_flow_rate": {"unit": "m³/h", "icon": "mdi:fan-minus"},
-        "nominal_supply_air_flow": {"unit": "m³/h", "icon": "mdi:fan-clock"},
-        "nominal_exhaust_air_flow": {"unit": "m³/h", "icon": "mdi:fan-clock"},
-        "max_supply_air_flow_rate_gwc": {"unit": "m³/h", "icon": "mdi:fan-plus"},
-        "max_exhaust_air_flow_rate_gwc": {"unit": "m³/h", "icon": "mdi:fan-minus"},
-        "nominal_supply_air_flow_gwc": {"unit": "m³/h", "icon": "mdi:fan-clock"},
-        "nominal_exhaust_air_flow_gwc": {"unit": "m³/h", "icon": "mdi:fan-clock"},
+        "air_flow_rate_manual": {"unit": None, "icon": "mdi:fan"},
+        "max_supply_air_flow_rate": {"unit": None, "icon": "mdi:fan-plus"},
+        "max_exhaust_air_flow_rate": {"unit": None, "icon": "mdi:fan-minus"},
+        "nominal_supply_air_flow": {"unit": None, "icon": "mdi:fan-clock"},
+        "nominal_exhaust_air_flow": {"unit": None, "icon": "mdi:fan-clock"},
+        "max_supply_air_flow_rate_gwc": {"unit": None, "icon": "mdi:fan-plus"},
+        "max_exhaust_air_flow_rate_gwc": {"unit": None, "icon": "mdi:fan-minus"},
+        "nominal_supply_air_flow_gwc": {"unit": None, "icon": "mdi:fan-clock"},
+        "nominal_exhaust_air_flow_gwc": {"unit": None, "icon": "mdi:fan-clock"},
         # Access and timing
         "access_level": {"unit": None, "icon": "mdi:account-key"},
         # GWC parameters
-        "min_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-low"},
-        "max_gwc_air_temperature": {"unit": "°C", "icon": "mdi:thermometer-high"},
-        "gwc_regen_period": {"unit": "h", "icon": "mdi:timer"},
-        "delta_t_gwc": {"unit": "°C", "icon": "mdi:thermometer-lines"},
+        "min_gwc_air_temperature": {"unit": None, "icon": "mdi:thermometer-low"},
+        "max_gwc_air_temperature": {"unit": None, "icon": "mdi:thermometer-high"},
+        "gwc_regen_period": {"unit": None, "icon": "mdi:timer"},
+        "delta_t_gwc": {"unit": None, "icon": "mdi:thermometer-lines"},
     }
 
     for register, config in number_registers.items():
         try:
             reg_info = get_register_info(register)
             if reg_info:
+                unit = config["unit"] if config["unit"] is not None else reg_info.get("unit")
                 number_configs[register] = {
-                    "unit": config["unit"],
+                    "unit": unit,
                     "icon": config["icon"],
                     "min": reg_info.get("min", 0),
                     "max": reg_info.get("max", 100),
@@ -162,6 +163,18 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
                 "max": 100,
                 "step": 1,
             }
+
+    # Date/time registers span multiple addresses with shared name in CSV
+    date_time_infos = get_register_infos("date_time")
+    for idx, info in enumerate(date_time_infos, start=1):
+        number_configs[f"date_time_{idx}"] = {
+            "unit": info.get("unit"),
+            "icon": "mdi:calendar-clock",
+            "min": info.get("min", 0),
+            "max": info.get("max", 100),
+            "step": info.get("step", 1),
+            "scale": info.get("scale", 1),
+        }
 
     return number_configs
 
