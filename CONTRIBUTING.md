@@ -93,6 +93,9 @@ python run_optimization_tests.py
 # Run unit tests
 python -m pytest tests/ -v
 
+# Verify module syntax
+python tools/py_compile_all.py
+
 # Check code quality
 pre-commit run --all-files
 ```
@@ -286,6 +289,7 @@ vulture custom_components/thessla_green_modbus --min-confidence=80
 
 2. **Run all checks:**
    ```bash
+   python tools/py_compile_all.py
    pre-commit run --all-files
    python -m pytest tests/
    python run_optimization_tests.py

@@ -67,3 +67,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: py-compile
+        name: Validate Python syntax
+        entry: python tools/py_compile_all.py
+        language: system
+        pass_filenames: false
+        always_run: true
