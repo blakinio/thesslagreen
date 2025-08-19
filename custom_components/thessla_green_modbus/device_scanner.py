@@ -236,6 +236,7 @@ class ThesslaGreenDeviceScanner:
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
+        deep_scan: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         self.host = host
@@ -247,6 +248,7 @@ class ThesslaGreenDeviceScanner:
         self.verbose_invalid_values = verbose_invalid_values
         self.scan_uart_settings = scan_uart_settings
         self.skip_known_missing = skip_known_missing
+        self.deep_scan = deep_scan
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -323,6 +325,7 @@ class ThesslaGreenDeviceScanner:
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
+        deep_scan: bool = False,
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -335,6 +338,7 @@ class ThesslaGreenDeviceScanner:
             verbose_invalid_values,
             scan_uart_settings,
             skip_known_missing,
+            deep_scan,
         )
         await self._async_setup()
 
@@ -672,13 +676,27 @@ class ThesslaGreenDeviceScanner:
         }
         self._log_skipped_ranges()
 
-        return {
+        raw_registers: dict[int, int] = {}
+        if self.deep_scan:
+            for start, count in self._group_registers_for_batch_read(range(0x012D)):
+                data = await self._read_input(client, start, count)
+                if data is None:
+                    continue
+                for offset, value in enumerate(data):
+                    raw_registers[start + offset] = value
+
+        result = {
             "available_registers": self.available_registers,
             "device_info": device.as_dict(),
             "capabilities": caps.as_dict(),
             "register_count": sum(len(v) for v in self.available_registers.values()),
             "scan_blocks": scan_blocks,
         }
+        if self.deep_scan:
+            result["raw_registers"] = raw_registers
+            result["total_addresses_scanned"] = len(raw_registers)
+
+        return result
 
     async def scan_device(self) -> dict[str, Any]:
         """Open the Modbus connection, perform a scan and close the client."""

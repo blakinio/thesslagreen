@@ -22,6 +22,7 @@ from .const import (
     CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
+    CONF_DEEP_SCAN,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
@@ -30,6 +31,7 @@ from .const import (
     DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
+    DEFAULT_DEEP_SCAN,
     DOMAIN,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
@@ -101,6 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     skip_missing_registers = entry.options.get(
         CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
     )
+    deep_scan = entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
 
     _LOGGER.info(
         "Initializing ThesslaGreen device: %s at %s:%s (slave_id=%s, scan_interval=%ds)",
@@ -125,6 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         retry=retry,
         force_full_register_list=force_full_register_list,
         scan_uart_settings=scan_uart_settings,
+        deep_scan=deep_scan,
         skip_missing_registers=skip_missing_registers,
         entry=entry,
     )

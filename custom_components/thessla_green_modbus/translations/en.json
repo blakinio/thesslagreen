@@ -22,13 +22,15 @@
           "host": "IP Address",
           "name": "Name",
           "port": "Port",
-          "slave_id": "Device ID"
+          "slave_id": "Device ID",
+          "deep_scan": "Deep Register Scan"
         },
         "data_description": {
           "host": "IP address of the AirPack device on your local network",
           "name": "Device name in Home Assistant",
           "port": "Modbus TCP port (default 502)",
-          "slave_id": "Modbus device ID (default 10)"
+          "slave_id": "Modbus device ID (default 10)",
+          "deep_scan": "Read all registers for diagnostics (may be slow)"
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
@@ -1343,16 +1345,18 @@
           "retry": "Retry Attempts",
           "scan_interval": "Scan Interval (seconds)",
           "skip_missing_registers": "Skip Known Missing Registers",
-          "timeout": "Connection Timeout (seconds)"
+          "timeout": "Connection Timeout (seconds)",
+          "deep_scan": "Deep Register Scan"
         },
         "data_description": {
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
-          "timeout": "Maximum time to wait for response (5-60 seconds)"
+          "timeout": "Maximum time to wait for response (5-60 seconds)",
+          "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics"
         },
-        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}.",
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}.",
         "title": "ThesslaGreen Modbus Options"
       }
     }

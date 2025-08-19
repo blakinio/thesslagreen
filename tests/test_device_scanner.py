@@ -1552,3 +1552,43 @@ async def test_log_invalid_value_invalid_time(caplog):
 
     assert "raw=0x2400" in caplog.text
     assert "decoded=0x2400 (invalid)" in caplog.text
+
+
+async def test_deep_scan_collects_raw_registers():
+    """Deep scan returns raw register values."""
+
+    class DummyClient:
+        async def connect(self):
+            return True
+
+        async def close(self):
+            pass
+
+    async def fake_read_input(self, client, address, count, *, skip_cache=False):
+        return list(range(address, address + count))
+
+    async def fake_read_holding(self, client, address, count):
+        return [0] * count
+
+    async def fake_read_coil(self, client, address, count):
+        return [0] * count
+
+    async def fake_read_discrete(self, client, address, count):
+        return [0] * count
+
+    with (
+        patch(
+            "pymodbus.client.AsyncModbusTcpClient",
+            return_value=DummyClient(),
+        ),
+        patch.object(ThesslaGreenDeviceScanner, "_read_input", fake_read_input),
+        patch.object(ThesslaGreenDeviceScanner, "_read_holding", fake_read_holding),
+        patch.object(ThesslaGreenDeviceScanner, "_read_coil", fake_read_coil),
+        patch.object(ThesslaGreenDeviceScanner, "_read_discrete", fake_read_discrete),
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, deep_scan=True)
+        result = await scanner.scan_device()
+
+    expected = 0x012C - 0x000E + 1
+    assert len(result["raw_registers"]) == expected
+    assert result["total_addresses_scanned"] == expected

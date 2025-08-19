@@ -27,6 +27,11 @@ async def async_get_config_entry_diagnostics(
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
 
+    if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
+        diagnostics.setdefault(
+            "raw_registers", coordinator.device_scan_result["raw_registers"]
+        )
+
     # Add human-readable descriptions for active error/status registers
     translations = await translation.async_get_translations(
         hass, hass.config.language, f"component.{DOMAIN}"

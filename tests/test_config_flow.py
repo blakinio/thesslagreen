@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.const import CONF_HOST, CONF_PORT
 
+from custom_components.thessla_green_modbus.const import CONF_DEEP_SCAN
+
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
     ConfigFlow,
@@ -90,6 +92,7 @@ async def test_form_user_success():
                 CONF_PORT: 502,
                 "slave_id": 10,
                 CONF_NAME: "My Device",
+                CONF_DEEP_SCAN: True,
             }
         )
 
@@ -110,6 +113,7 @@ async def test_form_user_success():
         "unit": 10,
         CONF_NAME: "My Device",
     }
+    assert result2["options"][CONF_DEEP_SCAN] is True
 
 
 async def test_duplicate_entry_aborts():
