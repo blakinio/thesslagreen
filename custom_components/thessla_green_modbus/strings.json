@@ -1226,6 +1226,12 @@
       "serial_number_2": {
         "name": "Serial Number Part 2"
       },
+      "serial_number_3": {
+        "name": "Serial Number Part 3"
+      },
+      "serial_number_4": {
+        "name": "Serial Number Part 4"
+      },
       "serial_number_5": {
         "name": "Serial Number 5"
       },

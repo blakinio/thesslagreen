@@ -85,6 +85,15 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Retry**: 1‑5 attempts (default 3)
 - **Full register list**: Skip scanning (may cause errors)
 
+> 🔎 The scanner probes many registers, including configuration blocks or
+> multi-register values that do not map directly to Home Assistant entities.
+> By default the integration only exposes addresses defined in
+> [`entity_mappings.py`](custom_components/thessla_green_modbus/entity_mappings.py).
+> Enabling the **Full register list** option (`force_full_register_list`)
+> creates entities for every discovered register, but some may contain
+> partial values or internal configuration. Use this option with care.
+> [More details](docs/register_scanning.md).
+
 ## 📊 Available entities
 
 ### Sensors (50+ auto detected)

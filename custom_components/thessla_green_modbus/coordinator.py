@@ -185,9 +185,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_power_timestamp = dt_util.utcnow()
         self._total_energy = 0.0
 
-    async def _call_modbus(
-        self, func: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> Any:
+    async def _call_modbus(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Wrapper around Modbus calls injecting the slave ID."""
         if not self.client:
             raise ConnectionException("Modbus client is not connected")
@@ -261,10 +259,34 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         model = self.device_info.get("model", "Unknown")
         firmware = self.device_info.get("firmware", "Unknown")
-        if model == "Unknown" or firmware == "Unknown":
+        missing: list[str] = []
+        if model == "Unknown":
+            missing.append("model")
+            _LOGGER.debug(
+                "Device model missing for %s:%s%s",
+                self.host,
+                self.port,
+                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+            )
+        if firmware == "Unknown":
+            missing.append("firmware")
+            _LOGGER.debug(
+                "Device firmware missing for %s:%s%s",
+                self.host,
+                self.port,
+                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+            )
+        if missing:
+            device_details = f"{self.host}:{self.port}"
+            if self.slave_id is not None:
+                device_details += f", slave {self.slave_id}"
+            missing_str = " and ".join(missing)
             _LOGGER.warning(
-                "Device model or firmware could not be determined. "
-                "Verify Modbus connectivity or ensure your firmware is supported."
+                "Device %s missing %s (%s). "
+                "Verify Modbus connectivity or ensure your firmware is supported.",
+                self._device_name,
+                missing_str,
+                device_details,
             )
 
         # Pre-compute register groups for batch reading
@@ -918,7 +940,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["total_energy"] = self._total_energy
             self._last_power_timestamp = now
 
-
         return data
 
     async def async_write_register(
@@ -983,9 +1004,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     values = [int(v) for v in value]
                 else:
                     if isinstance(value, (list, tuple)):
-                        _LOGGER.error(
-                            "Register %s expects a single numeric value", register_name
-                        )
+                        _LOGGER.error("Register %s expects a single numeric value", register_name)
                         return False
                     # Apply multiplier if defined and convert to integer for Modbus
                     if register_name in REGISTER_MULTIPLIERS:
