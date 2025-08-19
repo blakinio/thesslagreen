@@ -707,6 +707,12 @@ class ThesslaGreenDeviceScanner:
                         if self._is_valid_register_value(name, value):
                             self.available_registers["holding_registers"].add(name)
 
+            # Always expose diagnostic registers so error entities exist even
+            # when the device does not implement them.
+            for name in HOLDING_REGISTERS:
+                if name.startswith(("e_", "s_")) or name in {"alarm", "error"}:
+                    self.available_registers["holding_registers"].add(name)
+
             # Scan Coil Registers in batches
             coil_addr_to_name: dict[int, str] = {}
             coil_addresses: list[int] = []
