@@ -133,10 +133,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 await self.async_set_unique_id(
                     f"{unique_host}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
                 )
-                self._abort_if_unique_id_configured()
-
-                # Show confirmation step with device info
-                return await self.async_step_confirm()
 
             except CannotConnect as exc:
                 errors["base"] = exc.args[0] if exc.args else "cannot_connect"
@@ -154,6 +150,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected error during configuration: %s", err)
                 raise
+            else:
+                self._abort_if_unique_id_configured()
+                # Show confirmation step with device info
+                return await self.async_step_confirm()
 
         # Show form
         data_schema = vol.Schema(
@@ -198,9 +198,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
                     CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
                 },
-                options={
-                    CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
-                },
+                options={CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)},
             )
 
         # Prepare description with device info
@@ -294,9 +292,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_airflow_unit = self.config_entry.options.get(
             CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
         )
-        current_deep_scan = self.config_entry.options.get(
-            CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
-        )
+        current_deep_scan = self.config_entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
 
         data_schema = vol.Schema(
             {
