@@ -152,12 +152,15 @@ class DeviceInfo:
     """Basic identifying information about a ThesslaGreen unit.
 
     Attributes:
+        device_name: User configured name reported by the unit.
         model: Reported model name used to identify the device type.
         firmware: Firmware version string for compatibility checks.
         serial_number: Unique hardware identifier for the unit.
     """
 
     model: str = MODEL
+    device_name: str = "Unknown"
+    model: str = "Unknown AirPack"
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
     firmware_available: bool = True
@@ -515,18 +518,53 @@ class ThesslaGreenDeviceScanner:
 
         # Basic firmware/serial information
         info_regs = await self._read_input(client, 0, 30) or []
+        major = minor = patch = None
         try:
             major = info_regs[INPUT_REGISTERS["version_major"]]
             minor = info_regs[INPUT_REGISTERS["version_minor"]]
             patch = info_regs[INPUT_REGISTERS["version_patch"]]
-            device.firmware = f"{major}.{minor}.{patch}"
         except Exception:  # pragma: no cover - best effort
             pass
+
+        if None in (major, minor, patch):
+            for name, value in (
+                ("version_major", major),
+                ("version_minor", minor),
+                ("version_patch", patch),
+            ):
+                if value is None:
+                    single = await self._read_input(
+                        client, INPUT_REGISTERS[name], 1, skip_cache=True
+                    )
+                    if single:
+                        if name == "version_major":
+                            major = single[0]
+                        elif name == "version_minor":
+                            minor = single[0]
+                        else:
+                            patch = single[0]
+
+        if None not in (major, minor, patch):
+            device.firmware = f"{major}.{minor}.{patch}"
+        else:  # pragma: no cover - best effort
+            _LOGGER.error("Failed to read firmware version registers")
+            device.firmware_available = False
         try:
             start = INPUT_REGISTERS["serial_number_1"]
             parts = info_regs[start : start + 6]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
+        except Exception:  # pragma: no cover
+            pass
+        try:
+            start = HOLDING_REGISTERS["device_name_1"]
+            name_regs = await self._read_holding(client, start, 8) or []
+            if name_regs:
+                name_bytes = bytearray()
+                for reg in name_regs:
+                    name_bytes.append((reg >> 8) & 0xFF)
+                    name_bytes.append(reg & 0xFF)
+                device.device_name = name_bytes.decode("ascii").rstrip("\x00")
         except Exception:  # pragma: no cover
             pass
         unknown_registers: dict[str, dict[int, Any]] = {
