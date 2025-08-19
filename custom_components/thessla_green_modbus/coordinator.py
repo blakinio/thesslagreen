@@ -226,6 +226,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         self.available_registers[reg_type].difference_update(names)
 
                 self.device_info = self.device_scan_result.get("device_info", {})
+                self.device_info.setdefault("device_name", self._device_name)
                 self.capabilities = DeviceCapabilities(
                     **self.device_scan_result.get("capabilities", {})
                 )
@@ -1142,7 +1143,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @property
     def device_name(self) -> str:
         """Return the configured or detected device name."""
-        return cast(str, self.device_info.get("device_name", self._device_name))
+        return cast(str, self.device_info.get("device_name") or self._device_name)
 
     @property
     def device_info_dict(self) -> dict[str, Any]:

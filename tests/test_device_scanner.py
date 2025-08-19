@@ -1545,6 +1545,39 @@ async def test_capability_count_includes_booleans(caplog):
     assert any("2 capabilities" in record.message for record in caplog.records)
 
 
+async def test_scan_populates_device_name():
+    """Scanner should include device_name in returned device info."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    scanner._client = object()
+    scanner._registers = {"04": {}, "03": {}, "01": {}, "02": {}}
+    scanner.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+
+    device_name = "Test AirPack"
+    name_bytes = device_name.encode("ascii").ljust(16, b"\x00")
+    regs = [(name_bytes[i] << 8) | name_bytes[i + 1] for i in range(0, 16, 2)]
+
+    async def fake_read_holding(client, address, count, *, skip_cache=False):
+        if address == HOLDING_REGISTERS["device_name_1"]:
+            return regs
+        return None
+
+    with (
+        patch.object(scanner, "_read_input", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+        patch.object(scanner, "_analyze_capabilities", return_value=DeviceCapabilities()),
+    ):
+        result = await scanner.scan()
+
+    assert result["device_info"]["device_name"] == device_name
+
+
 @pytest.mark.parametrize("async_close", [True, False])
 async def test_close_terminates_client(async_close):
     """Ensure close() handles both async and sync client close methods."""

@@ -151,11 +151,13 @@ class DeviceInfo:
     """Basic identifying information about a ThesslaGreen unit.
 
     Attributes:
+        device_name: User configured name reported by the unit.
         model: Reported model name used to identify the device type.
         firmware: Firmware version string for compatibility checks.
         serial_number: Unique hardware identifier for the unit.
     """
 
+    device_name: str = "Unknown"
     model: str = "Unknown AirPack"
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
@@ -526,6 +528,17 @@ class ThesslaGreenDeviceScanner:
             parts = info_regs[start : start + 6]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
+        except Exception:  # pragma: no cover
+            pass
+        try:
+            start = HOLDING_REGISTERS["device_name_1"]
+            name_regs = await self._read_holding(client, start, 8) or []
+            if name_regs:
+                name_bytes = bytearray()
+                for reg in name_regs:
+                    name_bytes.append((reg >> 8) & 0xFF)
+                    name_bytes.append(reg & 0xFF)
+                device.device_name = name_bytes.decode("ascii").rstrip("\x00")
         except Exception:  # pragma: no cover
             pass
         unknown_registers: dict[str, dict[int, Any]] = {
