@@ -19,7 +19,7 @@ The most complete integration for ThesslaGreen AirPack heat recovery units over 
 - **⚡ Every special function** – HOOD, FIREPLACE, VENTILATION, EMPTY HOUSE, BOOST
 - **🌿 GWC and Bypass systems** – complete control of additional systems
 - **📅 Weekly schedule** – full configuration of time programs
-- **🛠️ 13 services** – complete API for automation and control
+- **🛠️ 14 services** – complete API for automation and control, including full register scan
 - **🔧 Diagnostics and logging** – detailed error and performance information
 - **🌍 Multilingual support** – Polish and English
 
@@ -108,7 +108,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Numbers**: temperatures, intensities, times, alarm limits
 - **Selects**: work modes, season mode, schedule, communication, language
 
-## 🛠️ Services (13 complete services)
+## 🛠️ Services (14 complete services)
 
 ### Basic control
 ```yaml
@@ -235,6 +235,12 @@ indicate a configuration or firmware mismatch.
 - **Diagnostics**: detailed performance and error metrics
 - **Stability**: retry logic, fallback reads, graceful degradation, and automatic
   skipping of unsupported registers
+
+### Full register scan
+The `thessla_green_modbus.scan_all_registers` service runs a complete register
+scan (`full_register_scan=True`) and returns unknown addresses. This operation
+may take several minutes and can heavily load the unit, so it should be used
+only for diagnostic purposes.
 
 ## 🤝 Support and development
 

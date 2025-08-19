@@ -20,7 +20,7 @@ Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokoł
 - **⚡ Wszystkie funkcje specjalne** - OKAP, KOMINEK, WIETRZENIE, PUSTY DOM, BOOST
 - **🌿 Systemy GWC i Bypass** - kompletna kontrola systemów dodatkowych
 - **📅 Harmonogram tygodniowy** - pełna konfiguracja programów czasowych
-- **🛠️ 13 serwisów** - kompletne API do automatyzacji i kontroli
+- **🛠️ 14 serwisów** - kompletne API do automatyzacji i kontroli, w tym pełny skan rejestrów
 - **🔧 Diagnostyka i logowanie** - szczegółowe informacje o błędach i wydajności
 - **🌍 Wsparcie wielojęzyczne** - polski i angielski
 
@@ -112,6 +112,12 @@ urządzenie. Jeśli po aktualizacji firmware pojawią się nowe rejestry,
 ponownie uruchom skanowanie (np. usuń i dodaj integrację), aby
 zaktualizować listę `available_registers`.
 
+### Pełny skan rejestrów
+Dostępny jest serwis `thessla_green_modbus.scan_all_registers`, który wykonuje
+pełne skanowanie wszystkich rejestrów (`full_register_scan=True`) i zwraca
+listę nieznanych adresów. Operacja może trwać kilka minut i znacząco obciąża
+urządzenie – używaj jej tylko do diagnostyki.
+
 ### Włączanie logów debug
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
 
@@ -147,7 +153,7 @@ Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów oraz ost
 - **Numbers**: Temperatury, intensywności, czasy, limity alarmów
 - **Selects**: Tryby pracy, tryb sezonowy, harmonogram, komunikacja, język
 
-## 🛠️ Serwisy (13 kompletnych serwisów)
+## 🛠️ Serwisy (14 kompletnych serwisów)
 
 ### Podstawowe sterowanie
 ```yaml

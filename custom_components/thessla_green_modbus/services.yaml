@@ -296,3 +296,8 @@ refresh_device_data:
   name: Refresh Device Data
   description: Force immediate data refresh.
   target: *tg_target
+
+scan_all_registers:
+  name: Scan All Registers
+  description: Perform full register scan and report unknown registers.
+  target: *tg_target
