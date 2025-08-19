@@ -65,3 +65,5 @@ def test_entity_mappings_cover_all_registers() -> None:
     mapping_names = _entity_mapping_keys()
     missing = mapping_names - csv_names - WHITELIST
     assert not missing, f"Unknown registers in ENTITY_MAPPINGS: {sorted(missing)}"
+    unmapped = csv_names - mapping_names
+    assert not unmapped, f"Registers missing entity mapping: {sorted(unmapped)}"

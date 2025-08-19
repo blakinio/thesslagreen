@@ -467,6 +467,11 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "icon": "mdi:barcode",
         "register_type": "input_registers",
     },
+    "cf_version": {
+        "translation_key": "cf_version",
+        "icon": "mdi:information",
+        "register_type": "holding_registers",
+    },
     # Mode and status sensors
     "antifreeze_mode": {
         "translation_key": "antifreeze_mode",
