@@ -243,6 +243,7 @@ def _load_discrete_mappings() -> tuple[
         cfg: dict[str, Any] = {"translation_key": reg, "register_type": "holding_registers"}
         if len(states) == 2 and set(states.values()) == {0, 1}:
             if "W" in access:
+                cfg["register"] = reg
                 switch_configs[reg] = cfg
             else:
                 binary_configs[reg] = cfg
