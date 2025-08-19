@@ -203,7 +203,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        attributes = {}
+        attributes: dict[str, Any] = {}
 
         # Add register information
         attributes["register_name"] = self.register_name

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -57,13 +57,13 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
         raw_ids = list(raw_ids)
 
     mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
-    mapped_call = call.__class__(
+    mapped_call = ServiceCall(
         domain=getattr(call, "domain", DOMAIN),
         service=getattr(call, "service", ""),
         data={**call.data, "entity_id": mapped_ids},
         context=getattr(call, "context", None),
     )
-    return async_extract_entity_ids(hass, mapped_call)
+    return cast(set[str], async_extract_entity_ids(hass, mapped_call))
 
 
 # Service schemas
@@ -598,9 +598,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 retry=coordinator.retry,
                 scan_uart_settings=coordinator.scan_uart_settings,
                 skip_known_missing=False,
+                full_register_scan=True,
             )
             try:
-                scan_result = await scanner.scan_device(full_register_scan=True)
+                scan_result = await scanner.scan_device()
             finally:
                 await scanner.close()
 
@@ -661,6 +662,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
+    )
+    hass.services.async_register(
         DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
     )
 
@@ -707,4 +710,7 @@ def _get_coordinator_from_entity_id(
     entry = entity_registry.async_get(mapped_entity_id) if entity_registry else None
     if not entry:
         return None
-    return hass.data.get(DOMAIN, {}).get(entry.config_entry_id)
+    return cast(
+        ThesslaGreenModbusCoordinator | None,
+        hass.data.get(DOMAIN, {}).get(entry.config_entry_id),
+    )

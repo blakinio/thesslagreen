@@ -3,49 +3,53 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from collections.abc import Callable, Iterable
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.util import dt as dt_util
 
 try:  # pragma: no cover - used in runtime environments only
     from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
-    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"  # type: ignore[assignment]
+    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
 
 from homeassistant.core import HomeAssistant
 
 from .modbus_exceptions import ConnectionException, ModbusException
 
-try:  # pragma: no cover
+if TYPE_CHECKING:
     from homeassistant.helpers.device_registry import DeviceInfo
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
+else:  # pragma: no cover
+    try:
+        from homeassistant.helpers.device_registry import DeviceInfo
+    except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
-    class DeviceInfo:  # type: ignore[misc]
-        """Minimal fallback DeviceInfo for tests.
+        class DeviceInfo:
+            """Minimal fallback DeviceInfo for tests.
 
-        Stores provided keyword arguments and exposes an ``as_dict`` method
-        similar to Home Assistant's ``DeviceInfo`` dataclass.
-        """
+            Stores provided keyword arguments and exposes an ``as_dict`` method
+            similar to Home Assistant's ``DeviceInfo`` dataclass.
+            """
 
-        def __init__(self, **kwargs: Any) -> None:
-            self._data: dict[str, Any] = dict(kwargs)
+            def __init__(self, **kwargs: Any) -> None:
+                self._data: dict[str, Any] = dict(kwargs)
 
-        def as_dict(self) -> dict[str, Any]:
-            """Return stored fields as a dictionary."""
-            return dict(self._data)
+            def as_dict(self) -> dict[str, Any]:
+                """Return stored fields as a dictionary."""
+                return dict(self._data)
 
-        # Provide dictionary-style and attribute-style access for convenience in tests
-        def __getitem__(self, key: str) -> Any:  # pragma: no cover - simple mapping
-            return self._data[key]
+            # Provide dictionary-style and attribute-style access for convenience in tests
+            def __getitem__(self, key: str) -> Any:  # pragma: no cover - simple mapping
+                return self._data[key]
 
-        def __getattr__(self, item: str) -> Any:
-            try:
-                return self._data[item]
-            except KeyError as exc:  # pragma: no cover - mirror dict behaviour
-                raise AttributeError(item) from exc
+            def __getattr__(self, item: str) -> Any:
+                try:
+                    return self._data[item]
+                except KeyError as exc:  # pragma: no cover - mirror dict behaviour
+                    raise AttributeError(item) from exc
 
 
 from homeassistant.config_entries import ConfigEntry
@@ -177,7 +181,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "total_registers_read": 0,
         }
 
-    async def _call_modbus(self, func, *args, **kwargs):
+    async def _call_modbus(
+        self, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
         """Wrapper around Modbus calls injecting the slave ID."""
         if not self.client:
             raise ConnectionException("Modbus client is not connected")
@@ -359,7 +365,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
         """Record registers that failed to read."""
-        failed = getattr(self, "_failed_registers", set())
+        failed: set[str] = getattr(self, "_failed_registers", set())
         failed.update(name for name in names if name)
         self._failed_registers = failed
 
@@ -517,7 +523,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _read_input_registers_optimized(self) -> dict[str, Any]:
         """Read input registers using optimized batch reading."""
-        data = {}
+        data: dict[str, Any] = {}
 
         if "input_registers" not in self._register_groups:
             return data
@@ -526,7 +532,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
-        failed = getattr(self, "_failed_registers", set())
+        failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["input_registers"]:
             register_names = [
@@ -584,7 +590,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _read_holding_registers_optimized(self) -> dict[str, Any]:
         """Read holding registers using optimized batch reading."""
-        data = {}
+        data: dict[str, Any] = {}
 
         if "holding_registers" not in self._register_groups:
             return data
@@ -594,7 +600,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Modbus client not available; skipping holding register read")
             return data
 
-        failed = getattr(self, "_failed_registers", set())
+        failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["holding_registers"]:
             register_names = [
@@ -665,7 +671,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _read_coil_registers_optimized(self) -> dict[str, Any]:
         """Read coil registers using optimized batch reading."""
-        data = {}
+        data: dict[str, Any] = {}
 
         if "coil_registers" not in self._register_groups:
             return data
@@ -674,7 +680,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
-        failed = getattr(self, "_failed_registers", set())
+        failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["coil_registers"]:
             register_names = [
@@ -739,7 +745,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:
         """Read discrete input registers using optimized batch reading."""
-        data = {}
+        data: dict[str, Any] = {}
 
         if "discrete_inputs" not in self._register_groups:
             return data
@@ -748,7 +754,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if client is None or not client.connected:
             raise ConnectionException("Modbus client is not connected")
 
-        failed = getattr(self, "_failed_registers", set())
+        failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
             register_names = [
@@ -838,7 +844,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Apply multiplier
         if register_name in REGISTER_MULTIPLIERS:
-            value = value * REGISTER_MULTIPLIERS[register_name]
+            return value * REGISTER_MULTIPLIERS[register_name]
 
         return value
 
@@ -909,11 +915,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             start_register,
                         )
                         return False
+                    assert start_register is not None
                     if len(value) != MULTI_REGISTER_SIZES[start_register]:
                         _LOGGER.error(
                             "Register %s expects %d values",
                             start_register,
-                            MULTI_REGISTER_SIZES[start_register],
+                            MULTI_REGISTER_SIZES[register_name],
                         )
                         return False
 
@@ -925,11 +932,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         _LOGGER.error(
                             "Register %s expects %d values",
                             register_name,
-                            MULTI_REGISTER_SIZES[start_register],
+                            MULTI_REGISTER_SIZES[register_name],
                         )
                         return False
                     values = [int(v) for v in value]
                 else:
+                    if isinstance(value, (list, tuple)):
+                        _LOGGER.error(
+                            "Register %s expects a single numeric value", register_name
+                        )
+                        return False
                     # Apply multiplier if defined and convert to integer for Modbus
                     if register_name in REGISTER_MULTIPLIERS:
                         multiplier = REGISTER_MULTIPLIERS[register_name]
@@ -985,9 +997,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Disconnect from Modbus device."""
         if self.client is not None:
             try:
-                result = self.client.close()
-                if asyncio.iscoroutine(result):
-                    await result
+                close = self.client.close
+                if inspect.iscoroutinefunction(close):
+                    await close()
+                else:
+                    close()
             except (ModbusException, ConnectionException):
                 _LOGGER.debug("Error disconnecting", exc_info=True)
             except OSError:
@@ -1088,9 +1102,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @property
     def device_name(self) -> str:
         """Return the configured or detected device name."""
-        return self.device_info.get("device_name", self._device_name)
+        return cast(str, self.device_info.get("device_name", self._device_name))
 
     @property
     def device_info_dict(self) -> dict[str, Any]:
         """Return device information as a plain dictionary for legacy use."""
-        return self.get_device_info().as_dict()
+        return cast(dict[str, Any], self.get_device_info().as_dict())

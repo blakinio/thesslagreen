@@ -102,12 +102,12 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
             await scanner.close()
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for ThesslaGreen Modbus."""
 
     VERSION = 2
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize config flow."""
         self._data: dict[str, Any] = {}
         self._device_info: dict[str, Any] = {}
@@ -260,7 +260,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     @staticmethod
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:  # type: ignore[override]
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:
         """Return the options flow handler."""
         return OptionsFlow(config_entry)
 
