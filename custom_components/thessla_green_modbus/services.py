@@ -661,6 +661,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
+    )
+    hass.services.async_register(
         DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
     )
 
