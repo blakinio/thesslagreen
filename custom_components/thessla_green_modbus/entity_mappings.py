@@ -177,7 +177,6 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
     number_configs.update(NUMBER_OVERRIDES)
     return number_configs
 
-
 # Manual overrides for number entities (icons, custom units, etc.)
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Temperature control
@@ -241,7 +240,7 @@ def _load_discrete_mappings() -> tuple[
         if not states:
             continue
         access = (info.get("access") or "").upper()
-        cfg = {"translation_key": reg, "register_type": "holding_registers"}
+        cfg: dict[str, Any] = {"translation_key": reg, "register_type": "holding_registers"}
         if len(states) == 2 and set(states.values()) == {0, 1}:
             if "W" in access:
                 switch_configs[reg] = cfg

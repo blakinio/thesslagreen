@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-# mypy: ignore-errors
-
 import asyncio
 import csv
 import inspect
@@ -20,6 +18,8 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    TextIO,
+    cast,
 )
 
 from .capability_rules import CAPABILITY_PATTERNS
@@ -313,12 +313,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
-        result = await self._load_registers()
-        if len(result) == 3:
-            self._registers, self._register_ranges, self._register_versions = result
-        else:
-            self._registers, self._register_ranges = result  # type: ignore[misc]
-            self._register_versions = {}
+        self._registers, self._register_ranges, self._register_versions = await self._load_registers()
 
     @classmethod
     async def create(
@@ -353,9 +348,9 @@ class ThesslaGreenDeviceScanner:
 
         # Ensure low-level register read helpers are attached to the instance
         # so tests and callers can patch them as needed.
-        self._read_holding = cls._read_holding.__get__(self, cls)
-        self._read_coil = cls._read_coil.__get__(self, cls)
-        self._read_discrete = cls._read_discrete.__get__(self, cls)
+        self._read_holding = cls._read_holding.__get__(self, cls)  # type: ignore[method-assign]
+        self._read_coil = cls._read_coil.__get__(self, cls)  # type: ignore[method-assign]
+        self._read_discrete = cls._read_discrete.__get__(self, cls)  # type: ignore[method-assign]
 
         return self
 
@@ -494,6 +489,7 @@ class ThesslaGreenDeviceScanner:
                 count = 1
                 continue
 
+            assert prev is not None
             if addr - prev > max_gap or count >= max_batch:
                 groups.append((start, count))
                 start = addr
@@ -609,48 +605,43 @@ class ThesslaGreenDeviceScanner:
         if self.full_register_scan:
             for addr in range(0, input_max + 1):
                 scanned_registers["input_registers"] += 1
-                data = await self._read_input(client, addr, 1, skip_cache=True)
-                if not data:
+                input_data = await self._read_input(client, addr, 1, skip_cache=True)
+                if not input_data:
                     continue
-                name = self._registers.get("04", {}).get(addr)
-                if name and self._is_valid_register_value(name, data[0]):
-                    self.available_registers["input_registers"].add(name)
+                if (reg_name := self._registers.get("04", {}).get(addr)) and self._is_valid_register_value(reg_name, input_data[0]):
+                    self.available_registers["input_registers"].add(reg_name)
                 else:
-                    unknown_registers["input_registers"][addr] = data[0]
+                    unknown_registers["input_registers"][addr] = input_data[0]
 
             for addr in range(0, holding_max + 1):
                 scanned_registers["holding_registers"] += 1
-                # Re-probe each address individually, ignoring previous cache
-                data = await self._read_holding(client, addr, 1, skip_cache=True)
-                if not data:
+                holding_data = await self._read_holding(client, addr, 1, skip_cache=True)
+                if not holding_data:
                     continue
-                name = self._registers.get("03", {}).get(addr)
-                if name and self._is_valid_register_value(name, data[0]):
-                    self.available_registers["holding_registers"].add(name)
+                if (reg_name := self._registers.get("03", {}).get(addr)) and self._is_valid_register_value(reg_name, holding_data[0]):
+                    self.available_registers["holding_registers"].add(reg_name)
                 else:
-                    unknown_registers["holding_registers"][addr] = data[0]
+                    unknown_registers["holding_registers"][addr] = holding_data[0]
 
             for addr in range(0, coil_max + 1):
                 scanned_registers["coil_registers"] += 1
-                data = await self._read_coil(client, addr, 1)
-                if not data:
+                coil_data = await self._read_coil(client, addr, 1)
+                if not coil_data:
                     continue
-                name = self._registers.get("01", {}).get(addr)
-                if name is not None:
-                    self.available_registers["coil_registers"].add(name)
+                if (reg_name := self._registers.get("01", {}).get(addr)) is not None:
+                    self.available_registers["coil_registers"].add(reg_name)
                 else:
-                    unknown_registers["coil_registers"][addr] = data[0]
+                    unknown_registers["coil_registers"][addr] = coil_data[0]
 
             for addr in range(0, discrete_max + 1):
                 scanned_registers["discrete_inputs"] += 1
-                data = await self._read_discrete(client, addr, 1)
-                if not data:
+                discrete_data = await self._read_discrete(client, addr, 1)
+                if not discrete_data:
                     continue
-                name = self._registers.get("02", {}).get(addr)
-                if name is not None:
-                    self.available_registers["discrete_inputs"].add(name)
+                if (reg_name := self._registers.get("02", {}).get(addr)) is not None:
+                    self.available_registers["discrete_inputs"].add(reg_name)
                 else:
-                    unknown_registers["discrete_inputs"][addr] = data[0]
+                    unknown_registers["discrete_inputs"][addr] = discrete_data[0]
         else:
             # Scan Input Registers in batches
             input_addr_to_name: dict[int, str] = {}
@@ -662,8 +653,8 @@ class ThesslaGreenDeviceScanner:
                 input_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(input_addresses):
-                data = await self._read_input(client, start, count)
-                if data is None:
+                input_data = await self._read_input(client, start, count)
+                if input_data is None:
                     for offset in range(count):
                         addr = start + offset
                         if addr not in input_addr_to_name:
@@ -677,12 +668,12 @@ class ThesslaGreenDeviceScanner:
                             )
                     continue
 
-                for offset, value in enumerate(data):
+                for offset, value in enumerate(input_data):
                     addr = start + offset
-                    if (name := input_addr_to_name.get(addr)) and self._is_valid_register_value(
-                        name, value
+                    if (reg_name := input_addr_to_name.get(addr)) and self._is_valid_register_value(
+                        reg_name, value
                     ):
-                        self.available_registers["input_registers"].add(name)
+                        self.available_registers["input_registers"].add(reg_name)
 
             # Scan Holding Registers in batches
             holding_info: dict[int, tuple[str, int]] = {}
@@ -697,20 +688,19 @@ class ThesslaGreenDeviceScanner:
                 holding_addresses.extend(range(addr, addr + size))
 
             for start, count in self._group_registers_for_batch_read(holding_addresses):
-                data = await self._read_holding(client, start, count)
-                if data is None:
+                holding_data = await self._read_holding(client, start, count)
+                if holding_data is None:
                     for offset in range(count):
                         addr = start + offset
                         if addr not in holding_info:
                             continue
                         name, size = holding_info[addr]
-                        # Retry individual register ignoring cached failures
                         single = await self._read_holding(client, addr, size, skip_cache=True)
                         if single and self._is_valid_register_value(name, single[0]):
                             self.available_registers["holding_registers"].add(name)
                     continue
 
-                for offset, value in enumerate(data):
+                for offset, value in enumerate(holding_data):
                     addr = start + offset
                     if addr in holding_info:
                         name, _size = holding_info[addr]
@@ -727,17 +717,17 @@ class ThesslaGreenDeviceScanner:
                 coil_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(coil_addresses):
-                data = await self._read_coil(client, start, count)
-                if data is None:
+                coil_data = await self._read_coil(client, start, count)
+                if coil_data is None:
                     for offset in range(count):
                         addr = start + offset
                         if addr not in coil_addr_to_name:
                             continue
-                        single = await self._read_coil(client, addr, 1)
-                        if single is not None:
+                        single_coil = await self._read_coil(client, addr, 1)
+                        if single_coil is not None:
                             self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
                     continue
-                for offset, value in enumerate(data):
+                for offset, value in enumerate(coil_data):
                     addr = start + offset
                     if addr in coil_addr_to_name and value is not None:
                         self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
@@ -752,19 +742,19 @@ class ThesslaGreenDeviceScanner:
                 discrete_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(discrete_addresses):
-                data = await self._read_discrete(client, start, count)
-                if data is None:
+                discrete_data = await self._read_discrete(client, start, count)
+                if discrete_data is None:
                     for offset in range(count):
                         addr = start + offset
                         if addr not in discrete_addr_to_name:
                             continue
-                        single = await self._read_discrete(client, addr, 1)
-                        if single is not None:
+                        single_discrete = await self._read_discrete(client, addr, 1)
+                        if single_discrete is not None:
                             self.available_registers["discrete_inputs"].add(
                                 discrete_addr_to_name[addr]
                             )
                     continue
-                for offset, value in enumerate(data):
+                for offset, value in enumerate(discrete_data):
                     addr = start + offset
                     if addr in discrete_addr_to_name and value is not None:
                         self.available_registers["discrete_inputs"].add(discrete_addr_to_name[addr])
@@ -832,7 +822,7 @@ class ThesslaGreenDeviceScanner:
 
         raw_registers: dict[int, int] = {}
         if self.deep_scan:
-            for start, count in self._group_registers_for_batch_read(range(0x012D)):
+            for start, count in self._group_registers_for_batch_read(list(range(0x012D))):
                 data = await self._read_input(client, start, count)
                 if data is None:
                     continue
@@ -886,7 +876,7 @@ class ThesslaGreenDeviceScanner:
             register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
             register_versions: Dict[str, Tuple[int, ...]] = {}
             try:
-                with csv_path.open(newline="", encoding="utf-8") as csvfile:
+                with cast(TextIO, csv_path.open("r", encoding="utf-8")) as csvfile:
                     reader = csv.DictReader(csvfile)
                     rows: Dict[
                         str,
@@ -1014,8 +1004,8 @@ class ThesslaGreenDeviceScanner:
     def _sleep_time(self, attempt: int) -> float:
         """Return delay for a retry attempt based on backoff."""
         if self.backoff:
-            return self.backoff * 2 ** (attempt - 1)
-        return 0
+            return float(self.backoff * 2 ** (attempt - 1))
+        return 0.0
 
     def _log_skipped_ranges(self) -> None:
         """Log summary of ranges skipped due to Modbus exceptions."""
@@ -1119,7 +1109,7 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response = await _call_modbus(
+                response: Any = await _call_modbus(
                     client.read_input_registers, self.slave_id, address, count=count
                 )
                 if response is not None:
@@ -1130,7 +1120,7 @@ class ThesslaGreenDeviceScanner:
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
-                    return response.registers
+                    return cast(list[int], response.registers)
                 _LOGGER.debug(
                     "Attempt %d failed to read input 0x%04X: %s",
                     attempt,
@@ -1197,7 +1187,7 @@ class ThesslaGreenDeviceScanner:
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
-                    return response.registers
+                    return cast(list[int], response.registers)
                 _LOGGER.debug(
                     "Fallback attempt %d failed to read holding 0x%04X: %s",
                     attempt,
@@ -1265,7 +1255,7 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response = await _call_modbus(
+                response: Any = await _call_modbus(
                     client.read_holding_registers, self.slave_id, address, count=count
                 )
                 if response is not None:
@@ -1278,7 +1268,7 @@ class ThesslaGreenDeviceScanner:
                         self._mark_holding_supported(address)
                     if address in self._holding_failures:
                         del self._holding_failures[address]
-                    return response.registers
+                    return cast(list[int], response.registers)
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read holding 0x%04X (attempt %d/%d): %s",
@@ -1336,11 +1326,11 @@ class ThesslaGreenDeviceScanner:
         """Read coil registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response = await _call_modbus(
+                response: Any = await _call_modbus(
                     client.read_coils, self.slave_id, address, count=count
                 )
                 if response is not None and not response.isError():
-                    return response.bits[:count]
+                    return cast(list[bool], response.bits[:count])
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read coil 0x%04X on attempt %d: %s",
@@ -1382,11 +1372,11 @@ class ThesslaGreenDeviceScanner:
         """Read discrete input registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response = await _call_modbus(
+                response: Any = await _call_modbus(
                     client.read_discrete_inputs, self.slave_id, address, count=count
                 )
                 if response is not None and not response.isError():
-                    return response.bits[:count]
+                    return cast(list[bool], response.bits[:count])
             except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
                 _LOGGER.debug(
                     "Failed to read discrete 0x%04X on attempt %d: %s",
