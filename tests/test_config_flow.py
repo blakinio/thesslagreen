@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import logging
 import pytest
 from homeassistant.const import CONF_HOST, CONF_PORT
 
@@ -150,6 +151,44 @@ async def test_duplicate_entry_aborts():
 
         with pytest.raises(AbortFlow):
             await flow.async_step_confirm({})
+
+
+async def test_user_step_duplicate_entry_aborts_silently(caplog):
+    """Duplicate device during user step should abort without logging errors."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    validation_result = {
+        "title": "ThesslaGreen 192.168.1.100",
+        "device_info": {},
+        "scan_result": {},
+    }
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured",
+            side_effect=AbortFlow("already_configured"),
+        ),
+        caplog.at_level(logging.ERROR),
+    ):
+        with pytest.raises(AbortFlow) as err:
+            await flow.async_step_user(
+                {
+                    CONF_HOST: "192.168.1.100",
+                    CONF_PORT: 502,
+                    "slave_id": 10,
+                    CONF_NAME: "My Device",
+                }
+            )
+
+    assert err.value.reason == "already_configured"
+    assert not caplog.records
 
 
 @pytest.mark.parametrize(
