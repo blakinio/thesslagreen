@@ -78,6 +78,7 @@ CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 CONF_SCAN_UART_SETTINGS = "scan_uart_settings"
 CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
 CONF_AIRFLOW_UNIT = "airflow_unit"
+CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnostics
 
 AIRFLOW_UNIT_M3H = "m3h"
 AIRFLOW_UNIT_PERCENTAGE = "percentage"
@@ -88,6 +89,7 @@ AIRFLOW_RATE_REGISTERS = {"supply_flow_rate", "exhaust_flow_rate"}
 
 DEFAULT_SCAN_UART_SETTINGS = False
 DEFAULT_SKIP_MISSING_REGISTERS = False
+DEFAULT_DEEP_SCAN = False
 
 # Registers that are known to be unavailable on some devices
 KNOWN_MISSING_REGISTERS = {

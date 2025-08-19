@@ -23,6 +23,7 @@ from .const import (
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     CONF_AIRFLOW_UNIT,
+    CONF_DEEP_SCAN,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
     DEFAULT_AIRFLOW_UNIT,
@@ -34,6 +35,7 @@ from .const import (
     DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
+    DEFAULT_DEEP_SCAN,
     DOMAIN,
 )
 from .device_scanner import ThesslaGreenDeviceScanner
@@ -64,6 +66,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         slave_id=slave_id,
         timeout=DEFAULT_TIMEOUT,
         retry=DEFAULT_RETRY,
+        deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
     )
 
     try:
@@ -161,6 +164,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Coerce(int), vol.Range(min=1, max=247)
                 ),
                 vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
+                vol.Optional(
+                    CONF_DEEP_SCAN,
+                    default=DEFAULT_DEEP_SCAN,
+                    description={"advanced": True},
+                ): bool,
             }
         )
 
@@ -189,6 +197,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],  # Standard key
                     "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
                     CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
+                },
+                options={
+                    CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
                 },
             )
 
@@ -248,6 +259,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders=description_placeholders,
         )
 
+    @staticmethod
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:  # type: ignore[override]
+        """Return the options flow handler."""
+        return OptionsFlow(config_entry)
+
 
 class OptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for ThesslaGreen Modbus."""
@@ -277,6 +293,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         )
         current_airflow_unit = self.config_entry.options.get(
             CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
+        )
+        current_deep_scan = self.config_entry.options.get(
+            CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
         )
 
         data_schema = vol.Schema(
@@ -309,6 +328,11 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_AIRFLOW_UNIT,
                     default=current_airflow_unit,
                 ): vol.In([AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE]),
+                vol.Optional(
+                    CONF_DEEP_SCAN,
+                    default=current_deep_scan,
+                    description={"advanced": True},
+                ): bool,
             }
         )
 
@@ -323,5 +347,6 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "scan_uart_enabled": "Yes" if current_scan_uart else "No",
                 "skip_missing_enabled": "Yes" if current_skip_missing else "No",
                 "current_airflow_unit": current_airflow_unit,
+                "deep_scan_enabled": "Yes" if current_deep_scan else "No",
             },
         )

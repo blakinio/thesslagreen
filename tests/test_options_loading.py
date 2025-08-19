@@ -4,6 +4,12 @@ from pathlib import Path
 import custom_components.thessla_green_modbus.const as const
 
 
+def test_deep_scan_defaults():
+    """Ensure deep scan option is defined and defaults to False."""
+    assert const.CONF_DEEP_SCAN == "deep_scan"
+    assert const.DEFAULT_DEEP_SCAN is False
+
+
 def test_missing_options_file(monkeypatch, caplog):
     def missing(_self: Path) -> str:  # pragma: no cover - simple stub
         raise FileNotFoundError

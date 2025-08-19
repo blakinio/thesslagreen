@@ -101,6 +101,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         retry: int = 3,
         force_full_register_list: bool = False,
         scan_uart_settings: bool = False,
+        deep_scan: bool = False,
         entry: ConfigEntry | None = None,
         skip_missing_registers: bool = False,
     ) -> None:
@@ -127,6 +128,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.retry = retry
         self.force_full_register_list = force_full_register_list
         self.scan_uart_settings = scan_uart_settings
+        self.deep_scan = deep_scan
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
 
@@ -198,6 +200,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     retry=self.retry,
                     scan_uart_settings=self.scan_uart_settings,
                     skip_known_missing=self.skip_missing_registers,
+                    deep_scan=self.deep_scan,
                 )
 
                 self.device_scan_result = await scanner.scan_device()
@@ -1056,6 +1059,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "unknown_registers": self.unknown_registers,
             "scanned_registers": self.scanned_registers,
         }
+
+        if self.device_scan_result and "raw_registers" in self.device_scan_result:
+            diagnostics["raw_registers"] = self.device_scan_result["raw_registers"]
+            if "total_addresses_scanned" in self.device_scan_result:
+                statistics["total_addresses_scanned"] = self.device_scan_result[
+                    "total_addresses_scanned"
+                ]
 
         return diagnostics
 
