@@ -258,6 +258,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Load all registers if forced
             self._load_full_register_list()
 
+        model = self.device_info.get("model", "Unknown")
+        firmware = self.device_info.get("firmware", "Unknown")
+        if model == "Unknown" or firmware == "Unknown":
+            _LOGGER.warning(
+                "Device model or firmware could not be determined. "
+                "Verify Modbus connectivity or ensure your firmware is supported."
+            )
+
         # Pre-compute register groups for batch reading
         self._compute_register_groups()
 
