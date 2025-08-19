@@ -327,6 +327,29 @@ async def test_read_holding_skips_range_on_exception_response(caplog):
         call_mock2.assert_not_called()
 
 
+async def test_read_holding_skip_cache_reads_unsupported_range():
+    """Single reads are attempted even if range was marked unsupported."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    mock_client = AsyncMock()
+    scanner._unsupported_holding_ranges[(0x0200, 0x0201)] = 1
+    scanner._failed_holding.update({0x0200, 0x0201})
+
+    response = MagicMock()
+    response.isError.return_value = False
+    response.registers = [123]
+
+    with patch(
+        "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+        AsyncMock(return_value=response),
+    ) as call_mock:
+        result = await scanner._read_holding(
+            mock_client, 0x0200, 1, skip_cache=True
+        )
+
+    assert result == [123]
+    call_mock.assert_awaited_once()
+
+
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
@@ -561,7 +584,7 @@ async def test_scan_device_firmware_unavailable(caplog):
     async def fake_read_input(client, address, count):
         return [1] * count
 
-    async def fake_read_holding(client, address, count):
+    async def fake_read_holding(client, address, count, **kwargs):
         return [1] * count
 
     async def fake_read_coil(client, address, count):
@@ -609,7 +632,7 @@ async def test_scan_blocks_propagated():
         async def fake_read_input(client, address, count):
             return [1] * count
 
-        async def fake_read_holding(client, address, count):
+        async def fake_read_holding(client, address, count, **kwargs):
             return [1] * count
 
         async def fake_read_coil(client, address, count):
@@ -869,7 +892,7 @@ async def test_temperature_register_unavailable_kept():
             data[outside_addr - address] = SENSOR_UNAVAILABLE
         return data
 
-    async def fake_read_holding(client, address, count):
+    async def fake_read_holding(client, address, count, **kwargs):
         return [1] * count
 
     async def fake_read_coil(client, address, count):
@@ -1028,7 +1051,7 @@ async def test_scan_excludes_unavailable_temperature():
             data[temp_addr - address] = SENSOR_UNAVAILABLE
         return data
 
-    async def fake_read_holding(client, address, count):
+    async def fake_read_holding(client, address, count, **kwargs):
         return [1] * count
 
     async def fake_read_coil(client, address, count):
@@ -1608,7 +1631,7 @@ async def test_deep_scan_collects_raw_registers():
     async def fake_read_input(self, client, address, count, *, skip_cache=False):
         return list(range(address, address + count))
 
-    async def fake_read_holding(self, client, address, count):
+    async def fake_read_holding(self, client, address, count, *, skip_cache=False):
         return [0] * count
 
     async def fake_read_coil(self, client, address, count):
