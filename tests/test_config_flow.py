@@ -590,7 +590,7 @@ async def test_validate_input_no_data():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.device_scanner."
+        "custom_components.thessla_green_modbus.scanner_core."
         "ThesslaGreenDeviceScanner.scan_device",
         return_value=None,
     ):
@@ -613,7 +613,7 @@ async def test_validate_input_modbus_exception():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.device_scanner."
+        "custom_components.thessla_green_modbus.scanner_core."
         "ThesslaGreenDeviceScanner.scan_device",
         side_effect=ModbusException("error"),
     ):

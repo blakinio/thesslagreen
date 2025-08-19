@@ -67,7 +67,7 @@ async def validate_optimization_metrics():
 
         # Test 2: Device Scanner Efficiency
         print("🔍 Testing device scanner optimization...")
-        from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
