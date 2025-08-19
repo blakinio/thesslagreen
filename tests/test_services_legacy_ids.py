@@ -68,6 +68,9 @@ SERVICE_CALL_DATA = {
     "refresh_device_data": {
         "entity_id": "number.rekuperator_speed",
     },
+    "get_unknown_registers": {
+        "entity_id": "number.rekuperator_speed",
+    },
 }
 
 
