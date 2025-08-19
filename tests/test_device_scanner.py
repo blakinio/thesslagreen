@@ -581,7 +581,15 @@ async def test_scan_device_firmware_unavailable(caplog):
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    async def fake_read_input(client, address, count):
+    async def fake_read_input(client, address, count, *, skip_cache=False):
+        if address == 0 and count == 30:
+            return None
+        if count == 1 and address in (
+            INPUT_REGISTERS["version_major"],
+            INPUT_REGISTERS["version_minor"],
+            INPUT_REGISTERS["version_patch"],
+        ):
+            return None
         return [1] * count
 
     async def fake_read_holding(client, address, count, **kwargs):
@@ -598,24 +606,61 @@ async def test_scan_device_firmware_unavailable(caplog):
         mock_client.connect.return_value = True
         mock_client_class.return_value = mock_client
 
-        async def fake_firmware(client, info):
-            logging.getLogger(__name__).info("Firmware version unavailable")
-            info.firmware = "Unknown"
-            info.firmware_available = False
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+        ):
+            caplog.set_level(logging.ERROR)
+            result = await scanner.scan_device()
+
+    assert result["device_info"]["firmware"] == "Unknown"
+    assert "Failed to read firmware version registers" in caplog.text
+
+
+async def test_scan_device_firmware_bulk_fallback():
+    """Bulk firmware read failure should fall back to individual reads."""
+    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with patch.object(
+        ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+
+    async def fake_read_input(client, address, count, *, skip_cache=False):
+        if address == 0 and count == 30:
             return None
+        if count == 1 and address == INPUT_REGISTERS["version_major"]:
+            return [4]
+        if count == 1 and address == INPUT_REGISTERS["version_minor"]:
+            return [85]
+        if count == 1 and address == INPUT_REGISTERS["version_patch"]:
+            return [0]
+        return [1] * count
+
+    async def fake_read_holding(client, address, count, **kwargs):
+        return [1] * count
+
+    async def fake_read_coil(client, address, count):
+        return [False] * count
+
+    async def fake_read_discrete(client, address, count):
+        return [False] * count
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
 
         with (
             patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
-            patch.object(scanner, "_read_firmware_version", AsyncMock(side_effect=fake_firmware)),
         ):
-            caplog.set_level(logging.INFO)
             result = await scanner.scan_device()
 
-    assert result["device_info"]["firmware"] == "Unknown"
-    assert "Firmware version unavailable" in caplog.text
+    assert result["device_info"]["firmware"] == "4.85.0"
 
 
 async def test_scan_blocks_propagated():
