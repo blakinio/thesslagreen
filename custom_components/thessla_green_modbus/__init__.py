@@ -71,6 +71,11 @@ for domain in PLATFORM_DOMAINS:
             _LOGGER.warning("Skipping unsupported platform: %s", domain)
 
 
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    hass.data.setdefault(DOMAIN, {})
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ThesslaGreen Modbus from a config entry."""
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
