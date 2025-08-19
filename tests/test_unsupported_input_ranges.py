@@ -1,6 +1,6 @@
 import logging
 
-from custom_components.thessla_green_modbus.device_scanner import (
+from custom_components.thessla_green_modbus.scanner_core import (
     ThesslaGreenDeviceScanner,
 )
 

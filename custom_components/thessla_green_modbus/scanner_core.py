@@ -12,7 +12,6 @@ from importlib.resources import files
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     List,
     Optional,
@@ -39,112 +38,18 @@ from .modbus_exceptions import (
 )
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS, MULTI_REGISTER_SIZES
-from .utils import (
-    BCD_TIME_PREFIXES,
-    TIME_REGISTER_PREFIXES,
-    _decode_bcd_time,
-    _decode_register_time,
-    _to_snake_case,
+from .utils import BCD_TIME_PREFIXES, TIME_REGISTER_PREFIXES, _to_snake_case
+from .scanner_helpers import (
+    REGISTER_ALLOWED_VALUES,
+    _format_register_value,
+    MAX_BATCH_REGISTERS,
+    UART_OPTIONAL_REGS,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
-
-# Specific registers may only accept discrete values
-REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
-    "mode": {0, 1, 2},
-    "season_mode": {0, 1},
-    "special_mode": set(range(0, 12)),
-    "antifreeze_mode": {0, 1},
-}
-
-
-# Registers storing combined airflow and temperature settings
-SETTING_PREFIX = "setting_"
-
-
-def _decode_setting_value(value: int) -> tuple[int, float] | None:
-    """Decode a register storing airflow and temperature as ``0xAATT``.
-
-    ``AA`` is the airflow in percent and ``TT`` is twice the desired supply
-    temperature in degrees Celsius. ``None`` is returned if the value cannot be
-    decoded or falls outside expected ranges.
-    """
-
-    if value < 0:
-        return None
-
-    airflow = (value >> 8) & 0xFF
-    temp_double = value & 0xFF
-
-    if airflow > 100 or temp_double > 200:
-        return None
-
-    return airflow, temp_double / 2
-
-
-def _format_register_value(name: str, value: int) -> int | str:
-    """Return a human-readable representation of a register value."""
-
-    if name == "manual_airing_time_to_start":
-        raw_value = value
-        value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
-        decoded = _decode_register_time(value)
-        if decoded is None:
-            return f"0x{raw_value:04X} (invalid)"
-        return f"{decoded // 60:02d}:{decoded % 60:02d}"
-
-    if name.startswith(BCD_TIME_PREFIXES):
-        decoded = _decode_bcd_time(value)
-        if decoded is None:
-            return f"0x{value:04X} (invalid)"
-        return f"{decoded // 60:02d}:{decoded % 60:02d}"
-
-    if name.startswith(TIME_REGISTER_PREFIXES):
-        decoded = _decode_register_time(value)
-        if decoded is None:
-            return f"0x{value:04X} (invalid)"
-        return f"{decoded // 60:02d}:{decoded % 60:02d}"
-
-    if name.startswith(SETTING_PREFIX):
-        decoded = _decode_setting_value(value)
-        if decoded is None:
-            return value
-        airflow, temp = decoded
-        temp_str = f"{temp:g}"
-        return f"{airflow}% @ {temp_str}°C"
-
-    return value
-
-
-def _decode_season_mode(value: int) -> Optional[int]:
-    """Decode season mode register which may place value in high byte."""
-    if value in (0xFF00, 0xFFFF):
-        return None
-    high = (value >> 8) & 0xFF
-    low = value & 0xFF
-    if high and low:
-        return None
-    return high or low
-
-
-SPECIAL_VALUE_DECODERS: Dict[str, Callable[[int], Optional[int]]] = {
-    "season_mode": _decode_season_mode,
-}
-
-
-# Maximum registers per batch read (Modbus limit)
-MAX_BATCH_REGISTERS = 16
-
-# Optional UART configuration registers (Air-B and Air++ ports)
-# According to the Series 4 Modbus documentation, both the Air-B
-# (0x1164-0x1167) and Air++ (0x1168-0x116B) register blocks are
-# optional and may be absent on devices without the corresponding
-# hardware. They are skipped by default unless UART scanning is
-# explicitly enabled.
-UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 
 
 @dataclass

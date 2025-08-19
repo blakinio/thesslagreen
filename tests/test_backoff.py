@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusIOException,
 )
@@ -25,7 +25,7 @@ async def test_backoff_delay(func, expected):
     sleep_mock = AsyncMock()
     with (
         patch(
-            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
             AsyncMock(side_effect=ModbusIOException("boom")),
         ),
         patch("asyncio.sleep", sleep_mock),
@@ -50,7 +50,7 @@ async def test_backoff_zero_no_delay(func, expected):
     sleep_mock = AsyncMock()
     with (
         patch(
-            "custom_components.thessla_green_modbus.device_scanner._call_modbus",
+            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
             AsyncMock(side_effect=ModbusIOException("boom")),
         ),
         patch("asyncio.sleep", sleep_mock),

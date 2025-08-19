@@ -1,6 +1,6 @@
 import pytest
 
-from custom_components.thessla_green_modbus.device_scanner import _decode_setting_value
+from custom_components.thessla_green_modbus.scanner_helpers import _decode_setting_value
 from custom_components.thessla_green_modbus.utils import _decode_bcd_time, _decode_register_time
 
 

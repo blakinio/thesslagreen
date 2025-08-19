@@ -29,7 +29,7 @@ from .const import (
     SPECIAL_MODE_OPTIONS,
 )
 from .entity_mappings import map_legacy_entity_id
-from .device_scanner import ThesslaGreenDeviceScanner
+from .scanner_core import ThesslaGreenDeviceScanner
 from .modbus_exceptions import ConnectionException, ModbusException
 
 if TYPE_CHECKING:

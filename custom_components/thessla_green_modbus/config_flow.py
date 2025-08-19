@@ -38,7 +38,7 @@ from .const import (
     DEFAULT_DEEP_SCAN,
     DOMAIN,
 )
-from .device_scanner import ThesslaGreenDeviceScanner
+from .scanner_core import ThesslaGreenDeviceScanner
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)

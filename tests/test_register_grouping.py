@@ -1,6 +1,6 @@
 import pytest
 
-from custom_components.thessla_green_modbus.device_scanner import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.registers import INPUT_REGISTERS
 
 

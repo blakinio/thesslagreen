@@ -69,7 +69,7 @@ from .const import (
     SENSOR_UNAVAILABLE,
     UNKNOWN_MODEL,
 )
-from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
+from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_client import ThesslaGreenModbusClient
 from .modbus_helpers import _call_modbus
 from .multipliers import REGISTER_MULTIPLIERS
