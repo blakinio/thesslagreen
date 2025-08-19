@@ -237,6 +237,7 @@ class ThesslaGreenDeviceScanner:
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
         deep_scan: bool = False,
+        full_register_scan: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         self.host = host
@@ -249,6 +250,7 @@ class ThesslaGreenDeviceScanner:
         self.scan_uart_settings = scan_uart_settings
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
+        self.full_register_scan = full_register_scan
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -326,6 +328,7 @@ class ThesslaGreenDeviceScanner:
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
         deep_scan: bool = False,
+        full_register_scan: bool = False,
     ) -> "ThesslaGreenDeviceScanner":
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -339,6 +342,7 @@ class ThesslaGreenDeviceScanner:
             scan_uart_settings,
             skip_known_missing,
             deep_scan,
+            full_register_scan,
         )
         await self._async_setup()
 
@@ -522,158 +526,250 @@ class ThesslaGreenDeviceScanner:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
         except Exception:  # pragma: no cover
             pass
+        unknown_registers: dict[str, dict[int, Any]] = {
+            "input_registers": {},
+            "holding_registers": {},
+            "coil_registers": {},
+            "discrete_inputs": {},
+        }
+        scanned_registers: dict[str, int] = {
+            "input_registers": 0,
+            "holding_registers": 0,
+            "coil_registers": 0,
+            "discrete_inputs": 0,
+        }
 
-        # Scan Input Registers in batches
-        input_addr_to_name: dict[int, str] = {}
-        input_addresses: list[int] = []
-        for name, addr in INPUT_REGISTERS.items():
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
-                continue
-            input_addr_to_name[addr] = name
-            input_addresses.append(addr)
+        input_max = max(self._registers.get("04", {}).keys(), default=-1)
+        holding_max = max(self._registers.get("03", {}).keys(), default=-1)
+        coil_max = max(self._registers.get("01", {}).keys(), default=-1)
+        discrete_max = max(self._registers.get("02", {}).keys(), default=-1)
 
-        for start, count in self._group_registers_for_batch_read(input_addresses):
-            data = await self._read_input(client, start, count)
-            if data is None:
-                for offset in range(count):
-                    addr = start + offset
-                    if addr not in input_addr_to_name:
-                        continue
-                    single = await self._read_input(client, addr, 1, skip_cache=True)
-                    if single and self._is_valid_register_value(
-                        input_addr_to_name[addr], single[0]
-                    ):
-                        self.available_registers["input_registers"].add(input_addr_to_name[addr])
-                continue
-
-            for offset, value in enumerate(data):
-                addr = start + offset
-                if (name := input_addr_to_name.get(addr)) and self._is_valid_register_value(
-                    name, value
-                ):
+        if self.full_register_scan:
+            for addr in range(0, input_max + 1):
+                scanned_registers["input_registers"] += 1
+                data = await self._read_input(client, addr, 1, skip_cache=True)
+                if not data:
+                    continue
+                name = self._registers.get("04", {}).get(addr)
+                if name and self._is_valid_register_value(name, data[0]):
                     self.available_registers["input_registers"].add(name)
+                else:
+                    unknown_registers["input_registers"][addr] = data[0]
 
-        # Scan Holding Registers in batches
-        holding_info: dict[int, tuple[str, int]] = {}
-        holding_addresses: list[int] = []
-        for name, addr in HOLDING_REGISTERS.items():
-            if not self.scan_uart_settings and addr in UART_OPTIONAL_REGS:
-                continue
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["holding_registers"]:
-                continue
-            size = MULTI_REGISTER_SIZES.get(name, 1)
-            holding_info[addr] = (name, size)
-            holding_addresses.extend(range(addr, addr + size))
+            for addr in range(0, holding_max + 1):
+                scanned_registers["holding_registers"] += 1
+                data = await self._read_holding(client, addr, 1)
+                if not data:
+                    continue
+                name = self._registers.get("03", {}).get(addr)
+                if name and self._is_valid_register_value(name, data[0]):
+                    self.available_registers["holding_registers"].add(name)
+                else:
+                    unknown_registers["holding_registers"][addr] = data[0]
 
-        for start, count in self._group_registers_for_batch_read(holding_addresses):
-            data = await self._read_holding(client, start, count)
-            if data is None:
-                for offset in range(count):
+            for addr in range(0, coil_max + 1):
+                scanned_registers["coil_registers"] += 1
+                data = await self._read_coil(client, addr, 1)
+                if not data:
+                    continue
+                name = self._registers.get("01", {}).get(addr)
+                if name is not None:
+                    self.available_registers["coil_registers"].add(name)
+                else:
+                    unknown_registers["coil_registers"][addr] = data[0]
+
+            for addr in range(0, discrete_max + 1):
+                scanned_registers["discrete_inputs"] += 1
+                data = await self._read_discrete(client, addr, 1)
+                if not data:
+                    continue
+                name = self._registers.get("02", {}).get(addr)
+                if name is not None:
+                    self.available_registers["discrete_inputs"].add(name)
+                else:
+                    unknown_registers["discrete_inputs"][addr] = data[0]
+        else:
+            # Scan Input Registers in batches
+            input_addr_to_name: dict[int, str] = {}
+            input_addresses: list[int] = []
+            for name, addr in INPUT_REGISTERS.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
+                    continue
+                input_addr_to_name[addr] = name
+                input_addresses.append(addr)
+
+            for start, count in self._group_registers_for_batch_read(input_addresses):
+                data = await self._read_input(client, start, count)
+                if data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in input_addr_to_name:
+                            continue
+                        single = await self._read_input(client, addr, 1, skip_cache=True)
+                        if single and self._is_valid_register_value(
+                            input_addr_to_name[addr], single[0]
+                        ):
+                            self.available_registers["input_registers"].add(
+                                input_addr_to_name[addr]
+                            )
+                    continue
+
+                for offset, value in enumerate(data):
                     addr = start + offset
-                    if addr not in holding_info:
-                        continue
-                    name, size = holding_info[addr]
-                    single = await self._read_holding(client, addr, size)
-                    if single and self._is_valid_register_value(name, single[0]):
-                        self.available_registers["holding_registers"].add(name)
-                continue
+                    if (
+                        name := input_addr_to_name.get(addr)
+                    ) and self._is_valid_register_value(name, value):
+                        self.available_registers["input_registers"].add(name)
 
-            for offset, value in enumerate(data):
-                addr = start + offset
-                if addr in holding_info:
-                    name, _size = holding_info[addr]
-                    if self._is_valid_register_value(name, value):
-                        self.available_registers["holding_registers"].add(name)
+            # Scan Holding Registers in batches
+            holding_info: dict[int, tuple[str, int]] = {}
+            holding_addresses: list[int] = []
+            for name, addr in HOLDING_REGISTERS.items():
+                if not self.scan_uart_settings and addr in UART_OPTIONAL_REGS:
+                    continue
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["holding_registers"]:
+                    continue
+                size = MULTI_REGISTER_SIZES.get(name, 1)
+                holding_info[addr] = (name, size)
+                holding_addresses.extend(range(addr, addr + size))
 
-        # Scan Coil Registers in batches
-        coil_addr_to_name: dict[int, str] = {}
-        coil_addresses: list[int] = []
-        for name, addr in COIL_REGISTERS.items():
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["coil_registers"]:
-                continue
-            coil_addr_to_name[addr] = name
-            coil_addresses.append(addr)
+            for start, count in self._group_registers_for_batch_read(holding_addresses):
+                data = await self._read_holding(client, start, count)
+                if data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in holding_info:
+                            continue
+                        name, size = holding_info[addr]
+                        single = await self._read_holding(client, addr, size)
+                        if single and self._is_valid_register_value(name, single[0]):
+                            self.available_registers["holding_registers"].add(name)
+                    continue
 
-        for start, count in self._group_registers_for_batch_read(coil_addresses):
-            data = await self._read_coil(client, start, count)
-            if data is None:
-                for offset in range(count):
+                for offset, value in enumerate(data):
                     addr = start + offset
-                    if addr not in coil_addr_to_name:
-                        continue
-                    single = await self._read_coil(client, addr, 1)
-                    if single is not None:
-                        self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
-                continue
-            for offset, value in enumerate(data):
-                addr = start + offset
-                if addr in coil_addr_to_name and value is not None:
-                    self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
+                    if addr in holding_info:
+                        name, _size = holding_info[addr]
+                        if self._is_valid_register_value(name, value):
+                            self.available_registers["holding_registers"].add(name)
 
-        # Scan Discrete Input Registers in batches
-        discrete_addr_to_name: dict[int, str] = {}
-        discrete_addresses: list[int] = []
-        for name, addr in DISCRETE_INPUT_REGISTERS.items():
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["discrete_inputs"]:
-                continue
-            discrete_addr_to_name[addr] = name
-            discrete_addresses.append(addr)
+            # Scan Coil Registers in batches
+            coil_addr_to_name: dict[int, str] = {}
+            coil_addresses: list[int] = []
+            for name, addr in COIL_REGISTERS.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["coil_registers"]:
+                    continue
+                coil_addr_to_name[addr] = name
+                coil_addresses.append(addr)
 
-        for start, count in self._group_registers_for_batch_read(discrete_addresses):
-            data = await self._read_discrete(client, start, count)
-            if data is None:
-                for offset in range(count):
+            for start, count in self._group_registers_for_batch_read(coil_addresses):
+                data = await self._read_coil(client, start, count)
+                if data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in coil_addr_to_name:
+                            continue
+                        single = await self._read_coil(client, addr, 1)
+                        if single is not None:
+                            self.available_registers["coil_registers"].add(
+                                coil_addr_to_name[addr]
+                            )
+                    continue
+                for offset, value in enumerate(data):
                     addr = start + offset
-                    if addr not in discrete_addr_to_name:
-                        continue
-                    single = await self._read_discrete(client, addr, 1)
-                    if single is not None:
-                        self.available_registers["discrete_inputs"].add(discrete_addr_to_name[addr])
-                continue
-            for offset, value in enumerate(data):
-                addr = start + offset
-                if addr in discrete_addr_to_name and value is not None:
-                    self.available_registers["discrete_inputs"].add(discrete_addr_to_name[addr])
+                    if addr in coil_addr_to_name and value is not None:
+                        self.available_registers["coil_registers"].add(
+                            coil_addr_to_name[addr]
+                        )
+
+            # Scan Discrete Input Registers in batches
+            discrete_addr_to_name: dict[int, str] = {}
+            discrete_addresses: list[int] = []
+            for name, addr in DISCRETE_INPUT_REGISTERS.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["discrete_inputs"]:
+                    continue
+                discrete_addr_to_name[addr] = name
+                discrete_addresses.append(addr)
+
+            for start, count in self._group_registers_for_batch_read(discrete_addresses):
+                data = await self._read_discrete(client, start, count)
+                if data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in discrete_addr_to_name:
+                            continue
+                        single = await self._read_discrete(client, addr, 1)
+                        if single is not None:
+                            self.available_registers["discrete_inputs"].add(
+                                discrete_addr_to_name[addr]
+                            )
+                    continue
+                for offset, value in enumerate(data):
+                    addr = start + offset
+                    if addr in discrete_addr_to_name and value is not None:
+                        self.available_registers["discrete_inputs"].add(
+                            discrete_addr_to_name[addr]
+                        )
 
         caps = self._analyze_capabilities()
         device.capabilities = [
             key for key, val in caps.as_dict().items() if isinstance(val, bool) and val
         ]
 
-        scan_blocks = {
-            "input_registers": (
-                (
-                    min(INPUT_REGISTERS.values()),
-                    max(INPUT_REGISTERS.values()),
-                )
-                if INPUT_REGISTERS
-                else (None, None)
-            ),
-            "holding_registers": (
-                (
-                    min(HOLDING_REGISTERS.values()),
-                    max(HOLDING_REGISTERS.values()),
-                )
-                if HOLDING_REGISTERS
-                else (None, None)
-            ),
-            "coil_registers": (
-                (
-                    min(COIL_REGISTERS.values()),
-                    max(COIL_REGISTERS.values()),
-                )
-                if COIL_REGISTERS
-                else (None, None)
-            ),
-            "discrete_inputs": (
-                (
-                    min(DISCRETE_INPUT_REGISTERS.values()),
-                    max(DISCRETE_INPUT_REGISTERS.values()),
-                )
-                if DISCRETE_INPUT_REGISTERS
-                else (None, None)
-            ),
-        }
+        if self.full_register_scan:
+            scan_blocks = {
+                "input_registers": (
+                    0 if input_max >= 0 else None,
+                    input_max if input_max >= 0 else None,
+                ),
+                "holding_registers": (
+                    0 if holding_max >= 0 else None,
+                    holding_max if holding_max >= 0 else None,
+                ),
+                "coil_registers": (
+                    0 if coil_max >= 0 else None,
+                    coil_max if coil_max >= 0 else None,
+                ),
+                "discrete_inputs": (
+                    0 if discrete_max >= 0 else None,
+                    discrete_max if discrete_max >= 0 else None,
+                ),
+            }
+        else:
+            scan_blocks = {
+                "input_registers": (
+                    (
+                        min(INPUT_REGISTERS.values()),
+                        max(INPUT_REGISTERS.values()),
+                    )
+                    if INPUT_REGISTERS
+                    else (None, None)
+                ),
+                "holding_registers": (
+                    (
+                        min(HOLDING_REGISTERS.values()),
+                        max(HOLDING_REGISTERS.values()),
+                    )
+                    if HOLDING_REGISTERS
+                    else (None, None)
+                ),
+                "coil_registers": (
+                    (
+                        min(COIL_REGISTERS.values()),
+                        max(COIL_REGISTERS.values()),
+                    )
+                    if COIL_REGISTERS
+                    else (None, None)
+                ),
+                "discrete_inputs": (
+                    (
+                        min(DISCRETE_INPUT_REGISTERS.values()),
+                        max(DISCRETE_INPUT_REGISTERS.values()),
+                    )
+                    if DISCRETE_INPUT_REGISTERS
+                    else (None, None)
+                ),
+            }
         self._log_skipped_ranges()
 
         raw_registers: dict[int, int] = {}
@@ -691,6 +787,8 @@ class ThesslaGreenDeviceScanner:
             "capabilities": caps.as_dict(),
             "register_count": sum(len(v) for v in self.available_registers.values()),
             "scan_blocks": scan_blocks,
+            "unknown_registers": unknown_registers,
+            "scanned_registers": scanned_registers,
         }
         if self.deep_scan:
             result["raw_registers"] = raw_registers

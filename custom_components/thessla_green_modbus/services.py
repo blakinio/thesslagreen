@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -28,6 +28,7 @@ from .const import (
     SPECIAL_MODE_OPTIONS,
 )
 from .entity_mappings import map_legacy_entity_id
+from .device_scanner import ThesslaGreenDeviceScanner
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -56,11 +57,11 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
         raw_ids = list(raw_ids)
 
     mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
-    mapped_call = ServiceCall(
-        getattr(call, "domain", DOMAIN),
-        getattr(call, "service", ""),
-        {**call.data, "entity_id": mapped_ids},
-        getattr(call, "context", None),
+    mapped_call = call.__class__(
+        domain=getattr(call, "domain", DOMAIN),
+        service=getattr(call, "service", ""),
+        data={**call.data, "entity_id": mapped_ids},
+        context=getattr(call, "context", None),
     )
     return async_extract_entity_ids(hass, mapped_call)
 
@@ -167,6 +168,12 @@ SET_DEVICE_NAME_SCHEMA = vol.Schema(
 )
 
 REFRESH_DEVICE_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): cv.entity_ids,
+    }
+)
+
+SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
     }
@@ -559,6 +566,64 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if coordinator:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Refreshed device data for %s", entity_id)
+    async def get_unknown_registers(call: ServiceCall) -> None:
+        """Service to emit unknown registers via an event."""
+        entity_ids = _extract_legacy_entity_ids(hass, call)
+        for entity_id in entity_ids:
+            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
+            if coordinator:
+                hass.bus.async_fire(
+                    f"{DOMAIN}_unknown_registers",
+                    {
+                        "entity_id": entity_id,
+                        "unknown_registers": coordinator.unknown_registers,
+                        "scanned_registers": coordinator.scanned_registers,
+                    },
+                )
+    async def scan_all_registers(call: ServiceCall) -> dict[str, Any] | None:
+        """Service to perform a full register scan."""
+        entity_ids = _extract_legacy_entity_ids(hass, call)
+        results: dict[str, Any] = {}
+
+        for entity_id in entity_ids:
+            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
+            if not coordinator:
+                continue
+
+            scanner = await ThesslaGreenDeviceScanner.create(
+                host=coordinator.host,
+                port=coordinator.port,
+                slave_id=coordinator.slave_id,
+                timeout=coordinator.timeout,
+                retry=coordinator.retry,
+                scan_uart_settings=coordinator.scan_uart_settings,
+                skip_known_missing=False,
+            )
+            try:
+                scan_result = await scanner.scan_device(full_register_scan=True)
+            finally:
+                await scanner.close()
+
+            coordinator.device_scan_result = scan_result
+
+            unknown_registers = scan_result.get("unknown_registers", {})
+            summary = {
+                "register_count": scan_result.get("register_count", 0),
+                "unknown_register_count": sum(len(v) for v in unknown_registers.values()),
+            }
+
+            results[entity_id] = {
+                "unknown_registers": unknown_registers,
+                "summary": summary,
+            }
+            _LOGGER.info(
+                "Full register scan for %s completed: %s, unknown registers: %s",
+                entity_id,
+                summary,
+                unknown_registers,
+            )
+
+        return results or None
 
     # Register all services
     hass.services.async_register(
@@ -594,6 +659,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
     )
+    hass.services.async_register(
+        DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
+        DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
+    )
 
     _LOGGER.info("ThesslaGreen Modbus services registered successfully")
 
@@ -613,6 +682,8 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         "set_modbus_parameters",
         "set_device_name",
         "refresh_device_data",
+        "get_unknown_registers",
+        "scan_all_registers",
     ]
 
     for service in services:

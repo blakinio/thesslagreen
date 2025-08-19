@@ -162,6 +162,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Device scan result
         self.device_scan_result: dict[str, Any] | None = None
+        self.unknown_registers: dict[str, dict[int, Any]] = {}
+        self.scanned_registers: dict[str, int] = {}
 
         # Statistics and diagnostics
         self.statistics: dict[str, Any] = {
@@ -217,6 +219,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.capabilities = DeviceCapabilities(
                     **self.device_scan_result.get("capabilities", {})
                 )
+                self.unknown_registers = self.device_scan_result.get("unknown_registers", {})
+                self.scanned_registers = self.device_scan_result.get("scanned_registers", {})
 
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",
@@ -1052,6 +1056,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.capabilities.as_dict() if hasattr(self.capabilities, "as_dict") else {}
             ),
             "scan_result": self.device_scan_result,
+            "unknown_registers": self.unknown_registers,
+            "scanned_registers": self.scanned_registers,
         }
 
         if self.device_scan_result and "raw_registers" in self.device_scan_result:
