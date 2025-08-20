@@ -94,7 +94,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
 
         # Entity configuration
         self._attr_translation_key = entity_config["translation_key"]
-        self._attr_icon = entity_config["icon"]
+        self._attr_icon = entity_config.get("icon", "mdi:toggle-switch")
 
         # Set entity category if specified
         if entity_config.get("category"):
