@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
@@ -56,6 +57,11 @@ async def async_setup_entry(
                 temp_created += 1
         elif is_temp:
             temp_skipped += 1
+
+    translations = await translation.async_get_translations(
+        hass, hass.config.language, f"component.{DOMAIN}"
+    )
+    entities.append(ThesslaGreenErrorCodesSensor(coordinator, translations))
 
     if entities:
         try:
@@ -161,3 +167,45 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             attrs["raw_value"] = raw_value
 
         return attrs
+
+
+class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
+    """Aggregate active error registers into a single sensor."""
+
+    _attr_icon = "mdi:alert-circle"
+    _register_name = "error_codes"
+
+    def __init__(
+        self,
+        coordinator: ThesslaGreenModbusCoordinator,
+        translations: dict[str, str],
+    ) -> None:
+        """Initialize the aggregated error sensor."""
+        super().__init__(coordinator, self._register_name)
+        self._translations = translations
+        self._attr_translation_key = self._register_name
+
+    @property
+    def available(self) -> bool:
+        """Return sensor availability."""
+        return self.coordinator.last_update_success
+
+    @property
+    def native_value(self) -> str | None:
+        """Return comma-separated translated active error codes."""
+        errors = [
+            self._translations.get(f"errors.{key}", key)
+            for key, value in self.coordinator.data.items()
+            if key.startswith("e_") and value
+        ]
+        return ", ".join(sorted(errors)) if errors else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """List active error register keys."""
+        active = [
+            key
+            for key, value in self.coordinator.data.items()
+            if key.startswith("e_") and value
+        ]
+        return {"active_errors": active} if active else {}

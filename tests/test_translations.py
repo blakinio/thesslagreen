@@ -119,7 +119,9 @@ from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
 )
 
-SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()]
+SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()] + [
+    "error_codes"
+]
 BINARY_KEYS = _load_translation_keys(
     ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS"
 )
