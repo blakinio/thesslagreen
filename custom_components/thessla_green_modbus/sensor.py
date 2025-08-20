@@ -201,7 +201,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
 
 class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
-    """Aggregate active error registers into a single sensor."""
+    """Aggregate active error and status registers into a single sensor."""
 
     _attr_icon = "mdi:alert-circle"
     _register_name = "error_codes"
@@ -211,7 +211,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         coordinator: ThesslaGreenModbusCoordinator,
         translations: dict[str, str],
     ) -> None:
-        """Initialize the aggregated error sensor."""
+        """Initialize the aggregated error/status sensor."""
         super().__init__(coordinator, self._register_name)
         self._translations = translations
         self._attr_translation_key = self._register_name
@@ -223,19 +223,22 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        """Return comma-separated translated active error codes."""
+        """Return comma-separated translated active error/status codes."""
         errors = [
-            self._translations.get(f"errors.{key}", key)
+            self._translations.get(f"codes.{key}", key)
             for key, value in self.coordinator.data.items()
-            if key.startswith("e_") and value
+            if (key.startswith("e_") or key.startswith("s_")) and value
         ]
         return ", ".join(sorted(errors)) if errors else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """List active error register keys."""
+        """List active error/status register keys."""
         active = [
             key for key, value in self.coordinator.data.items() if key.startswith("e_") and value
+            key
+            for key, value in self.coordinator.data.items()
+            if (key.startswith("e_") or key.startswith("s_")) and value
         ]
         return {"active_errors": active} if active else {}
 
@@ -273,6 +276,9 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         """Return list of raw active error/status codes for debugging."""
         codes = [
             code
+        """Return mapping of codes to translated descriptions."""
+        errors = {
+            code: self._translations.get(f"codes.{code}", code)
             for code, value in self.coordinator.data.items()
             if value and (code.startswith("e_") or code.startswith("s_"))
         ]

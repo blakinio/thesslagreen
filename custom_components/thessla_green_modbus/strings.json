@@ -1057,7 +1057,7 @@
         "name": "CF Module Version"
       },
       "error_codes": {
-        "name": "Error codes"
+        "name": "Error and status codes"
       },
       "comfort_mode": {
         "name": "Comfort Mode Status"
@@ -1314,7 +1314,7 @@
       }
     }
   },
-  "errors": {
+  "codes": {
     "e_100": "Device error E 100",
     "e_101": "Device error E 101",
     "e_102": "Device error E 102",
