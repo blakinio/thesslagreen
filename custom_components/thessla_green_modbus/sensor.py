@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
@@ -56,6 +57,14 @@ async def async_setup_entry(
                 temp_created += 1
         elif is_temp:
             temp_skipped += 1
+
+    error_registers = [
+        key
+        for key in coordinator.available_registers.get("holding_registers", set())
+        if key.startswith("e_") or key.startswith("s_")
+    ]
+    if error_registers:
+        entities.append(ThesslaGreenActiveErrorsSensor(coordinator))
 
     if entities:
         try:
@@ -161,3 +170,41 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             attrs["raw_value"] = raw_value
 
         return attrs
+
+
+class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
+    """Sensor that aggregates active error and status registers."""
+
+    _attr_name = "Active Errors"
+    _attr_icon = "mdi:alert-circle"
+
+    def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
+        """Initialize the active errors sensor."""
+        super().__init__(coordinator, "active_errors")
+        self._translations: dict[str, str] = {}
+
+    async def async_added_to_hass(self) -> None:
+        """Load translations when entity is added to Home Assistant."""
+        self._translations = await translation.async_get_translations(
+            self.hass, self.hass.config.language, f"component.{DOMAIN}"
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return comma-separated list of active error/status codes."""
+        codes = [
+            key
+            for key, value in self.coordinator.data.items()
+            if value and (key.startswith("e_") or key.startswith("s_"))
+        ]
+        return ", ".join(codes) if codes else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return mapping of codes to translated descriptions."""
+        errors = {
+            code: self._translations.get(f"errors.{code}", code)
+            for code, value in self.coordinator.data.items()
+            if value and (code.startswith("e_") or code.startswith("s_"))
+        }
+        return {"errors": errors} if errors else {}

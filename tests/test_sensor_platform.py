@@ -3,7 +3,7 @@
 import asyncio
 import sys
 import types
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -87,6 +87,10 @@ class DataUpdateCoordinator:  # pragma: no cover - minimal stub
     async def async_shutdown(self):  # pragma: no cover - stub
         return None
 
+    @classmethod
+    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
+        return cls
+
 
 class UpdateFailed(Exception):  # pragma: no cover - simple stub
     pass
@@ -115,6 +119,7 @@ from custom_components.thessla_green_modbus.select import (  # noqa: E402
 )
 from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
+    ThesslaGreenActiveErrorsSensor,
     ThesslaGreenSensor,
     async_setup_entry,
 )
@@ -254,5 +259,42 @@ def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
 
         assert any(ent._register_name == "mode" for ent in add_sensor.call_args[0][0])
         assert any(ent._register_name == "mode" for ent in add_select.call_args[0][0])
+
+    asyncio.run(run_test())
+
+
+def test_active_errors_sensor(mock_coordinator, mock_config_entry):
+    """Sensor aggregates active error and status codes with translations."""
+
+    async def run_test() -> None:
+        hass = MagicMock()
+        hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+        hass.config = types.SimpleNamespace(language="en")
+
+        mock_coordinator.available_registers = {
+            "input_registers": set(),
+            "holding_registers": {"e_100"},
+        }
+        mock_coordinator.data["e_100"] = 1
+
+        add_entities = MagicMock()
+        with patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            return_value={"errors.e_100": "Outside temp sensor missing"},
+        ):
+            await async_setup_entry(hass, mock_config_entry, add_entities)
+            entities = add_entities.call_args[0][0]
+            assert any(
+                isinstance(ent, ThesslaGreenActiveErrorsSensor) for ent in entities
+            )
+            sensor = next(
+                ent for ent in entities if isinstance(ent, ThesslaGreenActiveErrorsSensor)
+            )
+            sensor.hass = hass
+            await sensor.async_added_to_hass()
+            assert sensor.native_value == "e_100"
+            assert sensor.extra_state_attributes["errors"]["e_100"] == (
+                "Outside temp sensor missing"
+            )
 
     asyncio.run(run_test())
