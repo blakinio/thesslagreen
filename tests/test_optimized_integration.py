@@ -275,12 +275,16 @@ class TestThesslaGreenModbusCoordinator:
         assert result == 20.5
 
         # Invalid temperature (sensor disconnected)
-        result = coordinator_data._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-        assert result is None
+        result = coordinator_data._process_register_value(
+            "outside_temperature", SENSOR_UNAVAILABLE
+        )
+        assert result == SENSOR_UNAVAILABLE
 
         # Another sensor register using the sentinel value
-        result = coordinator_data._process_register_value("heating_temperature", SENSOR_UNAVAILABLE)
-        assert result is None
+        result = coordinator_data._process_register_value(
+            "heating_temperature", SENSOR_UNAVAILABLE
+        )
+        assert result == SENSOR_UNAVAILABLE
 
         # Negative temperature (-5.0°C -> raw value 65486)
         result = coordinator_data._process_register_value("outside_temperature", 65486)
@@ -295,8 +299,10 @@ class TestThesslaGreenModbusCoordinator:
         assert result == -100
 
         # Missing flow sensor
-        result = coordinator_data._process_register_value("exhaust_flow_rate", SENSOR_UNAVAILABLE)
-        assert result is None
+        result = coordinator_data._process_register_value(
+            "exhaust_flow_rate", SENSOR_UNAVAILABLE
+        )
+        assert result == SENSOR_UNAVAILABLE
 
     def test_register_grouping(self, coordinator_data):
         """Test register grouping algorithm."""
