@@ -1,6 +1,6 @@
 """Diagnostics platform for the ThesslaGreen Modbus integration.
 
-Includes the same translated error codes as exposed by the ``error_codes`` sensor.
+Includes the same translated error and status codes as exposed by the ``error_codes`` sensor.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ async def async_get_config_entry_diagnostics(
     if coordinator.data:
         for key, value in coordinator.data.items():
             if value and (key.startswith("e_") or key.startswith("s_")):
-                active_errors[key] = translations.get(f"errors.{key}", key)
+                active_errors[key] = translations.get(f"codes.{key}", key)
     if active_errors:
         diagnostics["active_errors"] = active_errors
 
