@@ -251,19 +251,23 @@ def _load_discrete_mappings() -> tuple[
             cfg["states"] = states
             select_configs[reg] = cfg
 
-    # Alarm/error registers treated as binary sensors
-    for reg in ("alarm", "error"):
-        if reg in HOLDING_REGISTERS:
-            binary_configs.setdefault(
-                reg,
-                {"translation_key": reg, "register_type": "holding_registers"},
-            )
-    for reg in HOLDING_REGISTERS:
-        if reg.startswith("s_") or reg.startswith("e_"):
-            binary_configs.setdefault(
-                reg,
-                {"translation_key": reg, "register_type": "holding_registers"},
-            )
+    # Alarm/error registers and diagnostic S_/E_ codes should always be
+    # exposed as binary sensors so they are created even if the register
+    # metadata marks them as writable or enumerated. We therefore override
+    # any previously generated switch/select configurations.
+    diag_registers = {"alarm", "error"}
+    diag_registers.update(
+        reg for reg in HOLDING_REGISTERS if reg.startswith("s_") or reg.startswith("e_")
+    )
+    for reg in diag_registers:
+        if reg not in HOLDING_REGISTERS and reg not in {"alarm", "error"}:
+            continue
+        binary_configs[reg] = {
+            "translation_key": reg,
+            "register_type": "holding_registers",
+        }
+        switch_configs.pop(reg, None)
+        select_configs.pop(reg, None)
 
     return binary_configs, switch_configs, select_configs
 
