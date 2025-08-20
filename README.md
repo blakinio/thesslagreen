@@ -293,6 +293,7 @@ automation:
 ```
 
 ### Monitoring błędów
+Czujnik `sensor.thessla_error_codes` agreguje zarówno kody błędów (`E*`), jak i kody statusowe (`S*`).
 ```yaml
 automation:
   - alias: "Alarm przy błędach"
@@ -306,7 +307,7 @@ automation:
           title: "🚨 ThesslaGreen Error"
           message: >
             Wykryto błąd systemu wentylacji!
-            Kod błędu: {{ states('sensor.thessla_error_code') }}
+            Kod błędu: {{ states('sensor.thessla_error_codes') }}
       - service: light.turn_on
         target:
           entity_id: light.salon_led

@@ -142,6 +142,7 @@ data:
 ```
 
 ### Error monitoring
+The `sensor.thessla_error_codes` sensor aggregates both error codes (`E*`) and status codes (`S*`).
 ```yaml
 automation:
   - alias: "Alarm on errors"
@@ -155,7 +156,7 @@ automation:
           title: "🚨 ThesslaGreen Error"
           message: >
             Ventilation system error detected!
-            Error code: {{ states('sensor.thessla_error_code') }}
+            Error code: {{ states('sensor.thessla_error_codes') }}
       - service: light.turn_on
         target:
           entity_id: light.living_room_led
