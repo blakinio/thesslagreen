@@ -1041,18 +1041,6 @@ def _extend_entity_mappings_from_csv() -> None:
         if register in SELECT_ENTITY_MAPPINGS:
             continue
 
-        info = get_register_info(register)
-        if not info:
-            continue
-
-        access = info.get("access", "") or ""
-        min_val = info.get("min")
-        max_val = info.get("max")
-        unit = info.get("unit")
-        info_text = info.get("information") or ""
-        scale = info.get("scale", 1)
-        step = info.get("step", scale)
-
         if (
             register in {"alarm", "error"}
             or register.startswith("s_")
@@ -1068,6 +1056,18 @@ def _extend_entity_mappings_from_csv() -> None:
                 },
             )
             continue
+
+        info = get_register_info(register)
+        if not info:
+            continue
+
+        access = info.get("access", "") or ""
+        min_val = info.get("min")
+        max_val = info.get("max")
+        unit = info.get("unit")
+        info_text = info.get("information") or ""
+        scale = info.get("scale", 1)
+        step = info.get("step", scale)
 
         if min_val is not None and max_val is not None:
             if max_val <= 1:
