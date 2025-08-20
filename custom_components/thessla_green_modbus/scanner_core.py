@@ -38,7 +38,7 @@ from .modbus_exceptions import (
 )
 from .modbus_helpers import _call_modbus
 from .registers import HOLDING_REGISTERS, INPUT_REGISTERS, MULTI_REGISTER_SIZES
-from .utils import BCD_TIME_PREFIXES, TIME_REGISTER_PREFIXES, _to_snake_case
+from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, TIME_REGISTER_PREFIXES, _to_snake_case
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
     _format_register_value,
@@ -307,6 +307,10 @@ class ThesslaGreenDeviceScanner:
         allowed = REGISTER_ALLOWED_VALUES.get(name)
         if allowed is not None and value not in allowed:
             return False
+
+        if name.startswith(BCD_TIME_PREFIXES) and name != "schedule_start_time":
+            if _decode_bcd_time(value) is None:
+                return False
 
         if range_vals := self._register_ranges.get(name):
             min_val, max_val = range_vals
@@ -933,8 +937,21 @@ class ThesslaGreenDeviceScanner:
                             )
 
                         if name.startswith(BCD_TIME_PREFIXES):
-                            min_val = (min_val * 100) if min_val is not None else 0
-                            max_val = (max_val * 100) if max_val is not None else 2359
+                            min_val = (
+                                ((min_val // 10) << 12 | (min_val % 10) << 8)
+                                if min_val is not None
+                                else 0
+                            )
+                            max_val = (
+                                ((max_val // 10) << 12 | (max_val % 10) << 8 | 0x59)
+                                if max_val is not None
+                                else 0x2359
+                            )
+                        elif name.startswith(("setting_summer_", "setting_winter_")):
+                            min_val = (min_val << 8) if min_val is not None else 0
+                            max_val = (
+                                (max_val << 8) | 0xFF if max_val is not None else 0xFFFF
+                            )
 
                         version_tuple: Optional[Tuple[int, ...]] = None
                         if version_raw:

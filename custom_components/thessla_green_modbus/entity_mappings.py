@@ -286,9 +286,9 @@ def _load_discrete_mappings() -> tuple[
                     cfg["register"] = reg
                     cfg.setdefault("icon", "mdi:toggle-switch")
                     switch_configs[reg] = cfg
-            else:
-                if reg in binary_keys:
-                    binary_configs[reg] = cfg
+                else:
+                    if reg in binary_keys:
+                        binary_configs[reg] = cfg
         else:
             if reg in select_keys:
                 cfg["states"] = states
