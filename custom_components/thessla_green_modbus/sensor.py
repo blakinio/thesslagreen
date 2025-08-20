@@ -59,7 +59,6 @@ async def async_setup_entry(
         elif is_temp:
             temp_skipped += 1
 
-
     translations = await translation.async_get_translations(
         hass, hass.config.language, f"component.{DOMAIN}"
     )
@@ -71,7 +70,6 @@ async def async_setup_entry(
     ]
     if error_registers:
         entities.append(ThesslaGreenActiveErrorsSensor(coordinator))
-
 
     if entities:
         try:
@@ -165,10 +163,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
     def available(self) -> bool:  # type: ignore[override]
         """Return if entity has valid data."""
         value = self.coordinator.data.get(self._register_name)
-        if not (
-            self.coordinator.last_update_success
-            and value not in (None, SENSOR_UNAVAILABLE)
-        ):
+        if not (self.coordinator.last_update_success and value not in (None, SENSOR_UNAVAILABLE)):
             return False
         airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
             CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
@@ -203,7 +198,6 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             attrs["raw_value"] = raw_value
 
         return attrs
-
 
 
 class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
@@ -241,11 +235,14 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """List active error/status register keys."""
         active = [
+            key for key, value in self.coordinator.data.items() if key.startswith("e_") and value
             key
             for key, value in self.coordinator.data.items()
             if (key.startswith("e_") or key.startswith("s_")) and value
         ]
         return {"active_errors": active} if active else {}
+
+
 class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
     """Sensor that aggregates active error and status registers."""
 
@@ -265,20 +262,24 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        """Return comma-separated list of active error/status codes."""
+        """Return comma-separated list of translated active error/status labels."""
         codes = [
             key
             for key, value in self.coordinator.data.items()
             if value and (key.startswith("e_") or key.startswith("s_"))
         ]
-        return ", ".join(codes) if codes else None
+        labels = [self._translations.get(f"errors.{code}", code) for code in codes]
+        return ", ".join(sorted(labels)) if labels else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return list of raw active error/status codes for debugging."""
+        codes = [
+            code
         """Return mapping of codes to translated descriptions."""
         errors = {
             code: self._translations.get(f"codes.{code}", code)
             for code, value in self.coordinator.data.items()
             if value and (code.startswith("e_") or code.startswith("s_"))
-        }
-        return {"errors": errors} if errors else {}
+        ]
+        return {"errors": sorted(codes)} if codes else {}
