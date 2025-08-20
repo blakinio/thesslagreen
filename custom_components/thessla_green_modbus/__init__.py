@@ -40,13 +40,6 @@ from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
 
-# Preload platform modules to avoid runtime import warnings
-for _platform in PLATFORM_DOMAINS:
-    try:
-        import_module(f".{_platform}", __name__)
-    except Exception:  # pragma: no cover - environment-dependent
-        _LOGGER.debug("Could not preload platform %s", _platform, exc_info=True)
-
 # Legacy default port used before version 2 when explicit port was optional
 LEGACY_DEFAULT_PORT = 8899
 
@@ -174,6 +167,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Migrate entity unique IDs (replace ':' in host with '-')
     await _async_migrate_unique_ids(hass, entry)
 
+    # Preload platform modules in the executor to avoid blocking the event loop
+    for platform in PLATFORM_DOMAINS:
+        try:
+            await hass.async_add_executor_job(import_module, f".{platform}", __name__)
+        except Exception:  # pragma: no cover - environment-dependent
+            _LOGGER.debug("Could not preload platform %s", platform, exc_info=True)
+
     # Setup platforms
     _LOGGER.debug("Setting up platforms: %s", PLATFORMS)
     try:
@@ -200,9 +200,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("Unloading ThesslaGreen Modbus integration")
 
     # Unload platforms
-    unload_ok = cast(
-        bool, await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    )
+    unload_ok = cast(bool, await hass.config_entries.async_unload_platforms(entry, PLATFORMS))
 
     if unload_ok:
         # Shutdown coordinator
