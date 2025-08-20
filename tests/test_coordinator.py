@@ -444,24 +444,24 @@ def test_dac_value_processing(coordinator, caplog):
     ids=sorted(SENSOR_UNAVAILABLE_REGISTERS),
 )
 def test_process_register_value_sensor_unavailable(coordinator, register_name):
-    """Return None when sensors report unavailable for known sensor registers."""
-    assert coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) is None
+    """Return sentinel when sensors report unavailable for known sensor registers."""
+    assert (
+        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE)
+        == SENSOR_UNAVAILABLE
+    )
 
 
 @pytest.mark.parametrize(
     ("register_name", "value", "expected"),
     [
         ("supply_flow_rate", 0xFFFB, -5),
-        ("outside_temperature", 0x8000, None),
+        ("outside_temperature", 0x8000, SENSOR_UNAVAILABLE),
     ],
 )
 def test_process_register_value_extremes(coordinator, register_name, value, expected):
     """Handle extreme raw register values correctly."""
     result = coordinator._process_register_value(register_name, value)
-    if expected is None:
-        assert result is None
-    else:
-        assert result == expected
+    assert result == expected
 
 
 @pytest.mark.parametrize(

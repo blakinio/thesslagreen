@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
 setattr(const, "PERCENTAGE", "%")
+setattr(const, "STATE_UNAVAILABLE", "unavailable")
 
 
 class UnitOfTemperature:  # pragma: no cover - enum stub
@@ -109,7 +110,11 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+from homeassistant.const import STATE_UNAVAILABLE  # noqa: E402
+from custom_components.thessla_green_modbus.const import (
+    DOMAIN,
+    SENSOR_UNAVAILABLE,
+)  # noqa: E402
 from custom_components.thessla_green_modbus.select import (  # noqa: E402
     async_setup_entry as select_async_setup_entry,
 )
@@ -232,6 +237,23 @@ def test_time_sensor_formats_value(mock_coordinator):
     mock_coordinator.data[register] = 8 * 60 + 5
     sensor = ThesslaGreenSensor(mock_coordinator, register, sensor_def)
     assert sensor.native_value == "08:05"
+
+
+def test_sensor_reports_unavailable_when_no_data():
+    """Sensors return STATE_UNAVAILABLE and are marked unavailable when data missing."""
+    coord = MagicMock()
+    coord.host = "1.2.3.4"
+    coord.port = 502
+    coord.slave_id = 10
+    coord.get_device_info.return_value = {}
+    coord.entry = MagicMock()
+    coord.entry.options = {}
+    coord.data = {"outside_temperature": SENSOR_UNAVAILABLE}
+    coord.last_update_success = True
+    sensor_def = SENSOR_DEFINITIONS["outside_temperature"]
+    sensor = ThesslaGreenSensor(coord, "outside_temperature", sensor_def)
+    assert sensor.native_value == STATE_UNAVAILABLE
+    assert sensor.available is False
 
 
 def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
