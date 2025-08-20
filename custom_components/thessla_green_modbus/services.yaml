@@ -1,6 +1,7 @@
 # Complete services for ThesslaGreen Modbus Integration
 # Compatibility: Home Assistant 2025.7.1+ & pymodbus 3.5.*+
 # All models: ThesslaGreen AirPack Home series 4
+# Active device faults are exposed via the ``sensor.error_codes`` entity
 
 set_special_mode:
   name: Set Special Mode

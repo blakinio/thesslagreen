@@ -1,4 +1,7 @@
-"""Diagnostics platform for the ThesslaGreen Modbus integration."""
+"""Diagnostics platform for the ThesslaGreen Modbus integration.
+
+Includes the same translated error codes as exposed by the ``error_codes`` sensor.
+"""
 
 from __future__ import annotations
 

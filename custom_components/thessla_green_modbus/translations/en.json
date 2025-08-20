@@ -1037,6 +1037,9 @@
       "cf_version": {
         "name": "CF Module Version"
       },
+      "error_codes": {
+        "name": "Error codes"
+      },
       "comfort_mode": {
         "name": "Comfort Mode Status"
       },

@@ -1037,6 +1037,9 @@
       "cf_version": {
         "name": "Wersja modułu CF"
       },
+      "error_codes": {
+        "name": "Kody błędów"
+      },
       "comfort_mode": {
         "name": "Tryb komfort"
       },
