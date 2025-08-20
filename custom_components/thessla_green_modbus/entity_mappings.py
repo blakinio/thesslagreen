@@ -174,7 +174,8 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
             "step": info.get("step", 1),
             "scale": info.get("scale", 1),
         }
-    number_configs.update(NUMBER_OVERRIDES)
+    for register, override in NUMBER_OVERRIDES.items():
+        number_configs.setdefault(register, {}).update(override)
     return number_configs
 
 # Manual overrides for number entities (icons, custom units, etc.)
@@ -205,6 +206,13 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "max_gwc_air_temperature": {"icon": "mdi:thermometer-high"},
     "gwc_regen_period": {"icon": "mdi:timer"},
     "delta_t_gwc": {"icon": "mdi:thermometer-lines"},
+    # Date/time registers
+    "date_time_1": {
+        "unit": "RRMM",
+        "min": 0,
+        "max": 99,
+        "step": 1,
+    },
 }
 
 
