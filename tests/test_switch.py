@@ -3,7 +3,7 @@
 import asyncio
 import sys
 import types
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -134,6 +134,19 @@ from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E4
 from custom_components.thessla_green_modbus.switch import (  # noqa: E402
     ThesslaGreenSwitch,
 )
+from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+
+# Ensure required test mapping is present when dynamic generation is unavailable
+ENTITY_MAPPINGS.setdefault("switch", {})
+ENTITY_MAPPINGS["switch"].setdefault(
+    "bypass",
+    {
+        "register": "bypass",
+        "register_type": "coil_registers",
+        "translation_key": "bypass",
+        "icon": "mdi:pipe-leak",
+    },
+)
 
 
 def test_switch_creation_and_state(mock_coordinator):
@@ -179,3 +192,26 @@ def test_switch_definitions_single_source():
     """Ensure switch definitions come from central ENTITY_MAPPINGS."""
     assert not hasattr(switch, "SWITCH_ENTITIES")
     assert "bypass" in ENTITY_MAPPINGS["switch"]
+
+
+def test_switch_icon_fallback(hass, mock_config_entry, mock_coordinator):
+    """Switch setups without an explicit icon use the default icon."""
+    config = {
+        "register": "mock_register",
+        "register_type": "coil_registers",
+        "translation_key": "mock_switch_no_icon",
+    }
+    mock_coordinator.data["mock_register"] = 0
+    mock_coordinator.available_registers = {"coil_registers": {"mock_register"}}
+    mock_coordinator.force_full_register_list = False
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    added = []
+
+    def async_add_entities(entities, update=False):  # pragma: no cover - test helper
+        added.extend(entities)
+
+    with patch.dict(ENTITY_MAPPINGS["switch"], {"mock_switch_no_icon": config}):
+        asyncio.run(switch.async_setup_entry(hass, mock_config_entry, async_add_entities))
+
+    assert len(added) == 1
+    assert added[0]._attr_icon == "mdi:toggle-switch"

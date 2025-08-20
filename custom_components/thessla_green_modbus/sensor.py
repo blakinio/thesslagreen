@@ -9,7 +9,7 @@ from typing import Any, cast
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE
+from homeassistant.const import PERCENTAGE, STATE_UNAVAILABLE
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
@@ -21,6 +21,7 @@ from .const import (
     DEFAULT_AIRFLOW_UNIT,
     AIRFLOW_UNIT_PERCENTAGE,
     AIRFLOW_RATE_REGISTERS,
+    SENSOR_UNAVAILABLE,
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -58,10 +59,19 @@ async def async_setup_entry(
         elif is_temp:
             temp_skipped += 1
 
+
     translations = await translation.async_get_translations(
         hass, hass.config.language, f"component.{DOMAIN}"
     )
     entities.append(ThesslaGreenErrorCodesSensor(coordinator, translations))
+    error_registers = [
+        key
+        for key in coordinator.available_registers.get("holding_registers", set())
+        if key.startswith("e_") or key.startswith("s_")
+    ]
+    if error_registers:
+        entities.append(ThesslaGreenActiveErrorsSensor(coordinator))
+
 
     if entities:
         try:
@@ -124,8 +134,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         """Return the state of the sensor."""
         value = self.coordinator.data.get(self._register_name)
 
-        if value is None:
-            return None
+        if value in (None, SENSOR_UNAVAILABLE):
+            return STATE_UNAVAILABLE
         if self._register_name.startswith(TIME_REGISTER_PREFIXES):
             if isinstance(value, int):
                 return f"{value // 60:02d}:{value % 60:02d}"
@@ -145,11 +155,37 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             nominal = self.coordinator.data.get(nominal_key)
             if isinstance(nominal, (int, float)) and nominal:
                 return round((cast(float, value) / float(nominal)) * 100)
-            return None
+            return STATE_UNAVAILABLE
         value_map = self._sensor_def.get("value_map")
         if value_map is not None:
             return cast(float | int | str, value_map.get(value, value))
         return cast(float | int | str, value)
+
+    @property
+    def available(self) -> bool:  # type: ignore[override]
+        """Return if entity has valid data."""
+        value = self.coordinator.data.get(self._register_name)
+        if not (
+            self.coordinator.last_update_success
+            and value not in (None, SENSOR_UNAVAILABLE)
+        ):
+            return False
+        airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
+            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
+        )
+        if (
+            self._register_name in AIRFLOW_RATE_REGISTERS
+            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
+        ):
+            nominal_key = (
+                "nominal_supply_air_flow"
+                if self._register_name == "supply_flow_rate"
+                else "nominal_exhaust_air_flow"
+            )
+            nominal = self.coordinator.data.get(nominal_key)
+            if not isinstance(nominal, (int, float)) or not nominal:
+                return False
+        return True
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -167,6 +203,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             attrs["raw_value"] = raw_value
 
         return attrs
+
 
 
 class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
@@ -209,3 +246,39 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
             if key.startswith("e_") and value
         ]
         return {"active_errors": active} if active else {}
+class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
+    """Sensor that aggregates active error and status registers."""
+
+    _attr_name = "Active Errors"
+    _attr_icon = "mdi:alert-circle"
+
+    def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
+        """Initialize the active errors sensor."""
+        super().__init__(coordinator, "active_errors")
+        self._translations: dict[str, str] = {}
+
+    async def async_added_to_hass(self) -> None:
+        """Load translations when entity is added to Home Assistant."""
+        self._translations = await translation.async_get_translations(
+            self.hass, self.hass.config.language, f"component.{DOMAIN}"
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return comma-separated list of active error/status codes."""
+        codes = [
+            key
+            for key, value in self.coordinator.data.items()
+            if value and (key.startswith("e_") or key.startswith("s_"))
+        ]
+        return ", ".join(codes) if codes else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return mapping of codes to translated descriptions."""
+        errors = {
+            code: self._translations.get(f"errors.{code}", code)
+            for code, value in self.coordinator.data.items()
+            if value and (code.startswith("e_") or code.startswith("s_"))
+        }
+        return {"errors": errors} if errors else {}

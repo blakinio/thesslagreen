@@ -866,11 +866,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
-        # Check for sensor error values
-        if value == SENSOR_UNAVAILABLE and "temperature" in register_name.lower():
-            return None  # No sensor
-        if value == SENSOR_UNAVAILABLE and "flow" in register_name.lower():
-            return None  # No sensor
+        # Pass through special sentinel indicating missing sensor values
+        if value == SENSOR_UNAVAILABLE:
+            return SENSOR_UNAVAILABLE
 
         if register_name.startswith(TIME_REGISTER_PREFIXES):
             decoded = _decode_bcd_time(value)
@@ -1156,12 +1154,35 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         The data is used by Home Assistant to uniquely identify the device
         and to group all entities originating from it in the device registry.
         """
+        # Determine the device model. Prefer any model already stored in
+        # ``device_info`` but fall back to other sources when it is missing or
+        # set to ``UNKNOWN_MODEL``. The scanner may place a detected model in
+        # the capabilities result under ``model_type``. As a final fallback, use
+        # any model specified in the config entry.
+        model = self.device_info.get("model")
+        if not model or model == UNKNOWN_MODEL:
+            model = (
+                self.device_scan_result.get("capabilities", {}).get("model_type")
+                if self.device_scan_result
+                else None
+            )
+        if (not model or model == UNKNOWN_MODEL) and self.entry is not None:
+            model = cast(
+                str | None,
+                self.entry.options.get("model") if hasattr(self.entry, "options") else None,
+            ) or cast(
+                str | None,
+                self.entry.data.get("model") if hasattr(self.entry, "data") else None,
+            )
+        if not model:
+            model = UNKNOWN_MODEL
+        self.device_info["model"] = model
 
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.host}:{self.port}:{self.slave_id}")},
             name=self.device_name,
             manufacturer=MANUFACTURER,
-            model=self.device_info.get("model", UNKNOWN_MODEL),
+            model=model,
             sw_version=self.device_info.get("firmware", "Unknown"),
             configuration_url=f"http://{self.host}",
         )

@@ -10,7 +10,9 @@ The module also provides helpers for handling legacy entity IDs that
 were renamed in newer versions of the integration.
 """
 
+import json
 import logging
+from pathlib import Path
 from typing import Any, Dict
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
@@ -218,6 +220,24 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
 }
 
 
+def _load_translation_keys() -> dict[str, set[str]]:
+    """Return available translation keys for supported entity types."""
+
+    try:
+        with (Path(__file__).with_name("translations") / "en.json").open(
+            encoding="utf-8"
+        ) as f:
+            data = json.load(f)
+        entity = data.get("entity", {})
+        return {
+            "binary_sensor": set(entity.get("binary_sensor", {}).keys()),
+            "switch": set(entity.get("switch", {}).keys()),
+            "select": set(entity.get("select", {}).keys()),
+        }
+    except Exception:  # pragma: no cover - fallback when translations missing
+        return {"binary_sensor": set(), "switch": set(), "select": set()}
+
+
 def _load_discrete_mappings() -> tuple[
     dict[str, dict[str, Any]],
     dict[str, dict[str, Any]],
@@ -229,13 +249,22 @@ def _load_discrete_mappings() -> tuple[
     switch_configs: dict[str, dict[str, Any]] = {}
     select_configs: dict[str, dict[str, Any]] = {}
 
+    translations = _load_translation_keys()
+    binary_keys = translations["binary_sensor"]
+    switch_keys = translations["switch"]
+    select_keys = translations["select"]
+
     # Coil and discrete input registers are always binary sensors
     for reg in COIL_REGISTERS:
+        if reg not in binary_keys:
+            continue
         binary_configs[reg] = {
             "translation_key": reg,
             "register_type": "coil_registers",
         }
     for reg in DISCRETE_INPUT_REGISTERS:
+        if reg not in binary_keys:
+            continue
         binary_configs[reg] = {
             "translation_key": reg,
             "register_type": "discrete_inputs",
@@ -253,13 +282,18 @@ def _load_discrete_mappings() -> tuple[
         cfg: dict[str, Any] = {"translation_key": reg, "register_type": "holding_registers"}
         if len(states) == 2 and set(states.values()) == {0, 1}:
             if "W" in access:
+
+                if reg in switch_keys:
                 cfg["register"] = reg
+                cfg.setdefault("icon", "mdi:toggle-switch")
                 switch_configs[reg] = cfg
             else:
-                binary_configs[reg] = cfg
+                if reg in binary_keys:
+                    binary_configs[reg] = cfg
         else:
-            cfg["states"] = states
-            select_configs[reg] = cfg
+            if reg in select_keys:
+                cfg["states"] = states
+                select_configs[reg] = cfg
 
     # Alarm/error registers and diagnostic S_/E_ codes should always be
     # exposed as binary sensors so they are created even if the register
@@ -272,9 +306,12 @@ def _load_discrete_mappings() -> tuple[
     for reg in diag_registers:
         if reg not in HOLDING_REGISTERS and reg not in {"alarm", "error"}:
             continue
+        if reg not in binary_keys:
+            continue
         binary_configs[reg] = {
             "translation_key": reg,
             "register_type": "holding_registers",
+            "entity_category": "diagnostic",
         }
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)

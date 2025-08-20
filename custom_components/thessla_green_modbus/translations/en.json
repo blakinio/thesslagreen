@@ -117,8 +117,8 @@
       "work_permit": {
         "name": "Work Permit"
       },
-      "alarm": { "name": "Warning Flag" },
-      "error": { "name": "Error Flag" },
+      "alarm": { "name": "Warning Active" },
+      "error": { "name": "Error Active" },
       "s_2": { "name": "I2C Communication Error" },
       "s_6": { "name": "FPX Heater Thermal Protection" },
       "s_7": { "name": "Calibration Not Possible - Low Outdoor Temp" },
