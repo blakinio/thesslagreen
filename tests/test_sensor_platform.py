@@ -198,17 +198,17 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
         hass = MagicMock()
         hass.config.language = "en"
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
-        mock_coordinator.data["e_100"] = 1
-        mock_coordinator.available_registers.setdefault("holding_registers", set()).add("e_100")
+        mock_coordinator.data["s_2"] = 1
+        mock_coordinator.available_registers.setdefault("holding_registers", set()).add("s_2")
         add_entities = MagicMock()
         with patch(
             "custom_components.thessla_green_modbus.sensor.translation.async_get_translations",
-            return_value={"errors.e_100": "Device error E 100"},
+            return_value={"codes.s_2": "Device status S 2"},
         ):
             await async_setup_entry(hass, mock_config_entry, add_entities)
         entities = add_entities.call_args[0][0]
         sensor = next(e for e in entities if isinstance(e, ThesslaGreenErrorCodesSensor))
-        assert sensor.native_value == "Device error E 100"  # nosec B101
+        assert sensor.native_value == "Device status S 2"  # nosec B101
 
     asyncio.run(run_test())
 
