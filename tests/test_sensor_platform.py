@@ -340,6 +340,9 @@ def test_active_errors_sensor(mock_coordinator, mock_config_entry):
             sensor.hass = hass
             await sensor.async_added_to_hass()
             assert sensor.native_value == "Outside temp sensor missing"
-            assert sensor.extra_state_attributes["errors"] == ["e_100"]
+            assert sensor.extra_state_attributes["errors"] == {
+                "e_100": "Outside temp sensor missing"
+            }
+            assert sensor.extra_state_attributes["codes"] == ["e_100"]
 
     asyncio.run(run_test())

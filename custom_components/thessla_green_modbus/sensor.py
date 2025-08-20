@@ -225,7 +225,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
     def native_value(self) -> str | None:
         """Return comma-separated translated active error/status codes."""
         errors = [
-            self._translations.get(f"codes.{key}", key)
+            self._translations.get(f"errors.{key}", key)
             for key, value in self.coordinator.data.items()
             if (key.startswith("e_") or key.startswith("s_")) and value
         ]
@@ -272,10 +272,14 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return list of raw active error/status codes for debugging."""
-        codes = [
+        """Return mapping of active error/status codes to descriptions."""
+        codes = sorted(
             code
             for code, value in self.coordinator.data.items()
             if value and (code.startswith("e_") or code.startswith("s_"))
-        ]
-        return {"errors": sorted(codes)} if codes else {}
+        )
+        if not codes:
+            return {}
+
+        errors = {code: self._translations.get(f"errors.{code}", code) for code in codes}
+        return {"errors": errors, "codes": codes}
