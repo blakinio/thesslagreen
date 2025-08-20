@@ -140,8 +140,8 @@ BINARY_KEYS = sorted(
         if k in {"alarm", "error"} or k.startswith("s_") or k.startswith("e_")
     }
 )
-# Error codes translations are not currently enforced
-ERROR_KEYS: list[str] = []
+# Error/status code translations are not currently enforced
+CODE_KEYS: list[str] = []
 ISSUE_KEYS = ["modbus_write_failed"]
 
 
@@ -169,12 +169,12 @@ def _assert_keys(trans, entity_type, keys):
     assert not extra, f"Extra {entity_type} translations: {extra}"  # nosec B101
 
 
-def _assert_error_keys(trans, keys):
-    section = trans.get("errors")
+def _assert_code_keys(trans, keys):
+    section = trans.get("codes")
     if not section:
         return
     missing = [k for k in keys if k not in section]
-    assert not missing, f"Missing error translations: {missing}"  # nosec B101
+    assert not missing, f"Missing code translations: {missing}"  # nosec B101
 
 
 def _assert_issue_keys(trans, keys):
@@ -197,8 +197,8 @@ def test_translation_keys_present():
         _assert_keys(trans, "select", SELECT_KEYS)
         if NUMBER_KEYS:
             _assert_keys(trans, "number", NUMBER_KEYS)
-        if "errors" in trans:
-            _assert_error_keys(trans, ERROR_KEYS)
+        if "codes" in trans:
+            _assert_code_keys(trans, CODE_KEYS)
         _assert_issue_keys(trans, ISSUE_KEYS)
         missing_services = [s for s in SERVICES if s not in trans["services"]]
         assert (

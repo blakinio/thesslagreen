@@ -4,7 +4,7 @@ from custom_components.thessla_green_modbus.const import SPECIAL_FUNCTION_MAP
 from tests.test_translations import (
     BINARY_KEYS,
     EN,
-    ERROR_KEYS,
+    CODE_KEYS,
     ISSUE_KEYS,
     NUMBER_KEYS,
     PL,
@@ -31,8 +31,8 @@ def test_no_unused_translation_keys() -> None:
         _assert_no_extra_keys(trans, "select", SELECT_KEYS)
         _assert_no_extra_keys(trans, "number", NUMBER_KEYS)
 
-        extra_errors = [k for k in trans.get("errors", {}) if k not in ERROR_KEYS]
-        assert not extra_errors, f"Unused error translations: {extra_errors}"  # nosec B101
+        extra_codes = [k for k in trans.get("codes", {}) if k not in CODE_KEYS]
+        assert not extra_codes, f"Unused code translations: {extra_codes}"  # nosec B101
 
         extra_issues = [k for k in trans.get("issues", {}) if k not in ISSUE_KEYS]
         assert not extra_issues, f"Unused issue translations: {extra_issues}"  # nosec B101

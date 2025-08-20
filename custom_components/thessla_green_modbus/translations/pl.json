@@ -1038,7 +1038,7 @@
         "name": "Wersja modułu CF"
       },
       "error_codes": {
-        "name": "Kody błędów"
+        "name": "Kody błędów i statusów"
       },
       "comfort_mode": {
         "name": "Tryb komfort"
@@ -1259,7 +1259,7 @@
       }
     }
   },
-  "errors": {
+  "codes": {
     "e_100": "Błąd urządzenia E 100",
     "e_101": "Błąd urządzenia E 101",
     "e_102": "Błąd urządzenia E 102",
