@@ -357,3 +357,4 @@ HOLDING_REGISTERS: dict[str, int] = {
     "e_251": 8443,
     "e_252": 8444,
 }
+
