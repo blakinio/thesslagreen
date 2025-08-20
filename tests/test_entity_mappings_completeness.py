@@ -1,7 +1,11 @@
 import csv
 from pathlib import Path
 
-from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS
+from custom_components.thessla_green_modbus.entity_mappings import (
+    ENTITY_MAPPINGS,
+    BINARY_SENSOR_ENTITY_MAPPINGS,
+    NUMBER_ENTITY_MAPPINGS,
+)
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 CSV_PATH = (
@@ -67,3 +71,8 @@ def test_entity_mappings_cover_all_registers() -> None:
     assert not missing, f"Unknown registers in ENTITY_MAPPINGS: {sorted(missing)}"
     unmapped = csv_names - mapping_names
     assert not unmapped, f"Registers missing entity mapping: {sorted(unmapped)}"
+
+
+def test_s_13_is_binary_only() -> None:
+    assert "s_13" not in NUMBER_ENTITY_MAPPINGS
+    assert "s_13" in BINARY_SENSOR_ENTITY_MAPPINGS

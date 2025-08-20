@@ -163,6 +163,8 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         info = _get_register_info(register)
         if not info:
             continue
+        if register.startswith(("s_", "e_", "alarm", "error")):
+            continue
         if _parse_states(info.get("unit")):
             continue
         if info.get("min") is None and info.get("max") is None:
