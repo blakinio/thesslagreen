@@ -254,6 +254,7 @@ def _load_discrete_mappings() -> tuple[
         if len(states) == 2 and set(states.values()) == {0, 1}:
             if "W" in access:
                 cfg["register"] = reg
+                cfg.setdefault("icon", "mdi:toggle-switch")
                 switch_configs[reg] = cfg
             else:
                 binary_configs[reg] = cfg
