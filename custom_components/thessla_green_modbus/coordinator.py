@@ -866,11 +866,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Process register value according to its type and multiplier."""
-        # Check for sensor error values
-        if value == SENSOR_UNAVAILABLE and "temperature" in register_name.lower():
-            return None  # No sensor
-        if value == SENSOR_UNAVAILABLE and "flow" in register_name.lower():
-            return None  # No sensor
+        # Pass through special sentinel indicating missing sensor values
+        if value == SENSOR_UNAVAILABLE:
+            return SENSOR_UNAVAILABLE
 
         if register_name.startswith(TIME_REGISTER_PREFIXES):
             decoded = _decode_bcd_time(value)
