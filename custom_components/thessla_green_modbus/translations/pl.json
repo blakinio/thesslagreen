@@ -117,8 +117,8 @@
       "work_permit": {
         "name": "Zezwolenie pracy"
       },
-      "alarm": { "name": "Flaga ostrzeżenia" },
-      "error": { "name": "Flaga błędu" },
+      "alarm": { "name": "Aktywne ostrzeżenie" },
+      "error": { "name": "Aktywny błąd" },
       "s_2": { "name": "Błąd komunikacji I2C" },
       "s_6": { "name": "Zabezpieczenie termiczne FPX - zbyt wiele zadziałań" },
       "s_7": { "name": "Brak kalibracji - niska temp. zewnętrzna" },
