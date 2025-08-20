@@ -53,23 +53,16 @@ async def async_setup_entry(
         _LOGGER.debug("No number entity mappings found; skipping setup")
         return
 
-    # Create number entities for writable registers discovered by
+    # Create number entities only for registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()
     for register_name, entity_config in number_mappings.items():
-        register_type = None
-
         if register_name in coordinator.available_registers.get("holding_registers", set()):
-            register_type = "holding_registers"
-        elif register_name in HOLDING_REGISTERS:
-            register_type = "holding_registers"
-
-        if register_type is not None:
             entities.append(
                 ThesslaGreenNumber(
                     coordinator=coordinator,
                     register_name=register_name,
                     entity_config=entity_config,
-                    register_type=register_type,
+                    register_type="holding_registers",
                 )
             )
             _LOGGER.debug("Created number entity: %s", register_name)

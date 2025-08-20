@@ -237,6 +237,18 @@ async def test_async_setup_creates_new_numbers(mock_coordinator, mock_config_ent
     assert {"max_supply_air_flow_rate", "bypass_off"} <= names
 
 
+@pytest.mark.asyncio
+async def test_async_setup_skips_missing_numbers(mock_coordinator, mock_config_entry):
+    """Ensure no number entities are created when registers aren't detected."""
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_coordinator.available_registers = {"holding_registers": set()}
+
+    add_entities = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+    add_entities.assert_not_called()
+
+
 def test_air_flow_rate_manual_from_csv(mock_coordinator):
     """Verify air_flow_rate_manual uses CSV-defined unit and range."""
     mock_coordinator.data["air_flow_rate_manual"] = 30
