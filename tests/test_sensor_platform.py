@@ -115,10 +115,10 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # ---------------------------------------------------------------------------
 
 from homeassistant.const import STATE_UNAVAILABLE  # noqa: E402
-from custom_components.thessla_green_modbus.const import (
+from custom_components.thessla_green_modbus.const import (  # noqa: E402
     DOMAIN,
     SENSOR_UNAVAILABLE,
-)  # noqa: E402
+)
 from custom_components.thessla_green_modbus.select import (  # noqa: E402
     async_setup_entry as select_async_setup_entry,
 )
@@ -155,9 +155,7 @@ def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
         await async_setup_entry(hass, mock_config_entry, add_entities)
 
         entities = add_entities.call_args[0][0]
-        assert any(
-            isinstance(e, ThesslaGreenErrorCodesSensor) for e in entities
-        )  # nosec B101
+        assert any(isinstance(e, ThesslaGreenErrorCodesSensor) for e in entities)  # nosec B101
         assert len(entities) == len(SENSOR_DEFINITIONS) + 1  # nosec B101
 
     asyncio.run(run_test())
@@ -193,9 +191,7 @@ def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
     asyncio.run(run_test())
 
 
-def test_error_codes_sensor_translates_active_registers(
-    mock_coordinator, mock_config_entry
-):
+def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_config_entry):
     """Error sensor returns translated active codes."""
 
     async def run_test() -> None:
@@ -203,9 +199,7 @@ def test_error_codes_sensor_translates_active_registers(
         hass.config.language = "en"
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
         mock_coordinator.data["e_100"] = 1
-        mock_coordinator.available_registers.setdefault("holding_registers", set()).add(
-            "e_100"
-        )
+        mock_coordinator.available_registers.setdefault("holding_registers", set()).add("e_100")
         add_entities = MagicMock()
         with patch(
             "custom_components.thessla_green_modbus.sensor.translation.async_get_translations",
@@ -339,17 +333,13 @@ def test_active_errors_sensor(mock_coordinator, mock_config_entry):
         ):
             await async_setup_entry(hass, mock_config_entry, add_entities)
             entities = add_entities.call_args[0][0]
-            assert any(
-                isinstance(ent, ThesslaGreenActiveErrorsSensor) for ent in entities
-            )
+            assert any(isinstance(ent, ThesslaGreenActiveErrorsSensor) for ent in entities)
             sensor = next(
                 ent for ent in entities if isinstance(ent, ThesslaGreenActiveErrorsSensor)
             )
             sensor.hass = hass
             await sensor.async_added_to_hass()
-            assert sensor.native_value == "e_100"
-            assert sensor.extra_state_attributes["errors"]["e_100"] == (
-                "Outside temp sensor missing"
-            )
+            assert sensor.native_value == "Outside temp sensor missing"
+            assert sensor.extra_state_attributes["errors"] == ["e_100"]
 
     asyncio.run(run_test())
