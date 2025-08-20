@@ -135,8 +135,12 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         if raw_value is not None:
             attrs["raw_value"] = raw_value
 
-        # Add specific information for alarm/error sensors
-        if "alarm" in self._register_name or "error" in self._register_name:
+        # Add specific information for alarm/error sensors and severity registers
+        if (
+            "alarm" in self._register_name
+            or "error" in self._register_name
+            or self._register_name.startswith(("s_", "e_"))
+        ):
             attrs["severity"] = "warning" if self.is_on else "normal"
 
         return attrs
@@ -164,8 +168,12 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
             if "pipe" in base_icon:
                 return "mdi:pipe"
 
-        # Dynamic icon for alarms and errors
-        if "alarm" in self._register_name or "error" in self._register_name:
+        # Dynamic icon for alarms, errors and severity registers
+        if (
+            "alarm" in self._register_name
+            or "error" in self._register_name
+            or self._register_name.startswith(("s_", "e_"))
+        ):
             return "mdi:alert-circle" if self.is_on else "mdi:check-circle"
 
         # Fallback icon when no icon is configured
