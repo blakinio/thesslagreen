@@ -55,3 +55,30 @@ def test_group_reads_splits_large_block(monkeypatch):
         (80, 16),
         (96, 4),
     ]
+
+
+def test_group_reads_handles_gaps_and_block_size(monkeypatch):
+    """Gaps and block size limits both trigger new read plans."""
+
+    # Two ranges of consecutive registers separated by a gap
+    first = list(range(32))
+    second = list(range(40, 80))
+    regs = [
+        Register(function="04", address=i, name=f"r{i}", access="ro")
+        for i in first + second
+    ]
+
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.registers.loader._load_registers",
+        lambda: regs,
+    )
+
+    plans = [p for p in group_reads(max_block_size=16) if p.function == "04"]
+
+    assert [(p.address, p.length) for p in plans] == [
+        (0, 16),
+        (16, 16),
+        (40, 16),
+        (56, 16),
+        (72, 8),
+    ]
