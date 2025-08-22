@@ -4,6 +4,7 @@ import re
 import sys
 import types
 from pathlib import Path
+from importlib import resources
 
 import yaml
 
@@ -257,6 +258,10 @@ def test_register_names_match_translations() -> None:
         Path(__file__).resolve().parent.parent / "registers" / "thessla_green_registers_full.json"
     )
     data = json.loads(reg_path.read_text())
+        resources.files("custom_components.thessla_green_modbus.registers")
+        .joinpath("thessla_green_registers_full.json")
+    )
+    data = json.loads(reg_path.read_text(encoding="utf-8"))
     registers = data["registers"]
 
     fn_map = {

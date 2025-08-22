@@ -356,10 +356,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 flow_register = f"schedule_{day_name}_period{period}_flow"
                 temp_register = f"schedule_{day_name}_period{period}_temp"
 
-                # Write schedule values with proper scaling
-                if not await _write_register(
                 # Write schedule values relying on register encode logic
-                await _write_register(
+                if not await _write_register(
                     coordinator,
                     start_register,
                     start_value,
@@ -369,8 +367,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to set schedule start for %s", entity_id)
                     continue
                 if not await _write_register(
-                )
-                await _write_register(
                     coordinator,
                     end_register,
                     end_value,
@@ -380,8 +376,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     _LOGGER.error("Failed to set schedule end for %s", entity_id)
                     continue
                 if not await _write_register(
-                )
-                await _write_register(
                     coordinator,
                     flow_register,
                     airflow_rate,
@@ -393,22 +387,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
                 if temperature is not None:
                     if not await _write_register(
-                )
-
-                if temperature is not None:
-                    await _write_register(
                         coordinator,
                         temp_register,
                         temperature,
                         entity_id,
                         "set airflow schedule",
-                    )
                     ):
                         _LOGGER.error(
                             "Failed to set schedule temperature for %s", entity_id
                         )
                         continue
-                    )
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set airflow schedule for %s", entity_id)
@@ -534,7 +522,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
                 if not success:
                     continue
-                        )
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set air quality thresholds for %s", entity_id)

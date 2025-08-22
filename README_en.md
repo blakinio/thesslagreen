@@ -8,6 +8,7 @@
 ## ✨ Complete ThesslaGreen AirPack integration for Home Assistant
 
 The most complete integration for ThesslaGreen AirPack heat recovery units over Modbus TCP/RTU. Supports **all 200+ registers** from documentation `MODBUS_USER_AirPack_Home_08.2021.01` without exception.
+The integration works as a **hub** in Home Assistant.
 
 ### 🚀 Key features v2.1+
 
@@ -265,6 +266,19 @@ only for diagnostic purposes.
 - 💡 [Feature requests](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
+
+### Updating `registers.py`
+Whenever `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` changes, regenerate and
+validate the Python module:
+
+```bash
+python tools/generate_registers.py
+python tools/validate_registers.py  # optional consistency check
+```
+
+Commit the updated `custom_components/thessla_green_modbus/registers.py`
+together with the modified JSON file.
+
 ### Validate translations
 Ensure translation files contain valid JSON:
 
@@ -277,7 +291,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## JSON register definitions
 
-The file `registers/thessla_green_registers_full.json` stores the complete
+The file `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` stores the complete
 register specification and is the single source of truth. All tools in
 `tools/` operate exclusively on this JSON format.
 
@@ -300,7 +314,7 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 
 ### Adding new registers
 
-1. Edit `registers/thessla_green_registers_full.json` and append a new object
+1. Edit `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` and append a new object
    with the required fields.
 2. Ensure addresses are unique and remain sorted.
 3. Run the validation test:
