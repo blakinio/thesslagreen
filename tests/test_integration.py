@@ -1,15 +1,20 @@
 """Test integration setup for ThesslaGreen Modbus integration."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from homeassistant.exceptions import ConfigEntryNotReady
+import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.exceptions import ConfigEntryNotReady
 
-from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
+from custom_components.thessla_green_modbus import (
+    async_setup_entry,
+    async_unload_entry,
+)
 from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)
 
 
 async def test_async_setup_entry_success():
@@ -152,10 +157,10 @@ async def test_default_values():
     from custom_components.thessla_green_modbus.const import (
         DEFAULT_NAME,
         DEFAULT_PORT,
-        DEFAULT_SLAVE_ID,
-        DEFAULT_SCAN_INTERVAL,
-        DEFAULT_TIMEOUT,
         DEFAULT_RETRY,
+        DEFAULT_SCAN_INTERVAL,
+        DEFAULT_SLAVE_ID,
+        DEFAULT_TIMEOUT,
     )
 
     assert DEFAULT_NAME == "ThesslaGreen"
@@ -184,7 +189,6 @@ async def test_register_constants():
     discrete = regs_by_fn["discrete"]
     input_regs = regs_by_fn["input"]
     holding = regs_by_fn["holding"]
-
 
     # Test that key registers are defined
     assert "power_supply_fans" in coil
@@ -238,20 +242,25 @@ async def test_unload_and_reload_entry():
     coordinator2.async_setup = AsyncMock(return_value=True)
     coordinator2.async_shutdown = AsyncMock()
 
-    with patch(
-        "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
-        return_value=[],
-        create=True,
-    ), patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-        side_effect=[coordinator1, coordinator2],
-    ) as mock_coordinator_class, patch(
-        "custom_components.thessla_green_modbus.services.async_setup_services",
-        AsyncMock(),
-    ) as mock_setup_services, patch(
-        "custom_components.thessla_green_modbus.services.async_unload_services",
-        AsyncMock(),
-    ) as mock_unload_services:
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[],
+            create=True,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+            side_effect=[coordinator1, coordinator2],
+        ) as mock_coordinator_class,
+        patch(
+            "custom_components.thessla_green_modbus.services.async_setup_services",
+            AsyncMock(),
+        ) as mock_setup_services,
+        patch(
+            "custom_components.thessla_green_modbus.services.async_unload_services",
+            AsyncMock(),
+        ) as mock_unload_services,
+    ):
         # Initial setup
         assert await async_setup_entry(hass, entry)
         assert hass.data[DOMAIN][entry.entry_id] is coordinator1

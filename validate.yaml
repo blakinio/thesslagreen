@@ -18,10 +18,6 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install pytest
-      - name: Generate registers
-        run: python tools/generate_registers.py
-      - name: Validate register definitions
-        run: python tools/validate_registers.py
       - name: Validate Python syntax
         run: python tools/py_compile_all.py
       - name: Validate translations

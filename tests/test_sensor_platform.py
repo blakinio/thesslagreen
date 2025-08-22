@@ -115,6 +115,7 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # ---------------------------------------------------------------------------
 
 from homeassistant.const import STATE_UNAVAILABLE  # noqa: E402
+
 from custom_components.thessla_green_modbus.const import (  # noqa: E402
     DOMAIN,
     SENSOR_UNAVAILABLE,
@@ -124,8 +125,8 @@ from custom_components.thessla_green_modbus.select import (  # noqa: E402
 )
 from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
-    ThesslaGreenErrorCodesSensor,
     ThesslaGreenActiveErrorsSensor,
+    ThesslaGreenErrorCodesSensor,
     ThesslaGreenSensor,
     async_setup_entry,
 )
@@ -216,7 +217,9 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
 def test_sensor_registers_match_definition():
     """Cross-check register_type against registers module."""
 
-    from custom_components.thessla_green_modbus.registers import get_registers_by_function
+    from custom_components.thessla_green_modbus.registers.loader import (
+        get_registers_by_function,
+    )
 
     mapping = {
         "input_registers": {r.name for r in get_registers_by_function("04")},

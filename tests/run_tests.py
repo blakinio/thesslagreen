@@ -12,11 +12,6 @@ def run_tests() -> int:
     print("🧪 Running ThesslaGreen Modbus Integration Tests...")
 
     try:
-        # Ensure registers are generated from the CSV
-        subprocess.run(  # nosec B603
-            [sys.executable, str(ROOT / "tools" / "generate_registers.py")],
-            check=True,
-        )
 
         # Run pytest with coverage
         subprocess.run(  # nosec B603

@@ -28,15 +28,6 @@ primarily for debugging or development purposes.
    pytest tests/test_register_loader.py
    ```
 
-4. Wygeneruj moduł `registers.py` i opcjonalnie sprawdź spójność:
-
-   ```bash
-   python tools/generate_registers.py
-   python tools/validate_registers.py
-   ```
-
-5. Do commitu dodaj zmodyfikowany plik JSON oraz wygenerowany `registers.py`.
-
 ## Migracja z CSV na JSON
 Rejestry są obecnie definiowane w pliku JSON `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
 Format CSV jest przestarzały i zostanie usunięty w przyszłych wersjach – jego

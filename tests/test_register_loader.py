@@ -4,8 +4,10 @@ import json
 import logging
 from pathlib import Path
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.register_loader import (
+    RegisterLoader,
+)
+from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 
@@ -56,7 +58,9 @@ def test_function_aliases() -> None:
 def test_registers_loaded_only_once(monkeypatch) -> None:
     """Ensure register file is read only once thanks to caching."""
 
-    from custom_components.thessla_green_modbus.registers.loader import _load_registers
+    from custom_components.thessla_green_modbus.registers.loader import (
+        _load_registers,
+    )
 
     read_calls = 0
     real_read_text = Path.read_text
@@ -83,9 +87,7 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
 def test_path_argument_ignored(caplog) -> None:
     """Providing a path should not trigger any CSV handling."""
 
-    csv_path = (
-        Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
-    )
+    csv_path = Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
 
     with caplog.at_level(logging.WARNING):
         loader = RegisterLoader(csv_path)

@@ -6,21 +6,25 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 import pytest
 
 from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ModbusException,
+    ModbusIOException,
+)
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)
 from custom_components.thessla_green_modbus.scanner_core import (
     DeviceCapabilities,
     DeviceInfo,
     ThesslaGreenDeviceScanner,
 )
-from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+from custom_components.thessla_green_modbus.scanner_helpers import (
+    _format_register_value,
+)
 from custom_components.thessla_green_modbus.utils import (
     _decode_aatt,
     _decode_bcd_time,
     _decode_register_time,
-)
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ModbusException,
-    ModbusIOException,
 )
 
 COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
@@ -1219,8 +1223,6 @@ async def test_constant_flow_detected_from_various_registers(register):
     }
     caps = scanner._analyze_capabilities()
     assert caps.constant_flow is True
-
-
 
 
 async def test_analyze_capabilities():

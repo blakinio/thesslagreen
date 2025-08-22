@@ -56,7 +56,9 @@ from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
     async_setup_entry,
 )
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+    get_registers_by_function,
+)
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
@@ -124,11 +126,7 @@ def test_dynamic_problem_registers_present() -> None:
 
 def test_problem_registers_range_mapped() -> None:
     """Registers 0x2000-0x20FB should map to binary sensors."""
-    expected = {
-        name
-        for name, addr in HOLDING_REGISTERS.items()
-        if 0x2000 <= addr <= 0x20FB
-    }
+    expected = {name for name, addr in HOLDING_REGISTERS.items() if 0x2000 <= addr <= 0x20FB}
     for key in expected:
         assert key in BINARY_SENSOR_DEFINITIONS  # nosec B101
 

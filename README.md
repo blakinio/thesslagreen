@@ -550,15 +550,6 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 pytest tests/test_register_loader.py
 ```
 
-4. Wygeneruj moduł `registers.py` i opcjonalnie zweryfikuj spójność:
-
-```bash
-python tools/generate_registers.py
-python tools/validate_registers.py
-```
-
-5. Dołącz zmienione pliki (`registers.py` oraz JSON) do commitu.
-
 ### Migracja z CSV na JSON
 
 Pliki CSV zostały oznaczone jako przestarzałe i ich obsługa będzie
