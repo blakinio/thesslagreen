@@ -1,153 +1,58 @@
-"""Helpers for working with JSON-based register definitions.
+"""Compatibility wrapper around the JSON register loader.
 
-The register list lives in ``registers/thessla_green_registers_full.json`` and
-this loader is mainly used by tests and development utilities.
+Historically the project exposed a :class:`RegisterLoader` class that read
+register definitions from CSV files.  The integration now uses a JSON file as
+the single source of truth.  This module keeps a minimal subset of the old API
+so external tools and some tests can continue to work while emitting a warning
+about the deprecation.
 """
 
 from __future__ import annotations
 
-import csv
-import json
-import logging
 from dataclasses import dataclass
+import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Dict, List, Tuple
+
+from .registers import Register, get_all_registers, group_reads as _group_reads
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class Register:
-    """Representation of a single Modbus register."""
+class RegisterLoader:  # pragma: no cover - thin compatibility layer
+    """Backward compatible loader returning simple register maps."""
 
-    function: str
-    address: int
-    access: str
-    name: str
-    description: str
-    enum: Dict[str, int] | None = None
-    multiplier: float | None = None
-    resolution: float | None = None
-
-
-class RegisterLoader:
-    """Load and organize register definitions."""
+    registers: Dict[str, Register]
+    input_registers: Dict[str, int]
+    holding_registers: Dict[str, int]
+    coil_registers: Dict[str, int]
+    discrete_registers: Dict[str, int]
+    enums: Dict[str, Dict[str, int]]
+    multipliers: Dict[str, float]
+    resolutions: Dict[str, float]
+    group_reads: Dict[str, List[Tuple[int, int]]]
 
     def __init__(self, path: Path | None = None) -> None:
-        if path is None:
-            path = Path(__file__).parent / "registers" / "thessla_green_registers_full.json"
+        if path is not None:
+            _LOGGER.warning("RegisterLoader path argument is ignored; JSON definitions are built-in")
 
-        if path.exists() and path.suffix.lower() == ".json":
-            with path.open(encoding="utf-8") as f:
-                raw = json.load(f)
-        elif path.exists() and path.suffix.lower() == ".csv":
-            raw = self._load_from_csv([path])
-        else:
-            # Attempt fallback
-            json_path = path if path.suffix else path.with_suffix(".json")
-            if json_path.exists():
-                with json_path.open(encoding="utf-8") as f:
-                    raw = json.load(f)
-            else:
-                csv_dir = path.parent if path.suffix else path
-                csv_files = list(csv_dir.glob("*.csv"))
-                if not csv_files:
-                    raise FileNotFoundError(f"No register definition file found at {path}")
-                raw = self._load_from_csv(csv_files)
+        regs = get_all_registers()
+        self.registers = {r.name: r for r in regs}
+        self.input_registers = {r.name: r.address for r in regs if r.function == "04"}
+        self.holding_registers = {r.name: r.address for r in regs if r.function == "03"}
+        self.coil_registers = {r.name: r.address for r in regs if r.function == "01"}
+        self.discrete_registers = {r.name: r.address for r in regs if r.function == "02"}
+        self.enums = {r.name: r.enum for r in regs if r.enum}
+        self.multipliers = {r.name: r.multiplier for r in regs if r.multiplier}
+        self.resolutions = {r.name: r.resolution for r in regs if r.resolution}
 
-        self.registers: Dict[str, Register] = {}
-        self.input_registers: Dict[str, int] = {}
-        self.holding_registers: Dict[str, int] = {}
-        self.coil_registers: Dict[str, int] = {}
-        self.discrete_registers: Dict[str, int] = {}
-        self.enums: Dict[str, Dict[str, int]] = {}
-        self.multipliers: Dict[str, float] = {}
-        self.resolutions: Dict[str, float] = {}
+        groups: Dict[str, List[Tuple[int, int]]] = {"input": [], "holding": [], "coil": [], "discrete": []}
+        for plan in _group_reads():
+            fn = {"01": "coil", "02": "discrete", "03": "holding", "04": "input"}[plan.function]
+            groups[fn].append((plan.address, plan.length))
+        self.group_reads = groups
 
-        for entry in raw:
-            reg = Register(
-                function=entry["function"],
-                address=entry["address_dec"],
-                access=entry.get("access", "ro"),
-                name=entry["name"],
-                description=entry.get("description", ""),
-                enum=entry.get("enum"),
-                multiplier=entry.get("multiplier"),
-                resolution=entry.get("resolution"),
-            )
-            self.registers[reg.name] = reg
-            if reg.function == "input":
-                self.input_registers[reg.name] = reg.address
-            elif reg.function == "holding":
-                self.holding_registers[reg.name] = reg.address
-            elif reg.function == "coil":
-                self.coil_registers[reg.name] = reg.address
-            elif reg.function == "discrete":
-                self.discrete_registers[reg.name] = reg.address
-            if reg.enum is not None:
-                self.enums[reg.name] = reg.enum
-            if reg.multiplier is not None:
-                self.multipliers[reg.name] = reg.multiplier
-            if reg.resolution is not None:
-                self.resolutions[reg.name] = reg.resolution
 
-        self.group_reads: Dict[str, List[Tuple[int, int]]] = self._compute_group_reads()
+__all__ = ["RegisterLoader", "Register"]
 
-    def _load_from_csv(self, files: Iterable[Path]) -> List[Dict[str, Any]]:
-        """Load register definitions from CSV files."""
-        _LOGGER.warning(
-            "Register CSV files are deprecated and will be removed in a future release. "
-            "Please migrate to JSON."
-        )
-        data: List[Dict[str, Any]] = []
-        for csv_file in files:
-            with csv_file.open(encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    try:
-                        row["address_dec"] = int(row["address_dec"])
-                    except (KeyError, ValueError):
-                        continue
-                    for field in ("multiplier", "resolution"):
-                        if row.get(field) not in (None, ""):
-                            try:
-                                row[field] = float(row[field])
-                            except ValueError:
-                                row[field] = None
-                    if "enum" in row and row["enum"]:
-                        try:
-                            row["enum"] = json.loads(row["enum"])
-                        except json.JSONDecodeError:
-                            row["enum"] = None
-                    data.append(row)
-        return data
-
-    def _compute_group_reads(self) -> Dict[str, List[Tuple[int, int]]]:
-        """Compute contiguous address groups for efficient reading."""
-
-        groups: Dict[str, List[Tuple[int, int]]] = {}
-        mapping = {
-            "input": self.input_registers,
-            "holding": self.holding_registers,
-            "coil": self.coil_registers,
-            "discrete": self.discrete_registers,
-        }
-        for func, regs in mapping.items():
-            addresses = sorted(regs.values())
-            if not addresses:
-                groups[func] = []
-                continue
-            ranges: List[Tuple[int, int]] = []
-            start = prev = addresses[0]
-            count = 1
-            for addr in addresses[1:]:
-                if addr == prev + 1:
-                    count += 1
-                else:
-                    ranges.append((start, count))
-                    start = addr
-                    count = 1
-                prev = addr
-            ranges.append((start, count))
-            groups[func] = ranges
-        return groups

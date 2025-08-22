@@ -9,7 +9,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
 from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 
 async def test_async_setup_entry_success():
@@ -168,11 +168,16 @@ async def test_default_values():
 
 async def test_register_constants():
     """Test that register constants are properly defined."""
-    loader = RegisterLoader()
-    coil = loader.coil_registers
-    discrete = loader.discrete_registers
-    input_regs = loader.input_registers
-    holding = loader.holding_registers
+    regs_by_fn = {
+        "coil": {r.name: r.address for r in get_registers_by_function("01")},
+        "discrete": {r.name: r.address for r in get_registers_by_function("02")},
+        "input": {r.name: r.address for r in get_registers_by_function("04")},
+        "holding": {r.name: r.address for r in get_registers_by_function("03")},
+    }
+    coil = regs_by_fn["coil"]
+    discrete = regs_by_fn["discrete"]
+    input_regs = regs_by_fn["input"]
+    holding = regs_by_fn["holding"]
 
     # Test that key registers are defined
     assert "power_supply_fans" in coil
