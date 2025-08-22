@@ -195,6 +195,10 @@ for name, module in modules.items():
 # Ensure repository root on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+
+HOLDING_REGISTERS = RegisterLoader().holding_registers
+
 services_module = importlib.reload(
     importlib.import_module("custom_components.thessla_green_modbus.services")
 )
@@ -207,6 +211,8 @@ def test_air_quality_register_map():
     assert AIR_QUALITY_REGISTER_MAP["co2_medium"] == "co2_threshold_medium"
     assert AIR_QUALITY_REGISTER_MAP["co2_high"] == "co2_threshold_high"
     assert AIR_QUALITY_REGISTER_MAP["humidity_target"] == "humidity_target"
+    for register in AIR_QUALITY_REGISTER_MAP.values():
+        assert register in HOLDING_REGISTERS
 
 
 def test_get_coordinator_from_entity_id_multiple_devices():

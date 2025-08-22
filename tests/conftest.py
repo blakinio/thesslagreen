@@ -183,6 +183,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
     util_logging.log_exception = log_exception
     util.logging = util_logging
+    util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
     ha.util = util
 
     sys.modules["homeassistant"] = ha
@@ -209,6 +210,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
     util_logging.log_exception = log_exception
     util.logging = util_logging
+    util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
     ha.util = util
     sys.modules["homeassistant.util"] = util
     sys.modules["homeassistant.util.logging"] = util_logging
