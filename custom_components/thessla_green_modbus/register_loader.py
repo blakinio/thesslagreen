@@ -12,9 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
-from .registers import Register, get_all_registers, group_reads as _group_reads
+from .registers import get_all_registers, get_registers_by_function
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .registers import Register
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,11 +51,26 @@ class RegisterLoader:  # pragma: no cover - thin compatibility layer
         self.resolutions = {r.name: r.resolution for r in regs if r.resolution}
 
         groups: Dict[str, List[Tuple[int, int]]] = {"input": [], "holding": [], "coil": [], "discrete": []}
-        for plan in _group_reads():
-            fn = {"01": "coil", "02": "discrete", "03": "holding", "04": "input"}[plan.function]
-            groups[fn].append((plan.address, plan.length))
+        for fn, key in [("04", "input"), ("03", "holding"), ("01", "coil"), ("02", "discrete")]:
+            addresses: List[int] = []
+            for reg in get_registers_by_function(fn):
+                addresses.extend(range(reg.address, reg.address + max(1, reg.length)))
+            if not addresses:
+                continue
+            addresses.sort()
+            start = prev = addresses[0]
+            length = 1
+            for addr in addresses[1:]:
+                if addr == prev + 1:
+                    length += 1
+                else:
+                    groups[key].append((start, length))
+                    start = addr
+                    length = 1
+                prev = addr
+            groups[key].append((start, length))
         self.group_reads = groups
 
 
-__all__ = ["RegisterLoader", "Register"]
+__all__ = ["RegisterLoader"]
 

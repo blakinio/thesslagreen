@@ -24,16 +24,11 @@ from typing import (
 
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
-    COIL_REGISTERS,
     DEFAULT_SLAVE_ID,
-    DISCRETE_INPUT_REGISTERS,
     KNOWN_MISSING_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
     UNKNOWN_MODEL,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-    MULTI_REGISTER_SIZES,
 )
 from .modbus_exceptions import (
     ConnectionException,
@@ -55,6 +50,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
+
+REGISTER_DEFINITIONS = {r.name: r for r in get_all_registers()}
+INPUT_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "04"}
+HOLDING_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03"}
+COIL_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "01"}
+DISCRETE_INPUT_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "02"}
+MULTI_REGISTER_SIZES = {name: reg.length for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03" and reg.length > 1}
 
 
 @dataclass

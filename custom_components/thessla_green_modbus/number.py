@@ -17,22 +17,21 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .const import DOMAIN, get_holding_registers
+from .const import DOMAIN
 
 try:  # Newer versions expose metadata through ENTITY_MAPPINGS
     from .const import ENTITY_MAPPINGS
 except ImportError:  # pragma: no cover - fall back when not available
     ENTITY_MAPPINGS = {}
-from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .const import HOLDING_REGISTERS
+from .registers import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
-HOLDING_REGISTERS = get_holding_registers()
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # Unit mappings
 UNIT_MAPPINGS = {
