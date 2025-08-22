@@ -18,17 +18,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from pydantic import BaseModel
+
+from ..utils import _decode_aatt
+
 _LOGGER = logging.getLogger(__name__)
 
-"""Register loader and grouping utilities."""
-
-from __future__ import annotations
-
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List
-
-from pydantic import BaseModel
 
 @dataclass(slots=True)
 class Register:
@@ -38,13 +33,18 @@ class Register:
     address: int
     name: str
     access: str
-    description: str | None = None
+    length: int = 1
     enum: Dict[str, int] | None = None
     multiplier: float | None = None
     resolution: float | None = None
-    minimum: float | None = None
-    maximum: float | None = None
+    description: str | None = None
+    min: float | None = None
+    max: float | None = None
+    default: float | None = None
+    unit: str | None = None
+    information: str | None = None
     bcd: bool = False
+    extra: Dict[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Register":
@@ -62,28 +62,43 @@ class Register:
             _LOGGER.error("Invalid register definition: %s", data)
             raise ValueError(f"Invalid register definition: {data}") from exc
 
-        description: Optional[str] = data.get("description")
+        length = int(data.get("length", 1))
         enum: Optional[Dict[str, int]] = data.get("enum")
         multiplier: Optional[float] = data.get("multiplier")
         resolution: Optional[float] = data.get("resolution")
-        minimum: Optional[float] = data.get("min")
-        maximum: Optional[float] = data.get("max")
+        description: Optional[str] = data.get("description")
+        min_val: Optional[float] = data.get("min")
+        max_val: Optional[float] = data.get("max")
+        default: Optional[float] = data.get("default")
+        unit: Optional[str] = data.get("unit")
+        information: Optional[str] = data.get("information")
 
         name_lower = name.lower()
-        bcd = bool(name_lower.startswith("schedule_") and name_lower.endswith(("_start", "_end")))
+        bcd = bool(
+            data.get("bcd")
+            or (name_lower.startswith("schedule_") and name_lower.endswith(("_start", "_end")))
+        )
+        extra: Optional[Dict[str, Any]] = data.get("extra")
+        if extra is None and name_lower.startswith("setting_"):
+            extra = {"aatt": True}
 
         return cls(
             function=function,
             address=address,
             name=name,
             access=access,
-            description=description,
+            length=length,
             enum=enum,
             multiplier=multiplier,
             resolution=resolution,
-            minimum=minimum,
-            maximum=maximum,
+            description=description,
+            min=min_val,
+            max=max_val,
+            default=default,
+            unit=unit,
+            information=information,
             bcd=bcd,
+            extra=extra,
         )
 
     # ------------------------------------------------------------------
@@ -98,6 +113,12 @@ class Register:
             hours = (hours_bcd >> 4) * 10 + (hours_bcd & 0x0F)
             mins = (mins_bcd >> 4) * 10 + (mins_bcd & 0x0F)
             return f"{hours:02d}:{mins:02d}"
+
+        if self.extra and self.extra.get("aatt"):
+            decoded = _decode_aatt(raw)
+            if decoded is not None:
+                return decoded
+            return raw
 
         value: Any = raw
 
@@ -128,6 +149,18 @@ class Register:
             hours_bcd = ((hours // 10) << 4) | (hours % 10)
             mins_bcd = ((mins // 10) << 4) | (mins % 10)
             return (hours_bcd << 8) | mins_bcd
+
+        if self.extra and self.extra.get("aatt"):
+            if isinstance(value, (tuple, list)):
+                airflow, temp = value
+            elif isinstance(value, dict):
+                airflow = value["airflow"]
+                temp = value["temp"]
+            else:
+                airflow, temp = value  # type: ignore[misc]
+            airflow_int = int(round(float(airflow)))
+            temp_raw = int(round(float(temp) * 2))
+            return (airflow_int << 8) | (temp_raw & 0xFF)
 
         raw = value
         if self.enum and isinstance(value, str) and value in self.enum:

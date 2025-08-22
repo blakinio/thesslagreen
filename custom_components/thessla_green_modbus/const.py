@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Dict, cast
 
 from .registers import get_registers_by_function
 

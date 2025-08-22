@@ -7,6 +7,7 @@ from typing import Callable, Dict, Optional
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
+    _decode_aatt,
     _decode_bcd_time,
     _decode_register_time,
 )
@@ -22,16 +23,8 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
 
-
-def _decode_setting_value(value: int) -> tuple[int, float] | None:
-    """Decode a register storing airflow and temperature as ``0xAATT``."""
-    if value < 0:
-        return None
-    airflow = (value >> 8) & 0xFF
-    temp_double = value & 0xFF
-    if airflow > 100 or temp_double > 200:
-        return None
-    return airflow, temp_double / 2
+# Backwards compatibility: old name used in tests/utilities
+_decode_setting_value = _decode_aatt
 
 
 def _format_register_value(name: str, value: int) -> int | str:
@@ -57,7 +50,7 @@ def _format_register_value(name: str, value: int) -> int | str:
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(SETTING_PREFIX):
-        decoded = _decode_setting_value(value)
+        decoded = _decode_aatt(value)
         if decoded is None:
             return value
         airflow, temp = decoded
@@ -96,6 +89,7 @@ UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 __all__ = [
     "REGISTER_ALLOWED_VALUES",
     "SETTING_PREFIX",
+    "_decode_aatt",
     "_decode_setting_value",
     "_format_register_value",
     "_decode_season_mode",
