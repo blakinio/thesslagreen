@@ -17,7 +17,7 @@ def test_decode_register_time_valid():
     assert _decode_register_time(0x0000) == 0
 
 
-@pytest.mark.parametrize("value", [0x2460, 0x0960, -1])
+@pytest.mark.parametrize("value", [0x2460, 0x0960, 0x8000, -1])
 def test_decode_register_time_invalid(value):
     """Values outside valid hour/minute ranges should return None."""
     assert _decode_register_time(value) is None
@@ -31,7 +31,7 @@ def test_decode_bcd_time_valid():
     assert _decode_bcd_time(615) == 375
 
 
-@pytest.mark.parametrize("value", [0x2460, 2400, -1, 0x1A59])
+@pytest.mark.parametrize("value", [0x2460, 2400, 0x8000, -1, 0x1A59])
 def test_decode_bcd_time_invalid(value):
     """Invalid BCD or decimal times should return None."""
     assert _decode_bcd_time(value) is None
@@ -51,7 +51,7 @@ def test_decode_aatt_value_valid():
     assert _decode_aatt(0x0000) == (0, 0.0)
 
 
-@pytest.mark.parametrize("value", [-1, 0xFF28, 0x3DFF])
+@pytest.mark.parametrize("value", [-1, 0xFF28, 0x3DFF, 0x8000])
 def test_decode_aatt_value_invalid(value):
     """Values outside expected ranges should return None."""
     assert _decode_aatt(value) is None
@@ -82,3 +82,9 @@ def test_register_decode_encode_aatt():
     )
     assert reg.decode(0x3C28) == (60, 20.0)
     assert reg.encode((60, 20)) == 0x3C28
+
+
+def test_register_decode_unavailable_value():
+    """Sentinel value 0x8000 should decode to None."""
+    reg = Register(function="input", address=0, name="temp", access="ro")
+    assert reg.decode(0x8000) is None

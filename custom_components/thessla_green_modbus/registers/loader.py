@@ -115,6 +115,8 @@ class Register:
     # ------------------------------------------------------------------
     def decode(self, raw: int) -> Any:
         """Decode a raw register value using register metadata."""
+        if raw == 0x8000:
+            return None
 
         if self.bcd:
             hours_bcd = (raw >> 8) & 0xFF
