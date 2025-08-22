@@ -8,16 +8,20 @@ def _reg(fn: str, name: str):
 
 
 def test_register_mapping_and_scaling():
-    coil = _reg("01", "duct_warter_heater_pump")
+    coil = _reg("01", "duct_water_heater_pump")
     assert coil.decode(1) == 1
 
-    discrete = _reg("02", "duct_heater_protection")
+    discrete = _reg("02", "fire_alarm")
     assert discrete.decode(0) == 0
 
-    holding = _reg("03", "supplyAirTemperatureManual")
+    holding = _reg("03", "required_temperature")
     assert holding.resolution == 0.5
-    assert holding.encode(21.3) == 21
-    assert holding.decode(21) == pytest.approx(21.0)
+    assert holding.encode(21.3) == 43
+    assert holding.decode(43) == pytest.approx(21.5)
+
+    enum_reg = _reg("03", "special_mode")
+    assert enum_reg.decode(8) == "fireplace"
+    assert enum_reg.encode("summer") == 512
 
     inp = _reg("04", "outside_temperature")
     assert inp.multiplier == 0.1

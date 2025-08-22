@@ -177,6 +177,13 @@ def _load_registers() -> List[Register]:
             address = int(str(item.get("address_hex")), 16)
 
         try:
+            enum_map = item.get("enum")
+            if enum_map:
+                if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
+                    enum_map = {int(k): v for k, v in enum_map.items()}
+                elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
+                    enum_map = {int(v): k for k, v in enum_map.items()}
+
             registers.append(
                 Register(
                     function=function,
@@ -190,7 +197,7 @@ def _load_registers() -> List[Register]:
                     min=item.get("min"),
                     max=item.get("max"),
                     default=item.get("default"),
-                    enum=item.get("enum"),
+                    enum=enum_map,
                     notes=item.get("notes"),
                     information=item.get("information"),
                     extra=item.get("extra"),
