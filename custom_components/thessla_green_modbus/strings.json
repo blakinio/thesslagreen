@@ -10,6 +10,8 @@
       "invalid_auth": "Authentication error. Check Device ID settings.",
       "invalid_input": "Invalid configuration provided. Check values and try again.",
       "missing_method": "Scanner is missing required method. See logs for details.",
+      "modbus_error": "Modbus communication error. Check wiring and settings.",
+      "timeout": "Connection timed out. Verify host and port.",
       "unknown": "Unexpected error. Check logs for details."
     },
     "step": {

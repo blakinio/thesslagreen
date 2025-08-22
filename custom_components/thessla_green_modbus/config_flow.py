@@ -71,25 +71,23 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
             deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
         )
 
-        # Verify connection by reading a few known registers
+        # Verify connection by reading a few safe registers
         await asyncio.wait_for(scanner.verify_connection(), timeout=timeout)
 
         # Perform full device scan
         scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
 
-        caps_obj = scan_result.get("capabilities")
-        if not isinstance(caps_obj, dict):
-            _LOGGER.error(
-                "Invalid capabilities format: expected dict, got %s",
-                type(caps_obj).__name__,
-            )
-            raise CannotConnect("invalid_capabilities")
-
-        try:
-            capabilities = DeviceCapabilities(**caps_obj)
-        except (TypeError, ValueError) as exc:
-            _LOGGER.error("Error parsing capabilities: %s", exc)
-            raise CannotConnect("invalid_capabilities") from exc
+        caps_obj = scan_result.get("capabilities") or {}
+        if isinstance(caps_obj, DeviceCapabilities):
+            capabilities = caps_obj
+        elif isinstance(caps_obj, dict):
+            try:
+                capabilities = DeviceCapabilities(**caps_obj)
+            except (TypeError, ValueError) as exc:
+                _LOGGER.error("Error parsing capabilities: %s", exc)
+                capabilities = DeviceCapabilities()
+        else:
+            capabilities = DeviceCapabilities()
 
         # Store dataclass object so future reads operate on the dataclass
         scan_result["capabilities"] = capabilities
@@ -105,17 +103,21 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     except ConnectionException as exc:
         _LOGGER.error("Connection error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect from exc
+        raise CannotConnect("cannot_connect") from exc
+    except asyncio.TimeoutError as exc:
+        _LOGGER.error("Timeout during device validation: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        raise CannotConnect("timeout") from exc
     except ModbusException as exc:
         _LOGGER.error("Modbus error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect from exc
+        raise CannotConnect("modbus_error") from exc
     except AttributeError as exc:
         _LOGGER.error("Attribute error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         # Provide a more helpful message when scanner methods are missing
         raise CannotConnect("missing_method") from exc
-    except (OSError, asyncio.TimeoutError) as exc:
+    except OSError as exc:
         _LOGGER.error("Unexpected error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect from exc

@@ -44,6 +44,7 @@ from .scanner_helpers import (
     _format_register_value,
     MAX_BATCH_REGISTERS,
     UART_OPTIONAL_REGS,
+    SAFE_REGISTERS,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -310,13 +311,6 @@ class ThesslaGreenDeviceScanner:
         callers can surface an appropriate error to the user.
         """
 
-        # (function_code, register_address) pairs chosen for safe reads
-        samples: list[tuple[str, int]] = [
-            ("04", 0x0000),  # VERSION_MAJOR
-            ("04", 0x0001),  # VERSION_MINOR
-            ("03", 0x0000),  # date_time_rrmm
-        ]
-
         from pymodbus.client import AsyncModbusTcpClient
 
         client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
@@ -324,30 +318,39 @@ class ThesslaGreenDeviceScanner:
             connected = await asyncio.wait_for(client.connect(), timeout=self.timeout)
             if not connected:
                 raise ConnectionException("Failed to connect")
-            for func, addr in samples:
+
+            for func, name in SAFE_REGISTERS:
+                reg = REGISTER_DEFINITIONS.get(name)
+                if reg is None:
+                    continue
+                addr = reg.address
                 try:
                     if func == "04":
                         await asyncio.wait_for(
                             _call_modbus(
-                                client.read_input_registers, self.slave_id, addr, count=1
+                                client.read_input_registers,
+                                self.slave_id,
+                                addr,
+                                count=1,
                             ),
                             timeout=self.timeout,
                         )
                     else:  # "03"
                         await asyncio.wait_for(
                             _call_modbus(
-                                client.read_holding_registers, self.slave_id, addr, count=1
+                                client.read_holding_registers,
+                                self.slave_id,
+                                addr,
+                                count=1,
                             ),
                             timeout=self.timeout,
                         )
-                except asyncio.TimeoutError as exc:
-                    raise ConnectionException(
-                        f"Timeout reading register 0x{addr:04X}"
-                    ) from exc
+                except asyncio.TimeoutError as exc:  # pragma: no cover - network issues
+                    raise ConnectionException(f"Timeout reading {name}") from exc
+                except ModbusException:
+                    raise
                 except Exception as exc:  # pragma: no cover - forward unexpected
-                    raise ModbusException(
-                        f"Error reading register 0x{addr:04X}: {exc}"
-                    ) from exc
+                    raise ModbusException(f"Error reading {name}: {exc}") from exc
         finally:
             await client.close()
 

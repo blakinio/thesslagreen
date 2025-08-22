@@ -87,6 +87,16 @@ MAX_BATCH_REGISTERS = 16
 # explicitly enabled.
 UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 
+# Registers considered safe to read when verifying connectivity.
+# Each entry is a tuple of Modbus function code and register name. The
+# corresponding addresses are resolved from the JSON register definitions at
+# runtime, ensuring we do not hardcode register addresses here.
+SAFE_REGISTERS: list[tuple[str, str]] = [
+    ("04", "VERSION_MAJOR"),
+    ("04", "VERSION_MINOR"),
+    ("03", "date_time_rrmm"),
+]
+
 __all__ = [
     "REGISTER_ALLOWED_VALUES",
     "SETTING_PREFIX",
@@ -97,4 +107,5 @@ __all__ = [
     "SPECIAL_VALUE_DECODERS",
     "MAX_BATCH_REGISTERS",
     "UART_OPTIONAL_REGS",
+    "SAFE_REGISTERS",
 ]
