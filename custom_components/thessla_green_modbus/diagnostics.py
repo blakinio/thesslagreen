@@ -29,6 +29,9 @@ async def async_get_config_entry_diagnostics(
 
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
+    diagnostics["last_scan"] = (
+        coordinator.last_scan.isoformat() if coordinator.last_scan else None
+    )
 
     if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
         diagnostics.setdefault(
