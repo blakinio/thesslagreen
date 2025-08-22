@@ -322,10 +322,15 @@ _REGISTER_CACHE: List[Register] = []
 _REGISTERS_HASH: str | None = None
 
 
-def _compute_file_hash() -> str:
-    """Return the SHA256 hash of the registers file."""
+def _compute_file_hash(path: Path | None = None) -> str:
+    """Return the SHA256 hash of the given registers file.
 
-    return hashlib.sha256(_REGISTERS_PATH.read_bytes()).hexdigest()
+    ``path`` defaults to :data:`_REGISTERS_PATH` but is parameterised to make
+    testing easier by allowing callers to pass a temporary file.
+    """
+
+    target = path or _REGISTERS_PATH
+    return hashlib.sha256(target.read_bytes()).hexdigest()
 
 
 def _load_registers() -> List[Register]:
