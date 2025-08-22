@@ -130,7 +130,15 @@ class Register:
 # Loading helpers
 # ---------------------------------------------------------------------------
 
-REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
+# Single source of truth for the bundled register definitions.  The JSON file
+# lives in the repository root under ``registers`` and is bundled with the
+# tests.  Use an explicit absolute path to avoid repeating this logic in
+# multiple places.
+_REGISTERS_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
 
 
 def _normalise_function(fn: str) -> str:
@@ -167,11 +175,11 @@ def _normalise_function(fn: str) -> str:
 def _load_registers() -> List[Register]:
     """Load register definitions from the JSON file."""
 
-    if not REGISTERS_PATH.exists():  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", REGISTERS_PATH)
+    if not _REGISTERS_PATH.exists():  # pragma: no cover - sanity check
+        _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
         return []
 
-    text = REGISTERS_PATH.read_text(encoding="utf-8")
+    text = _REGISTERS_PATH.read_text(encoding="utf-8")
     raw = json.loads(text)
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
