@@ -64,7 +64,7 @@ def test_decode_aatt_value_invalid(value):
 def test_schedule_and_setting_defaults_valid():
     """Default schedule and setting values should pass range validation."""
     scanner = ThesslaGreenDeviceScanner("127.0.0.1", 502)
-    _, ranges, _ = asyncio.run(scanner._load_registers())
+    _, ranges = asyncio.run(scanner._load_registers())
     scanner._register_ranges = ranges
     assert scanner._is_valid_register_value("schedule_winter_sun_3", 0x1000)
     assert scanner._is_valid_register_value("setting_summer_mon_1", 0x4100)

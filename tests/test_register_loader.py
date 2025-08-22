@@ -80,8 +80,8 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     assert read_calls == 1
 
 
-def test_csv_loader_emits_warning(caplog) -> None:
-    """Using a CSV file should emit a deprecation warning."""
+def test_path_argument_ignored(caplog) -> None:
+    """Providing a path should not trigger any CSV handling."""
 
     csv_path = (
         Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
@@ -91,4 +91,4 @@ def test_csv_loader_emits_warning(caplog) -> None:
         loader = RegisterLoader(csv_path)
 
     assert loader.registers
-    assert any("deprecated" in rec.message for rec in caplog.records)
+    assert not caplog.records

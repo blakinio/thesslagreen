@@ -166,11 +166,9 @@ class ThesslaGreenDeviceScanner:
         # Detected device capabilities
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
 
-        # Placeholder for register map, value ranges and firmware versions loaded
-        # asynchronously
+        # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
         self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-        self._register_versions: Dict[str, Tuple[int, ...]] = {}
 
         # Track holding registers that consistently fail to respond so we
         # can avoid retrying them repeatedly during scanning. The value is
@@ -228,9 +226,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
-        self._registers, self._register_ranges, self._register_versions = (
-            await self._load_registers()
-        )
+        self._registers, self._register_ranges = await self._load_registers()
 
     @classmethod
     async def create(
@@ -344,7 +340,7 @@ class ThesslaGreenDeviceScanner:
 
         This check is intentionally lightweight – it ensures that obvious
         placeholder values (like ``SENSOR_UNAVAILABLE``) and values outside the
-        ranges loaded from the CSV definition are ignored.  The method mirrors
+        ranges defined in the register metadata are ignored.  The method mirrors
         behaviour expected by the tests but does not aim to provide exhaustive
         validation of every register.
         """
@@ -919,19 +915,17 @@ class ThesslaGreenDeviceScanner:
     ) -> Tuple[
         Dict[str, Dict[int, str]],
         Dict[str, Tuple[Optional[int], Optional[int]]],
-        Dict[str, Tuple[int, ...]],
     ]:
-        """Load Modbus register definitions, ranges and firmware versions."""
+        """Load Modbus register definitions and value ranges."""
         register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
         register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-        register_versions: Dict[str, Tuple[int, ...]] = {}
         for reg in get_all_registers():
             if not reg.name:
                 continue
             register_map[reg.function][reg.address] = reg.name
             if reg.min is not None or reg.max is not None:
                 register_ranges[reg.name] = (reg.min, reg.max)
-        return register_map, register_ranges, register_versions
+        return register_map, register_ranges
 
     def _sleep_time(self, attempt: int) -> float:
         """Return delay for a retry attempt based on backoff."""
