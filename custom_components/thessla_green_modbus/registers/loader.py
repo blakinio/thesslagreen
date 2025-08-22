@@ -34,7 +34,8 @@ _LOGGER = logging.getLogger(__name__)
 _REGISTERS_PATH = Path(__file__).resolve().with_name(
     "thessla_green_registers_full.json"
 )
-
+# Path to bundled register definitions
+_REGISTERS_PATH = Path(__file__).resolve().with_name("thessla_green_registers_full.json")
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -71,8 +72,18 @@ class Register:
         if raw == 0x8000:  # common sentinel used by the device
             return None
 
-        # Enumerations map raw numeric values to labels for holding/input registers
-        if self.enum is not None and self.function in ("03", "04"):
+        # Bitmask registers return a list of active flag labels
+        if self.extra and self.extra.get("bitmask") and self.enum:
+            flags: list[Any] = []
+            for key, label in sorted(
+                ((int(k), v) for k, v in self.enum.items()), key=lambda x: x[0]
+            ):
+                if raw & key:
+                    flags.append(label)
+            return flags
+
+        # Enumerations map raw numeric values to labels when provided
+        if self.enum is not None:
             if raw in self.enum:
                 return self.enum[raw]
             if str(raw) in self.enum:
@@ -102,6 +113,21 @@ class Register:
     def encode(self, value: Any) -> int:
         """Encode ``value`` into the raw register representation."""
 
+        if self.extra and self.extra.get("bitmask") and self.enum:
+            raw_int = 0
+            if isinstance(value, (list, tuple, set)):
+                for item in value:
+                    for k, v in self.enum.items():
+                        if v == item:
+                            raw_int |= int(k)
+                            break
+                return raw_int
+            if isinstance(value, str):
+                for k, v in self.enum.items():
+                    if v == value:
+                        return int(k)
+            return int(value)
+
         if self.bcd:
             if isinstance(value, str):
                 hours, minutes = (int(x) for x in value.split(":"))
@@ -120,7 +146,7 @@ class Register:
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
         raw: Any = value
-        if self.enum and isinstance(value, str) and self.function in ("03", "04"):
+        if self.enum and isinstance(value, str):
             # Reverse lookup
             for k, v in self.enum.items():
                 if v == value:
@@ -251,6 +277,7 @@ def _load_registers_from_file(path: Path | None = None) -> List[Register]:
     """Load register definitions from the bundled JSON file."""
 
     target = path or _REGISTERS_PATH
+    path = path or _REGISTERS_PATH
     try:
         raw = json.loads(target.read_text(encoding="utf-8"))
     except FileNotFoundError:  # pragma: no cover - sanity check
@@ -276,7 +303,7 @@ def _load_registers_from_file(path: Path | None = None) -> List[Register]:
         elif function == "03" and address >= 111:
             address -= 111
 
-        name = _normalise_name(str(item["name"]))
+        name = str(item["name"])
 
         enum_map = item.get("enum")
         if name == "special_mode":
@@ -291,8 +318,6 @@ def _load_registers_from_file(path: Path | None = None) -> List[Register]:
 
         multiplier = item.get("multiplier")
         resolution = item.get("resolution")
-        if multiplier is None and resolution is not None:
-            multiplier = resolution
 
         registers.append(
             Register(
@@ -322,6 +347,7 @@ def _load_registers_from_file(path: Path | None = None) -> List[Register]:
 # Cache for loaded register definitions and the file hash used to build it
 _REGISTER_CACHE: List[Register] = []
 _REGISTERS_HASH: str | None = None
+_REGISTERS_PATH = resources.files(__package__) / "thessla_green_registers_full.json"
 
 
 def _compute_file_hash(path: Path | None = None) -> str:

@@ -69,10 +69,17 @@ def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
     return result
 
 
+SNAKE_CASE = re.compile(r"^[a-z0-9_]+$")
+
+
 def load_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
     """Load registers from the JSON file grouped by function."""
     data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
     registers = data.get("registers", data)
+    for reg in registers:
+        name = reg["name"]
+        if not SNAKE_CASE.fullmatch(name):
+            raise ValueError(f"Register name '{name}' is not snake_case")
     coil_rows: list[tuple[str, int]] = []
     discrete_rows: list[tuple[str, int]] = []
     input_rows: list[tuple[str, int]] = []
