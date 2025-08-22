@@ -10,7 +10,7 @@ COIL_REGISTERS: dict[str, int] = {
     "info": 10,
     "power_supply_fans": 11,
     "heating_cable": 12,
-    "workt_permit": 13,
+    "work_permit": 13,
     "gwc": 14,
     "hood": 15,
 }

@@ -69,7 +69,7 @@
       "function": "01",
       "address_hex": "0x000D",
       "address_dec": 13,
-      "name": "workt_permit",
+      "name": "work_permit",
       "description": "Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)",
       "access": "R",
       "enum": {
