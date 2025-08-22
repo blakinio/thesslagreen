@@ -9,8 +9,6 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
-import json
-from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -175,6 +173,9 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": set(),
         }
 
+        # Detected device capabilities
+        self.capabilities: DeviceCapabilities = DeviceCapabilities()
+
         # Placeholder for register map, value ranges and firmware versions loaded
         # asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
@@ -297,35 +298,20 @@ class ThesslaGreenDeviceScanner:
             self._client = None
 
     async def verify_connection(self) -> None:
-        """Verify basic Modbus connectivity by reading sample registers.
+        """Verify basic Modbus connectivity by reading a few safe registers.
 
-        A small subset of registers is loaded from the project JSON file and
-        read from the device.  Any failure will raise a ``ModbusException`` or
-        ``ConnectionException`` which callers can handle appropriately.
+        A handful of well-known registers are read from the device to confirm
+        that the TCP connection and Modbus protocol are functioning. Any
+        failure will raise a ``ModbusException`` or ``ConnectionException`` so
+        callers can surface an appropriate error to the user.
         """
 
-        json_path = Path(__file__).resolve().parents[2] / "thessla_green_registers_full.json"
-        try:
-            with json_path.open(encoding="utf-8") as file:
-                reg_data = json.load(file).get("registers", [])
-        except Exception as exc:  # pragma: no cover - defensive
-            _LOGGER.debug("Failed to load register JSON: %s", exc)
-            reg_data = []
-
-        samples: list[tuple[str, int]] = []
-        for reg in reg_data:
-            func = reg.get("function")
-            if func in ("03", "04"):
-                try:
-                    addr = int(reg.get("address_dec", 0))
-                except (TypeError, ValueError):
-                    continue
-                samples.append((func, addr))
-            if len(samples) >= 3:
-                break
-
-        if not samples:
-            raise ValueError("No sample registers available for connection test")
+        # (function_code, register_address) pairs chosen for safe reads
+        samples: list[tuple[str, int]] = [
+            ("04", 0x0000),  # VERSION_MAJOR
+            ("04", 0x0001),  # VERSION_MINOR
+            ("03", 0x0000),  # date_time_rrmm
+        ]
 
         from pymodbus.client import AsyncModbusTcpClient
 
@@ -788,6 +774,7 @@ class ThesslaGreenDeviceScanner:
                         self.available_registers["discrete_inputs"].add(discrete_addr_to_name[addr])
 
         caps = self._analyze_capabilities()
+        self.capabilities = caps
         device.capabilities = [
             key for key, val in caps.as_dict().items() if isinstance(val, bool) and val
         ]
