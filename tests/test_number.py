@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
+from custom_components.thessla_green_modbus import loader
 from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
 
 # ---------------------------------------------------------------------------
@@ -106,8 +106,8 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
     async def async_write_register(self, *args, **kwargs):
         register, value = args[0], args[1]
         address = HOLDING_REGISTERS[register]
-        multiplier = REGISTER_MULTIPLIERS.get(register, 1)
-        raw = int(round(value / multiplier))
+        definition = loader.get_register_definition(register)
+        raw = definition.encode(value)
         await self.client.write_register(address, raw, slave=self.slave_id)
         return True
 
