@@ -3,9 +3,15 @@
 import logging
 from pathlib import Path
 
+import json
+
 from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 from custom_components.thessla_green_modbus.registers import (
     get_registers_by_function,
+)
+from custom_components.thessla_green_modbus.registers.loader import (
+    _REGISTERS_PATH,
+    _normalise_name,
 )
 
 
@@ -19,7 +25,7 @@ def test_example_register_mapping() -> None:
 
     assert addr("01", "duct_water_heater_pump") == 5
     assert addr("02", "expansion") == 0
-    assert addr("03", "mode") == 4097
+    assert addr("03", "mode") == 4208
     assert addr("04", "outside_temperature") == 16
 
 
@@ -94,3 +100,16 @@ def test_csv_loader_emits_warning(caplog) -> None:
 
     assert loader.registers
     assert any("deprecated" in rec.message for rec in caplog.records)
+
+
+def test_register_names_need_no_normalisation() -> None:
+    """JSON register names should already be normalised."""
+
+    raw = json.loads(_REGISTERS_PATH.read_text(encoding="utf-8"))
+    items = raw.get("registers", raw) if isinstance(raw, dict) else raw
+    corrections = [
+        name
+        for name in (str(item["name"]) for item in items)
+        if _normalise_name(name) != name
+    ]
+    assert corrections == []

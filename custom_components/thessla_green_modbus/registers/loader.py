@@ -267,25 +267,16 @@ def _load_registers_from_file() -> List[Register]:
 
     registers: List[Register] = []
     for item in items:
-
         try:
             _validate_item(item)
-            function = _normalise_function(str(item["function"]))
+            function = _normalise_function(str(item.get("function", "")))
             if item.get("address_dec") is not None:
                 address = int(item["address_dec"])
             else:
-                address = int(str(item["address_hex"]), 16)
+                address = int(str(item.get("address_hex")), 16)
+            if function == "02":
+                address -= 1
 
-
-        function = _normalise_function(str(item.get("function", "")))
-        if item.get("address_dec") is not None:
-            address = int(item["address_dec"])
-        else:
-            address = int(str(item.get("address_hex")), 16)
-        if function == "02":
-            address -= 1
-
-        try:
             name = _normalise_name(str(item["name"]))
 
             enum_map = item.get("enum")
@@ -320,13 +311,10 @@ def _load_registers_from_file() -> List[Register]:
                     bcd=bool(item.get("bcd", False)),
                 )
             )
-
-        except Exception as err:
+        except ValueError as err:
             raise ValueError(f"Invalid register definition: {err}") from err
-
         except Exception as err:  # pragma: no cover - defensive
             _LOGGER.warning("Invalid register definition skipped: %s", err)
-
 
     return registers
 
