@@ -38,7 +38,7 @@ def _decode_register_time(value: int) -> int | None:
     extracted hour/minute fall outside of valid ranges.
     """
 
-    if value < 0:
+    if value == 0x8000 or value < 0:
         return None
 
     hour = (value >> 8) & 0xFF
@@ -52,7 +52,7 @@ def _decode_register_time(value: int) -> int | None:
 def _decode_bcd_time(value: int) -> int | None:
     """Decode BCD or decimal HHMM values to minutes since midnight."""
 
-    if value < 0:
+    if value == 0x8000 or value < 0:
         return None
 
     nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
@@ -86,7 +86,7 @@ def parse_schedule_bcd(value: int) -> int | None:
 def _decode_aatt(value: int) -> tuple[int, float] | None:
     """Decode airflow percentage and temperature encoded as ``0xAATT``."""
 
-    if value < 0:
+    if value == 0x8000 or value < 0:
         return None
 
     airflow = (value >> 8) & 0xFF
