@@ -19,6 +19,7 @@ import hashlib
 import json
 import logging
 import re
+import importlib.resources as resources
 from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
@@ -133,12 +134,8 @@ class Register:
 
 # Single source of truth for the bundled register definitions.  The JSON file
 # lives alongside this module inside the installed package.
-_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
-# lives in the repository root under ``registers`` and is bundled with the
-# tests.  Use an explicit absolute path to avoid repeating this logic in
-# multiple places.
-_REGISTERS_PATH = (
-    Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
+_REGISTERS_PATH = resources.files(__package__).joinpath(
+    "thessla_green_registers_full.json"
 )
 
 
@@ -258,7 +255,7 @@ def _normalise_name(name: str) -> str:
 def _load_registers_from_file() -> List[Register]:
     """Load register definitions from the bundled JSON file."""
 
-    if not _REGISTERS_PATH.exists():  # pragma: no cover - sanity check
+    if not _REGISTERS_PATH.is_file():  # pragma: no cover - sanity check
         _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
         return []
 
@@ -268,9 +265,9 @@ def _load_registers_from_file() -> List[Register]:
 
     registers: List[Register] = []
     for item in items:
-
         try:
             _validate_item(item)
+
             function = _normalise_function(str(item.get("function", "")))
             if item.get("address_dec") is not None:
                 address = int(item["address_dec"])
@@ -313,13 +310,8 @@ def _load_registers_from_file() -> List[Register]:
                     bcd=bool(item.get("bcd", False)),
                 )
             )
-
         except Exception as err:
             raise ValueError(f"Invalid register definition: {err}") from err
-
-        except Exception as err:  # pragma: no cover - defensive
-            _LOGGER.warning("Invalid register definition skipped: %s", err)
-
 
     return registers
 

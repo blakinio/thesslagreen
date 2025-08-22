@@ -1,5 +1,6 @@
 recursive-include custom_components/thessla_green_modbus/data *.csv
 recursive-include custom_components/thessla_green_modbus/options *.json
 recursive-include custom_components/thessla_green_modbus/translations *.json
+recursive-include custom_components/thessla_green_modbus/registers *.json
 include custom_components/thessla_green_modbus/services.yaml
 prune tools
