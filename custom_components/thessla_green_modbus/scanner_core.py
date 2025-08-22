@@ -9,6 +9,8 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from importlib.resources import files
+import json
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -290,6 +292,71 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.debug("Error closing Modbus client", exc_info=True)
         finally:
             self._client = None
+
+    async def verify_connection(self) -> None:
+        """Verify basic Modbus connectivity by reading sample registers.
+
+        A small subset of registers is loaded from the project JSON file and
+        read from the device.  Any failure will raise a ``ModbusException`` or
+        ``ConnectionException`` which callers can handle appropriately.
+        """
+
+        json_path = Path(__file__).resolve().parents[2] / "thessla_green_registers_full.json"
+        try:
+            with json_path.open(encoding="utf-8") as file:
+                reg_data = json.load(file).get("registers", [])
+        except Exception as exc:  # pragma: no cover - defensive
+            _LOGGER.debug("Failed to load register JSON: %s", exc)
+            reg_data = []
+
+        samples: list[tuple[str, int]] = []
+        for reg in reg_data:
+            func = reg.get("function")
+            if func in ("03", "04"):
+                try:
+                    addr = int(reg.get("address_dec", 0))
+                except (TypeError, ValueError):
+                    continue
+                samples.append((func, addr))
+            if len(samples) >= 3:
+                break
+
+        if not samples:
+            raise ValueError("No sample registers available for connection test")
+
+        from pymodbus.client import AsyncModbusTcpClient
+
+        client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+        try:
+            connected = await asyncio.wait_for(client.connect(), timeout=self.timeout)
+            if not connected:
+                raise ConnectionException("Failed to connect")
+            for func, addr in samples:
+                try:
+                    if func == "04":
+                        await asyncio.wait_for(
+                            _call_modbus(
+                                client.read_input_registers, self.slave_id, addr, count=1
+                            ),
+                            timeout=self.timeout,
+                        )
+                    else:  # "03"
+                        await asyncio.wait_for(
+                            _call_modbus(
+                                client.read_holding_registers, self.slave_id, addr, count=1
+                            ),
+                            timeout=self.timeout,
+                        )
+                except asyncio.TimeoutError as exc:
+                    raise ConnectionException(
+                        f"Timeout reading register 0x{addr:04X}"
+                    ) from exc
+                except Exception as exc:  # pragma: no cover - forward unexpected
+                    raise ModbusException(
+                        f"Error reading register 0x{addr:04X}: {exc}"
+                    ) from exc
+        finally:
+            await client.close()
 
     def _is_valid_register_value(self, name: str, value: int) -> bool:
         """Validate a register value against known constraints.
@@ -852,7 +919,10 @@ class ThesslaGreenDeviceScanner:
         self._client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
 
         try:
-            if not await self._client.connect():
+            connected = await asyncio.wait_for(
+                self._client.connect(), timeout=self.timeout
+            )
+            if not connected:
                 raise ConnectionException("Failed to connect")
             return await self.scan()
         finally:
@@ -1148,8 +1218,11 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await _call_modbus(
-                    client.read_input_registers, self.slave_id, address, count=count
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_input_registers, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
                 )
                 if response is not None:
                     if response.isError():
@@ -1221,8 +1294,11 @@ class ThesslaGreenDeviceScanner:
                 attempt,
             )
             try:
-                response = await _call_modbus(
-                    client.read_holding_registers, self.slave_id, address, count=count
+                response = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_holding_registers, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
                 )
                 if response is not None:
                     if response.isError():
@@ -1311,8 +1387,11 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await _call_modbus(
-                    client.read_holding_registers, self.slave_id, address, count=count
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_holding_registers, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
                 )
                 if response is not None:
                     if response.isError():
@@ -1391,8 +1470,11 @@ class ThesslaGreenDeviceScanner:
         """Read coil registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await _call_modbus(
-                    client.read_coils, self.slave_id, address, count=count
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_coils, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
                 )
                 if response is not None and not response.isError():
                     return cast(list[bool], response.bits[:count])
@@ -1440,8 +1522,14 @@ class ThesslaGreenDeviceScanner:
         """Read discrete input registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await _call_modbus(
-                    client.read_discrete_inputs, self.slave_id, address, count=count
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_discrete_inputs,
+                        self.slave_id,
+                        address,
+                        count=count,
+                    ),
+                    timeout=self.timeout,
                 )
                 if response is not None and not response.isError():
                     return cast(list[bool], response.bits[:count])
