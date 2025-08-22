@@ -17,7 +17,6 @@ JSON_PATH = (
     / "thessla_green_registers_full.json"
 )
 
-
 _SNAKE_RE = re.compile(r"[^0-9a-zA-Z]+")
 
 

@@ -34,6 +34,8 @@ from .const import (
     DEFAULT_TIMEOUT,
     DEFAULT_DEEP_SCAN,
     DOMAIN,
+    AIRFLOW_UNIT_M3H,
+    AIRFLOW_UNIT_PERCENTAGE,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -277,16 +279,20 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
     """Migrate entity unique IDs stored in the entity registry."""
     registry = er.async_get(hass)
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if ":" in reg_entry.unique_id:
-            new_unique_id = reg_entry.unique_id.replace(":", "-")
-            if new_unique_id != reg_entry.unique_id:
-                _LOGGER.debug(
-                    "Migrating unique_id for %s: %s -> %s",
-                    reg_entry.entity_id,
-                    reg_entry.unique_id,
-                    new_unique_id,
-                )
-                registry.async_update_entity(reg_entry.entity_id, new_unique_id=new_unique_id)
+        new_unique_id = reg_entry.unique_id.replace(":", "-")
+        for unit in (AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE):
+            suffix = f"_{unit}"
+            if new_unique_id.endswith(suffix):
+                new_unique_id = new_unique_id[: -len(suffix)]
+                break
+        if new_unique_id != reg_entry.unique_id:
+            _LOGGER.debug(
+                "Migrating unique_id for %s: %s -> %s",
+                reg_entry.entity_id,
+                reg_entry.unique_id,
+                new_unique_id,
+            )
+            registry.async_update_entity(reg_entry.entity_id, new_unique_id=new_unique_id)
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
