@@ -1,4 +1,7 @@
-from custom_components.thessla_green_modbus.registers import get_all_registers, group_reads
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_all_registers,
+    group_reads,
+)
 
 
 def test_loader_smoke():

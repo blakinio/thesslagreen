@@ -1,7 +1,6 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
 import asyncio
-
 import logging
 import os
 import sys
@@ -11,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.thessla_green_modbus import loader
 from custom_components.thessla_green_modbus.const import (
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
@@ -19,8 +19,6 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -152,7 +150,9 @@ for name, module in modules.items():
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+    get_registers_by_function,
+)
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
@@ -449,8 +449,7 @@ def test_dac_value_processing(coordinator, caplog):
 def test_process_register_value_sensor_unavailable(coordinator, register_name):
     """Return sentinel when sensors report unavailable for known sensor registers."""
     assert (
-        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE)
-        == SENSOR_UNAVAILABLE
+        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) == SENSOR_UNAVAILABLE
     )
 
 
@@ -631,7 +630,9 @@ async def test_setup_and_refresh_no_cancelled_error(coordinator):
 @pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):
     """Invalid capabilities format should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import CannotConnect
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+    )
 
     scan_result = {
         "device_info": {},

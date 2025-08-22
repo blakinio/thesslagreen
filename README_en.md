@@ -265,18 +265,6 @@ only for diagnostic purposes.
 - 💡 [Feature requests](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Updating `registers.py`
-Whenever `registers/thessla_green_registers_full.json` changes, regenerate and
-validate the Python module:
-
-```bash
-python tools/generate_registers.py
-python tools/validate_registers.py  # optional consistency check
-```
-
-Commit the updated `custom_components/thessla_green_modbus/registers.py`
-together with the modified JSON file.
-
 ### Validate translations
 Ensure translation files contain valid JSON:
 
@@ -319,8 +307,6 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 
 ```bash
 pytest tests/test_register_loader.py
-python tools/generate_registers.py
-python tools/validate_registers.py
 ```
 
 ## 📄 License

@@ -121,18 +121,17 @@ from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
 )
 
-SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()] + [
-    "error_codes"
-]
-BINARY_KEYS = _load_translation_keys(
-    ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS"
-)
+SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()] + ["error_codes"]
+BINARY_KEYS = _load_translation_keys(ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS")
 SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") + _load_keys(
     ROOT / "const.py", "SPECIAL_FUNCTION_MAP"
 )
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+    get_registers_by_function,
+)
+
 REGISTER_KEYS = [r.name for r in get_registers_by_function("03")]
 # Add dynamically generated binary sensor keys from holding registers
 BINARY_KEYS = sorted(
@@ -254,7 +253,9 @@ def _to_snake(name: str) -> str:
 def test_register_names_match_translations() -> None:
     """Ensure register names used in mappings exist and have translations."""
 
-    reg_path = Path(__file__).resolve().parent.parent / "registers" / "thessla_green_registers_full.json"
+    reg_path = (
+        Path(__file__).resolve().parent.parent / "registers" / "thessla_green_registers_full.json"
+    )
     data = json.loads(reg_path.read_text())
     registers = data["registers"]
 
@@ -299,7 +300,9 @@ def test_register_names_match_translations() -> None:
                                 if isinstance(k2, ast.Constant):
                                     if k2.value == "register_type" and isinstance(v2, ast.Constant):
                                         reg_type = v2.value
-                                    elif k2.value == "translation_key" and isinstance(v2, ast.Constant):
+                                    elif k2.value == "translation_key" and isinstance(
+                                        v2, ast.Constant
+                                    ):
                                         trans_key = v2.value
                             if reg_type in reg_names and name not in ignore:
                                 assert (

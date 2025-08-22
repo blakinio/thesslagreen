@@ -9,17 +9,17 @@ from custom_components.thessla_green_modbus.data import modbus_registers as mr
 from custom_components.thessla_green_modbus.data.modbus_registers import (
     get_register_info,
 )
-from custom_components.thessla_green_modbus.registers import get_all_registers
-from custom_components.thessla_green_modbus.registers.loader import _load_registers
+from custom_components.thessla_green_modbus.registers.loader import (
+    _load_registers,
+    get_all_registers,
+)
 
 
 def test_register_cache_invalidation() -> None:
     """Modifying the register JSON should trigger cache rebuilds."""
 
     registers_path = (
-        Path(__file__).resolve().parent.parent
-        / "registers"
-        / "thessla_green_registers_full.json"
+        Path(__file__).resolve().parent.parent / "registers" / "thessla_green_registers_full.json"
     )
 
     original_content = registers_path.read_text()
@@ -51,4 +51,3 @@ def test_register_cache_invalidation() -> None:
         _load_registers.cache_clear()
         mr._REGISTER_CACHE = None
         mr._REGISTER_HASH = None
-
