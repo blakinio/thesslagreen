@@ -266,7 +266,7 @@ only for diagnostic purposes.
 - 🤝 [Contributing](CONTRIBUTING.md)
 
 ### Updating `registers.py`
-Whenever `registers/thessla_green_registers_full.json` changes, regenerate and
+Whenever `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` changes, regenerate and
 validate the Python module:
 
 ```bash
@@ -289,7 +289,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## JSON register definitions
 
-The file `registers/thessla_green_registers_full.json` stores the complete
+The file `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` stores the complete
 register specification and is the single source of truth. All tools in
 `tools/` operate exclusively on this JSON format.
 
@@ -312,7 +312,7 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 
 ### Adding new registers
 
-1. Edit `registers/thessla_green_registers_full.json` and append a new object
+1. Edit `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` and append a new object
    with the required fields.
 2. Ensure addresses are unique and remain sorted.
 3. Run the validation test:

@@ -4,6 +4,7 @@ import re
 import sys
 import types
 from pathlib import Path
+from importlib import resources
 
 import yaml
 
@@ -254,8 +255,11 @@ def _to_snake(name: str) -> str:
 def test_register_names_match_translations() -> None:
     """Ensure register names used in mappings exist and have translations."""
 
-    reg_path = Path(__file__).resolve().parent.parent / "registers" / "thessla_green_registers_full.json"
-    data = json.loads(reg_path.read_text())
+    reg_path = (
+        resources.files("custom_components.thessla_green_modbus.registers")
+        .joinpath("thessla_green_registers_full.json")
+    )
+    data = json.loads(reg_path.read_text(encoding="utf-8"))
     registers = data["registers"]
 
     fn_map = {

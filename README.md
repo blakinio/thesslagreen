@@ -143,7 +143,7 @@ for start, size in group_reads(range(100), max_block_size=16):
 
 
 ### Rejestry w formacie JSON
-Definicje rejestrów znajdują się w pliku `registers/thessla_green_registers_full.json`,
+Definicje rejestrów znajdują się w pliku `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
 który stanowi jedyne źródło prawdy. Każdy wpis w sekcji `registers` zawiera m.in. pola:
 
 - `function` – kod funkcji Modbus (`01`–`04`)
@@ -493,7 +493,7 @@ python3 tools/cleanup_old_entities.py \
 - 🤝 [Contributing](CONTRIBUTING.md)
 
 ### Aktualizacja `registers.py`
-Zmiany w pliku `registers/thessla_green_registers_full.json` wymagają ponownego
+Zmiany w pliku `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` wymagają ponownego
 wygenerowania modułu z definicjami rejestrów i jego walidacji:
 
 ```bash
@@ -517,7 +517,7 @@ Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 
 ## Rejestry w formacie JSON
 
-Plik `registers/thessla_green_registers_full.json` przechowuje komplet
+Plik `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` przechowuje komplet
 definicji rejestrów i stanowi jedyne źródło prawdy. Wszystkie narzędzia w
 `tools/` operują wyłącznie na tym formacie.
 
@@ -540,7 +540,7 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 
 ### Dodawanie lub aktualizowanie rejestrów
 
-1. Otwórz `registers/thessla_green_registers_full.json` i wprowadź nowe wpisy
+1. Otwórz `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` i wprowadź nowe wpisy
    lub zmodyfikuj istniejące.
 2. Zadbaj o unikalność adresów i zachowanie posortowanej kolejności.
 3. Uruchom test walidacyjny:
@@ -565,7 +565,7 @@ usunięta w przyszłych wersjach. Użycie pliku CSV zapisze ostrzeżenie w
 logach. Aby ręcznie przekonwertować dane:
 
 1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
-2. Dla każdego wiersza utwórz obiekt w `registers/thessla_green_registers_full.json`
+2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
    z polami `function`, `address_dec`, `address_hex`, `name`, `description` i `access`.
 3. Zachowaj sortowanie adresów oraz format liczbowy (`0x` dla wartości hex).
 4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych

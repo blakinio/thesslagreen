@@ -19,7 +19,7 @@ primarily for debugging or development purposes.
 
 ## Dodawanie lub aktualizowanie rejestrów
 
-1. Edytuj plik `registers/thessla_green_registers_full.json` dodając nowe obiekty
+1. Edytuj plik `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` dodając nowe obiekty
    lub modyfikując istniejące wpisy.
 2. Zachowaj unikalność adresów oraz posortowaną kolejność.
 3. Uruchom test walidacyjny:
@@ -38,7 +38,7 @@ primarily for debugging or development purposes.
 5. Do commitu dodaj zmodyfikowany plik JSON oraz wygenerowany `registers.py`.
 
 ## Migracja z CSV na JSON
-Rejestry są obecnie definiowane w pliku JSON `registers/thessla_green_registers_full.json`.
+Rejestry są obecnie definiowane w pliku JSON `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
 Format CSV jest przestarzały i zostanie usunięty w przyszłych wersjach – jego
 użycie zapisuje ostrzeżenie w logach. Każdy obiekt w tablicy `registers` zawiera pola:
 
@@ -54,7 +54,7 @@ atrybuty.
 Aby ręcznie przekonwertować istniejący plik CSV:
 
 1. Otwórz plik CSV i odwzoruj kolumny na odpowiednie pola JSON.
-2. Dla każdego wiersza utwórz obiekt w `registers/thessla_green_registers_full.json`.
+2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
 3. Przekonwertuj adresy na postać dziesiętną i heksadecymalną (`0x...`).
 4. Po konwersji uruchom test i narzędzia z sekcji powyżej, aby zweryfikować plik.
 
