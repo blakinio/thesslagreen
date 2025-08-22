@@ -81,6 +81,7 @@ from .const import (
     MODEL,
     SENSOR_UNAVAILABLE,
     UNKNOWN_MODEL,
+    DEFAULT_SCAN_MAX_BLOCK_SIZE,
 )
 from .registers import get_all_registers, get_registers_by_function
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
@@ -113,6 +114,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         force_full_register_list: bool = False,
         scan_uart_settings: bool = False,
         deep_scan: bool = False,
+        scan_max_block_size: int = DEFAULT_SCAN_MAX_BLOCK_SIZE,
         entry: ConfigEntry | None = None,
         skip_missing_registers: bool = False,
     ) -> None:
@@ -142,6 +144,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.deep_scan = deep_scan
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
+        self.scan_max_block_size = scan_max_block_size
 
         # Connection management
         self.client: ThesslaGreenModbusClient | None = None
@@ -224,6 +227,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     scan_uart_settings=self.scan_uart_settings,
                     skip_known_missing=self.skip_missing_registers,
                     deep_scan=self.deep_scan,
+                    scan_max_block_size=self.scan_max_block_size,
                 )
 
                 self.device_scan_result = await scanner.scan_device()
@@ -400,7 +404,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     length = 1
                 addresses.extend(range(addr, addr + length))
 
-            self._register_groups[key] = group_reads(addresses)
+            self._register_groups[key] = group_reads(
+                addresses, max_block_size=self.scan_max_block_size
+            )
 
         _LOGGER.debug(
             "Pre-computed register groups: %s",

@@ -1321,7 +1321,8 @@
           "scan_interval": "Scan Interval (seconds)",
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)",
-          "deep_scan": "Deep Register Scan"
+          "deep_scan": "Deep Register Scan",
+          "scan_max_block_size": "Max Register Block Size"
         },
         "data_description": {
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
@@ -1329,9 +1330,10 @@
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
-          "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics"
+          "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics",
+          "scan_max_block_size": "Maximum registers per batch read (1-125)"
         },
-        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}.",
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max block size: {current_scan_max_block_size}.",
         "title": "ThesslaGreen Modbus Options"
       }
     }
