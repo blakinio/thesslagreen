@@ -168,10 +168,23 @@ async def test_default_values():
 
 async def test_register_constants():
     """Test that register constants are properly defined."""
+
     coil = {r.name: r.address for r in get_registers_by_function("01")}
     discrete = {r.name: r.address for r in get_registers_by_function("02")}
     input_regs = {r.name: r.address for r in get_registers_by_function("04")}
     holding = {r.name: r.address for r in get_registers_by_function("03")}
+
+    regs_by_fn = {
+        "coil": {r.name: r.address for r in get_registers_by_function("01")},
+        "discrete": {r.name: r.address for r in get_registers_by_function("02")},
+        "input": {r.name: r.address for r in get_registers_by_function("04")},
+        "holding": {r.name: r.address for r in get_registers_by_function("03")},
+    }
+    coil = regs_by_fn["coil"]
+    discrete = regs_by_fn["discrete"]
+    input_regs = regs_by_fn["input"]
+    holding = regs_by_fn["holding"]
+
 
     # Test that key registers are defined
     assert "power_supply_fans" in coil
