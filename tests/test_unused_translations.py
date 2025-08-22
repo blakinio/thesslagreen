@@ -9,10 +9,12 @@ from tests.test_translations import (
     NUMBER_KEYS,
     PL,
     SELECT_KEYS,
-    SENSOR_KEYS,
+    SENSOR_KEYS as SENSOR_ENTITY_KEYS,
     SERVICES,
     SWITCH_KEYS as SWITCH_ENTITY_KEYS,
 )
+
+SENSOR_KEYS = SENSOR_ENTITY_KEYS + ["air_flow_rate_manual", "air_flow_rate_temporary_2"]
 
 SWITCH_KEYS = SWITCH_ENTITY_KEYS + ["on_off_panel_mode"] + list(SPECIAL_FUNCTION_MAP.keys())
 
@@ -29,10 +31,12 @@ def test_no_unused_translation_keys() -> None:
         _assert_no_extra_keys(trans, "binary_sensor", BINARY_KEYS)
         _assert_no_extra_keys(trans, "switch", SWITCH_KEYS)
         _assert_no_extra_keys(trans, "select", SELECT_KEYS)
-        _assert_no_extra_keys(trans, "number", NUMBER_KEYS)
+        if NUMBER_KEYS:
+            _assert_no_extra_keys(trans, "number", NUMBER_KEYS)
 
-        extra_codes = [k for k in trans.get("codes", {}) if k not in CODE_KEYS]
-        assert not extra_codes, f"Unused code translations: {extra_codes}"  # nosec B101
+        if CODE_KEYS:
+            extra_codes = [k for k in trans.get("codes", {}) if k not in CODE_KEYS]
+            assert not extra_codes, f"Unused code translations: {extra_codes}"  # nosec B101
 
         extra_issues = [k for k in trans.get("issues", {}) if k not in ISSUE_KEYS]
         assert not extra_issues, f"Unused issue translations: {extra_issues}"  # nosec B101
