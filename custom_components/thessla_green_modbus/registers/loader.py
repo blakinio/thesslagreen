@@ -18,7 +18,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import re
 from dataclasses import dataclass
 from datetime import time
 from importlib import resources
@@ -65,8 +64,18 @@ class Register:
         if raw == 0x8000:  # common sentinel used by the device
             return None
 
-        # Enumerations map raw numeric values to labels for holding/input registers
-        if self.enum is not None and self.function in ("03", "04"):
+        # Bitmask registers return a list of active flag labels
+        if self.extra and self.extra.get("bitmask") and self.enum:
+            flags: list[Any] = []
+            for key, label in sorted(
+                ((int(k), v) for k, v in self.enum.items()), key=lambda x: x[0]
+            ):
+                if raw & key:
+                    flags.append(label)
+            return flags
+
+        # Enumerations map raw numeric values to labels when provided
+        if self.enum is not None:
             if raw in self.enum:
                 return self.enum[raw]
             if str(raw) in self.enum:
@@ -96,6 +105,21 @@ class Register:
     def encode(self, value: Any) -> int:
         """Encode ``value`` into the raw register representation."""
 
+        if self.extra and self.extra.get("bitmask") and self.enum:
+            raw_int = 0
+            if isinstance(value, (list, tuple, set)):
+                for item in value:
+                    for k, v in self.enum.items():
+                        if v == item:
+                            raw_int |= int(k)
+                            break
+                return raw_int
+            if isinstance(value, str):
+                for k, v in self.enum.items():
+                    if v == value:
+                        return int(k)
+            return int(value)
+
         if self.bcd:
             if isinstance(value, str):
                 hours, minutes = (int(x) for x in value.split(":"))
@@ -114,7 +138,7 @@ class Register:
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
         raw: Any = value
-        if self.enum and isinstance(value, str) and self.function in ("03", "04"):
+        if self.enum and isinstance(value, str):
             # Reverse lookup
             for k, v in self.enum.items():
                 if v == value:
@@ -222,20 +246,6 @@ def _validate_item(item: Dict[str, Any]) -> None:
     if item.get("bcd") is not None and not isinstance(item["bcd"], bool):
         raise ValueError("'bcd' must be a boolean")
 
-def _normalise_name(name: str) -> str:
-    """Convert register names to ``snake_case`` and fix known typos."""
-
-    # Convert camelCase or dash/space separated names to snake_case
-    name = name.replace("-", "_").replace(" ", "_")
-    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
-    snake = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
-
-    fixes = {
-        "duct_warter_heater_pump": "duct_water_heater_pump",
-        "required_temp": "required_temperature",
-        "specialmode": "special_mode",
-    }
-    return fixes.get(snake, snake)
 
 
 
@@ -273,7 +283,7 @@ def _load_registers_from_file() -> List[Register]:
         elif function == "03" and address >= 111:
             address -= 111
 
-        name = _normalise_name(str(item["name"]))
+        name = str(item["name"])
 
         enum_map = item.get("enum")
         if name == "special_mode":
@@ -288,8 +298,6 @@ def _load_registers_from_file() -> List[Register]:
 
         multiplier = item.get("multiplier")
         resolution = item.get("resolution")
-        if multiplier is None and resolution is not None:
-            multiplier = resolution
 
         registers.append(
             Register(
@@ -319,17 +327,9 @@ def _load_registers_from_file() -> List[Register]:
 # Cache for loaded register definitions and the file hash used to build it
 _REGISTER_CACHE: List[Register] = []
 _REGISTERS_HASH: str | None = None
+_REGISTERS_PATH = resources.files(__package__) / "thessla_green_registers_full.json"
 
 
-def _compute_file_hash() -> str:
-    """Return the SHA256 hash of the registers file."""
-    path = resources.files(__package__) / "thessla_green_registers_full.json"
-    try:
-        data = path.read_bytes()
-    except FileNotFoundError:  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", path)
-        return ""
-    return hashlib.sha256(data).hexdigest()
 def _compute_file_hash(path: Path | None = None) -> str:
     """Return the SHA256 hash of the given registers file.
 

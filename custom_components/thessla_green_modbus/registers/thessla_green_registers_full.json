@@ -3862,52 +3862,18 @@
       "function": "03",
       "address_hex": "0x20C6",
       "address_dec": 8390,
-      "name": "E196",
-      "description": "Regulacja instalacji nie została wykonana",
-      "access": "R/W",
-      "notes": "Reset: AUTOMATYCZNY",
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      }
-    },
-    {
-      "function": "03",
-      "address_hex": "0x20C6",
-      "address_dec": 8390,
-      "name": "E197",
-      "description": "Regulacja instalacji została przerwana",
-      "access": "R/W",
-      "notes": "Reset: AUTOMATYCZNY",
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      }
-    },
-    {
-      "function": "03",
-      "address_hex": "0x20C6",
-      "address_dec": 8390,
-      "name": "E198",
-      "description": "Brak komunikacji z modułem CF2",
+      "name": "E196_E199",
+      "description": "Flagi błędów E196–E199",
       "access": "R/W",
       "notes": "Reset: AUTOMATYCZNY / UŻYTKOWNIK",
       "enum": {
-        "0": "brak",
-        "1": "jest"
-      }
-    },
-    {
-      "function": "03",
-      "address_hex": "0x20C6",
-      "address_dec": 8390,
-      "name": "E199",
-      "description": "Brak komunikacji z modułem CF",
-      "access": "R/W",
-      "notes": "Reset: AUTOMATYCZNY / UŻYTKOWNIK",
-      "enum": {
-        "0": "brak",
-        "1": "jest"
+        "1": "E196",
+        "2": "E197",
+        "4": "E198",
+        "8": "E199"
+      },
+      "extra": {
+        "bitmask": true
       }
     },
     {

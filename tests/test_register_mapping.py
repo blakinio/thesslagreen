@@ -58,3 +58,7 @@ def test_register_mapping_and_scaling() -> None:
     assert inp.multiplier == 0.1
     assert inp.decode(215) == pytest.approx(21.5)
     assert inp.encode(21.5) == 215
+
+    bit_reg = _reg("03", "E196_E199")
+    assert bit_reg.decode(10) == ["E197", "E199"]
+    assert bit_reg.encode(["E197", "E199"]) == 10
