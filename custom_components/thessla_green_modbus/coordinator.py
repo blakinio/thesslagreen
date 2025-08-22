@@ -86,30 +86,13 @@ from .registers import get_all_registers, get_registers_by_function
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .config_flow import CannotConnect
 from .modbus_client import ThesslaGreenModbusClient
-from .modbus_helpers import _call_modbus
+from .modbus_helpers import _call_modbus, group_reads
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
 
 def get_register_definition(name: str):
     return REGISTER_DEFS[name]
 
-def _group_addresses(addresses: Iterable[int], max_block_size: int = 64) -> List[Tuple[int, int]]:
-    sorted_addresses = sorted(set(addresses))
-    if not sorted_addresses:
-        return []
-    groups: List[Tuple[int, int]] = []
-    start = prev = sorted_addresses[0]
-    length = 1
-    for addr in sorted_addresses[1:]:
-        if addr == prev + 1 and length < max_block_size:
-            length += 1
-        else:
-            groups.append((start, length))
-            start = addr
-            length = 1
-        prev = addr
-    groups.append((start, length))
-    return groups
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -414,7 +397,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     length = 1
                 addresses.extend(range(addr, addr + length))
 
-            self._register_groups[key] = _group_addresses(addresses)
+            self._register_groups[key] = group_reads(addresses)
 
         _LOGGER.debug(
             "Pre-computed register groups: %s",
