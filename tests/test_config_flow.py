@@ -8,12 +8,23 @@ from unittest.mock import AsyncMock, patch
 
 import logging
 import pytest
+import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_PORT
 
 # Stub loader module to avoid heavy imports during tests
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.loader",
     SimpleNamespace(group_reads=lambda *args, **kwargs: []),
+)
+# Stub registers module to avoid heavy imports during tests
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.registers",
+    SimpleNamespace(
+        get_registers_by_function=lambda *args, **kwargs: [],
+        get_all_registers=lambda *args, **kwargs: [],
+        get_registers_hash=lambda *args, **kwargs: "",
+        group_reads=lambda *args, **kwargs: [],
+    ),
 )
 
 from custom_components.thessla_green_modbus.const import CONF_DEEP_SCAN
@@ -50,6 +61,19 @@ async def test_form_user():
 
     assert result["type"] == "form"
     assert result["errors"] == {}
+
+
+@pytest.mark.parametrize("invalid_port", [0, 65536])
+async def test_form_user_port_out_of_range(invalid_port: int):
+    """Ports outside valid range should be rejected by schema."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    result = await flow.async_step_user()
+    schema = result["data_schema"]
+
+    with pytest.raises(vol.Invalid):
+        schema({CONF_HOST: "192.168.1.100", CONF_PORT: invalid_port, "slave_id": 10})
 
 
 async def test_form_user_success():
