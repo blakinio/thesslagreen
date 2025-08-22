@@ -57,7 +57,9 @@ def load_csv_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int]
 def load_module_registers() -> (
     tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]
 ):
-    module_path = pathlib.Path("custom_components/thessla_green_modbus/registers.py")
+    module_path = pathlib.Path(
+        "custom_components/thessla_green_modbus/registers/__init__.py"
+    )
     spec = importlib.util.spec_from_file_location("registers", module_path)
     if spec is None or spec.loader is None:
         raise ImportError("Cannot load registers module")
