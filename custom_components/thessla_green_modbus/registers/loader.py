@@ -132,8 +132,10 @@ class Register:
 # Loading helpers
 # ---------------------------------------------------------------------------
 
-# Single source of truth for the bundled register definitions.  The JSON file
-# lives alongside this module inside the installed package.
+# Single source of truth for the bundled register definitions.
+# ``resources.files`` resolves the JSON relative to this module which means the
+# same path works both when running the tests directly from the source tree and
+# when the integration is installed as a package at runtime.
 _REGISTERS_PATH = resources.files(__package__).joinpath(
     "thessla_green_registers_full.json"
 )
