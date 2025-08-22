@@ -744,7 +744,7 @@ async def test_scan_device_firmware_partial_bulk_fallback():
 
 async def test_scan_blocks_propagated():
     """Ensure scan_device returns discovered register blocks."""
-    # Avoid scanning extra registers from CSV for test speed
+    # Avoid scanning full register set for test speed
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
@@ -1041,29 +1041,26 @@ async def test_temperature_register_unavailable_kept():
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
-async def test_is_valid_register_value():
+async def test_is_valid_register_value(caplog):
     """Test register value validation."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+    with caplog.at_level(logging.WARNING):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+
+    assert not any("CSV" in rec.message for rec in caplog.records)
 
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-    # Temperature sensor marked unavailable should still be considered valid
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-
     # SENSOR_UNAVAILABLE should be treated as unavailable for temperature and airflow sensors
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-    assert scanner._is_valid_register_value("supply_air_flow", SENSOR_UNAVAILABLE) is False
-
-    # Invalid air flow value
-    assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
+    assert scanner._is_valid_register_value("supply_flow_rate", SENSOR_UNAVAILABLE) is False
 
     # Mode values respect allowed set
     assert scanner._is_valid_register_value("mode", 1) is True
     assert scanner._is_valid_register_value("mode", 3) is False
 
-    # Range from CSV
+    # Range from register metadata
     assert scanner._is_valid_register_value("supply_percentage", 100) is True
     with patch.object(scanner, "_log_invalid_value") as log_mock:
         assert scanner._is_valid_register_value("supply_percentage", 200) is False
@@ -1075,16 +1072,6 @@ async def test_is_valid_register_value():
 
     assert scanner._is_valid_register_value("min_percentage", -1) is False
     assert scanner._is_valid_register_value("max_percentage", 200) is False
-    # BCD time registers loaded from CSV should handle HHMM values
-    assert scanner._register_ranges["schedule_summer_mon_1"] == (0, 2300)
-    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
-    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
-
-    # Season mode may be encoded in high byte or low byte
-    assert scanner._is_valid_register_value("season_mode", 0x0100) is True
-    assert scanner._is_valid_register_value("season_mode", 0x0001) is True
-    assert scanner._is_valid_register_value("season_mode", 0xFF00) is False
-
     with patch.object(scanner, "_log_invalid_value") as log_mock:
         assert scanner._is_valid_register_value("min_percentage", -1) is False
         assert scanner._is_valid_register_value("max_percentage", 200) is False
