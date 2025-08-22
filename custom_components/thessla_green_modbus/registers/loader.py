@@ -162,12 +162,7 @@ def _normalise_function(fn: str) -> str:
 # Register loading helpers
 # ---------------------------------------------------------------------------
 
-
-
-_REGISTERS_PATH = Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
-
-
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=1)  # cache to avoid repeated disk reads
 def _load_registers() -> List[Register]:
     """Load register definitions from the JSON file."""
 

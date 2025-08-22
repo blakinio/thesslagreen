@@ -54,14 +54,15 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     from pathlib import Path
     from custom_components.thessla_green_modbus.registers.loader import _load_registers
 
-    calls = 0
+    read_calls = 0
     real_read_text = Path.read_text
 
     def spy(self, *args, **kwargs):
-        nonlocal calls
-        calls += 1
+        nonlocal read_calls
+        read_calls += 1
         return real_read_text(self, *args, **kwargs)
 
+    # Spy on read_text to count disk reads
     monkeypatch.setattr(Path, "read_text", spy)
 
     _load_registers.cache_clear()
@@ -69,4 +70,5 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     _load_registers()
     _load_registers()
 
-    assert calls == 1
+    # The file should be read only once thanks to caching
+    assert read_calls == 1
