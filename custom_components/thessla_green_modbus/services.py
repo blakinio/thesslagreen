@@ -30,7 +30,9 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
     dt_util = _DTUtil()  # type: ignore
 
-from .const import DOMAIN, REGISTER_MULTIPLIERS, SPECIAL_FUNCTION_MAP
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from . import loader
+from .schedule_helpers import time_to_bcd
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,14 +46,14 @@ AIR_QUALITY_REGISTER_MAP = {
 
 
 def _scale_for_register(register_name: str, value: float) -> int:
-    """Scale ``value`` according to ``REGISTER_MULTIPLIERS`` for ``register_name``.
-
-    This converts user-facing units (e.g. degrees Celsius) to raw register
-    values expected by the device.
-    """
-    multiplier = REGISTER_MULTIPLIERS.get(register_name)
+    """Scale ``value`` using register metadata for ``register_name``."""
+    definition = loader.get_register_definition(register_name)
+    multiplier = definition.get("multiplier")
+    resolution = definition.get("resolution")
     if multiplier is not None:
         return int(round(value / multiplier))
+    if resolution is not None:
+        return int(round(value / resolution))
     return int(round(value))
 
 # Service schemas
@@ -187,9 +189,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                    "friday": 4, "saturday": 5, "sunday": 6}
         day_index = day_map[day]
         
-        # Convert time to HHMM format
-        start_hhmm = start_time.hour * 100 + start_time.minute
-        end_hhmm = end_time.hour * 100 + end_time.minute
+        # Convert time to BCD format expected by the device
+        start_hhmm = time_to_bcd(start_time)
+        end_hhmm = time_to_bcd(end_time)
         
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)

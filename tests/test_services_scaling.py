@@ -5,9 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 import custom_components.thessla_green_modbus.services as services
 from custom_components.thessla_green_modbus.services import _scale_for_register
+from custom_components.thessla_green_modbus.schedule_helpers import time_to_bcd
+
+HOLDING_REGISTERS = RegisterLoader().holding_registers
 
 
 class DummyCoordinator:
@@ -197,8 +200,12 @@ async def test_airflow_schedule_service_scaling(monkeypatch):
     await handler(call)
 
     writes = coordinator.writes
-    expected_start = _scale_for_register("schedule_monday_period1_start", 630)
-    expected_end = _scale_for_register("schedule_monday_period1_end", 800)
+    expected_start = _scale_for_register(
+        "schedule_monday_period1_start", time_to_bcd(time(hour=6, minute=30))
+    )
+    expected_end = _scale_for_register(
+        "schedule_monday_period1_end", time_to_bcd(time(hour=8, minute=0))
+    )
     expected_flow = _scale_for_register("schedule_monday_period1_flow", 55)
     expected_temp = _scale_for_register("schedule_monday_period1_temp", 21.5)
 
