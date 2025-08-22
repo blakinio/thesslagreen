@@ -1,9 +1,11 @@
 """Tests for the register loader utility."""
 
 import json
+import logging
 from pathlib import Path
 
 from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+from custom_components.thessla_green_modbus import loader as module_loader
 
 
 def test_json_structure():
@@ -54,3 +56,32 @@ def test_group_reads_cover_addresses():
         for start, count in loader.group_reads[func]:
             grouped.extend(range(start, start + count))
         assert grouped == addresses
+
+
+def test_register_loader_csv_fallback(tmp_path, caplog):
+    """RegisterLoader should load CSV files with a deprecation warning."""
+    csv_file = tmp_path / "registers.csv"
+    csv_file.write_text(
+        "function,address_dec,access,name,description\n"
+        "input,1,ro,test_reg,Test register\n"
+    )
+    with caplog.at_level(logging.WARNING):
+        loader = RegisterLoader(path=csv_file)
+    assert loader.input_registers["test_reg"] == 1
+    assert "deprecated" in caplog.text.lower()
+
+
+def test_loader_module_csv_fallback(tmp_path, caplog, monkeypatch):
+    """Module level loader should fall back to CSV with warning."""
+    csv_file = tmp_path / "regs.csv"
+    csv_file.write_text(
+        "function,address_dec,access,name,description\n"
+        "input,2,ro,mod_reg,Mod register\n"
+    )
+    monkeypatch.setattr(module_loader, "_REGISTERS_FILE", tmp_path / "missing.json")
+    module_loader._load_register_definitions.cache_clear()
+    with caplog.at_level(logging.WARNING):
+        regs = module_loader.get_registers_by_function("input")
+    assert regs["mod_reg"] == 2
+    assert "deprecated" in caplog.text.lower()
+    module_loader._load_register_definitions.cache_clear()
