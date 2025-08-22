@@ -1,10 +1,10 @@
 """Entity mapping definitions for the ThesslaGreen Modbus integration.
 
-Most entity descriptions are generated from metadata in
-``modbus_registers.csv`` and can be extended or overridden by the
-dictionaries defined in this module. This keeps the mapping definitions
-in sync with the register specification while still allowing manual
-tweaks (for example to change icons or alter the entity domain).
+Most entity descriptions are generated from the bundled register
+metadata and can be extended or overridden by the dictionaries defined in
+this module. This keeps the mapping definitions in sync with the register
+specification while still allowing manual tweaks (for example to change
+icons or alter the entity domain).
 
 The module also provides helpers for handling legacy entity IDs that
 were renamed in newer versions of the integration.
@@ -49,9 +49,11 @@ except Exception:  # pragma: no cover - executed only in tests
 
 from .const import SPECIAL_FUNCTION_MAP
 from .const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, HOLDING_REGISTERS
+from .registers import get_all_registers
 from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
+_REGISTER_INFO_CACHE: dict[str, dict[str, Any]] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -125,14 +127,31 @@ def _infer_icon(name: str, unit: str | None) -> str:
 
 def _get_register_info(name: str) -> dict[str, Any] | None:
     """Return register metadata, handling numeric suffixes."""
-    from .data.modbus_registers import get_register_info
-    info = get_register_info(name)
+    global _REGISTER_INFO_CACHE
+    if _REGISTER_INFO_CACHE is None:
+        _REGISTER_INFO_CACHE = {}
+        for reg in get_all_registers():
+            if not reg.name:
+                continue
+            scale = reg.multiplier or 1
+            step = reg.resolution or scale
+            _REGISTER_INFO_CACHE[reg.name] = {
+                "access": reg.access,
+                "min": reg.min,
+                "max": reg.max,
+                "unit": reg.unit,
+                "information": reg.information,
+                "scale": scale,
+                "step": step,
+            }
+    info = _REGISTER_INFO_CACHE.get(name)
     if (
         info is None
         and (suffix := name.rsplit("_", 1))
+        and len(suffix) > 1
         and suffix[1].isdigit()
     ):
-        info = get_register_info(suffix[0])
+        info = _REGISTER_INFO_CACHE.get(suffix[0])
     return info
 
 
@@ -1021,11 +1040,13 @@ for mode, bit in SPECIAL_FUNCTION_MAP.items():
     }
 
 
-def _extend_entity_mappings_from_csv() -> None:
+def _extend_entity_mappings_from_registers() -> None:
     """Populate entity mappings for registers not explicitly defined."""
-    from .data.modbus_registers import get_register_info
 
-    for register in HOLDING_REGISTERS:
+    for reg in get_all_registers():
+        if reg.function != "03" or not reg.name:
+            continue
+        register = reg.name
         if register in NUMBER_ENTITY_MAPPINGS:
             continue
         if register in SENSOR_ENTITY_MAPPINGS:
@@ -1053,17 +1074,13 @@ def _extend_entity_mappings_from_csv() -> None:
             )
             continue
 
-        info = get_register_info(register)
-        if not info:
-            continue
-
-        access = info.get("access", "") or ""
-        min_val = info.get("min")
-        max_val = info.get("max")
-        unit = info.get("unit")
-        info_text = info.get("information") or ""
-        scale = info.get("scale", 1)
-        step = info.get("step", scale)
+        access = (reg.access or "").upper()
+        min_val = reg.min
+        max_val = reg.max
+        unit = reg.unit
+        info_text = reg.information or ""
+        scale = reg.multiplier or 1
+        step = reg.resolution or scale
 
         if min_val is not None and max_val is not None:
             if max_val <= 1:
@@ -1131,7 +1148,7 @@ def _extend_entity_mappings_from_csv() -> None:
                 )
 
 
-_extend_entity_mappings_from_csv()
+_extend_entity_mappings_from_registers()
 
 ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {
     "number": NUMBER_ENTITY_MAPPINGS,
