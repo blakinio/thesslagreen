@@ -11,16 +11,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, get_coil_registers, get_holding_registers
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
+from .registers import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
-HOLDING_REGISTERS = get_holding_registers()
-COIL_REGISTERS = get_coil_registers()
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
+COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
 
 # Switch entities that can be controlled
 SWITCH_ENTITIES = {
