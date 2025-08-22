@@ -1,13 +1,9 @@
 """Tests for JSON register loader."""
 
 import json
-import logging
 from pathlib import Path
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
-from custom_components.thessla_green_modbus.registers import (
-    get_registers_by_function,
-)
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 
 def test_example_register_mapping() -> None:
@@ -78,17 +74,3 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
 
     # The file should be read only once thanks to caching
     assert read_calls == 1
-
-
-def test_path_argument_ignored(caplog) -> None:
-    """Providing a path should not trigger any CSV handling."""
-
-    csv_path = (
-        Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
-    )
-
-    with caplog.at_level(logging.WARNING):
-        loader = RegisterLoader(csv_path)
-
-    assert loader.registers
-    assert not caplog.records

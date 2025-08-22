@@ -37,6 +37,7 @@ dev = [
     "isort>=5.10.0",
     "flake8>=4.0.0",
     "mypy>=0.990",
+    "pydantic>=2.0",
 ]
 docs = [
     "sphinx>=4.0.0",

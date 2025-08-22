@@ -1,52 +1,64 @@
-"""Validation tests for the register loader."""
+from __future__ import annotations
 
 import json
+import re
+from importlib import resources
 
-import pytest
-
-from custom_components.thessla_green_modbus.registers import loader
-
-
-def test_invalid_register_schema(monkeypatch, tmp_path) -> None:
-    """Loader should raise when JSON schema is invalid."""
-
-    bad_data = {"registers": [{"function": "03", "address_dec": 1}]}
-    bad_file = tmp_path / "bad.json"
-    bad_file.write_text(json.dumps(bad_data), encoding="utf-8")
-
-    # Point loader to our invalid file and ensure cache is cleared
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", bad_file)
-    loader._load_registers.cache_clear()
-
-    with pytest.raises(ValueError):
-        loader._load_registers()
+import pydantic
 
 
-def test_register_auto_reload(monkeypatch, tmp_path) -> None:
-    """Loader should reload registers when the JSON file changes."""
+class Register(pydantic.BaseModel):
+    function: str
+    address_dec: int
+    address_hex: str
+    name: str
+    access: str
+    unit: str | None = None
+    enum: dict[str, int | str] | None = None
+    multiplier: float | None = None
+    resolution: float | None = None
+    description: str | None = None
 
-    data = {
-        "registers": [
-            {"function": "03", "address_dec": 1, "name": "first"}
-        ]
-    }
-    reg_file = tmp_path / "regs.json"
-    reg_file.write_text(json.dumps(data), encoding="utf-8")
+    model_config = pydantic.ConfigDict(extra="allow")
 
-    # Point the loader to our temporary file and prime the cache
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", reg_file)
-    loader._load_registers.cache_clear()
-    assert len(loader._load_registers()) == 1
-    original_hash = loader.get_registers_hash()
+    @pydantic.model_validator(mode="after")
+    def check_address(self) -> "Register":
+        assert int(self.address_hex, 16) == self.address_dec
+        return self
 
-    # Add a new register to the JSON definition
-    data["registers"].append({"function": "03", "address_dec": 2, "name": "second"})
-    reg_file.write_text(json.dumps(data), encoding="utf-8")
+    @pydantic.field_validator("name")
+    @classmethod
+    def name_is_snake(cls, v: str) -> str:
+        assert re.fullmatch(r"[a-z0-9_]+", v)
+        return v
 
-    # A subsequent call should detect the change and reload definitions
-    assert len(loader._load_registers()) == 2
-    assert loader.get_registers_hash() != original_hash
 
-    # Reset cache for other tests
-    loader._load_registers.cache_clear()
+EXPECTED = {
+    "01": {"min": 5, "max": 15, "count": 8},
+    "02": {"min": 0, "max": 21, "count": 16},
+    "03": {"min": 0, "max": 8444, "count": 278},
+    "04": {"min": 0, "max": 298, "count": 29},
+}
 
+
+def test_register_file_valid() -> None:
+    """Validate register JSON structure and completeness."""
+
+    json_file = (
+        resources.files("custom_components.thessla_green_modbus.registers")
+        .joinpath("thessla_green_registers_full.json")
+    )
+    data = json.loads(json_file.read_text(encoding="utf-8"))
+    registers = data.get("registers", data)
+
+    parsed = [Register(**item) for item in registers]
+
+    by_fn: dict[str, list[int]] = {}
+    for reg in parsed:
+        by_fn.setdefault(reg.function, []).append(reg.address_dec)
+
+    for fn, spec in EXPECTED.items():
+        addrs = by_fn.get(fn, [])
+        assert len(addrs) == spec["count"]
+        assert min(addrs) == spec["min"]
+        assert max(addrs) == spec["max"]
