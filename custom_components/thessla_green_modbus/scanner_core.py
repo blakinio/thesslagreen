@@ -35,9 +35,8 @@ from .modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from .modbus_helpers import _call_modbus
+from .modbus_helpers import _call_modbus, group_reads as _group_reads
 from .registers import get_all_registers
-from .loader import group_reads as _loader_group_reads
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, _to_snake_case
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
@@ -461,7 +460,7 @@ class ThesslaGreenDeviceScanner:
         # First, compute contiguous blocks using the generic ``group_reads``
         # helper.  ``max_gap`` is kept for API compatibility but is not
         # required when using ``group_reads`` which already splits on gaps.
-        groups = _loader_group_reads(addresses, max_block_size=max_batch)
+        groups = _group_reads(addresses, max_block_size=max_batch)
 
         if not self._known_missing_addresses:
             return groups

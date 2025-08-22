@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import inspect
 import logging
-from collections.abc import Awaitable, Callable
-from typing import Any
+from collections.abc import Awaitable, Callable, Iterable
+from typing import Any, List, Tuple
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,3 +69,27 @@ async def _call_modbus(
     if kwarg == "unit":
         return await func(*positional, unit=slave_id, **kwargs)
     return await func(*positional, **kwargs)
+
+
+def group_reads(addresses: Iterable[int], max_block_size: int = 64) -> List[Tuple[int, int]]:
+    """Group raw register addresses into contiguous read blocks.
+
+    The addresses are sorted and sequential ranges are merged up to
+    ``max_block_size`` entries.  The returned list contains ``(start, length)``
+    tuples suitable for bulk Modbus read operations.
+    """
+
+    sorted_addresses = sorted(set(addresses))
+    if not sorted_addresses:
+        return []
+
+    groups: List[Tuple[int, int]] = []
+    start = prev = sorted_addresses[0]
+    for addr in sorted_addresses[1:]:
+        if addr == prev + 1 and (addr - start + 1) <= max_block_size:
+            prev = addr
+            continue
+        groups.append((start, prev - start + 1))
+        start = prev = addr
+    groups.append((start, prev - start + 1))
+    return groups
