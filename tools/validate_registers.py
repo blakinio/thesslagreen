@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 import ast
-import csv
+import json
 from pathlib import Path
 from typing import Dict, Set
 
 ROOT = Path(__file__).resolve().parents[1]
-CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbus_registers.csv"
+JSON_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbus_registers.json"
 REGISTERS_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
 FUNCTION_MAP = {
@@ -20,21 +20,19 @@ FUNCTION_MAP = {
 }
 
 
-def parse_csv(path: Path) -> tuple[Dict[str, Dict[str, Set[int]]], Dict[str, Set[int]]]:
-    """Return grouped and total addresses from the CSV."""
+def parse_json(path: Path) -> tuple[Dict[str, Dict[str, Set[int]]], Dict[str, Set[int]]]:
+    """Return grouped and total addresses from the JSON specification."""
 
     groups: Dict[str, Dict[str, Set[int]]] = {}
     totals: Dict[str, Set[int]] = {}
-    with path.open(newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            code = row["Function_Code"].strip()
-            if not code or code.startswith("#"):
-                continue
-            name = row["Register_Name"].strip()
-            addr = int(row["Address_DEC"].strip())
-            groups.setdefault(code, {}).setdefault(name, set()).add(addr)
-            totals.setdefault(code, set()).add(addr)
+    with path.open(encoding="utf-8") as f:
+        data = json.load(f)
+    for row in data.get("registers", []):
+        code = str(row.get("function"))
+        name = row.get("name", "").strip()
+        addr = int(row.get("address_dec", 0))
+        groups.setdefault(code, {}).setdefault(name, set()).add(addr)
+        totals.setdefault(code, set()).add(addr)
     return groups, totals
 
 
@@ -65,7 +63,7 @@ def parse_registers(path: Path) -> Dict[str, Set[int]]:
 
 
 def main() -> None:
-    csv_groups, csv_totals = parse_csv(CSV_PATH)
+    csv_groups, csv_totals = parse_json(JSON_PATH)
     py_addrs = parse_registers(REGISTERS_PATH)
     ok = True
     for dict_name, func_code in FUNCTION_MAP.items():

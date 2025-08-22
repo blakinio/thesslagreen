@@ -266,13 +266,21 @@ only for diagnostic purposes.
 - 🤝 [Contributing](CONTRIBUTING.md)
 
 ### Regenerating registers.py
-If you modify `custom_components/thessla_green_modbus/data/modbus_registers.csv`, rebuild the generated module:
+Register definitions have migrated from CSV to JSON. If you modify
+`custom_components/thessla_green_modbus/data/modbus_registers.json`, rebuild the
+generated module:
 
 ```bash
 python tools/generate_registers.py
 ```
 
-Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+Commit the updated `custom_components/thessla_green_modbus/registers.py` along
+with the JSON changes. The legacy `modbus_registers.csv` file is deprecated and
+should no longer be edited.
+
+### Adding or updating registers
+To add a new register, edit `custom_components/thessla_green_modbus/data/modbus_registers.json`
+and then run the generation and validation commands above.
 
 ### Validate translations
 Ensure translation files contain valid JSON:

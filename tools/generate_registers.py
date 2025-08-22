@@ -1,13 +1,13 @@
-"""Generate registers.py from modbus_registers.csv."""
+"""Generate registers.py from modbus_registers.json."""
 
 from __future__ import annotations
 
-import csv
+import json
 import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbus_registers.csv"
+CSV_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "data" / "modbus_registers.json"
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
 MULTI_REGISTER_SIZES: dict[str, int] = {
@@ -17,7 +17,7 @@ MULTI_REGISTER_SIZES: dict[str, int] = {
 
 
 def to_snake_case(name: str) -> str:
-    """Convert a register name from the CSV to ``snake_case``."""
+    """Convert a register name from the JSON to ``snake_case``."""
     replacements = {"flowrate": "flow_rate"}
     for old, new in replacements.items():
         name = name.replace(old, new)
@@ -28,7 +28,20 @@ def to_snake_case(name: str) -> str:
     name = name.lower()
     token_map = {"temp": "temperature"}
     tokens = [token_map.get(token, token) for token in name.split("_")]
-    return "_".join(tokens)
+    name = "_".join(tokens)
+    special = {
+        "date_time_rrmm": "date_time",
+        "date_time_ddtt": "date_time",
+        "date_time_ggmm": "date_time",
+        "date_time_sscc": "date_time",
+        "lock_date_rrmm": "lock_date",
+        "lock_date_ddtt": "lock_date",
+        "lock_date_ggmm": "lock_date",
+        "lock_date_rr": "lock_date",
+        "lock_date_mm": "lock_date",
+        "lock_date_dd": "lock_date",
+    }
+    return special.get(name, name)
 
 
 def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
@@ -51,27 +64,25 @@ def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
 
 
 def load_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
-    """Load registers from the CSV grouped by function code."""
+    """Load registers from the JSON grouped by function code."""
     coil_rows: list[tuple[str, int]] = []
     discrete_rows: list[tuple[str, int]] = []
     input_rows: list[tuple[str, int]] = []
     holding_rows: list[tuple[str, int]] = []
-    with CSV_PATH.open(encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(
-            row for row in f if row.strip() and not row.lstrip().startswith("#")
-        )
-        for row in reader:
-            code = row["Function_Code"]
-            name = to_snake_case(row["Register_Name"])
-            addr = int(row["Address_DEC"])
-            if code == "01":
-                coil_rows.append((name, addr))
-            elif code == "02":
-                discrete_rows.append((name, addr))
-            elif code == "04":
-                input_rows.append((name, addr))
-            elif code == "03":
-                holding_rows.append((name, addr))
+    with CSV_PATH.open(encoding="utf-8") as f:
+        data = json.load(f)
+    for row in data.get("registers", []):
+        code = row.get("function")
+        name = to_snake_case(row.get("name", ""))
+        addr = int(row.get("address_dec", 0))
+        if code == "01":
+            coil_rows.append((name, addr))
+        elif code == "02":
+            discrete_rows.append((name, addr))
+        elif code == "04":
+            input_rows.append((name, addr))
+        elif code == "03":
+            holding_rows.append((name, addr))
     coils = _build_register_map(coil_rows)
     discrete_inputs = _build_register_map(discrete_rows)
     input_regs = _build_register_map(input_rows)
@@ -93,7 +104,7 @@ def write_file(
     with OUTPUT_PATH.open("w", newline="\n") as f:
         f.write('"""Register definitions for the ThesslaGreen Modbus integration."""\n\n')
         f.write("from __future__ import annotations\n\n")
-        f.write("# Generated from modbus_registers.csv\n\n")
+        f.write("# Generated from modbus_registers.json\n\n")
 
         # Coils and discrete inputs
         sections = [

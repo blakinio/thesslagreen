@@ -1,6 +1,7 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 
 import logging
+import json
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -1240,10 +1241,15 @@ async def test_constant_flow_detected_from_various_registers(register):
 
 async def test_load_registers_duplicate_warning(tmp_path, caplog):
     """Warn when duplicate register addresses are encountered."""
-    csv_content = "Function_Code,Register_Name,Address_DEC\n" "04,reg_a,1\n" "04,reg_b,1\n"
+    json_content = {
+        "registers": [
+            {"function": "04", "name": "reg_a", "address_dec": 1},
+            {"function": "04", "name": "reg_b", "address_dec": 1},
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1263,10 +1269,15 @@ async def test_load_registers_duplicate_warning(tmp_path, caplog):
 
 async def test_load_registers_duplicate_names(tmp_path):
     """Ensure duplicate register names are suffixed for uniqueness."""
-    csv_content = "Function_Code,Register_Name,Address_DEC\n" "04,reg_a,1\n" "04,reg_a,2\n"
+    json_content = {
+        "registers": [
+            {"function": "04", "name": "reg_a", "address_dec": 1},
+            {"function": "04", "name": "reg_a", "address_dec": 2},
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1285,12 +1296,16 @@ async def test_load_registers_duplicate_names(tmp_path):
 
 async def test_load_registers_skips_none_named_registers(tmp_path):
     """Registers named 'none' or 'none_<num>' should be ignored."""
-    csv_content = (
-        "Function_Code,Register_Name,Address_DEC\n" "04,none,1\n" "04,valid_reg,2\n" "04,none_3,3\n"
-    )
+    json_content = {
+        "registers": [
+            {"function": "04", "name": "none", "address_dec": 1},
+            {"function": "04", "name": "valid_reg", "address_dec": 2},
+            {"function": "04", "name": "none_3", "address_dec": 3},
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1363,10 +1378,14 @@ async def test_read_input_fallback_detects_temperature(caplog):
 
 async def test_load_registers_missing_range_warning(tmp_path, caplog):
     """Warn when Min/Max range is incomplete."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0,\n"
+    json_content = {
+        "registers": [
+            {"function": "04", "address_dec": 1, "name": "reg_a", "min": 0},
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1389,12 +1408,14 @@ async def test_load_registers_missing_range_warning(tmp_path, caplog):
 
 async def test_load_registers_sanitize_range_values(tmp_path, caplog):
     """Sanitize range values and ignore non-numeric entries."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0 # comment,10abc\n"
-    )
+    json_content = {
+        "registers": [
+            {"function": "04", "address_dec": 1, "name": "reg_a", "min": "0 # comment", "max": "10abc"}
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1424,12 +1445,20 @@ async def test_load_registers_hex_range(tmp_path, caplog):
 @pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
 async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, caplog):
     """Support decimal and hexadecimal ranges."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n" f"04,1,reg_a,{min_raw},{max_raw}\n"
-    )
+    json_content = {
+        "registers": [
+            {
+                "function": "04",
+                "address_dec": 1,
+                "name": "reg_a",
+                "min": min_raw,
+                "max": max_raw,
+            }
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1474,10 +1503,14 @@ async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, c
 
 async def test_load_registers_complete_range_no_warning(tmp_path, caplog):
     """No warning when both Min and Max are provided."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,1,10\n"
+    json_content = {
+        "registers": [
+            {"function": "04", "address_dec": 1, "name": "reg_a", "min": 1, "max": 10}
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1501,10 +1534,20 @@ async def test_load_registers_complete_range_no_warning(tmp_path, caplog):
 
 async def test_load_registers_invalid_range_logs(tmp_path, caplog):
     """Warn when Min/Max cannot be parsed even after sanitization."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,abc,#comment\n"
+    json_content = {
+        "registers": [
+            {
+                "function": "04",
+                "address_dec": 1,
+                "name": "reg_a",
+                "min": "abc",
+                "max": "#comment",
+            }
+        ]
+    }
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
@@ -1529,10 +1572,10 @@ async def test_load_registers_invalid_range_logs(tmp_path, caplog):
 
 async def test_load_registers_missing_required_register(tmp_path):
     """Fail fast when a required register is absent from CSV."""
-    csv_content = "Function_Code,Address_DEC,Register_Name\n"
+    json_content = {"registers": []}
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
+    (data_dir / "modbus_registers.json").write_text(json.dumps(json_content))
 
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),

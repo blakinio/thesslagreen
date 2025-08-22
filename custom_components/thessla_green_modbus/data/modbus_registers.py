@@ -1,8 +1,8 @@
-"""Helpers for accessing Modbus register metadata from CSV."""
+"""Helpers for accessing Modbus register metadata from JSON."""
 
 from __future__ import annotations
 
-import csv
+import json
 from pathlib import Path
 from typing import Any, Dict
 
@@ -12,55 +12,51 @@ __all__ = ["get_register_info", "get_register_infos"]
 
 _REGISTER_CACHE: Dict[str, Dict[str, Any]] | None = None
 
-
-def _parse_number(value: str | None) -> float | None:
-    """Convert a CSV field to a float if possible."""
-    if value is None:
-        return None
-    value = value.strip()
-    if not value:
-        return None
-    try:
-        # Try integer first to avoid floating point artifacts
-        return int(value)
-    except ValueError:
-        try:
-            return float(value)
-        except ValueError:
-            return None
+_SPECIAL_BASE = {
+    "date_time_rrmm": "date_time",
+    "date_time_ddtt": "date_time",
+    "date_time_ggmm": "date_time",
+    "date_time_sscc": "date_time",
+    "lock_date_rrmm": "lock_date",
+    "lock_date_ddtt": "lock_date",
+    "lock_date_ggmm": "lock_date",
+    "lock_date_rr": "lock_date",
+    "lock_date_mm": "lock_date",
+    "lock_date_dd": "lock_date",
+}
 
 
 def _load_registers() -> Dict[str, Dict[str, Any]]:
-    """Load register metadata from the bundled CSV file."""
+    """Load register metadata from the bundled JSON file."""
     global _REGISTER_CACHE
     if _REGISTER_CACHE is not None:
         return _REGISTER_CACHE
 
-    csv_path = Path(__file__).with_name("modbus_registers.csv")
+    json_path = Path(__file__).with_name("modbus_registers.json")
     registers: Dict[str, Dict[str, Any]] = {}
-    with csv_path.open(encoding="utf-8", newline="") as csvfile:
-        reader = csv.DictReader(
-            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
-        )
-        for row in reader:
-            name = _to_snake_case(row["Register_Name"])
-            scale = _parse_number(row.get("Multiplier")) or 1
-            registers[name] = {
-                "function_code": row.get("Function_Code"),
-                "address_hex": row.get("Address_HEX"),
-                "address_dec": _parse_number(row.get("Address_DEC")),
-                "access": row.get("Access"),
-                "description": row.get("Description"),
-                "min": _parse_number(row.get("Min")),
-                "max": _parse_number(row.get("Max")),
-                "default": _parse_number(row.get("Default_Value")),
-                "scale": scale,
-                "step": scale,
-                "unit": row.get("Unit"),
-                "information": row.get("Information"),
-                "software_version": row.get("Software_Version"),
-                "notes": row.get("Notes"),
-            }
+    with json_path.open(encoding="utf-8") as jsonfile:
+        data = json.load(jsonfile)
+    for row in data.get("registers", []):
+        name = _to_snake_case(row.get("name", ""))
+        name = _SPECIAL_BASE.get(name, name)
+        scale = row.get("scale") or 1
+        registers[name] = {
+            "function_code": row.get("function"),
+            "address_hex": row.get("address_hex"),
+            "address_dec": row.get("address_dec"),
+            "access": row.get("access"),
+            "description": row.get("description"),
+            "min": row.get("min"),
+            "max": row.get("max"),
+            "default": row.get("default"),
+            "scale": scale,
+            "step": row.get("step", scale),
+            "unit": row.get("unit"),
+            "information": row.get("information"),
+            "software_version": row.get("software_version"),
+            "notes": row.get("notes"),
+            "enum": row.get("enum"),
+        }
     _REGISTER_CACHE = registers
     return registers
 
@@ -70,7 +66,7 @@ def get_register_info(register_name: str) -> Dict[str, Any] | None:
 
     The ``register_name`` should be provided in snake_case form. The returned
     dictionary includes fields like ``min``, ``max``, ``step`` and ``scale``.
-    Returns ``None`` if the register is not found in the CSV.
+    Returns ``None`` if the register is not found in the JSON file.
     """
     registers = _load_registers()
     return registers.get(register_name)
@@ -80,38 +76,38 @@ def get_register_infos(register_name: str) -> list[Dict[str, Any]]:
     """Return metadata for all registers matching a name.
 
     Some registers such as ``date_time`` span multiple consecutive Modbus
-    addresses but share the same name in the CSV specification.  This helper
+    addresses but share the same name in the JSON specification.  This helper
     returns metadata for each matching row preserving their order so callers
     can create individual mappings (e.g. ``date_time_1`` ... ``date_time_4``).
     """
 
-    csv_path = Path(__file__).with_name("modbus_registers.csv")
+    json_path = Path(__file__).with_name("modbus_registers.json")
     results: list[Dict[str, Any]] = []
-    with csv_path.open(encoding="utf-8", newline="") as csvfile:
-        reader = csv.DictReader(
-            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
+    with json_path.open(encoding="utf-8") as jsonfile:
+        data = json.load(jsonfile)
+    for row in data.get("registers", []):
+        name = _to_snake_case(row.get("name", ""))
+        name = _SPECIAL_BASE.get(name, name)
+        if name != register_name:
+            continue
+        scale = row.get("scale") or 1
+        results.append(
+            {
+                "function_code": row.get("function"),
+                "address_hex": row.get("address_hex"),
+                "address_dec": row.get("address_dec"),
+                "access": row.get("access"),
+                "description": row.get("description"),
+                "min": row.get("min"),
+                "max": row.get("max"),
+                "default": row.get("default"),
+                "scale": scale,
+                "step": row.get("step", scale),
+                "unit": row.get("unit"),
+                "information": row.get("information"),
+                "software_version": row.get("software_version"),
+                "notes": row.get("notes"),
+                "enum": row.get("enum"),
+            }
         )
-        for row in reader:
-            name = _to_snake_case(row["Register_Name"])
-            if name != register_name:
-                continue
-            scale = _parse_number(row.get("Multiplier")) or 1
-            results.append(
-                {
-                    "function_code": row.get("Function_Code"),
-                    "address_hex": row.get("Address_HEX"),
-                    "address_dec": _parse_number(row.get("Address_DEC")),
-                    "access": row.get("Access"),
-                    "description": row.get("Description"),
-                    "min": _parse_number(row.get("Min")),
-                    "max": _parse_number(row.get("Max")),
-                    "default": _parse_number(row.get("Default_Value")),
-                    "scale": scale,
-                    "step": scale,
-                    "unit": row.get("Unit"),
-                    "information": row.get("Information"),
-                    "software_version": row.get("Software_Version"),
-                    "notes": row.get("Notes"),
-                }
-            )
     return results

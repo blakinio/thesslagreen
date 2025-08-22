@@ -1,7 +1,7 @@
 """Entity mapping definitions for the ThesslaGreen Modbus integration.
 
 Most entity descriptions are generated from metadata in
-``modbus_registers.csv`` and can be extended or overridden by the
+``modbus_registers.json`` and can be extended or overridden by the
 dictionaries defined in this module. This keeps the mapping definitions
 in sync with the register specification while still allowing manual
 tweaks (for example to change icons or alter the entity domain).

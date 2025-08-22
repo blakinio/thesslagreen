@@ -469,15 +469,22 @@ python3 tools/cleanup_old_entities.py \
 - 🤝 [Contributing](CONTRIBUTING.md)
 
 ### Regenerating registers.py
-Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` changes, regenerate and
-validate the Python module:
+Register definitions have migrated from CSV to JSON. Whenever
+`custom_components/thessla_green_modbus/data/modbus_registers.json` changes,
+regenerate and validate the Python module:
 
 ```bash
 python tools/generate_registers.py
 python tools/validate_registers.py  # optional consistency check
 ```
 
-Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+Commit the updated `custom_components/thessla_green_modbus/registers.py` along
+with the JSON changes. The legacy `modbus_registers.csv` file is deprecated and
+should no longer be edited.
+
+### Adding or updating registers
+To introduce a new register, edit `custom_components/thessla_green_modbus/data/modbus_registers.json`
+and then run the generation and validation commands above.
 
 ### Validate translations
 Ensure translation files are valid JSON:

@@ -164,16 +164,17 @@ custom_components/thessla_green_modbus/
 
 ### Regenerating register definitions
 
-Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` is modified, regenerate
-`custom_components/thessla_green_modbus/registers.py` and validate it:
+Register definitions are stored in `modbus_registers.json`. Whenever
+`custom_components/thessla_green_modbus/data/modbus_registers.json` is modified,
+regenerate `custom_components/thessla_green_modbus/registers.py` and validate it:
 
 ```bash
 python tools/generate_registers.py
 python tools/validate_registers.py
 ```
 
-Commit the updated CSV and Python files together. The `generate-registers` and `validate-registers`
-pre-commit hooks run these checks automatically.
+Commit the updated JSON and Python files together. The `generate-registers` and
+`validate-registers` pre-commit hooks run these checks automatically.
 
 ## Testing
 
