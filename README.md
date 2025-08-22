@@ -538,18 +538,18 @@ Każdy wpis w pliku to obiekt z polami:
 
 Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 
-### Dodawanie nowych rejestrów
+### Dodawanie lub aktualizowanie rejestrów
 
-1. Otwórz `registers/thessla_green_registers_full.json` i dopisz nowy obiekt z
-   wymaganymi polami.
-2. Zadbaj o unikalność adresów i zachowanie porządku.
+1. Otwórz `registers/thessla_green_registers_full.json` i wprowadź nowe wpisy
+   lub zmodyfikuj istniejące.
+2. Zadbaj o unikalność adresów i zachowanie posortowanej kolejności.
 3. Uruchom test walidacyjny:
 
 ```bash
 pytest tests/test_register_loader.py
 ```
 
-4. Wygeneruj moduł `registers.py` i zweryfikuj spójność:
+4. Wygeneruj moduł `registers.py` i opcjonalnie zweryfikuj spójność:
 
 ```bash
 python tools/generate_registers.py
@@ -557,6 +557,19 @@ python tools/validate_registers.py
 ```
 
 5. Dołącz zmienione pliki (`registers.py` oraz JSON) do commitu.
+
+### Migracja z CSV na JSON
+
+Pliki CSV zostały oznaczone jako przestarzałe i ich obsługa będzie
+usunięta w przyszłych wersjach. Użycie pliku CSV zapisze ostrzeżenie w
+logach. Aby ręcznie przekonwertować dane:
+
+1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
+2. Dla każdego wiersza utwórz obiekt w `registers/thessla_green_registers_full.json`
+   z polami `function`, `address_dec`, `address_hex`, `name`, `description` i `access`.
+3. Zachowaj sortowanie adresów oraz format liczbowy (`0x` dla wartości hex).
+4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych
+   rejestrów.
 
 ## 📄 Licencja
 
