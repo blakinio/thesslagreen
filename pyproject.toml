@@ -58,7 +58,6 @@ include = ["custom_components*"]
 
 [tool.setuptools.package-data]
 "custom_components.thessla_green_modbus" = [
-    "data/*.csv",
     "options/*.json",
 ]
 
