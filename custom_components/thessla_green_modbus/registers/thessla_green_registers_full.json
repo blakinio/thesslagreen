@@ -9,7 +9,7 @@
       "function": "01",
       "address_hex": "0x0005",
       "address_dec": 5,
-      "name": "duct_warter_heater_pump",
+      "name": "duct_water_heater_pump",
       "description": "Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy",
       "access": "R",
       "enum": {

@@ -5,7 +5,7 @@ from __future__ import annotations
 # Generated from thessla_green_registers_full.json
 
 COIL_REGISTERS: dict[str, int] = {
-    "duct_warter_heater_pump": 5,
+    "duct_water_heater_pump": 5,
     "bypass": 9,
     "info": 10,
     "power_supply_fans": 11,
