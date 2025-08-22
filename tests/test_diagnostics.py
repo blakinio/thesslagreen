@@ -70,6 +70,9 @@ async def test_last_scan_in_diagnostics():
             self.last_scan = last_scan
             self.device_scan_result = None
             self.data = {}
+            self.device_info = {}
+            self.available_registers = {}
+            self.statistics = {}
 
         def get_diagnostic_data(self):
             return {}
@@ -84,4 +87,47 @@ async def test_last_scan_in_diagnostics():
     ):
         result = await async_get_config_entry_diagnostics(hass, entry)
 
+    assert result["last_scan"] == last_scan.isoformat()
+
+
+@pytest.mark.asyncio
+async def test_additional_diagnostic_fields():
+    """Verify new diagnostic fields are included."""
+
+    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = last_scan
+            self.device_scan_result = None
+            self.data = {}
+            self.device_info = {"firmware": "1.2.3"}
+            self.available_registers = {
+                "input_registers": {"a", "b"},
+                "holding_registers": {"c"},
+            }
+            self.statistics = {"connection_errors": 2, "timeout_errors": 1}
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}},
+        config=SimpleNamespace(language="en"),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(return_value={}),
+    ):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["firmware_version"] == "1.2.3"
+    assert result["total_available_registers"] == 3
+    assert result["error_statistics"] == {
+        "connection_errors": 2,
+        "timeout_errors": 1,
+    }
     assert result["last_scan"] == last_scan.isoformat()

@@ -29,8 +29,24 @@ async def async_get_config_entry_diagnostics(
 
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
+
+    # Supplement diagnostics with coordinator statistics
+    diagnostics.setdefault(
+        "firmware_version", coordinator.device_info.get("firmware")
+    )
+    diagnostics.setdefault(
+        "total_available_registers",
+        sum(len(regs) for regs in coordinator.available_registers.values()),
+    )
     diagnostics["last_scan"] = (
         coordinator.last_scan.isoformat() if coordinator.last_scan else None
+    )
+    diagnostics.setdefault(
+        "error_statistics",
+        {
+            "connection_errors": coordinator.statistics.get("connection_errors", 0),
+            "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
+        },
     )
 
     if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
