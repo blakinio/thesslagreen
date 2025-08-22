@@ -49,9 +49,14 @@ def test_register_auto_reload(monkeypatch, tmp_path) -> None:
     assert len(_load_registers()) == 1
     original_hash = get_registers_hash()
 
-    # Add a new register to the JSON definition
+    # Add a new register to the JSON definition but keep mtime the same to
+    # ensure the loader also verifies the file hash.
     data["registers"].append({"function": "03", "address_dec": 2, "name": "second"})
     reg_file.write_text(json.dumps(data), encoding="utf-8")
+    mtime = reg_file.stat().st_mtime
+    import os
+
+    os.utime(reg_file, (mtime, mtime))
 
     # A subsequent call should detect the change and reload definitions
     assert len(_load_registers()) == 2

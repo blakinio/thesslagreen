@@ -21,7 +21,6 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import time
-from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -141,6 +140,9 @@ try:  # pragma: no cover - defensive
 except Exception:  # pragma: no cover - defensive
     _SPECIAL_MODES_ENUM: Dict[str, int] = {}
 
+# Path to bundled register definitions
+_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
+
 
 def _normalise_function(fn: str) -> str:
     mapping = {
@@ -247,14 +249,15 @@ def _normalise_name(name: str) -> str:
 def _load_registers_from_file() -> List[Register]:
     """Load register definitions from the bundled JSON file."""
 
-    path = resources.files(__package__) / "thessla_green_registers_full.json"
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(_REGISTERS_PATH.read_text(encoding="utf-8"))
     except FileNotFoundError:  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", path)
+        _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
         return []
     except Exception:  # pragma: no cover - defensive
-        _LOGGER.exception("Failed to read register definitions from %s", path)
+        _LOGGER.exception(
+            "Failed to read register definitions from %s", _REGISTERS_PATH
+        )
         return []
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
@@ -316,20 +319,12 @@ def _load_registers_from_file() -> List[Register]:
     return registers
 
 
-# Cache for loaded register definitions and the file hash used to build it
+# Cache for loaded register definitions and the file hash/mtime used to build it
 _REGISTER_CACHE: List[Register] = []
 _REGISTERS_HASH: str | None = None
+_REGISTERS_MTIME: float | None = None
 
 
-def _compute_file_hash() -> str:
-    """Return the SHA256 hash of the registers file."""
-    path = resources.files(__package__) / "thessla_green_registers_full.json"
-    try:
-        data = path.read_bytes()
-    except FileNotFoundError:  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", path)
-        return ""
-    return hashlib.sha256(data).hexdigest()
 def _compute_file_hash(path: Path | None = None) -> str:
     """Return the SHA256 hash of the given registers file.
 
@@ -338,25 +333,46 @@ def _compute_file_hash(path: Path | None = None) -> str:
     """
 
     target = path or _REGISTERS_PATH
-    return hashlib.sha256(target.read_bytes()).hexdigest()
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError:  # pragma: no cover - sanity check
+        _LOGGER.error("Register definition file missing: %s", target)
+        return ""
+    return hashlib.sha256(data).hexdigest()
 
 
 def _load_registers() -> List[Register]:
     """Return cached register definitions, reloading if the file changed."""
 
-    global _REGISTERS_HASH
+    global _REGISTERS_HASH, _REGISTERS_MTIME
+    try:
+        stat = _REGISTERS_PATH.stat()
+    except FileNotFoundError:  # pragma: no cover - sanity check
+        _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
+        _REGISTER_CACHE.clear()
+        _REGISTERS_HASH = ""
+        _REGISTERS_MTIME = None
+        return _REGISTER_CACHE
+
+    current_mtime = stat.st_mtime_ns
     current_hash = _compute_file_hash()
-    if not _REGISTER_CACHE or _REGISTERS_HASH != current_hash:
+    if (
+        not _REGISTER_CACHE
+        or _REGISTERS_HASH != current_hash
+        or _REGISTERS_MTIME != current_mtime
+    ):
         _REGISTER_CACHE.clear()
         _REGISTER_CACHE.extend(_load_registers_from_file())
         _REGISTERS_HASH = current_hash
+        _REGISTERS_MTIME = current_mtime
     return _REGISTER_CACHE
 
 
 def _cache_clear() -> None:
-    global _REGISTERS_HASH
+    global _REGISTERS_HASH, _REGISTERS_MTIME
     _REGISTER_CACHE.clear()
     _REGISTERS_HASH = None
+    _REGISTERS_MTIME = None
 
 
 _load_registers.cache_clear = _cache_clear  # type: ignore[attr-defined]

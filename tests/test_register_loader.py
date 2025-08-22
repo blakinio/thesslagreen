@@ -84,6 +84,25 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     assert read_calls == 1
 
 
+def test_missing_register_file(monkeypatch, tmp_path) -> None:
+    """Loader should handle missing JSON definition path."""
+
+    from custom_components.thessla_green_modbus.registers.loader import (
+        _load_registers,
+        get_registers_hash,
+    )
+
+    missing = tmp_path / "missing.json"
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.registers.loader._REGISTERS_PATH",
+        missing,
+    )
+    _load_registers.cache_clear()
+
+    assert _load_registers() == []
+    assert get_registers_hash() == ""
+
+
 def test_path_argument_ignored(caplog) -> None:
     """Providing a path should not trigger any CSV handling."""
 
