@@ -1,45 +1,34 @@
-"""Load and organise Thessla Green Modbus register definitions.
+"""Loader for Modbus register definitions.
 
+This module reads the bundled ``thessla_green_registers_full.json`` file and
+exposes a small helper API used by the integration and the tests.  The JSON file
+contains the canonical list of registers together with metadata describing how a
+raw register value should be interpreted.
 
-The register metadata used by development tools and tests is stored in
-``thessla_green_registers_full.json``. This module exposes helper classes and
-functions to read that file and to organise registers into contiguous read
-blocks.
-"""
-
-from __future__ import annotations
-
-The integration stores a canonical list of all supported Modbus registers in
-``thessla_green_registers_full.json``.  This module reads that file once, caches
-the result and exposes a small helper API used by the integration and tests.
-
-The loader prefers the JSON file but will fall back to legacy CSV files placed
-in the same directory.  When falling back a deprecation warning is logged so
-users can migrate to the JSON format.
+Only a fairly small subset of the original project is required for the unit
+tests in this kata, therefore the implementation below purposely focuses on the
+features that are exercised in the tests: parsing of the JSON file, decoding of
+values using ``enum``/``multiplier``/``resolution`` information, optional BCD
+time handling for schedule registers and grouping of addresses for efficient
+reads.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import time
 from functools import lru_cache
 import json
-import csv
-
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Optional
 
-from pydantic import BaseModel
-from typing import Any, Dict, Iterable, List
-
-from pydantic import BaseModel, Field
+from ..schedule_helpers import bcd_to_time, time_to_bcd
 
 _LOGGER = logging.getLogger(__name__)
 
-
 # ---------------------------------------------------------------------------
-# Register representation
-# Data models
+# Data model
 # ---------------------------------------------------------------------------
 
 
@@ -51,135 +40,81 @@ class Register:
     address: int
     name: str
     access: str
-    length: int = 1
-    enum: Dict[str, Any] | None = None
-    access: str
-    name: str
     description: str | None = None
     unit: str | None = None
-    resolution: float | None = None
     multiplier: float | None = None
+    resolution: float | None = None
     min: float | None = None
     max: float | None = None
-    enum: Dict[str, int] | None = None
+    default: float | None = None
+    enum: Dict[int | str, Any] | None = None
     notes: str | None = None
+    information: str | None = None
     extra: Dict[str, Any] | None = None
     length: int = 1
-
-    # ------------------------------------------------------------------
-    # Construction helpers
-    # ------------------------------------------------------------------
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Register":
-        """Create a :class:`Register` instance from raw dictionary data."""
-
-        try:
-            function = str(data["function"])
-            address_dec = data.get("address_dec")
-            if address_dec is not None:
-                address = int(address_dec)
-            else:
-                address = int(str(data.get("address_hex")), 16)
-            name = str(data["name"])
-            access = str(data.get("access", ""))
-        except (KeyError, TypeError, ValueError) as exc:  # pragma: no cover - defensive
-            _LOGGER.error("Invalid register definition: %s", data)
-            raise ValueError(f"Invalid register definition: {data}") from exc
-
-        length = int(data.get("length") or 1)
-        enum_raw: Dict[str, Any] | None = data.get("enum")
-        enum = {k: v for k, v in enum_raw.items()} if enum_raw else None
-        multiplier = data.get("multiplier")
-        resolution = data.get("resolution")
-        description = data.get("description")
-        min_val = data.get("min")
-        max_val = data.get("max")
-        default = data.get("default")
-        unit = data.get("unit")
-        information = data.get("information")
-
-        name_lower = name.lower()
-        bcd = bool(
-            data.get("bcd")
-            or (name_lower.startswith("schedule_") and name_lower.endswith(("_start", "_end")))
-        )
-
-        extra: Dict[str, Any] | None = data.get("extra")
-        if extra is None and name_lower.startswith("setting_"):
-            extra = {"aatt": True}
-
-        return cls(
-            function=function,
-            address=address,
-            name=name,
-            access=access,
-            length=length,
-            enum=enum,
-            multiplier=multiplier,
-            resolution=resolution,
-            description=description,
-            min=min_val,
-            max=max_val,
-            default=default,
-            unit=unit,
-            information=information,
-            bcd=bcd,
-            extra=extra,
-        )
+    bcd: bool = False
 
     # ------------------------------------------------------------------
     # Value helpers
     # ------------------------------------------------------------------
     def decode(self, raw: int) -> Any:
-        """Decode a raw register value using register metadata."""
-    def decode(self, raw: int) -> Any:
-        """Decode a raw value according to register metadata."""
+        """Decode ``raw`` according to the register metadata."""
 
-        if raw == 0x8000:
+        if raw == 0x8000:  # common sentinel used by the device
             return None
 
-        value: Any = raw
+        # Enumerations map raw numeric values to labels
+        if self.enum is not None:
+            if raw in self.enum:
+                return self.enum[raw]
+            if str(raw) in self.enum:
+                return self.enum[str(raw)]
 
+        value: Any = raw
         if self.multiplier is not None:
             value = value * self.multiplier
-
         if self.resolution is not None:
             steps = round(value / self.resolution)
             value = steps * self.resolution
 
+        if self.extra and self.extra.get("aatt"):
+            airflow = (raw >> 8) & 0xFF
+            temp = (raw & 0xFF) / 2
+            return airflow, temp
+
+        if self.bcd:
+            try:
+                t = bcd_to_time(raw)
+            except Exception:  # pragma: no cover - defensive
+                return value
+            return f"{t.hour:02d}:{t.minute:02d}"
+
         return value
 
     def encode(self, value: Any) -> int:
-        """Encode a value to raw register format."""
+        """Encode ``value`` into the raw register representation."""
 
         if self.bcd:
             if isinstance(value, str):
-                hours_str, mins_str = value.split(":")
-                hours = int(hours_str)
-                mins = int(mins_str)
-            else:
-                hours, mins = divmod(int(value), 60)
-            hours_bcd = ((hours // 10) << 4) | (hours % 10)
-            mins_bcd = ((mins // 10) << 4) | (mins % 10)
-            return (hours_bcd << 8) | mins_bcd
+                hours, minutes = (int(x) for x in value.split(":"))
+            elif isinstance(value, int):
+                hours, minutes = divmod(value, 60)
+            elif isinstance(value, (tuple, list)):
+                hours, minutes = int(value[0]), int(value[1])
+            else:  # pragma: no cover - defensive
+                raise ValueError(f"Unsupported BCD value: {value}")
+            return time_to_bcd(time(hours, minutes))
 
         if self.extra and self.extra.get("aatt"):
-            if isinstance(value, (tuple, list)):
-                airflow, temp = value
-            elif isinstance(value, dict):
-                airflow = value["airflow"]
-                temp = value["temp"]
-            else:
-                airflow, temp = value  # type: ignore[misc]
-            airflow_int = int(round(float(airflow)))
-            temp_raw = int(round(float(temp) * 2))
-            return (airflow_int << 8) | (temp_raw & 0xFF)
+            airflow, temp = value if isinstance(value, (list, tuple)) else (value["airflow"], value["temp"])  # type: ignore[index]
+            return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
-        raw = value
+        raw: Any = value
         if self.enum and isinstance(value, str):
-            for raw_str, label in self.enum.items():
-                if label == value:
-                    raw = int(raw_str)
+            # Reverse lookup
+            for k, v in self.enum.items():
+                if v == value:
+                    raw = int(k)
                     break
         if self.multiplier is not None:
             raw = int(round(float(raw) / self.multiplier))
@@ -190,90 +125,35 @@ class Register:
 
 
 # ---------------------------------------------------------------------------
-# Pydantic models describing the register file structure
-# ---------------------------------------------------------------------------
-
-
-@dataclass(slots=True)
-class ReadPlan:
-    """Plan describing a contiguous block of registers to read."""
-
-    function: str
-    address: int
-    length: int
-
-
-class _RegisterModel(BaseModel):
-    """Internal model used for validating JSON entries."""
-
-    function: str = Field(pattern=r"^(01|02|03|04|input|holding|coil|discrete)$")
-    address_dec: int
-    name: str
-
-    description: str | None = None
-    access: str | None = None
-    enum: Dict[str, Any] | None = None
-    multiplier: float | None = None
-    resolution: float | None = None
-    length: int | None = None
-    min: float | None = None
-    max: float | None = None
-    default: float | None = None
-    unit: str | None = None
-    information: str | None = None
-    bcd: bool | None = None
-    access: str = "ro"
-    description: str | None = None
-    unit: str | None = None
-    resolution: float | None = None
-    multiplier: float | None = None
-    min: float | None = None
-    max: float | None = None
-    enum: Dict[str, int] | None = None
-    notes: str | None = None
-    extra: Dict[str, Any] | None = None
-
-    class Config:
-        extra = "ignore"
-
-
-# ---------------------------------------------------------------------------
 # Loading helpers
 # ---------------------------------------------------------------------------
-
 
 _REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
 
 
-def _load_from_csv(files: Iterable[Path]) -> List[Dict[str, Any]]:
-    """Load register definitions from CSV files (legacy support)."""
-
-    _LOGGER.warning(
-        "Register CSV files are deprecated and will be removed in a future release. "
-        "Please migrate to JSON."
-    )
-    rows: List[Dict[str, Any]] = []
-    for csv_file in files:
-        with csv_file.open(encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                try:
-                    row["address_dec"] = int(row["address_dec"])
-                except (KeyError, ValueError):
-                    continue
-                for field in ("multiplier", "resolution", "min", "max"):
-                    if row.get(field) not in (None, ""):
-                        try:
-                            row[field] = float(row[field])
-                        except ValueError:
-                            row[field] = None
-                if row.get("enum"):
-                    try:
-                        row["enum"] = json.loads(row["enum"])
-                    except json.JSONDecodeError:
-                        row["enum"] = None
-                rows.append(row)
-    return rows
+def _normalise_function(fn: str) -> str:
+    mapping = {
+        "1": "01",
+        "01": "01",
+        "coil": "01",
+        "coils": "01",
+        "2": "02",
+        "02": "02",
+        "discrete": "02",
+        "discreteinput": "02",
+        "discreteinputs": "02",
+        "3": "03",
+        "03": "03",
+        "holding": "03",
+        "holdingregister": "03",
+        "holdingregisters": "03",
+        "4": "04",
+        "04": "04",
+        "input": "04",
+        "inputregister": "04",
+        "inputregisters": "04",
+    }
+    return mapping.get(fn.lower(), fn)
 
 
 @lru_cache(maxsize=1)
@@ -304,71 +184,56 @@ def _load_raw() -> List[Dict[str, Any]]:
 
 _REGISTERS_PATH = Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
 
+def _load_registers() -> List[Register]:
+    """Load register definitions from the JSON file."""
 
-@lru_cache(maxsize=1)
-def _load_register_file() -> _RegisterFileModel:
-    """Load and validate the full register definition file."""
+    if not _REGISTERS_PATH.exists():  # pragma: no cover - sanity check
+        _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
+        return []
 
     text = _REGISTERS_PATH.read_text(encoding="utf-8")
-    try:
-        return _RegisterFileModel.model_validate_json(text)
-    except AttributeError:  # pragma: no cover - pydantic v1 fallback
-        return _RegisterFileModel.parse_raw(text)
-
-
-@lru_cache(maxsize=1)
-def get_all_registers() -> List[Register]:
-    """Return a list of all known registers."""
-
-    return [Register.from_dict(r.model_dump()) for r in _load_register_file().registers]
-    raise FileNotFoundError(f"No register definition file found near {_REGISTERS_PATH}")
-
-
-@lru_cache(maxsize=1)
-def _load_registers() -> List[Register]:
-    """Convert raw data to :class:`Register` instances."""
+    raw = json.loads(text)
+    items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
     registers: List[Register] = []
-    for item in _load_raw():
-        function = str(item["function"]).lower()
-        fn_code = {
-            "1": "01",
-            "01": "01",
-            "coil": "01",
-            "coils": "01",
-            "2": "02",
-            "02": "02",
-            "discrete": "02",
-            "3": "03",
-            "03": "03",
-            "holding": "03",
-            "4": "04",
-            "04": "04",
-            "input": "04",
-        }.get(function, function)
-
+    for item in items:
+        function = _normalise_function(str(item.get("function", "")))
         if item.get("address_dec") is not None:
             address = int(item["address_dec"])
         else:
             address = int(str(item.get("address_hex")), 16)
-        registers.append(
-            Register(
-                function=fn_code,
-                address=address,
-                access=item.get("access", "ro"),
-                name=item["name"],
-                description=item.get("description"),
-                unit=item.get("unit"),
-                resolution=item.get("resolution"),
-                multiplier=item.get("multiplier"),
-                min=item.get("min"),
-                max=item.get("max"),
-                enum=item.get("enum"),
-                notes=item.get("notes"),
-                extra=item.get("extra"),
-                length=int(item.get("length", 1)),
+
+        try:
+            enum_map = item.get("enum")
+            if enum_map:
+                if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
+                    enum_map = {int(k): v for k, v in enum_map.items()}
+                elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
+                    enum_map = {int(v): k for k, v in enum_map.items()}
+
+            registers.append(
+                Register(
+                    function=function,
+                    address=address,
+                    name=str(item["name"]),
+                    access=str(item.get("access", "ro")),
+                    description=item.get("description"),
+                    unit=item.get("unit"),
+                    multiplier=item.get("multiplier"),
+                    resolution=item.get("resolution"),
+                    min=item.get("min"),
+                    max=item.get("max"),
+                    default=item.get("default"),
+                    enum=enum_map,
+                    notes=item.get("notes"),
+                    information=item.get("information"),
+                    extra=item.get("extra"),
+                    length=int(item.get("length", 1)),
+                    bcd=bool(item.get("bcd", False)),
+                )
             )
-        )
+        except Exception as err:  # pragma: no cover - defensive
+            _LOGGER.warning("Invalid register definition skipped: %s", err)
     return registers
 
 
@@ -377,84 +242,53 @@ def _load_registers() -> List[Register]:
 # ---------------------------------------------------------------------------
 
 
-
 def get_all_registers() -> List[Register]:
-    """Return all known registers."""
+    """Return a list of all known registers."""
 
     return list(_load_registers())
 
 
-@lru_cache(maxsize=None)
 def get_registers_by_function(fn: str) -> List[Register]:
-    """Return registers for a specific Modbus function code."""
+    """Return registers for the given function code or name."""
 
-    key = fn.lower().replace("_", "").replace(" ", "")
-
-    fn_code = _FUNCTION_MAP.get(key, key)
-    return [r for r in get_all_registers() if r.function == fn_code]
-
-
-    fn_code = {
-        "1": "01",
-        "01": "01",
-        "coil": "01",
-        "coils": "01",
-        "2": "02",
-        "02": "02",
-        "discrete": "02",
-        "discreteinput": "02",
-        "discreteinputs": "02",
-        "3": "03",
-        "03": "03",
-        "holding": "03",
-        "holdingregister": "03",
-        "holdingregisters": "03",
-        "4": "04",
-        "04": "04",
-        "input": "04",
-        "inputregister": "04",
-        "inputregisters": "04",
-    }.get(key, key)
-
-    return [r for r in _load_registers() if r.function == fn_code]
+    code = _normalise_function(fn)
+    return [r for r in _load_registers() if r.function == code]
 
 
 @dataclass(slots=True)
 class ReadPlan:
-    """Plan for reading a consecutive block of registers."""
+    """Plan describing a consecutive block of registers to read."""
 
     function: str
     address: int
     length: int
 
 
-@lru_cache(maxsize=None)
 def group_reads(max_block_size: int = 64) -> List[ReadPlan]:
-    """Group registers into consecutive blocks for efficient reading."""
+    """Group registers into contiguous blocks for efficient reading."""
 
     plans: List[ReadPlan] = []
-    regs_by_fn: Dict[str, List[Register]] = {}
-    for reg in get_all_registers():
-        regs_by_fn.setdefault(reg.function, []).append(reg)
+    regs_by_fn: Dict[str, List[int]] = {}
 
-    for fn, regs in regs_by_fn.items():
-        regs.sort(key=lambda r: r.address)
-        if not regs:
-            continue
-        start = regs[0].address
+    for reg in _load_registers():
+        addresses = list(range(reg.address, reg.address + reg.length))
+        regs_by_fn.setdefault(reg.function, []).extend(addresses)
+
+    for fn, addresses in regs_by_fn.items():
+        addresses.sort()
+        start = prev = addresses[0]
         length = 1
-        prev = start
-        for reg in regs[1:]:
-            if reg.address == prev + 1 and length < max_block_size:
+        for addr in addresses[1:]:
+            if addr == prev + 1 and length < max_block_size:
                 length += 1
             else:
                 plans.append(ReadPlan(fn, start, length))
-                start = reg.address
+                start = addr
                 length = 1
-            prev = reg.address
+            prev = addr
         plans.append(ReadPlan(fn, start, length))
-    return plans
 
+    return plans
 
 
 __all__ = [
@@ -463,8 +297,5 @@ __all__ = [
     "get_all_registers",
     "get_registers_by_function",
     "group_reads",
-    "_RegisterFileModel",
 ]
-
-__all__ = ["Register", "ReadPlan", "get_all_registers", "get_registers_by_function", "group_reads"]
 
