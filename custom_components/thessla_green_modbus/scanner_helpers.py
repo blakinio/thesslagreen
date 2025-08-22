@@ -92,8 +92,8 @@ UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 # corresponding addresses are resolved from the JSON register definitions at
 # runtime, ensuring we do not hardcode register addresses here.
 SAFE_REGISTERS: list[tuple[str, str]] = [
-    ("04", "VERSION_MAJOR"),
-    ("04", "VERSION_MINOR"),
+    ("04", "version_major"),
+    ("04", "version_minor"),
     ("03", "date_time_rrmm"),
 ]
 

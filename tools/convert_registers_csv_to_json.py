@@ -5,10 +5,27 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT / "tools" / "modbus_registers.csv"
-JSON_PATH = ROOT / "registers" / "thessla_green_registers_full.json"
+JSON_PATH = (
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
+
+
+_SNAKE_RE = re.compile(r"[^0-9a-zA-Z]+")
+
+
+def _snake_case(name: str) -> str:
+    name = _SNAKE_RE.sub("_", name)
+    name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", name)
+    return name.strip("_").lower()
 
 
 def convert(csv_path: Path = CSV_PATH, json_path: Path = JSON_PATH) -> None:
@@ -27,7 +44,7 @@ def convert(csv_path: Path = CSV_PATH, json_path: Path = JSON_PATH) -> None:
             entry: dict[str, object] = {
                 "function": row.get("Function_Code"),
                 "address_dec": addr,
-                "name": name,
+                "name": _snake_case(name),
                 "access": row.get("Access"),
                 "description": row.get("Description"),
                 "unit": row.get("Unit"),
@@ -39,6 +56,7 @@ def convert(csv_path: Path = CSV_PATH, json_path: Path = JSON_PATH) -> None:
                 "information": row.get("Information"),
             }
             rows.append(entry)
+    rows.sort(key=lambda r: (int(r["address_dec"]), str(r["name"])))
     json_path.write_text(json.dumps({"registers": rows}, indent=2), encoding="utf-8")
 
 
