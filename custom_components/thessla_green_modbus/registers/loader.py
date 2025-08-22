@@ -16,9 +16,10 @@ import logging
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 _LOGGER = logging.getLogger(__name__)
+_USING_LEGACY_CSV = False
 
 
 @dataclass(slots=True)
@@ -137,29 +138,46 @@ class Register:
 
 
 @lru_cache(maxsize=1)
-def _load_json() -> List[Dict[str, Any]]:
-    """Load register definitions from JSON file with global caching."""
+def _load_definitions() -> List[Dict[str, Any]]:
+    """Load register definitions from JSON (preferred) or legacy CSV."""
+
+    global _USING_LEGACY_CSV
 
     json_path = Path(__file__).with_name("thessla_green_registers_full.json")
-    try:
-        with json_path.open("r", encoding="utf-8") as fp:
-            data = json.load(fp)
-    except Exception as exc:  # pragma: no cover - defensive
-        _LOGGER.exception("Failed to load register JSON: %s", exc)
-        raise
+    if json_path.exists():
+        try:
+            with json_path.open("r", encoding="utf-8") as fp:
+                data = json.load(fp)
+        except Exception as exc:  # pragma: no cover - defensive
+            _LOGGER.exception("Failed to load register JSON: %s", exc)
+            raise
+    else:
+        # Fallback to legacy CSV definitions if JSON not present
+        csv_path = Path(__file__).with_name("thessla_green_registers_full.csv")
+        try:
+            import csv
+
+            with csv_path.open("r", encoding="utf-8") as fp:
+                reader = csv.DictReader(fp)
+                data = list(reader)
+            _USING_LEGACY_CSV = True
+        except Exception as exc:  # pragma: no cover - defensive
+            _LOGGER.exception("Failed to load register definitions: %s", exc)
+            raise
 
     if not isinstance(data, list):  # pragma: no cover - defensive
-        _LOGGER.error("Register JSON must be a list")
-        raise ValueError("Register JSON must be a list")
+        _LOGGER.error("Register definitions must be a list")
+        raise ValueError("Register definitions must be a list")
+
     return data
 
 
 @lru_cache(maxsize=1)
 def get_all_registers() -> List[Register]:
-    """Return all registers defined in the JSON file."""
+    """Return all registers defined in the data file."""
 
     registers: List[Register] = []
-    for item in _load_json():
+    for item in _load_definitions():
         try:
             registers.append(Register.from_dict(item))
         except ValueError as exc:
@@ -177,11 +195,20 @@ def get_registers_by_function(function: str) -> Dict[str, Register]:
 
 
 def group_reads(
-    registers: Iterable[Register], max_gap: int = 10, max_batch: int = 16
+    registers: Iterable[Union[Register, int]],
+    max_gap: int = 10,
+    max_batch: int = 16,
 ) -> List[Tuple[int, int]]:
-    """Group register addresses for batch reading."""
+    """Group register addresses for batch reading.
 
-    addresses = sorted(reg.address for reg in registers)
+    ``registers`` may be an iterable of :class:`Register` objects or raw
+    integer addresses which makes it backwards compatible with the legacy
+    helper.
+    """
+
+    addresses = sorted(
+        reg if isinstance(reg, int) else reg.address for reg in registers
+    )
     if not addresses:
         return []
 
@@ -199,3 +226,51 @@ def group_reads(
 
     groups.append((start, end - start + 1))
     return groups
+
+
+# ----------------------------------------------------------------------
+# Convenience helpers returning address maps
+# ----------------------------------------------------------------------
+
+@lru_cache(maxsize=1)
+def _register_map_by_name() -> Dict[str, Register]:
+    """Return mapping of register name to :class:`Register`."""
+
+    return {reg.name: reg for reg in get_all_registers()}
+
+
+def get_register_definition(name: str) -> Optional[Register]:
+    """Return full :class:`Register` definition for ``name`` if available."""
+
+    return _register_map_by_name().get(name)
+
+
+def _address_map(function: str) -> Dict[str, int]:
+    regs = get_registers_by_function(function)
+    if _USING_LEGACY_CSV:
+        _LOGGER.warning("Using legacy CSV register definitions")
+    return {name: reg.address for name, reg in regs.items()}
+
+
+def get_input_registers() -> Dict[str, int]:
+    """Return mapping of input register names to addresses."""
+
+    return _address_map("input")
+
+
+def get_holding_registers() -> Dict[str, int]:
+    """Return mapping of holding register names to addresses."""
+
+    return _address_map("holding")
+
+
+def get_coil_registers() -> Dict[str, int]:
+    """Return mapping of coil register names to addresses."""
+
+    return _address_map("coil")
+
+
+def get_discrete_input_registers() -> Dict[str, int]:
+    """Return mapping of discrete input register names to addresses."""
+
+    return _address_map("discrete")

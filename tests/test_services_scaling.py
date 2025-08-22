@@ -5,12 +5,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_holding_registers,
+)
 import custom_components.thessla_green_modbus.services as services
 from custom_components.thessla_green_modbus.services import _scale_for_register
 from custom_components.thessla_green_modbus.schedule_helpers import time_to_bcd
 
-HOLDING_REGISTERS = RegisterLoader().holding_registers
+HOLDING_REGISTERS = get_holding_registers()
 
 
 class DummyCoordinator:

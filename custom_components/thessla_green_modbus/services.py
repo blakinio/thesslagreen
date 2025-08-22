@@ -31,7 +31,7 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
     dt_util = _DTUtil()  # type: ignore
 
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
-from . import loader
+from .registers.loader import get_register_definition
 from .schedule_helpers import time_to_bcd
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,9 +47,9 @@ AIR_QUALITY_REGISTER_MAP = {
 
 def _scale_for_register(register_name: str, value: float) -> int:
     """Scale ``value`` using register metadata for ``register_name``."""
-    definition = loader.get_register_definition(register_name)
-    multiplier = definition.get("multiplier")
-    resolution = definition.get("resolution")
+    definition = get_register_definition(register_name)
+    multiplier = definition.multiplier if definition else None
+    resolution = definition.resolution if definition else None
     if multiplier is not None:
         return int(round(value / multiplier))
     if resolution is not None:

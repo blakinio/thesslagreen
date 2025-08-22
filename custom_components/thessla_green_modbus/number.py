@@ -12,7 +12,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, get_holding_registers
+from .const import DOMAIN
+from .registers.loader import get_holding_registers
 
 try:  # Newer versions expose metadata through ENTITY_MAPPINGS
     from .const import ENTITY_MAPPINGS

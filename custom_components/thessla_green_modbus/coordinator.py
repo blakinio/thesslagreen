@@ -61,16 +61,15 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import (
-    DOMAIN,
-    MANUFACTURER,
-    MODEL,
+from .const import DOMAIN, MANUFACTURER, MODEL
+from .registers.loader import (
     get_coil_registers,
     get_discrete_input_registers,
     get_holding_registers,
     get_input_registers,
+    get_register_definition,
+    group_reads,
 )
-from . import loader
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
@@ -234,7 +233,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
                 for reg in names
                 if reg in self._register_maps[key]
             ]
-            self._register_groups[key] = loader.group_reads(addresses)
+            self._register_groups[key] = group_reads(addresses)
 
         _LOGGER.debug(
             "Pre-computed register groups: %s",
@@ -586,15 +585,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         if value == 0x8000:
             return None
 
-        definition = loader.get_register_definition(register_name)
+        definition = get_register_definition(register_name)
 
-        enum_map = definition.get("enum")
+        enum_map = definition.enum if definition else None
         if enum_map:
             reversed_enum = {v: k for k, v in enum_map.items()}
             return reversed_enum.get(value, value)
 
-        multiplier = definition.get("multiplier")
-        resolution = definition.get("resolution")
+        multiplier = definition.multiplier if definition else None
+        resolution = definition.resolution if definition else None
         if multiplier is not None:
             value = value * multiplier
         elif resolution is not None:
@@ -649,9 +648,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
 
                 original_value = value
 
-                definition = loader.get_register_definition(register_name)
-                multiplier = definition.get("multiplier")
-                resolution = definition.get("resolution")
+                definition = get_register_definition(register_name)
+                multiplier = definition.multiplier if definition else None
+                resolution = definition.resolution if definition else None
                 if multiplier is not None:
                     value = int(round(value / multiplier))
                 elif resolution is not None:

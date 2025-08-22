@@ -3,7 +3,14 @@
 import json
 from pathlib import Path
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_coil_registers,
+    get_discrete_input_registers,
+    get_holding_registers,
+    get_input_registers,
+    get_register_definition,
+    group_reads,
+)
 
 
 def test_json_structure():
@@ -24,33 +31,33 @@ def test_json_structure():
 
 def test_register_lookup_and_properties():
     """Verify registers are loaded and accessible for all function codes."""
-    loader = RegisterLoader()
-    assert loader.input_registers["outside_temperature"] == 16
-    assert loader.holding_registers["mode"] == 4097
-    assert loader.coil_registers["bypass"] == 9
-    assert loader.discrete_registers["expansion"] == 0
+    assert get_input_registers()["outside_temperature"] == 16
+    assert get_holding_registers()["mode"] == 4097
+    assert get_coil_registers()["bypass"] == 9
+    assert get_discrete_input_registers()["expansion"] == 0
 
 
 def test_enum_multiplier_resolution():
     """Check enum, multiplier and resolution extraction."""
-    loader = RegisterLoader()
-    assert loader.enums["special_mode"]["boost"] == 1
-    assert loader.multipliers["required_temperature"] == 0.5
-    assert loader.resolutions["required_temperature"] == 0.5
+    reg = get_register_definition("special_mode")
+    assert reg and reg.enum and reg.enum["boost"] == 1
+    reg2 = get_register_definition("required_temperature")
+    assert reg2 and reg2.multiplier == 0.5
+    assert reg2.resolution == 0.5
 
 
 def test_group_reads_cover_addresses():
     """Ensure group reads cover all register addresses without gaps."""
-    loader = RegisterLoader()
     mapping = {
-        "input": loader.input_registers,
-        "holding": loader.holding_registers,
-        "coil": loader.coil_registers,
-        "discrete": loader.discrete_registers,
+        "input": get_input_registers(),
+        "holding": get_holding_registers(),
+        "coil": get_coil_registers(),
+        "discrete": get_discrete_input_registers(),
     }
-    for func, regs in mapping.items():
+    for regs in mapping.values():
         addresses = sorted(regs.values())
-        grouped: list[int] = []
-        for start, count in loader.group_reads[func]:
-            grouped.extend(range(start, start + count))
-        assert grouped == addresses
+        covered: list[int] = []
+        for start, count in group_reads(addresses):
+            covered.extend(range(start, start + count))
+        for addr in addresses:
+            assert addr in covered

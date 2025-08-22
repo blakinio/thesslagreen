@@ -130,11 +130,13 @@ for name, module in modules.items():
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_holding_registers,
+    get_input_registers,
+)
 
-LOADER = RegisterLoader()
-INPUT_REGISTERS = LOADER.input_registers
-HOLDING_REGISTERS = LOADER.holding_registers
+INPUT_REGISTERS = get_input_registers()
+HOLDING_REGISTERS = get_holding_registers()
 
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (

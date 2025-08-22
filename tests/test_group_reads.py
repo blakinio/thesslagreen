@@ -1,13 +1,13 @@
 """Tests for group_reads utility."""
 
-from custom_components.thessla_green_modbus.loader import group_reads
+from custom_components.thessla_green_modbus.registers.loader import group_reads
 
 
-def test_group_reads_merges_consecutive_addresses():
-    addresses = [0, 1, 2, 3, 10, 11, 12]
-    assert group_reads(addresses) == [(0, 4), (10, 3)]
+def test_group_reads_groups_by_gap():
+    addresses = [0, 1, 2, 3, 20, 21]
+    assert group_reads(addresses, max_gap=5) == [(0, 4), (20, 2)]
 
 
-def test_group_reads_respects_max_block_size():
+def test_group_reads_respects_max_batch():
     addresses = list(range(70))
-    assert group_reads(addresses, max_block_size=64) == [(0, 64), (64, 6)]
+    assert group_reads(addresses, max_batch=64) == [(0, 64), (64, 6)]

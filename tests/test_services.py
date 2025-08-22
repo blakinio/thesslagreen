@@ -195,9 +195,11 @@ for name, module in modules.items():
 # Ensure repository root on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_holding_registers,
+)
 
-HOLDING_REGISTERS = RegisterLoader().holding_registers
+HOLDING_REGISTERS = get_holding_registers()
 
 services_module = importlib.reload(
     importlib.import_module("custom_components.thessla_green_modbus.services")
