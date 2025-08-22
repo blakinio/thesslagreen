@@ -7,6 +7,7 @@ from pathlib import Path
 from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 from custom_components.thessla_green_modbus.registers import (
     get_registers_by_function,
+    get_registers_hash,
 )
 
 
@@ -92,3 +93,31 @@ def test_path_argument_ignored(caplog) -> None:
 
     assert loader.registers
     assert not caplog.records
+
+
+def test_cache_refresh_on_file_change(monkeypatch, tmp_path) -> None:
+    """Modifying the register file should refresh the cache."""
+
+    from custom_components.thessla_green_modbus.registers.loader import _load_registers
+
+    data = {"registers": [{"function": "03", "address_dec": 1, "name": "first"}]}
+    reg_file = tmp_path / "regs.json"
+    reg_file.write_text(json.dumps(data), encoding="utf-8")
+
+    # Point loader to the temporary file and prime the cache
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.registers.loader._REGISTERS_PATH",
+        reg_file,
+    )
+    _load_registers.cache_clear()
+    assert len(_load_registers()) == 1
+    original_hash = get_registers_hash()
+
+    # Modify the file and ensure cache is refreshed
+    data["registers"].append({"function": "03", "address_dec": 2, "name": "second"})
+    reg_file.write_text(json.dumps(data), encoding="utf-8")
+
+    assert len(_load_registers()) == 2
+    assert get_registers_hash() != original_hash
+
+    _load_registers.cache_clear()

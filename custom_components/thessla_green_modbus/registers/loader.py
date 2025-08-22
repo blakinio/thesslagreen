@@ -21,9 +21,8 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import time
-from importlib import resources
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 
@@ -244,10 +243,13 @@ def _normalise_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+_REGISTERS_PATH = Path(__file__).resolve().with_name("thessla_green_registers_full.json")
+
+
 def _load_registers_from_file() -> List[Register]:
     """Load register definitions from the bundled JSON file."""
 
-    path = resources.files(__package__) / "thessla_green_registers_full.json"
+    path = _REGISTERS_PATH
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:  # pragma: no cover - sanity check
@@ -316,47 +318,37 @@ def _load_registers_from_file() -> List[Register]:
     return registers
 
 
-# Cache for loaded register definitions and the file hash used to build it
-_REGISTER_CACHE: List[Register] = []
-_REGISTERS_HASH: str | None = None
+# Cache for loaded register definitions along with hash/mtime of the source file
+_REGISTER_CACHE: Tuple[str, float, List[Register]] | None = None
 
 
-def _compute_file_hash() -> str:
-    """Return the SHA256 hash of the registers file."""
-    path = resources.files(__package__) / "thessla_green_registers_full.json"
-    try:
-        data = path.read_bytes()
-    except FileNotFoundError:  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", path)
-        return ""
-    return hashlib.sha256(data).hexdigest()
-def _compute_file_hash(path: Path | None = None) -> str:
-    """Return the SHA256 hash of the given registers file.
-
-    ``path`` defaults to :data:`_REGISTERS_PATH` but is parameterised to make
-    testing easier by allowing callers to pass a temporary file.
-    """
+def _file_signature(path: Path | None = None) -> Tuple[str, float]:
+    """Return ``(hash, mtime)`` for the given register definition file."""
 
     target = path or _REGISTERS_PATH
-    return hashlib.sha256(target.read_bytes()).hexdigest()
+    data = target.read_bytes()
+    return hashlib.sha256(data).hexdigest(), target.stat().st_mtime
 
 
 def _load_registers() -> List[Register]:
     """Return cached register definitions, reloading if the file changed."""
 
-    global _REGISTERS_HASH
-    current_hash = _compute_file_hash()
-    if not _REGISTER_CACHE or _REGISTERS_HASH != current_hash:
-        _REGISTER_CACHE.clear()
-        _REGISTER_CACHE.extend(_load_registers_from_file())
-        _REGISTERS_HASH = current_hash
-    return _REGISTER_CACHE
+    global _REGISTER_CACHE
+
+    current_hash, current_mtime = _file_signature()
+    if (
+        _REGISTER_CACHE is None
+        or _REGISTER_CACHE[0] != current_hash
+        or _REGISTER_CACHE[1] != current_mtime
+    ):
+        registers = _load_registers_from_file()
+        _REGISTER_CACHE = (current_hash, current_mtime, registers)
+    return _REGISTER_CACHE[2]
 
 
 def _cache_clear() -> None:
-    global _REGISTERS_HASH
-    _REGISTER_CACHE.clear()
-    _REGISTERS_HASH = None
+    global _REGISTER_CACHE
+    _REGISTER_CACHE = None
 
 
 _load_registers.cache_clear = _cache_clear  # type: ignore[attr-defined]
@@ -385,7 +377,7 @@ def get_registers_by_function(fn: str) -> List[Register]:
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
 
-    return _REGISTERS_HASH or ""
+    return _REGISTER_CACHE[0] if _REGISTER_CACHE else ""
 
 
 @dataclass(slots=True)
