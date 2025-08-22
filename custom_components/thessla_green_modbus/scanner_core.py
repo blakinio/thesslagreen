@@ -32,6 +32,9 @@ from .const import (
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
     UNKNOWN_MODEL,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+    MULTI_REGISTER_SIZES,
 )
 from .modbus_exceptions import (
     ConnectionException,
@@ -39,7 +42,7 @@ from .modbus_exceptions import (
     ModbusIOException,
 )
 from .modbus_helpers import _call_modbus
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS, MULTI_REGISTER_SIZES
+from .registers import get_all_registers
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, TIME_REGISTER_PREFIXES, _to_snake_case
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
@@ -936,154 +939,167 @@ class ThesslaGreenDeviceScanner:
         Dict[str, Tuple[int, ...]],
     ]:
         """Load Modbus register definitions, ranges and firmware versions."""
-        csv_path = files(__package__) / "data" / "modbus_registers.csv"
-
-        def _parse_csv() -> Tuple[
-            Dict[str, Dict[int, str]],
-            Dict[str, Tuple[Optional[int], Optional[int]]],
-            Dict[str, Tuple[int, ...]],
-        ]:
+        try:
             register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
             register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
             register_versions: Dict[str, Tuple[int, ...]] = {}
-            try:
-                with cast(TextIO, csv_path.open("r", encoding="utf-8")) as csvfile:
-                    reader = csv.DictReader(csvfile)
-                    rows: Dict[
-                        str,
-                        List[
-                            Tuple[str, int, Optional[int], Optional[int], Optional[Tuple[int, ...]]]
-                        ],
-                    ] = {"03": [], "04": [], "01": [], "02": []}
-                    for row in reader:
-                        code = row.get("Function_Code")
-                        if not code or code.startswith("#"):
-                            continue
-                        name_raw = row.get("Register_Name")
-                        if not isinstance(name_raw, str) or not name_raw.strip():
-                            continue
-                        name = _to_snake_case(name_raw)
-                        if name == "none" or re.fullmatch(r"none(_\d+)?$", name):
-                            continue
-                        try:
-                            addr = int(row.get("Address_DEC", 0))
-                        except (TypeError, ValueError):
-                            continue
-                        min_raw = row.get("Min")
-                        max_raw = row.get("Max")
-                        version_raw = row.get("Software_Version")
+            for reg in get_all_registers():
+                if not reg.name:
+                    continue
+                register_map[reg.function][reg.address] = reg.name
+                if reg.min is not None or reg.max is not None:
+                    register_ranges[reg.name] = (reg.min, reg.max)
+            return register_map, register_ranges, register_versions
+        except Exception:
+            _LOGGER.warning("Loading register definitions from deprecated CSV file")
+            csv_path = files(__package__) / "data" / "modbus_registers.csv"
 
-                        def _parse_range(label: str, raw: str | None) -> int | None:
-                            if raw in (None, ""):
-                                return None
-                            text = str(raw).split("#", 1)[0].strip()
-                            if not text or not re.fullmatch(
-                                r"[+-]?(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)",
-                                text,
+            def _parse_csv() -> Tuple[
+                Dict[str, Dict[int, str]],
+                Dict[str, Tuple[Optional[int], Optional[int]]],
+                Dict[str, Tuple[int, ...]],
+            ]:
+                register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+                register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+                register_versions: Dict[str, Tuple[int, ...]] = {}
+                try:
+                    with cast(TextIO, csv_path.open("r", encoding="utf-8")) as csvfile:
+                        reader = csv.DictReader(csvfile)
+                        rows: Dict[
+                            str,
+                            List[
+                                Tuple[str, int, Optional[int], Optional[int], Optional[Tuple[int, ...]]]
+                            ],
+                        ] = {"03": [], "04": [], "01": [], "02": []}
+                        for row in reader:
+                            code = row.get("Function_Code")
+                            if not code or code.startswith("#"):
+                                continue
+                            name_raw = row.get("Register_Name")
+                            if not isinstance(name_raw, str) or not name_raw.strip():
+                                continue
+                            name = _to_snake_case(name_raw)
+                            if name == "none" or re.fullmatch(r"none(_\d+)?$", name):
+                                continue
+                            try:
+                                addr = int(row.get("Address_DEC", 0))
+                            except (TypeError, ValueError):
+                                continue
+                            min_raw = row.get("Min")
+                            max_raw = row.get("Max")
+                            version_raw = row.get("Software_Version")
+
+                            def _parse_range(label: str, raw: str | None) -> int | None:
+                                if raw in (None, ""):
+                                    return None
+                                text = str(raw).split("#", 1)[0].strip()
+                                if not text or not re.fullmatch(
+                                    r"[+-]?(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)",
+                                    text,
+                                ):
+                                    _LOGGER.warning(
+                                        "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                    )
+                                    return None
+                                try:
+                                    return (
+                                        int(text, 0)
+                                        if text.lower().startswith(("0x", "+0x", "-0x"))
+                                        else int(float(text))
+                                    )
+                                except ValueError:
+                                    _LOGGER.warning(
+                                        "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                    )
+                                    return None
+
+                            min_val = _parse_range("Min", min_raw)
+                            max_val = _parse_range("Max", max_raw)
+                            if (min_raw not in (None, "") or max_raw not in (None, "")) and (
+                                min_val is None or max_val is None
                             ):
                                 _LOGGER.warning(
-                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                    "Incomplete range for %s: Min=%s Max=%s", name, min_raw, max_raw
                                 )
-                                return None
-                            try:
-                                return (
-                                    int(text, 0)
-                                    if text.lower().startswith(("0x", "+0x", "-0x"))
-                                    else int(float(text))
-                                )
-                            except ValueError:
-                                _LOGGER.warning(
-                                    "Ignoring non-numeric %s for %s: %s", label, name, raw
-                                )
-                                return None
 
-                        min_val = _parse_range("Min", min_raw)
-                        max_val = _parse_range("Max", max_raw)
-                        if (min_raw not in (None, "") or max_raw not in (None, "")) and (
-                            min_val is None or max_val is None
-                        ):
-                            _LOGGER.warning(
-                                "Incomplete range for %s: Min=%s Max=%s", name, min_raw, max_raw
+                            if name.startswith(BCD_TIME_PREFIXES):
+                                min_val = (
+                                    ((min_val // 10) << 12 | (min_val % 10) << 8)
+                                    if min_val is not None
+                                    else 0
+                                )
+                                max_val = (
+                                    ((max_val // 10) << 12 | (max_val % 10) << 8 | 0x59)
+                                    if max_val is not None
+                                    else 0x2359
+                                )
+                            elif name.startswith(("setting_summer_", "setting_winter_")):
+                                min_val = (min_val << 8) if min_val is not None else 0
+                                max_val = (
+                                    (max_val << 8) | 0xFF if max_val is not None else 0xFFFF
+                                )
+
+                            version_tuple: Optional[Tuple[int, ...]] = None
+                            if version_raw:
+                                try:
+                                    version_tuple = tuple(
+                                        int(part) for part in str(version_raw).split(".")
+                                    )
+                                except ValueError:
+                                    version_tuple = None
+
+                            rows[code].append((name, addr, min_val, max_val, version_tuple))
+
+                        for code, items in rows.items():
+                            items.sort(key=lambda item: item[1])
+                            counts: Dict[str, int] = {}
+                            for name, *_ in items:
+                                counts[name] = counts.get(name, 0) + 1
+
+                            seen: Dict[str, int] = {}
+                            for name, addr, min_val, max_val, ver in items:
+                                if addr in register_map[code]:
+                                    _LOGGER.warning(
+                                        "Duplicate register address %s for function code %s: %s",
+                                        addr,
+                                        code,
+                                        name,
+                                    )
+                                    continue
+                                if counts[name] > 1:
+                                    idx = seen.get(name, 0) + 1
+                                    seen[name] = idx
+                                    name = f"{name}_{idx}"
+                                register_map[code][addr] = name
+                                if min_val is not None or max_val is not None:
+                                    register_ranges[name] = (min_val, max_val)
+                                if ver is not None:
+                                    register_versions[name] = ver
+
+                        required_maps = {
+                            "04": INPUT_REGISTERS,
+                            "03": HOLDING_REGISTERS,
+                            "01": COIL_REGISTERS,
+                            "02": DISCRETE_INPUT_REGISTERS,
+                        }
+                        missing: Dict[str, Set[str]] = {}
+                        for code, reg_map in required_maps.items():
+                            defined = set(register_map.get(code, {}).values())
+                            missing_regs = set(reg_map) - defined
+                            if missing_regs:
+                                missing[code] = missing_regs
+                        if missing:
+                            messages = [
+                                f"{code}: {sorted(list(names))}" for code, names in missing.items()
+                            ]
+                            raise ValueError(
+                                "Required registers missing from CSV: " + ", ".join(messages)
                             )
+                except FileNotFoundError:
+                    _LOGGER.error("Register definition file not found: %s", csv_path)
+                return register_map, register_ranges, register_versions
 
-                        if name.startswith(BCD_TIME_PREFIXES):
-                            min_val = (
-                                ((min_val // 10) << 12 | (min_val % 10) << 8)
-                                if min_val is not None
-                                else 0
-                            )
-                            max_val = (
-                                ((max_val // 10) << 12 | (max_val % 10) << 8 | 0x59)
-                                if max_val is not None
-                                else 0x2359
-                            )
-                        elif name.startswith(("setting_summer_", "setting_winter_")):
-                            min_val = (min_val << 8) if min_val is not None else 0
-                            max_val = (
-                                (max_val << 8) | 0xFF if max_val is not None else 0xFFFF
-                            )
-
-                        version_tuple: Optional[Tuple[int, ...]] = None
-                        if version_raw:
-                            try:
-                                version_tuple = tuple(
-                                    int(part) for part in str(version_raw).split(".")
-                                )
-                            except ValueError:
-                                version_tuple = None
-
-                        rows[code].append((name, addr, min_val, max_val, version_tuple))
-
-                    for code, items in rows.items():
-                        items.sort(key=lambda item: item[1])
-                        counts: Dict[str, int] = {}
-                        for name, *_ in items:
-                            counts[name] = counts.get(name, 0) + 1
-
-                        seen: Dict[str, int] = {}
-                        for name, addr, min_val, max_val, ver in items:
-                            if addr in register_map[code]:
-                                _LOGGER.warning(
-                                    "Duplicate register address %s for function code %s: %s",
-                                    addr,
-                                    code,
-                                    name,
-                                )
-                                continue
-                            if counts[name] > 1:
-                                idx = seen.get(name, 0) + 1
-                                seen[name] = idx
-                                name = f"{name}_{idx}"
-                            register_map[code][addr] = name
-                            if min_val is not None or max_val is not None:
-                                register_ranges[name] = (min_val, max_val)
-                            if ver is not None:
-                                register_versions[name] = ver
-
-                    required_maps = {
-                        "04": INPUT_REGISTERS,
-                        "03": HOLDING_REGISTERS,
-                        "01": COIL_REGISTERS,
-                        "02": DISCRETE_INPUT_REGISTERS,
-                    }
-                    missing: Dict[str, Set[str]] = {}
-                    for code, reg_map in required_maps.items():
-                        defined = set(register_map.get(code, {}).values())
-                        missing_regs = set(reg_map) - defined
-                        if missing_regs:
-                            missing[code] = missing_regs
-                    if missing:
-                        messages = [
-                            f"{code}: {sorted(list(names))}" for code, names in missing.items()
-                        ]
-                        raise ValueError(
-                            "Required registers missing from CSV: " + ", ".join(messages)
-                        )
-            except FileNotFoundError:
-                _LOGGER.error("Register definition file not found: %s", csv_path)
-            return register_map, register_ranges, register_versions
-
-        return await asyncio.to_thread(_parse_csv)
+            return await asyncio.to_thread(_parse_csv)
 
     def _sleep_time(self, attempt: int) -> float:
         """Return delay for a retry attempt based on backoff."""

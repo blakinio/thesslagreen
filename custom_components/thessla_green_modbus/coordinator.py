@@ -68,12 +68,14 @@ from .const import (
     MANUFACTURER,
     SENSOR_UNAVAILABLE,
     UNKNOWN_MODEL,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+    MULTI_REGISTER_SIZES,
 )
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_client import ThesslaGreenModbusClient
 from .modbus_helpers import _call_modbus
 from .multipliers import REGISTER_MULTIPLIERS
-from .registers import HOLDING_REGISTERS, INPUT_REGISTERS, MULTI_REGISTER_SIZES
 from .utils import TIME_REGISTER_PREFIXES, _decode_bcd_time
 
 _LOGGER = logging.getLogger(__name__)

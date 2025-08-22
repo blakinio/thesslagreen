@@ -23,7 +23,7 @@ from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import HOLDING_REGISTERS
+from .const import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 

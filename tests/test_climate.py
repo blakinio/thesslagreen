@@ -109,7 +109,7 @@ from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
 from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS  # noqa: E402
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS  # noqa: E402
+from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS  # noqa: E402
 
 
 class DummyClient:

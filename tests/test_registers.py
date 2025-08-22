@@ -1,5 +1,4 @@
 import csv
-import importlib.util
 import pathlib
 
 from custom_components.thessla_green_modbus.utils import (
@@ -61,22 +60,14 @@ def load_csv_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int]
     )
 
 
-def load_module_registers() -> (
-    tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]
-):
-    module_path = pathlib.Path(
-        "custom_components/thessla_green_modbus/registers/__init__.py"
-    )
-    spec = importlib.util.spec_from_file_location("registers", module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError("Cannot load registers module")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+def load_module_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
+    from custom_components.thessla_green_modbus import const
+
     return (
-        module.COIL_REGISTERS,
-        module.DISCRETE_INPUT_REGISTERS,
-        module.INPUT_REGISTERS,
-        module.HOLDING_REGISTERS,
+        const.COIL_REGISTERS,
+        const.DISCRETE_INPUT_REGISTERS,
+        const.INPUT_REGISTERS,
+        const.HOLDING_REGISTERS,
     )
 
 

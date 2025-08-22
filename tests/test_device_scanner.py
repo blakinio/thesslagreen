@@ -23,7 +23,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.const import (
     HOLDING_REGISTERS,
     INPUT_REGISTERS,
 )

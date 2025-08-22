@@ -48,11 +48,7 @@ except Exception:  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
 from .const import SPECIAL_FUNCTION_MAP
-from .registers import (
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-    HOLDING_REGISTERS,
-)
+from .const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, HOLDING_REGISTERS
 from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)

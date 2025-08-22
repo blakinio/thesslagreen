@@ -20,6 +20,13 @@ class Register:
     enum: Dict[str, str] | None = None
     multiplier: float | None = None
     resolution: float | None = None
+    description: str | None = None
+    access: str | None = None
+    min: float | None = None
+    max: float | None = None
+    default: float | None = None
+    unit: str | None = None
+    information: str | None = None
 
 
 @dataclass(slots=True)
@@ -41,6 +48,11 @@ class _RegisterModel(BaseModel):
     length: int | None = None
     multiplier: float | None = None
     resolution: float | None = None
+    min: float | None = None
+    max: float | None = None
+    default: float | None = None
+    unit: str | None = None
+    information: str | None = None
 
     class Config:
         extra = "ignore"
@@ -85,6 +97,13 @@ def _load_registers() -> list[Register]:
             enum=r.enum,
             multiplier=r.multiplier,
             resolution=r.resolution,
+            description=r.description,
+            access=r.access,
+            min=r.min,
+            max=r.max,
+            default=r.default,
+            unit=r.unit,
+            information=r.information,
         )
         for r in model.registers
     ]

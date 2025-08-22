@@ -20,7 +20,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
 )
 from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -341,7 +341,7 @@ def test_device_info_dict_fallback(monkeypatch):
 
 def test_reverse_lookup_maps(coordinator):
     """Ensure reverse register maps resolve addresses to names."""
-    from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS, INPUT_REGISTERS
+    from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS, INPUT_REGISTERS
 
     addr = INPUT_REGISTERS["outside_temperature"]
     assert coordinator._input_registers_rev[addr] == "outside_temperature"
@@ -354,7 +354,7 @@ def test_reverse_lookup_performance(coordinator):
     """Dictionary lookups should outperform linear search."""
     import time
 
-    from custom_components.thessla_green_modbus.registers import INPUT_REGISTERS
+    from custom_components.thessla_green_modbus.const import INPUT_REGISTERS
 
     addresses = list(INPUT_REGISTERS.values())
 

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 import custom_components.thessla_green_modbus.services as services
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
 
 
 class DummyCoordinator:

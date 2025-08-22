@@ -10,7 +10,7 @@ import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs

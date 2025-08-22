@@ -55,8 +55,10 @@ from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
     ThesslaGreenBinarySensor,
     async_setup_entry,
 )
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.registers import HOLDING_REGISTERS  # noqa: E402
+from custom_components.thessla_green_modbus.const import (  # noqa: E402
+    DOMAIN,
+    HOLDING_REGISTERS,
+)
 
 
 def test_binary_sensor_creation_and_state(mock_coordinator: MagicMock) -> None:

@@ -138,7 +138,7 @@ async def validate_register_coverage():
 
     try:
         from custom_components.thessla_green_modbus.const import COIL_REGISTERS
-        from custom_components.thessla_green_modbus.registers import (
+        from custom_components.thessla_green_modbus.const import (
             HOLDING_REGISTERS,
             INPUT_REGISTERS,
         )
