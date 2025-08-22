@@ -15,7 +15,11 @@ class Register:
 
     function: str
     address: int
+    name: str | None = None
     length: int = 1
+    enum: Dict[str, str] | None = None
+    multiplier: float | None = None
+    resolution: float | None = None
 
 
 @dataclass(slots=True)
@@ -35,6 +39,8 @@ class _RegisterModel(BaseModel):
     access: str | None = None
     enum: Dict[str, str] | None = None
     length: int | None = None
+    multiplier: float | None = None
+    resolution: float | None = None
 
     class Config:
         extra = "ignore"
@@ -71,7 +77,15 @@ def _load_registers() -> list[Register]:
         model = _RegisterFileModel.parse_raw(text)
 
     _REGISTERS = [
-        Register(function=r.function, address=r.address_dec, length=r.length or 1)
+        Register(
+            function=r.function,
+            address=r.address_dec,
+            name=r.name,
+            length=r.length or 1,
+            enum=r.enum,
+            multiplier=r.multiplier,
+            resolution=r.resolution,
+        )
         for r in model.registers
     ]
     return _REGISTERS
