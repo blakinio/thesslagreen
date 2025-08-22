@@ -19,7 +19,7 @@
     "voluptuous>=0.13.1"
   ],
   "version": "2.1.1",
-  "integration_type": "device",
+  "integration_type": "hub",
   "dhcp": [
     {
       "hostname": "airpack*",
