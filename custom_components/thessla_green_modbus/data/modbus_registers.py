@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import logging
 from pathlib import Path
 from typing import Any, Dict
@@ -27,85 +26,47 @@ _CSV_WARNING_LOGGED = False
 _LOGGER = logging.getLogger(__name__)
 
 
-def _parse_number(value: Any) -> float | None:
-    """Convert a value to a float if possible."""
-    if value is None:
-        return None
-    value = str(value).strip()
-    if not value:
-        return None
-    try:
-        # Try integer first to avoid floating point artifacts
-        return int(value)
-    except ValueError:
-        try:
-            return float(value)
-        except ValueError:
-            return None
-
-
-def _warn_csv_usage() -> None:
-    """Log a warning if the deprecated CSV is used."""
+def _warn_csv_usage(path: Path | None = None) -> None:
+    """Log that CSV register files are no longer supported."""
     global _CSV_WARNING_LOGGED
-    if not _CSV_WARNING_LOGGED:
-        _LOGGER.warning("Loading register metadata from deprecated CSV file")
-        _CSV_WARNING_LOGGED = True
+    if _CSV_WARNING_LOGGED:
+        return
+    if path:
+        _LOGGER.warning(
+            "Ignoring external register definition file %s; register metadata is now fully provided by JSON",
+            path,
+        )
+    else:
+        _LOGGER.info(
+            "Register metadata fully migrated to JSON; CSV files are no longer supported",
+        )
+    _CSV_WARNING_LOGGED = True
 
 
 def _load_registers() -> Dict[str, Dict[str, Any]]:
-    """Load register metadata from the bundled JSON or CSV file."""
+    """Load register metadata from bundled JSON data."""
     global _REGISTER_CACHE
     if _REGISTER_CACHE is not None:
         return _REGISTER_CACHE
-    try:
-        registers: Dict[str, Dict[str, Any]] = {}
-        for reg in get_all_registers():
-            if not reg.name:
-                continue
-            scale = reg.multiplier or 1
-            step = reg.resolution or scale
-            registers[reg.name] = {
-                "function_code": reg.function,
-                "address_dec": reg.address,
-                "access": reg.access,
-                "description": reg.description,
-                "min": reg.min,
-                "max": reg.max,
-                "default": reg.default,
-                "scale": scale,
-                "step": step,
-                "unit": reg.unit,
-                "information": reg.information,
-            }
-        _REGISTER_CACHE = registers
-        return registers
-    except Exception:
-        pass
-
-    _warn_csv_usage()
-    csv_path = Path(__file__).with_name("modbus_registers.csv")
     registers: Dict[str, Dict[str, Any]] = {}
-    with csv_path.open(encoding="utf-8", newline="") as csvfile:
-        reader = csv.DictReader(
-            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
-        )
-        for row in reader:
-            name = _to_snake_case(row["Register_Name"])
-            scale = _parse_number(row.get("Multiplier")) or 1
-            registers[name] = {
-                "function_code": row.get("Function_Code"),
-                "address_hex": row.get("Address_HEX"),
-                "address_dec": _parse_number(row.get("Address_DEC")),
-                "access": row.get("Access"),
-                "description": row.get("Description"),
-                "min": _parse_number(row.get("Min")),
-                "max": _parse_number(row.get("Max")),
-                "default": _parse_number(row.get("Default_Value")),
-                "scale": scale,
-                "step": scale,
-                "unit": row.get("Unit"),
-                "information": row.get("Information"),
-            }
+    for reg in get_all_registers():
+        if not reg.name:
+            continue
+        scale = reg.multiplier or 1
+        step = reg.resolution or scale
+        registers[reg.name] = {
+            "function_code": reg.function,
+            "address_dec": reg.address,
+            "access": reg.access,
+            "description": reg.description,
+            "min": reg.min,
+            "max": reg.max,
+            "default": reg.default,
+            "scale": scale,
+            "step": step,
+            "unit": reg.unit,
+            "information": reg.information,
+        }
     _REGISTER_CACHE = registers
     return registers
 
@@ -125,59 +86,26 @@ def get_register_infos(register_name: str) -> list[Dict[str, Any]]:
     """Return metadata for all registers matching a name."""
 
     results: list[Dict[str, Any]] = []
-    try:
-        for reg in get_all_registers():
-            if reg.name != register_name:
-                continue
-            scale = reg.multiplier or 1
-            step = reg.resolution or scale
-            results.append(
-                {
-                    "function_code": reg.function,
-                    "address_dec": reg.address,
-                    "access": reg.access,
-                    "description": reg.description,
-                    "min": reg.min,
-                    "max": reg.max,
-                    "default": reg.default,
-                    "scale": scale,
-                    "step": step,
-                    "unit": reg.unit,
-                    "information": reg.information,
-                }
-            )
-        if results:
-            return results
-    except Exception:
-        pass
-
-    _warn_csv_usage()
-    csv_path = Path(__file__).with_name("modbus_registers.csv")
-    with csv_path.open(encoding="utf-8", newline="") as csvfile:
-        reader = csv.DictReader(
-            row for row in csvfile if row.strip() and not row.lstrip().startswith("#")
+    for reg in get_all_registers():
+        if reg.name != register_name:
+            continue
+        scale = reg.multiplier or 1
+        step = reg.resolution or scale
+        results.append(
+            {
+                "function_code": reg.function,
+                "address_dec": reg.address,
+                "access": reg.access,
+                "description": reg.description,
+                "min": reg.min,
+                "max": reg.max,
+                "default": reg.default,
+                "scale": scale,
+                "step": step,
+                "unit": reg.unit,
+                "information": reg.information,
+            }
         )
-        for row in reader:
-            name = _to_snake_case(row["Register_Name"])
-            if name != register_name:
-                continue
-            scale = _parse_number(row.get("Multiplier")) or 1
-            results.append(
-                {
-                    "function_code": row.get("Function_Code"),
-                    "address_hex": row.get("Address_HEX"),
-                    "address_dec": _parse_number(row.get("Address_DEC")),
-                    "access": row.get("Access"),
-                    "description": row.get("Description"),
-                    "min": _parse_number(row.get("Min")),
-                    "max": _parse_number(row.get("Max")),
-                    "default": _parse_number(row.get("Default_Value")),
-                    "scale": scale,
-                    "step": scale,
-                    "unit": row.get("Unit"),
-                    "information": row.get("Information"),
-                }
-            )
     return results
 
 
