@@ -163,6 +163,7 @@ def _normalise_function(fn: str) -> str:
 # ---------------------------------------------------------------------------
 
 @lru_cache(maxsize=1)  # cache to avoid repeated disk reads
+
 def _load_registers() -> List[Register]:
     """Load register definitions from the JSON file."""
 
