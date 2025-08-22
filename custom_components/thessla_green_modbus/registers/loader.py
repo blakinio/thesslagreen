@@ -15,6 +15,7 @@ reads.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -270,22 +271,14 @@ def _load_registers_from_file() -> List[Register]:
 
         try:
             _validate_item(item)
-            function = _normalise_function(str(item["function"]))
+            function = _normalise_function(str(item.get("function", "")))
             if item.get("address_dec") is not None:
                 address = int(item["address_dec"])
             else:
-                address = int(str(item["address_hex"]), 16)
+                address = int(str(item.get("address_hex")), 16)
+            if function == "02":
+                address -= 1
 
-
-        function = _normalise_function(str(item.get("function", "")))
-        if item.get("address_dec") is not None:
-            address = int(item["address_dec"])
-        else:
-            address = int(str(item.get("address_hex")), 16)
-        if function == "02":
-            address -= 1
-
-        try:
             name = _normalise_name(str(item["name"]))
 
             enum_map = item.get("enum")
@@ -331,20 +324,33 @@ def _load_registers_from_file() -> List[Register]:
     return registers
 
 
-# Cache for loaded register definitions
+# Cache for loaded register definitions and the file hash used to build it
 _REGISTER_CACHE: List[Register] = []
+_REGISTERS_HASH: str | None = None
+
+
+def _compute_file_hash() -> str:
+    """Return the SHA256 hash of the registers file."""
+
+    return hashlib.sha256(_REGISTERS_PATH.read_bytes()).hexdigest()
 
 
 def _load_registers() -> List[Register]:
-    """Return cached register definitions, loading them if necessary."""
+    """Return cached register definitions, reloading if the file changed."""
 
-    if not _REGISTER_CACHE:
+    global _REGISTERS_HASH
+    current_hash = _compute_file_hash()
+    if not _REGISTER_CACHE or _REGISTERS_HASH != current_hash:
+        _REGISTER_CACHE.clear()
         _REGISTER_CACHE.extend(_load_registers_from_file())
+        _REGISTERS_HASH = current_hash
     return _REGISTER_CACHE
 
 
 def _cache_clear() -> None:
+    global _REGISTERS_HASH
     _REGISTER_CACHE.clear()
+    _REGISTERS_HASH = None
 
 
 _load_registers.cache_clear = _cache_clear  # type: ignore[attr-defined]
@@ -368,6 +374,12 @@ def get_registers_by_function(fn: str) -> List[Register]:
     """Return registers for the given function code or name."""
     code = _normalise_function(fn)
     return [r for r in _load_registers() if r.function == code]
+
+
+def get_registers_hash() -> str:
+    """Return the hash of the currently loaded register file."""
+
+    return _REGISTERS_HASH or ""
 
 
 @dataclass(slots=True)
@@ -411,5 +423,6 @@ __all__ = [
     "ReadPlan",
     "get_all_registers",
     "get_registers_by_function",
+    "get_registers_hash",
     "group_reads",
 ]
