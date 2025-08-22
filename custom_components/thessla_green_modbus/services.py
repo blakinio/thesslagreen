@@ -9,7 +9,26 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
-from homeassistant.util import dt as dt_util
+
+try:  # pragma: no cover - handle missing Home Assistant util during tests
+    from homeassistant.util import dt as dt_util
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
+    class _DTUtil:
+        """Fallback minimal dt util."""
+
+        @staticmethod
+        def now():
+            from datetime import datetime
+
+            return datetime.now()
+
+        @staticmethod
+        def utcnow():
+            from datetime import datetime, timezone
+
+            return datetime.now(timezone.utc)
+
+    dt_util = _DTUtil()  # type: ignore
 
 from .const import DOMAIN, REGISTER_MULTIPLIERS, SPECIAL_FUNCTION_MAP
 

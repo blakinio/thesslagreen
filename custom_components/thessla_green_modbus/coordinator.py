@@ -3,11 +3,31 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from homeassistant.util import dt as dt_util
+try:  # pragma: no cover - handle missing Home Assistant util during tests
+    from homeassistant.util import dt as dt_util
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
+    class _DTUtil:
+        """Fallback minimal dt util."""
+
+        @staticmethod
+        def now():
+            from datetime import datetime
+
+            return datetime.now()
+
+        @staticmethod
+        def utcnow():
+            from datetime import datetime, timezone
+
+            return datetime.now(timezone.utc)
+
+    dt_util = _DTUtil()  # type: ignore
 
 try:  # pragma: no cover - handle missing pymodbus during tests
     from pymodbus.exceptions import ConnectionException, ModbusException
@@ -271,10 +291,29 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator):
         async with self._connection_lock:
             try:
                 await self._ensure_connection()
-                # Try to read a basic register to verify communication
-                response = await self.client.read_input_registers(0x0000, 1, unit=self.slave_id)
-                if response.isError():
-                    raise ConnectionException("Cannot read basic register")
+
+                register_path = (
+                    Path(__file__).with_name("registers")
+                    / "thessla_green_registers_full.json"
+                )
+                with register_path.open("r", encoding="utf-8") as file:
+                    register_data = json.load(file)
+
+                test_addresses = [
+                    reg["address_dec"]
+                    for reg in register_data
+                    if reg.get("function") == "input"
+                ][:3]
+
+                for addr in test_addresses:
+                    response = await self.client.read_input_registers(
+                        addr, 1, unit=self.slave_id
+                    )
+                    if response.isError():
+                        raise ConnectionException(
+                            f"Cannot read register {addr:#06x}"
+                        )
+
                 _LOGGER.debug("Connection test successful")
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.exception("Connection test failed: %s", exc)
