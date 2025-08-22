@@ -628,6 +628,33 @@ async def test_setup_and_refresh_no_cancelled_error(coordinator):
     assert data == {}
 
 
+@pytest.mark.asyncio
+async def test_async_setup_invalid_capabilities(coordinator):
+    """Invalid capabilities format should raise CannotConnect."""
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect
+
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": [],  # invalid type
+    }
+
+    scanner_instance = types.SimpleNamespace(
+        scan_device=AsyncMock(return_value=scan_result),
+        close=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await coordinator.async_setup()
+
+    assert str(err.value) == "invalid_capabilities"
+    scanner_instance.close.assert_awaited_once()
+
+
 def cleanup_modules():
     """Clean up injected modules."""
     for name in modules:
