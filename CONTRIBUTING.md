@@ -87,9 +87,6 @@ pre-commit install
 ### 3. Verify Setup
 
 ```bash
-# Run optimization tests
-python run_optimization_tests.py
-
 # Run unit tests
 python -m pytest tests/ -v
 
@@ -99,6 +96,19 @@ python tools/py_compile_all.py
 # Check code quality
 pre-commit run --all-files
 ```
+
+### Updating register maps
+
+Register address maps are generated from
+`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
+After editing this file, regenerate the Python module:
+
+```bash
+python tools/generate_registers.py
+```
+
+The test suite (`tests/test_register_mapping.py`) verifies that the generated
+maps stay in sync with the JSON definition.
 
 ## Making Changes
 
@@ -291,7 +301,6 @@ vulture custom_components/thessla_green_modbus --min-confidence=80
    python tools/py_compile_all.py
    pre-commit run --all-files
    python -m pytest tests/
-   python run_optimization_tests.py
    ```
 
 3. **Commit your changes:**
