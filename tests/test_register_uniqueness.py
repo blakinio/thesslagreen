@@ -7,7 +7,13 @@ from pathlib import Path
 import json
 
 
-REGISTERS_PATH = Path(__file__).resolve().parent.parent / "registers" / "thessla_green_registers_full.json"
+REGISTERS_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
 
 
 def test_register_uniqueness() -> None:

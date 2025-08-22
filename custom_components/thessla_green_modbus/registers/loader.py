@@ -29,6 +29,9 @@ from ..schedule_helpers import bcd_to_time, time_to_bcd
 
 _LOGGER = logging.getLogger(__name__)
 
+# Path to the canonical JSON register definition bundled with the integration.
+_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
+
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -319,17 +322,6 @@ def _load_registers_from_file() -> List[Register]:
 # Cache for loaded register definitions and the file hash used to build it
 _REGISTER_CACHE: List[Register] = []
 _REGISTERS_HASH: str | None = None
-
-
-def _compute_file_hash() -> str:
-    """Return the SHA256 hash of the registers file."""
-    path = resources.files(__package__) / "thessla_green_registers_full.json"
-    try:
-        data = path.read_bytes()
-    except FileNotFoundError:  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", path)
-        return ""
-    return hashlib.sha256(data).hexdigest()
 def _compute_file_hash(path: Path | None = None) -> str:
     """Return the SHA256 hash of the given registers file.
 

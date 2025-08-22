@@ -6,7 +6,13 @@ import json
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-JSON_PATH = ROOT / "registers" / "thessla_green_registers_full.json"
+JSON_PATH = (
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
 MULTI_REGISTER_SIZES: dict[str, int] = {

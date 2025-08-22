@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 from importlib import resources
+from pathlib import Path
 
+import custom_components.thessla_green_modbus.registers.loader as mr
 from custom_components.thessla_green_modbus.registers import get_all_registers
 from custom_components.thessla_green_modbus.registers.loader import _load_registers
 
@@ -27,10 +29,14 @@ def test_register_cache_invalidation(monkeypatch) -> None:
             # Prime caches
             first_reg = get_all_registers()[0]
             register_name = first_reg.name
-            assert (
-                get_register_info(register_name)["description"]
-                == first_reg.description
-            )
+
+            def _desc(name: str) -> str | None:
+                for reg in get_all_registers():
+                    if reg.name == name:
+                        return reg.description
+                return None
+
+            assert _desc(register_name) == first_reg.description
 
             # Modify the JSON file
             data = json.loads(original_content)
@@ -41,17 +47,14 @@ def test_register_cache_invalidation(monkeypatch) -> None:
             updated_reg = get_all_registers()[0]
             assert updated_reg.name == register_name
             assert updated_reg.description == "changed description"
-            assert (
-                get_register_info(register_name)["description"]
-                == "changed description"
-            )
+            assert _desc(register_name) == "changed description"
         finally:
             # Restore original file and clear caches for other tests
             registers_path.write_text(original_content)
             _load_registers.cache_clear()
             mr._REGISTER_CACHE = None
             mr._REGISTER_HASH = None
-    )
+
 
     original_content = registers_path.read_text()
 
