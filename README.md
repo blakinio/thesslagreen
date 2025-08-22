@@ -8,6 +8,7 @@
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
 
 Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokołem Modbus TCP/RTU. Obsługuje **wszystkie 200+ rejestrów** z dokumentacji MODBUS_USER_AirPack_Home_08.2021.01 bez wyjątku.
+Integracja działa jako **hub** w Home Assistant.
 
 ### 🚀 Kluczowe funkcje v2.1+
 
