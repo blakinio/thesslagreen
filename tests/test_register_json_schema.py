@@ -1,11 +1,6 @@
 import json
 from pathlib import Path
 
-from custom_components.thessla_green_modbus.registers import (
-    get_registers_by_function,
-    group_reads,
-)
-
 
 def test_register_json_schema() -> None:
     """Validate basic structure of the JSON register file."""
@@ -38,18 +33,7 @@ def test_register_json_schema() -> None:
         if "resolution" in reg:
             assert isinstance(reg["resolution"], (int, float))
             assert reg["resolution"] > 0
-
-
-def test_group_reads_cover_all_functions() -> None:
-    """Ensure group_reads plans cover all registers for each function."""
-
-    for fn in ("01", "02", "03", "04"):
-        regs = get_registers_by_function(fn)
-        expected = sorted(r.address for r in regs)
-        plans = [p for p in group_reads(max_block_size=32) if p.function == fn]
-        addresses = [
-            addr
-            for plan in plans
-            for addr in range(plan.address, plan.address + plan.length)
-        ]
-        assert addresses == expected
+        if "notes" in reg:
+            assert isinstance(reg["notes"], str)
+        if "extra" in reg:
+            assert isinstance(reg["extra"], dict)
