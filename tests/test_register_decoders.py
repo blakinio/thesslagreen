@@ -2,8 +2,12 @@ import asyncio
 import pytest
 
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.scanner_helpers import _decode_setting_value
-from custom_components.thessla_green_modbus.utils import _decode_bcd_time, _decode_register_time
+from custom_components.thessla_green_modbus.utils import (
+    _decode_aatt,
+    _decode_bcd_time,
+    _decode_register_time,
+)
+from custom_components.thessla_green_modbus.registers.loader import Register
 
 
 def test_decode_register_time_valid():
@@ -40,17 +44,17 @@ def test_schedule_register_time_format():
     assert f"{minutes // 60:02d}:{minutes % 60:02d}" == "08:15"
 
 
-def test_decode_setting_value_valid():
+def test_decode_aatt_value_valid():
     """Verify combined airflow/temperature registers decode correctly."""
-    assert _decode_setting_value(0x3C28) == (60, 20.0)
-    assert _decode_setting_value(0x6432) == (100, 25.0)
-    assert _decode_setting_value(0x0000) == (0, 0.0)
+    assert _decode_aatt(0x3C28) == (60, 20.0)
+    assert _decode_aatt(0x6432) == (100, 25.0)
+    assert _decode_aatt(0x0000) == (0, 0.0)
 
 
 @pytest.mark.parametrize("value", [-1, 0xFF28, 0x3DFF])
-def test_decode_setting_value_invalid(value):
+def test_decode_aatt_value_invalid(value):
     """Values outside expected ranges should return None."""
-    assert _decode_setting_value(value) is None
+    assert _decode_aatt(value) is None
 
 
 def test_schedule_and_setting_defaults_valid():
@@ -60,3 +64,21 @@ def test_schedule_and_setting_defaults_valid():
     scanner._register_ranges = ranges
     assert scanner._is_valid_register_value("schedule_winter_sun_3", 0x1000)
     assert scanner._is_valid_register_value("setting_summer_mon_1", 0x4100)
+
+
+def test_register_decode_encode_bcd():
+    reg = Register(function="holding", address=0, name="schedule_test_start", access="rw", bcd=True)
+    assert reg.decode(0x0815) == "08:15"
+    assert reg.encode("08:15") == 0x0815
+
+
+def test_register_decode_encode_aatt():
+    reg = Register(
+        function="holding",
+        address=0,
+        name="setting_test",
+        access="rw",
+        extra={"aatt": True},
+    )
+    assert reg.decode(0x3C28) == (60, 20.0)
+    assert reg.encode((60, 20)) == 0x3C28
