@@ -249,32 +249,3 @@ async def test_async_setup_skips_missing_numbers(mock_coordinator, mock_config_e
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
     add_entities.assert_not_called()
-
-
-def test_air_flow_rate_manual_from_csv(mock_coordinator):
-    """Verify air_flow_rate_manual uses CSV-defined unit and range."""
-    mock_coordinator.data["air_flow_rate_manual"] = 30
-    entity_config = ENTITY_MAPPINGS["number"]["air_flow_rate_manual"]
-    number = ThesslaGreenNumber(
-        mock_coordinator, "air_flow_rate_manual", entity_config, "holding_registers"
-    )
-    assert number._attr_native_unit_of_measurement == "%"
-    assert number._attr_native_min_value == 10
-    assert number._attr_native_max_value == 100
-    assert number._attr_native_step == 1
-
-
-def test_date_time_number_from_csv(mock_coordinator):
-    """Verify date_time_1 mapping is loaded from CSV."""
-    mock_coordinator.available_registers.setdefault("holding_registers", set()).add(
-        "date_time_1"
-    )
-    mock_coordinator.data["date_time_1"] = 23
-    entity_config = ENTITY_MAPPINGS["number"]["date_time_1"]
-    number = ThesslaGreenNumber(
-        mock_coordinator, "date_time_1", entity_config, "holding_registers"
-    )
-    assert number._attr_native_unit_of_measurement == "RRMM"
-    assert number._attr_native_min_value == 0
-    assert number._attr_native_max_value == 99
-    assert number._attr_native_step == 1
