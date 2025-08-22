@@ -9,7 +9,6 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
 from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 
 
 async def test_async_setup_entry_success():
@@ -168,28 +167,11 @@ async def test_default_values():
 
 async def test_register_constants():
     """Test that register constants are properly defined."""
-    loader = RegisterLoader()
-    coil = loader.coil_registers
-    discrete = loader.discrete_registers
-    input_regs = loader.input_registers
-    holding = loader.holding_registers
-
-    # Test that key registers are defined
-    assert "power_supply_fans" in coil
-    assert "outside_temperature" in input_regs
-    assert "mode" in holding
-    assert "expansion" in discrete
-
-    # Test address ranges
-    assert coil["power_supply_fans"] == 11
-    assert input_regs["outside_temperature"] == 16
-    assert holding["mode"] == 4097
-    assert discrete["expansion"] == 0
     from custom_components.thessla_green_modbus.const import (
         COIL_REGISTERS,
         DISCRETE_INPUT_REGISTERS,
-        INPUT_REGISTERS,
         HOLDING_REGISTERS,
+        INPUT_REGISTERS,
     )
 
     # Test that key registers are defined
@@ -197,6 +179,12 @@ async def test_register_constants():
     assert "outside_temperature" in INPUT_REGISTERS
     assert "mode" in HOLDING_REGISTERS
     assert "expansion" in DISCRETE_INPUT_REGISTERS
+
+    # Test address ranges
+    assert COIL_REGISTERS["power_supply_fans"] == 11
+    assert INPUT_REGISTERS["outside_temperature"] == 16
+    assert HOLDING_REGISTERS["mode"] == 4097
+    assert DISCRETE_INPUT_REGISTERS["expansion"] == 0
 
     # Test address ranges
     assert COIL_REGISTERS["power_supply_fans"] == 0x000B

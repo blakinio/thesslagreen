@@ -1,34 +1,67 @@
 from __future__ import annotations
 
-"""Utilities for loading and working with register definitions.
+"""Register definition helpers for ThesslaGreen devices.
 
-The registers for the ThesslaGreen device are defined in a JSON file. This
-module provides helpers to load these definitions and expose them as convenient
-Python objects. The JSON is read only once and results are cached in memory.
-
-Each :class:`Register` contains metadata describing how to decode/encode values,
-including optional enum mappings, multipliers, resolution and special handling
-for schedule times encoded in BCD format.
+This module loads register metadata from ``thessla_green_registers_full.json``
+using a Pydantic schema. Results are cached in memory and exposed via
+``get_all_registers`` and ``get_registers_by_function``. A small CSV
+compatibility layer is provided for legacy files and will emit a warning when
+used. The module also exposes ``group_reads`` which groups consecutive
+registers into :class:`ReadPlan` blocks.
 """
 
+import csv
 import json
 import logging
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
+
+from pydantic import BaseModel, Field
 
 _LOGGER = logging.getLogger(__name__)
 
-"""Register loader and grouping utilities."""
+# Path to JSON register definition file. Tests may monkeypatch this.
+_REGISTERS_FILE = Path(__file__).resolve().parents[3] / "thessla_green_registers_full.json"
 
-from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List
+# ---------------------------------------------------------------------------
+# Pydantic models describing the JSON structure
+# ---------------------------------------------------------------------------
 
-from pydantic import BaseModel
+
+class _RegisterModel(BaseModel):
+    function: str
+    address_dec: int
+    name: str
+    access: str | None = "ro"
+    description: str | None = None
+    enum: Dict[str, str] | None = None
+    multiplier: float | None = None
+    resolution: float | None = None
+    length: int | None = 1
+    min: float | None = Field(None, alias="min")
+    max: float | None = Field(None, alias="max")
+
+    class Config:
+        allow_population_by_field_name = True
+        extra = "ignore"
+
+
+class _RegisterFileModel(BaseModel):
+    schema_version: str
+    generated_at: str
+    registers: List[_RegisterModel]
+
+    class Config:
+        extra = "ignore"
+
+
+# ---------------------------------------------------------------------------
+# Dataclasses exposed to callers
+# ---------------------------------------------------------------------------
+
 
 @dataclass(slots=True)
 class Register:
@@ -42,55 +75,16 @@ class Register:
     enum: Dict[str, int] | None = None
     multiplier: float | None = None
     resolution: float | None = None
+    length: int = 1
     minimum: float | None = None
     maximum: float | None = None
     bcd: bool = False
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Register":
-        """Create a :class:`Register` instance from raw dictionary data.
-
-        Raises ``ValueError`` if required fields are missing or invalid.
-        """
-
-        try:
-            function = str(data["function"])  # input/holding/coil/discrete
-            address = int(data.get("address_dec") or int(data.get("address_hex"), 16))
-            name = str(data["name"])
-            access = str(data.get("access", ""))
-        except (KeyError, TypeError, ValueError) as exc:  # pragma: no cover - defensive
-            _LOGGER.error("Invalid register definition: %s", data)
-            raise ValueError(f"Invalid register definition: {data}") from exc
-
-        description: Optional[str] = data.get("description")
-        enum: Optional[Dict[str, int]] = data.get("enum")
-        multiplier: Optional[float] = data.get("multiplier")
-        resolution: Optional[float] = data.get("resolution")
-        minimum: Optional[float] = data.get("min")
-        maximum: Optional[float] = data.get("max")
-
-        name_lower = name.lower()
-        bcd = bool(name_lower.startswith("schedule_") and name_lower.endswith(("_start", "_end")))
-
-        return cls(
-            function=function,
-            address=address,
-            name=name,
-            access=access,
-            description=description,
-            enum=enum,
-            multiplier=multiplier,
-            resolution=resolution,
-            minimum=minimum,
-            maximum=maximum,
-            bcd=bcd,
-        )
 
     # ------------------------------------------------------------------
     # Value helpers
     # ------------------------------------------------------------------
     def decode(self, raw: int) -> Any:
-        """Decode a raw register value using register metadata."""
+        """Decode a raw register value."""
 
         if self.bcd:
             hours_bcd = (raw >> 8) & 0xFF
@@ -110,120 +104,39 @@ class Register:
             value = value * self.multiplier
 
         if self.resolution is not None and isinstance(value, (int, float)):
-            steps = round(value / self.resolution)
-            value = steps * self.resolution
+            value = round(value / self.resolution) * self.resolution
 
         return value
 
     def encode(self, value: Any) -> int:
-        """Encode a value to raw register format."""
+        """Encode a value to the raw register format."""
 
         if self.bcd:
             if isinstance(value, str):
                 hours_str, mins_str = value.split(":")
                 hours = int(hours_str)
                 mins = int(mins_str)
-            else:
-                hours, mins = divmod(int(value), 60)
+            else:  # tuple or sequence
+                hours, mins = value
             hours_bcd = ((hours // 10) << 4) | (hours % 10)
             mins_bcd = ((mins // 10) << 4) | (mins % 10)
             return (hours_bcd << 8) | mins_bcd
 
-        raw = value
-        if self.enum and isinstance(value, str) and value in self.enum:
+        raw: Any = value
+
+        if self.enum and isinstance(value, str):
+            if value not in self.enum:
+                raise ValueError(f"Invalid enum value {value} for {self.name}")
             raw = self.enum[value]
+
         if self.multiplier is not None:
-            raw = int(round(float(raw) / self.multiplier))
+            raw = float(raw) / self.multiplier
+
         if self.resolution is not None:
             step = self.resolution
-            raw = int(round(float(raw) / step) * step)
+            raw = round(float(raw) / step) * step
+
         return int(raw)
-
-
-# ----------------------------------------------------------------------
-# JSON loading utilities
-# ----------------------------------------------------------------------
-
-
-@lru_cache(maxsize=1)
-def _load_json() -> List[Dict[str, Any]]:
-    """Load register definitions from JSON file with global caching."""
-
-    json_path = Path(__file__).with_name("thessla_green_registers_full.json")
-    try:
-        with json_path.open("r", encoding="utf-8") as fp:
-            data = json.load(fp)
-    except Exception as exc:  # pragma: no cover - defensive
-        _LOGGER.exception("Failed to load register JSON: %s", exc)
-        raise
-
-    if not isinstance(data, list):  # pragma: no cover - defensive
-        _LOGGER.error("Register JSON must be a list")
-        raise ValueError("Register JSON must be a list")
-    return data
-
-
-@lru_cache(maxsize=1)
-def get_all_registers() -> List[Register]:
-    """Return all registers defined in the JSON file."""
-
-    registers: List[Register] = []
-    for item in _load_json():
-        try:
-            registers.append(Register.from_dict(item))
-        except ValueError as exc:
-            _LOGGER.error("Register validation error: %s", exc)
-            raise
-    return registers
-
-
-def get_registers_by_function(function: str) -> Dict[str, Register]:
-    """Return registers filtered by Modbus function type."""
-
-    function_lower = function.lower()
-    regs = {reg.name: reg for reg in get_all_registers() if reg.function.lower() == function_lower}
-    return regs
-
-
-def group_reads(
-    registers: Iterable[Register], max_gap: int = 10, max_batch: int = 16
-) -> List[Tuple[int, int]]:
-    """Group register addresses for batch reading."""
-
-    addresses = sorted(reg.address for reg in registers)
-    if not addresses:
-        return []
-
-    groups: List[Tuple[int, int]] = []
-    start = addresses[0]
-    end = start
-
-    for addr in addresses[1:]:
-        if (addr - end > max_gap) or (end - start + 1 >= max_batch):
-            groups.append((start, end - start + 1))
-            start = addr
-            end = addr
-        else:
-            end = addr
-
-    groups.append((start, end - start + 1))
-    return groups
-    """Represents a single register definition."""
-
-    function: str
-    address: int
-    name: str | None = None
-    length: int = 1
-    enum: Dict[str, str] | None = None
-    multiplier: float | None = None
-    resolution: float | None = None
-    description: str | None = None
-    access: str | None = None
-    min: float | None = None
-    max: float | None = None
-    default: float | None = None
-    unit: str | None = None
-    information: str | None = None
 
 
 @dataclass(slots=True)
@@ -235,110 +148,165 @@ class ReadPlan:
     length: int
 
 
-class _RegisterModel(BaseModel):
-    function: str
-    address_dec: int
-    name: str | None = None
-    description: str | None = None
-    access: str | None = None
-    enum: Dict[str, str] | None = None
-    length: int | None = None
-    multiplier: float | None = None
-    resolution: float | None = None
-    min: float | None = None
-    max: float | None = None
-    default: float | None = None
-    unit: str | None = None
-    information: str | None = None
-
-    class Config:
-        extra = "ignore"
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
 
-class _RegisterFileModel(BaseModel):
-    schema_version: str
-    generated_at: str
-    source_pdf: str
-    publisher: str
-    device_family: str
-    registers: List[_RegisterModel]
+def _load_from_csv(path: Path) -> List[Dict[str, Any]]:
+    """Load register definitions from a CSV file with deprecation warning."""
 
-    class Config:
-        extra = "ignore"
+    _LOGGER.warning(
+        "Register CSV files are deprecated and will be removed in a future release. "
+        "Please migrate to JSON."
+    )
+    rows: List[Dict[str, Any]] = []
+    with path.open(encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                row["address_dec"] = int(row["address_dec"])
+            except (KeyError, ValueError):
+                continue
+            for field in ("multiplier", "resolution"):
+                if row.get(field) not in (None, ""):
+                    try:
+                        row[field] = float(row[field])
+                    except ValueError:
+                        row[field] = None
+            if "enum" in row and row["enum"]:
+                try:
+                    row["enum"] = json.loads(row["enum"])
+                except json.JSONDecodeError:
+                    row["enum"] = None
+            rows.append(row)
+    return rows
 
 
-_REGISTERS: list[Register] = []
+@lru_cache(maxsize=1)
+def _load_register_definitions() -> List[Register]:
+    """Load and validate register definitions from JSON or CSV."""
 
+    path = _REGISTERS_FILE
+    if path.exists() and path.suffix.lower() == ".json":
+        text = path.read_text(encoding="utf-8")
+        try:
+            model = _RegisterFileModel.model_validate_json(text)
+        except AttributeError:  # pragma: no cover - pydantic v1 fallback
+            model = _RegisterFileModel.parse_raw(text)
+        regs: List[Register] = []
+        for item in model.registers:
+            name_lower = (item.name or "").lower()
+            bcd = bool(
+                name_lower.startswith("schedule_")
+                and name_lower.endswith(("_start", "_end"))
+            )
+            enum_map = {v: int(k) for k, v in (item.enum or {}).items()}
+            regs.append(
+                Register(
+                    function=item.function,
+                    address=item.address_dec,
+                    name=item.name,
+                    access=item.access or "ro",
+                    description=item.description,
+                    enum=enum_map or None,
+                    multiplier=item.multiplier,
+                    resolution=item.resolution,
+                    length=item.length or 1,
+                    minimum=item.min,
+                    maximum=item.max,
+                    bcd=bcd,
+                )
+            )
+        return regs
 
-def _load_registers() -> list[Register]:
-    """Load and validate register definitions from JSON file."""
-    global _REGISTERS
-    if _REGISTERS:
-        return _REGISTERS
+    # CSV fallback
+    if path.suffix.lower() == ".csv" and path.exists():
+        raw = _load_from_csv(path)
+    else:
+        csv_path = path.with_suffix(".csv")
+        if csv_path.exists():
+            raw = _load_from_csv(csv_path)
+        else:
+            raise FileNotFoundError(f"Register definition file not found: {path}")
 
-    json_path = Path(__file__).resolve().parents[3] / "thessla_green_registers_full.json"
-    model: _RegisterFileModel
-    text = json_path.read_text(encoding="utf-8")
-    try:
-        # Pydantic v2
-        model = _RegisterFileModel.model_validate_json(text)
-    except AttributeError:  # pragma: no cover - pydantic v1 fallback
-        model = _RegisterFileModel.parse_raw(text)
-
-    _REGISTERS = [
-        Register(
-            function=r.function,
-            address=r.address_dec,
-            name=r.name,
-            length=r.length or 1,
-            enum=r.enum,
-            multiplier=r.multiplier,
-            resolution=r.resolution,
-            description=r.description,
-            access=r.access,
-            min=r.min,
-            max=r.max,
-            default=r.default,
-            unit=r.unit,
-            information=r.information,
+    regs: List[Register] = []
+    for row in raw:
+        try:
+            item = _RegisterModel(**row)
+        except Exception:  # pragma: no cover - defensive
+            continue
+        name_lower = (item.name or "").lower()
+        bcd = bool(
+            name_lower.startswith("schedule_")
+            and name_lower.endswith(("_start", "_end"))
         )
-        for r in model.registers
-    ]
-    return _REGISTERS
+        enum_map = {v: int(k) for k, v in (item.enum or {}).items()}
+        regs.append(
+            Register(
+                function=item.function,
+                address=item.address_dec,
+                name=item.name,
+                access=item.access or "ro",
+                description=item.description,
+                enum=enum_map or None,
+                multiplier=item.multiplier,
+                resolution=item.resolution,
+                length=item.length or 1,
+                minimum=item.min,
+                maximum=item.max,
+                bcd=bcd,
+            )
+        )
+    return regs
 
 
-# Load registers at module import
-_load_registers()
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 
-def get_all_registers() -> list[Register]:
-    """Return all registers."""
+def get_all_registers() -> List[Register]:
+    """Return all known registers."""
 
-    return list(_REGISTERS)
-
-
-def get_registers_by_function(fn: str) -> list[Register]:
-    """Return registers matching a specific function code."""
-
-    return [r for r in _REGISTERS if r.function == fn]
+    return list(_load_register_definitions())
 
 
-def group_reads(max_block_size: int = 64) -> list[ReadPlan]:
-    """Group registers into consecutive read plans respecting block size."""
+def get_registers_by_function(fn: str) -> List[Register]:
+    """Return registers matching a Modbus function code or name."""
 
-    plans: list[ReadPlan] = []
-    regs_by_fn: Dict[str, list[Register]] = {}
-    for reg in _REGISTERS:
+    mapping = {
+        "01": "01",
+        "coil": "01",
+        "coils": "01",
+        "02": "02",
+        "discrete": "02",
+        "discrete_input": "02",
+        "04": "04",
+        "input": "04",
+        "03": "03",
+        "holding": "03",
+    }
+    fn_code = mapping.get(fn.lower(), fn)
+    return [r for r in get_all_registers() if r.function == fn_code]
+
+
+def group_reads(max_block_size: int = 64) -> List[ReadPlan]:
+    """Group registers into contiguous blocks per function."""
+
+    plans: List[ReadPlan] = []
+    regs_by_fn: Dict[str, List[Register]] = {}
+    for reg in get_all_registers():
         regs_by_fn.setdefault(reg.function, []).append(reg)
 
     for fn, regs in regs_by_fn.items():
-        sorted_regs = sorted(regs, key=lambda r: r.address)
-        if not sorted_regs:
+        regs.sort(key=lambda r: r.address)
+        if not regs:
             continue
-        start = sorted_regs[0].address
-        length = sorted_regs[0].length
+        start = regs[0].address
+        length = regs[0].length
         prev_end = start + length
-        for reg in sorted_regs[1:]:
+        for reg in regs[1:]:
             reg_end = reg.address + reg.length
             if reg.address == prev_end and length + reg.length <= max_block_size:
                 length += reg.length
@@ -348,4 +316,32 @@ def group_reads(max_block_size: int = 64) -> list[ReadPlan]:
                 length = reg.length
             prev_end = reg_end
         plans.append(ReadPlan(fn, start, length))
+
     return plans
+
+
+def get_register_definition(name: str) -> Register | None:
+    """Return the :class:`Register` definition for ``name`` if available."""
+
+    for reg in get_all_registers():
+        if reg.name == name:
+            return reg
+    return None
+
+
+def group_addresses(addresses: Iterable[int], max_block_size: int = 64) -> List[Tuple[int, int]]:
+    """Group bare addresses into contiguous blocks."""
+
+    sorted_addresses = sorted(set(addresses))
+    if not sorted_addresses:
+        return []
+    groups: List[Tuple[int, int]] = []
+    start = prev = sorted_addresses[0]
+    for addr in sorted_addresses[1:]:
+        if addr == prev + 1 and (addr - start) < max_block_size:
+            prev = addr
+            continue
+        groups.append((start, prev - start + 1))
+        start = prev = addr
+    groups.append((start, prev - start + 1))
+    return groups

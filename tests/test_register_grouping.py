@@ -1,6 +1,7 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.const import INPUT_REGISTERS
 from custom_components.thessla_green_modbus.registers.loader import group_reads
+from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
 
 def test_group_registers_split_known_missing():

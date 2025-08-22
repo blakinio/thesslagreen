@@ -1,9 +1,10 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
+from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Dict, cast
 
 from .registers import get_registers_by_function
 
@@ -16,13 +17,14 @@ COIL_REGISTERS = _build_map("01")
 DISCRETE_INPUT_REGISTERS = _build_map("02")
 HOLDING_REGISTERS = _build_map("03")
 INPUT_REGISTERS = _build_map("04")
-MULTI_REGISTER_SIZES = {r.name: r.length for r in get_registers_by_function("03") if r.name and r.length > 1}
+MULTI_REGISTER_SIZES = {
+    r.name: r.length
+    for r in get_registers_by_function("03")
+    if r.name and r.length > 1
+}
 
 OPTIONS_PATH = Path(__file__).parent / "options"
 _LOGGER = logging.getLogger(__name__)
-
-
-from . import loader
 
 # Integration constants
 DOMAIN = "thessla_green_modbus"
@@ -188,22 +190,22 @@ ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
 
 def get_input_registers() -> Dict[str, int]:
     """Return mapping of input registers loaded from JSON definitions."""
-    return loader.get_registers_by_function("input")
+    return _build_map("04")
 
 
 def get_holding_registers() -> Dict[str, int]:
     """Return mapping of holding registers loaded from JSON definitions."""
-    return loader.get_registers_by_function("holding")
+    return _build_map("03")
 
 
 def get_coil_registers() -> Dict[str, int]:
     """Return mapping of coil registers loaded from JSON definitions."""
-    return loader.get_registers_by_function("coil")
+    return _build_map("01")
 
 
 def get_discrete_input_registers() -> Dict[str, int]:
     """Return mapping of discrete input registers loaded from JSON definitions."""
-    return loader.get_registers_by_function("discrete")
+    return _build_map("02")
 
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF

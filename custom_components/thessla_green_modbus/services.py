@@ -32,9 +32,6 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
     dt_util = _DTUtil()  # type: ignore
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
-from . import loader
-from .schedule_helpers import time_to_bcd
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
@@ -53,6 +50,8 @@ from .const import (
 from .entity_mappings import map_legacy_entity_id
 from .scanner_core import ThesslaGreenDeviceScanner
 from .modbus_exceptions import ConnectionException, ModbusException
+from .registers import get_register_definition
+from .schedule_helpers import time_to_bcd
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -70,13 +69,13 @@ AIR_QUALITY_REGISTER_MAP = {
 
 def _scale_for_register(register_name: str, value: float) -> int:
     """Scale ``value`` using register metadata for ``register_name``."""
-    definition = loader.get_register_definition(register_name)
-    multiplier = definition.get("multiplier")
-    resolution = definition.get("resolution")
-    if multiplier is not None:
-        return int(round(value / multiplier))
-    if resolution is not None:
-        return int(round(value / resolution))
+    definition = get_register_definition(register_name)
+    if definition is None:
+        return int(round(value))
+    if definition.multiplier is not None:
+        return int(round(value / definition.multiplier))
+    if definition.resolution is not None:
+        return int(round(value / definition.resolution))
     return int(round(value))
 def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call handling legacy aliases."""
