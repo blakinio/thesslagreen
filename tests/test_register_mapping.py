@@ -1,10 +1,12 @@
 import pytest
 from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 
 def _reg(fn: str, name: str):
     regs = get_registers_by_function(fn)
-    return next(r for r in regs if r.name == name)
+    norm_name = _to_snake_case(name)
+    return next(r for r in regs if r.name == norm_name)
 
 
 @pytest.mark.parametrize(
@@ -45,7 +47,7 @@ def test_register_mapping_and_scaling() -> None:
     assert discrete.decode(0) == "brak"
     assert discrete.encode("jest") == 1
 
-    holding = _reg("03", "supplyAirTemperatureManual")
+    holding = _reg("03", "supply_air_temperature_manual")
     assert holding.resolution == 0.5
     assert holding.encode(21.3) == 21
     assert holding.decode(21) == pytest.approx(21.0)

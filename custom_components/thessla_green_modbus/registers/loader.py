@@ -23,6 +23,7 @@ from datetime import time
 from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List
+import importlib.resources as resources
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
@@ -299,7 +300,7 @@ def _load_registers_from_file(path: Path | None = None) -> List[Register]:
         elif function == "03" and address >= 111:
             address -= 111
 
-        name = str(item["name"])
+        name = _normalise_name(str(item["name"]))
 
         enum_map = item.get("enum")
         if name == "special_mode":
