@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 import traceback
 from typing import Any
@@ -77,17 +78,25 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         # Perform full device scan
         scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
 
-        caps_obj = scan_result.get("capabilities") or {}
+        caps_obj = scan_result.get("capabilities")
+        if caps_obj is None:
+            raise CannotConnect("invalid_capabilities")
+
         if isinstance(caps_obj, DeviceCapabilities):
+            required_fields = {field.name for field in dataclasses.fields(DeviceCapabilities)}
+            missing = [f for f in required_fields if f not in vars(caps_obj)]
+            if missing:
+                _LOGGER.error("Capabilities missing required fields: %s", set(missing))
+                raise CannotConnect("invalid_capabilities")
             capabilities = caps_obj
         elif isinstance(caps_obj, dict):
             try:
                 capabilities = DeviceCapabilities(**caps_obj)
             except (TypeError, ValueError) as exc:
                 _LOGGER.error("Error parsing capabilities: %s", exc)
-                capabilities = DeviceCapabilities()
+                raise CannotConnect("invalid_capabilities") from exc
         else:
-            capabilities = DeviceCapabilities()
+            raise CannotConnect("invalid_capabilities")
 
         # Store dataclass object so future reads operate on the dataclass
         scan_result["capabilities"] = capabilities
