@@ -76,6 +76,22 @@ async def test_form_user_port_out_of_range(invalid_port: int):
         schema({CONF_HOST: "192.168.1.100", CONF_PORT: invalid_port, "slave_id": 10})
 
 
+async def test_form_user_invalid_host():
+    """Test invalid host names produce a helpful error."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        result = await flow.async_step_user(
+            {CONF_HOST: "bad host", CONF_PORT: 502, "slave_id": 10, CONF_NAME: "My Device"}
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {CONF_HOST: "invalid_host"}
+    create_mock.assert_not_called()
+
 async def test_form_user_success():
     """Test successful configuration with confirm step."""
     flow = ConfigFlow()
@@ -607,6 +623,27 @@ async def test_validate_input_success():
     assert result["title"] == "Test"
     assert "device_info" in result
     scanner_instance.verify_connection.assert_awaited_once()
+
+
+async def test_validate_input_invalid_host():
+    """Test validate_input rejects invalid host values."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "bad host",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        with pytest.raises(vol.Invalid):
+            await validate_input(None, data)
+    create_mock.assert_not_called()
 
 
 async def test_validate_input_no_data():

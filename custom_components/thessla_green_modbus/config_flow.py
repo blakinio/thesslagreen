@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import ipaddress
 import logging
+import re
 import traceback
 from typing import Any
 
@@ -62,6 +64,21 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     slave_id = data[CONF_SLAVE_ID]
     name = data.get(CONF_NAME, DEFAULT_NAME)
     timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+
+    # Validate host is either an IP address or a valid hostname
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        hostname_validator = getattr(vol, "Hostname", None)
+        if hostname_validator is not None:
+            try:
+                hostname_validator()(host)
+            except vol.Invalid as err:
+                raise vol.Invalid("invalid_host") from err
+        else:
+            # Basic hostname regex fallback
+            if not re.fullmatch(r"[A-Za-z0-9.-]+", host):
+                raise vol.Invalid("invalid_host")
 
     scanner: ThesslaGreenDeviceScanner | None = None
     try:
@@ -173,6 +190,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 errors["base"] = exc.args[0] if exc.args else "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
+            except vol.Invalid as err:
+                _LOGGER.error("Invalid host provided: %s", err)
+                errors[CONF_HOST] = "invalid_host"
             except (ConnectionException, ModbusException):
                 _LOGGER.exception("Modbus communication error")
                 errors["base"] = "cannot_connect"
