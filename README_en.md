@@ -290,9 +290,10 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## JSON register definitions
 
-The file `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` stores the complete
-register specification and is the single source of truth. All tools in
-`tools/` operate exclusively on this JSON format.
+The file `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
+stores the complete register specification and is the single canonical source
+of truth (the former `registers/` copy was removed). All tools in `tools/`
+operate exclusively on this JSON format.
 
 ### File format
 

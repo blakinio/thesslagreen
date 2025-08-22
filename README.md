@@ -144,8 +144,10 @@ for start, size in group_reads(range(100), max_block_size=16):
 
 
 ### Rejestry w formacie JSON
-Definicje rejestrów znajdują się w pliku `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
-który stanowi jedyne źródło prawdy. Każdy wpis w sekcji `registers` zawiera m.in. pola:
+Definicje rejestrów znajdują się wyłącznie w pliku
+`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
+który stanowi kanoniczne źródło prawdy (dawny katalog `registers/` został usunięty).
+Każdy wpis w sekcji `registers` zawiera m.in. pola:
 
 - `function` – kod funkcji Modbus (`01`–`04`)
 - `address_dec` / `address_hex` – adres rejestru

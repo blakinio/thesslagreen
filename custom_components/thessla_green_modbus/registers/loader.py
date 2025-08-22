@@ -28,6 +28,9 @@ from ..utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
+# Path to the canonical JSON register definition bundled with the integration.
+_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
+
 # Path to the bundled register definition file.  Tests patch this constant to
 # supply temporary files, therefore it must be a module level variable instead
 # of being computed inside helper functions.
