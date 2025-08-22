@@ -131,12 +131,15 @@ class Register:
 # ---------------------------------------------------------------------------
 
 # Single source of truth for the bundled register definitions.  The JSON file
+# lives alongside this module inside the installed package.
+_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
 # lives in the repository root under ``registers`` and is bundled with the
 # tests.  Use an explicit absolute path to avoid repeating this logic in
 # multiple places.
 _REGISTERS_PATH = (
     Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
 )
+
 
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
 try:  # pragma: no cover - defensive
