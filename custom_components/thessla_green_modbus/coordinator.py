@@ -1090,6 +1090,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         statistics = self.statistics.copy()
         if statistics.get("last_successful_update"):
             statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
+        total_registers = sum(len(v) for v in self.available_registers.values())
+        error_stats = {
+            "connection_errors": statistics.get("connection_errors", 0),
+            "timeout_errors": statistics.get("timeout_errors", 0),
+        }
 
         diagnostics: dict[str, Any] = {
             "connection": connection,
@@ -1106,6 +1111,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "unknown_registers": self.unknown_registers,
             "scanned_registers": self.scanned_registers,
             "last_scan": self.last_scan.isoformat() if self.last_scan else None,
+            "firmware_version": self.device_info.get("firmware"),
+            "total_available_registers": total_registers,
+            "error_statistics": error_stats,
         }
 
         if self.device_scan_result and "raw_registers" in self.device_scan_result:
