@@ -84,6 +84,7 @@ from .const import (
 )
 from .registers import get_all_registers, get_registers_by_function
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
+from .config_flow import CannotConnect
 from .modbus_client import ThesslaGreenModbusClient
 from .modbus_helpers import _call_modbus
 
@@ -254,9 +255,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 self.device_info = self.device_scan_result.get("device_info", {})
                 self.device_info.setdefault("device_name", self._device_name)
-                self.capabilities = DeviceCapabilities(
-                    **self.device_scan_result.get("capabilities", {})
-                )
+
+                caps_obj = self.device_scan_result.get("capabilities")
+                if isinstance(caps_obj, DeviceCapabilities):
+                    self.capabilities = caps_obj
+                elif isinstance(caps_obj, dict):
+                    self.capabilities = DeviceCapabilities(**caps_obj)
+                else:
+                    _LOGGER.error(
+                        "Invalid capabilities format: expected dict, got %s",
+                        type(caps_obj).__name__,
+                    )
+                    raise CannotConnect("invalid_capabilities")
+
                 self.unknown_registers = self.device_scan_result.get("unknown_registers", {})
                 self.scanned_registers = self.device_scan_result.get("scanned_registers", {})
 

@@ -12,7 +12,8 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 # Stub loader module to avoid heavy imports during tests
 sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.loader", SimpleNamespace()
+    "custom_components.thessla_green_modbus.loader",
+    SimpleNamespace(group_reads=lambda *args, **kwargs: []),
 )
 
 from custom_components.thessla_green_modbus.const import CONF_DEEP_SCAN
@@ -651,8 +652,10 @@ async def test_validate_input_scanner_closed_on_exception():
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
-        with pytest.raises(CannotConnect):
+        with pytest.raises(CannotConnect) as err:
             await validate_input(None, data)
+
+    assert str(err.value) == "invalid_capabilities"
 
     scanner_instance.close.assert_awaited_once()
 
@@ -790,7 +793,8 @@ async def test_validate_input_invalid_capabilities():
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
-        with pytest.raises(CannotConnect):
+        with pytest.raises(CannotConnect) as err:
             await validate_input(None, data)
 
+    assert str(err.value) == "invalid_capabilities"
     scanner_instance.close.assert_awaited_once()
