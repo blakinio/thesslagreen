@@ -30,5 +30,5 @@ def test_group_reads_from_json():
     """Group consecutive registers based on JSON definitions."""
     plans = [p for p in group_reads(max_block_size=64) if p.function == "04"]
     assert (plans[0].address, plans[0].length) == (0, 5)
-    assert (plans[1].address, plans[1].length) == (14, 9)
-    assert (plans[2].address, plans[2].length) == (24, 6)
+    assert (plans[1].address, plans[1].length) == (14, 17)
+    assert (plans[2].address, plans[2].length) == (32, 8)
