@@ -1,4 +1,9 @@
-"""Binary sensors for the ThesslaGreen Modbus integration."""
+"""Binary sensor platform for the ThesslaGreen Modbus integration.
+
+Entities are created dynamically based on the registers reported by the
+device scanner. Only registers available on the target device are exposed
+as binary sensor entities.
+"""
 
 from __future__ import annotations
 
