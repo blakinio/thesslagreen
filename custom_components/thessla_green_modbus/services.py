@@ -327,11 +327,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             "sunday": 6,
         }
         day_index = day_map[day]
+        
+        # Prepare start/end values as tuples so Register.encode can
+        # handle conversion to the device format.
+        start_value = (start_time.hour, start_time.minute)
+        end_value = (end_time.hour, end_time.minute)
 
         # Format times in a user-friendly way for encoding
         start_value = f"{start_time.hour:02d}:{start_time.minute:02d}"
         end_value = f"{end_time.hour:02d}:{end_time.minute:02d}"
-
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
@@ -398,6 +402,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         temperature,
                         entity_id,
                         "set airflow schedule",
+                    )
                     ):
                         _LOGGER.error(
                             "Failed to set schedule temperature for %s", entity_id
