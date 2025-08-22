@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable, Iterable
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
@@ -195,6 +195,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "total_registers_read": 0,
         }
 
+        self.last_scan: datetime | None = None
+
         self._last_power_timestamp = dt_util.utcnow()
         self._total_energy = 0.0
 
@@ -225,6 +227,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
 
                 self.device_scan_result = await scanner.scan_device()
+                self.last_scan = dt_util.utcnow()
                 scan_registers = self.device_scan_result.get("available_registers", {})
                 self.available_registers = {
                     "input_registers": set(scan_registers.get("input_registers", [])),
@@ -1096,6 +1099,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "scan_result": self.device_scan_result,
             "unknown_registers": self.unknown_registers,
             "scanned_registers": self.scanned_registers,
+            "last_scan": self.last_scan.isoformat() if self.last_scan else None,
         }
 
         if self.device_scan_result and "raw_registers" in self.device_scan_result:

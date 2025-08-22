@@ -1,6 +1,26 @@
 import copy
+from datetime import datetime, timezone
+from types import SimpleNamespace, ModuleType
+from unittest.mock import AsyncMock, patch
+import sys
 
-from custom_components.thessla_green_modbus.diagnostics import _redact_sensitive_data
+import pytest
+
+# Stub registers module to avoid heavy imports during diagnostics import
+registers_stub = ModuleType("custom_components.thessla_green_modbus.registers")
+registers_stub.get_all_registers = lambda: []
+registers_stub.get_registers_hash = lambda: ""
+registers_stub.get_registers_by_function = lambda *args, **kwargs: []
+registers_stub.group_reads = lambda *args, **kwargs: []
+sys.modules["custom_components.thessla_green_modbus.registers"] = registers_stub
+sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
+
+from custom_components.thessla_green_modbus.diagnostics import (
+    _redact_sensitive_data,
+    async_get_config_entry_diagnostics,
+)
+
+DOMAIN = "thessla_green_modbus"
 
 
 def test_redact_ipv4_and_ipv6():
@@ -37,3 +57,31 @@ def test_original_diagnostics_unchanged():
     _redact_sensitive_data(data)
 
     assert data == original
+
+
+@pytest.mark.asyncio
+async def test_last_scan_in_diagnostics():
+    """Ensure diagnostics include last_scan timestamp."""
+
+    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = last_scan
+            self.device_scan_result = None
+            self.data = {}
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en"))
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(return_value={}),
+    ):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["last_scan"] == last_scan.isoformat()
