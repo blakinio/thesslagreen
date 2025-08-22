@@ -192,7 +192,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         data_schema = vol.Schema(
             {
                 vol.Required(CONF_HOST): str,
-                vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
+                vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=65535)
+                ),
                 vol.Required(CONF_SLAVE_ID, default=DEFAULT_SLAVE_ID): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=247)
                 ),
