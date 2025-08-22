@@ -19,6 +19,7 @@ from typing import (
     Tuple,
     TextIO,
     cast,
+    Self,
 )
 
 from .capability_rules import CAPABILITY_PATTERNS
@@ -41,7 +42,7 @@ from .modbus_exceptions import (
 )
 from .modbus_helpers import _call_modbus
 from .registers import get_all_registers
-from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, TIME_REGISTER_PREFIXES, _to_snake_case
+from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, _to_snake_case
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
     _format_register_value,
@@ -256,7 +257,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-    ) -> "ThesslaGreenDeviceScanner":
+    ) -> Self:
         """Factory to create an initialized scanner instance."""
         self = cls(
             host,
@@ -914,7 +915,10 @@ class ThesslaGreenDeviceScanner:
             )
             if not connected:
                 raise ConnectionException("Failed to connect")
-            return await self.scan()
+            result = await self.scan()
+            if not isinstance(result, dict):
+                raise TypeError("scan() must return a dict")
+            return result
         finally:
             await self.close()
 

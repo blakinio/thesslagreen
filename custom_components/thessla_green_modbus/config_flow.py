@@ -77,7 +77,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         # Perform full device scan
         scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
 
-        # Ensure capabilities are represented as a dataclass before serializing
+        # Ensure capabilities are represented as a dataclass before any reads
         caps_obj = scan_result.get("capabilities")
         if isinstance(caps_obj, DeviceCapabilities):
             capabilities = caps_obj
@@ -88,7 +88,8 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
                 capabilities = DeviceCapabilities()
         else:
             capabilities = DeviceCapabilities()
-        scan_result["capabilities"] = capabilities.as_dict()
+        # Store dataclass object so future reads operate on the dataclass
+        scan_result["capabilities"] = capabilities
 
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
@@ -226,16 +227,26 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         # Get scan statistics
         available_registers = self._scan_result.get("available_registers", {})
-        capabilities = self._scan_result.get("capabilities", {})
-        if isinstance(capabilities, DeviceCapabilities):
-            capabilities = capabilities.as_dict()
+        caps_obj = self._scan_result.get("capabilities")
+        if isinstance(caps_obj, DeviceCapabilities):
+            caps_data = caps_obj
+        elif isinstance(caps_obj, dict):
+            try:
+                caps_data = DeviceCapabilities(**caps_obj)
+            except TypeError:
+                caps_data = DeviceCapabilities()
+        else:
+            caps_data = DeviceCapabilities()
+        capabilities = caps_data.as_dict()
 
         register_count = self._scan_result.get(
             "register_count",
             sum(len(regs) for regs in available_registers.values()),
         )
 
-        capabilities_list = [k.replace("_", " ").title() for k, v in capabilities.items() if v]
+        capabilities_list = [
+            k.replace("_", " ").title() for k, v in capabilities.items() if v
+        ]
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
 
