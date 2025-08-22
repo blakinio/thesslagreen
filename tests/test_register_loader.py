@@ -1,5 +1,9 @@
 """Tests for JSON register loader."""
 
+import logging
+from pathlib import Path
+
+from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 from custom_components.thessla_green_modbus.registers import (
     get_registers_by_function,
 )
@@ -72,3 +76,21 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
 
     # The file should be read only once thanks to caching
     assert read_calls == 1
+
+
+def test_csv_loader_emits_warning(caplog) -> None:
+    """Using a CSV file should emit a deprecation warning."""
+
+    csv_path = (
+        Path(__file__).resolve().parent.parent
+        / "custom_components"
+        / "thessla_green_modbus"
+        / "data"
+        / "modbus_registers.csv"
+    )
+
+    with caplog.at_level(logging.WARNING):
+        loader = RegisterLoader(csv_path)
+
+    assert loader.registers
+    assert any("deprecated" in rec.message for rec in caplog.records)
