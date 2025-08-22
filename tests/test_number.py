@@ -8,9 +8,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+)
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 

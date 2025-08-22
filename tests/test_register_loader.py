@@ -4,8 +4,10 @@ import json
 import logging
 from pathlib import Path
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.register_loader import (
+    RegisterLoader,
+)
+from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
     get_registers_hash,
 )
@@ -57,7 +59,9 @@ def test_function_aliases() -> None:
 def test_registers_loaded_only_once(monkeypatch) -> None:
     """Ensure register file is read only once thanks to caching."""
 
-    from custom_components.thessla_green_modbus.registers.loader import _load_registers
+    from custom_components.thessla_green_modbus.registers.loader import (
+        _load_registers,
+    )
 
     read_calls = 0
     real_read_text = Path.read_text
@@ -81,12 +85,29 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     assert read_calls == 1
 
 
+def test_missing_register_file(monkeypatch, tmp_path) -> None:
+    """Loader should handle missing JSON definition path."""
+
+    from custom_components.thessla_green_modbus.registers.loader import (
+        _load_registers,
+        get_registers_hash,
+    )
+
+    missing = tmp_path / "missing.json"
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.registers.loader._REGISTERS_PATH",
+        missing,
+    )
+    _load_registers.cache_clear()
+
+    assert _load_registers() == []
+    assert get_registers_hash() == ""
+
+
 def test_path_argument_ignored(caplog) -> None:
     """Providing a path should not trigger any CSV handling."""
 
-    csv_path = (
-        Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
-    )
+    csv_path = Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
 
     with caplog.at_level(logging.WARNING):
         loader = RegisterLoader(csv_path)

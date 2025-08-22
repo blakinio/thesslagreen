@@ -2,6 +2,7 @@
 
 import sys
 import types
+
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -66,8 +67,12 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual test
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS  # noqa: E402
-from custom_components.thessla_green_modbus.registers import get_registers_by_function  # noqa: E402
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+    get_registers_by_function,
+)
+from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
+    SENSOR_DEFINITIONS,
+)
 
 INPUT_REGISTERS = {r.name for r in get_registers_by_function("04")}
 HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
@@ -84,7 +89,7 @@ def test_sensor_register_mapping() -> None:
             assert register_name in HOLDING_REGISTERS
             assert register_name not in INPUT_REGISTERS
         elif register_type == "calculated":
-            assert register_name not in registers.INPUT_REGISTERS
-            assert register_name not in registers.HOLDING_REGISTERS
+            assert register_name not in INPUT_REGISTERS
+            assert register_name not in HOLDING_REGISTERS
         else:
             pytest.fail(f"Unknown register_type {register_type} for {register_name}")

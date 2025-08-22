@@ -1,9 +1,11 @@
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.registers.loader import (
+    Register,
     get_registers_by_function,
     group_reads,
 )
-from custom_components.thessla_green_modbus.registers.loader import Register
+from custom_components.thessla_green_modbus.scanner_core import (
+    ThesslaGreenDeviceScanner,
+)
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
@@ -80,10 +82,7 @@ def test_group_reads_handles_gaps_and_block_size(monkeypatch):
     # Two ranges of consecutive registers separated by a gap
     first = list(range(32))
     second = list(range(40, 80))
-    regs = [
-        Register(function="04", address=i, name=f"r{i}", access="ro")
-        for i in first + second
-    ]
+    regs = [Register(function="04", address=i, name=f"r{i}", access="ro") for i in first + second]
 
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader._load_registers",

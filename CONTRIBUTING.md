@@ -164,17 +164,12 @@ custom_components/thessla_green_modbus/
 
 ### Regenerating register definitions
 
-The canonical register specification lives in `tools/modbus_registers.csv`.
-After editing this file, regenerate the JSON and Python artifacts:
+The canonical register specification lives in `registers/thessla_green_registers_full.json`.
+After editing this file, run the validation test:
 
 ```bash
-python tools/convert_registers_csv_to_json.py
-python tools/generate_registers.py
-python tools/validate_registers.py
+python -m pytest tests/test_register_loader.py -v
 ```
-
-Commit the updated CSV, JSON and Python files together. The `generate-registers`
-and `validate-registers` pre-commit hooks run these checks automatically.
 
 ## Testing
 
@@ -192,7 +187,6 @@ python -m pytest tests/ --cov=custom_components.thessla_green_modbus
 
 # Validate register file
 python -m pytest tests/test_register_loader.py -v
-python tools/validate_registers.py
 
 # Validate translation files
 python -m json.tool custom_components/thessla_green_modbus/translations/*.json
