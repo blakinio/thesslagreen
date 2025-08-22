@@ -15,13 +15,13 @@ reads.
 
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass
 from datetime import time
 from functools import lru_cache
-import json
-import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 
@@ -106,7 +106,9 @@ class Register:
             return time_to_bcd(time(hours, minutes))
 
         if self.extra and self.extra.get("aatt"):
-            airflow, temp = value if isinstance(value, (list, tuple)) else (value["airflow"], value["temp"])  # type: ignore[index]
+            airflow, temp = (
+                value if isinstance(value, (list, tuple)) else (value["airflow"], value["temp"])
+            )  # type: ignore[index]
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
         raw: Any = value
@@ -128,7 +130,7 @@ class Register:
 # Loading helpers
 # ---------------------------------------------------------------------------
 
-_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
+REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
 
 
 def _normalise_function(fn: str) -> str:
@@ -156,42 +158,20 @@ def _normalise_function(fn: str) -> str:
     return mapping.get(fn.lower(), fn)
 
 
-@lru_cache(maxsize=1)
-def _load_raw() -> List[Dict[str, Any]]:
-    """Load raw register definitions from JSON or CSV."""
-
-    if _REGISTERS_PATH.exists():
-        text = _REGISTERS_PATH.read_text(encoding="utf-8")
-        data = json.loads(text)
-        if isinstance(data, dict):
-            items = data.get("registers", [])
-        else:
-            items = data
-        return [
-            _RegisterModel.model_validate(item).model_dump()
-            for item in items
-        ]
-
-    csv_files = list(_REGISTERS_PATH.parent.glob("*.csv"))
-    if csv_files:
-        return _load_from_csv(csv_files)
-
-
 # ---------------------------------------------------------------------------
 # Register loading helpers
 # ---------------------------------------------------------------------------
 
 
-_REGISTERS_PATH = Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
-
+@lru_cache(maxsize=1)
 def _load_registers() -> List[Register]:
     """Load register definitions from the JSON file."""
 
-    if not _REGISTERS_PATH.exists():  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
+    if not REGISTERS_PATH.exists():  # pragma: no cover - sanity check
+        _LOGGER.error("Register definition file missing: %s", REGISTERS_PATH)
         return []
 
-    text = _REGISTERS_PATH.read_text(encoding="utf-8")
+    text = REGISTERS_PATH.read_text(encoding="utf-8")
     raw = json.loads(text)
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
@@ -208,7 +188,9 @@ def _load_registers() -> List[Register]:
             if enum_map:
                 if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
                     enum_map = {int(k): v for k, v in enum_map.items()}
-                elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
+                elif all(
+                    isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()
+                ):
                     enum_map = {int(v): k for k, v in enum_map.items()}
 
             registers.append(
@@ -298,4 +280,3 @@ __all__ = [
     "get_registers_by_function",
     "group_reads",
 ]
-
