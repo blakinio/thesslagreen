@@ -78,7 +78,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies (Home Assistant core excluded)
 pip install -r requirements.txt -r requirements-dev.txt
 
-# Install pre-commit hooks
+# Install pre-commit hooks (run again after pulling new changes)
 pre-commit install
 ```
 
@@ -92,6 +92,9 @@ python run_optimization_tests.py
 
 # Run unit tests
 python -m pytest tests/ -v
+
+# Verify module syntax
+python tools/py_compile_all.py
 
 # Check code quality
 pre-commit run --all-files
@@ -159,6 +162,19 @@ custom_components/thessla_green_modbus/
     └── pl.json
 ```
 
+### Regenerating register definitions
+
+Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` is modified, regenerate
+`custom_components/thessla_green_modbus/registers.py` and validate it:
+
+```bash
+python tools/generate_registers.py
+python tools/validate_registers.py
+```
+
+Commit the updated CSV and Python files together. The `generate-registers` and `validate-registers`
+pre-commit hooks run these checks automatically.
+
 ## Testing
 
 ### Running Tests
@@ -172,6 +188,15 @@ python -m pytest tests/test_coordinator.py -v
 
 # Run with coverage
 python -m pytest tests/ --cov=custom_components.thessla_green_modbus
+
+# Validate register mappings against CSV definitions
+python -m pytest tests/test_register_coverage.py -v
+
+# Verify CSV and registers.py are in sync
+python tools/validate_registers.py
+
+# Validate translation files
+python -m json.tool custom_components/thessla_green_modbus/translations/*.json
 
 # Run optimization validation
 python run_optimization_tests.py
@@ -212,14 +237,18 @@ If you have a ThesslaGreen device:
 
 ### Pre-commit Checks
 
-Before committing, the following checks run automatically:
+Run `pre-commit install` once to activate these checks. Before committing, the following checks run automatically:
 
 - **Black** - Code formatting
-- **isort** - Import sorting  
+- **isort** - Import sorting
 - **flake8** - Linting
 - **mypy** - Type checking
 - **bandit** - Security scanning
 - **yamllint** - YAML validation
+- **check-merge-conflict** - Prevents committing unresolved merge conflicts
+- **check-json** - Validates translation files
+- **hassfest** - Validates integration metadata against Home Assistant rules
+- **vulture** - Detects unused code in `custom_components/thessla_green_modbus`
 
 ### Manual Quality Checks
 
@@ -238,6 +267,12 @@ mypy custom_components/thessla_green_modbus/
 
 # Security scan
 bandit -r custom_components/
+
+# Validate integration metadata
+hassfest --config=.
+
+# Dead code detection
+vulture custom_components/thessla_green_modbus --min-confidence=80
 ```
 
 ## Submitting Changes
@@ -254,6 +289,7 @@ bandit -r custom_components/
 
 2. **Run all checks:**
    ```bash
+   python tools/py_compile_all.py
    pre-commit run --all-files
    python -m pytest tests/
    python run_optimization_tests.py

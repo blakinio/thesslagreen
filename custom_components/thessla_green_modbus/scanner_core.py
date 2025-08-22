@@ -1,0 +1,1585 @@
+"""Device scanner for ThesslaGreen Modbus integration."""
+
+from __future__ import annotations
+
+import asyncio
+import csv
+import inspect
+import logging
+import re
+from dataclasses import asdict, dataclass, field
+from importlib.resources import files
+import json
+from pathlib import Path
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TextIO,
+    cast,
+)
+
+from .capability_rules import CAPABILITY_PATTERNS
+from .const import (
+    COIL_REGISTERS,
+    DEFAULT_SLAVE_ID,
+    DISCRETE_INPUT_REGISTERS,
+    KNOWN_MISSING_REGISTERS,
+    SENSOR_UNAVAILABLE,
+    SENSOR_UNAVAILABLE_REGISTERS,
+    UNKNOWN_MODEL,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+    MULTI_REGISTER_SIZES,
+)
+from .modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
+)
+from .modbus_helpers import _call_modbus
+from .registers import get_all_registers
+from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, TIME_REGISTER_PREFIXES, _to_snake_case
+from .scanner_helpers import (
+    REGISTER_ALLOWED_VALUES,
+    _format_register_value,
+    MAX_BATCH_REGISTERS,
+    UART_OPTIONAL_REGS,
+)
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pymodbus.client import AsyncModbusTcpClient
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class DeviceInfo:
+    """Basic identifying information about a ThesslaGreen unit.
+
+    Attributes:
+        device_name: User configured name reported by the unit.
+        model: Reported model name used to identify the device type.
+        firmware: Firmware version string for compatibility checks.
+        serial_number: Unique hardware identifier for the unit.
+    """
+
+    device_name: str = "Unknown"
+    model: str = UNKNOWN_MODEL
+    firmware: str = "Unknown"
+    serial_number: str = "Unknown"
+    firmware_available: bool = True
+    capabilities: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class DeviceCapabilities:
+    """Feature flags and sensor availability detected on the device.
+
+    Each attribute indicates whether a hardware capability or sensor is
+    available, allowing the integration to enable or disable related
+    features dynamically.
+
+    Attributes:
+        basic_control: Support for fundamental fan and temperature control.
+        temperature_sensors: Names of built-in temperature sensors.
+        flow_sensors: Names of sensors measuring airflow.
+        special_functions: Additional reported feature flags.
+        expansion_module: Presence of an expansion module.
+        constant_flow: Ability to maintain constant airflow.
+        gwc_system: Ground heat exchanger integration.
+        bypass_system: Motorized bypass capability.
+        heating_system: Support for heating modules.
+        cooling_system: Support for cooling modules.
+        air_quality: Availability of air quality sensors.
+        weekly_schedule: Built-in weekly scheduling support.
+        sensor_outside_temperature: Outside temperature sensor present.
+        sensor_supply_temperature: Supply air temperature sensor present.
+        sensor_exhaust_temperature: Exhaust air temperature sensor present.
+        sensor_fpx_temperature: FPX (preheater) temperature sensor present.
+        sensor_duct_supply_temperature: Duct supply temperature sensor present.
+        sensor_gwc_temperature: GWC (ground heat exchanger) temperature sensor present.
+        sensor_ambient_temperature: Ambient room temperature sensor present.
+        sensor_heating_temperature: Heating system temperature sensor present.
+        temperature_sensors_count: Total number of available temperature sensors.
+    """
+
+    basic_control: bool = False
+    temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
+    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers
+    special_functions: set[str] = field(default_factory=set)  # Optional feature flags
+    expansion_module: bool = False
+    constant_flow: bool = False
+    gwc_system: bool = False
+    bypass_system: bool = False
+    heating_system: bool = False
+    cooling_system: bool = False
+    air_quality: bool = False
+    weekly_schedule: bool = False
+    sensor_outside_temperature: bool = False
+    sensor_supply_temperature: bool = False
+    sensor_exhaust_temperature: bool = False
+    sensor_fpx_temperature: bool = False
+    sensor_duct_supply_temperature: bool = False
+    sensor_gwc_temperature: bool = False
+    sensor_ambient_temperature: bool = False
+    sensor_heating_temperature: bool = False
+    temperature_sensors_count: int = 0
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+class ThesslaGreenDeviceScanner:
+    """Device scanner for ThesslaGreen AirPack Home - compatible with pymodbus 3.5.*+"""
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        slave_id: int = DEFAULT_SLAVE_ID,
+        timeout: int = 10,
+        retry: int = 3,
+        backoff: float = 0,
+        verbose_invalid_values: bool = False,
+        scan_uart_settings: bool = False,
+        skip_known_missing: bool = False,
+        deep_scan: bool = False,
+        full_register_scan: bool = False,
+    ) -> None:
+        """Initialize device scanner with consistent parameter names."""
+        self.host = host
+        self.port = port
+        self.slave_id = slave_id
+        self.timeout = timeout
+        self.retry = retry
+        self.backoff = backoff
+        self.verbose_invalid_values = verbose_invalid_values
+        self.scan_uart_settings = scan_uart_settings
+        self.skip_known_missing = skip_known_missing
+        self.deep_scan = deep_scan
+        self.full_register_scan = full_register_scan
+
+        # Available registers storage
+        self.available_registers: dict[str, set[str]] = {
+            "input_registers": set(),
+            "holding_registers": set(),
+            "coil_registers": set(),
+            "discrete_inputs": set(),
+        }
+
+        # Placeholder for register map, value ranges and firmware versions loaded
+        # asynchronously
+        self._registers: Dict[str, Dict[int, str]] = {}
+        self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+        self._register_versions: Dict[str, Tuple[int, ...]] = {}
+
+        # Track holding registers that consistently fail to respond so we
+        # can avoid retrying them repeatedly during scanning. The value is
+        # a failure counter per register address.
+        self._holding_failures: dict[int, int] = {}
+        # Cache holding registers that have exceeded retry attempts
+        self._failed_holding: set[int] = set()
+
+        # Track input registers that consistently fail to respond so we can
+        # avoid retrying them repeatedly during scanning
+        self._input_failures: dict[int, int] = {}
+        self._failed_input: set[int] = set()
+        # Track ranges that have already been logged as skipped in the current scan
+        self._input_skip_log_ranges: set[tuple[int, int]] = set()
+
+        # Cache register ranges that returned Modbus exception codes 2-4 so
+        # they can be skipped on subsequent reads without additional warnings
+        self._unsupported_input_ranges: dict[tuple[int, int], int] = {}
+        self._unsupported_holding_ranges: dict[tuple[int, int], int] = {}
+
+        # Keep track of the Modbus client so it can be closed later
+        self._client: "AsyncModbusTcpClient" | None = None
+
+        # Track registers for which invalid values have been reported
+        self._reported_invalid: set[str] = set()
+
+        # Collect addresses skipped due to Modbus errors or invalid values
+        self.failed_addresses: dict[str, dict[str, set[int]]] = {
+            "modbus_exceptions": {
+                "input_registers": set(),
+                "holding_registers": set(),
+                "coil_registers": set(),
+                "discrete_inputs": set(),
+            },
+            "invalid_values": {
+                "input_registers": set(),
+                "holding_registers": set(),
+            },
+        }
+
+        # Pre-compute addresses of known missing registers for batch grouping
+        self._known_missing_addresses: set[int] = set()
+        for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+            mapping = {
+                "input_registers": INPUT_REGISTERS,
+                "holding_registers": HOLDING_REGISTERS,
+                "coil_registers": COIL_REGISTERS,
+                "discrete_inputs": DISCRETE_INPUT_REGISTERS,
+            }[reg_type]
+            for name in names:
+                if (addr := mapping.get(name)) is None:
+                    continue
+                size = MULTI_REGISTER_SIZES.get(name, 1)
+                self._known_missing_addresses.update(range(addr, addr + size))
+
+    async def _async_setup(self) -> None:
+        """Asynchronously load register definitions."""
+        self._registers, self._register_ranges, self._register_versions = (
+            await self._load_registers()
+        )
+
+    @classmethod
+    async def create(
+        cls,
+        host: str,
+        port: int,
+        slave_id: int = DEFAULT_SLAVE_ID,
+        timeout: int = 10,
+        retry: int = 3,
+        backoff: float = 0,
+        verbose_invalid_values: bool = False,
+        scan_uart_settings: bool = False,
+        skip_known_missing: bool = False,
+        deep_scan: bool = False,
+        full_register_scan: bool = False,
+    ) -> "ThesslaGreenDeviceScanner":
+        """Factory to create an initialized scanner instance."""
+        self = cls(
+            host,
+            port,
+            slave_id,
+            timeout,
+            retry,
+            backoff,
+            verbose_invalid_values,
+            scan_uart_settings,
+            skip_known_missing,
+            deep_scan,
+            full_register_scan,
+        )
+        await self._async_setup()
+
+        # Ensure low-level register read helpers are attached to the instance
+        # so tests and callers can patch them as needed.
+        self._read_holding = cls._read_holding.__get__(self, cls)  # type: ignore[method-assign]
+        self._read_coil = cls._read_coil.__get__(self, cls)  # type: ignore[method-assign]
+        self._read_discrete = cls._read_discrete.__get__(self, cls)  # type: ignore[method-assign]
+
+        return self
+
+    async def close(self) -> None:
+        """Close the underlying Modbus client connection."""
+
+        client = self._client
+        if client is None:
+            return
+
+        try:
+            result = client.close()
+            if inspect.isawaitable(result):
+                await result
+        except (OSError, ConnectionException, ModbusIOException):
+            _LOGGER.debug("Error closing Modbus client", exc_info=True)
+        finally:
+            self._client = None
+
+    async def verify_connection(self) -> None:
+        """Verify basic Modbus connectivity by reading sample registers.
+
+        A small subset of registers is loaded from the project JSON file and
+        read from the device.  Any failure will raise a ``ModbusException`` or
+        ``ConnectionException`` which callers can handle appropriately.
+        """
+
+        json_path = Path(__file__).resolve().parents[2] / "thessla_green_registers_full.json"
+        try:
+            with json_path.open(encoding="utf-8") as file:
+                reg_data = json.load(file).get("registers", [])
+        except Exception as exc:  # pragma: no cover - defensive
+            _LOGGER.debug("Failed to load register JSON: %s", exc)
+            reg_data = []
+
+        samples: list[tuple[str, int]] = []
+        for reg in reg_data:
+            func = reg.get("function")
+            if func in ("03", "04"):
+                try:
+                    addr = int(reg.get("address_dec", 0))
+                except (TypeError, ValueError):
+                    continue
+                samples.append((func, addr))
+            if len(samples) >= 3:
+                break
+
+        if not samples:
+            raise ValueError("No sample registers available for connection test")
+
+        from pymodbus.client import AsyncModbusTcpClient
+
+        client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+        try:
+            connected = await asyncio.wait_for(client.connect(), timeout=self.timeout)
+            if not connected:
+                raise ConnectionException("Failed to connect")
+            for func, addr in samples:
+                try:
+                    if func == "04":
+                        await asyncio.wait_for(
+                            _call_modbus(
+                                client.read_input_registers, self.slave_id, addr, count=1
+                            ),
+                            timeout=self.timeout,
+                        )
+                    else:  # "03"
+                        await asyncio.wait_for(
+                            _call_modbus(
+                                client.read_holding_registers, self.slave_id, addr, count=1
+                            ),
+                            timeout=self.timeout,
+                        )
+                except asyncio.TimeoutError as exc:
+                    raise ConnectionException(
+                        f"Timeout reading register 0x{addr:04X}"
+                    ) from exc
+                except Exception as exc:  # pragma: no cover - forward unexpected
+                    raise ModbusException(
+                        f"Error reading register 0x{addr:04X}: {exc}"
+                    ) from exc
+        finally:
+            await client.close()
+
+    def _is_valid_register_value(self, name: str, value: int) -> bool:
+        """Validate a register value against known constraints.
+
+        This check is intentionally lightweight – it ensures that obvious
+        placeholder values (like ``SENSOR_UNAVAILABLE``) and values outside the
+        ranges loaded from the CSV definition are ignored.  The method mirrors
+        behaviour expected by the tests but does not aim to provide exhaustive
+        validation of every register.
+        """
+
+        if name in SENSOR_UNAVAILABLE_REGISTERS and value == SENSOR_UNAVAILABLE:
+            return False
+
+        allowed = REGISTER_ALLOWED_VALUES.get(name)
+        if allowed is not None and value not in allowed:
+            return False
+
+        if name.startswith(BCD_TIME_PREFIXES) and name != "schedule_start_time":
+            if _decode_bcd_time(value) is None:
+                return False
+
+        if range_vals := self._register_ranges.get(name):
+            min_val, max_val = range_vals
+            if min_val is not None and value < min_val:
+                return False
+            if max_val is not None and value > max_val:
+                return False
+
+        return True
+
+    def _analyze_capabilities(self) -> DeviceCapabilities:
+        """Derive device capabilities from discovered registers."""
+
+        caps = DeviceCapabilities()
+        inputs = self.available_registers["input_registers"]
+        holdings = self.available_registers["holding_registers"]
+        coils = self.available_registers["coil_registers"]
+        discretes = self.available_registers["discrete_inputs"]
+
+        # Temperature sensors
+        temp_map = {
+            "sensor_outside_temperature": "outside_temperature",
+            "sensor_supply_temperature": "supply_temperature",
+            "sensor_exhaust_temperature": "exhaust_temperature",
+            "sensor_fpx_temperature": "fpx_temperature",
+            "sensor_duct_supply_temperature": "duct_supply_temperature",
+            "sensor_gwc_temperature": "gwc_temperature",
+            "sensor_ambient_temperature": "ambient_temperature",
+            "sensor_heating_temperature": "heating_temperature",
+        }
+        for attr, reg in temp_map.items():
+            if reg in inputs:
+                setattr(caps, attr, True)
+                caps.temperature_sensors.add(reg)
+
+        caps.temperature_sensors_count = len(caps.temperature_sensors)
+
+        # Expansion module and GWC detection via discrete inputs/coils
+        if "expansion" in discretes:
+            caps.expansion_module = True
+        if "gwc" in coils or "gwc_temperature" in inputs:
+            caps.gwc_system = True
+
+        if "bypass" in coils:
+            caps.bypass_system = True
+        if any(reg.startswith("schedule_") for reg in holdings):
+            caps.weekly_schedule = True
+
+        if any(
+            reg in inputs
+            for reg in [
+                "constant_flow_active",
+                "supply_flow_rate",
+                "supply_air_flow",
+                "cf_version",
+            ]
+        ):
+            caps.constant_flow = True
+
+        # Generic capability detection based on register name patterns
+        all_registers = inputs | holdings | coils | discretes
+        for attr, patterns in CAPABILITY_PATTERNS.items():
+            if getattr(caps, attr):
+                continue
+            if any(pat in reg for reg in all_registers for pat in patterns):
+                setattr(caps, attr, True)
+
+        return caps
+
+    def _group_registers_for_batch_read(
+        self, addresses: list[int], *, max_gap: int = 1, max_batch: int = MAX_BATCH_REGISTERS
+    ) -> list[tuple[int, int]]:
+        """Group consecutive register addresses for efficient batch reads.
+
+        Known missing registers are isolated into their own groups so that
+        surrounding registers can still be batch-read successfully.
+        """
+
+        if not addresses:
+            return []
+
+        addresses = sorted(set(addresses))
+        groups: list[tuple[int, int]] = []
+        start: int | None = None
+        prev: int | None = None
+        count = 0
+
+        for addr in addresses:
+            if addr in self._known_missing_addresses:
+                if count:
+                    groups.append((start or addr, count))
+                    start = None
+                    count = 0
+                groups.append((addr, 1))
+                prev = None
+                continue
+
+            if start is None:
+                start = addr
+                prev = addr
+                count = 1
+                continue
+
+            assert prev is not None
+            if addr - prev > max_gap or count >= max_batch:
+                groups.append((start, count))
+                start = addr
+                count = 1
+            else:
+                count += 1
+            prev = addr
+
+        if count:
+            groups.append((start or addresses[-1], count))
+
+        return groups
+
+    async def scan(self) -> dict[str, Any]:
+        """Perform the actual register scan using an established connection."""
+        client = self._client
+        if client is None:
+            raise ConnectionException("Client not connected")
+
+        device = DeviceInfo()
+
+        # Basic firmware/serial information
+        info_regs = await self._read_input(client, 0, 30) or []
+        major = minor = patch = None
+        firmware_err: Exception | None = None
+
+        for name in ("version_major", "version_minor", "version_patch"):
+            idx = INPUT_REGISTERS[name]
+            if len(info_regs) > idx:
+                try:
+                    value = info_regs[idx]
+                except Exception as exc:  # pragma: no cover - best effort
+                    firmware_err = exc
+                    continue
+                if name == "version_major":
+                    major = value
+                elif name == "version_minor":
+                    minor = value
+                else:
+                    patch = value
+
+        missing_regs: list[str] = []
+        if None in (major, minor, patch):
+            for name, value in (
+                ("version_major", major),
+                ("version_minor", minor),
+                ("version_patch", patch),
+            ):
+                if value is None and name in INPUT_REGISTERS:
+                    addr = INPUT_REGISTERS[name]
+                    single = await self._read_input(client, addr, 1, skip_cache=True)
+                    if single:
+                        if name == "version_major":
+                            major = single[0]
+                        elif name == "version_minor":
+                            minor = single[0]
+                        else:
+                            patch = single[0]
+                    else:
+                        missing_regs.append(f"{name} (0x{addr:04X})")
+
+        if None not in (major, minor, patch):
+            device.firmware = f"{major}.{minor}.{patch}"
+        else:
+            details: list[str] = []
+            if missing_regs:
+                details.append("missing " + ", ".join(missing_regs))
+            if firmware_err is not None:
+                details.append(str(firmware_err))
+            msg = "Failed to read firmware version registers"
+            if details:
+                msg += ": " + "; ".join(details)
+            _LOGGER.warning(msg)
+            device.firmware_available = False
+        try:
+            start = INPUT_REGISTERS["serial_number_1"]
+            parts = info_regs[start : start + 6]  # noqa: E203
+            if parts:
+                device.serial_number = "".join(f"{p:04X}" for p in parts)
+        except Exception:  # pragma: no cover
+            pass
+        try:
+            start = HOLDING_REGISTERS["device_name_1"]
+            name_regs = await self._read_holding(client, start, 8) or []
+            if name_regs:
+                name_bytes = bytearray()
+                for reg in name_regs:
+                    name_bytes.append((reg >> 8) & 0xFF)
+                    name_bytes.append(reg & 0xFF)
+                device.device_name = name_bytes.decode("ascii").rstrip("\x00")
+        except Exception:  # pragma: no cover
+            pass
+        unknown_registers: dict[str, dict[int, Any]] = {
+            "input_registers": {},
+            "holding_registers": {},
+            "coil_registers": {},
+            "discrete_inputs": {},
+        }
+        scanned_registers: dict[str, int] = {
+            "input_registers": 0,
+            "holding_registers": 0,
+            "coil_registers": 0,
+            "discrete_inputs": 0,
+        }
+
+        input_max = max(self._registers.get("04", {}).keys(), default=-1)
+        holding_max = max(self._registers.get("03", {}).keys(), default=-1)
+        coil_max = max(self._registers.get("01", {}).keys(), default=-1)
+        discrete_max = max(self._registers.get("02", {}).keys(), default=-1)
+
+        if self.full_register_scan:
+            for addr in range(0, input_max + 1):
+                scanned_registers["input_registers"] += 1
+                input_data = await self._read_input(client, addr, 1, skip_cache=True)
+                if not input_data:
+                    continue
+                reg_name = self._registers.get("04", {}).get(addr)
+                if reg_name and self._is_valid_register_value(reg_name, input_data[0]):
+                    self.available_registers["input_registers"].add(reg_name)
+                else:
+                    unknown_registers["input_registers"][addr] = input_data[0]
+                    if reg_name:
+                        self.failed_addresses["invalid_values"]["input_registers"].add(addr)
+                        self._log_invalid_value(reg_name, input_data[0])
+
+            for addr in range(0, holding_max + 1):
+                scanned_registers["holding_registers"] += 1
+                holding_data = await self._read_holding(client, addr, 1, skip_cache=True)
+                if not holding_data:
+                    continue
+                reg_name = self._registers.get("03", {}).get(addr)
+                if reg_name and self._is_valid_register_value(reg_name, holding_data[0]):
+                    self.available_registers["holding_registers"].add(reg_name)
+                else:
+                    unknown_registers["holding_registers"][addr] = holding_data[0]
+                    if reg_name:
+                        self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
+                        self._log_invalid_value(reg_name, holding_data[0])
+
+            for addr in range(0, coil_max + 1):
+                scanned_registers["coil_registers"] += 1
+                coil_data = await self._read_coil(client, addr, 1)
+                if not coil_data:
+                    continue
+                if (reg_name := self._registers.get("01", {}).get(addr)) is not None:
+                    self.available_registers["coil_registers"].add(reg_name)
+                else:
+                    unknown_registers["coil_registers"][addr] = coil_data[0]
+
+            for addr in range(0, discrete_max + 1):
+                scanned_registers["discrete_inputs"] += 1
+                discrete_data = await self._read_discrete(client, addr, 1)
+                if not discrete_data:
+                    continue
+                if (reg_name := self._registers.get("02", {}).get(addr)) is not None:
+                    self.available_registers["discrete_inputs"].add(reg_name)
+                else:
+                    unknown_registers["discrete_inputs"][addr] = discrete_data[0]
+        else:
+            # Scan Input Registers in batches
+            input_addr_to_name: dict[int, str] = {}
+            input_addresses: list[int] = []
+            for name, addr in INPUT_REGISTERS.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
+                    continue
+                input_addr_to_name[addr] = name
+                input_addresses.append(addr)
+
+            for start, count in self._group_registers_for_batch_read(input_addresses):
+                input_data = await self._read_input(client, start, count)
+                if input_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in input_addr_to_name:
+                            continue
+                        single = await self._read_input(client, addr, 1, skip_cache=True)
+                        if single and self._is_valid_register_value(
+                            input_addr_to_name[addr], single[0]
+                        ):
+                            self.available_registers["input_registers"].add(
+                                input_addr_to_name[addr]
+                            )
+                        elif single is not None:
+                            self.failed_addresses["invalid_values"]["input_registers"].add(
+                                addr
+                            )
+                            self._log_invalid_value(
+                                input_addr_to_name[addr], single[0]
+                            )
+                    continue
+
+                for offset, value in enumerate(input_data):
+                    addr = start + offset
+                    if reg_name := input_addr_to_name.get(addr):
+                        if self._is_valid_register_value(reg_name, value):
+                            self.available_registers["input_registers"].add(reg_name)
+                        else:
+                            self.failed_addresses["invalid_values"]["input_registers"].add(
+                                addr
+                            )
+                            self._log_invalid_value(reg_name, value)
+
+            # Scan Holding Registers in batches
+            holding_info: dict[int, tuple[str, int]] = {}
+            holding_addresses: list[int] = []
+            for name, addr in HOLDING_REGISTERS.items():
+                if not self.scan_uart_settings and addr in UART_OPTIONAL_REGS:
+                    continue
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["holding_registers"]:
+                    continue
+                size = MULTI_REGISTER_SIZES.get(name, 1)
+                holding_info[addr] = (name, size)
+                holding_addresses.extend(range(addr, addr + size))
+
+            for start, count in self._group_registers_for_batch_read(holding_addresses):
+                holding_data = await self._read_holding(client, start, count)
+                if holding_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in holding_info:
+                            continue
+                        name, size = holding_info[addr]
+                        single = await self._read_holding(client, addr, size, skip_cache=True)
+                        if single and self._is_valid_register_value(name, single[0]):
+                            self.available_registers["holding_registers"].add(name)
+                        elif single is not None:
+                            self.failed_addresses["invalid_values"]["holding_registers"].add(
+                                addr
+                            )
+                            self._log_invalid_value(name, single[0])
+                    continue
+
+                for offset, value in enumerate(holding_data):
+                    addr = start + offset
+                    if addr in holding_info:
+                        name, _size = holding_info[addr]
+                        if self._is_valid_register_value(name, value):
+                            self.available_registers["holding_registers"].add(name)
+                        else:
+                            self.failed_addresses["invalid_values"]["holding_registers"].add(
+                                addr
+                            )
+                            self._log_invalid_value(name, value)
+
+            # Always expose diagnostic registers so error entities exist even
+            # when the device does not implement them.
+            for name in HOLDING_REGISTERS:
+                if name.startswith(("e_", "s_")) or name in {"alarm", "error"}:
+                    self.available_registers["holding_registers"].add(name)
+
+            # Scan Coil Registers in batches
+            coil_addr_to_name: dict[int, str] = {}
+            coil_addresses: list[int] = []
+            for name, addr in COIL_REGISTERS.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["coil_registers"]:
+                    continue
+                coil_addr_to_name[addr] = name
+                coil_addresses.append(addr)
+
+            for start, count in self._group_registers_for_batch_read(coil_addresses):
+                coil_data = await self._read_coil(client, start, count)
+                if coil_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in coil_addr_to_name:
+                            continue
+                        single_coil = await self._read_coil(client, addr, 1)
+                        if single_coil is not None:
+                            self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
+                    continue
+                for offset, value in enumerate(coil_data):
+                    addr = start + offset
+                    if addr in coil_addr_to_name and value is not None:
+                        self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
+
+            # Scan Discrete Input Registers in batches
+            discrete_addr_to_name: dict[int, str] = {}
+            discrete_addresses: list[int] = []
+            for name, addr in DISCRETE_INPUT_REGISTERS.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["discrete_inputs"]:
+                    continue
+                discrete_addr_to_name[addr] = name
+                discrete_addresses.append(addr)
+
+            for start, count in self._group_registers_for_batch_read(discrete_addresses):
+                discrete_data = await self._read_discrete(client, start, count)
+                if discrete_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        if addr not in discrete_addr_to_name:
+                            continue
+                        single_discrete = await self._read_discrete(client, addr, 1)
+                        if single_discrete is not None:
+                            self.available_registers["discrete_inputs"].add(
+                                discrete_addr_to_name[addr]
+                            )
+                    continue
+                for offset, value in enumerate(discrete_data):
+                    addr = start + offset
+                    if addr in discrete_addr_to_name and value is not None:
+                        self.available_registers["discrete_inputs"].add(discrete_addr_to_name[addr])
+
+        caps = self._analyze_capabilities()
+        device.capabilities = [
+            key for key, val in caps.as_dict().items() if isinstance(val, bool) and val
+        ]
+
+        if self.full_register_scan:
+            scan_blocks = {
+                "input_registers": (
+                    0 if input_max >= 0 else None,
+                    input_max if input_max >= 0 else None,
+                ),
+                "holding_registers": (
+                    0 if holding_max >= 0 else None,
+                    holding_max if holding_max >= 0 else None,
+                ),
+                "coil_registers": (
+                    0 if coil_max >= 0 else None,
+                    coil_max if coil_max >= 0 else None,
+                ),
+                "discrete_inputs": (
+                    0 if discrete_max >= 0 else None,
+                    discrete_max if discrete_max >= 0 else None,
+                ),
+            }
+        else:
+            scan_blocks = {
+                "input_registers": (
+                    (
+                        min(INPUT_REGISTERS.values()),
+                        max(INPUT_REGISTERS.values()),
+                    )
+                    if INPUT_REGISTERS
+                    else (None, None)
+                ),
+                "holding_registers": (
+                    (
+                        min(HOLDING_REGISTERS.values()),
+                        max(HOLDING_REGISTERS.values()),
+                    )
+                    if HOLDING_REGISTERS
+                    else (None, None)
+                ),
+                "coil_registers": (
+                    (
+                        min(COIL_REGISTERS.values()),
+                        max(COIL_REGISTERS.values()),
+                    )
+                    if COIL_REGISTERS
+                    else (None, None)
+                ),
+                "discrete_inputs": (
+                    (
+                        min(DISCRETE_INPUT_REGISTERS.values()),
+                        max(DISCRETE_INPUT_REGISTERS.values()),
+                    )
+                    if DISCRETE_INPUT_REGISTERS
+                    else (None, None)
+                ),
+            }
+        self._log_skipped_ranges()
+
+        raw_registers: dict[int, int] = {}
+        if self.deep_scan:
+            for start, count in self._group_registers_for_batch_read(list(range(0x012D))):
+                data = await self._read_input(client, start, count)
+                if data is None:
+                    continue
+                for offset, value in enumerate(data):
+                    raw_registers[start + offset] = value
+
+        # Determine expected registers that were not successfully read
+        register_maps = {
+            "input_registers": INPUT_REGISTERS,
+            "holding_registers": HOLDING_REGISTERS,
+            "coil_registers": COIL_REGISTERS,
+            "discrete_inputs": DISCRETE_INPUT_REGISTERS,
+        }
+        missing_registers: dict[str, dict[str, int]] = {}
+        for reg_type, mapping in register_maps.items():
+            missing: dict[str, int] = {}
+            for name, addr in mapping.items():
+                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS[reg_type]:
+                    continue
+                if name not in self.available_registers[reg_type]:
+                    missing[name] = addr
+            if missing:
+                missing_registers[reg_type] = missing
+
+        if missing_registers:
+            details = []
+            for reg_type, regs in missing_registers.items():
+                formatted = ", ".join(
+                    f"{name}=0x{addr:04X}"
+                    for name, addr in sorted(regs.items(), key=lambda item: item[1])
+                )
+                details.append(f"{reg_type}: {formatted}")
+            _LOGGER.warning(
+                "The following registers were not found during scan: %s", "; ".join(details)
+            )
+
+        result = {
+            "available_registers": self.available_registers,
+            "device_info": device.as_dict(),
+            "capabilities": caps.as_dict(),
+            "register_count": sum(len(v) for v in self.available_registers.values()),
+            "scan_blocks": scan_blocks,
+            "unknown_registers": unknown_registers,
+            "scanned_registers": scanned_registers,
+            "missing_registers": missing_registers,
+            "failed_addresses": {
+                "modbus_exceptions": {
+                    k: sorted(v)
+                    for k, v in self.failed_addresses["modbus_exceptions"].items()
+                    if v
+                },
+                "invalid_values": {
+                    k: sorted(v)
+                    for k, v in self.failed_addresses["invalid_values"].items()
+                    if v
+                },
+            },
+        }
+        if self.deep_scan:
+            result["raw_registers"] = raw_registers
+            result["total_addresses_scanned"] = len(raw_registers)
+
+        return result
+
+    async def scan_device(self) -> dict[str, Any]:
+        """Open the Modbus connection, perform a scan and close the client."""
+        from pymodbus.client import AsyncModbusTcpClient
+
+        self._client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+
+        try:
+            connected = await asyncio.wait_for(
+                self._client.connect(), timeout=self.timeout
+            )
+            if not connected:
+                raise ConnectionException("Failed to connect")
+            return await self.scan()
+        finally:
+            await self.close()
+
+    async def _load_registers(
+        self,
+    ) -> Tuple[
+        Dict[str, Dict[int, str]],
+        Dict[str, Tuple[Optional[int], Optional[int]]],
+        Dict[str, Tuple[int, ...]],
+    ]:
+        """Load Modbus register definitions, ranges and firmware versions."""
+        try:
+            register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+            register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+            register_versions: Dict[str, Tuple[int, ...]] = {}
+            for reg in get_all_registers():
+                if not reg.name:
+                    continue
+                register_map[reg.function][reg.address] = reg.name
+                if reg.min is not None or reg.max is not None:
+                    register_ranges[reg.name] = (reg.min, reg.max)
+            return register_map, register_ranges, register_versions
+        except Exception:
+            _LOGGER.warning("Loading register definitions from deprecated CSV file")
+            csv_path = files(__package__) / "data" / "modbus_registers.csv"
+
+            def _parse_csv() -> Tuple[
+                Dict[str, Dict[int, str]],
+                Dict[str, Tuple[Optional[int], Optional[int]]],
+                Dict[str, Tuple[int, ...]],
+            ]:
+                register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+                register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+                register_versions: Dict[str, Tuple[int, ...]] = {}
+                try:
+                    with cast(TextIO, csv_path.open("r", encoding="utf-8")) as csvfile:
+                        reader = csv.DictReader(csvfile)
+                        rows: Dict[
+                            str,
+                            List[
+                                Tuple[str, int, Optional[int], Optional[int], Optional[Tuple[int, ...]]]
+                            ],
+                        ] = {"03": [], "04": [], "01": [], "02": []}
+                        for row in reader:
+                            code = row.get("Function_Code")
+                            if not code or code.startswith("#"):
+                                continue
+                            name_raw = row.get("Register_Name")
+                            if not isinstance(name_raw, str) or not name_raw.strip():
+                                continue
+                            name = _to_snake_case(name_raw)
+                            if name == "none" or re.fullmatch(r"none(_\d+)?$", name):
+                                continue
+                            try:
+                                addr = int(row.get("Address_DEC", 0))
+                            except (TypeError, ValueError):
+                                continue
+                            min_raw = row.get("Min")
+                            max_raw = row.get("Max")
+                            version_raw = row.get("Software_Version")
+
+                            def _parse_range(label: str, raw: str | None) -> int | None:
+                                if raw in (None, ""):
+                                    return None
+                                text = str(raw).split("#", 1)[0].strip()
+                                if not text or not re.fullmatch(
+                                    r"[+-]?(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)",
+                                    text,
+                                ):
+                                    _LOGGER.warning(
+                                        "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                    )
+                                    return None
+                                try:
+                                    return (
+                                        int(text, 0)
+                                        if text.lower().startswith(("0x", "+0x", "-0x"))
+                                        else int(float(text))
+                                    )
+                                except ValueError:
+                                    _LOGGER.warning(
+                                        "Ignoring non-numeric %s for %s: %s", label, name, raw
+                                    )
+                                    return None
+
+                            min_val = _parse_range("Min", min_raw)
+                            max_val = _parse_range("Max", max_raw)
+                            if (min_raw not in (None, "") or max_raw not in (None, "")) and (
+                                min_val is None or max_val is None
+                            ):
+                                _LOGGER.warning(
+                                    "Incomplete range for %s: Min=%s Max=%s", name, min_raw, max_raw
+                                )
+
+                            if name.startswith(BCD_TIME_PREFIXES):
+                                min_val = (
+                                    ((min_val // 10) << 12 | (min_val % 10) << 8)
+                                    if min_val is not None
+                                    else 0
+                                )
+                                max_val = (
+                                    ((max_val // 10) << 12 | (max_val % 10) << 8 | 0x59)
+                                    if max_val is not None
+                                    else 0x2359
+                                )
+                            elif name.startswith(("setting_summer_", "setting_winter_")):
+                                min_val = (min_val << 8) if min_val is not None else 0
+                                max_val = (
+                                    (max_val << 8) | 0xFF if max_val is not None else 0xFFFF
+                                )
+
+                            version_tuple: Optional[Tuple[int, ...]] = None
+                            if version_raw:
+                                try:
+                                    version_tuple = tuple(
+                                        int(part) for part in str(version_raw).split(".")
+                                    )
+                                except ValueError:
+                                    version_tuple = None
+
+                            rows[code].append((name, addr, min_val, max_val, version_tuple))
+
+                        for code, items in rows.items():
+                            items.sort(key=lambda item: item[1])
+                            counts: Dict[str, int] = {}
+                            for name, *_ in items:
+                                counts[name] = counts.get(name, 0) + 1
+
+                            seen: Dict[str, int] = {}
+                            for name, addr, min_val, max_val, ver in items:
+                                if addr in register_map[code]:
+                                    _LOGGER.warning(
+                                        "Duplicate register address %s for function code %s: %s",
+                                        addr,
+                                        code,
+                                        name,
+                                    )
+                                    continue
+                                if counts[name] > 1:
+                                    idx = seen.get(name, 0) + 1
+                                    seen[name] = idx
+                                    name = f"{name}_{idx}"
+                                register_map[code][addr] = name
+                                if min_val is not None or max_val is not None:
+                                    register_ranges[name] = (min_val, max_val)
+                                if ver is not None:
+                                    register_versions[name] = ver
+
+                        required_maps = {
+                            "04": INPUT_REGISTERS,
+                            "03": HOLDING_REGISTERS,
+                            "01": COIL_REGISTERS,
+                            "02": DISCRETE_INPUT_REGISTERS,
+                        }
+                        missing: Dict[str, Set[str]] = {}
+                        for code, reg_map in required_maps.items():
+                            defined = set(register_map.get(code, {}).values())
+                            missing_regs = set(reg_map) - defined
+                            if missing_regs:
+                                missing[code] = missing_regs
+                        if missing:
+                            messages = [
+                                f"{code}: {sorted(list(names))}" for code, names in missing.items()
+                            ]
+                            raise ValueError(
+                                "Required registers missing from CSV: " + ", ".join(messages)
+                            )
+                except FileNotFoundError:
+                    _LOGGER.error("Register definition file not found: %s", csv_path)
+                return register_map, register_ranges, register_versions
+
+            return await asyncio.to_thread(_parse_csv)
+
+    def _sleep_time(self, attempt: int) -> float:
+        """Return delay for a retry attempt based on backoff."""
+        if self.backoff:
+            return float(self.backoff * 2 ** (attempt - 1))
+        return 0.0
+
+    def _log_skipped_ranges(self) -> None:
+        """Log summary of ranges skipped due to Modbus exceptions."""
+        if self._unsupported_input_ranges:
+            ranges = ", ".join(
+                f"0x{start:04X}-0x{end:04X} (exception code {code})"
+                for (start, end), code in sorted(self._unsupported_input_ranges.items())
+            )
+            _LOGGER.warning("Skipping unsupported input registers %s", ranges)
+        if self._unsupported_holding_ranges:
+            ranges = ", ".join(
+                f"0x{start:04X}-0x{end:04X} (exception code {code})"
+                for (start, end), code in sorted(self._unsupported_holding_ranges.items())
+            )
+            _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
+
+        for reg_type, addrs in self.failed_addresses["modbus_exceptions"].items():
+            if addrs:
+                hexes = ", ".join(f"0x{addr:04X}" for addr in sorted(addrs))
+                _LOGGER.warning("Failed to read %s at %s", reg_type, hexes)
+
+        for reg_type, addrs in self.failed_addresses["invalid_values"].items():
+            if addrs:
+                hexes = ", ".join(f"0x{addr:04X}" for addr in sorted(addrs))
+                _LOGGER.debug("Invalid values for %s at %s", reg_type, hexes)
+
+    def _log_invalid_value(self, name: str, raw: int) -> None:
+        """Log a register value that failed validation."""
+        if name in self._reported_invalid:
+            level = logging.DEBUG
+        else:
+            level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
+            self._reported_invalid.add(name)
+        decoded = _format_register_value(name, raw)
+        _LOGGER.log(level, "Invalid value for %s: raw=0x%04X decoded=%s", name, raw, decoded)
+
+    def _mark_input_supported(self, address: int) -> None:
+        """Remove address from cached unsupported input ranges after success."""
+        self._failed_input.discard(address)
+        for (start, end), code in list(self._unsupported_input_ranges.items()):
+            if start <= address <= end:
+                del self._unsupported_input_ranges[(start, end)]
+                if start <= address - 1:
+                    self._unsupported_input_ranges[(start, address - 1)] = code
+                if address + 1 <= end:
+                    self._unsupported_input_ranges[(address + 1, end)] = code
+
+    def _mark_holding_supported(self, address: int) -> None:
+        """Remove address from cached unsupported holding ranges after success."""
+        self._failed_holding.discard(address)
+        for (start, end), code in list(self._unsupported_holding_ranges.items()):
+            if start <= address <= end:
+                del self._unsupported_holding_ranges[(start, end)]
+                if start <= address - 1:
+                    self._unsupported_holding_ranges[(start, address - 1)] = code
+                if address + 1 <= end:
+                    self._unsupported_holding_ranges[(address + 1, end)] = code
+
+    def _mark_holding_unsupported(self, start: int, end: int, code: int) -> None:
+        """Track unsupported holding register range without overlaps."""
+        for (exist_start, exist_end), exist_code in list(self._unsupported_holding_ranges.items()):
+            if exist_end < start or exist_start > end:
+                continue
+            del self._unsupported_holding_ranges[(exist_start, exist_end)]
+            if exist_start < start:
+                self._unsupported_holding_ranges[(exist_start, start - 1)] = exist_code
+            if end < exist_end:
+                self._unsupported_holding_ranges[(end + 1, exist_end)] = exist_code
+        self._unsupported_holding_ranges[(start, end)] = code
+
+    def _mark_input_unsupported(self, start: int, end: int, code: int | None) -> None:
+        """Cache unsupported input register range, merging overlaps."""
+
+        for (old_start, old_end), _ in list(self._unsupported_input_ranges.items()):
+            if end < old_start or start > old_end:
+                continue
+            del self._unsupported_input_ranges[(old_start, old_end)]
+            start = min(start, old_start)
+            end = max(end, old_end)
+
+        self._unsupported_input_ranges[(start, end)] = code or 0
+
+    async def _read_input(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+        *,
+        skip_cache: bool = False,
+    ) -> list[int] | None:
+        """Read input registers with retry and backoff.
+
+        ``skip_cache`` is used when probing individual registers after a block
+        read failed. When ``True`` the cached set of failed registers is not
+        checked, allowing each register to be queried once before being cached
+        as missing.
+        """
+        start = address
+        end = address + count - 1
+
+        if not skip_cache:
+            for skip_start, skip_end in self._unsupported_input_ranges:
+                if skip_start <= start and end <= skip_end:
+                    self.failed_addresses["modbus_exceptions"]["input_registers"].update(
+                        range(start, end + 1)
+                    )
+                    return None
+        if not skip_cache and any(reg in self._failed_input for reg in range(start, end + 1)):
+            first = next(reg for reg in range(start, end + 1) if reg in self._failed_input)
+            skip_start = skip_end = first
+            while skip_start - 1 in self._failed_input:
+                skip_start -= 1
+            while skip_end + 1 in self._failed_input:
+                skip_end += 1
+            if (skip_start, skip_end) not in self._input_skip_log_ranges:
+                _LOGGER.debug(
+                    "Skipping cached failed input registers 0x%04X-0x%04X",
+                    skip_start,
+                    skip_end,
+                )
+                self._input_skip_log_ranges.add((skip_start, skip_end))
+            self.failed_addresses["modbus_exceptions"]["input_registers"].update(
+                range(skip_start, skip_end + 1)
+            )
+            return None
+
+        for attempt in range(1, self.retry + 1):
+            try:
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_input_registers, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
+                )
+                if response is not None:
+                    if response.isError():
+                        code = getattr(response, "exception_code", None)
+                        self._failed_input.update(range(start, end + 1))
+                        self._mark_input_unsupported(start, end, code)
+                        self.failed_addresses["modbus_exceptions"]["input_registers"].update(
+                            range(start, end + 1)
+                        )
+                        return None
+                    if skip_cache and count == 1:
+                        self._mark_input_supported(address)
+                    return cast(list[int], response.registers)
+                _LOGGER.debug(
+                    "Attempt %d failed to read input 0x%04X: %s",
+                    attempt,
+                    address,
+                    response,
+                )
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Attempt %d failed to read input 0x%04X: %s",
+                    attempt,
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading input 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            except ModbusIOException as exc:
+                _LOGGER.debug(
+                    "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._input_failures.get(address, 0) + 1
+                    self._input_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_input:
+                        self._failed_input.add(address)
+                        self.failed_addresses["modbus_exceptions"]["input_registers"].add(
+                            address
+                        )
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            _LOGGER.debug(
+                "Falling back to holding registers for input 0x%04X (attempt %d)",
+                address,
+                attempt,
+            )
+            try:
+                response = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_holding_registers, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
+                )
+                if response is not None:
+                    if response.isError():
+                        code = getattr(response, "exception_code", None)
+                        self._failed_input.update(range(start, end + 1))
+                        self._mark_input_unsupported(start, end, code)
+                        self.failed_addresses["modbus_exceptions"]["input_registers"].update(
+                            range(start, end + 1)
+                        )
+                        return None
+                    if skip_cache and count == 1:
+                        self._mark_input_supported(address)
+                    return cast(list[int], response.registers)
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    response,
+                )
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug(
+                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    attempt,
+                    address,
+                    exc,
+                    exc_info=True,
+                )
+            except (OSError, asyncio.TimeoutError) as exc:
+                _LOGGER.error(
+                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            if attempt < self.retry:
+                try:
+                    await asyncio.sleep(self._sleep_time(attempt))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying input 0x%04X", address)
+                    raise
+
+        self.failed_addresses["modbus_exceptions"]["input_registers"].update(
+            range(start, end + 1)
+        )
+        return None
+
+    async def _read_holding(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+        *,
+        skip_cache: bool = False,
+    ) -> list[int] | None:
+        """Read holding registers with retry, backoff and failure tracking.
+
+        ``skip_cache`` is used when probing individual registers after a block
+        read failed. When ``True`` the cached sets of unsupported ranges and
+        failed registers are ignored, allowing each register to be queried
+        once before being cached again.
+        """
+        start = address
+        end = address + count - 1
+
+        if not skip_cache:
+            for skip_start, skip_end in self._unsupported_holding_ranges:
+                if skip_start <= start and end <= skip_end:
+                    self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
+                        range(start, end + 1)
+                    )
+                    return None
+
+            if address in self._failed_holding:
+                _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
+                self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
+                return None
+
+        failures = self._holding_failures.get(address, 0)
+        if failures >= self.retry:
+            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+            self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
+            return None
+
+        for attempt in range(1, self.retry + 1):
+            try:
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_holding_registers, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
+                )
+                if response is not None:
+                    if response.isError():
+                        code = getattr(response, "exception_code", None)
+                        self._failed_holding.update(range(start, end + 1))
+                        self._mark_holding_unsupported(start, end, code or 0)
+                        self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
+                            range(start, end + 1)
+                        )
+                        return None
+                    if skip_cache and count == 1:
+                        self._mark_holding_supported(address)
+                    if address in self._holding_failures:
+                        del self._holding_failures[address]
+                    return cast(list[int], response.registers)
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read holding 0x%04X (attempt %d/%d): %s",
+                    address,
+                    attempt,
+                    self.retry,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(
+                            address
+                        )
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+            except asyncio.CancelledError:
+                _LOGGER.debug(
+                    "Cancelled reading holding 0x%04X on attempt %d/%d",
+                    address,
+                    attempt,
+                    self.retry,
+                )
+                raise
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+
+            if attempt < self.retry:
+                try:
+                    await asyncio.sleep(self._sleep_time(attempt))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
+                    raise
+
+        _LOGGER.warning(
+            "Failed to read holding registers 0x%04X-0x%04X after %d retries",
+            start,
+            end,
+            self.retry,
+        )
+        self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
+            range(start, end + 1)
+        )
+        return None
+
+    async def _read_coil(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+    ) -> list[bool] | None:
+        """Read coil registers with retry and backoff."""
+        for attempt in range(1, self.retry + 1):
+            try:
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_coils, self.slave_id, address, count=count
+                    ),
+                    timeout=self.timeout,
+                )
+                if response is not None and not response.isError():
+                    return cast(list[bool], response.bits[:count])
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read coil 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except asyncio.CancelledError:
+                _LOGGER.debug(
+                    "Cancelled reading coil 0x%04X on attempt %d",
+                    address,
+                    attempt,
+                )
+                raise
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading coil 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            if attempt < self.retry:
+                try:
+                    await asyncio.sleep(self._sleep_time(attempt))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
+                    raise
+        self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
+            range(address, address + count)
+        )
+        return None
+
+    async def _read_discrete(
+        self,
+        client: "AsyncModbusTcpClient",
+        address: int,
+        count: int,
+    ) -> list[bool] | None:
+        """Read discrete input registers with retry and backoff."""
+        for attempt in range(1, self.retry + 1):
+            try:
+                response: Any = await asyncio.wait_for(
+                    _call_modbus(
+                        client.read_discrete_inputs,
+                        self.slave_id,
+                        address,
+                        count=count,
+                    ),
+                    timeout=self.timeout,
+                )
+                if response is not None and not response.isError():
+                    return cast(list[bool], response.bits[:count])
+            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                _LOGGER.debug(
+                    "Failed to read discrete 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except asyncio.CancelledError:
+                _LOGGER.debug(
+                    "Cancelled reading discrete 0x%04X on attempt %d",
+                    address,
+                    attempt,
+                )
+                raise
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading discrete 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            if attempt < self.retry:
+                try:
+                    await asyncio.sleep(self._sleep_time(attempt))
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
+                    raise
+        self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
+            range(address, address + count)
+        )
+        return None

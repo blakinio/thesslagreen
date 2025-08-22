@@ -1,4 +1,5 @@
 """Test integration setup for ThesslaGreen Modbus integration."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,7 +17,7 @@ async def test_async_setup_entry_success():
     hass = MagicMock()
     hass.data = {}
     hass.config_entries.async_forward_entry_setups = AsyncMock()
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
     entry.title = "Test"
@@ -30,17 +31,18 @@ async def test_async_setup_entry_success():
     entry.title = "Test"
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
-    
+
     with patch(
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
         mock_coordinator = MagicMock()
         mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator_class.return_value = mock_coordinator
-        
+
         result = await async_setup_entry(hass, entry)
-        
+
         assert result is True
         assert DOMAIN in hass.data
         assert entry.entry_id in hass.data[DOMAIN]
@@ -51,7 +53,7 @@ async def test_async_setup_entry_failure():
     """Test setup entry with coordinator failure."""
     hass = MagicMock()
     hass.data = {}
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
     entry.title = "Test"
@@ -61,7 +63,7 @@ async def test_async_setup_entry_failure():
         "slave_id": 10,
     }
     entry.options = {}
-    
+
     with patch(
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
@@ -71,9 +73,42 @@ async def test_async_setup_entry_failure():
             side_effect=ConfigEntryNotReady("Connection failed")
         )
         mock_coordinator_class.return_value = mock_coordinator
-        
+
         with pytest.raises(ConfigEntryNotReady):
             await async_setup_entry(hass, entry)
+
+
+@pytest.mark.asyncio
+async def test_async_setup_entry_custom_port():
+    """Test setup entry with a non-default port."""
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry"
+    entry.data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 8899,
+        "slave_id": 10,
+    }
+    entry.options = {}
+    entry.title = "Test Entry"
+    entry.add_update_listener = MagicMock()
+    entry.async_on_unload = MagicMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
+    ) as mock_coordinator_class:
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
+        mock_coordinator_class.return_value = mock_coordinator
+
+        result = await async_setup_entry(hass, entry)
+
+        assert result is True
+        assert mock_coordinator_class.call_args.kwargs["port"] == 8899
 
 
 async def test_async_unload_entry_success():
@@ -81,17 +116,17 @@ async def test_async_unload_entry_success():
     hass = MagicMock()
     hass.data = {DOMAIN: {"test_entry": MagicMock()}}
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
-    
+
     # Mock coordinator with shutdown method
     mock_coordinator = MagicMock()
     mock_coordinator.async_shutdown = AsyncMock()
     hass.data[DOMAIN]["test_entry"] = mock_coordinator
-    
+
     result = await async_unload_entry(hass, entry)
-    
+
     assert result is True
     hass.config_entries.async_unload_platforms.assert_called_once()
     mock_coordinator.async_shutdown.assert_called_once()
@@ -102,12 +137,12 @@ async def test_async_unload_entry_failure():
     hass = MagicMock()
     hass.data = {DOMAIN: {"test_entry": MagicMock()}}
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=False)
-    
+
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
-    
+
     result = await async_unload_entry(hass, entry)
-    
+
     assert result is False
     hass.config_entries.async_unload_platforms.assert_called_once()
 
@@ -122,7 +157,7 @@ async def test_default_values():
         DEFAULT_TIMEOUT,
         DEFAULT_RETRY,
     )
-    
+
     assert DEFAULT_NAME == "ThesslaGreen"
     assert DEFAULT_PORT == 502
     assert DEFAULT_SLAVE_ID == 10
@@ -150,3 +185,87 @@ async def test_register_constants():
     assert input_regs["outside_temperature"] == 16
     assert holding["mode"] == 4097
     assert discrete["expansion"] == 0
+    from custom_components.thessla_green_modbus.const import (
+        COIL_REGISTERS,
+        DISCRETE_INPUT_REGISTERS,
+        INPUT_REGISTERS,
+        HOLDING_REGISTERS,
+    )
+
+    # Test that key registers are defined
+    assert "power_supply_fans" in COIL_REGISTERS
+    assert "outside_temperature" in INPUT_REGISTERS
+    assert "mode" in HOLDING_REGISTERS
+    assert "expansion" in DISCRETE_INPUT_REGISTERS
+
+    # Test address ranges
+    assert COIL_REGISTERS["power_supply_fans"] == 0x000B
+    assert INPUT_REGISTERS["outside_temperature"] == 0x0010
+    assert HOLDING_REGISTERS["mode"] == 0x1070
+
+
+async def test_unload_and_reload_entry():
+    """Test unloading and reloading a config entry reinitializes the integration."""
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
+    hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry"
+    entry.data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+    }
+    entry.options = {}
+    entry.title = "Test Entry"
+    entry.add_update_listener = MagicMock()
+    entry.async_on_unload = MagicMock()
+
+    coordinator1 = MagicMock()
+    coordinator1.async_config_entry_first_refresh = AsyncMock()
+    coordinator1.async_setup = AsyncMock(return_value=True)
+    coordinator1.async_shutdown = AsyncMock()
+
+    coordinator2 = MagicMock()
+    coordinator2.async_config_entry_first_refresh = AsyncMock()
+    coordinator2.async_setup = AsyncMock(return_value=True)
+    coordinator2.async_shutdown = AsyncMock()
+
+    with patch(
+        "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+        return_value=[],
+        create=True,
+    ), patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+        side_effect=[coordinator1, coordinator2],
+    ) as mock_coordinator_class, patch(
+        "custom_components.thessla_green_modbus.services.async_setup_services",
+        AsyncMock(),
+    ) as mock_setup_services, patch(
+        "custom_components.thessla_green_modbus.services.async_unload_services",
+        AsyncMock(),
+    ) as mock_unload_services:
+        # Initial setup
+        assert await async_setup_entry(hass, entry)
+        assert hass.data[DOMAIN][entry.entry_id] is coordinator1
+        hass.config_entries.async_forward_entry_setups.assert_called_once()
+        mock_setup_services.assert_called_once()
+
+        # Unload
+        assert await async_unload_entry(hass, entry)
+        mock_unload_services.assert_called_once()
+        coordinator1.async_shutdown.assert_called_once()
+        assert DOMAIN not in hass.data
+
+        # Reset mocks for reload
+        hass.config_entries.async_forward_entry_setups.reset_mock()
+        mock_setup_services.reset_mock()
+
+        # Reload
+        assert await async_setup_entry(hass, entry)
+        assert hass.data[DOMAIN][entry.entry_id] is coordinator2
+        assert hass.config_entries.async_forward_entry_setups.call_count == 1
+        mock_setup_services.assert_called_once()
+        assert mock_coordinator_class.call_count == 2

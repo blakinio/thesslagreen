@@ -2,24 +2,33 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolumeFlowRate,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
 from .const import DOMAIN, get_holding_registers
 
 try:  # Newer versions expose metadata through ENTITY_MAPPINGS
     from .const import ENTITY_MAPPINGS
 except ImportError:  # pragma: no cover - fall back when not available
     ENTITY_MAPPINGS = {}
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .entity_mappings import ENTITY_MAPPINGS
+from .modbus_exceptions import ConnectionException, ModbusException
+from .const import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +40,7 @@ UNIT_MAPPINGS = {
     "%": PERCENTAGE,
     "min": UnitOfTime.MINUTES,
     "h": UnitOfTime.HOURS,
+    "m³/h": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
 }
 
 
@@ -45,41 +55,34 @@ async def async_setup_entry(
     entities = []
 
     # Get number entity mappings
-    number_mappings: Dict[str, Dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
+    number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
     if not number_mappings:
         _LOGGER.debug("No number entity mappings found; skipping setup")
         return
 
-    # Create number entities for available writable registers
+    # Create number entities only for registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     for register_name, entity_config in number_mappings.items():
-        # Check if this register is available and writable
-        is_available = False
-        register_type = None
-
-        # Only check holding registers as they are writable
         if register_name in coordinator.available_registers.get("holding_registers", set()):
-            is_available = True
-            register_type = "holding_registers"
-
-        # If force full register list, check against holding registers
-        if not is_available and coordinator.force_full_register_list:
-            if register_name in HOLDING_REGISTERS:
-                is_available = True
-                register_type = "holding_registers"
-
-        if is_available:
             entities.append(
                 ThesslaGreenNumber(
                     coordinator=coordinator,
                     register_name=register_name,
                     entity_config=entity_config,
-                    register_type=register_type,
+                    register_type="holding_registers",
                 )
             )
             _LOGGER.debug("Created number entity: %s", register_name)
 
     if entities:
-        async_add_entities(entities, True)
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning(
+                "Cancelled while adding number entities, retrying without initial state"
+            )
+            async_add_entities(entities, False)
+            return
         _LOGGER.info("Added %d number entities", len(entities))
     else:
         _LOGGER.debug("No number entities were created")
@@ -92,8 +95,8 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        entity_config: Dict[str, Any],
-        register_type: Optional[str] = None,
+        entity_config: dict[str, Any],
+        register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
         super().__init__(coordinator, register_name)
@@ -124,8 +127,11 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Step size
         self._attr_native_step = self.entity_config.get("step", 1)
 
-        # Mode - slider for temperatures and durations, box for others
-        if "temperature" in self.register_name or "duration" in self.register_name:
+        # Mode - slider for temperatures, durations and coefficients
+        if any(
+            keyword in self.register_name
+            for keyword in ["temperature", "duration", "coef", "percentage"]
+        ):
             self._attr_mode = NumberMode.SLIDER
         else:
             self._attr_mode = NumberMode.BOX
@@ -133,19 +139,25 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Icon
         if "temperature" in self.register_name:
             self._attr_icon = "mdi:thermometer"
-        elif "flow" in self.register_name or "rate" in self.register_name:
+        elif (
+            "flow" in self.register_name
+            or "rate" in self.register_name
+            or "fan_speed" in self.register_name
+        ):
             self._attr_icon = "mdi:fan"
         elif "duration" in self.register_name:
             self._attr_icon = "mdi:timer"
         elif "intensity" in self.register_name:
             self._attr_icon = "mdi:gauge"
+        elif "coef" in self.register_name or "percentage" in self.register_name:
+            self._attr_icon = "mdi:percent"
         else:
             self._attr_icon = "mdi:numeric"
 
         # Entity category for configuration parameters
         if any(
             keyword in self.register_name
-            for keyword in ["hysteresis", "correction", "max", "min", "balance"]
+            for keyword in ["hysteresis", "correction", "max", "min", "balance", "coef"]
         ):
             self._attr_entity_category = EntityCategory.CONFIG
 
@@ -174,14 +186,24 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
                 _LOGGER.info("Set %s to %.2f", self.register_name, value)
             else:
                 _LOGGER.error("Failed to set %s to %.2f", self.register_name, value)
+                raise RuntimeError(f"Failed to write register {self.register_name}")
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)
+            raise
+        except (ValueError, OSError) as exc:  # pragma: no cover - unexpected
+            _LOGGER.exception(
+                "Error setting %s to %.2f: %s",
+                self.register_name,
+                value,
+                exc,
+            )
+            raise
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        attributes = {}
+        attributes: dict[str, Any] = {}
 
         # Add register information
         attributes["register_name"] = self.register_name
@@ -193,10 +215,6 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             if raw_value is not None:
                 attributes["raw_value"] = raw_value
 
-        # Add scale information if applicable
-        if "scale" in self.entity_config:
-            attributes["scale_factor"] = self.entity_config["scale"]
-
         # Add valid range
         attributes["valid_range"] = {
             "min": self._attr_native_min_value,
@@ -205,8 +223,12 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         }
 
         # Add last update time
-        if self.coordinator.last_successful_update:
-            attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()
+        last_update = (
+            self.coordinator.statistics.get("last_successful_update")
+            or self.coordinator.last_update
+        )
+        if last_update is not None:
+            attributes["last_updated"] = last_update.isoformat()
 
         return attributes
 

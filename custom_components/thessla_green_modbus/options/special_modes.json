@@ -1,0 +1,14 @@
+[
+  "thessla_green_modbus.special_mode_none",
+  "thessla_green_modbus.special_mode_boost",
+  "thessla_green_modbus.special_mode_eco",
+  "thessla_green_modbus.special_mode_away",
+  "thessla_green_modbus.special_mode_sleep",
+  "thessla_green_modbus.special_mode_fireplace",
+  "thessla_green_modbus.special_mode_hood",
+  "thessla_green_modbus.special_mode_party",
+  "thessla_green_modbus.special_mode_bathroom",
+  "thessla_green_modbus.special_mode_kitchen",
+  "thessla_green_modbus.special_mode_summer",
+  "thessla_green_modbus.special_mode_winter"
+]

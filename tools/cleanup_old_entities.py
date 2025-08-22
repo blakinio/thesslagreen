@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
+"""Cleanup old references created by the ThesslaGreen Modbus integration.
+
+The script removes outdated entities and references that may cause errors.
+It now supports both Polish and English entity names and can be configured at
+runtime through a config file or command line arguments.
+
+Usage:
+    python3 cleanup_old_entities.py [--config CONFIG] [--pattern REGEX ...]
+
+Run this script before restarting Home Assistant after updating the integration.
 """
-Script to clean up old references in Home Assistant for the ThesslaGreen Modbus
-integration. Removes outdated entities and references that may cause errors.
 
-Usage: run this script before restarting Home Assistant after updating the
-integration:
-
-    python3 cleanup_old_entities.py
-"""
-
-import logging
+import argparse
 import json
+import logging
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
+
+logging.basicConfig(level=logging.INFO)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,13 +31,59 @@ HA_CONFIG_PATHS = [
     Path("./config"),  # Relative path
 ]
 
-OLD_ENTITY_PATTERNS = [
+DEFAULT_ENTITY_PATTERNS = [
     "number.rekuperator_predkosc",
     "thessla_green_modbus.rekuperator_predkosc",
     "thessla.*rekuperator_predkosc",
+    # English variants
+    "number.rekuperator_speed",
+    "thessla_green_modbus.rekuperator_speed",
+    "thessla.*rekuperator_speed",
 ]
 
-BACKUP_SUFFIX = f"_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+# This list will be extended at runtime from config file and CLI
+OLD_ENTITY_PATTERNS = DEFAULT_ENTITY_PATTERNS.copy()
+
+DEFAULT_CONFIG_FILE = Path(__file__).with_name("cleanup_config.json")
+
+
+def _load_patterns(config_file: Path | None, extra_patterns: list[str]) -> list[str]:
+    """Load patterns from defaults, config file and CLI."""
+    patterns = DEFAULT_ENTITY_PATTERNS.copy()
+
+    cfg = config_file or DEFAULT_CONFIG_FILE
+    if cfg and cfg.exists():
+        try:
+            with open(cfg, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            patterns.extend(data.get("old_entity_patterns", []))
+            _LOGGER.info(
+                "Loaded %s patterns from %s", len(data.get("old_entity_patterns", [])), cfg
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            _LOGGER.warning("Cannot read config file %s: %s", cfg, exc)
+
+    patterns.extend(extra_patterns)
+    return patterns
+
+
+def _parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Cleanup old ThesslaGreen entities")
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        help="Path to JSON config file with additional old_entity_patterns",
+    )
+    parser.add_argument(
+        "-p",
+        "--pattern",
+        action="append",
+        default=[],
+        help="Additional regex pattern to match old entities (can be repeated)",
+    )
+    return parser.parse_args()
 
 
 def find_ha_config_dir() -> Path | None:
@@ -44,7 +96,8 @@ def find_ha_config_dir() -> Path | None:
 
 def backup_file(file_path: Path) -> Path:
     """Create a backup of the file."""
-    backup_path = file_path.with_suffix(file_path.suffix + BACKUP_SUFFIX)
+    backup_suffix = datetime.now().strftime("_backup_%Y%m%d_%H%M%S")
+    backup_path = file_path.with_suffix(file_path.suffix + backup_suffix)
     shutil.copy2(file_path, backup_path)
     _LOGGER.info("Backup created: %s", backup_path)
     return backup_path
@@ -84,7 +137,7 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
 
             # Check other problematic patterns
             for pattern in OLD_ENTITY_PATTERNS:
-                if pattern.replace("thessla.*", "thessla") in entity_id:
+                if re.search(pattern, entity_id):
                     if entity not in old_entities:
                         old_entities.append(entity)
 
@@ -112,9 +165,14 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
             backup_path.unlink()
             return True
 
-    except Exception as exc:
-        _LOGGER.error("Error processing entity registry: %s", exc)
-        # Restore backup
+    except OSError as exc:
+        _LOGGER.error("Error processing entity registry file: %s", exc)
+        if backup_path.exists():
+            shutil.copy2(backup_path, registry_path)
+            _LOGGER.info("Restored backup from: %s", backup_path)
+        return False
+    except json.JSONDecodeError as exc:
+        _LOGGER.error("Error decoding entity registry JSON: %s", exc)
         if backup_path.exists():
             shutil.copy2(backup_path, registry_path)
             _LOGGER.info("Restored backup from: %s", backup_path)
@@ -138,7 +196,7 @@ def cleanup_automations(config_dir: Path) -> bool:
         # Check for references to old entities
         problematic_refs = []
         for pattern in OLD_ENTITY_PATTERNS:
-            if pattern.replace("thessla.*", "thessla") in content:
+            if re.search(pattern, content):
                 problematic_refs.append(pattern)
 
         if problematic_refs:
@@ -152,7 +210,7 @@ def cleanup_automations(config_dir: Path) -> bool:
             _LOGGER.info("Automations are clean")
             return True
 
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         _LOGGER.error("Error checking automations: %s", exc)
         return False
 
@@ -175,7 +233,7 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
         issues = []
 
         for pattern in OLD_ENTITY_PATTERNS:
-            if pattern.replace("thessla.*", "thessla") in content:
+            if re.search(pattern, content):
                 issues.append(f"Reference to {pattern}")
 
         # Check for old integration configuration
@@ -192,7 +250,7 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
             _LOGGER.info("Configuration is clean")
             return True
 
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         _LOGGER.error("Error checking configuration: %s", exc)
         return False
 
@@ -216,7 +274,7 @@ def cleanup_custom_component_cache(config_dir: Path) -> bool:
                     cache_path.unlink()
                 _LOGGER.info("Removed cache: %s", cache_path)
                 cleaned = True
-            except Exception as exc:
+            except OSError as exc:
                 _LOGGER.warning("Unable to remove cache %s: %s", cache_path, exc)
 
     if not cleaned:
@@ -225,10 +283,15 @@ def cleanup_custom_component_cache(config_dir: Path) -> bool:
     return True
 
 
-def main():
+def main() -> None:
     """Main entry point of the script."""
+    args = _parse_args()
+    global OLD_ENTITY_PATTERNS
+    OLD_ENTITY_PATTERNS = _load_patterns(args.config, args.pattern)
+
     _LOGGER.info("ThesslaGreen Modbus - Cleanup Tool")
     _LOGGER.info("=" * 50)
+    _LOGGER.info("Using %s patterns", len(OLD_ENTITY_PATTERNS))
 
     # Locate HA configuration directory
     config_dir = find_ha_config_dir()
@@ -281,6 +344,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         _LOGGER.warning("\n\nInterrupted by user")
         raise SystemExit(1)
-    except Exception as exc:
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         _LOGGER.error("\nUnexpected error: %s", exc)
         raise SystemExit(1)

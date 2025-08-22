@@ -1,9 +1,16 @@
 """Base entity for ThesslaGreen Modbus Integration."""
+
 from __future__ import annotations
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import (
+    AIRFLOW_RATE_REGISTERS,
+    AIRFLOW_UNIT_M3H,
+    CONF_AIRFLOW_UNIT,
+    DEFAULT_AIRFLOW_UNIT,
+    DOMAIN,
+)
 from .coordinator import ThesslaGreenModbusCoordinator
 
 
@@ -21,7 +28,20 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
-        return f"{DOMAIN}_{self.coordinator.host}_{self.coordinator.slave_id}_{self._key}"
+        host = self.coordinator.host.replace(":", "-")
+        base = (
+            f"{DOMAIN}_{host}_{self.coordinator.port}_"
+            f"{self.coordinator.slave_id}_{self._key}"
+        )
+
+        if self._key in AIRFLOW_RATE_REGISTERS:
+            airflow_unit = getattr(
+                getattr(self.coordinator, "entry", None), "options", {}
+            ).get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
+            if airflow_unit != AIRFLOW_UNIT_M3H:
+                base = f"{base}_{airflow_unit}"
+
+        return base
 
     @property
     def available(self) -> bool:

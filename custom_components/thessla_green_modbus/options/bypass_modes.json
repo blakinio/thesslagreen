@@ -1,0 +1,5 @@
+[
+  "thessla_green_modbus.bypass_mode_auto",
+  "thessla_green_modbus.bypass_mode_open",
+  "thessla_green_modbus.bypass_mode_closed"
+]

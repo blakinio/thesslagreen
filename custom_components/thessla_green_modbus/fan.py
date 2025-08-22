@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
 from .const import DOMAIN, get_holding_registers
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .modbus_exceptions import ConnectionException, ModbusException
+from .const import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,10 +30,11 @@ async def async_setup_entry(
     """Set up ThesslaGreen fan from config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Check if fan control is available
+    # Check if fan control is available based on registers discovered by
+    # ThesslaGreenDeviceScanner.scan_device()
     fan_registers = [
         "air_flow_rate_manual",
-        "air_flow_rate_auto",
+        "air_flow_rate_temporary_2",
         "supply_percentage",
         "exhaust_percentage",
     ]
@@ -50,7 +54,13 @@ async def async_setup_entry(
         )  # Only check writable registers
 
     if has_fan_registers:
-        async_add_entities([ThesslaGreenFan(coordinator)])
+        entities = [ThesslaGreenFan(coordinator)]
+        try:
+            async_add_entities(entities, True)
+        except asyncio.CancelledError:
+            _LOGGER.warning("Cancelled while adding fan entity, retrying without initial state")
+            async_add_entities(entities, False)
+            return
         _LOGGER.info("Added fan entity")
     else:
         _LOGGER.debug("No fan control registers available - skipping fan entity")
@@ -70,9 +80,17 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         self._attr_supported_features = FanEntityFeature.SET_SPEED
 
         # Speed range (10-100% as per ThesslaGreen specs)
-        self._attr_speed_count = 9  # 10%, 20%, ..., 90%, 100%
+        self._attr_speed_count = 10  # 10%, 20%, ..., 100%
 
         _LOGGER.debug("Initialized fan entity")
+
+    @property
+    def available(self) -> bool:
+        """Return if the fan entity is available."""
+        return (
+            self.coordinator.last_update_success
+            and self.coordinator.data.get("on_off_panel_mode") is not None
+        )
 
     @property
     def is_on(self) -> bool | None:
@@ -104,9 +122,10 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # Priority order for reading current flow rate
         flow_registers = [
             "supply_air_flow",  # Supply air flow rate
+            "supply_flow_rate",  # CF measured supply flow rate
             "supply_percentage",  # Supply air percentage
             "air_flow_rate_manual",  # Manual flow rate setting
-            "air_flow_rate_auto",  # Auto flow rate setting
+            "air_flow_rate_temporary_2",  # Temporary flow rate setting
         ]
 
         for register in flow_registers:
@@ -126,7 +145,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Turn on the fan."""
         try:
             # First ensure system is on
-            if "on_off_panel_mode" in HOLDING_REGISTERS:
+            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
+            if "on_off_panel_mode" in HOLDING_REGISTERS and "on_off_panel_mode" in holding_regs:
                 await self._write_register("on_off_panel_mode", 1)
 
             # Set flow rate
@@ -138,13 +158,15 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
             _LOGGER.info("Turned on fan")
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn on fan: %s", exc)
+            raise
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
         try:
-            if "on_off_panel_mode" in HOLDING_REGISTERS:
+            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
+            if "on_off_panel_mode" in HOLDING_REGISTERS and "on_off_panel_mode" in holding_regs:
                 # If system power control is available, use it to turn off
                 await self._write_register("on_off_panel_mode", 0)
                 self.coordinator.data["on_off_panel_mode"] = 0
@@ -154,16 +176,17 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 register = (
                     "air_flow_rate_manual"
                     if current_mode == "manual" or not current_mode
-                    else "air_flow_rate_auto"
+                    else "air_flow_rate_temporary_2"
                 )
-                if register in HOLDING_REGISTERS:
+                if register in HOLDING_REGISTERS and register in holding_regs:
                     await self._write_register(register, 0)
                     self.coordinator.data[register] = 0
 
             _LOGGER.info("Turned off fan")
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn off fan: %s", exc)
+            raise
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
@@ -172,27 +195,40 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             return
 
         try:
+            if percentage == 0:
+                await self.async_turn_off()
+                _LOGGER.info("Set fan speed to 0%")
+                return
+
             # Ensure minimum flow rate (ThesslaGreen typically requires 10% minimum)
-            actual_percentage = max(10, percentage) if percentage > 0 else 10
+            actual_percentage = max(10, percentage)
 
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
+            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
 
             if current_mode == "manual" or not current_mode:
                 # Set manual mode and flow rate
-                if "mode" in HOLDING_REGISTERS:
+                if "mode" in HOLDING_REGISTERS and "mode" in holding_regs:
                     await self._write_register("mode", 1)  # Manual mode
-                if "air_flow_rate_manual" in HOLDING_REGISTERS:
+                if (
+                    "air_flow_rate_manual" in HOLDING_REGISTERS
+                    and "air_flow_rate_manual" in holding_regs
+                ):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
                 # Auto mode - set auto flow rate
-                if "air_flow_rate_auto" in HOLDING_REGISTERS:
-                    await self._write_register("air_flow_rate_auto", actual_percentage)
+                if (
+                    "air_flow_rate_temporary_2" in HOLDING_REGISTERS
+                    and "air_flow_rate_temporary_2" in holding_regs
+                ):
+                    await self._write_register("air_flow_rate_temporary_2", actual_percentage)
 
             _LOGGER.info("Set fan speed to %d%%", actual_percentage)
 
-        except Exception as exc:
+        except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to set fan speed to %d%%: %s", percentage, exc)
+            raise
 
     def _get_current_mode(self) -> str | None:
         """Get current system mode."""
@@ -211,25 +247,28 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         if register_name not in HOLDING_REGISTERS:
             raise ValueError(f"Register {register_name} is not writable")
 
-        success = await self.coordinator.async_write_register(
-            register_name, value, refresh=False
-        )
+        holding_regs = self.coordinator.available_registers.get("holding_registers", set())
+        if register_name not in holding_regs:
+            _LOGGER.debug("Register %s unavailable, skipping write", register_name)
+            return
+
+        success = await self.coordinator.async_write_register(register_name, value, refresh=False)
         if not success:
             raise RuntimeError(f"Failed to write register {register_name}")
 
         await self.coordinator.async_request_refresh()
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {}
 
         # Add flow information
-        if "supply_flowrate" in self.coordinator.data:
-            attributes["supply_flow"] = self.coordinator.data["supply_flowrate"]
+        if "supply_flow_rate" in self.coordinator.data:
+            attributes["supply_flow"] = self.coordinator.data["supply_flow_rate"]
 
-        if "exhaust_flowrate" in self.coordinator.data:
-            attributes["exhaust_flow"] = self.coordinator.data["exhaust_flowrate"]
+        if "exhaust_flow_rate" in self.coordinator.data:
+            attributes["exhaust_flow"] = self.coordinator.data["exhaust_flow_rate"]
 
         if "supply_percentage" in self.coordinator.data:
             attributes["supply_percentage"] = self.coordinator.data["supply_percentage"]
@@ -258,7 +297,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             attributes["system_status"] = system_status
 
         # Add last update time
-        if self.coordinator.last_successful_update:
-            attributes["last_updated"] = self.coordinator.last_successful_update.isoformat()
+        last_update = (
+            self.coordinator.statistics.get("last_successful_update")
+            or self.coordinator.last_update
+        )
+        if last_update is not None:
+            attributes["last_updated"] = last_update.isoformat()
 
         return attributes

@@ -100,15 +100,16 @@ sys.modules["homeassistant.helpers.device_registry"] = device_registry
 # Actual imports after stubbing
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
-from custom_components.thessla_green_modbus.coordinator import (
+from custom_components.thessla_green_modbus.climate import (  # noqa: E402
+    HVAC_MODE_MAP,
+    HVAC_MODE_REVERSE_MAP,
+    ThesslaGreenClimate,
+)
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus.const import (
-    DOMAIN,
-    HOLDING_REGISTERS,
-    REGISTER_MULTIPLIERS,
-)
+from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS  # noqa: E402
+from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS  # noqa: E402
 
 
 class DummyClient:
@@ -117,7 +118,7 @@ class DummyClient:
     def __init__(self):
         self.writes = []
 
-    async def write_register(self, address, value, slave):
+    async def write_register(self, address, value, slave=None):
         self.writes.append((address, value, slave))
 
         class Response:
@@ -126,7 +127,7 @@ class DummyClient:
 
         return Response()
 
-    async def write_coil(self, address, value, slave):  # pragma: no cover - not used
+    async def write_coil(self, address, value, slave=None):  # pragma: no cover - not used
         self.writes.append((address, value, slave))
 
         class Response:
@@ -141,37 +142,27 @@ async def test_set_temperature_scaling():
     """Ensure temperatures are scaled before writing to Modbus."""
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator(
-        hass, "host", 502, 1, "dev", timedelta(seconds=1)
-    )
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.client = DummyClient()
     coordinator._ensure_connection = AsyncMock()
     coordinator.async_request_refresh = AsyncMock()
-    coordinator.available_registers["holding_registers"].update(
-        {"comfort_temperature", "required_temperature"}
-    )
+    coordinator.available_registers["holding_registers"].add("required_temperature")
     coordinator.capabilities.basic_control = True
 
     climate = ThesslaGreenClimate(coordinator)
 
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
 
-    addr_comfort = HOLDING_REGISTERS["comfort_temperature"]
     addr_required = HOLDING_REGISTERS["required_temperature"]
-    expected = int(round(21.5 / REGISTER_MULTIPLIERS["comfort_temperature"]))
+    expected = int(round(21.5 / REGISTER_MULTIPLIERS["required_temperature"]))
 
-    assert coordinator.client.writes == [
-        (addr_comfort, expected, coordinator.slave_id),
-        (addr_required, expected, coordinator.slave_id),
-    ]
+    assert coordinator.client.writes == [(addr_required, expected, coordinator.slave_id)]
 
 
 def test_target_temperature_none_when_unavailable():
     """Return None when no target temperature register is present."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator(
-        hass, "host", 502, 1, "dev", timedelta(seconds=1)
-    )
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.capabilities.basic_control = True
     coordinator.data = {}
 
@@ -179,5 +170,16 @@ def test_target_temperature_none_when_unavailable():
 
     assert climate.target_temperature is None
 
-    coordinator.data["comfort_temperature"] = 20.0
+    coordinator.data["required_temperature"] = 20.0
     assert climate.target_temperature == 20.0
+
+
+def test_hvac_mode_mappings():
+    """Verify device modes map to and from Home Assistant HVAC modes."""
+    assert HVAC_MODE_MAP[0] == HVACMode.AUTO
+    assert HVAC_MODE_MAP[1] == HVACMode.FAN_ONLY
+    assert HVAC_MODE_MAP[2] == HVACMode.FAN_ONLY
+
+    assert HVAC_MODE_REVERSE_MAP[HVACMode.AUTO] == 0
+    assert HVAC_MODE_REVERSE_MAP[HVACMode.FAN_ONLY] == 1
+    assert HVAC_MODE_REVERSE_MAP[HVACMode.OFF] == 0

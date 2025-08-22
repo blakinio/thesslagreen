@@ -15,24 +15,26 @@ Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokoł
 - **📱 Tylko aktywne encje** - tworzy tylko te encje, które są rzeczywiście dostępne
 - **🏠 Kompletna kontrola rekuperatora** - wszystkie tryby pracy, temperatury, przepływy
 - **📊 Pełny monitoring** - wszystkie czujniki, statusy, alarmy, diagnostyka
+- **🔋 Szacowanie zużycia energii** - wbudowane czujniki mocy i energii
+- **💨 Obsługa Constant Flow** - wykrywanie rejestrów `supply_air_flow`, `exhaust_air_flow` oraz procedury HEWR
 - **🌡️ Zaawansowana encja Climate** - pełna kontrola z preset modes i trybami specjalnymi
 - **⚡ Wszystkie funkcje specjalne** - OKAP, KOMINEK, WIETRZENIE, PUSTY DOM, BOOST
 - **🌿 Systemy GWC i Bypass** - kompletna kontrola systemów dodatkowych
 - **📅 Harmonogram tygodniowy** - pełna konfiguracja programów czasowych
-- **🛠️ 13 serwisów** - kompletne API do automatyzacji i kontroli
+- **🛠️ 14 serwisów** - kompletne API do automatyzacji i kontroli, w tym pełny skan rejestrów
 - **🔧 Diagnostyka i logowanie** - szczegółowe informacje o błędach i wydajności
 - **🌍 Wsparcie wielojęzyczne** - polski i angielski
 
 ## 📋 Kompatybilność
 
 ### Urządzenia
-- ✅ **ThesslaGreen AirPack Home Serie 4** - wszystkie modele
+- ✅ **ThesslaGreen AirPack Home Series 4** - wszystkie modele
 - ✅ **AirPack Home 300v-850h** (Energy+, Energy, Enthalpy)
 - ✅ **Protokół Modbus TCP/RTU** z auto-detekcją
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
 
 ### Home Assistant
-- ✅ **Wymagany Home Assistant 2025.7.1+** – minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
+- ✅ **Wymagany Home Assistant 2025.7.1+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
 - ✅ **pymodbus 3.5.0+** - najnowsza biblioteka Modbus
 - ✅ **Python 3.12+** - nowoczesne standardy
 - ✅ **Standardowy AsyncModbusTcpClient** – brak potrzeby własnego klienta Modbus
@@ -67,7 +69,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - Menu → Komunikacja → Modbus TCP
 - Włącz: **TAK**
 - Port: **502** (domyślny)
-- Slave ID: **10** (domyślny)
+- ID urządzenia: **10** (domyślny)
 
 ### 2. Dodaj integrację w Home Assistant
 1. **Ustawienia** → **Integracje** → **+ DODAJ INTEGRACJĘ**
@@ -75,7 +77,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 3. Wprowadź dane:
    - **IP Address**: IP rekuperatora (np. 192.168.1.100)
    - **Port**: 502
-   - **Slave ID**: 10
+   - **ID urządzenia**: 10
 4. Integracja automatycznie przeskanuje urządzenie
 5. Kliknij **DODAJ**
 
@@ -83,7 +85,64 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Interwał skanowania**: 10-300s (domyślnie 30s)
 - **Timeout**: 5-60s (domyślnie 10s)
 - **Retry**: 1-5 prób (domyślnie 3)
+- **Backoff**: 0-5s opóźnienia między próbami (domyślnie 0, wykładniczy)
 - **Pełna lista rejestrów**: Pomiń skanowanie (może powodować błędy)
+- **Ustawienia UART**: Skanuj opcjonalne rejestry konfiguracji portu (0x1168-0x116B)
+- **Airflow unit**: wybierz `m³/h` (domyślnie) lub `percentage`
+
+#### Pełna lista rejestrów
+
+Włączenie tej opcji pomija proces autoskanu i tworzy komplet około 300 encji,
+niezależnie od tego, czy dane rejestry są obsługiwane przez urządzenie. Można
+ją aktywować z poziomu interfejsu Home Assistant: **Ustawienia → Integracje →
+ThesslaGreen Modbus → Konfiguruj → Pełna lista rejestrów**. Należy stosować ją
+ostrożnie, ponieważ urządzenie może zgłaszać błędy dla nieobsługiwanych
+rejestrów.
+
+Adresy rejestrów, które wielokrotnie nie odpowiadają, są automatycznie
+pomijane w kolejnych skanach.
+
+Szczegóły migracji z czujników procentowych opisano w pliku [docs/airflow_migration.md](docs/airflow_migration.md).
+
+### Proces autoskanu
+Podczas dodawania integracji moduł `device_scanner` wykonuje funkcję
+`scan_device()`, która wykrywa dostępne rejestry oraz możliwości
+urządzenia. Wynik skanowania trafia do struktury `available_registers`,
+z której koordynator tworzy jedynie encje obsługiwane przez dane
+urządzenie. Jeśli po aktualizacji firmware pojawią się nowe rejestry,
+ponownie uruchom skanowanie (np. usuń i dodaj integrację), aby
+zaktualizować listę `available_registers`.
+
+Podczas skanowania rejestry są grupowane według funkcji i tylko część z nich
+przekłada się na utworzone encje. Niektóre służą jedynie do diagnostyki lub
+ustawień i nie mają bezpośredniego odzwierciedlenia w Home Assistant.
+Integracja może wykryć 200+ rejestrów, ale utworzyć ~100 encji.
+
+> 🔎 Wiele wykrytych rejestrów to bloki konfiguracji lub wartości
+> wielorejestrowe, które nie mają bezpośredniego odwzorowania na encje
+> Home Assistant. Domyślnie integracja udostępnia tylko rejestry
+> zdefiniowane w [`entity_mappings.py`](custom_components/thessla_green_modbus/entity_mappings.py).
+> Włączenie opcji **Pełna lista rejestrów** (`force_full_register_list`)
+> tworzy encje dla każdego znalezionego rejestru, lecz może ujawnić
+> niekompletne dane lub pola konfiguracyjne – używaj jej ostrożnie.
+> [Więcej informacji](docs/register_scanning.md).
+
+### Pełny skan rejestrów
+Dostępny jest serwis `thessla_green_modbus.scan_all_registers`, który wykonuje
+pełne skanowanie wszystkich rejestrów (`full_register_scan=True`) i zwraca
+listę nieznanych adresów. Operacja może trwać kilka minut i znacząco obciąża
+urządzenie – używaj jej tylko do diagnostyki.
+
+### Włączanie logów debug
+W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
+
+```yaml
+logger:
+  logs:
+    custom_components.thessla_green_modbus: debug
+```
+
+Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów oraz ostrzeżenia o niedostępnych czujnikach lub wartościach poza zakresem.
 
 ## 📊 Dostępne encje
 
@@ -93,13 +152,13 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Ciśnienia**: Nawiew, wywiew, różnicowe, alarmy
 - **Jakość powietrza**: CO2, VOC, indeks jakości, wilgotność
 - **Energie**: Zużycie, odzysk, moc szczytowa, średnia, roczna redukcja CO2 (kg)
-- **System**: Sprawność, godziny pracy, status filtrów, błędy
+- **System**: Obliczona sprawność, godziny pracy, status filtrów, błędy
 - **Diagnostyka**: Czas aktualizacji, jakość danych, statystyki
 
 ### Sensory binarne (40+ automatycznie wykrywanych)
 - **Status systemu**: Zasilanie wentylatorów, bypass, GWC, pompy
-- **Tryby**: Letni/zimowy, auto/manual, tryby specjalne
-- **Wejścia**: Expansion, alarm pożarowy, kontaktroy, czujniki
+- **Tryby**: Letni/zimowy, auto/manual, tryby specjalne (boost, eco, away, sleep, fireplace, hood, party, bathroom, kitchen, summer, winter)
+- **Wejścia**: Expansion, alarm pożarowy, czujnik zanieczyszczenia
 - **Błędy i alarmy**: Wszystkie kody S1-S32 i E99-E105
 - **Zabezpieczenia**: Termiczne, przeciwmrozowe, przeciążenia
 
@@ -107,9 +166,9 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Climate**: Kompletna kontrola HVAC z preset modes
 - **Switches**: Wszystkie systemy, tryby, konfiguracja
 - **Numbers**: Temperatury, intensywności, czasy, limity alarmów
-- **Selects**: Tryby pracy, harmonogram, komunikacja, język
+- **Selects**: Tryby pracy, tryb sezonowy, harmonogram, komunikacja, język
 
-## 🛠️ Serwisy (13 kompletnych serwisów)
+## 🛠️ Serwisy (14 kompletnych serwisów)
 
 ### Podstawowe sterowanie
 ```yaml
@@ -234,6 +293,7 @@ automation:
 ```
 
 ### Monitoring błędów
+Czujnik `sensor.thessla_error_codes` agreguje zarówno kody błędów (`E*`), jak i kody statusowe (`S*`).
 ```yaml
 automation:
   - alias: "Alarm przy błędach"
@@ -247,7 +307,7 @@ automation:
           title: "🚨 ThesslaGreen Error"
           message: >
             Wykryto błąd systemu wentylacji!
-            Kod błędu: {{ states('sensor.thessla_error_code') }}
+            Kod błędu: {{ states('sensor.thessla_error_codes') }}
       - service: light.turn_on
         target:
           entity_id: light.salon_led
@@ -270,7 +330,7 @@ Użyj serwisu `get_diagnostic_info` aby uzyskać:
 #### ❌ "Nie można połączyć"
 1. Sprawdź IP i ping do urządzenia: `ping 192.168.1.100`
 2. Upewnij się, że Modbus TCP jest włączony (port 502)
-3. Spróbuj różnych Slave ID (integracja auto-wykrywa 1, 10, 247)
+3. Spróbuj różnych ID urządzenia (integracja auto-wykrywa 1, 10, 247)
 4. Sprawdź zaporę sieciową
 
 #### ❌ "Brak encji"
@@ -279,7 +339,7 @@ Użyj serwisu `get_diagnostic_info` aby uzyskać:
 3. Użyj serwisu `rescan_device`
 4. W razie potrzeby włącz opcję "Pełna lista rejestrów"
 
-#### ❌ "Entycje niedostępne"
+#### ❌ "Encje niedostępne"
 1. Sprawdź połączenie sieciowe
 2. Restart rekuperatora (wyłącz zasilanie na 30s)
 3. Sprawdź status encji w **Narzędzia programistyczne**
@@ -293,6 +353,44 @@ logger:
     custom_components.thessla_green_modbus: debug
     pymodbus: info
 ```
+
+
+### Kody wyjątków Modbus i brakujące rejestry
+Podczas skanowania urządzenia mogą pojawić się odpowiedzi z kodami wyjątków Modbus,
+gdy dany rejestr nie jest obsługiwany. Najczęściej spotykane kody to:
+
+- `2` – Illegal Data Address (rejestr nie istnieje)
+- `3` – Illegal Data Value (wartość poza zakresem)
+- `4` – Slave Device Failure (błąd urządzenia)
+
+W takich przypadkach integracja zapisuje w logach komunikaty w stylu:
+
+```
+Skipping unsupported input registers 120-130
+```
+
+Są to wpisy informacyjne i zazwyczaj oznaczają, że urządzenie po prostu nie posiada
+tych rejestrów. Można je bezpiecznie zignorować.
+=======
+### Komunikaty „Skipping unsupported … registers”
+Podczas skanowania integracja próbuje odczytać grupy rejestrów.  
+Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
+
+```
+Skipping unsupported input registers 0x0100-0x0102 (exception code 2)
+```
+
+Kody wyjątków Modbus informują, dlaczego odczyt się nie powiódł:
+
+- **2 – Illegal Data Address** – rejestry nie istnieją w tym modelu
+- **3 – Illegal Data Value** – rejestry istnieją, ale urządzenie odrzuciło żądanie (np. funkcja wyłączona)
+- **4 – Slave Device Failure** – urządzenie nie potrafiło obsłużyć żądania
+
+Jednorazowe ostrzeżenia pojawiające się przy początkowym skanowaniu lub
+dotyczące opcjonalnych funkcji można zwykle zignorować.  
+Jeśli jednak powtarzają się dla kluczowych rejestrów, sprawdź konfigurację,
+podłączenie i wersję firmware.
+
 
 ## 📋 Specyfikacja techniczna
 
@@ -311,13 +409,52 @@ logger:
 - ✅ **Systemy zaawansowane**: GWC, Bypass, Stały przepływ
 - ✅ **Diagnostyka**: Kompletne raportowanie błędów i alarmów
 - ✅ **Automatyzacja**: Pełna integracja z serwisami HA
-- ✅ **Monitoring**: Wydajność energetyczna i czas pracy
+- ✅ **Monitoring**: Wydajność energetyczna (`sensor.calculated_efficiency`) i czas pracy
 
 ### Wydajność
 - **Optymalizowane odczyty**: Grupowanie rejestrów, 60% mniej wywołań Modbus
 - **Auto-skanowanie**: Tylko dostępne rejestry, brak błędów
 - **Diagnostyka**: Szczegółowe metryki wydajności i błędów
 - **Stabilność**: Retry logic, fallback reads, graceful degradation
+
+## 🧹 Czyszczenie starych encji
+
+Po aktualizacji integracji możesz usunąć nieużywane encje przy pomocy
+skryptu `tools/cleanup_old_entities.py`.
+
+```bash
+python3 tools/cleanup_old_entities.py
+```
+
+Skrypt domyślnie obsługuje polskie i angielskie nazwy **starych** encji
+(`number.rekuperator_predkosc`, `number.rekuperator_speed`).
+Aktualna encja wentylatora to `fan.rekuperator_fan` – upewnij się, że Twoje
+automatyzacje odwołują się do niej zamiast do usuniętej `number.rekuperator_predkosc`.
+
+### Dodatkowe wzorce
+
+Możesz dodać własne wzorce poprzez opcję CLI lub plik konfiguracyjny:
+
+```bash
+python3 tools/cleanup_old_entities.py \
+    --pattern "thessla.*ventilation_speed" \
+    --pattern "number.extra_sensor"
+```
+
+Plik JSON z dodatkowymi wzorcami (domyślnie `cleanup_config.json` obok skryptu):
+
+```json
+{
+  "old_entity_patterns": ["thessla.*ventilation_speed"]
+}
+```
+
+Uruchomienie z własnym plikiem:
+
+```bash
+python3 tools/cleanup_old_entities.py \
+    --config my_cleanup_config.json
+```
 
 ## 🤝 Wsparcie i rozwój
 
@@ -330,6 +467,24 @@ logger:
 - 🐛 [Zgłaszanie błędów](https://github.com/thesslagreen/thessla-green-modbus-ha/issues)
 - 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
+
+### Regenerating registers.py
+Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` changes, regenerate and
+validate the Python module:
+
+```bash
+python tools/generate_registers.py
+python tools/validate_registers.py  # optional consistency check
+```
+
+Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+
+### Validate translations
+Ensure translation files are valid JSON:
+
+```bash
+python -m json.tool custom_components/thessla_green_modbus/translations/*.json
+```
 
 ### Changelog
 Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.

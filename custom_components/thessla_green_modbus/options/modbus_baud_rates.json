@@ -1,0 +1,11 @@
+[
+  "thessla_green_modbus.modbus_baud_rate_4800",
+  "thessla_green_modbus.modbus_baud_rate_9600",
+  "thessla_green_modbus.modbus_baud_rate_14400",
+  "thessla_green_modbus.modbus_baud_rate_19200",
+  "thessla_green_modbus.modbus_baud_rate_28800",
+  "thessla_green_modbus.modbus_baud_rate_38400",
+  "thessla_green_modbus.modbus_baud_rate_57600",
+  "thessla_green_modbus.modbus_baud_rate_76800",
+  "thessla_green_modbus.modbus_baud_rate_115200"
+]
