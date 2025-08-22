@@ -67,7 +67,10 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS  # noqa: E402
-from custom_components.thessla_green_modbus import registers  # noqa: E402
+from custom_components.thessla_green_modbus.registers import get_registers_by_function  # noqa: E402
+
+INPUT_REGISTERS = {r.name for r in get_registers_by_function("04")}
+HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
 
 
 def test_sensor_register_mapping() -> None:
@@ -75,11 +78,11 @@ def test_sensor_register_mapping() -> None:
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         if register_type == "input_registers":
-            assert register_name in registers.INPUT_REGISTERS
-            assert register_name not in registers.HOLDING_REGISTERS
+            assert register_name in INPUT_REGISTERS
+            assert register_name not in HOLDING_REGISTERS
         elif register_type == "holding_registers":
-            assert register_name in registers.HOLDING_REGISTERS
-            assert register_name not in registers.INPUT_REGISTERS
+            assert register_name in HOLDING_REGISTERS
+            assert register_name not in INPUT_REGISTERS
         elif register_type == "calculated":
             assert register_name not in registers.INPUT_REGISTERS
             assert register_name not in registers.HOLDING_REGISTERS

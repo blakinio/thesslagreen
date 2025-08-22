@@ -9,6 +9,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
 from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 
 async def test_async_setup_entry_success():
@@ -167,24 +168,45 @@ async def test_default_values():
 
 async def test_register_constants():
     """Test that register constants are properly defined."""
-    from custom_components.thessla_green_modbus.const import (
-        COIL_REGISTERS,
-        DISCRETE_INPUT_REGISTERS,
-        INPUT_REGISTERS,
-        HOLDING_REGISTERS,
-    )
+
+    coil = {r.name: r.address for r in get_registers_by_function("01")}
+    discrete = {r.name: r.address for r in get_registers_by_function("02")}
+    input_regs = {r.name: r.address for r in get_registers_by_function("04")}
+    holding = {r.name: r.address for r in get_registers_by_function("03")}
+
+    regs_by_fn = {
+        "coil": {r.name: r.address for r in get_registers_by_function("01")},
+        "discrete": {r.name: r.address for r in get_registers_by_function("02")},
+        "input": {r.name: r.address for r in get_registers_by_function("04")},
+        "holding": {r.name: r.address for r in get_registers_by_function("03")},
+    }
+    coil = regs_by_fn["coil"]
+    discrete = regs_by_fn["discrete"]
+    input_regs = regs_by_fn["input"]
+    holding = regs_by_fn["holding"]
+
 
     # Test that key registers are defined
-    assert "power_supply_fans" in COIL_REGISTERS
-    assert "outside_temperature" in INPUT_REGISTERS
-    assert "mode" in HOLDING_REGISTERS
-    assert "expansion" in DISCRETE_INPUT_REGISTERS
+    assert "power_supply_fans" in coil
+    assert "outside_temperature" in input_regs
+    assert "mode" in holding
+    assert "expansion" in discrete
 
     # Test address ranges
-    assert COIL_REGISTERS["power_supply_fans"] == 0x000B
-    assert INPUT_REGISTERS["outside_temperature"] == 0x0010
-    assert HOLDING_REGISTERS["mode"] == 0x1070
-    assert DISCRETE_INPUT_REGISTERS["expansion"] == 0x0000
+    assert coil["power_supply_fans"] == 11
+    assert input_regs["outside_temperature"] == 16
+    assert holding["mode"] == 4097
+    assert discrete["expansion"] == 0
+    # Test that key registers are defined
+    assert "power_supply_fans" in coil
+    assert "outside_temperature" in input_regs
+    assert "mode" in holding
+    assert "expansion" in discrete
+
+    # Test address ranges
+    assert coil["power_supply_fans"] == 0x000B
+    assert input_regs["outside_temperature"] == 0x0010
+    assert holding["mode"] == 0x1070
 
 
 async def test_unload_and_reload_entry():

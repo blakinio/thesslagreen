@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, Optional
 
+from .const import SENSOR_UNAVAILABLE
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
@@ -27,42 +28,42 @@ SETTING_PREFIX = "setting_"
 _decode_setting_value = _decode_aatt
 
 
-def _format_register_value(name: str, value: int) -> int | str:
+def _format_register_value(name: str, value: int) -> int | str | None:
     """Return a human-readable representation of a register value."""
     if name == "manual_airing_time_to_start":
         raw_value = value
         value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
         decoded = _decode_register_time(value)
         if decoded is None:
-            return f"0x{raw_value:04X} (invalid)"
+            return None if raw_value == SENSOR_UNAVAILABLE else f"0x{raw_value:04X} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(BCD_TIME_PREFIXES):
         decoded = _decode_bcd_time(value)
         if decoded is None:
-            return f"0x{value:04X} (invalid)"
+            return None if value == SENSOR_UNAVAILABLE else f"0x{value:04X} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(TIME_REGISTER_PREFIXES):
         decoded = _decode_register_time(value)
         if decoded is None:
-            return f"0x{value:04X} (invalid)"
+            return None if value == SENSOR_UNAVAILABLE else f"0x{value:04X} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(SETTING_PREFIX):
         decoded = _decode_aatt(value)
         if decoded is None:
-            return value
+            return None if value == SENSOR_UNAVAILABLE else value
         airflow, temp = decoded
         temp_str = f"{temp:g}"
         return f"{airflow}% @ {temp_str}°C"
 
-    return value
+    return None if value == SENSOR_UNAVAILABLE else value
 
 
 def _decode_season_mode(value: int) -> Optional[int]:
     """Decode season mode register which may place value in high byte."""
-    if value in (0xFF00, 0xFFFF):
+    if value in (0xFF00, 0xFFFF, SENSOR_UNAVAILABLE):
         return None
     high = (value >> 8) & 0xFF
     low = value & 0xFF
@@ -86,6 +87,16 @@ MAX_BATCH_REGISTERS = 16
 # explicitly enabled.
 UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 
+# Registers considered safe to read when verifying connectivity.
+# Each entry is a tuple of Modbus function code and register name. The
+# corresponding addresses are resolved from the JSON register definitions at
+# runtime, ensuring we do not hardcode register addresses here.
+SAFE_REGISTERS: list[tuple[str, str]] = [
+    ("04", "VERSION_MAJOR"),
+    ("04", "VERSION_MINOR"),
+    ("03", "date_time_rrmm"),
+]
+
 __all__ = [
     "REGISTER_ALLOWED_VALUES",
     "SETTING_PREFIX",
@@ -96,4 +107,5 @@ __all__ = [
     "SPECIAL_VALUE_DECODERS",
     "MAX_BATCH_REGISTERS",
     "UART_OPTIONAL_REGS",
+    "SAFE_REGISTERS",
 ]

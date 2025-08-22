@@ -3,56 +3,46 @@
 from __future__ import annotations
 
 import asyncio
-import csv
 import inspect
 import logging
-import re
 from dataclasses import asdict, dataclass, field
-from importlib.resources import files
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    TextIO,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Self
 
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
-    COIL_REGISTERS,
     DEFAULT_SLAVE_ID,
-    DISCRETE_INPUT_REGISTERS,
     KNOWN_MISSING_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
     UNKNOWN_MODEL,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-    MULTI_REGISTER_SIZES,
 )
 from .modbus_exceptions import (
     ConnectionException,
     ModbusException,
     ModbusIOException,
 )
-from .modbus_helpers import _call_modbus
+from .modbus_helpers import _call_modbus, group_reads as _group_reads
 from .registers import get_all_registers
-from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, TIME_REGISTER_PREFIXES, _to_snake_case
+from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
     _format_register_value,
     MAX_BATCH_REGISTERS,
     UART_OPTIONAL_REGS,
+    SAFE_REGISTERS,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
+
+REGISTER_DEFINITIONS = {r.name: r for r in get_all_registers()}
+INPUT_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "04"}
+HOLDING_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03"}
+COIL_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "01"}
+DISCRETE_INPUT_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "02"}
+MULTI_REGISTER_SIZES = {name: reg.length for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03" and reg.length > 1}
 
 
 @dataclass
@@ -176,11 +166,9 @@ class ThesslaGreenDeviceScanner:
         # Detected device capabilities
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
 
-        # Placeholder for register map, value ranges and firmware versions loaded
-        # asynchronously
+        # Placeholder for register map and value ranges loaded asynchronously
         self._registers: Dict[str, Dict[int, str]] = {}
         self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-        self._register_versions: Dict[str, Tuple[int, ...]] = {}
 
         # Track holding registers that consistently fail to respond so we
         # can avoid retrying them repeatedly during scanning. The value is
@@ -238,9 +226,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
-        self._registers, self._register_ranges, self._register_versions = (
-            await self._load_registers()
-        )
+        self._registers, self._register_ranges = await self._load_registers()
 
     @classmethod
     async def create(
@@ -256,7 +242,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-    ) -> "ThesslaGreenDeviceScanner":
+    ) -> Self:
         """Factory to create an initialized scanner instance."""
         self = cls(
             host,
@@ -306,13 +292,6 @@ class ThesslaGreenDeviceScanner:
         callers can surface an appropriate error to the user.
         """
 
-        # (function_code, register_address) pairs chosen for safe reads
-        samples: list[tuple[str, int]] = [
-            ("04", 0x0000),  # VERSION_MAJOR
-            ("04", 0x0001),  # VERSION_MINOR
-            ("03", 0x0000),  # date_time_rrmm
-        ]
-
         from pymodbus.client import AsyncModbusTcpClient
 
         client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
@@ -320,30 +299,39 @@ class ThesslaGreenDeviceScanner:
             connected = await asyncio.wait_for(client.connect(), timeout=self.timeout)
             if not connected:
                 raise ConnectionException("Failed to connect")
-            for func, addr in samples:
+
+            for func, name in SAFE_REGISTERS:
+                reg = REGISTER_DEFINITIONS.get(name)
+                if reg is None:
+                    continue
+                addr = reg.address
                 try:
                     if func == "04":
                         await asyncio.wait_for(
                             _call_modbus(
-                                client.read_input_registers, self.slave_id, addr, count=1
+                                client.read_input_registers,
+                                self.slave_id,
+                                addr,
+                                count=1,
                             ),
                             timeout=self.timeout,
                         )
                     else:  # "03"
                         await asyncio.wait_for(
                             _call_modbus(
-                                client.read_holding_registers, self.slave_id, addr, count=1
+                                client.read_holding_registers,
+                                self.slave_id,
+                                addr,
+                                count=1,
                             ),
                             timeout=self.timeout,
                         )
-                except asyncio.TimeoutError as exc:
-                    raise ConnectionException(
-                        f"Timeout reading register 0x{addr:04X}"
-                    ) from exc
+                except asyncio.TimeoutError as exc:  # pragma: no cover - network issues
+                    raise ConnectionException(f"Timeout reading {name}") from exc
+                except ModbusException:
+                    raise
                 except Exception as exc:  # pragma: no cover - forward unexpected
-                    raise ModbusException(
-                        f"Error reading register 0x{addr:04X}: {exc}"
-                    ) from exc
+                    raise ModbusException(f"Error reading {name}: {exc}") from exc
         finally:
             await client.close()
 
@@ -352,7 +340,7 @@ class ThesslaGreenDeviceScanner:
 
         This check is intentionally lightweight – it ensures that obvious
         placeholder values (like ``SENSOR_UNAVAILABLE``) and values outside the
-        ranges loaded from the CSV definition are ignored.  The method mirrors
+        ranges defined in the register metadata are ignored.  The method mirrors
         behaviour expected by the tests but does not aim to provide exhaustive
         validation of every register.
         """
@@ -441,48 +429,49 @@ class ThesslaGreenDeviceScanner:
     ) -> list[tuple[int, int]]:
         """Group consecutive register addresses for efficient batch reads.
 
-        Known missing registers are isolated into their own groups so that
-        surrounding registers can still be batch-read successfully.
+        The implementation delegates grouping to the shared ``group_reads``
+        helper so that the scanner benefits from the same optimisation logic
+        used elsewhere in the project.  Any registers that have previously been
+        marked as missing are split into their own single-register groups to
+        avoid unnecessary failures when reading surrounding ranges.
         """
 
         if not addresses:
             return []
 
-        addresses = sorted(set(addresses))
-        groups: list[tuple[int, int]] = []
-        start: int | None = None
-        prev: int | None = None
-        count = 0
+        # First, compute contiguous blocks using the generic ``group_reads``
+        # helper.  ``max_gap`` is kept for API compatibility but is not
+        # required when using ``group_reads`` which already splits on gaps.
+        groups = _group_reads(addresses, max_block_size=max_batch)
 
-        for addr in addresses:
-            if addr in self._known_missing_addresses:
-                if count:
-                    groups.append((start or addr, count))
-                    start = None
-                    count = 0
-                groups.append((addr, 1))
-                prev = None
-                continue
+        if not self._known_missing_addresses:
+            return groups
 
-            if start is None:
-                start = addr
-                prev = addr
-                count = 1
-                continue
+        # Split out any known missing addresses so they are queried
+        # individually without preventing neighbouring registers from being
+        # read in batches.
+        adjusted: list[tuple[int, int]] = []
+        for start, length in groups:
+            end = start + length
+            current_start: int | None = None
+            current_len = 0
+            for addr in range(start, end):
+                if addr in self._known_missing_addresses:
+                    if current_len:
+                        assert current_start is not None
+                        adjusted.append((current_start, current_len))
+                        current_len = 0
+                    adjusted.append((addr, 1))
+                    current_start = None
+                else:
+                    if current_len == 0:
+                        current_start = addr
+                    current_len += 1
+            if current_len:
+                assert current_start is not None
+                adjusted.append((current_start, current_len))
 
-            assert prev is not None
-            if addr - prev > max_gap or count >= max_batch:
-                groups.append((start, count))
-                start = addr
-                count = 1
-            else:
-                count += 1
-            prev = addr
-
-        if count:
-            groups.append((start or addresses[-1], count))
-
-        return groups
+        return adjusted
 
     async def scan(self) -> dict[str, Any]:
         """Perform the actual register scan using an established connection."""
@@ -914,7 +903,10 @@ class ThesslaGreenDeviceScanner:
             )
             if not connected:
                 raise ConnectionException("Failed to connect")
-            return await self.scan()
+            result = await self.scan()
+            if not isinstance(result, dict):
+                raise TypeError("scan() must return a dict")
+            return result
         finally:
             await self.close()
 
@@ -923,170 +915,20 @@ class ThesslaGreenDeviceScanner:
     ) -> Tuple[
         Dict[str, Dict[int, str]],
         Dict[str, Tuple[Optional[int], Optional[int]]],
-        Dict[str, Tuple[int, ...]],
     ]:
-        """Load Modbus register definitions, ranges and firmware versions."""
+        """Load Modbus register definitions and value ranges."""
         try:
             register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
             register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-            register_versions: Dict[str, Tuple[int, ...]] = {}
             for reg in get_all_registers():
                 if not reg.name:
                     continue
                 register_map[reg.function][reg.address] = reg.name
                 if reg.min is not None or reg.max is not None:
                     register_ranges[reg.name] = (reg.min, reg.max)
-            return register_map, register_ranges, register_versions
-        except Exception:
-            _LOGGER.warning("Loading register definitions from deprecated CSV file")
-            csv_path = files(__package__) / "data" / "modbus_registers.csv"
-
-            def _parse_csv() -> Tuple[
-                Dict[str, Dict[int, str]],
-                Dict[str, Tuple[Optional[int], Optional[int]]],
-                Dict[str, Tuple[int, ...]],
-            ]:
-                register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-                register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-                register_versions: Dict[str, Tuple[int, ...]] = {}
-                try:
-                    with cast(TextIO, csv_path.open("r", encoding="utf-8")) as csvfile:
-                        reader = csv.DictReader(csvfile)
-                        rows: Dict[
-                            str,
-                            List[
-                                Tuple[str, int, Optional[int], Optional[int], Optional[Tuple[int, ...]]]
-                            ],
-                        ] = {"03": [], "04": [], "01": [], "02": []}
-                        for row in reader:
-                            code = row.get("Function_Code")
-                            if not code or code.startswith("#"):
-                                continue
-                            name_raw = row.get("Register_Name")
-                            if not isinstance(name_raw, str) or not name_raw.strip():
-                                continue
-                            name = _to_snake_case(name_raw)
-                            if name == "none" or re.fullmatch(r"none(_\d+)?$", name):
-                                continue
-                            try:
-                                addr = int(row.get("Address_DEC", 0))
-                            except (TypeError, ValueError):
-                                continue
-                            min_raw = row.get("Min")
-                            max_raw = row.get("Max")
-                            version_raw = row.get("Software_Version")
-
-                            def _parse_range(label: str, raw: str | None) -> int | None:
-                                if raw in (None, ""):
-                                    return None
-                                text = str(raw).split("#", 1)[0].strip()
-                                if not text or not re.fullmatch(
-                                    r"[+-]?(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)",
-                                    text,
-                                ):
-                                    _LOGGER.warning(
-                                        "Ignoring non-numeric %s for %s: %s", label, name, raw
-                                    )
-                                    return None
-                                try:
-                                    return (
-                                        int(text, 0)
-                                        if text.lower().startswith(("0x", "+0x", "-0x"))
-                                        else int(float(text))
-                                    )
-                                except ValueError:
-                                    _LOGGER.warning(
-                                        "Ignoring non-numeric %s for %s: %s", label, name, raw
-                                    )
-                                    return None
-
-                            min_val = _parse_range("Min", min_raw)
-                            max_val = _parse_range("Max", max_raw)
-                            if (min_raw not in (None, "") or max_raw not in (None, "")) and (
-                                min_val is None or max_val is None
-                            ):
-                                _LOGGER.warning(
-                                    "Incomplete range for %s: Min=%s Max=%s", name, min_raw, max_raw
-                                )
-
-                            if name.startswith(BCD_TIME_PREFIXES):
-                                min_val = (
-                                    ((min_val // 10) << 12 | (min_val % 10) << 8)
-                                    if min_val is not None
-                                    else 0
-                                )
-                                max_val = (
-                                    ((max_val // 10) << 12 | (max_val % 10) << 8 | 0x59)
-                                    if max_val is not None
-                                    else 0x2359
-                                )
-                            elif name.startswith(("setting_summer_", "setting_winter_")):
-                                min_val = (min_val << 8) if min_val is not None else 0
-                                max_val = (
-                                    (max_val << 8) | 0xFF if max_val is not None else 0xFFFF
-                                )
-
-                            version_tuple: Optional[Tuple[int, ...]] = None
-                            if version_raw:
-                                try:
-                                    version_tuple = tuple(
-                                        int(part) for part in str(version_raw).split(".")
-                                    )
-                                except ValueError:
-                                    version_tuple = None
-
-                            rows[code].append((name, addr, min_val, max_val, version_tuple))
-
-                        for code, items in rows.items():
-                            items.sort(key=lambda item: item[1])
-                            counts: Dict[str, int] = {}
-                            for name, *_ in items:
-                                counts[name] = counts.get(name, 0) + 1
-
-                            seen: Dict[str, int] = {}
-                            for name, addr, min_val, max_val, ver in items:
-                                if addr in register_map[code]:
-                                    _LOGGER.warning(
-                                        "Duplicate register address %s for function code %s: %s",
-                                        addr,
-                                        code,
-                                        name,
-                                    )
-                                    continue
-                                if counts[name] > 1:
-                                    idx = seen.get(name, 0) + 1
-                                    seen[name] = idx
-                                    name = f"{name}_{idx}"
-                                register_map[code][addr] = name
-                                if min_val is not None or max_val is not None:
-                                    register_ranges[name] = (min_val, max_val)
-                                if ver is not None:
-                                    register_versions[name] = ver
-
-                        required_maps = {
-                            "04": INPUT_REGISTERS,
-                            "03": HOLDING_REGISTERS,
-                            "01": COIL_REGISTERS,
-                            "02": DISCRETE_INPUT_REGISTERS,
-                        }
-                        missing: Dict[str, Set[str]] = {}
-                        for code, reg_map in required_maps.items():
-                            defined = set(register_map.get(code, {}).values())
-                            missing_regs = set(reg_map) - defined
-                            if missing_regs:
-                                missing[code] = missing_regs
-                        if missing:
-                            messages = [
-                                f"{code}: {sorted(list(names))}" for code, names in missing.items()
-                            ]
-                            raise ValueError(
-                                "Required registers missing from CSV: " + ", ".join(messages)
-                            )
-                except FileNotFoundError:
-                    _LOGGER.error("Register definition file not found: %s", csv_path)
-                return register_map, register_ranges, register_versions
-
-            return await asyncio.to_thread(_parse_csv)
+            return register_map, register_ranges
+        except Exception as err:  # pragma: no cover - defensive
+            raise RuntimeError("Unable to load register definitions") from err
 
     def _sleep_time(self, attempt: int) -> float:
         """Return delay for a retry attempt based on backoff."""

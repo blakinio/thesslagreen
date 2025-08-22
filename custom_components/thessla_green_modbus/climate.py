@@ -20,9 +20,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .const import HOLDING_REGISTERS
+from .registers import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
+
+HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
 
 # HVAC mode mappings (from device mode register)
 HVAC_MODE_MAP = {
@@ -137,7 +139,8 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return target temperature if available."""
-        data = self.coordinator.data        for key in (
+        data = self.coordinator.data
+        for key in (
             "comfort_temperature",
             "required_temperature",
             "required_temperature_legacy",

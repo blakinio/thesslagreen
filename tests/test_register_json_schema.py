@@ -1,11 +1,16 @@
 import json
-from pathlib import Path
+from importlib import resources
 
 
-def test_register_json_schema():
-    data = json.loads(Path("thessla_green_registers_full.json").read_text(encoding="utf-8"))
-    assert "registers" in data
-    registers = data["registers"]
+def test_register_json_schema() -> None:
+    """Validate basic structure of the JSON register file."""
+
+    json_file = (
+        resources.files("custom_components.thessla_green_modbus.registers")
+        .joinpath("thessla_green_registers_full.json")
+    )
+    data = json.loads(json_file.read_text(encoding="utf-8"))
+    registers = data.get("registers", data) if isinstance(data, dict) else data
     assert isinstance(registers, list) and registers
     required = {"function", "address_dec", "name"}
     for reg in registers:
@@ -18,8 +23,14 @@ def test_register_json_schema():
             assert isinstance(enum, dict) and enum
             for key, val in enum.items():
                 assert isinstance(key, str)
-                assert isinstance(val, str)
+                assert isinstance(val, (int, str))
         if "multiplier" in reg:
             assert isinstance(reg["multiplier"], (int, float))
+            assert reg["multiplier"] > 0
         if "resolution" in reg:
             assert isinstance(reg["resolution"], (int, float))
+            assert reg["resolution"] > 0
+        if "notes" in reg:
+            assert isinstance(reg["notes"], str)
+        if "extra" in reg:
+            assert isinstance(reg["extra"], dict)

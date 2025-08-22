@@ -19,8 +19,8 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
-from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus import loader
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -151,6 +151,11 @@ for name, module in modules.items():
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
+
+INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
@@ -343,7 +348,6 @@ def test_device_info_dict_fallback(monkeypatch):
 def test_reverse_lookup_maps(coordinator):
     """Ensure reverse register maps resolve addresses to names."""
 
-    from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS, INPUT_REGISTERS
     addr = INPUT_REGISTERS["outside_temperature"]
     assert coordinator._input_registers_rev[addr] == "outside_temperature"
 
@@ -354,8 +358,6 @@ def test_reverse_lookup_maps(coordinator):
 def test_reverse_lookup_performance(coordinator):
     """Dictionary lookups should outperform linear search."""
     import time
-
-    from custom_components.thessla_green_modbus.const import INPUT_REGISTERS
 
     addresses = list(INPUT_REGISTERS.values())
 
@@ -477,7 +479,7 @@ def test_process_register_value_extremes(coordinator, register_name, value, expe
 )
 def test_process_register_value_dac_boundaries(coordinator, register_name, value):
     """Process DAC registers across boundary and out-of-range values."""
-    expected = value * REGISTER_MULTIPLIERS[register_name]
+    expected = loader.get_register_definition(register_name).decode(value)
     result = coordinator._process_register_value(register_name, value)
     assert result == pytest.approx(expected)
 
@@ -624,6 +626,33 @@ async def test_setup_and_refresh_no_cancelled_error(coordinator):
 
     data = await coordinator._async_update_data()
     assert data == {}
+
+
+@pytest.mark.asyncio
+async def test_async_setup_invalid_capabilities(coordinator):
+    """Invalid capabilities format should raise CannotConnect."""
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect
+
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": [],  # invalid type
+    }
+
+    scanner_instance = types.SimpleNamespace(
+        scan_device=AsyncMock(return_value=scan_result),
+        close=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await coordinator.async_setup()
+
+    assert str(err.value) == "invalid_capabilities"
+    scanner_instance.close.assert_awaited_once()
 
 
 def cleanup_modules():

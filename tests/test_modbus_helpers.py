@@ -3,7 +3,7 @@
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus
+from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus, group_reads
 
 pytestmark = pytest.mark.asyncio
 
@@ -36,3 +36,19 @@ async def test_call_modbus_supports_no_slave_or_unit():
 
     result = await _call_modbus(func, 1, 30, 4)
     assert result == (30, 4)  # nosec B101
+
+
+async def test_group_reads_merges_sequential_addresses():
+    """Sequential addresses are merged into contiguous blocks."""
+
+    assert group_reads([0, 1, 2, 4, 5]) == [(0, 3), (4, 2)]
+
+
+async def test_group_reads_honours_block_size():
+    """Groups are split when exceeding ``max_block_size``."""
+
+    assert group_reads(range(10), max_block_size=4) == [
+        (0, 4),
+        (4, 4),
+        (8, 2),
+    ]

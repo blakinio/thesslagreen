@@ -11,12 +11,15 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
   "quality_scale": "silver",
+  "files": [
+    "registers/thessla_green_registers_full.json"
+  ],
   "requirements": [
     "pymodbus>=3.5.0,<4.0.0",
     "voluptuous>=0.13.1"
   ],
   "version": "2.1.1",
-  "integration_type": "device",
+  "integration_type": "hub",
   "dhcp": [
     {
       "hostname": "airpack*",

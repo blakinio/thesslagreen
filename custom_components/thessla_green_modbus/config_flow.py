@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 import traceback
 from typing import Any
@@ -60,35 +61,45 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     name = data.get(CONF_NAME, DEFAULT_NAME)
     timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
-    # Try to connect and scan device
-    scanner = await ThesslaGreenDeviceScanner.create(
-        host=host,
-        port=port,
-        slave_id=slave_id,
-        timeout=timeout,
-        retry=DEFAULT_RETRY,
-        deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-    )
-
+    scanner: ThesslaGreenDeviceScanner | None = None
     try:
-        # Verify connection by reading a few known registers
+        scanner = await ThesslaGreenDeviceScanner.create(
+            host=host,
+            port=port,
+            slave_id=slave_id,
+            timeout=timeout,
+            retry=DEFAULT_RETRY,
+            deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+        )
+
+        # Verify connection by reading a few safe registers
         await asyncio.wait_for(scanner.verify_connection(), timeout=timeout)
 
         # Perform full device scan
         scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
 
-        # Ensure capabilities are represented as a dataclass before serializing
         caps_obj = scan_result.get("capabilities")
+        if caps_obj is None:
+            raise CannotConnect("invalid_capabilities")
+
         if isinstance(caps_obj, DeviceCapabilities):
+            required_fields = {field.name for field in dataclasses.fields(DeviceCapabilities)}
+            missing = [f for f in required_fields if f not in vars(caps_obj)]
+            if missing:
+                _LOGGER.error("Capabilities missing required fields: %s", set(missing))
+                raise CannotConnect("invalid_capabilities")
             capabilities = caps_obj
         elif isinstance(caps_obj, dict):
             try:
                 capabilities = DeviceCapabilities(**caps_obj)
-            except TypeError:
-                capabilities = DeviceCapabilities()
+            except (TypeError, ValueError) as exc:
+                _LOGGER.error("Error parsing capabilities: %s", exc)
+                raise CannotConnect("invalid_capabilities") from exc
         else:
-            capabilities = DeviceCapabilities()
-        scan_result["capabilities"] = capabilities.as_dict()
+            raise CannotConnect("invalid_capabilities")
+
+        # Store dataclass object so future reads operate on the dataclass
+        scan_result["capabilities"] = capabilities
 
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
@@ -101,17 +112,21 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     except ConnectionException as exc:
         _LOGGER.error("Connection error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect from exc
+        raise CannotConnect("cannot_connect") from exc
+    except asyncio.TimeoutError as exc:
+        _LOGGER.error("Timeout during device validation: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        raise CannotConnect("timeout") from exc
     except ModbusException as exc:
         _LOGGER.error("Modbus error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect from exc
+        raise CannotConnect("modbus_error") from exc
     except AttributeError as exc:
         _LOGGER.error("Attribute error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         # Provide a more helpful message when scanner methods are missing
         raise CannotConnect("missing_method") from exc
-    except (OSError, asyncio.TimeoutError) as exc:
+    except OSError as exc:
         _LOGGER.error("Unexpected error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect from exc
@@ -226,16 +241,26 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         # Get scan statistics
         available_registers = self._scan_result.get("available_registers", {})
-        capabilities = self._scan_result.get("capabilities", {})
-        if isinstance(capabilities, DeviceCapabilities):
-            capabilities = capabilities.as_dict()
+        caps_obj = self._scan_result.get("capabilities")
+        if isinstance(caps_obj, DeviceCapabilities):
+            caps_data = caps_obj
+        elif isinstance(caps_obj, dict):
+            try:
+                caps_data = DeviceCapabilities(**caps_obj)
+            except TypeError:
+                caps_data = DeviceCapabilities()
+        else:
+            caps_data = DeviceCapabilities()
+        capabilities = caps_data.as_dict()
 
         register_count = self._scan_result.get(
             "register_count",
             sum(len(regs) for regs in available_registers.values()),
         )
 
-        capabilities_list = [k.replace("_", " ").title() for k, v in capabilities.items() if v]
+        capabilities_list = [
+            k.replace("_", " ").title() for k, v in capabilities.items() if v
+        ]
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
 

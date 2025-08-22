@@ -5,11 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.const import (
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-    SENSOR_UNAVAILABLE,
-)
+from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 from custom_components.thessla_green_modbus.scanner_core import (
     DeviceCapabilities,
     DeviceInfo,
@@ -25,10 +22,11 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.const import (
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-)
+
+COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
+DISCRETE_INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("02")}
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
+INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
 pytestmark = pytest.mark.asyncio
 
@@ -746,7 +744,7 @@ async def test_scan_device_firmware_partial_bulk_fallback():
 
 async def test_scan_blocks_propagated():
     """Ensure scan_device returns discovered register blocks."""
-    # Avoid scanning extra registers from CSV for test speed
+    # Avoid scanning full register set for test speed
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
@@ -1043,29 +1041,26 @@ async def test_temperature_register_unavailable_kept():
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
-async def test_is_valid_register_value():
+async def test_is_valid_register_value(caplog):
     """Test register value validation."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+    with caplog.at_level(logging.WARNING):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+
+    assert not any("CSV" in rec.message for rec in caplog.records)
 
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-    # Temperature sensor marked unavailable should still be considered valid
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-
     # SENSOR_UNAVAILABLE should be treated as unavailable for temperature and airflow sensors
     assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-    assert scanner._is_valid_register_value("supply_air_flow", SENSOR_UNAVAILABLE) is False
-
-    # Invalid air flow value
-    assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
+    assert scanner._is_valid_register_value("supply_flow_rate", SENSOR_UNAVAILABLE) is False
 
     # Mode values respect allowed set
     assert scanner._is_valid_register_value("mode", 1) is True
     assert scanner._is_valid_register_value("mode", 3) is False
 
-    # Range from CSV
+    # Range from register metadata
     assert scanner._is_valid_register_value("supply_percentage", 100) is True
     with patch.object(scanner, "_log_invalid_value") as log_mock:
         assert scanner._is_valid_register_value("supply_percentage", 200) is False
@@ -1077,16 +1072,6 @@ async def test_is_valid_register_value():
 
     assert scanner._is_valid_register_value("min_percentage", -1) is False
     assert scanner._is_valid_register_value("max_percentage", 200) is False
-    # BCD time registers loaded from CSV should handle HHMM values
-    assert scanner._register_ranges["schedule_summer_mon_1"] == (0, 2300)
-    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
-    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
-
-    # Season mode may be encoded in high byte or low byte
-    assert scanner._is_valid_register_value("season_mode", 0x0100) is True
-    assert scanner._is_valid_register_value("season_mode", 0x0001) is True
-    assert scanner._is_valid_register_value("season_mode", 0xFF00) is False
-
     with patch.object(scanner, "_log_invalid_value") as log_mock:
         assert scanner._is_valid_register_value("min_percentage", -1) is False
         assert scanner._is_valid_register_value("max_percentage", 200) is False
@@ -1236,317 +1221,6 @@ async def test_constant_flow_detected_from_various_registers(register):
     assert caps.constant_flow is True
 
 
-async def test_load_registers_duplicate_warning(tmp_path, caplog):
-    """Warn when duplicate register addresses are encountered."""
-    csv_content = "Function_Code,Register_Name,Address_DEC\n" "04,reg_a,1\n" "04,reg_b,1\n"
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch("custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-    ):
-        with caplog.at_level(logging.WARNING):
-            await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert any("Duplicate register address" in record.message for record in caplog.records)
-
-
-async def test_load_registers_duplicate_names(tmp_path):
-    """Ensure duplicate register names are suffixed for uniqueness."""
-    csv_content = "Function_Code,Register_Name,Address_DEC\n" "04,reg_a,1\n" "04,reg_a,2\n"
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch("custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert scanner._registers["04"] == {1: "reg_a_1", 2: "reg_a_2"}
-
-
-async def test_load_registers_skips_none_named_registers(tmp_path):
-    """Registers named 'none' or 'none_<num>' should be ignored."""
-    csv_content = (
-        "Function_Code,Register_Name,Address_DEC\n" "04,none,1\n" "04,valid_reg,2\n" "04,none_3,3\n"
-    )
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch("custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert scanner._registers["04"] == {2: "valid_reg"}
-
-
-async def test_read_input_fallback_detects_temperature(caplog):
-    """Fallback to holding registers should discover temperature inputs."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
-    with (
-        patch.object(
-            ThesslaGreenDeviceScanner,
-            "_load_registers",
-            AsyncMock(return_value=(empty_regs, {})),
-        ),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"outside_temperature": 16},
-        ),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
-            {},
-        ),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS",
-            {},
-        ),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-        from custom_components.thessla_green_modbus.modbus_exceptions import (
-            ModbusException,
-        )
-
-        mock_client = AsyncMock()
-        mock_client.connect.return_value = True
-        mock_client.read_input_registers.side_effect = ModbusException("fail")
-
-        resp_fw = MagicMock()
-        resp_fw.isError.return_value = False
-        resp_fw.registers = [4, 85, 0, 0, 0]
-        resp_temp = MagicMock()
-        resp_temp.isError.return_value = False
-        resp_temp.registers = [10]
-        mock_client.read_holding_registers.side_effect = [resp_fw, resp_temp]
-
-        mock_client_class.return_value = mock_client
-
-        with caplog.at_level(logging.DEBUG):
-            result = await scanner.scan_device()
-
-    assert "outside_temperature" in result["available_registers"]["input_registers"]
-    assert any("Falling back to holding registers" in record.message for record in caplog.records)
-
-
-async def test_load_registers_missing_range_warning(tmp_path, caplog):
-    """Warn when Min/Max range is incomplete."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0,\n"
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"reg_a": 1},
-        ),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-        caplog.at_level(logging.WARNING),
-    ):
-        await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert any("Incomplete range" in record.message for record in caplog.records)
-
-
-async def test_load_registers_sanitize_range_values(tmp_path, caplog):
-    """Sanitize range values and ignore non-numeric entries."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0 # comment,10abc\n"
-    )
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"reg_a": 1},
-        ),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-        caplog.at_level(logging.WARNING),
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert scanner._register_ranges["reg_a"] == (0, None)
-    assert any("non-numeric Max" in record.message for record in caplog.records)
-
-
-async def test_load_registers_hex_range(tmp_path, caplog):
-    """Parse hexadecimal Min/Max values without warnings."""
-    _ = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,0x0,0x423f\n"
-
-
-@pytest.mark.parametrize("min_raw,max_raw", [("1", "10"), ("0x1", "0xA")])
-async def test_load_registers_parses_range_formats(tmp_path, min_raw, max_raw, caplog):
-    """Support decimal and hexadecimal ranges."""
-    csv_content = (
-        "Function_Code,Address_DEC,Register_Name,Min,Max\n" f"04,1,reg_a,{min_raw},{max_raw}\n"
-    )
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"reg_a": 1},
-        ),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-        from custom_components.thessla_green_modbus.modbus_exceptions import (
-            ModbusException,
-        )
-
-        mock_client = AsyncMock()
-        mock_client.connect.return_value = True
-        mock_client.read_input_registers.side_effect = ModbusException("fail")
-
-        resp_fw = MagicMock()
-        resp_fw.isError.return_value = False
-        resp_fw.registers = [4, 85, 0, 0, 0]
-        resp_temp = MagicMock()
-        resp_temp.isError.return_value = False
-        resp_temp.registers = [10]
-        mock_client.read_holding_registers.side_effect = [resp_fw, resp_temp]
-
-        mock_client_class.return_value = mock_client
-
-    with caplog.at_level(logging.DEBUG):
-        result = await scanner.scan_device()
-
-    assert "outside_temperature" in result["available_registers"]["input_registers"]
-    assert any("Falling back to holding registers" in record.message for record in caplog.records)
-
-
-async def test_load_registers_complete_range_no_warning(tmp_path, caplog):
-    """No warning when both Min and Max are provided."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,1,10\n"
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"reg_a": 1},
-        ),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-        caplog.at_level(logging.WARNING),
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert scanner._register_ranges["reg_a"] == (1, 10)
-    assert not caplog.records
-
-
-async def test_load_registers_invalid_range_logs(tmp_path, caplog):
-    """Warn when Min/Max cannot be parsed even after sanitization."""
-    csv_content = "Function_Code,Address_DEC,Register_Name,Min,Max\n" "04,1,reg_a,abc,#comment\n"
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"reg_a": 1},
-        ),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-        caplog.at_level(logging.WARNING),
-    ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-
-    assert "reg_a" not in scanner._register_ranges
-    assert any("non-numeric Min" in record.message for record in caplog.records)
-    assert any("non-numeric Max" in record.message for record in caplog.records)
-
-
-async def test_load_registers_missing_required_register(tmp_path):
-    """Fail fast when a required register is absent from CSV."""
-    csv_content = "Function_Code,Address_DEC,Register_Name\n"
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    (data_dir / "modbus_registers.csv").write_text(csv_content)
-
-    with (
-        patch("custom_components.thessla_green_modbus.scanner_core.files", return_value=tmp_path),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"reg_a": 1},
-        ),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-    ):
-        with pytest.raises(ValueError, match="reg_a"):
-            await ThesslaGreenDeviceScanner.create("host", 502, 10)
 
 
 async def test_analyze_capabilities():

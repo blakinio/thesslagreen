@@ -1,8 +1,10 @@
 import ast
 import json
+import re
 import sys
 import types
 from pathlib import Path
+from importlib import resources
 
 import yaml
 
@@ -63,6 +65,7 @@ def _load_keys(file: Path, var_name: str):
 # Import sensor module to obtain translation keys
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
 const.PERCENTAGE = "%"
+const.STATE_UNAVAILABLE = "unavailable"
 
 
 class UnitOfTemperature:  # pragma: no cover - enum stub
@@ -130,7 +133,8 @@ SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") 
 )
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
-REGISTER_KEYS = _load_keys(ROOT / "registers" / "__init__.py", "HOLDING_REGISTERS")
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
+REGISTER_KEYS = [r.name for r in get_registers_by_function("03")]
 # Add dynamically generated binary sensor keys from holding registers
 BINARY_KEYS = sorted(
     set(BINARY_KEYS)
@@ -239,3 +243,72 @@ def test_new_translation_keys_present():
             assert key in trans["entity"]["binary_sensor"]
         for key in new_sensor_keys:
             assert key in trans["entity"]["sensor"]
+
+
+def _to_snake(name: str) -> str:
+    """Convert camelCase names to snake_case without typo correction."""
+    name = name.replace("-", "_").replace(" ", "_")
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def test_register_names_match_translations() -> None:
+    """Ensure register names used in mappings exist and have translations."""
+
+    reg_path = (
+        resources.files("custom_components.thessla_green_modbus.registers")
+        .joinpath("thessla_green_registers_full.json")
+    )
+    data = json.loads(reg_path.read_text(encoding="utf-8"))
+    registers = data["registers"]
+
+    fn_map = {
+        "01": "coil_registers",
+        "02": "discrete_input_registers",
+        "03": "holding_registers",
+        "04": "input_registers",
+    }
+    reg_names: dict[str, set[str]] = {v: set() for v in fn_map.values()}
+    for reg in registers:
+        func = str(reg["function"]).zfill(2)
+        if func in fn_map:
+            reg_names[fn_map[func]].add(_to_snake(reg["name"]))
+
+    source = (ROOT / "entity_mappings.py").read_text()
+    tree = ast.parse(source)
+
+    vars_to_entity = {
+        "BINARY_SENSOR_ENTITY_MAPPINGS": "binary_sensor",
+        "SWITCH_ENTITY_MAPPINGS": "switch",
+        "SELECT_ENTITY_MAPPINGS": "select",
+        "NUMBER_ENTITY_MAPPINGS": "number",
+    }
+
+    ignore = {"hood_output"}
+    for var, entity_type in vars_to_entity.items():
+        for node in tree.body:
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                target = node.targets[0] if isinstance(node, ast.Assign) else node.target
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id == var
+                    and isinstance(node.value, ast.Dict)
+                ):
+                    for key_node, val_node in zip(node.value.keys, node.value.values):
+                        if isinstance(key_node, ast.Constant) and isinstance(val_node, ast.Dict):
+                            name = key_node.value
+                            reg_type = None
+                            trans_key = name
+                            for k2, v2 in zip(val_node.keys, val_node.values):
+                                if isinstance(k2, ast.Constant):
+                                    if k2.value == "register_type" and isinstance(v2, ast.Constant):
+                                        reg_type = v2.value
+                                    elif k2.value == "translation_key" and isinstance(v2, ast.Constant):
+                                        trans_key = v2.value
+                            if reg_type in reg_names and name not in ignore:
+                                assert (
+                                    _to_snake(name) in reg_names[reg_type]
+                                ), f"Missing register definition for {name}"
+                            assert trans_key in EN["entity"][entity_type]
+                            assert trans_key in PL["entity"][entity_type]
+                    break

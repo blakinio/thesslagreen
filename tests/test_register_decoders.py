@@ -2,6 +2,10 @@ import asyncio
 import pytest
 
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner_helpers import (
+    _decode_season_mode,
+    _format_register_value,
+)
 from custom_components.thessla_green_modbus.utils import (
     _decode_aatt,
     _decode_bcd_time,
@@ -60,7 +64,7 @@ def test_decode_aatt_value_invalid(value):
 def test_schedule_and_setting_defaults_valid():
     """Default schedule and setting values should pass range validation."""
     scanner = ThesslaGreenDeviceScanner("127.0.0.1", 502)
-    _, ranges, _ = asyncio.run(scanner._load_registers())
+    _, ranges = asyncio.run(scanner._load_registers())
     scanner._register_ranges = ranges
     assert scanner._is_valid_register_value("schedule_winter_sun_3", 0x1000)
     assert scanner._is_valid_register_value("setting_summer_mon_1", 0x4100)
@@ -88,3 +92,27 @@ def test_register_decode_unavailable_value():
     """Sentinel value 0x8000 should decode to None."""
     reg = Register(function="input", address=0, name="temp", access="ro")
     assert reg.decode(0x8000) is None
+
+
+def test_decode_season_mode_special_value():
+    """Season mode decoder should treat 0x8000 as undefined."""
+    assert _decode_season_mode(0x8000) is None
+
+
+def test_format_register_value_special_values():
+    """Formatter should return None for sentinel values."""
+    assert _format_register_value("schedule_test", 0x8000) is None
+    assert _format_register_value("setting_test", 0x8000) is None
+
+
+def test_register_bitmask_decode_encode():
+    reg = Register(
+        function="holding",
+        address=0,
+        name="errors",
+        access="rw",
+        enum={1: "A", 2: "B", 4: "C"},
+        extra={"bitmask": True},
+    )
+    assert reg.decode(5) == ["A", "C"]
+    assert reg.encode(["A", "C"]) == 5

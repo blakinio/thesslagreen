@@ -8,6 +8,7 @@
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
 
 Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokołem Modbus TCP/RTU. Obsługuje **wszystkie 200+ rejestrów** z dokumentacji MODBUS_USER_AirPack_Home_08.2021.01 bez wyjątku.
+Integracja działa jako **hub** w Home Assistant.
 
 ### 🚀 Kluczowe funkcje v2.1+
 
@@ -131,6 +132,31 @@ Dostępny jest serwis `thessla_green_modbus.scan_all_registers`, który wykonuje
 pełne skanowanie wszystkich rejestrów (`full_register_scan=True`) i zwraca
 listę nieznanych adresów. Operacja może trwać kilka minut i znacząco obciąża
 urządzenie – używaj jej tylko do diagnostyki.
+### Użycie `group_reads`
+Funkcja `group_reads` dzieli listę adresów na ciągłe bloki ograniczone parametrem `max_block_size` (domyślnie 64). Własne skrypty powinny z niej korzystać, aby minimalizować liczbę zapytań i nie przekraczać zalecanego rozmiaru bloku. W razie problemów z komunikacją można zmniejszyć `max_block_size`, np. do 16, co zapewnia stabilniejszy odczyt.
+
+```python
+from custom_components.thessla_green_modbus.loader import group_reads
+
+for start, size in group_reads(range(100), max_block_size=16):
+    print(start, size)
+```
+
+
+### Rejestry w formacie JSON
+Definicje rejestrów znajdują się w pliku `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
+który stanowi jedyne źródło prawdy. Każdy wpis w sekcji `registers` zawiera m.in. pola:
+
+- `function` – kod funkcji Modbus (`01`–`04`)
+- `address_dec` / `address_hex` – adres rejestru
+- `name` – unikalna nazwa w formacie snake_case
+- `description` – opis z dokumentacji
+- `access` – tryb dostępu (`R`/`W`)
+
+Opcjonalnie można określić `unit`, `enum`, `multiplier`, `resolution` oraz inne
+metadane. Aby dodać nowy rejestr, dopisz obiekt do listy `registers` zachowując
+porządek adresów i uruchom `pytest tests/test_register_loader.py`, aby
+zweryfikować poprawność pliku.
 
 ### Włączanie logów debug
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
@@ -467,16 +493,18 @@ python3 tools/cleanup_old_entities.py \
 - 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Regenerating registers.py
-Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` changes, regenerate and
-validate the Python module:
+### Aktualizacja `registers.py`
+Zmiany w pliku `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` wymagają ponownego
+wygenerowania modułu z definicjami rejestrów i jego walidacji:
 
 ```bash
 python tools/generate_registers.py
-python tools/validate_registers.py  # optional consistency check
+python tools/validate_registers.py  # opcjonalna kontrola spójności
 ```
 
-Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+Do commitu dołącz zaktualizowany plik
+`custom_components/thessla_green_modbus/registers.py` oraz zmodyfikowany plik
+JSON.
 
 ### Validate translations
 Ensure translation files are valid JSON:
@@ -488,10 +516,11 @@ python -m json.tool custom_components/thessla_green_modbus/translations/*.json
 ### Changelog
 Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 
-## Migracja z CSV na JSON
+## Rejestry w formacie JSON
 
-Od wersji 2.0 definicje rejestrów zostały przeniesione z pliku CSV do
-formatu JSON `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
+Plik `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` przechowuje komplet
+definicji rejestrów i stanowi jedyne źródło prawdy. Wszystkie narzędzia w
+`tools/` operują wyłącznie na tym formacie.
 
 ### Format pliku
 
@@ -510,17 +539,18 @@ Każdy wpis w pliku to obiekt z polami:
 
 Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 
-### Dodawanie nowych rejestrów
+### Dodawanie lub aktualizowanie rejestrów
 
-1. Otwórz plik JSON i dopisz nowy obiekt z wymaganymi polami.
-2. Zadbaj o unikalność adresów i zachowanie porządku.
+1. Otwórz `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` i wprowadź nowe wpisy
+   lub zmodyfikuj istniejące.
+2. Zadbaj o unikalność adresów i zachowanie posortowanej kolejności.
 3. Uruchom test walidacyjny:
 
 ```bash
 pytest tests/test_register_loader.py
 ```
 
-4. Wygeneruj moduł `registers.py` i zweryfikuj spójność:
+4. Wygeneruj moduł `registers.py` i opcjonalnie zweryfikuj spójność:
 
 ```bash
 python tools/generate_registers.py
@@ -528,6 +558,19 @@ python tools/validate_registers.py
 ```
 
 5. Dołącz zmienione pliki (`registers.py` oraz JSON) do commitu.
+
+### Migracja z CSV na JSON
+
+Pliki CSV zostały oznaczone jako przestarzałe i ich obsługa będzie
+usunięta w przyszłych wersjach. Użycie pliku CSV zapisze ostrzeżenie w
+logach. Aby ręcznie przekonwertować dane:
+
+1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
+2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
+   z polami `function`, `address_dec`, `address_hex`, `name`, `description` i `access`.
+3. Zachowaj sortowanie adresów oraz format liczbowy (`0x` dla wartości hex).
+4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych
+   rejestrów.
 
 ## 📄 Licencja
 

@@ -1,85 +1,94 @@
-"""Tests for the register loader utility."""
+"""Tests for JSON register loader."""
 
 import json
 import logging
 from pathlib import Path
 
-import custom_components.thessla_green_modbus.registers.loader as loader
+from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 from custom_components.thessla_green_modbus.registers import (
-    get_all_registers,
     get_registers_by_function,
-    group_reads,
 )
 
 
-def test_json_structure():
-    """Validate structure of the registers JSON file."""
-    path = (
-        Path(__file__).resolve().parent.parent
-        / "custom_components"
-        / "thessla_green_modbus"
-        / "registers"
-        / "thessla_green_registers_full.json"
-    )
-    with path.open(encoding="utf-8") as f:
-        data = json.load(f)
-    required = {"function", "address_hex", "address_dec", "access", "name", "description"}
-    for entry in data:
-        assert required <= set(entry)
+def test_example_register_mapping() -> None:
+    """Verify example registers map to expected addresses."""
+
+    def addr(fn: str, name: str) -> int:
+        regs = get_registers_by_function(fn)
+        reg = next(r for r in regs if r.name == name)
+        return reg.address
+
+    assert addr("01", "duct_water_heater_pump") == 5
+    assert addr("02", "expansion") == 0
+    assert addr("03", "mode") == 4097
+    assert addr("04", "outside_temperature") == 16
 
 
-def test_register_lookup_and_properties():
-    """Verify registers are loaded and accessible for all function codes."""
-    input_regs = {r.name: r.address for r in get_registers_by_function("input")}
-    holding_regs = {r.name: r.address for r in get_registers_by_function("holding")}
-    coil_regs = {r.name: r.address for r in get_registers_by_function("coil")}
-    discrete_regs = {r.name: r.address for r in get_registers_by_function("discrete")}
+def test_enum_multiplier_resolution_handling() -> None:
+    """Ensure optional register metadata is preserved."""
 
-    assert input_regs["outside_temperature"] == 16
-    assert holding_regs["mode"] == 4097
-    assert coil_regs["bypass"] == 9
-    assert discrete_regs["expansion"] == 0
+    holding_regs = get_registers_by_function("03")
 
-
-def test_enum_multiplier_resolution():
-    """Check enum, multiplier and resolution extraction."""
-    holding_regs = get_registers_by_function("holding")
     special_mode = next(r for r in holding_regs if r.name == "special_mode")
-    required_temp = next(r for r in holding_regs if r.name == "required_temperature")
+    assert special_mode.enum and special_mode.enum["boost"] == 1
 
-    assert special_mode.enum["boost"] == 1
-    assert required_temp.multiplier == 0.5
-    assert required_temp.resolution == 0.5
+    required = next(r for r in holding_regs if r.name == "required_temperature")
+    assert required.multiplier == 0.5
+    assert required.resolution == 0.5
+    assert required.decode(45) == 22.5
 
 
-def test_group_reads_cover_addresses():
-    """Ensure group reads cover all register addresses without gaps."""
-    mapping = {
-        "input": {r.name: r.address for r in get_registers_by_function("input")},
-        "holding": {r.name: r.address for r in get_registers_by_function("holding")},
-        "coil": {r.name: r.address for r in get_registers_by_function("coil")},
-        "discrete": {r.name: r.address for r in get_registers_by_function("discrete")},
+def test_function_aliases() -> None:
+    """Aliases with spaces/underscores should resolve to correct functions."""
+    aliases = {
+        "coil_registers": "01",
+        "discrete_inputs": "02",
+        "holding_registers": "03",
+        "input_registers": "04",
+        "input registers": "04",
     }
-    grouped: dict[str, list[int]] = {"input": [], "holding": [], "coil": [], "discrete": []}
-    for plan in group_reads():
-        grouped[plan.function].extend(range(plan.address, plan.address + plan.length))
-    for func, regs in mapping.items():
-        assert grouped[func] == sorted(regs.values())
+    for alias, code in aliases.items():
+        alias_regs = get_registers_by_function(alias)
+        code_regs = get_registers_by_function(code)
+        assert {r.address for r in alias_regs} == {r.address for r in code_regs}
 
 
-def test_loader_csv_fallback(tmp_path, caplog, monkeypatch):
-    """Loader should load CSV files with a deprecation warning."""
-    csv_file = tmp_path / "regs.csv"
-    csv_file.write_text(
-        "function,address_dec,access,name,description\n"
-        "input,1,ro,test_reg,Test register\n"
+def test_registers_loaded_only_once(monkeypatch) -> None:
+    """Ensure register file is read only once thanks to caching."""
+
+    from custom_components.thessla_green_modbus.registers.loader import _load_registers
+
+    read_calls = 0
+    real_read_text = Path.read_text
+
+    def spy(self, *args, **kwargs):
+        nonlocal read_calls
+        read_calls += 1
+        text = real_read_text(self, *args, **kwargs)
+        json.loads(text)
+        return text
+
+    # Spy on read_text to count disk reads
+    monkeypatch.setattr(Path, "read_text", spy)
+
+    _load_registers.cache_clear()
+
+    _load_registers()
+    _load_registers()
+
+    # The file should be read only once thanks to caching
+    assert read_calls == 1
+
+
+def test_path_argument_ignored(caplog) -> None:
+    """Providing a path should not trigger any CSV handling."""
+
+    csv_path = (
+        Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
     )
-    monkeypatch.setattr(loader, "_REGISTERS_FILE", tmp_path / "missing.json")
-    loader._load_raw.cache_clear()
-    loader._load_registers.cache_clear()
+
     with caplog.at_level(logging.WARNING):
-        regs = {r.name: r.address for r in loader.get_registers_by_function("input")}
-    assert regs["test_reg"] == 1
-    assert "deprecated" in caplog.text.lower()
-    loader._load_raw.cache_clear()
-    loader._load_registers.cache_clear()
+        loader = RegisterLoader(csv_path)
+
+    assert loader.registers
+    assert not caplog.records

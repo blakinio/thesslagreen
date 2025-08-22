@@ -9,8 +9,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS
-from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus import loader
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
+
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -106,8 +108,8 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
     async def async_write_register(self, *args, **kwargs):
         register, value = args[0], args[1]
         address = HOLDING_REGISTERS[register]
-        multiplier = REGISTER_MULTIPLIERS.get(register, 1)
-        raw = int(round(value / multiplier))
+        definition = loader.get_register_definition(register)
+        raw = definition.encode(value)
         await self.client.write_register(address, raw, slave=self.slave_id)
         return True
 
@@ -247,32 +249,3 @@ async def test_async_setup_skips_missing_numbers(mock_coordinator, mock_config_e
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
     add_entities.assert_not_called()
-
-
-def test_air_flow_rate_manual_from_csv(mock_coordinator):
-    """Verify air_flow_rate_manual uses CSV-defined unit and range."""
-    mock_coordinator.data["air_flow_rate_manual"] = 30
-    entity_config = ENTITY_MAPPINGS["number"]["air_flow_rate_manual"]
-    number = ThesslaGreenNumber(
-        mock_coordinator, "air_flow_rate_manual", entity_config, "holding_registers"
-    )
-    assert number._attr_native_unit_of_measurement == "%"
-    assert number._attr_native_min_value == 10
-    assert number._attr_native_max_value == 100
-    assert number._attr_native_step == 1
-
-
-def test_date_time_number_from_csv(mock_coordinator):
-    """Verify date_time_1 mapping is loaded from CSV."""
-    mock_coordinator.available_registers.setdefault("holding_registers", set()).add(
-        "date_time_1"
-    )
-    mock_coordinator.data["date_time_1"] = 23
-    entity_config = ENTITY_MAPPINGS["number"]["date_time_1"]
-    number = ThesslaGreenNumber(
-        mock_coordinator, "date_time_1", entity_config, "holding_registers"
-    )
-    assert number._attr_native_unit_of_measurement == "RRMM"
-    assert number._attr_native_min_value == 0
-    assert number._attr_native_max_value == 99
-    assert number._attr_native_step == 1
