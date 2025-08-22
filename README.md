@@ -492,6 +492,8 @@ Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 
 Od wersji 2.0 definicje rejestrów zostały przeniesione z pliku CSV do
 formatu JSON `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
+Stare pliki CSV w tym katalogu są nadal obsługiwane, lecz przy ich użyciu
+loader loguje ostrzeżenie o deprecjacji – JSON jest jedynym źródłem prawdy.
 
 ### Format pliku
 
