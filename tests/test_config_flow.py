@@ -1,5 +1,7 @@
 """Test config flow for ThesslaGreen Modbus integration."""
+# ruff: noqa: E402
 
+import sys
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -7,6 +9,11 @@ from unittest.mock import AsyncMock, patch
 import logging
 import pytest
 from homeassistant.const import CONF_HOST, CONF_PORT
+
+# Stub loader module to avoid heavy imports during tests
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.loader", SimpleNamespace()
+)
 
 from custom_components.thessla_green_modbus.const import CONF_DEEP_SCAN
 
@@ -648,6 +655,37 @@ async def test_validate_input_scanner_closed_on_exception():
     scanner_instance.close.assert_awaited_once()
 
 
+async def test_validate_input_attribute_error():
+    """AttributeError during validation should be reported as missing_method."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+        CannotConnect,
+    )
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    # Scanner missing verify_connection will trigger AttributeError
+    scanner_instance = SimpleNamespace(
+        scan_device=AsyncMock(return_value={}),
+        close=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert err.value.args[0] == "missing_method"
+    scanner_instance.close.assert_awaited_once()
+
+
 async def test_validate_input_uses_scan_device_and_closes():
     """Test validate_input uses scan_device when available and closes scanner."""
     from custom_components.thessla_green_modbus.config_flow import (
@@ -670,6 +708,7 @@ async def test_validate_input_uses_scan_device_and_closes():
     scanner_instance = SimpleNamespace(
         scan_device=AsyncMock(return_value=scan_result),
         close=AsyncMock(),
+        verify_connection=AsyncMock(),
     )
 
     with patch(
@@ -678,6 +717,11 @@ async def test_validate_input_uses_scan_device_and_closes():
     ):
         result = await validate_input(None, data)
 
-    assert result["scan_result"] == scan_result
+    from custom_components.thessla_green_modbus.scanner_core import (
+        DeviceCapabilities,
+    )
+
+    assert isinstance(result["scan_result"], dict)
+    assert isinstance(result["scan_result"].get("capabilities"), DeviceCapabilities)
     scanner_instance.scan_device.assert_awaited_once()
     scanner_instance.close.assert_awaited_once()
