@@ -17,9 +17,9 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import time
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -63,8 +63,8 @@ class Register:
         if raw == 0x8000:  # common sentinel used by the device
             return None
 
-        # Enumerations map raw numeric values to labels
-        if self.enum is not None:
+        # Enumerations map raw numeric values to labels for holding/input registers
+        if self.enum is not None and self.function in ("03", "04"):
             if raw in self.enum:
                 return self.enum[raw]
             if str(raw) in self.enum:
@@ -112,7 +112,7 @@ class Register:
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
         raw: Any = value
-        if self.enum and isinstance(value, str):
+        if self.enum and isinstance(value, str) and self.function in ("03", "04"):
             # Reverse lookup
             for k, v in self.enum.items():
                 if v == value:
@@ -135,10 +135,17 @@ class Register:
 # tests.  Use an explicit absolute path to avoid repeating this logic in
 # multiple places.
 _REGISTERS_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "registers"
-    / "thessla_green_registers_full.json"
+    Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
 )
+
+_SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
+try:  # pragma: no cover - defensive
+    _SPECIAL_MODES_ENUM = {
+        key.split("_")[-1]: idx
+        for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
+    }
+except Exception:  # pragma: no cover - defensive
+    _SPECIAL_MODES_ENUM: Dict[str, int] = {}
 
 
 def _normalise_function(fn: str) -> str:
@@ -147,33 +154,60 @@ def _normalise_function(fn: str) -> str:
         "01": "01",
         "coil": "01",
         "coils": "01",
+        "coil_register": "01",
+        "coil_registers": "01",
+        "coil registers": "01",
         "2": "02",
         "02": "02",
         "discrete": "02",
         "discreteinput": "02",
         "discreteinputs": "02",
+        "discrete_input": "02",
+        "discrete_inputs": "02",
+        "discrete inputs": "02",
         "3": "03",
         "03": "03",
         "holding": "03",
         "holdingregister": "03",
         "holdingregisters": "03",
+        "holding_register": "03",
+        "holding_registers": "03",
+        "holding registers": "03",
         "4": "04",
         "04": "04",
         "input": "04",
         "inputregister": "04",
         "inputregisters": "04",
+        "input_register": "04",
+        "input_registers": "04",
+        "input registers": "04",
     }
     return mapping.get(fn.lower(), fn)
+
+
+def _normalise_name(name: str) -> str:
+    """Convert register names to ``snake_case`` and fix known typos."""
+
+    # Convert camelCase or dash/space separated names to snake_case
+    name = name.replace("-", "_").replace(" ", "_")
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    snake = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+    fixes = {
+        "duct_warter_heater_pump": "duct_water_heater_pump",
+        "required_temp": "required_temperature",
+        "specialmode": "special_mode",
+    }
+    return fixes.get(snake, snake)
 
 
 # ---------------------------------------------------------------------------
 # Register loading helpers
 # ---------------------------------------------------------------------------
 
-@lru_cache(maxsize=1)  # cache to avoid repeated disk reads
 
-def _load_registers() -> List[Register]:
-    """Load register definitions from the JSON file."""
+def _load_registers_from_file() -> List[Register]:
+    """Load register definitions from the bundled JSON file."""
 
     if not _REGISTERS_PATH.exists():  # pragma: no cover - sanity check
         _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
@@ -190,10 +224,15 @@ def _load_registers() -> List[Register]:
             address = int(item["address_dec"])
         else:
             address = int(str(item.get("address_hex")), 16)
+        if function == "02":
+            address -= 1
 
         try:
+            name = _normalise_name(str(item["name"]))
             enum_map = item.get("enum")
-            if enum_map:
+            if name == "special_mode":
+                enum_map = _SPECIAL_MODES_ENUM
+            elif enum_map:
                 if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
                     enum_map = {int(k): v for k, v in enum_map.items()}
                 elif all(
@@ -205,7 +244,7 @@ def _load_registers() -> List[Register]:
                 Register(
                     function=function,
                     address=address,
-                    name=str(item["name"]),
+                    name=name,
                     access=str(item.get("access", "ro")),
                     description=item.get("description"),
                     unit=item.get("unit"),
@@ -224,7 +263,31 @@ def _load_registers() -> List[Register]:
             )
         except Exception as err:  # pragma: no cover - defensive
             _LOGGER.warning("Invalid register definition skipped: %s", err)
+
     return registers
+
+
+# Cache for loaded register definitions
+_REGISTER_CACHE: List[Register] = []
+
+
+def _load_registers() -> List[Register]:
+    """Return cached register definitions, loading them if necessary."""
+
+    if not _REGISTER_CACHE:
+        _REGISTER_CACHE.extend(_load_registers_from_file())
+    return _REGISTER_CACHE
+
+
+def _cache_clear() -> None:
+    _REGISTER_CACHE.clear()
+
+
+_load_registers.cache_clear = _cache_clear  # type: ignore[attr-defined]
+
+
+# Load register definitions once at import time
+_load_registers()
 
 
 # ---------------------------------------------------------------------------
@@ -234,13 +297,11 @@ def _load_registers() -> List[Register]:
 
 def get_all_registers() -> List[Register]:
     """Return a list of all known registers."""
-
     return list(_load_registers())
 
 
 def get_registers_by_function(fn: str) -> List[Register]:
     """Return registers for the given function code or name."""
-
     code = _normalise_function(fn)
     return [r for r in _load_registers() if r.function == code]
 
