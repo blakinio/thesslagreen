@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, HOLDING_REGISTERS
+from .const import DOMAIN, get_holding_registers
 
 try:  # Newer versions expose metadata through ENTITY_MAPPINGS
     from .const import ENTITY_MAPPINGS
@@ -22,6 +22,8 @@ from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+HOLDING_REGISTERS = get_holding_registers()
 
 # Unit mappings
 UNIT_MAPPINGS = {
