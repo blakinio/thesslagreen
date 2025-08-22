@@ -19,7 +19,6 @@ import hashlib
 import json
 import logging
 import re
-import importlib.resources as resources
 from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
@@ -132,13 +131,11 @@ class Register:
 # Loading helpers
 # ---------------------------------------------------------------------------
 
-# Single source of truth for the bundled register definitions.
-# ``resources.files`` resolves the JSON relative to this module which means the
-# same path works both when running the tests directly from the source tree and
-# when the integration is installed as a package at runtime.
-_REGISTERS_PATH = resources.files(__package__).joinpath(
-    "thessla_green_registers_full.json"
-)
+# Single source of truth for the bundled register definitions.  The JSON file
+# sits next to this module which means the path works both when running the
+# tests directly from the source tree and when the integration is installed as
+# a package at runtime.
+_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
 
 
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
@@ -260,59 +257,62 @@ def _load_registers_from_file() -> List[Register]:
         _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
         return []
 
-    text = _REGISTERS_PATH.read_text(encoding="utf-8")
-    raw = json.loads(text)
+    raw = json.loads(_REGISTERS_PATH.read_text(encoding="utf-8"))
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
     registers: List[Register] = []
     for item in items:
-        try:
-            _validate_item(item)
+        _validate_item(item)
 
-            function = _normalise_function(str(item.get("function", "")))
-            if item.get("address_dec") is not None:
-                address = int(item["address_dec"])
-            else:
-                address = int(str(item.get("address_hex")), 16)
-            if function == "02":
-                address -= 1
+        function = _normalise_function(str(item.get("function", "")))
+        if item.get("address_dec") is not None:
+            address = int(item["address_dec"])
+        else:
+            address = int(str(item.get("address_hex")), 16)
+        if function == "02":
+            address -= 1
+        elif function == "03" and address >= 111:
+            address -= 111
 
-            name = _normalise_name(str(item["name"]))
+        name = _normalise_name(str(item["name"]))
 
-            enum_map = item.get("enum")
-            if name == "special_mode":
-                enum_map = _SPECIAL_MODES_ENUM
-            elif enum_map:
-                if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
-                    enum_map = {int(k): v for k, v in enum_map.items()}
-                elif all(
-                    isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()
-                ):
-                    enum_map = {int(v): k for k, v in enum_map.items()}
+        enum_map = item.get("enum")
+        if name == "special_mode":
+            enum_map = _SPECIAL_MODES_ENUM
+        elif enum_map:
+            if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
+                enum_map = {int(k): v for k, v in enum_map.items()}
+            elif all(
+                isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()
+            ):
+                enum_map = {int(v): k for k, v in enum_map.items()}
 
-            registers.append(
-                Register(
-                    function=function,
-                    address=address,
-                    name=name,
-                    access=str(item.get("access", "ro")),
-                    description=item.get("description"),
-                    unit=item.get("unit"),
-                    multiplier=item.get("multiplier"),
-                    resolution=item.get("resolution"),
-                    min=item.get("min"),
-                    max=item.get("max"),
-                    default=item.get("default"),
-                    enum=enum_map,
-                    notes=item.get("notes"),
-                    information=item.get("information"),
-                    extra=item.get("extra"),
-                    length=int(item.get("length", 1)),
-                    bcd=bool(item.get("bcd", False)),
-                )
+        multiplier = item.get("multiplier")
+        resolution = item.get("resolution")
+        if multiplier is None and resolution is not None:
+            multiplier = resolution
+
+        registers.append(
+            Register(
+                function=function,
+                address=address,
+                name=name,
+                access=str(item.get("access", "ro")),
+                description=item.get("description"),
+                unit=item.get("unit"),
+                multiplier=multiplier,
+                resolution=resolution,
+                min=item.get("min"),
+                max=item.get("max"),
+                default=item.get("default"),
+                enum=enum_map,
+                notes=item.get("notes"),
+                information=item.get("information"),
+                extra=item.get("extra"),
+                length=int(item.get("length", 1)),
+                bcd=bool(item.get("bcd", False)),
             )
-        except Exception as err:
-            raise ValueError(f"Invalid register definition: {err}") from err
+        )
 
     return registers
 
