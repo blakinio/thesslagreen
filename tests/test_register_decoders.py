@@ -103,3 +103,16 @@ def test_format_register_value_special_values():
     """Formatter should return None for sentinel values."""
     assert _format_register_value("schedule_test", 0x8000) is None
     assert _format_register_value("setting_test", 0x8000) is None
+
+
+def test_register_bitmask_decode_encode():
+    reg = Register(
+        function="holding",
+        address=0,
+        name="errors",
+        access="rw",
+        enum={1: "A", 2: "B", 4: "C"},
+        extra={"bitmask": True},
+    )
+    assert reg.decode(5) == ["A", "C"]
+    assert reg.encode(["A", "C"]) == 5
