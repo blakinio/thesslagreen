@@ -1,11 +1,15 @@
-"""Utility for loading register definitions from JSON file."""
+"""Utility for loading register definitions from JSON or CSV files."""
 
 from __future__ import annotations
 
+import csv
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,8 +32,24 @@ class RegisterLoader:
     def __init__(self, path: Path | None = None) -> None:
         if path is None:
             path = Path(__file__).parent / "registers" / "thessla_green_registers_full.json"
-        with path.open(encoding="utf-8") as f:
-            raw = json.load(f)
+
+        if path.exists() and path.suffix.lower() == ".json":
+            with path.open(encoding="utf-8") as f:
+                raw = json.load(f)
+        elif path.exists() and path.suffix.lower() == ".csv":
+            raw = self._load_from_csv([path])
+        else:
+            # Attempt fallback
+            json_path = path if path.suffix else path.with_suffix(".json")
+            if json_path.exists():
+                with json_path.open(encoding="utf-8") as f:
+                    raw = json.load(f)
+            else:
+                csv_dir = path.parent if path.suffix else path
+                csv_files = list(csv_dir.glob("*.csv"))
+                if not csv_files:
+                    raise FileNotFoundError(f"No register definition file found at {path}")
+                raw = self._load_from_csv(csv_files)
 
         self.registers: Dict[str, Register] = {}
         self.input_registers: Dict[str, int] = {}
@@ -68,6 +88,35 @@ class RegisterLoader:
                 self.resolutions[reg.name] = reg.resolution
 
         self.group_reads: Dict[str, List[Tuple[int, int]]] = self._compute_group_reads()
+
+    def _load_from_csv(self, files: Iterable[Path]) -> List[Dict[str, Any]]:
+        """Load register definitions from CSV files."""
+        _LOGGER.warning(
+            "Register CSV files are deprecated and will be removed in a future release. "
+            "Please migrate to JSON."
+        )
+        data: List[Dict[str, Any]] = []
+        for csv_file in files:
+            with csv_file.open(encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        row["address_dec"] = int(row["address_dec"])
+                    except (KeyError, ValueError):
+                        continue
+                    for field in ("multiplier", "resolution"):
+                        if row.get(field) not in (None, ""):
+                            try:
+                                row[field] = float(row[field])
+                            except ValueError:
+                                row[field] = None
+                    if "enum" in row and row["enum"]:
+                        try:
+                            row["enum"] = json.loads(row["enum"])
+                        except json.JSONDecodeError:
+                            row["enum"] = None
+                    data.append(row)
+        return data
 
     def _compute_group_reads(self) -> Dict[str, List[Tuple[int, int]]]:
         """Compute contiguous address groups for efficient reading."""
