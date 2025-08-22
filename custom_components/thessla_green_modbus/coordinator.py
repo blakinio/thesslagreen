@@ -91,21 +91,8 @@ from .const import (
     get_holding_registers,
     get_input_registers,
 )
-from . import loader
+from .registers import get_register_definition
 from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
-    COIL_REGISTERS,
-    DEFAULT_NAME,
-    DEFAULT_SCAN_INTERVAL,
-    DISCRETE_INPUT_REGISTERS,
-    DOMAIN,
-    KNOWN_MISSING_REGISTERS,
-    MANUFACTURER,
-    SENSOR_UNAVAILABLE,
-    UNKNOWN_MODEL,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-    MULTI_REGISTER_SIZES,
-)
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_client import ThesslaGreenModbusClient
 from .modbus_helpers import _call_modbus
@@ -389,13 +376,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _compute_register_groups(self) -> None:
         """Pre-compute register groups for optimized batch reading."""
-        for key, names in self.available_registers.items():
-            if not names:
-                continue
-            addresses = [
-                self._register_maps[key][reg]
-                for reg in names
-                if reg in self._register_maps[key]
         # Group Input Registers
         if self.available_registers["input_registers"]:
             input_addrs = [
@@ -426,9 +406,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Group Discrete Input Registers
         if self.available_registers["discrete_inputs"]:
             discrete_addrs = [
-                DISCRETE_INPUT_REGISTERS[reg] for reg in self.available_registers["discrete_inputs"]
+                DISCRETE_INPUT_REGISTERS[reg]
+                for reg in self.available_registers["discrete_inputs"]
             ]
-            self._register_groups[key] = loader.group_reads(addresses)
+            self._register_groups["discrete_inputs"] = self._group_registers_for_batch_read(
+                sorted(discrete_addrs)
+            )
 
         _LOGGER.debug(
             "Pre-computed register groups: %s",
@@ -941,7 +924,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if value == 0x8000:
             return None
 
-        definition = loader.get_register_definition(register_name)
+        definition = get_register_definition(register_name)
 
         enum_map = definition.get("enum")
         if enum_map:
@@ -1060,7 +1043,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 start_register = MULTI_REGISTER_STARTS.get(register_name)
 
 
-                definition = loader.get_register_definition(register_name)
+                definition = get_register_definition(register_name)
                 multiplier = definition.get("multiplier")
                 resolution = definition.get("resolution")
                 if multiplier is not None:

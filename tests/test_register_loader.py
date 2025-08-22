@@ -4,8 +4,12 @@ import json
 import logging
 from pathlib import Path
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
-from custom_components.thessla_green_modbus import loader as module_loader
+import custom_components.thessla_green_modbus.registers.loader as loader
+from custom_components.thessla_green_modbus.registers import (
+    get_all_registers,
+    get_registers_by_function,
+    group_reads,
+)
 
 
 def test_json_structure():
@@ -26,116 +30,56 @@ def test_json_structure():
 
 def test_register_lookup_and_properties():
     """Verify registers are loaded and accessible for all function codes."""
-    loader = RegisterLoader()
-    assert loader.input_registers["outside_temperature"] == 16
-    assert loader.holding_registers["mode"] == 4097
-    assert loader.coil_registers["bypass"] == 9
-    assert loader.discrete_registers["expansion"] == 0
+    input_regs = {r.name: r.address for r in get_registers_by_function("input")}
+    holding_regs = {r.name: r.address for r in get_registers_by_function("holding")}
+    coil_regs = {r.name: r.address for r in get_registers_by_function("coil")}
+    discrete_regs = {r.name: r.address for r in get_registers_by_function("discrete")}
+
+    assert input_regs["outside_temperature"] == 16
+    assert holding_regs["mode"] == 4097
+    assert coil_regs["bypass"] == 9
+    assert discrete_regs["expansion"] == 0
 
 
 def test_enum_multiplier_resolution():
     """Check enum, multiplier and resolution extraction."""
-    loader = RegisterLoader()
-    assert loader.enums["special_mode"]["boost"] == 1
-    assert loader.multipliers["required_temperature"] == 0.5
-    assert loader.resolutions["required_temperature"] == 0.5
+    holding_regs = get_registers_by_function("holding")
+    special_mode = next(r for r in holding_regs if r.name == "special_mode")
+    required_temp = next(r for r in holding_regs if r.name == "required_temperature")
+
+    assert special_mode.enum["boost"] == 1
+    assert required_temp.multiplier == 0.5
+    assert required_temp.resolution == 0.5
 
 
 def test_group_reads_cover_addresses():
     """Ensure group reads cover all register addresses without gaps."""
-    loader = RegisterLoader()
     mapping = {
-        "input": loader.input_registers,
-        "holding": loader.holding_registers,
-        "coil": loader.coil_registers,
-        "discrete": loader.discrete_registers,
+        "input": {r.name: r.address for r in get_registers_by_function("input")},
+        "holding": {r.name: r.address for r in get_registers_by_function("holding")},
+        "coil": {r.name: r.address for r in get_registers_by_function("coil")},
+        "discrete": {r.name: r.address for r in get_registers_by_function("discrete")},
     }
+    grouped: dict[str, list[int]] = {"input": [], "holding": [], "coil": [], "discrete": []}
+    for plan in group_reads():
+        grouped[plan.function].extend(range(plan.address, plan.address + plan.length))
     for func, regs in mapping.items():
-        addresses = sorted(regs.values())
-        grouped: list[int] = []
-        for start, count in loader.group_reads[func]:
-            grouped.extend(range(start, start + count))
-        assert grouped == addresses
+        assert grouped[func] == sorted(regs.values())
 
 
-def test_register_loader_csv_fallback(tmp_path, caplog):
-    """RegisterLoader should load CSV files with a deprecation warning."""
-    csv_file = tmp_path / "registers.csv"
+def test_loader_csv_fallback(tmp_path, caplog, monkeypatch):
+    """Loader should load CSV files with a deprecation warning."""
+    csv_file = tmp_path / "regs.csv"
     csv_file.write_text(
         "function,address_dec,access,name,description\n"
         "input,1,ro,test_reg,Test register\n"
     )
+    monkeypatch.setattr(loader, "_REGISTERS_FILE", tmp_path / "missing.json")
+    loader._load_raw.cache_clear()
+    loader._load_registers.cache_clear()
     with caplog.at_level(logging.WARNING):
-        loader = RegisterLoader(path=csv_file)
-    assert loader.input_registers["test_reg"] == 1
+        regs = {r.name: r.address for r in loader.get_registers_by_function("input")}
+    assert regs["test_reg"] == 1
     assert "deprecated" in caplog.text.lower()
-
-
-def test_loader_module_csv_fallback(tmp_path, caplog, monkeypatch):
-    """Module level loader should fall back to CSV with warning."""
-    csv_file = tmp_path / "regs.csv"
-    csv_file.write_text(
-        "function,address_dec,access,name,description\n"
-        "input,2,ro,mod_reg,Mod register\n"
-    )
-    monkeypatch.setattr(module_loader, "_REGISTERS_FILE", tmp_path / "missing.json")
-    module_loader._load_register_definitions.cache_clear()
-    with caplog.at_level(logging.WARNING):
-        regs = module_loader.get_registers_by_function("input")
-    assert regs["mod_reg"] == 2
-    assert "deprecated" in caplog.text.lower()
-    module_loader._load_register_definitions.cache_clear()
-"""Tests for JSON register loader."""
-
-from pathlib import Path
-
-from custom_components.thessla_green_modbus.registers.loader import (
-    _RegisterFileModel,
-    get_registers_by_function,
-)
-
-
-def _load_model() -> _RegisterFileModel:
-    text = Path("thessla_green_registers_full.json").read_text(encoding="utf-8")
-    try:
-        return _RegisterFileModel.model_validate_json(text)
-    except AttributeError:  # pragma: no cover - pydantic v1 fallback
-        return _RegisterFileModel.parse_raw(text)
-
-
-def test_json_schema_valid() -> None:
-    """Validate the register file against the schema."""
-    model = _load_model()
-    assert model.schema_version
-    assert model.registers
-
-
-def test_example_register_mapping() -> None:
-    """Verify example registers map to expected addresses."""
-    def addr(fn: str, name: str) -> int:
-        regs = get_registers_by_function(fn)
-        reg = next(r for r in regs if r.name == name)
-        return reg.address
-
-    assert addr("01", "duct_warter_heater_pump") == 5
-    assert addr("02", "duct_heater_protection") == 0
-    assert addr("03", "date_time_rrmm") == 0
-    assert addr("04", "VERSION_MAJOR") == 0
-
-
-def test_enum_multiplier_resolution_handling() -> None:
-    """Ensure optional register metadata is preserved."""
-    coil = get_registers_by_function("01")[0]
-    assert coil.enum == {"0": "OFF", "1": "ON"}
-
-    outside = next(
-        r for r in get_registers_by_function("04") if r.name == "outside_temperature"
-    )
-    assert outside.multiplier == 0.1
-
-    supply_manual = next(
-        r
-        for r in get_registers_by_function("03")
-        if r.name == "supplyAirTemperatureManual"
-    )
-    assert supply_manual.resolution == 0.5
+    loader._load_raw.cache_clear()
+    loader._load_registers.cache_clear()
