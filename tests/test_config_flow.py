@@ -572,6 +572,7 @@ async def test_validate_input_success():
         },
         "capabilities": {},
     }
+    scanner_instance.verify_connection = AsyncMock()
     with patch(
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
@@ -580,6 +581,7 @@ async def test_validate_input_success():
 
     assert result["title"] == "Test"
     assert "device_info" in result
+    scanner_instance.verify_connection.assert_awaited_once()
 
 
 async def test_validate_input_no_data():
@@ -723,5 +725,72 @@ async def test_validate_input_uses_scan_device_and_closes():
 
     assert isinstance(result["scan_result"], dict)
     assert isinstance(result["scan_result"].get("capabilities"), DeviceCapabilities)
+    scanner_instance.verify_connection.assert_awaited_once()
     scanner_instance.scan_device.assert_awaited_once()
+    scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_verify_connection_failure():
+    """Connection errors during verify_connection should raise CannotConnect."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(side_effect=ConnectionException("fail")),
+        scan_device=AsyncMock(),
+        close=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect):
+            await validate_input(None, data)
+
+    scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_invalid_capabilities():
+    """Non-dict capabilities should abort the flow."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": [],  # invalid type
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(),
+        scan_device=AsyncMock(return_value=scan_result),
+        close=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect):
+            await validate_input(None, data)
+
     scanner_instance.close.assert_awaited_once()

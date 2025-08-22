@@ -60,34 +60,37 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     name = data.get(CONF_NAME, DEFAULT_NAME)
     timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
-    # Try to connect and scan device
-    scanner = await ThesslaGreenDeviceScanner.create(
-        host=host,
-        port=port,
-        slave_id=slave_id,
-        timeout=timeout,
-        retry=DEFAULT_RETRY,
-        deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-    )
-
+    scanner: ThesslaGreenDeviceScanner | None = None
     try:
+        scanner = await ThesslaGreenDeviceScanner.create(
+            host=host,
+            port=port,
+            slave_id=slave_id,
+            timeout=timeout,
+            retry=DEFAULT_RETRY,
+            deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+        )
+
         # Verify connection by reading a few known registers
         await asyncio.wait_for(scanner.verify_connection(), timeout=timeout)
 
         # Perform full device scan
         scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
 
-        # Ensure capabilities are represented as a dataclass before any reads
         caps_obj = scan_result.get("capabilities")
-        if isinstance(caps_obj, DeviceCapabilities):
-            capabilities = caps_obj
-        elif isinstance(caps_obj, dict):
-            try:
-                capabilities = DeviceCapabilities(**caps_obj)
-            except TypeError:
-                capabilities = DeviceCapabilities()
-        else:
-            capabilities = DeviceCapabilities()
+        if not isinstance(caps_obj, dict):
+            _LOGGER.error(
+                "Invalid capabilities format: expected dict, got %s",
+                type(caps_obj).__name__,
+            )
+            raise CannotConnect("invalid_capabilities")
+
+        try:
+            capabilities = DeviceCapabilities(**caps_obj)
+        except (TypeError, ValueError) as exc:
+            _LOGGER.error("Error parsing capabilities: %s", exc)
+            raise CannotConnect("invalid_capabilities") from exc
+
         # Store dataclass object so future reads operate on the dataclass
         scan_result["capabilities"] = capabilities
 
