@@ -147,23 +147,63 @@ def _normalise_function(fn: str) -> str:
         "01": "01",
         "coil": "01",
         "coils": "01",
+        "coil_registers": "01",
         "2": "02",
         "02": "02",
         "discrete": "02",
         "discreteinput": "02",
         "discreteinputs": "02",
+        "discrete_inputs": "02",
         "3": "03",
         "03": "03",
         "holding": "03",
         "holdingregister": "03",
         "holdingregisters": "03",
+        "holding_registers": "03",
         "4": "04",
         "04": "04",
         "input": "04",
         "inputregister": "04",
         "inputregisters": "04",
+        "input_registers": "04",
+        "input registers": "04",
     }
     return mapping.get(fn.lower(), fn)
+
+
+def _validate_item(item: Dict[str, Any]) -> None:
+    """Validate raw register definition ``item``.
+
+    Only a minimal subset of fields is required by the tests.  We ensure
+    presence of the mandatory keys and verify basic types so that obviously
+    malformed definitions are rejected with a :class:`ValueError`.
+    """
+
+    if not isinstance(item, dict):
+        raise ValueError("register entry must be an object")
+    if not isinstance(item.get("name"), str):
+        raise ValueError("missing or invalid 'name'")
+    if item.get("function") is None:
+        raise ValueError("missing 'function'")
+    if not isinstance(item["function"], (str, int)):
+        raise ValueError("invalid 'function'")
+    if item.get("address_dec") is None and item.get("address_hex") is None:
+        raise ValueError("missing address field")
+    if item.get("address_dec") is not None and not isinstance(item["address_dec"], int):
+        raise ValueError("'address_dec' must be int")
+    if item.get("address_hex") is not None:
+        if not isinstance(item["address_hex"], str):
+            raise ValueError("'address_hex' must be str")
+        # ensure the value is a valid hexadecimal number
+        int(str(item["address_hex"]), 16)
+    if item.get("enum") is not None and not isinstance(item["enum"], dict):
+        raise ValueError("'enum' must be a mapping")
+    if item.get("extra") is not None and not isinstance(item["extra"], dict):
+        raise ValueError("'extra' must be a mapping")
+    if item.get("length") is not None and not isinstance(item["length"], int):
+        raise ValueError("'length' must be an integer")
+    if item.get("bcd") is not None and not isinstance(item["bcd"], bool):
+        raise ValueError("'bcd' must be a boolean")
 
 
 # ---------------------------------------------------------------------------
@@ -185,13 +225,14 @@ def _load_registers() -> List[Register]:
 
     registers: List[Register] = []
     for item in items:
-        function = _normalise_function(str(item.get("function", "")))
-        if item.get("address_dec") is not None:
-            address = int(item["address_dec"])
-        else:
-            address = int(str(item.get("address_hex")), 16)
-
         try:
+            _validate_item(item)
+            function = _normalise_function(str(item["function"]))
+            if item.get("address_dec") is not None:
+                address = int(item["address_dec"])
+            else:
+                address = int(str(item["address_hex"]), 16)
+
             enum_map = item.get("enum")
             if enum_map:
                 if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
@@ -222,8 +263,8 @@ def _load_registers() -> List[Register]:
                     bcd=bool(item.get("bcd", False)),
                 )
             )
-        except Exception as err:  # pragma: no cover - defensive
-            _LOGGER.warning("Invalid register definition skipped: %s", err)
+        except Exception as err:
+            raise ValueError(f"Invalid register definition: {err}") from err
     return registers
 
 
