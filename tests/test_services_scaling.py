@@ -1,17 +1,12 @@
-"""Tests for service helpers ensuring values are scaled when written."""
+"""Tests for service helpers ensuring values are encoded when written."""
 
 from datetime import time
 from types import SimpleNamespace
 
 import pytest
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 import custom_components.thessla_green_modbus.services as services
-from custom_components.thessla_green_modbus.services import _scale_for_register
-from custom_components.thessla_green_modbus.schedule_helpers import time_to_bcd
-
-HOLDING_REGISTERS = RegisterLoader().holding_registers
-import custom_components.thessla_green_modbus.services as services
+from custom_components.thessla_green_modbus import loader
 from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
 
 
@@ -25,8 +20,10 @@ class DummyCoordinator:
         self.available_registers = {"holding_registers": set()}
 
     async def async_write_register(self, register_name, value, refresh=True) -> None:
+        definition = loader.get_register_definition(register_name)
+        encoded = definition.encode(value)
         address = HOLDING_REGISTERS[register_name]
-        self.writes.append((address, value, self.slave_id))
+        self.writes.append((address, encoded, self.slave_id))
 
     async def async_request_refresh(self) -> None:  # pragma: no cover - no behaviour
         pass
@@ -73,32 +70,37 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     await handler(call)
 
     writes = coordinator.writes
-    expected_start = _scale_for_register(
-        "schedule_monday_period1_start", time_to_bcd(time(hour=6, minute=30))
-    )
-    expected_end = _scale_for_register(
-        "schedule_monday_period1_end", time_to_bcd(time(hour=8, minute=0))
-    )
-    expected_flow = _scale_for_register("schedule_monday_period1_flow", 55)
-    expected_temp = _scale_for_register("schedule_monday_period1_temp", 21.5)
+
+    expected_start = loader.get_register_definition(
+        "schedule_monday_period1_start"
+    ).encode("06:30")
+    expected_end = loader.get_register_definition(
+        "schedule_monday_period1_end"
+    ).encode("08:00")
+    expected_flow = loader.get_register_definition(
+        "schedule_monday_period1_flow"
+    ).encode(55)
+    expected_temp = loader.get_register_definition(
+        "schedule_monday_period1_temp"
+    ).encode(21.5)
 
     assert writes[0] == (
         HOLDING_REGISTERS["schedule_monday_period1_start"],
-        0x0630,
+        expected_start,
         1,
     )  # nosec: B101
     assert writes[1] == (
         HOLDING_REGISTERS["schedule_monday_period1_end"],
-        0x0800,
+        expected_end,
         1,
     )  # nosec: B101
     assert writes[2] == (
         HOLDING_REGISTERS["schedule_monday_period1_flow"],
-        55,
+        expected_flow,
         1,
     )  # nosec: B101
     assert writes[3] == (
         HOLDING_REGISTERS["schedule_monday_period1_temp"],
-        21.5,
+        expected_temp,
         1,
     )  # nosec: B101

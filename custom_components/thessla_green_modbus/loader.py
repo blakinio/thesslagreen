@@ -1,54 +1,35 @@
-
-"""Utilities for loading register metadata and grouping Modbus reads.
-
-The integration stores a full list of Modbus registers in
-``custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json``.
-This module exposes helpers used across the project to look up register
-definitions and to split address lists into optimal read blocks.  A legacy
-CSV format is still supported for backwards compatibility but will be
-removed in a future release.
-"""
-
+"""Helpers for accessing register definitions used by the integration."""
 
 from __future__ import annotations
 
 """Helpers for loading register definitions and grouping reads."""
 
+from __future__ import annotations
+
 import csv
 import json
 import logging
 from functools import lru_cache
-from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
-_LOGGER = logging.getLogger(__name__)
-
-_REGISTERS_FILE = Path(__file__).parent / "registers" / "thessla_green_registers_full.json"
+from .registers.loader import Register, get_all_registers
 
 
-def _load_from_csv(directory: Path) -> List[Dict]:
-    """Load register definitions from CSV files in ``directory``.
+@lru_cache(maxsize=1)
+def _register_map() -> Dict[str, Register]:
+    """Load register definitions indexed by name."""
 
-    This helper is only used for backward compatibility with older versions
-    of the project where register information was maintained in CSV files.
-    When triggered a deprecation warning is logged to inform the user that
-    JSON should be used instead.
-    """
+    return {reg.name: reg for reg in get_all_registers()}
 
-    groups: List[Tuple[int, int]] = []
-    start = prev = sorted_addresses[0]
-    for addr in sorted_addresses[1:]:
-        if addr == prev + 1 and (addr - start) < max_block_size:
-            prev = addr
-            continue
-        groups.append((start, prev - start + 1))
-        start = prev = addr
-    groups.append((start, prev - start + 1))
-    return groups
 
+def get_register_definition(name: str) -> Register:
+    """Return the :class:`Register` definition for ``name``."""
+
+    return _register_map()[name]
 
 def _load_from_csv(directory: Path) -> List[Dict]:
     """Load register definitions from CSV files in a directory."""
+
     _LOGGER.warning(
         "Register CSV files are deprecated and will be removed in a future release. "
         "Please migrate to JSON."
@@ -77,9 +58,9 @@ def _load_from_csv(directory: Path) -> List[Dict]:
     return rows
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def _load_register_definitions() -> Dict[str, Dict]:
-    """Return register definitions indexed by register name."""
+    """Load register definitions indexed by name."""
 
     if _REGISTERS_FILE.exists():
         with _REGISTERS_FILE.open("r", encoding="utf-8") as f:
@@ -88,25 +69,12 @@ def _load_register_definitions() -> Dict[str, Dict]:
     else:  # pragma: no cover - defensive fallback
         entries = _load_from_csv(_REGISTERS_FILE.parent)
     return {entry["name"]: entry for entry in entries}
-=======
-@lru_cache(maxsize=1)
-def _load_register_definitions() -> Dict[str, Dict]:
-    """Load register definitions indexed by name."""
-    if _REGISTERS_FILE.exists():
-        with _REGISTERS_FILE.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-    else:
-        data = _load_from_csv(_REGISTERS_FILE.parent)
-    return {entry["name"]: entry for entry in data}
+
 
 def get_registers_by_function(function: str) -> Dict[str, int]:
     """Return mapping of register names to addresses for a function code."""
 
-    regs: Dict[str, int] = {}
-    for name, info in _load_register_definitions().items():
-        if info.get("function") == function:
-            regs[name] = int(info.get("address_dec"))
-    return regs
+    return {reg.name: reg.address for reg in _register_map().values() if reg.function == function}
 
 
 def get_register_definition(name: str) -> Dict:
@@ -114,16 +82,9 @@ def get_register_definition(name: str) -> Dict:
 
     return _load_register_definitions().get(name, {})
 
+
 def group_reads(addresses: Iterable[int], max_block_size: int = 64) -> List[Tuple[int, int]]:
-    """Group register addresses into contiguous blocks.
-
-    Args:
-        addresses: Iterable of register addresses.
-        max_block_size: Maximum number of registers per block.
-
-    Returns:
-        List of tuples ``(start_address, count)`` describing grouped reads.
-    """
+    """Group register addresses into contiguous blocks."""
 
     sorted_addresses = sorted(set(addresses))
     if not sorted_addresses:
@@ -141,8 +102,10 @@ def group_reads(addresses: Iterable[int], max_block_size: int = 64) -> List[Tupl
     return groups
 
 
+__all__ = ["Register", "get_register_definition", "get_registers_by_function", "group_reads"]
 __all__ = [
     "get_register_definition",
     "get_registers_by_function",
     "group_reads",
 ]
+
