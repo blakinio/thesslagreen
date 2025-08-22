@@ -162,8 +162,8 @@ def _normalise_function(fn: str) -> str:
 # Register loading helpers
 # ---------------------------------------------------------------------------
 
+@lru_cache(maxsize=1)  # cache to avoid repeated disk reads
 
-@lru_cache(maxsize=1)
 def _load_registers() -> List[Register]:
     """Load register definitions from the JSON file."""
 
@@ -261,12 +261,12 @@ def group_reads(max_block_size: int = 64) -> List[ReadPlan]:
         start = prev = addresses[0]
         length = 1
         for addr in addresses[1:]:
-            if addr == prev + 1 and length < max_block_size:
-                length += 1
-            else:
+            if addr != prev + 1 or length == max_block_size:
                 plans.append(ReadPlan(fn, start, length))
                 start = addr
                 length = 1
+            else:
+                length += 1
             prev = addr
         plans.append(ReadPlan(fn, start, length))
 
