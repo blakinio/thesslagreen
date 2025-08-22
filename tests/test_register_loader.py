@@ -82,11 +82,7 @@ def test_csv_loader_emits_warning(caplog) -> None:
     """Using a CSV file should emit a deprecation warning."""
 
     csv_path = (
-        Path(__file__).resolve().parent.parent
-        / "custom_components"
-        / "thessla_green_modbus"
-        / "data"
-        / "modbus_registers.csv"
+        Path(__file__).resolve().parent.parent / "tools" / "modbus_registers.csv"
     )
 
     with caplog.at_level(logging.WARNING):
