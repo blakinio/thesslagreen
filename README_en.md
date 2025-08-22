@@ -232,6 +232,38 @@ logger:
 ### Changelog
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
+## Migrating from CSV to JSON
+
+Since version 2.0 the register definitions have been moved from a CSV file to
+a JSON file at `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
+
+### File format
+
+Each entry in the file is an object with fields:
+
+```json
+{
+  "function": "holding",
+  "address_hex": "0x1001",
+  "address_dec": 4097,
+  "access": "rw",
+  "name": "mode",
+  "description": "Work mode"
+}
+```
+
+Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
+
+### Adding new registers
+
+1. Edit the JSON file and append a new object with the required fields.
+2. Ensure addresses are unique and remain sorted.
+3. Run the validation test:
+
+```bash
+pytest tests/test_register_loader.py
+```
+
 ## 📄 License
 
 MIT License – see [LICENSE](LICENSE) for details.
@@ -245,3 +277,4 @@ MIT License – see [LICENSE](LICENSE) for details.
 ---
 
 **🎉 Enjoy smart ventilation with Home Assistant!** 🏠💨
+

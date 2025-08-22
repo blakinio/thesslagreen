@@ -1,4 +1,7 @@
-"""Utility for loading register definitions from JSON file."""
+"""Helpers for working with JSON-based register definitions.
+
+The register list lives in ``registers/thessla_green_registers_full.json`` and
+this loader is mainly used by tests and development utilities."""
 
 from __future__ import annotations
 

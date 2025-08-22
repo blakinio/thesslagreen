@@ -1,4 +1,7 @@
-"""Data coordinator for the ThesslaGreen Modbus integration."""
+"""Asynchronous data coordinator for the ThesslaGreen Modbus integration.
+
+Handles connection management and uses register definitions loaded from
+JSON to batch Modbus reads for Home Assistant."""
 
 from __future__ import annotations
 
