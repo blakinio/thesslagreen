@@ -5,13 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 import custom_components.thessla_green_modbus.services as services
 from custom_components.thessla_green_modbus.services import _scale_for_register
 from custom_components.thessla_green_modbus.schedule_helpers import time_to_bcd
-
-HOLDING_REGISTERS = RegisterLoader().holding_registers
-import custom_components.thessla_green_modbus.services as services
 from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
 
 
