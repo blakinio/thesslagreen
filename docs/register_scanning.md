@@ -35,7 +35,10 @@ primarily for debugging or development purposes.
    python tools/validate_registers.py
    ```
 
-5. Do commitu dodaj zmodyfikowany plik JSON oraz wygenerowany `registers.py`.
+5. Zaktualizuj tłumaczenia w `custom_components/thessla_green_modbus/translations/en.json` i `pl.json`,
+   dodając nowe klucze i usuwając nieużywane. Uruchom `pytest tests/test_unused_translations.py`, aby
+   upewnić się, że tłumaczenia są aktualne.
+6. Do commitu dodaj zmodyfikowany plik JSON oraz wygenerowany `registers.py`.
 
 ## Migracja z CSV na JSON
 Rejestry są definiowane wyłącznie w pliku JSON
