@@ -302,7 +302,7 @@ def _load_raw() -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-_REGISTERS_PATH = Path(__file__).resolve().parents[3] / "thessla_green_registers_full.json"
+_REGISTERS_PATH = Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
 
 
 @lru_cache(maxsize=1)
