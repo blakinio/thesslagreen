@@ -467,16 +467,18 @@ python3 tools/cleanup_old_entities.py \
 - 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Regenerating registers.py
-Whenever `custom_components/thessla_green_modbus/data/modbus_registers.csv` changes, regenerate and
-validate the Python module:
+### Aktualizacja `registers.py`
+Zmiany w pliku `registers/thessla_green_registers_full.json` wymagają ponownego
+wygenerowania modułu z definicjami rejestrów i jego walidacji:
 
 ```bash
 python tools/generate_registers.py
-python tools/validate_registers.py  # optional consistency check
+python tools/validate_registers.py  # opcjonalna kontrola spójności
 ```
 
-Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+Do commitu dołącz zaktualizowany plik
+`custom_components/thessla_green_modbus/registers.py` oraz zmodyfikowany plik
+JSON.
 
 ### Validate translations
 Ensure translation files are valid JSON:
@@ -491,9 +493,12 @@ Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 ## Migracja z CSV na JSON
 
 Od wersji 2.0 definicje rejestrów zostały przeniesione z pliku CSV do
-formatu JSON `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
-Stare pliki CSV w tym katalogu są nadal obsługiwane, lecz przy ich użyciu
-loader loguje ostrzeżenie o deprecjacji – JSON jest jedynym źródłem prawdy.
+formatu JSON `registers/thessla_green_registers_full.json`. Pliki CSV są
+przestarzałe – narzędzia w katalogu `tools/` obsługują wyłącznie JSON i w
+przyszłych wersjach wsparcie dla CSV zostanie usunięte. Jeśli posiadasz
+starszy plik CSV, przekonwertuj go na JSON (np. prostym skryptem w Pythonie
+lub arkuszem kalkulacyjnym), a następnie usuń wersję CSV, aby uniknąć
+konfliktów.
 
 ### Format pliku
 
@@ -514,7 +519,8 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 
 ### Dodawanie nowych rejestrów
 
-1. Otwórz plik JSON i dopisz nowy obiekt z wymaganymi polami.
+1. Otwórz `registers/thessla_green_registers_full.json` i dopisz nowy obiekt z
+   wymaganymi polami.
 2. Zadbaj o unikalność adresów i zachowanie porządku.
 3. Uruchom test walidacyjny:
 

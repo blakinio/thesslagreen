@@ -265,14 +265,17 @@ only for diagnostic purposes.
 - 💡 [Feature requests](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Regenerating registers.py
-If you modify `custom_components/thessla_green_modbus/data/modbus_registers.csv`, rebuild the generated module:
+### Updating `registers.py`
+Whenever `registers/thessla_green_registers_full.json` changes, regenerate and
+validate the Python module:
 
 ```bash
 python tools/generate_registers.py
+python tools/validate_registers.py  # optional consistency check
 ```
 
-Commit the updated `custom_components/thessla_green_modbus/registers.py` along with the CSV changes.
+Commit the updated `custom_components/thessla_green_modbus/registers.py`
+together with the modified JSON file.
 
 ### Validate translations
 Ensure translation files contain valid JSON:
@@ -286,8 +289,12 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Migrating from CSV to JSON
 
-Since version 2.0 the register definitions have been moved from a CSV file to
-a JSON file at `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
+Since version 2.0 the register definitions live in
+`registers/thessla_green_registers_full.json`. CSV files are deprecated – the
+tools in `tools/` only understand JSON and support for CSV will be removed in
+future releases. Convert any existing CSV definitions to the JSON format (via a
+short Python script or spreadsheet export) and remove the legacy files to avoid
+confusion.
 
 ### File format
 
@@ -308,12 +315,15 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 
 ### Adding new registers
 
-1. Edit the JSON file and append a new object with the required fields.
+1. Edit `registers/thessla_green_registers_full.json` and append a new object
+   with the required fields.
 2. Ensure addresses are unique and remain sorted.
 3. Run the validation test:
 
 ```bash
 pytest tests/test_register_loader.py
+python tools/generate_registers.py
+python tools/validate_registers.py
 ```
 
 ## 📄 License

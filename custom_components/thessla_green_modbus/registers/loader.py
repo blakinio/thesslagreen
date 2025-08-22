@@ -157,6 +157,33 @@ def _normalise_function(fn: str) -> str:
 
 
 @lru_cache(maxsize=1)
+def _load_raw() -> List[Dict[str, Any]]:
+    """Load raw register definitions from JSON or CSV."""
+
+    if _REGISTERS_PATH.exists():
+        text = _REGISTERS_PATH.read_text(encoding="utf-8")
+        data = json.loads(text)
+        if isinstance(data, dict):
+            items = data.get("registers", [])
+        else:
+            items = data
+        return [
+            _RegisterModel.model_validate(item).model_dump()
+            for item in items
+        ]
+
+    csv_files = list(_REGISTERS_PATH.parent.glob("*.csv"))
+    if csv_files:
+        return _load_from_csv(csv_files)
+
+
+# ---------------------------------------------------------------------------
+# Register loading helpers
+# ---------------------------------------------------------------------------
+
+
+_REGISTERS_PATH = Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
+
 def _load_registers() -> List[Register]:
     """Load register definitions from the JSON file."""
 
