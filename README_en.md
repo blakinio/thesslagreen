@@ -8,6 +8,7 @@
 ## ✨ Complete ThesslaGreen AirPack integration for Home Assistant
 
 The most complete integration for ThesslaGreen AirPack heat recovery units over Modbus TCP/RTU. Supports **all 200+ registers** from documentation `MODBUS_USER_AirPack_Home_08.2021.01` without exception.
+The integration works as a **hub** in Home Assistant.
 
 ### 🚀 Key features v2.1+
 
