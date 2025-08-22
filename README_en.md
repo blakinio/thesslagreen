@@ -287,14 +287,11 @@ python -m json.tool custom_components/thessla_green_modbus/translations/*.json
 ### Changelog
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
-## Migrating from CSV to JSON
+## JSON register definitions
 
-Since version 2.0 the register definitions live in
-`registers/thessla_green_registers_full.json`. CSV files are deprecated – the
-tools in `tools/` only understand JSON and support for CSV will be removed in
-future releases. Convert any existing CSV definitions to the JSON format (via a
-short Python script or spreadsheet export) and remove the legacy files to avoid
-confusion.
+The file `registers/thessla_green_registers_full.json` stores the complete
+register specification and is the single source of truth. All tools in
+`tools/` operate exclusively on this JSON format.
 
 ### File format
 

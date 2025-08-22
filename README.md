@@ -132,9 +132,9 @@ pełne skanowanie wszystkich rejestrów (`full_register_scan=True`) i zwraca
 listę nieznanych adresów. Operacja może trwać kilka minut i znacząco obciąża
 urządzenie – używaj jej tylko do diagnostyki.
 
-### Migracja z CSV na JSON
-Definicje rejestrów znajdują się teraz w pliku JSON `registers/thessla_green_registers_full.json`.
-Każdy wpis w sekcji `registers` zawiera m.in. pola:
+### Rejestry w formacie JSON
+Definicje rejestrów znajdują się w pliku `registers/thessla_green_registers_full.json`,
+który stanowi jedyne źródło prawdy. Każdy wpis w sekcji `registers` zawiera m.in. pola:
 
 - `function` – kod funkcji Modbus (`01`–`04`)
 - `address_dec` / `address_hex` – adres rejestru
@@ -144,7 +144,8 @@ Każdy wpis w sekcji `registers` zawiera m.in. pola:
 
 Opcjonalnie można określić `unit`, `enum`, `multiplier`, `resolution` oraz inne
 metadane. Aby dodać nowy rejestr, dopisz obiekt do listy `registers` zachowując
-porządek adresów i uruchom `pytest`, aby zweryfikować poprawność pliku.
+porządek adresów i uruchom `pytest tests/test_register_loader.py`, aby
+zweryfikować poprawność pliku.
 
 ### Włączanie logów debug
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
@@ -504,15 +505,11 @@ python -m json.tool custom_components/thessla_green_modbus/translations/*.json
 ### Changelog
 Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 
-## Migracja z CSV na JSON
+## Rejestry w formacie JSON
 
-Od wersji 2.0 definicje rejestrów zostały przeniesione z pliku CSV do
-formatu JSON `registers/thessla_green_registers_full.json`. Pliki CSV są
-przestarzałe – narzędzia w katalogu `tools/` obsługują wyłącznie JSON i w
-przyszłych wersjach wsparcie dla CSV zostanie usunięte. Jeśli posiadasz
-starszy plik CSV, przekonwertuj go na JSON (np. prostym skryptem w Pythonie
-lub arkuszem kalkulacyjnym), a następnie usuń wersję CSV, aby uniknąć
-konfliktów.
+Plik `registers/thessla_green_registers_full.json` przechowuje komplet
+definicji rejestrów i stanowi jedyne źródło prawdy. Wszystkie narzędzia w
+`tools/` operują wyłącznie na tym formacie.
 
 ### Format pliku
 
