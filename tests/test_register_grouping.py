@@ -1,6 +1,8 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.const import INPUT_REGISTERS
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 from custom_components.thessla_green_modbus.registers.loader import group_reads
+
+INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
 
 def test_group_registers_split_known_missing():

@@ -226,6 +226,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
+HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 services_module = importlib.reload(

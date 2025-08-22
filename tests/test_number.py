@@ -10,7 +10,9 @@ import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
+
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs

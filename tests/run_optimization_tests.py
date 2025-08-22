@@ -137,11 +137,11 @@ async def validate_register_coverage():
     print_section("MODBUS REGISTER COVERAGE VALIDATION")
 
     try:
-        from custom_components.thessla_green_modbus.const import COIL_REGISTERS
-        from custom_components.thessla_green_modbus.const import (
-            HOLDING_REGISTERS,
-            INPUT_REGISTERS,
-        )
+        from custom_components.thessla_green_modbus.registers import get_registers_by_function
+
+        COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
+        HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
+        INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
         # Critical registers that must be present
         critical_input_regs = {
