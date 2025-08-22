@@ -1,19 +1,12 @@
-"""Asynchronous data coordinator for the ThesslaGreen Modbus integration.
-
-Handles connection management and uses register definitions loaded from
-JSON to batch Modbus reads for Home Assistant."""
+"""Asynchronous data coordinator for the ThesslaGreen Modbus integration."""
 
 from __future__ import annotations
 
 import asyncio
-import json
-import inspect
 import logging
 from collections.abc import Callable, Iterable
 from datetime import timedelta
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
@@ -77,52 +70,28 @@ else:  # pragma: no cover
 
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    DEFAULT_NAME,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
     MODEL,
+    SENSOR_UNAVAILABLE,
+    UNKNOWN_MODEL,
     get_coil_registers,
     get_discrete_input_registers,
     get_holding_registers,
     get_input_registers,
 )
 from . import loader
-from .device_scanner import DeviceCapabilities, ThesslaGreenDeviceScanner
-    COIL_REGISTERS,
-    DEFAULT_NAME,
-    DEFAULT_SCAN_INTERVAL,
-    DISCRETE_INPUT_REGISTERS,
-    DOMAIN,
-    KNOWN_MISSING_REGISTERS,
-    MANUFACTURER,
-    SENSOR_UNAVAILABLE,
-    UNKNOWN_MODEL,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-    MULTI_REGISTER_SIZES,
-)
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_client import ThesslaGreenModbusClient
 from .modbus_helpers import _call_modbus
 
 _LOGGER = logging.getLogger(__name__)
-
-# Map each register belonging to a multi-register block to its starting register
-MULTI_REGISTER_STARTS: dict[str, str] = {}
-for start, size in MULTI_REGISTER_SIZES.items():
-    MULTI_REGISTER_STARTS[start] = start
-    base = HOLDING_REGISTERS[start]
-    for offset in range(1, size):
-        addr = base + offset
-        for name, reg_addr in HOLDING_REGISTERS.items():
-            if reg_addr == addr:
-                MULTI_REGISTER_STARTS[name] = start
-                break
 
 
 class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -360,10 +329,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
         for reg_type in self.available_registers:
             self.available_registers[reg_type].clear()
-        self.available_registers["input_registers"].update(INPUT_REGISTERS.keys())
-        self.available_registers["holding_registers"].update(HOLDING_REGISTERS.keys())
-        self.available_registers["coil_registers"].update(COIL_REGISTERS.keys())
-        self.available_registers["discrete_inputs"].update(DISCRETE_INPUT_REGISTERS.keys())
+        self.available_registers["input_registers"].update(get_input_registers().keys())
+        self.available_registers["holding_registers"].update(get_holding_registers().keys())
+        self.available_registers["coil_registers"].update(get_coil_registers().keys())
+        self.available_registers["discrete_inputs"].update(get_discrete_input_registers().keys())
 
         if self.skip_missing_registers:
             for reg_type, names in KNOWN_MISSING_REGISTERS.items():
@@ -387,75 +356,32 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _compute_register_groups(self) -> None:
         """Pre-compute register groups for optimized batch reading."""
+        self._register_groups.clear()
+
         for key, names in self.available_registers.items():
             if not names:
                 continue
-            addresses = [
-                self._register_maps[key][reg]
-                for reg in names
-                if reg in self._register_maps[key]
-        # Group Input Registers
-        if self.available_registers["input_registers"]:
-            input_addrs = [
-                INPUT_REGISTERS[reg] for reg in self.available_registers["input_registers"]
-            ]
-            self._register_groups["input_registers"] = self._group_registers_for_batch_read(
-                sorted(input_addrs)
-            )
 
-        # Group Holding Registers
-        if self.available_registers["holding_registers"]:
-            holding_addrs: list[int] = []
-            for reg in self.available_registers["holding_registers"]:
-                start = HOLDING_REGISTERS[reg]
-                size = MULTI_REGISTER_SIZES.get(reg, 1)
-                holding_addrs.extend(range(start, start + size))
-            self._register_groups["holding_registers"] = self._group_registers_for_batch_read(
-                sorted(set(holding_addrs))
-            )
+            # Build list of raw addresses taking register length into account
+            addresses: list[int] = []
+            mapping = self._register_maps[key]
+            for reg in names:
+                addr = mapping.get(reg)
+                if addr is None:
+                    continue
+                try:
+                    definition = loader.get_register_definition(reg)
+                    length = max(1, definition.length)
+                except Exception:
+                    length = 1
+                addresses.extend(range(addr, addr + length))
 
-        # Group Coil Registers
-        if self.available_registers["coil_registers"]:
-            coil_addrs = [COIL_REGISTERS[reg] for reg in self.available_registers["coil_registers"]]
-            self._register_groups["coil_registers"] = self._group_registers_for_batch_read(
-                sorted(coil_addrs)
-            )
-
-        # Group Discrete Input Registers
-        if self.available_registers["discrete_inputs"]:
-            discrete_addrs = [
-                DISCRETE_INPUT_REGISTERS[reg] for reg in self.available_registers["discrete_inputs"]
-            ]
             self._register_groups[key] = loader.group_reads(addresses)
 
         _LOGGER.debug(
             "Pre-computed register groups: %s",
             {k: len(v) for k, v in self._register_groups.items()},
         )
-
-    def _group_registers_for_batch_read(
-        self, addresses: list[int], max_gap: int = 10, max_batch: int = 16
-    ) -> list[tuple[int, int]]:
-        """Group consecutive registers for efficient batch reading."""
-        if not addresses:
-            return []
-
-        groups = []
-        current_start = addresses[0]
-        current_end = addresses[0]
-
-        for addr in addresses[1:]:
-            # If gap is too large or batch too big, start new group
-            if (addr - current_end > max_gap) or (current_end - current_start + 1 >= max_batch):
-                groups.append((current_start, current_end - current_start + 1))
-                current_start = addr
-                current_end = addr
-            else:
-                current_end = addr
-
-        # Add last group
-        groups.append((current_start, current_end - current_start + 1))
-        return groups
 
     def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
         """Record registers that failed to read."""
@@ -649,7 +575,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for start_addr, count in self._register_groups["input_registers"]:
             register_names = [
-                self._find_register_name(INPUT_REGISTERS, start_addr + i) for i in range(count)
+                self._find_register_name("input_registers", start_addr + i) for i in range(count)
             ]
             if all(name in failed for name in register_names if name):
                 continue
@@ -714,13 +640,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for start_addr, count in self._register_groups["holding_registers"]:
             register_names = [
-                self._find_register_name(HOLDING_REGISTERS, start_addr + i) for i in range(count)
+                self._find_register_name("holding_registers", start_addr + i) for i in range(count)
             ]
             if all(name in failed for name in register_names if name):
                 continue
             try:
-                # Pass "count" as a keyword argument to ensure compatibility with
-                # Modbus helpers that expect keyword-only parameters.
                 response = await self._call_modbus(
                     client.read_holding_registers,
                     start_addr,
@@ -733,23 +657,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     self._mark_registers_failed(register_names)
                     continue
 
-                # Process each register in the batch
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
                     register_name = self._find_register_name("holding_registers", addr)
-                    if register_name and register_name in self.available_registers["holding_registers"]:
-                    register_name = self._find_register_name(HOLDING_REGISTERS, addr)
-                    if register_name in MULTI_REGISTER_SIZES:
-                        size = MULTI_REGISTER_SIZES[register_name]
-                        values = response.registers[i : i + size]  # noqa: E203
-                        if (
-                            len(values) == size
-                            and register_name in self.available_registers["holding_registers"]
-                        ):
-                            data[register_name] = values
-                            self.statistics["total_registers_read"] += size
-                            self._clear_register_failure(register_name)
-                        continue
                     if (
                         register_name
                         and register_name in self.available_registers["holding_registers"]
@@ -761,7 +671,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             self._clear_register_failure(register_name)
 
                 if len(response.registers) < count:
-                    missing = register_names[len(response.registers) :]  # noqa: E203
+                    missing = register_names[len(response.registers) :]
                     self._mark_registers_failed(missing)
 
             except (ModbusException, ConnectionException):
@@ -796,7 +706,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for start_addr, count in self._register_groups["coil_registers"]:
             register_names = [
-                self._find_register_name(COIL_REGISTERS, start_addr + i) for i in range(count)
+                self._find_register_name("coil_registers", start_addr + i) for i in range(count)
             ]
             if all(name in failed for name in register_names if name):
                 continue
@@ -867,7 +777,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
             register_names = [
-                self._find_register_name(DISCRETE_INPUT_REGISTERS, start_addr + i)
+                self._find_register_name("discrete_inputs", start_addr + i)
                 for i in range(count)
             ]
             if all(name in failed for name in register_names if name):
@@ -925,10 +835,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return data
 
 
-    def _find_register_name(self, register_type: str, address: int) -> Optional[str]:
-
-    def _find_register_name(self, register_map: dict[str, int], address: int) -> str | None:
-
+    def _find_register_name(self, register_type: str, address: int) -> str | None:
         """Find register name by address using pre-built reverse maps."""
         return self._reverse_maps.get(register_type, {}).get(address)
 
@@ -940,6 +847,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         definition = loader.get_register_definition(register_name)
         decoded = definition.decode(value)
+
+        # Schedule registers are decoded to ``HH:MM`` strings; convert to minutes
+        if definition.bcd and isinstance(decoded, str):
+            try:
+                hours, minutes = (int(x) for x in decoded.split(":"))
+                return hours * 60 + minutes
+            except ValueError:
+                return decoded
 
         if decoded == SENSOR_UNAVAILABLE:
             return SENSOR_UNAVAILABLE
@@ -1048,8 +963,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     encoded_values = None
                     value = definition.encode(value)
 
-                if register_name in HOLDING_REGISTERS:
-                    address = HOLDING_REGISTERS[register_name]
+                if register_name in self._register_maps["holding_registers"]:
+                    address = self._register_maps["holding_registers"][register_name]
                     if encoded_values is not None:
                         response = await self._call_modbus(
                             self.client.write_registers,
@@ -1062,8 +977,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             address=address,
                             value=int(value),
                         )
-                elif register_name in COIL_REGISTERS:
-                    address = COIL_REGISTERS[register_name]
+                elif register_name in self._register_maps["coil_registers"]:
+                    address = self._register_maps["coil_registers"][register_name]
                     response = await self._call_modbus(
                         self.client.write_coil,
                         address=address,
