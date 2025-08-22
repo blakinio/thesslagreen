@@ -77,7 +77,7 @@ SPECIAL_VALUE_DECODERS: Dict[str, Callable[[int], Optional[int]]] = {
 }
 
 # Maximum registers per batch read (Modbus limit)
-MAX_BATCH_REGISTERS = 16
+MAX_BATCH_REGISTERS = 64
 
 # Optional UART configuration registers (Air-B and Air++ ports)
 # According to the Series 4 Modbus documentation, both the Air-B

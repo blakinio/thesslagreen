@@ -25,6 +25,7 @@ from .const import (
     CONF_TIMEOUT,
     CONF_AIRFLOW_UNIT,
     CONF_DEEP_SCAN,
+    CONF_SCAN_MAX_BLOCK_SIZE,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
     DEFAULT_AIRFLOW_UNIT,
@@ -37,6 +38,7 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
     DEFAULT_DEEP_SCAN,
+    DEFAULT_SCAN_MAX_BLOCK_SIZE,
     DOMAIN,
 )
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
@@ -338,6 +340,9 @@ class OptionsFlow(config_entries.OptionsFlow):
             CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
         )
         current_deep_scan = self.config_entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
+        current_scan_max_block_size = self.config_entry.options.get(
+            CONF_SCAN_MAX_BLOCK_SIZE, DEFAULT_SCAN_MAX_BLOCK_SIZE
+        )
 
         data_schema = vol.Schema(
             {
@@ -374,6 +379,11 @@ class OptionsFlow(config_entries.OptionsFlow):
                     default=current_deep_scan,
                     description={"advanced": True},
                 ): bool,
+                vol.Optional(
+                    CONF_SCAN_MAX_BLOCK_SIZE,
+                    default=current_scan_max_block_size,
+                    description={"advanced": True},
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=125)),
             }
         )
 
@@ -389,5 +399,6 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "skip_missing_enabled": "Yes" if current_skip_missing else "No",
                 "current_airflow_unit": current_airflow_unit,
                 "deep_scan_enabled": "Yes" if current_deep_scan else "No",
+                "current_scan_max_block_size": str(current_scan_max_block_size),
             },
         )

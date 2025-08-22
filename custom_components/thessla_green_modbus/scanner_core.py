@@ -141,6 +141,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
+        scan_max_block_size: int = MAX_BATCH_REGISTERS,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         self.host = host
@@ -154,6 +155,7 @@ class ThesslaGreenDeviceScanner:
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
+        self.max_block_size = scan_max_block_size
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -242,6 +244,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
+        scan_max_block_size: int = MAX_BATCH_REGISTERS,
     ) -> Self:
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -256,6 +259,7 @@ class ThesslaGreenDeviceScanner:
             skip_known_missing,
             deep_scan,
             full_register_scan,
+            scan_max_block_size,
         )
         await self._async_setup()
 
@@ -425,7 +429,7 @@ class ThesslaGreenDeviceScanner:
         return caps
 
     def _group_registers_for_batch_read(
-        self, addresses: list[int], *, max_gap: int = 1, max_batch: int = MAX_BATCH_REGISTERS
+        self, addresses: list[int], *, max_gap: int = 1, max_batch: int | None = None
     ) -> list[tuple[int, int]]:
         """Group consecutive register addresses for efficient batch reads.
 
@@ -438,6 +442,9 @@ class ThesslaGreenDeviceScanner:
 
         if not addresses:
             return []
+
+        if max_batch is None:
+            max_batch = self.max_block_size
 
         # First, compute contiguous blocks using the generic ``group_reads``
         # helper.  ``max_gap`` is kept for API compatibility but is not
