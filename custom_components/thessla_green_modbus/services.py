@@ -34,7 +34,6 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from . import loader
-from .schedule_helpers import time_to_bcd
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
@@ -338,14 +337,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         }
         day_index = day_map[day]
         
-        # Convert time to BCD format expected by the device
-        start_hhmm = time_to_bcd(start_time)
-        end_hhmm = time_to_bcd(end_time)
-       
-
-        # Encode time as HH:MM bytes
-        start_value = (start_time.hour << 8) | start_time.minute
-        end_value = (end_time.hour << 8) | end_time.minute
+        # Prepare start/end values as tuples so Register.encode can
+        # handle conversion to the device format.
+        start_value = (start_time.hour, start_time.minute)
+        end_value = (end_time.hour, end_time.minute)
 
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
@@ -398,39 +393,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set airflow schedule",
                     )
-                if not await coordinator.async_write_register(
-                    start_register,
-                    start_value,
-                    refresh=False,
-                ):
-                    _LOGGER.error("Failed to set schedule start for %s", entity_id)
-                    continue
-                if not await coordinator.async_write_register(
-                    end_register,
-                    end_value,
-                    refresh=False,
-                ):
-                    _LOGGER.error("Failed to set schedule end for %s", entity_id)
-                    continue
-                if not await coordinator.async_write_register(
-                    flow_register,
-                    airflow_rate,
-                    refresh=False,
-                ):
-                    _LOGGER.error("Failed to set schedule flow for %s", entity_id)
-                    continue
-
-                if temperature is not None:
-                    if not await coordinator.async_write_register(
-                        temp_register,
-                        temperature,
-                        refresh=False,
-                    ):
-                        _LOGGER.error(
-                            "Failed to set schedule temperature for %s", entity_id
-                        )
-                        continue
-
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set airflow schedule for %s", entity_id)
 
