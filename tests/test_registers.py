@@ -6,6 +6,13 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_bcd_time,
     _decode_register_time,
     _to_snake_case,
+    parse_schedule_bcd,
+)
+from custom_components.thessla_green_modbus.data.modbus_registers import (
+    apply_resolution,
+    map_enum_value,
+    scale_from_raw,
+    scale_to_raw,
 )
 
 
@@ -97,6 +104,14 @@ def test_time_decoding_helpers() -> None:
     assert _decode_bcd_time(2400) is None
 
 
+def test_schedule_bcd_parser() -> None:
+    """Ensure schedule parser handles valid and sentinel values."""
+
+    assert parse_schedule_bcd(0x0630) == 390
+    assert parse_schedule_bcd(0x8000) is None
+    assert parse_schedule_bcd(0x2460) is None
+
+
 def test_all_registers_have_units() -> None:
     """Ensure every register in the CSV specifies a unit."""
     csv_path = pathlib.Path("custom_components/thessla_green_modbus/data/modbus_registers.csv")
@@ -107,3 +122,16 @@ def test_all_registers_have_units() -> None:
             if not code or code.startswith("#"):
                 continue
             assert row["Unit"].strip() != ""  # nosec B101
+
+
+def test_loader_scaling_and_enum_helpers() -> None:
+    """Verify scaling, resolution and enum mapping helpers."""
+
+    # outside_temperature has multiplier/resolution 0.1
+    assert scale_from_raw("outside_temperature", 215) == 21.5
+    assert scale_to_raw("outside_temperature", 21.5) == 215
+    assert apply_resolution("outside_temperature", 21.53) == 21.5
+
+    # bypass register provides enum mapping "0 - OFF; 1 - ON"
+    assert map_enum_value("bypass", 1) == "on"
+    assert map_enum_value("bypass", "off") == 0

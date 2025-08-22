@@ -10,7 +10,15 @@ from typing import Any, Dict
 
 from ..utils import _to_snake_case
 
-__all__ = ["get_register_info", "get_register_infos"]
+__all__ = [
+    "get_register_info",
+    "get_register_infos",
+    "scale_from_raw",
+    "scale_to_raw",
+    "apply_resolution",
+    "get_enum_mapping",
+    "map_enum_value",
+]
 
 _REGISTER_CACHE: Dict[str, Dict[str, Any]] | None = None
 _JSON_CACHE: list[Dict[str, Any]] | None = None
@@ -203,3 +211,74 @@ def get_register_infos(register_name: str) -> list[Dict[str, Any]]:
                 }
             )
     return results
+
+
+def scale_from_raw(register_name: str, value: float | int) -> float | int:
+    """Scale a raw register value using its configured multiplier."""
+
+    info = get_register_info(register_name)
+    if not info:
+        return value
+    multiplier = info.get("scale", 1) or 1
+    return value * multiplier
+
+
+def scale_to_raw(register_name: str, value: float | int) -> int | float:
+    """Convert a user value back to raw register form using the multiplier."""
+
+    info = get_register_info(register_name)
+    if not info:
+        return value
+    multiplier = info.get("scale", 1) or 1
+    return int(round(float(value) / multiplier))
+
+
+def apply_resolution(register_name: str, value: float | int) -> float | int:
+    """Round ``value`` to the register's resolution if specified."""
+
+    info = get_register_info(register_name)
+    if not info:
+        return value
+    resolution = info.get("step") or info.get("scale") or 1
+    return round(float(value) / resolution) * resolution
+
+
+def _parse_enum(info: str | None) -> dict[str, int] | None:
+    """Parse ``"0 - off; 1 - on"`` style strings into a mapping."""
+
+    if not info or "-" not in info:
+        return None
+    mapping: dict[str, int] = {}
+    for part in info.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            num_str, label = part.split("-", 1)
+            mapping[_to_snake_case(label.strip())] = int(num_str.strip())
+        except ValueError:
+            continue
+    return mapping or None
+
+
+def get_enum_mapping(register_name: str) -> dict[str, int] | None:
+    """Return enumeration mapping for ``register_name`` if available."""
+
+    info = get_register_info(register_name)
+    if not info:
+        return None
+    return _parse_enum(info.get("unit")) or _parse_enum(info.get("information"))
+
+
+def map_enum_value(register_name: str, value: int | str) -> int | str | None:
+    """Map between numeric enum value and its textual representation."""
+
+    mapping = get_enum_mapping(register_name)
+    if not mapping:
+        return value
+    if isinstance(value, str):
+        return mapping.get(_to_snake_case(value))
+    for label, number in mapping.items():
+        if number == value:
+            return label
+    return None
