@@ -139,3 +139,18 @@ def test_enum_multiplier_resolution_handling() -> None:
         if r.name == "supplyAirTemperatureManual"
     )
     assert supply_manual.resolution == 0.5
+
+
+def test_function_aliases() -> None:
+    """Aliases with spaces/underscores should resolve to correct functions."""
+    aliases = {
+        "coil_registers": "01",
+        "discrete_inputs": "02",
+        "holding_registers": "03",
+        "input_registers": "04",
+        "input registers": "04",
+    }
+    for alias, code in aliases.items():
+        alias_regs = get_registers_by_function(alias)
+        code_regs = get_registers_by_function(code)
+        assert {r.address for r in alias_regs} == {r.address for r in code_regs}

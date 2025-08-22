@@ -320,7 +320,7 @@ def _load_registers() -> List[Register]:
             name=r.name,
             description=r.description,
             access=r.access,
-            enum={v: int(k) for k, v in (r.enum or {}).items()},
+            enum=r.enum,
             multiplier=r.multiplier,
             resolution=r.resolution,
             length=r.length or 1,
@@ -336,10 +336,37 @@ def get_all_registers() -> List[Register]:
     return list(_load_registers())
 
 
+_FUNCTION_MAP: Dict[str, str] = {
+    "1": "01",
+    "01": "01",
+    "coil": "01",
+    "coils": "01",
+    "coilregister": "01",
+    "coilregisters": "01",
+    "2": "02",
+    "02": "02",
+    "discrete": "02",
+    "discreteinput": "02",
+    "discreteinputs": "02",
+    "3": "03",
+    "03": "03",
+    "holding": "03",
+    "holdingregister": "03",
+    "holdingregisters": "03",
+    "4": "04",
+    "04": "04",
+    "input": "04",
+    "inputregister": "04",
+    "inputregisters": "04",
+}
+
+
 def get_registers_by_function(fn: str) -> List[Register]:
     """Return registers matching a specific Modbus function code."""
 
-    return [r for r in _load_registers() if r.function == fn]
+    key = fn.lower().replace("_", "").replace(" ", "")
+    fn_code = _FUNCTION_MAP.get(key, key)
+    return [r for r in _load_registers() if r.function == fn_code]
 
 
 def group_reads(max_block_size: int = 64) -> List[ReadPlan]:
