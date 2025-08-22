@@ -8,7 +8,7 @@ import ipaddress
 import logging
 import re
 import traceback
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -44,9 +44,52 @@ from .const import (
     DOMAIN,
 )
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
-from .modbus_exceptions import ConnectionException, ModbusException
+from .modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+# Delay between retries when establishing the connection during the config flow.
+# Uses exponential backoff: ``backoff * 2 ** (attempt-1)``.
+CONFIG_FLOW_BACKOFF = 0.1
+
+
+async def _run_with_retry(
+    func: "Callable[[], Awaitable[Any]]",
+    *,
+    retries: int,
+    backoff: float,
+) -> Any:
+    """Execute ``func`` with retry and backoff.
+
+    Retries are attempted for connection and Modbus related exceptions. The
+    final exception is raised if all attempts fail.
+    """
+
+    for attempt in range(1, retries + 1):
+        try:
+            return await func()
+        except (
+            ConnectionException,
+            ModbusIOException,
+            ModbusException,
+            asyncio.TimeoutError,
+            OSError,
+        ) as exc:
+            if attempt >= retries:
+                raise
+            delay = backoff * 2 ** (attempt - 1)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Retry sleep cancelled")
+                    raise
+    # Should never reach here
+    raise RuntimeError("Retry wrapper failed without raising")
 
 
 class CannotConnect(Exception):
@@ -82,17 +125,26 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
 
     scanner: ThesslaGreenDeviceScanner | None = None
     try:
-        scanner = await ThesslaGreenDeviceScanner.create(
-            host=host,
-            port=port,
-            slave_id=slave_id,
-            timeout=timeout,
-            retry=DEFAULT_RETRY,
-            deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+        scanner = await _run_with_retry(
+            lambda: ThesslaGreenDeviceScanner.create(
+                host=host,
+                port=port,
+                slave_id=slave_id,
+                timeout=timeout,
+                retry=DEFAULT_RETRY,
+                backoff=CONFIG_FLOW_BACKOFF,
+                deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+            ),
+            retries=DEFAULT_RETRY,
+            backoff=CONFIG_FLOW_BACKOFF,
         )
 
         # Verify connection by reading a few safe registers
-        await asyncio.wait_for(scanner.verify_connection(), timeout=timeout)
+        await _run_with_retry(
+            lambda: asyncio.wait_for(scanner.verify_connection(), timeout=timeout),
+            retries=DEFAULT_RETRY,
+            backoff=CONFIG_FLOW_BACKOFF,
+        )
 
         # Perform full device scan
         scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
@@ -132,6 +184,10 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         _LOGGER.error("Connection error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc
+    except ModbusIOException as exc:
+        _LOGGER.error("Modbus IO error during device validation: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        raise CannotConnect("timeout") from exc
     except asyncio.TimeoutError as exc:
         _LOGGER.error("Timeout during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
@@ -148,7 +204,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     except OSError as exc:
         _LOGGER.error("Unexpected error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect from exc
+        raise CannotConnect("cannot_connect") from exc
     finally:
         if hasattr(scanner, "close"):
             await scanner.close()

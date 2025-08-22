@@ -1,10 +1,11 @@
 """Test config flow for ThesslaGreen Modbus integration."""
 # ruff: noqa: E402
 
+import asyncio
 import sys
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, call
 
 import logging
 import pytest
@@ -37,6 +38,7 @@ from custom_components.thessla_green_modbus.config_flow import (
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
+    ModbusIOException,
 )
 
 CONF_NAME = "name"
@@ -831,9 +833,10 @@ async def test_validate_input_verify_connection_failure():
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
-        with pytest.raises(CannotConnect):
+        with pytest.raises(CannotConnect) as err:
             await validate_input(None, data)
 
+    assert err.value.args[0] == "cannot_connect"
     scanner_instance.close.assert_awaited_once()
 
 
@@ -1042,4 +1045,82 @@ async def test_validate_input_scan_device_attribute_error():
             await validate_input(None, data)
 
     assert err.value.args[0] == "missing_method"
+    scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_retries_transient_failures():
+    """Transient failures during setup should be retried with backoff."""
+    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": DeviceCapabilities(),
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(side_effect=[ConnectionException("fail"), None]),
+        scan_device=AsyncMock(return_value=scan_result),
+        close=AsyncMock(),
+    )
+
+    create_mock = AsyncMock(side_effect=[ConnectionException("fail"), scanner_instance])
+    sleep_mock = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+            create_mock,
+        ),
+        patch("asyncio.sleep", sleep_mock),
+    ):
+        result = await validate_input(None, data)
+
+    assert result["scan_result"] == scan_result
+    assert create_mock.await_count == 2
+    assert scanner_instance.verify_connection.await_count == 2
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.1]
+
+
+@pytest.mark.parametrize("exc", [asyncio.TimeoutError, ModbusIOException])
+async def test_validate_input_timeout_errors(exc):
+    """Timeout-related errors should map to timeout in UI."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+        validate_input,
+    )
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(side_effect=exc),
+        scan_device=AsyncMock(return_value={"capabilities": DeviceCapabilities()}),
+        close=AsyncMock(),
+    )
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner_instance),
+        ),
+        patch("asyncio.sleep", AsyncMock()),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert err.value.args[0] == "timeout"
     scanner_instance.close.assert_awaited_once()
