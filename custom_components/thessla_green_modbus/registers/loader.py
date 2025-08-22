@@ -21,6 +21,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import time
+from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -130,13 +131,6 @@ class Register:
 # ---------------------------------------------------------------------------
 # Loading helpers
 # ---------------------------------------------------------------------------
-
-# Single source of truth for the bundled register definitions.  The JSON file
-# sits next to this module which means the path works both when running the
-# tests directly from the source tree and when the integration is installed as
-# a package at runtime.
-_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
-
 
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
 try:  # pragma: no cover - defensive
@@ -253,11 +247,16 @@ def _normalise_name(name: str) -> str:
 def _load_registers_from_file() -> List[Register]:
     """Load register definitions from the bundled JSON file."""
 
-    if not _REGISTERS_PATH.is_file():  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
+    path = resources.files(__package__) / "thessla_green_registers_full.json"
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:  # pragma: no cover - sanity check
+        _LOGGER.error("Register definition file missing: %s", path)
+        return []
+    except Exception:  # pragma: no cover - defensive
+        _LOGGER.exception("Failed to read register definitions from %s", path)
         return []
 
-    raw = json.loads(_REGISTERS_PATH.read_text(encoding="utf-8"))
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
     registers: List[Register] = []
@@ -324,8 +323,13 @@ _REGISTERS_HASH: str | None = None
 
 def _compute_file_hash() -> str:
     """Return the SHA256 hash of the registers file."""
-
-    return hashlib.sha256(_REGISTERS_PATH.read_bytes()).hexdigest()
+    path = resources.files(__package__) / "thessla_green_registers_full.json"
+    try:
+        data = path.read_bytes()
+    except FileNotFoundError:  # pragma: no cover - sanity check
+        _LOGGER.error("Register definition file missing: %s", path)
+        return ""
+    return hashlib.sha256(data).hexdigest()
 
 
 def _load_registers() -> List[Register]:
