@@ -334,6 +334,38 @@ logger:
 ### Changelog
 Zobacz [CHANGELOG.md](CHANGELOG.md) dla pełnej historii zmian.
 
+## Migracja z CSV na JSON
+
+Od wersji 2.0 definicje rejestrów zostały przeniesione z pliku CSV do
+formatu JSON `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
+
+### Format pliku
+
+Każdy wpis w pliku to obiekt z polami:
+
+```json
+{
+  "function": "holding",
+  "address_hex": "0x1001",
+  "address_dec": 4097,
+  "access": "rw",
+  "name": "mode",
+  "description": "Work mode"
+}
+```
+
+Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
+
+### Dodawanie nowych rejestrów
+
+1. Otwórz plik JSON i dopisz nowy obiekt z wymaganymi polami.
+2. Zadbaj o unikalność adresów i zachowanie porządku.
+3. Uruchom test walidacyjny:
+
+```bash
+pytest tests/test_register_loader.py
+```
+
 ## 📄 Licencja
 
 MIT License - Zobacz [LICENSE](LICENSE) dla szczegółów.
