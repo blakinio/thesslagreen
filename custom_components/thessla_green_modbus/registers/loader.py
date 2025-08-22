@@ -20,13 +20,15 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import time
-from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 
 _LOGGER = logging.getLogger(__name__)
+
+# Path to bundled register definitions
+_REGISTERS_PATH = Path(__file__).resolve().with_name("thessla_green_registers_full.json")
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -254,10 +256,10 @@ def _validate_item(item: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _load_registers_from_file() -> List[Register]:
+def _load_registers_from_file(path: Path | None = None) -> List[Register]:
     """Load register definitions from the bundled JSON file."""
 
-    path = resources.files(__package__) / "thessla_green_registers_full.json"
+    path = path or _REGISTERS_PATH
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:  # pragma: no cover - sanity check
