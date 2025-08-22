@@ -46,3 +46,27 @@ def test_function_aliases() -> None:
         alias_regs = get_registers_by_function(alias)
         code_regs = get_registers_by_function(code)
         assert {r.address for r in alias_regs} == {r.address for r in code_regs}
+
+
+def test_registers_loaded_only_once(monkeypatch) -> None:
+    """Ensure register file is read only once thanks to caching."""
+
+    from pathlib import Path
+    from custom_components.thessla_green_modbus.registers.loader import _load_registers
+
+    calls = 0
+    real_read_text = Path.read_text
+
+    def spy(self, *args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return real_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", spy)
+
+    _load_registers.cache_clear()
+
+    _load_registers()
+    _load_registers()
+
+    assert calls == 1
