@@ -8,7 +8,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT / "tools" / "modbus_registers.csv"
-JSON_PATH = ROOT / "registers" / "thessla_green_registers_full.json"
+JSON_PATH = (
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
 
 
 def convert(csv_path: Path = CSV_PATH, json_path: Path = JSON_PATH) -> None:

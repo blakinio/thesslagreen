@@ -9,7 +9,14 @@ from pathlib import Path
 from typing import Dict, Set
 
 ROOT = Path(__file__).resolve().parents[1]
-JSON_PATH = ROOT / "registers" / "thessla_green_registers_full.json"
+# JSON register definitions bundled with the integration
+JSON_PATH = (
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
 REGISTERS_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
 FUNCTION_MAP = {

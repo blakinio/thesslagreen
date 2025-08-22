@@ -4,15 +4,50 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-JSON_PATH = ROOT / "registers" / "thessla_green_registers_full.json"
+# Path to the canonical JSON register definition file bundled with the
+# integration.  The generator consumes this file and produces
+# ``custom_components/thessla_green_modbus/registers.py``.
+JSON_PATH = (
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
 
 MULTI_REGISTER_SIZES: dict[str, int] = {
     "date_time_1": 4,
     "lock_date_1": 3,
 }
+
+
+def _to_snake_case(name: str) -> str:
+    """Convert register names to snake_case."""
+    replacements = {"flowrate": "flow_rate"}
+    for old, new in replacements.items():
+        name = name.replace(old, new)
+    name = re.sub(r"[\s\-/]", "_", name)
+    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
+    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
+    name = re.sub(r"__+", "_", name)
+    name = name.lower()
+    token_map = {"temp": "temperature"}
+    tokens = [token_map.get(token, token) for token in name.split("_")]
+    return "_".join(tokens)
+
+
+def _normalise_name(name: str) -> str:
+    fixes = {
+        "duct_warter_heater_pump": "duct_water_heater_pump",
+        "required_temp": "required_temperature",
+        "specialmode": "special_mode",
+    }
+    snake = _to_snake_case(name)
+    return fixes.get(snake, snake)
 
 
 def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
@@ -43,7 +78,7 @@ def load_registers() -> tuple[dict[str, int], dict[str, int], dict[str, int], di
     input_rows: list[tuple[str, int]] = []
     holding_rows: list[tuple[str, int]] = []
     for reg in registers:
-        name = reg["name"]
+        name = _normalise_name(reg["name"])
         addr = int(reg["address_dec"])
         func = str(reg["function"]).lower()
         if func in {"01", "coil"}:
