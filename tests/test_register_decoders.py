@@ -2,6 +2,10 @@ import asyncio
 import pytest
 
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner_helpers import (
+    _decode_season_mode,
+    _format_register_value,
+)
 from custom_components.thessla_green_modbus.utils import (
     _decode_aatt,
     _decode_bcd_time,
@@ -88,3 +92,14 @@ def test_register_decode_unavailable_value():
     """Sentinel value 0x8000 should decode to None."""
     reg = Register(function="input", address=0, name="temp", access="ro")
     assert reg.decode(0x8000) is None
+
+
+def test_decode_season_mode_special_value():
+    """Season mode decoder should treat 0x8000 as undefined."""
+    assert _decode_season_mode(0x8000) is None
+
+
+def test_format_register_value_special_values():
+    """Formatter should return None for sentinel values."""
+    assert _format_register_value("schedule_test", 0x8000) is None
+    assert _format_register_value("setting_test", 0x8000) is None

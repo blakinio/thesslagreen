@@ -42,6 +42,7 @@ from .modbus_exceptions import (
 )
 from .modbus_helpers import _call_modbus
 from .registers import get_all_registers
+from .loader import group_reads as _loader_group_reads
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES, _to_snake_case
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
@@ -442,48 +443,49 @@ class ThesslaGreenDeviceScanner:
     ) -> list[tuple[int, int]]:
         """Group consecutive register addresses for efficient batch reads.
 
-        Known missing registers are isolated into their own groups so that
-        surrounding registers can still be batch-read successfully.
+        The implementation delegates grouping to the shared ``group_reads``
+        helper so that the scanner benefits from the same optimisation logic
+        used elsewhere in the project.  Any registers that have previously been
+        marked as missing are split into their own single-register groups to
+        avoid unnecessary failures when reading surrounding ranges.
         """
 
         if not addresses:
             return []
 
-        addresses = sorted(set(addresses))
-        groups: list[tuple[int, int]] = []
-        start: int | None = None
-        prev: int | None = None
-        count = 0
+        # First, compute contiguous blocks using the generic ``group_reads``
+        # helper.  ``max_gap`` is kept for API compatibility but is not
+        # required when using ``group_reads`` which already splits on gaps.
+        groups = _loader_group_reads(addresses, max_block_size=max_batch)
 
-        for addr in addresses:
-            if addr in self._known_missing_addresses:
-                if count:
-                    groups.append((start or addr, count))
-                    start = None
-                    count = 0
-                groups.append((addr, 1))
-                prev = None
-                continue
+        if not self._known_missing_addresses:
+            return groups
 
-            if start is None:
-                start = addr
-                prev = addr
-                count = 1
-                continue
+        # Split out any known missing addresses so they are queried
+        # individually without preventing neighbouring registers from being
+        # read in batches.
+        adjusted: list[tuple[int, int]] = []
+        for start, length in groups:
+            end = start + length
+            current_start: int | None = None
+            current_len = 0
+            for addr in range(start, end):
+                if addr in self._known_missing_addresses:
+                    if current_len:
+                        assert current_start is not None
+                        adjusted.append((current_start, current_len))
+                        current_len = 0
+                    adjusted.append((addr, 1))
+                    current_start = None
+                else:
+                    if current_len == 0:
+                        current_start = addr
+                    current_len += 1
+            if current_len:
+                assert current_start is not None
+                adjusted.append((current_start, current_len))
 
-            assert prev is not None
-            if addr - prev > max_gap or count >= max_batch:
-                groups.append((start, count))
-                start = addr
-                count = 1
-            else:
-                count += 1
-            prev = addr
-
-        if count:
-            groups.append((start or addresses[-1], count))
-
-        return groups
+        return adjusted
 
     async def scan(self) -> dict[str, Any]:
         """Perform the actual register scan using an established connection."""
