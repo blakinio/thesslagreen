@@ -1,5 +1,6 @@
 """Tests for JSON register loader."""
 
+import json
 import logging
 from pathlib import Path
 
@@ -55,7 +56,6 @@ def test_function_aliases() -> None:
 def test_registers_loaded_only_once(monkeypatch) -> None:
     """Ensure register file is read only once thanks to caching."""
 
-    from pathlib import Path
     from custom_components.thessla_green_modbus.registers.loader import _load_registers
 
     read_calls = 0
@@ -64,7 +64,9 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     def spy(self, *args, **kwargs):
         nonlocal read_calls
         read_calls += 1
-        return real_read_text(self, *args, **kwargs)
+        text = real_read_text(self, *args, **kwargs)
+        json.loads(text)
+        return text
 
     # Spy on read_text to count disk reads
     monkeypatch.setattr(Path, "read_text", spy)
