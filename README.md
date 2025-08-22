@@ -132,6 +132,20 @@ pełne skanowanie wszystkich rejestrów (`full_register_scan=True`) i zwraca
 listę nieznanych adresów. Operacja może trwać kilka minut i znacząco obciąża
 urządzenie – używaj jej tylko do diagnostyki.
 
+### Migracja z CSV na JSON
+Definicje rejestrów znajdują się teraz w pliku JSON `registers/thessla_green_registers_full.json`.
+Każdy wpis w sekcji `registers` zawiera m.in. pola:
+
+- `function` – kod funkcji Modbus (`01`–`04`)
+- `address_dec` / `address_hex` – adres rejestru
+- `name` – unikalna nazwa w formacie snake_case
+- `description` – opis z dokumentacji
+- `access` – tryb dostępu (`R`/`W`)
+
+Opcjonalnie można określić `unit`, `enum`, `multiplier`, `resolution` oraz inne
+metadane. Aby dodać nowy rejestr, dopisz obiekt do listy `registers` zachowując
+porządek adresów i uruchom `pytest`, aby zweryfikować poprawność pliku.
+
 ### Włączanie logów debug
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
 

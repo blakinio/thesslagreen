@@ -1,10 +1,9 @@
 """Compatibility wrapper around the JSON register loader.
 
 Historically the project exposed a :class:`RegisterLoader` class that read
-register definitions from CSV files.  The integration now uses a JSON file as
-the single source of truth.  This module keeps a minimal subset of the old API
-so external tools and some tests can continue to work while emitting a warning
-about the deprecation.
+register definitions from CSV files. The integration now uses a JSON file as
+the single source of truth. CSV support is retained solely for backward
+compatibility and the loader logs a warning whenever it is invoked.
 """
 
 from __future__ import annotations
@@ -24,7 +23,11 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class RegisterLoader:  # pragma: no cover - thin compatibility layer
-    """Backward compatible loader returning simple register maps."""
+    """Backward compatible loader returning simple register maps.
+
+    CSV input is deprecated; instantiating this class logs a warning and uses
+    the bundled JSON definitions instead.
+    """
 
     registers: Dict[str, Register]
     input_registers: Dict[str, int]
