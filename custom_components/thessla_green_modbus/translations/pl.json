@@ -10,6 +10,8 @@
       "invalid_auth": "Błąd uwierzytelniania. Sprawdź ustawienia ID urządzenia.",
       "invalid_input": "Podano nieprawidłową konfigurację. Sprawdź wartości i spróbuj ponownie.",
       "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi po szczegóły.",
+      "modbus_error": "Błąd komunikacji Modbus. Sprawdź okablowanie i ustawienia.",
+      "timeout": "Przekroczono czas połączenia. Sprawdź host i port.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
     },
     "step": {
