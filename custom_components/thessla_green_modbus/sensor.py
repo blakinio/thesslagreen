@@ -1,4 +1,8 @@
-"""Sensors for the ThesslaGreen Modbus integration."""
+"""Sensor platform for the ThesslaGreen Modbus integration.
+
+Sensors are generated from register metadata and only those registers that
+are present on the scanned device are exposed as entities.
+"""
 
 from __future__ import annotations
 
@@ -6,21 +10,19 @@ import asyncio
 import logging
 from typing import Any, cast
 
-
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, STATE_UNAVAILABLE
-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    DOMAIN,
+    AIRFLOW_RATE_REGISTERS,
+    AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
     DEFAULT_AIRFLOW_UNIT,
-    AIRFLOW_UNIT_PERCENTAGE,
-    AIRFLOW_RATE_REGISTERS,
+    DOMAIN,
     SENSOR_UNAVAILABLE,
 )
 from .coordinator import ThesslaGreenModbusCoordinator

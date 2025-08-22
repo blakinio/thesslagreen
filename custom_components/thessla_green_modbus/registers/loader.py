@@ -1,16 +1,18 @@
-from __future__ import annotations
+"""Utilities for loading and validating register definitions.
 
-"""Utilities for loading and working with register definitions.
-
-The registers for the ThesslaGreen device are defined in a JSON file. This
-module provides helpers to load these definitions and expose them as convenient
-Python objects. The JSON is read only once and results are cached in memory.
-
-Each :class:`Register` contains metadata describing how to decode/encode values,
-including optional enum mappings, multipliers, resolution and special handling
-for schedule times encoded in BCD format.
+The register metadata used by development tools and tests is stored in
+``thessla_green_registers_full.json``.  This module exposes small helper
+classes and functions to read that file and to organise registers into
+contiguous read blocks.
 """
 
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List
 import json
 import logging
 from dataclasses import dataclass
@@ -25,12 +27,19 @@ from ..utils import _decode_aatt
 _LOGGER = logging.getLogger(__name__)
 
 
+
 @dataclass(slots=True)
 class Register:
     """Representation of a single Modbus register."""
 
     function: str
     address: int
+    name: str | None = None
+    description: str | None = None
+    access: str | None = None
+    enum: Dict[str, int] | None = None
+    multiplier: float | None = None
+    resolution: float | None = None
     name: str
     access: str
     length: int = 1
@@ -247,21 +256,11 @@ def group_reads(
     address: int
     name: str | None = None
     length: int = 1
-    enum: Dict[str, str] | None = None
-    multiplier: float | None = None
-    resolution: float | None = None
-    description: str | None = None
-    access: str | None = None
-    min: float | None = None
-    max: float | None = None
-    default: float | None = None
-    unit: str | None = None
-    information: str | None = None
 
 
 @dataclass(slots=True)
 class ReadPlan:
-    """Plan for reading a block of registers."""
+    """Plan for reading a consecutive block of registers."""
 
     function: str
     address: int
@@ -275,14 +274,9 @@ class _RegisterModel(BaseModel):
     description: str | None = None
     access: str | None = None
     enum: Dict[str, str] | None = None
-    length: int | None = None
     multiplier: float | None = None
     resolution: float | None = None
-    min: float | None = None
-    max: float | None = None
-    default: float | None = None
-    unit: str | None = None
-    information: str | None = None
+    length: int | None = None
 
     class Config:
         extra = "ignore"
@@ -300,20 +294,19 @@ class _RegisterFileModel(BaseModel):
         extra = "ignore"
 
 
-_REGISTERS: list[Register] = []
+_REGISTERS_PATH = Path(__file__).resolve().parents[3] / "thessla_green_registers_full.json"
+_REGISTERS: List[Register] = []
 
 
-def _load_registers() -> list[Register]:
-    """Load and validate register definitions from JSON file."""
+def _load_registers() -> List[Register]:
+    """Load register definitions from the JSON file."""
+
     global _REGISTERS
     if _REGISTERS:
         return _REGISTERS
 
-    json_path = Path(__file__).resolve().parents[3] / "thessla_green_registers_full.json"
-    model: _RegisterFileModel
-    text = json_path.read_text(encoding="utf-8")
+    text = _REGISTERS_PATH.read_text(encoding="utf-8")
     try:
-        # Pydantic v2
         model = _RegisterFileModel.model_validate_json(text)
     except AttributeError:  # pragma: no cover - pydantic v1 fallback
         model = _RegisterFileModel.parse_raw(text)
@@ -323,45 +316,36 @@ def _load_registers() -> list[Register]:
             function=r.function,
             address=r.address_dec,
             name=r.name,
-            length=r.length or 1,
-            enum=r.enum,
-            multiplier=r.multiplier,
-            resolution=r.resolution,
             description=r.description,
             access=r.access,
-            min=r.min,
-            max=r.max,
-            default=r.default,
-            unit=r.unit,
-            information=r.information,
+            enum={v: int(k) for k, v in (r.enum or {}).items()},
+            multiplier=r.multiplier,
+            resolution=r.resolution,
+            length=r.length or 1,
         )
         for r in model.registers
     ]
     return _REGISTERS
 
 
-# Load registers at module import
-_load_registers()
+def get_all_registers() -> List[Register]:
+    """Return a list of all known registers."""
+
+    return list(_load_registers())
 
 
-def get_all_registers() -> list[Register]:
-    """Return all registers."""
+def get_registers_by_function(fn: str) -> List[Register]:
+    """Return registers matching a specific Modbus function code."""
 
-    return list(_REGISTERS)
-
-
-def get_registers_by_function(fn: str) -> list[Register]:
-    """Return registers matching a specific function code."""
-
-    return [r for r in _REGISTERS if r.function == fn]
+    return [r for r in _load_registers() if r.function == fn]
 
 
-def group_reads(max_block_size: int = 64) -> list[ReadPlan]:
+def group_reads(max_block_size: int = 64) -> List[ReadPlan]:
     """Group registers into consecutive read plans respecting block size."""
 
-    plans: list[ReadPlan] = []
-    regs_by_fn: Dict[str, list[Register]] = {}
-    for reg in _REGISTERS:
+    plans: List[ReadPlan] = []
+    regs_by_fn: Dict[str, List[Register]] = {}
+    for reg in _load_registers():
         regs_by_fn.setdefault(reg.function, []).append(reg)
 
     for fn, regs in regs_by_fn.items():
@@ -369,16 +353,25 @@ def group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         if not sorted_regs:
             continue
         start = sorted_regs[0].address
-        length = sorted_regs[0].length
-        prev_end = start + length
+        length = 1
+        prev = start
         for reg in sorted_regs[1:]:
-            reg_end = reg.address + reg.length
-            if reg.address == prev_end and length + reg.length <= max_block_size:
-                length += reg.length
+            if reg.address == prev + 1 and length < max_block_size:
+                length += 1
             else:
                 plans.append(ReadPlan(fn, start, length))
                 start = reg.address
-                length = reg.length
-            prev_end = reg_end
+                length = 1
+            prev = reg.address
         plans.append(ReadPlan(fn, start, length))
     return plans
+
+
+__all__ = [
+    "Register",
+    "ReadPlan",
+    "get_all_registers",
+    "get_registers_by_function",
+    "group_reads",
+    "_RegisterFileModel",
+]

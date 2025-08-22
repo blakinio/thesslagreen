@@ -117,7 +117,6 @@ Podczas skanowania rejestry są grupowane według funkcji i tylko część z nic
 przekłada się na utworzone encje. Niektóre służą jedynie do diagnostyki lub
 ustawień i nie mają bezpośredniego odzwierciedlenia w Home Assistant.
 Integracja może wykryć 200+ rejestrów, ale utworzyć ~100 encji.
-
 > 🔎 Wiele wykrytych rejestrów to bloki konfiguracji lub wartości
 > wielorejestrowe, które nie mają bezpośredniego odwzorowania na encje
 > Home Assistant. Domyślnie integracja udostępnia tylko rejestry
@@ -520,6 +519,15 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 ```bash
 pytest tests/test_register_loader.py
 ```
+
+4. Wygeneruj moduł `registers.py` i zweryfikuj spójność:
+
+```bash
+python tools/generate_registers.py
+python tools/validate_registers.py
+```
+
+5. Dołącz zmienione pliki (`registers.py` oraz JSON) do commitu.
 
 ## 📄 Licencja
 

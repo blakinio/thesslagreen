@@ -1,4 +1,8 @@
-"""Select platform for the ThesslaGreen Modbus integration."""
+"""Select platform for the ThesslaGreen Modbus integration.
+
+Select entities expose enumerated Modbus registers. They are only added for
+registers that are detected on the device during the scanning phase.
+"""
 
 from __future__ import annotations
 
