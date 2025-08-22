@@ -54,6 +54,7 @@ from .registers import (
     HOLDING_REGISTERS,
 )
 from .utils import _to_snake_case
+from .loader import get_register_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -129,7 +130,6 @@ def _infer_icon(name: str, unit: str | None) -> str:
 
 def _get_register_info(name: str) -> dict[str, Any] | None:
     """Return register metadata, handling numeric suffixes."""
-    from .data.modbus_registers import get_register_info
     info = get_register_info(name)
     if (
         info is None
@@ -1027,7 +1027,6 @@ for mode, bit in SPECIAL_FUNCTION_MAP.items():
 
 def _extend_entity_mappings_from_csv() -> None:
     """Populate entity mappings for registers not explicitly defined."""
-    from .data.modbus_registers import get_register_info
 
     for register in HOLDING_REGISTERS:
         if register in NUMBER_ENTITY_MAPPINGS:
@@ -1057,7 +1056,7 @@ def _extend_entity_mappings_from_csv() -> None:
             )
             continue
 
-        info = get_register_info(register)
+        info = _get_register_info(register)
         if not info:
             continue
 
