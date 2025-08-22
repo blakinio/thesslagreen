@@ -34,7 +34,6 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from . import loader
-from .schedule_helpers import time_to_bcd
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
@@ -68,16 +67,10 @@ AIR_QUALITY_REGISTER_MAP = {
 }
 
 
-def _scale_for_register(register_name: str, value: float) -> int:
-    """Scale ``value`` using register metadata for ``register_name``."""
+def _encode_for_register(register_name: str, value: Any) -> int:
+    """Encode ``value`` for ``register_name`` using register metadata."""
     definition = loader.get_register_definition(register_name)
-    multiplier = definition.get("multiplier")
-    resolution = definition.get("resolution")
-    if multiplier is not None:
-        return int(round(value / multiplier))
-    if resolution is not None:
-        return int(round(value / resolution))
-    return int(round(value))
+    return definition.encode(value)
 def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call handling legacy aliases."""
 
@@ -337,15 +330,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             "sunday": 6,
         }
         day_index = day_map[day]
-        
-        # Convert time to BCD format expected by the device
-        start_hhmm = time_to_bcd(start_time)
-        end_hhmm = time_to_bcd(end_time)
-       
 
-        # Encode time as HH:MM bytes
-        start_value = (start_time.hour << 8) | start_time.minute
-        end_value = (end_time.hour << 8) | end_time.minute
+        # Format times in a user-friendly way for encoding
+        start_value = f"{start_time.hour:02d}:{start_time.minute:02d}"
+        end_value = f"{end_time.hour:02d}:{end_time.minute:02d}"
 
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
@@ -367,7 +355,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 flow_register = f"schedule_{day_name}_period{period}_flow"
                 temp_register = f"schedule_{day_name}_period{period}_temp"
 
-                # Write schedule values with proper scaling
+                # Write schedule values relying on register encode logic
                 await _write_register(
                     coordinator,
                     start_register,
@@ -398,38 +386,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set airflow schedule",
                     )
-                if not await coordinator.async_write_register(
-                    start_register,
-                    start_value,
-                    refresh=False,
-                ):
-                    _LOGGER.error("Failed to set schedule start for %s", entity_id)
-                    continue
-                if not await coordinator.async_write_register(
-                    end_register,
-                    end_value,
-                    refresh=False,
-                ):
-                    _LOGGER.error("Failed to set schedule end for %s", entity_id)
-                    continue
-                if not await coordinator.async_write_register(
-                    flow_register,
-                    airflow_rate,
-                    refresh=False,
-                ):
-                    _LOGGER.error("Failed to set schedule flow for %s", entity_id)
-                    continue
-
-                if temperature is not None:
-                    if not await coordinator.async_write_register(
-                        temp_register,
-                        temperature,
-                        refresh=False,
-                    ):
-                        _LOGGER.error(
-                            "Failed to set schedule temperature for %s", entity_id
-                        )
-                        continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set airflow schedule for %s", entity_id)
@@ -562,7 +518,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                success = True
                 for param in [
                     "co2_low",
                     "co2_medium",
@@ -579,17 +534,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                             entity_id,
                             "set air quality thresholds",
                         )
-                        if not await coordinator.async_write_register(
-                            register_name, value, refresh=False
-                        ):
-                            _LOGGER.error(
-                                "Failed to set %s for %s", param, entity_id
-                            )
-                            success = False
-                            break
-
-                if not success:
-                    continue
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set air quality thresholds for %s", entity_id)

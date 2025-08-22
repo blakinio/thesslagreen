@@ -108,7 +108,7 @@ from custom_components.thessla_green_modbus.climate import (  # noqa: E402
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus.multipliers import REGISTER_MULTIPLIERS  # noqa: E402
+from custom_components.thessla_green_modbus import loader  # noqa: E402
 from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS  # noqa: E402
 
 
@@ -154,7 +154,7 @@ async def test_set_temperature_scaling():
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
 
     addr_required = HOLDING_REGISTERS["required_temperature"]
-    expected = int(round(21.5 / REGISTER_MULTIPLIERS["required_temperature"]))
+    expected = loader.get_register_definition("required_temperature").encode(21.5)
 
     assert coordinator.client.writes == [(addr_required, expected, coordinator.slave_id)]
 
