@@ -20,7 +20,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
 )
 from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -151,11 +151,8 @@ for name, module in modules.items():
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.thessla_green_modbus.register_loader import RegisterLoader
-
-LOADER = RegisterLoader()
-INPUT_REGISTERS = LOADER.input_registers
-HOLDING_REGISTERS = LOADER.holding_registers
+INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
@@ -348,7 +345,6 @@ def test_device_info_dict_fallback(monkeypatch):
 def test_reverse_lookup_maps(coordinator):
     """Ensure reverse register maps resolve addresses to names."""
 
-    from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS, INPUT_REGISTERS
     addr = INPUT_REGISTERS["outside_temperature"]
     assert coordinator._input_registers_rev[addr] == "outside_temperature"
 
@@ -359,8 +355,6 @@ def test_reverse_lookup_maps(coordinator):
 def test_reverse_lookup_performance(coordinator):
     """Dictionary lookups should outperform linear search."""
     import time
-
-    from custom_components.thessla_green_modbus.const import INPUT_REGISTERS
 
     addresses = list(INPUT_REGISTERS.values())
 

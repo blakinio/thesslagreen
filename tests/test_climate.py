@@ -109,7 +109,9 @@ from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
 from custom_components.thessla_green_modbus import loader  # noqa: E402
-from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS  # noqa: E402
+from custom_components.thessla_green_modbus.registers import get_registers_by_function  # noqa: E402
+
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 
 class DummyClient:
