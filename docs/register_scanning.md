@@ -17,9 +17,30 @@ register. This can reveal additional data but may also surface partial values or
 configuration fields that have no dedicated entity class. Use this option with care and
 primarily for debugging or development purposes.
 
+## Dodawanie lub aktualizowanie rejestrów
+
+1. Edytuj plik `registers/thessla_green_registers_full.json` dodając nowe obiekty
+   lub modyfikując istniejące wpisy.
+2. Zachowaj unikalność adresów oraz posortowaną kolejność.
+3. Uruchom test walidacyjny:
+
+   ```bash
+   pytest tests/test_register_loader.py
+   ```
+
+4. Wygeneruj moduł `registers.py` i opcjonalnie sprawdź spójność:
+
+   ```bash
+   python tools/generate_registers.py
+   python tools/validate_registers.py
+   ```
+
+5. Do commitu dodaj zmodyfikowany plik JSON oraz wygenerowany `registers.py`.
+
 ## Migracja z CSV na JSON
 Rejestry są obecnie definiowane w pliku JSON `registers/thessla_green_registers_full.json`.
-Każdy obiekt w tablicy `registers` zawiera pola:
+Format CSV jest przestarzały i zostanie usunięty w przyszłych wersjach – jego
+użycie zapisuje ostrzeżenie w logach. Każdy obiekt w tablicy `registers` zawiera pola:
 
 - `function` – kod funkcji Modbus
 - `address_dec` / `address_hex` – adres rejestru
@@ -28,6 +49,13 @@ Każdy obiekt w tablicy `registers` zawiera pola:
 - `access` – tryb dostępu (`R`/`W`)
 
 Opcjonalnie można zdefiniować `unit`, `enum`, `multiplier`, `resolution` i inne
-atrybuty. Aby dodać nowy rejestr, dopisz odpowiedni obiekt do listy `registers`
-z zachowaniem kolejności adresów. Format CSV pozostaje jedynie dla kompatybilności
-wstecznej – jego użycie zapisuje ostrzeżenie w logach.
+atrybuty.
+
+Aby ręcznie przekonwertować istniejący plik CSV:
+
+1. Otwórz plik CSV i odwzoruj kolumny na odpowiednie pola JSON.
+2. Dla każdego wiersza utwórz obiekt w `registers/thessla_green_registers_full.json`.
+3. Przekonwertuj adresy na postać dziesiętną i heksadecymalną (`0x...`).
+4. Po konwersji uruchom test i narzędzia z sekcji powyżej, aby zweryfikować plik.
+
+Po migracji usuń lub zignoruj plik CSV – integracja korzysta wyłącznie z definicji JSON.
