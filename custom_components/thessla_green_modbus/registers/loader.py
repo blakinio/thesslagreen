@@ -163,10 +163,6 @@ def _normalise_function(fn: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-
-_REGISTERS_PATH = Path(__file__).resolve().parents[3] / "registers" / "thessla_green_registers_full.json"
-
-
 @lru_cache(maxsize=1)
 def _load_registers() -> List[Register]:
     """Load register definitions from the JSON file."""
