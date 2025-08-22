@@ -137,7 +137,16 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return target temperature if available."""
-        data = self.coordinator.data
+        data = self.coordinator.data        for key in (
+            "comfort_temperature",
+            "required_temperature",
+            "required_temperature_legacy",
+            "required_temp",
+        ):
+            value = data.get(key)
+            if isinstance(value, (int, float)):
+                return float(value)
+
 
         value = data.get("comfort_temperature")
         if isinstance(value, (int, float)):
@@ -247,11 +256,15 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         _LOGGER.debug("Setting HVAC mode to %s", hvac_mode)
 
         if hvac_mode == HVACMode.OFF:
-            # Turn off the device
             success = await self.coordinator.async_write_register(
                 "on_off_panel_mode", 0, refresh=False
             )
         else:
+
+            await self.coordinator.async_write_register(
+                "on_off_panel_mode", 1, refresh=False
+            )
+
             # Turn on device first and capture result
             power_on_success = await self.coordinator.async_write_register(
                 "on_off_panel_mode", 1, refresh=False
@@ -269,6 +282,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 return
 
             # Set mode
+
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
             success = await self.coordinator.async_write_register(
                 "mode", device_mode, refresh=False

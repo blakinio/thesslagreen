@@ -151,6 +151,12 @@ for name, module in modules.items():
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from custom_components.thessla_green_modbus.register_loader import RegisterLoader
+
+LOADER = RegisterLoader()
+INPUT_REGISTERS = LOADER.input_registers
+HOLDING_REGISTERS = LOADER.holding_registers
+
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
@@ -341,8 +347,8 @@ def test_device_info_dict_fallback(monkeypatch):
 
 def test_reverse_lookup_maps(coordinator):
     """Ensure reverse register maps resolve addresses to names."""
-    from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS, INPUT_REGISTERS
 
+    from custom_components.thessla_green_modbus.const import HOLDING_REGISTERS, INPUT_REGISTERS
     addr = INPUT_REGISTERS["outside_temperature"]
     assert coordinator._input_registers_rev[addr] == "outside_temperature"
 

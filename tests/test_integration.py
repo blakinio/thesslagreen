@@ -9,6 +9,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
 from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.register_loader import RegisterLoader
 
 
 async def test_async_setup_entry_success():
@@ -19,12 +20,15 @@ async def test_async_setup_entry_success():
 
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
+    entry.title = "Test"
     entry.data = {
         CONF_HOST: "192.168.1.100",
         CONF_PORT: 502,
         "slave_id": 10,
     }
     entry.options = {}
+    entry.title = "Test"
+    entry.title = "Test"
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
 
@@ -32,6 +36,7 @@ async def test_async_setup_entry_success():
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
         mock_coordinator = MagicMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
         mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator_class.return_value = mock_coordinator
@@ -51,6 +56,7 @@ async def test_async_setup_entry_failure():
 
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
+    entry.title = "Test"
     entry.data = {
         CONF_HOST: "192.168.1.100",
         CONF_PORT: 502,
@@ -62,8 +68,9 @@ async def test_async_setup_entry_failure():
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
         mock_coordinator = MagicMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator.async_config_entry_first_refresh = AsyncMock(
-            side_effect=Exception("Connection failed")
+            side_effect=ConfigEntryNotReady("Connection failed")
         )
         mock_coordinator_class.return_value = mock_coordinator
 
@@ -161,6 +168,23 @@ async def test_default_values():
 
 async def test_register_constants():
     """Test that register constants are properly defined."""
+    loader = RegisterLoader()
+    coil = loader.coil_registers
+    discrete = loader.discrete_registers
+    input_regs = loader.input_registers
+    holding = loader.holding_registers
+
+    # Test that key registers are defined
+    assert "power_supply_fans" in coil
+    assert "outside_temperature" in input_regs
+    assert "mode" in holding
+    assert "expansion" in discrete
+
+    # Test address ranges
+    assert coil["power_supply_fans"] == 11
+    assert input_regs["outside_temperature"] == 16
+    assert holding["mode"] == 4097
+    assert discrete["expansion"] == 0
     from custom_components.thessla_green_modbus.const import (
         COIL_REGISTERS,
         DISCRETE_INPUT_REGISTERS,

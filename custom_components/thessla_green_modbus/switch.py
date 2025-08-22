@@ -11,13 +11,75 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import COIL_REGISTERS, DOMAIN, HOLDING_REGISTERS
+from .const import DOMAIN, get_coil_registers, get_holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
+
+HOLDING_REGISTERS = get_holding_registers()
+COIL_REGISTERS = get_coil_registers()
+
+# Switch entities that can be controlled
+SWITCH_ENTITIES = {
+    # System control switches from holding registers
+    "on_off_panel_mode": {
+        "icon": "mdi:power",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "on_off_panel_mode",
+    },
+    "boost_mode": {
+        "icon": "mdi:rocket-launch",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "boost_mode",
+    },
+    "eco_mode": {
+        "icon": "mdi:leaf",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "eco_mode",
+    },
+    "night_mode": {
+        "icon": "mdi:weather-night",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "night_mode",
+    },
+    "party_mode": {
+        "icon": "mdi:party-popper",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "party_mode",
+    },
+    "fireplace_mode": {
+        "icon": "mdi:fireplace",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "fireplace_mode",
+    },
+    "vacation_mode": {
+        "icon": "mdi:airplane",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "vacation_mode",
+    },
+    "hood_mode": {
+        "icon": "mdi:range-hood",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "hood_mode",
+    },
+    "silent_mode": {
+        "icon": "mdi:volume-off",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "silent_mode",
+    },
+}
 
 
 async def async_setup_entry(

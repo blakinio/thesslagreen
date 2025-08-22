@@ -10,7 +10,7 @@ from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
+from .const import DOMAIN, get_holding_registers
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -18,6 +18,8 @@ from .modbus_exceptions import ConnectionException, ModbusException
 from .const import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
+
+HOLDING_REGISTERS = get_holding_registers()
 
 
 async def async_setup_entry(

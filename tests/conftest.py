@@ -318,6 +318,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     util_dt.utcnow = utcnow
     util_dt.now = utcnow
     util.logging = util_logging
+    util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
     ha.util = util
 
     sys.modules["homeassistant"] = ha
@@ -337,6 +338,19 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
     sys.modules["homeassistant.helpers.config_validation"] = cv
     sys.modules["homeassistant.helpers.selector"] = selector
+    # Minimal util logging stub required by pytest_homeassistant_custom_component
+    util = types.ModuleType("homeassistant.util")
+    util_logging = types.ModuleType("homeassistant.util.logging")
+
+    def log_exception(format_err, *args):  # pragma: no cover - simple stub
+        return None
+
+    util_logging.log_exception = log_exception
+    util.logging = util_logging
+    util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
+    ha.util = util
+    sys.modules["homeassistant.util"] = util
+    sys.modules["homeassistant.util.logging"] = util_logging
     sys.modules["homeassistant.helpers.translation"] = translation
     sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
     helpers_pkg.translation = translation

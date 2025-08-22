@@ -38,6 +38,12 @@ from .const import (
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .modbus_exceptions import ConnectionException, ModbusException
 
+# Migration message for start-up logs
+MIGRATION_MESSAGE = (
+    "Register definitions now use JSON format by default; CSV files are deprecated "
+    "and will be removed in a future release."
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 # Legacy default port used before version 2 when explicit port was optional
@@ -71,6 +77,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ThesslaGreen Modbus from a config entry."""
+    _LOGGER.info(MIGRATION_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
     # Get configuration - support both new and legacy keys

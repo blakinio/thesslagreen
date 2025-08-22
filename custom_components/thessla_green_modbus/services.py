@@ -11,8 +11,30 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
-from homeassistant.util import dt as dt_util
 
+try:  # pragma: no cover - handle missing Home Assistant util during tests
+    from homeassistant.util import dt as dt_util
+except (ModuleNotFoundError, ImportError):  # pragma: no cover
+    class _DTUtil:
+        """Fallback minimal dt util."""
+
+        @staticmethod
+        def now():
+            from datetime import datetime
+
+            return datetime.now()
+
+        @staticmethod
+        def utcnow():
+            from datetime import datetime, timezone
+
+            return datetime.now(timezone.utc)
+
+    dt_util = _DTUtil()  # type: ignore
+
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from . import loader
+from .schedule_helpers import time_to_bcd
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
@@ -46,6 +68,16 @@ AIR_QUALITY_REGISTER_MAP = {
 }
 
 
+def _scale_for_register(register_name: str, value: float) -> int:
+    """Scale ``value`` using register metadata for ``register_name``."""
+    definition = loader.get_register_definition(register_name)
+    multiplier = definition.get("multiplier")
+    resolution = definition.get("resolution")
+    if multiplier is not None:
+        return int(round(value / multiplier))
+    if resolution is not None:
+        return int(round(value / resolution))
+    return int(round(value))
 def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call handling legacy aliases."""
 
@@ -305,6 +337,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             "sunday": 6,
         }
         day_index = day_map[day]
+        
+        # Convert time to BCD format expected by the device
+        start_hhmm = time_to_bcd(start_time)
+        end_hhmm = time_to_bcd(end_time)
+       
 
         # Encode time as HH:MM bytes
         start_value = (start_time.hour << 8) | start_time.minute
