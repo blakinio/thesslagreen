@@ -6,6 +6,7 @@ from .loader import (
     Register,
     ReadPlan,
     get_all_registers,
+    get_registers_hash,
     get_registers_by_function,
     group_reads,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "Register",
     "ReadPlan",
     "get_all_registers",
+    "get_registers_hash",
     "get_registers_by_function",
     "group_reads",
 ]

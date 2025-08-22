@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
-from ..registers import get_all_registers
+from ..registers import get_all_registers, get_registers_hash
 
 from ..utils import _to_snake_case
 
@@ -21,6 +21,7 @@ __all__ = [
 ]
 
 _REGISTER_CACHE: Dict[str, Dict[str, Any]] | None = None
+_REGISTER_HASH: str | None = None
 _CSV_WARNING_LOGGED = False
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,8 +46,9 @@ def _warn_csv_usage(path: Path | None = None) -> None:
 
 def _load_registers() -> Dict[str, Dict[str, Any]]:
     """Load register metadata from bundled JSON data."""
-    global _REGISTER_CACHE
-    if _REGISTER_CACHE is not None:
+    global _REGISTER_CACHE, _REGISTER_HASH
+    current_hash = get_registers_hash()
+    if _REGISTER_CACHE is not None and _REGISTER_HASH == current_hash:
         return _REGISTER_CACHE
     registers: Dict[str, Dict[str, Any]] = {}
     for reg in get_all_registers():
@@ -68,6 +70,7 @@ def _load_registers() -> Dict[str, Dict[str, Any]]:
             "information": reg.information,
         }
     _REGISTER_CACHE = registers
+    _REGISTER_HASH = current_hash
     return registers
 
 
