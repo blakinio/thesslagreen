@@ -1,8 +1,25 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
-from custom_components.thessla_green_modbus.registers.loader import Register, group_reads
+from custom_components.thessla_green_modbus.registers import (
+    get_registers_by_function,
+    group_reads,
+)
+from custom_components.thessla_green_modbus.registers.loader import Register
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
+
+
+def _expanded_addresses(fn: str) -> list[int]:
+    plans = [p for p in group_reads(max_block_size=32) if p.function == fn]
+    return [addr for plan in plans for addr in range(plan.address, plan.address + plan.length)]
+
+
+def test_group_reads_coalesces_per_function() -> None:
+    """group_reads covers all registers for each function code."""
+
+    for fn in ("01", "02", "03", "04"):
+        regs = get_registers_by_function(fn)
+        expected = sorted(r.address for r in regs)
+        assert _expanded_addresses(fn) == expected
 
 
 def test_group_registers_split_known_missing():
