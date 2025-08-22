@@ -2,6 +2,8 @@
 
 from typing import Any, Dict
 
+from . import loader
+
 # Integration constants
 DOMAIN = "thessla_green_modbus"
 MANUFACTURER = "ThesslaGreen"
@@ -96,6 +98,26 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
 ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
     "number": NUMBER_ENTITY_MAPPINGS,
 }
+
+
+def get_input_registers() -> Dict[str, int]:
+    """Return mapping of input registers loaded from JSON definitions."""
+    return loader.get_registers_by_function("input")
+
+
+def get_holding_registers() -> Dict[str, int]:
+    """Return mapping of holding registers loaded from JSON definitions."""
+    return loader.get_registers_by_function("holding")
+
+
+def get_coil_registers() -> Dict[str, int]:
+    """Return mapping of coil registers loaded from JSON definitions."""
+    return loader.get_registers_by_function("coil")
+
+
+def get_discrete_input_registers() -> Dict[str, int]:
+    """Return mapping of discrete input registers loaded from JSON definitions."""
+    return loader.get_registers_by_function("discrete")
 
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF

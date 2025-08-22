@@ -10,11 +10,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, HOLDING_REGISTERS
+from .const import DOMAIN, get_holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+HOLDING_REGISTERS = get_holding_registers()
 
 
 async def async_setup_entry(

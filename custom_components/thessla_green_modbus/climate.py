@@ -134,28 +134,14 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         data = self.coordinator.data
         for key in (
             "comfort_temperature",
-=======
-        # Try comfort temperature first, then required temperature
-        if "comfort_temperature" in self.coordinator.data:
-            return self.coordinator.data["comfort_temperature"]
-
-        for key in (
- main
             "required_temperature",
             "required_temperature_legacy",
             "required_temp",
         ):
- codex/clean-up-climate.py-and-implement-target_temperature
             value = data.get(key)
             if isinstance(value, (int, float)):
                 return float(value)
-        return 22.0  # Default
-=======
-            if key in self.coordinator.data:
-                return self.coordinator.data[key]
-
         return None
- main
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -257,37 +243,13 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         _LOGGER.debug("Setting HVAC mode to %s", hvac_mode)
 
         if hvac_mode == HVACMode.OFF:
-            # Turn off the device
             success = await self.coordinator.async_write_register(
                 "on_off_panel_mode", 0, refresh=False
             )
         else:
- codex/clean-up-climate.py-and-implement-target_temperature
-            # Turn on device first
-            await self.coordinator.async_write_register("on_off_panel_mode", 1, refresh=False)
-=======
-            # Turn on device first and capture result
-            power_on_success = await self.coordinator.async_write_register(
+            await self.coordinator.async_write_register(
                 "on_off_panel_mode", 1, refresh=False
             )
-
-            # Retry once if power on failed
-            if not power_on_success:
-                _LOGGER.warning(
-                    "Power-on failed when setting HVAC mode to %s, retrying", hvac_mode
-                )
-                power_on_success = await self.coordinator.async_write_register(
-                    "on_off_panel_mode", 1, refresh=False
-                )
-
-            if not power_on_success:
-                _LOGGER.error(
-                    "Failed to enable device before setting HVAC mode to %s", hvac_mode
-                )
-                return
-
- main
-            # Set mode
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
             success = await self.coordinator.async_write_register(
                 "mode", device_mode, refresh=False
