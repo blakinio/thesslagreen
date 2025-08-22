@@ -151,46 +151,45 @@ except Exception:  # pragma: no cover - defensive
 
 def _normalise_function(fn: str) -> str:
     mapping = {
-        "1": "01",
+        # Function code 01: coils
         "01": "01",
+        "1": "01",
         "coil": "01",
-        "coils": "01",
-        "coil_registers": "01",
+        "coil register": "01",
+        "coil registers": "01",
         "coil_register": "01",
         "coil_registers": "01",
-        "coil registers": "01",
-        "2": "02",
+        "coils": "01",
+        # Function code 02: discrete inputs
         "02": "02",
+        "2": "02",
         "discrete": "02",
-        "discreteinput": "02",
-        "discreteinputs": "02",
-        "discrete_inputs": "02",
+        "discrete input": "02",
+        "discrete inputs": "02",
         "discrete_input": "02",
         "discrete_inputs": "02",
-        "discrete inputs": "02",
-        "3": "03",
+        "discreteinput": "02",
+        "discreteinputs": "02",
+        # Function code 03: holding registers
         "03": "03",
+        "3": "03",
         "holding": "03",
-        "holdingregister": "03",
-        "holdingregisters": "03",
-
-        "holding_registers": "03",
-
+        "holding register": "03",
+        "holding registers": "03",
         "holding_register": "03",
         "holding_registers": "03",
-        "holding registers": "03",
-
-        "4": "04",
+        "holdingregister": "03",
+        "holdingregisters": "03",
+        # Function code 04: input registers
         "04": "04",
+        "4": "04",
         "input": "04",
+        "input register": "04",
+        "input registers": "04",
+        "input_register": "04",
+        "input_registers": "04",
         "inputregister": "04",
         "inputregisters": "04",
-
-
-        "input_register": "04",
-
-        "input_registers": "04",
-        "input registers": "04",
     }
     return mapping.get(fn.lower(), fn)
 
