@@ -38,7 +38,7 @@ from .const import (
     DEFAULT_DEEP_SCAN,
     DOMAIN,
 )
-from .scanner_core import ThesslaGreenDeviceScanner
+from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,19 +58,27 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     port = data[CONF_PORT]
     slave_id = data[CONF_SLAVE_ID]
     name = data.get(CONF_NAME, DEFAULT_NAME)
+    timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
     # Try to connect and scan device
     scanner = await ThesslaGreenDeviceScanner.create(
         host=host,
         port=port,
         slave_id=slave_id,
-        timeout=DEFAULT_TIMEOUT,
+        timeout=timeout,
         retry=DEFAULT_RETRY,
         deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
     )
 
     try:
-        scan_result = await scanner.scan_device()
+        # Verify connection by reading a few known registers
+        await asyncio.wait_for(scanner.verify_connection(), timeout=timeout)
+
+        # Perform full device scan
+        scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
+
+        if isinstance(scan_result.get("capabilities"), DeviceCapabilities):
+            scan_result["capabilities"] = scan_result["capabilities"].as_dict()
 
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
@@ -209,6 +217,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         # Get scan statistics
         available_registers = self._scan_result.get("available_registers", {})
         capabilities = self._scan_result.get("capabilities", {})
+        if isinstance(capabilities, DeviceCapabilities):
+            capabilities = capabilities.as_dict()
 
         register_count = self._scan_result.get(
             "register_count",
