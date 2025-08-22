@@ -1,3 +1,4 @@
+
 """Utilities for loading register metadata and grouping Modbus reads.
 
 The integration stores a full list of Modbus registers in
@@ -8,7 +9,10 @@ CSV format is still supported for backwards compatibility but will be
 removed in a future release.
 """
 
+
 from __future__ import annotations
+
+"""Helpers for loading register definitions and grouping reads."""
 
 import csv
 import json
@@ -31,6 +35,20 @@ def _load_from_csv(directory: Path) -> List[Dict]:
     JSON should be used instead.
     """
 
+    groups: List[Tuple[int, int]] = []
+    start = prev = sorted_addresses[0]
+    for addr in sorted_addresses[1:]:
+        if addr == prev + 1 and (addr - start) < max_block_size:
+            prev = addr
+            continue
+        groups.append((start, prev - start + 1))
+        start = prev = addr
+    groups.append((start, prev - start + 1))
+    return groups
+
+
+def _load_from_csv(directory: Path) -> List[Dict]:
+    """Load register definitions from CSV files in a directory."""
     _LOGGER.warning(
         "Register CSV files are deprecated and will be removed in a future release. "
         "Please migrate to JSON."
@@ -70,7 +88,16 @@ def _load_register_definitions() -> Dict[str, Dict]:
     else:  # pragma: no cover - defensive fallback
         entries = _load_from_csv(_REGISTERS_FILE.parent)
     return {entry["name"]: entry for entry in entries}
-
+=======
+@lru_cache(maxsize=1)
+def _load_register_definitions() -> Dict[str, Dict]:
+    """Load register definitions indexed by name."""
+    if _REGISTERS_FILE.exists():
+        with _REGISTERS_FILE.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        data = _load_from_csv(_REGISTERS_FILE.parent)
+    return {entry["name"]: entry for entry in data}
 
 def get_registers_by_function(function: str) -> Dict[str, int]:
     """Return mapping of register names to addresses for a function code."""
@@ -86,7 +113,6 @@ def get_register_definition(name: str) -> Dict:
     """Return full definition for a register by ``name``."""
 
     return _load_register_definitions().get(name, {})
-
 
 def group_reads(addresses: Iterable[int], max_block_size: int = 64) -> List[Tuple[int, int]]:
     """Group register addresses into contiguous blocks.

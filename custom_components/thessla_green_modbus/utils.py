@@ -8,6 +8,7 @@ __all__ = [
     "_to_snake_case",
     "_decode_register_time",
     "_decode_bcd_time",
+    "_decode_aatt",
     "parse_schedule_bcd",
     "BCD_TIME_PREFIXES",
     "TIME_REGISTER_PREFIXES",
@@ -80,6 +81,21 @@ def parse_schedule_bcd(value: int) -> int | None:
     if value == 0x8000:
         return None
     return _decode_bcd_time(value)
+
+
+def _decode_aatt(value: int) -> tuple[int, float] | None:
+    """Decode airflow percentage and temperature encoded as ``0xAATT``."""
+
+    if value < 0:
+        return None
+
+    airflow = (value >> 8) & 0xFF
+    temp_double = value & 0xFF
+
+    if airflow > 100 or temp_double > 200:
+        return None
+
+    return airflow, temp_double / 2
 
 
 # Registers storing times as BCD HHMM values

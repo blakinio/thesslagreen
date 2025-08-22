@@ -15,9 +15,11 @@ from custom_components.thessla_green_modbus.scanner_core import (
     DeviceInfo,
     ThesslaGreenDeviceScanner,
 )
-from custom_components.thessla_green_modbus.scanner_helpers import (
-    _decode_setting_value,
-    _format_register_value,
+from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+from custom_components.thessla_green_modbus.utils import (
+    _decode_aatt,
+    _decode_bcd_time,
+    _decode_register_time,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
@@ -26,10 +28,6 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
 from custom_components.thessla_green_modbus.const import (
     HOLDING_REGISTERS,
     INPUT_REGISTERS,
-)
-from custom_components.thessla_green_modbus.utils import (
-    _decode_bcd_time,
-    _decode_register_time,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -1124,12 +1122,12 @@ async def test_decode_bcd_time():
     assert _decode_bcd_time(2400) is None
 
 
-async def test_decode_setting_value():
+async def test_decode_aatt_value():
     """Verify decoding of combined airflow and temperature settings."""
-    assert _decode_setting_value(0x3C28) == (60, 20.0)
-    assert _decode_setting_value(0x322C) == (50, 22.0)
-    assert _decode_setting_value(-1) is None
-    assert _decode_setting_value(0xFF28) is None
+    assert _decode_aatt(0x3C28) == (60, 20.0)
+    assert _decode_aatt(0x322C) == (50, 22.0)
+    assert _decode_aatt(-1) is None
+    assert _decode_aatt(0xFF28) is None
 
 
 async def test_format_register_value_schedule():

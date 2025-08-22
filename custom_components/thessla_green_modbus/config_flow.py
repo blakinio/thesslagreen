@@ -77,8 +77,18 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         # Perform full device scan
         scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
 
-        if isinstance(scan_result.get("capabilities"), DeviceCapabilities):
-            scan_result["capabilities"] = scan_result["capabilities"].as_dict()
+        # Ensure capabilities are represented as a dataclass before serializing
+        caps_obj = scan_result.get("capabilities")
+        if isinstance(caps_obj, DeviceCapabilities):
+            capabilities = caps_obj
+        elif isinstance(caps_obj, dict):
+            try:
+                capabilities = DeviceCapabilities(**caps_obj)
+            except TypeError:
+                capabilities = DeviceCapabilities()
+        else:
+            capabilities = DeviceCapabilities()
+        scan_result["capabilities"] = capabilities.as_dict()
 
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
