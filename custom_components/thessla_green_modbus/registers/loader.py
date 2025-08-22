@@ -20,6 +20,7 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import time
+from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -28,17 +29,10 @@ from ..utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 
-# Path to the canonical JSON register definition bundled with the integration.
-_REGISTERS_PATH = Path(__file__).with_name("thessla_green_registers_full.json")
-
 # Path to the bundled register definition file.  Tests patch this constant to
 # supply temporary files, therefore it must be a module level variable instead
 # of being computed inside helper functions.
-_REGISTERS_PATH = Path(__file__).resolve().with_name(
-    "thessla_green_registers_full.json"
-)
-# Path to bundled register definitions
-_REGISTERS_PATH = Path(__file__).resolve().with_name("thessla_green_registers_full.json")
+_REGISTERS_PATH = resources.files(__package__) / "thessla_green_registers_full.json"
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -280,7 +274,6 @@ def _load_registers_from_file(path: Path | None = None) -> List[Register]:
     """Load register definitions from the bundled JSON file."""
 
     target = path or _REGISTERS_PATH
-    path = path or _REGISTERS_PATH
     try:
         raw = json.loads(target.read_text(encoding="utf-8"))
     except FileNotFoundError:  # pragma: no cover - sanity check
@@ -350,7 +343,6 @@ def _load_registers_from_file(path: Path | None = None) -> List[Register]:
 # Cache for loaded register definitions and the file hash used to build it
 _REGISTER_CACHE: List[Register] = []
 _REGISTERS_HASH: str | None = None
-_REGISTERS_PATH = resources.files(__package__) / "thessla_green_registers_full.json"
 
 
 def _compute_file_hash(path: Path | None = None) -> str:
