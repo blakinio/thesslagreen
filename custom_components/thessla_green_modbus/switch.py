@@ -11,12 +11,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import COIL_REGISTERS, DOMAIN
+from .const import COIL_REGISTERS, DOMAIN, HOLDING_REGISTERS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 

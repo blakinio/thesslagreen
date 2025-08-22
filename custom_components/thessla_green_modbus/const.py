@@ -5,12 +5,18 @@ import logging
 from pathlib import Path
 from typing import Any, cast
 
-from .registers import (  # noqa: F401
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-)
+from .registers import get_registers_by_function
+
+
+def _build_map(fn: str) -> dict[str, int]:
+    return {r.name: r.address for r in get_registers_by_function(fn) if r.name}
+
+
+COIL_REGISTERS = _build_map("01")
+DISCRETE_INPUT_REGISTERS = _build_map("02")
+HOLDING_REGISTERS = _build_map("03")
+INPUT_REGISTERS = _build_map("04")
+MULTI_REGISTER_SIZES = {r.name: r.length for r in get_registers_by_function("03") if r.name and r.length > 1}
 
 OPTIONS_PATH = Path(__file__).parent / "options"
 _LOGGER = logging.getLogger(__name__)

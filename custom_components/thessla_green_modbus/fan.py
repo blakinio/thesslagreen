@@ -15,7 +15,7 @@ from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import HOLDING_REGISTERS
+from .const import HOLDING_REGISTERS
 
 _LOGGER = logging.getLogger(__name__)
 

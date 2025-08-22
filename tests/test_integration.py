@@ -164,8 +164,6 @@ async def test_register_constants():
     from custom_components.thessla_green_modbus.const import (
         COIL_REGISTERS,
         DISCRETE_INPUT_REGISTERS,
-    )
-    from custom_components.thessla_green_modbus.registers import (
         INPUT_REGISTERS,
         HOLDING_REGISTERS,
     )
