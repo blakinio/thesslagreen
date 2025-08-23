@@ -217,7 +217,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for ThesslaGreen Modbus."""
 
-    VERSION = 2
+    VERSION = 2  # Used by Home Assistant to manage config entry migrations
 
     def __init__(self) -> None:
         """Initialize config flow."""
@@ -226,7 +226,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._scan_result: dict[str, Any] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the initial step.
+
+        Part of the Home Assistant config flow interface; the framework
+        calls this method directly.
+        """
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -389,7 +393,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
     @staticmethod
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:
-        """Return the options flow handler."""
+        """Return the options flow handler.
+
+        Home Assistant looks up this function by name when launching the
+        options UI, so it must remain even if unreferenced here.
+        """
         return OptionsFlow(config_entry)
 
 
@@ -401,7 +409,11 @@ class OptionsFlow(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle options flow."""
+        """Handle options flow.
+
+        This is the entry point for the options dialog and is invoked by
+        Home Assistant.
+        """
 
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)

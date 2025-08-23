@@ -48,7 +48,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen number entities from config entry."""
+    """Set up ThesslaGreen number entities from config entry.
+
+    This hook is invoked by Home Assistant during platform setup.
+    """
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
@@ -88,7 +91,11 @@ async def async_setup_entry(
 
 
 class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
-    """ThesslaGreen number entity."""
+    """ThesslaGreen number entity.
+
+    ``_attr_*`` attributes and entity methods implement the Home Assistant
+    ``NumberEntity`` API and therefore look unused to vulture.
+    """
 
     def __init__(
         self,

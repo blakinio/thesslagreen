@@ -82,9 +82,7 @@ async def validate_optimization_metrics():
 
         # Test 3: Error Handling
         print("🔍 Testing enhanced error handling...")
-        if hasattr(coordinator, "_failed_registers") and hasattr(
-            coordinator, "_last_successful_read"
-        ):
+        if hasattr(coordinator, "_failed_registers"):
             results["error_handling"] = True
             print("✅ Error handling: OPTIMIZED (smart retry logic)")
         else:

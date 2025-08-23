@@ -29,7 +29,10 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen select entities."""
+    """Set up ThesslaGreen select entities.
+
+    Home Assistant invokes this during platform setup.
+    """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities = []
@@ -53,7 +56,11 @@ async def async_setup_entry(
 
 
 class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
-    """Select entity for ThesslaGreen device."""
+    """Select entity for ThesslaGreen device.
+
+    ``_attr_*`` attributes and methods implement the Home Assistant
+    ``SelectEntity`` API and may appear unused.
+    """
 
     def __init__(
         self,

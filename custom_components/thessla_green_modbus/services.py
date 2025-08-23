@@ -32,7 +32,6 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
     dt_util = _DTUtil()  # type: ignore
 
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
-from . import loader
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
@@ -64,12 +63,6 @@ AIR_QUALITY_REGISTER_MAP = {
     "co2_high": "co2_threshold_high",
     "humidity_target": "humidity_target",
 }
-
-
-def _encode_for_register(register_name: str, value: Any) -> int:
-    """Encode ``value`` for ``register_name`` using register metadata."""
-    definition = loader.get_register_definition(register_name)
-    return definition.encode(value)
 def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call handling legacy aliases."""
 

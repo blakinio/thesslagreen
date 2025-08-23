@@ -36,7 +36,11 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen binary sensor entities based on available registers."""
+    """Set up ThesslaGreen binary sensor entities.
+
+    This coroutine is a Home Assistant platform setup hook and is invoked
+    by the framework; it is not called directly within this repository.
+    """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities = []
@@ -68,7 +72,12 @@ async def async_setup_entry(
 
 
 class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
-    """Binary sensor entity for ThesslaGreen device."""
+    """Binary sensor entity for ThesslaGreen device.
+
+    Attributes with the ``_attr_`` prefix are consumed by Home Assistant to
+    configure the entity and therefore appear unused to static analysis
+    tools like vulture.
+    """
 
     def __init__(
         self,

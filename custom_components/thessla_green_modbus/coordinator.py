@@ -149,7 +149,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Connection management
         self.client: ThesslaGreenModbusClient | None = None
         self._connection_lock = asyncio.Lock()
-        self._last_successful_read = dt_util.utcnow()
 
         # Stop listener for Home Assistant shutdown
         self._stop_listener: Callable[[], None] | None = None
@@ -470,7 +469,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_setup_client(self) -> bool:
         """Set up the Modbus client if needed.
 
-        Returns True on success, False otherwise.
+        Although only invoked in tests within this repository, this helper
+        mirrors the logic executed during Home Assistant start-up. It returns
+        ``True`` on success and ``False`` on failure.
         """
         try:
             async with self._connection_lock:
@@ -511,7 +512,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from the device with optimized batch reading."""
+        """Fetch data from the device with optimized batch reading.
+
+        This method overrides ``DataUpdateCoordinator._async_update_data``
+        and is called by Home Assistant to refresh entity state.
+        """
         start_time = dt_util.utcnow()
 
         async with self._connection_lock:
@@ -1255,5 +1260,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @property
     def device_info_dict(self) -> dict[str, Any]:
-        """Return device information as a plain dictionary for legacy use."""
+        """Return device information as a plain dictionary for legacy use.
+
+        Retained for tests and external consumers which expect a simple
+        mapping instead of a ``DeviceInfo`` instance.
+        """
         return cast(dict[str, Any], self.get_device_info().as_dict())

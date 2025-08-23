@@ -39,7 +39,10 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen sensor entities based on available registers."""
+    """Set up ThesslaGreen sensor entities based on available registers.
+
+    This is invoked by Home Assistant during platform setup.
+    """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities = []
@@ -95,7 +98,11 @@ async def async_setup_entry(
 
 
 class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
-    """Sensor entity for ThesslaGreen device."""
+    """Sensor entity for ThesslaGreen device.
+
+    ``_attr_*`` attributes and properties implement the Home Assistant
+    ``SensorEntity`` API and thus may appear unused.
+    """
 
     def __init__(
         self,

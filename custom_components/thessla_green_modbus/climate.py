@@ -61,7 +61,11 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen climate entity."""
+    """Set up ThesslaGreen climate entity.
+
+    Home Assistant calls this during platform setup even though it is not
+    referenced elsewhere in the source tree.
+    """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     # Only create climate entity if basic control is available
@@ -79,7 +83,11 @@ async def async_setup_entry(
 
 
 class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
-    """Enhanced climate entity for ThesslaGreen AirPack."""
+    """Enhanced climate entity for ThesslaGreen AirPack.
+
+    Many methods and ``_attr_*`` attributes implement the Home Assistant
+    ``ClimateEntity`` API and are accessed by the framework at runtime.
+    """
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the climate entity."""

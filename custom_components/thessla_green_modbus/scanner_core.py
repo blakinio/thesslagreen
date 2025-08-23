@@ -87,26 +87,12 @@ def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
     if not REGISTER_DEFINITIONS:
         _build_register_maps()
-
-
-def clear_register_cache() -> None:
-    """Clear register definition cache and rebuild lookup maps."""
-    from .registers.loader import clear_cache as _clear_cache
-
-    _clear_cache()
-    # Rebuild maps from fresh cache
-    REGISTER_DEFINITIONS.clear()
-    INPUT_REGISTERS.clear()
-    HOLDING_REGISTERS.clear()
-    COIL_REGISTERS.clear()
-    DISCRETE_INPUT_REGISTERS.clear()
-    MULTI_REGISTER_SIZES.clear()
-    _build_register_maps()
-
-
 @dataclass
 class DeviceInfo:
     """Basic identifying information about a ThesslaGreen unit.
+
+    The attributes are populated dynamically and accessed via ``as_dict`` in
+    diagnostics; they therefore appear unused in static analysis.
 
     Attributes:
         device_name: User configured name reported by the unit.
@@ -135,37 +121,12 @@ class DeviceInfo:
         return iter(self.items())
 
 
+# Attributes of this dataclass are read dynamically at runtime to determine
+# which features the device exposes; static analysis may therefore mark them
+# as unused even though they are relied upon.
 @dataclass
 class DeviceCapabilities:
-    """Feature flags and sensor availability detected on the device.
-
-    Each attribute indicates whether a hardware capability or sensor is
-    available, allowing the integration to enable or disable related
-    features dynamically.
-
-    Attributes:
-        basic_control: Support for fundamental fan and temperature control.
-        temperature_sensors: Names of built-in temperature sensors.
-        flow_sensors: Names of sensors measuring airflow.
-        special_functions: Additional reported feature flags.
-        expansion_module: Presence of an expansion module.
-        constant_flow: Ability to maintain constant airflow.
-        gwc_system: Ground heat exchanger integration.
-        bypass_system: Motorized bypass capability.
-        heating_system: Support for heating modules.
-        cooling_system: Support for cooling modules.
-        air_quality: Availability of air quality sensors.
-        weekly_schedule: Built-in weekly scheduling support.
-        sensor_outside_temperature: Outside temperature sensor present.
-        sensor_supply_temperature: Supply air temperature sensor present.
-        sensor_exhaust_temperature: Exhaust air temperature sensor present.
-        sensor_fpx_temperature: FPX (preheater) temperature sensor present.
-        sensor_duct_supply_temperature: Duct supply temperature sensor present.
-        sensor_gwc_temperature: GWC (ground heat exchanger) temperature sensor present.
-        sensor_ambient_temperature: Ambient room temperature sensor present.
-        sensor_heating_temperature: Heating system temperature sensor present.
-        temperature_sensors_count: Total number of available temperature sensors.
-    """
+    """Feature flags and sensor availability detected on the device."""
 
     basic_control: bool = False
     temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
@@ -516,11 +477,13 @@ class ThesslaGreenDeviceScanner:
     ) -> list[tuple[int, int]]:
         """Group consecutive register addresses for efficient batch reads.
 
-        The implementation delegates grouping to the shared ``group_reads``
-        helper so that the scanner benefits from the same optimisation logic
-        used elsewhere in the project.  Any registers that have previously been
-        marked as missing are split into their own single-register groups to
-        avoid unnecessary failures when reading surrounding ranges.
+        ``max_gap`` is retained for backward compatibility with older callers
+        even though the helper no longer uses it directly.  The implementation
+        delegates grouping to the shared ``group_reads`` helper so that the
+        scanner benefits from the same optimisation logic used elsewhere in the
+        project.  Any registers that have previously been marked as missing are
+        split into their own single-register groups to avoid unnecessary
+        failures when reading surrounding ranges.
         """
 
         if not addresses:

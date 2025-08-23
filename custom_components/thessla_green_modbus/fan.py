@@ -31,7 +31,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen fan from config entry."""
+    """Set up ThesslaGreen fan from config entry.
+
+    This is a Home Assistant callback invoked during platform setup.
+    """
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     # Check if fan control is available based on registers discovered by
@@ -71,7 +74,11 @@ async def async_setup_entry(
 
 
 class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
-    """ThesslaGreen fan entity."""
+    """ThesslaGreen fan entity.
+
+    ``_attr_*`` attributes and entity methods implement the Home Assistant
+    ``FanEntity`` API and may appear unused to static analysis.
+    """
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
