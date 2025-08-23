@@ -2,9 +2,6 @@
 """Test runner for ThesslaGreen Modbus integration."""
 import subprocess  # nosec B404
 import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_tests() -> int:
@@ -12,12 +9,6 @@ def run_tests() -> int:
     print("🧪 Running ThesslaGreen Modbus Integration Tests...")
 
     try:
-        # Ensure registers are generated from the CSV
-        subprocess.run(  # nosec B603
-            [sys.executable, str(ROOT / "tools" / "generate_registers.py")],
-            check=True,
-        )
-
         # Run pytest with coverage
         subprocess.run(  # nosec B603
             [
