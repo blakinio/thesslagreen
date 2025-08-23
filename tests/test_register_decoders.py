@@ -12,6 +12,7 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_register_time,
 )
 from custom_components.thessla_green_modbus.registers.loader import Register
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 
 def test_decode_register_time_valid():
@@ -116,3 +117,32 @@ def test_register_bitmask_decode_encode():
     )
     assert reg.decode(5) == ["A", "C"]
     assert reg.encode(["A", "C"]) == 5
+
+
+def test_register_decode_encode_string_multi():
+    reg = next(r for r in get_registers_by_function("03") if r.name == "device_name")
+    value = "Test AirPack"
+    raw = reg.encode(value)
+    assert isinstance(raw, list) and len(raw) == reg.length
+    assert reg.decode(raw) == value
+
+
+def test_register_decode_encode_uint32():
+    reg = next(r for r in get_registers_by_function("03") if r.name == "lock_pass")
+    raw = [0x423F, 0x000F]
+    assert reg.decode(raw) == 999999
+    assert reg.encode(999999) == raw
+
+
+def test_register_decode_encode_float32():
+    reg = Register(
+        function="holding",
+        address=0,
+        name="float_reg",
+        access="rw",
+        length=2,
+        extra={"type": "float32"},
+    )
+    raw = reg.encode(12.34)
+    assert isinstance(raw, list)
+    assert reg.decode(raw) == pytest.approx(12.34, rel=1e-6)

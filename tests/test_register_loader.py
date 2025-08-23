@@ -34,6 +34,25 @@ def test_enum_multiplier_resolution_handling() -> None:
     assert required.decode(45) == 22.5
 
 
+def test_multi_register_metadata() -> None:
+    """Registers spanning multiple words expose length and type info."""
+
+    holding_regs = get_registers_by_function("03")
+    device_name = next(r for r in holding_regs if r.name == "device_name")
+    assert device_name.length == 8
+    assert device_name.extra["type"] == "string"
+
+    lock = next(r for r in holding_regs if r.name == "lock_pass")
+    assert lock.length == 2
+    assert lock.extra["type"] == "uint32"
+    assert lock.extra["endianness"] == "little"
+
+    input_regs = get_registers_by_function("04")
+    serial = next(r for r in input_regs if r.name == "serial_number")
+    assert serial.length == 6
+    assert serial.extra["encoding"] == "ascii"
+
+
 def test_function_aliases() -> None:
     """Aliases with spaces/underscores should resolve to correct functions."""
     aliases = {
