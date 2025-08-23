@@ -20,67 +20,9 @@ from .registers import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
+# Register address lookups for modbus writes
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
-
-# Switch entities that can be controlled
-SWITCH_ENTITIES = {
-    # System control switches from holding registers
-    "on_off_panel_mode": {
-        "icon": "mdi:power",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "on_off_panel_mode",
-    },
-    "boost_mode": {
-        "icon": "mdi:rocket-launch",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "boost_mode",
-    },
-    "eco_mode": {
-        "icon": "mdi:leaf",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "eco_mode",
-    },
-    "night_mode": {
-        "icon": "mdi:weather-night",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "night_mode",
-    },
-    "party_mode": {
-        "icon": "mdi:party-popper",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "party_mode",
-    },
-    "fireplace_mode": {
-        "icon": "mdi:fireplace",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "fireplace_mode",
-    },
-    "vacation_mode": {
-        "icon": "mdi:airplane",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "vacation_mode",
-    },
-    "hood_mode": {
-        "icon": "mdi:range-hood",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "hood_mode",
-    },
-    "silent_mode": {
-        "icon": "mdi:volume-off",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": "silent_mode",
-    },
-}
 
 
 async def async_setup_entry(
@@ -88,7 +30,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen switch entities from config entry."""
+    """Set up ThesslaGreen switch entities from config entry.
+
+    Home Assistant invokes this during platform setup.
+    """
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
@@ -139,7 +84,11 @@ async def async_setup_entry(
 
 
 class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
-    """ThesslaGreen switch entity."""
+    """ThesslaGreen switch entity.
+
+    ``_attr_*`` attributes and entity methods implement the Home Assistant
+    ``SwitchEntity`` API and therefore may look unused.
+    """
 
     def __init__(
         self,

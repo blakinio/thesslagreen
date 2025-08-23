@@ -349,6 +349,9 @@ class RegisterDefinition(pydantic.BaseModel):
     length: int = 1
     bcd: bool = False
 
+    # ``model_config`` and the validators below are used by Pydantic at runtime
+    # to validate register definitions.  They appear unused to vulture because
+    # they are referenced through Pydantic's internal mechanisms.
     model_config = pydantic.ConfigDict(extra="allow")
 
     @pydantic.model_validator(mode="after")
@@ -484,7 +487,11 @@ def _load_registers() -> List[Register]:
 
 
 def clear_cache() -> None:
-    """Clear the register definition cache."""
+    """Clear the register definition cache.
+
+    Exposed for tests and tooling that need to reload register
+    definitions.
+    """
 
     _load_registers_from_file.cache_clear()
 

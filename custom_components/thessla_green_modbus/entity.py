@@ -17,6 +17,8 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         """Initialize the entity."""
         super().__init__(coordinator)
         self._key = key
+        # Home Assistant reads ``_attr_device_info`` directly during entity
+        # setup; keeping this attribute avoids additional property wrappers.
         self._attr_device_info = coordinator.get_device_info()
 
     @property
@@ -30,7 +32,11 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
 
     @property
     def available(self) -> bool:
-        """Return if entity is available."""
+        """Return if entity is available.
+
+        This property forms part of the entity API and is queried by Home
+        Assistant even though it is not referenced in the codebase.
+        """
         return (
             self.coordinator.last_update_success
             and self.coordinator.data.get(self._key) is not None

@@ -58,23 +58,6 @@ SENSOR_UNAVAILABLE_REGISTERS = {
 }
 
 
-# Registers using signed 16-bit values
-SIGNED_REGISTERS = {
-    "outside_temperature",
-    "supply_temperature",
-    "exhaust_temperature",
-    "fpx_temperature",
-    "duct_supply_temperature",
-    "gwc_temperature",
-    "ambient_temperature",
-    "heating_temperature",
-    "supply_flow_rate",
-    "exhaust_flow_rate",
-}
-
-# DAC output registers that use 0-10V scaling
-DAC_REGISTERS = {"dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"}
-
 
 # Configuration options
 CONF_SLAVE_ID = "slave_id"
@@ -178,33 +161,13 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Aggregated entity mappings for all platforms.  Additional platforms can be
-# added here in the future.
+# Aggregated entity mappings for backward compatibility
 ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
     "number": NUMBER_ENTITY_MAPPINGS,
 }
 
-
-def get_input_registers() -> Dict[str, int]:
-    """Return mapping of input registers loaded from JSON definitions."""
-    return _build_map("input")
-
-
-def get_holding_registers() -> Dict[str, int]:
-    """Return mapping of holding registers loaded from JSON definitions."""
-    return _build_map("holding")
-
-
-def get_coil_registers() -> Dict[str, int]:
-    """Return mapping of coil registers loaded from JSON definitions."""
-    return _build_map("coil")
-
-
-def get_discrete_input_registers() -> Dict[str, int]:
-    """Return mapping of discrete input registers loaded from JSON definitions."""
-    return _build_map("discrete")
-
-
+# Aggregated entity mappings for all platforms.  Additional platforms can be
+# added here in the future.
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
 # ============================================================================

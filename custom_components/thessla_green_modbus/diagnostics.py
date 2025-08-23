@@ -25,7 +25,11 @@ _LOGGER = logging.getLogger(__name__)
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
-    """Return diagnostics for a config entry."""
+    """Return diagnostics for a config entry.
+
+    Home Assistant calls this coroutine when the diagnostics panel is
+    requested; it is part of the integration contract.
+    """
     coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     # Gather comprehensive diagnostic data from the coordinator

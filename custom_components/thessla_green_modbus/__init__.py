@@ -81,7 +81,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up ThesslaGreen Modbus from a config entry."""
+    """Set up ThesslaGreen Modbus from a config entry.
+
+    This hook is invoked by Home Assistant during config entry setup even
+    though it appears unused within the integration code itself.
+    """
     _LOGGER.info(MIGRATION_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
@@ -212,7 +216,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
+    """Unload a config entry.
+
+    Called by Home Assistant when a config entry is removed.  Kept for the
+    callback interface despite not being referenced directly.
+    """
     _LOGGER.debug("Unloading ThesslaGreen Modbus integration")
 
     # Unload platforms
@@ -303,7 +311,11 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Migrate old entry."""
+    """Migrate old entry.
+
+    Home Assistant uses this during upgrades; vulture marks it as unused but
+    the runtime imports it dynamically.
+    """
     _LOGGER.debug("Migrating ThesslaGreen Modbus from version %s", config_entry.version)
 
     new_data = {**config_entry.data}
