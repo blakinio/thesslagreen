@@ -24,7 +24,6 @@ from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
-import struct
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
