@@ -22,9 +22,11 @@ import struct
 import importlib.resources as resources
 from dataclasses import dataclass
 from datetime import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Set, Tuple
 import struct
+from typing import Any, Dict, List, Sequence
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
@@ -384,18 +386,24 @@ def _normalise_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _load_registers_from_file() -> List[Register]:
-    """Load register definitions from the bundled JSON file."""
+@lru_cache(maxsize=1)
+def _load_registers_from_file(
+    path: Path, *, file_hash: str
+) -> List[Register]:
+    """Load register definitions from ``path``.
+
+    ``file_hash`` is only used to invalidate the cache when the underlying file
+    content changes.  It is marked as a keyword-only argument to ensure callers
+    pass it explicitly which makes the intention clearer.
+    """
 
     try:
-        raw = json.loads(_REGISTERS_PATH.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", _REGISTERS_PATH)
+        _LOGGER.error("Register definition file missing: %s", path)
         return []
     except Exception:  # pragma: no cover - defensive
-        _LOGGER.exception(
-            "Failed to read register definitions from %s", _REGISTERS_PATH
-        )
+        _LOGGER.exception("Failed to read register definitions from %s", path)
         return []
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
@@ -468,11 +476,6 @@ def _load_registers_from_file() -> List[Register]:
     return registers
 
 
-# Cache for loaded register definitions and the file hash used to build it
-_REGISTER_CACHE: List[Register] = []
-_REGISTERS_HASH: str | None = None
-
-
 def _compute_file_hash() -> str:
     """Return the SHA256 hash of the registers file."""
 
@@ -482,22 +485,14 @@ def _compute_file_hash() -> str:
 def _load_registers() -> List[Register]:
     """Return cached register definitions, reloading if the file changed."""
 
-    global _REGISTERS_HASH
-    current_hash = _compute_file_hash()
-    if not _REGISTER_CACHE or _REGISTERS_HASH != current_hash:
-        _REGISTER_CACHE.clear()
-        _REGISTER_CACHE.extend(_load_registers_from_file())
-        _REGISTERS_HASH = current_hash
-    return _REGISTER_CACHE
+    file_hash = _compute_file_hash()
+    return _load_registers_from_file(_REGISTERS_PATH, file_hash=file_hash)
 
 
-def _cache_clear() -> None:
-    global _REGISTERS_HASH
-    _REGISTER_CACHE.clear()
-    _REGISTERS_HASH = None
+def clear_cache() -> None:
+    """Clear the register definition cache."""
 
-
-_load_registers.cache_clear = _cache_clear  # type: ignore[attr-defined]
+    _load_registers_from_file.cache_clear()
 
 
 # Load register definitions once at import time
@@ -522,8 +517,10 @@ def get_registers_by_function(fn: str) -> List[Register]:
 
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
-
-    return _REGISTERS_HASH or ""
+    try:
+        return _compute_file_hash()
+    except Exception:  # pragma: no cover - defensive
+        return ""
 
 
 @dataclass(slots=True)
