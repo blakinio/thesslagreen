@@ -57,13 +57,19 @@ async def async_get_config_entry_diagnostics(
             "raw_registers", coordinator.device_scan_result["raw_registers"]
         )
 
+    # Always expose registers that were skipped due to errors and any
+    # unknown addresses discovered during the scan. Prefer data from the
+    # most recent device scan, but fall back to any cached coordinator
+    # values so the information is always present in diagnostics.
+    unknown_regs: dict[str, dict[int, Any]] = {}
+    failed_addrs: dict[str, dict[str, list[int]]] = {}
     if coordinator.device_scan_result:
-        # Always expose registers that were skipped due to errors and any
-        # unknown addresses discovered during the scan
-        if "unknown_registers" in coordinator.device_scan_result:
-            diagnostics["unknown_registers"] = coordinator.device_scan_result["unknown_registers"]
-        if "failed_addresses" in coordinator.device_scan_result:
-            diagnostics["failed_addresses"] = coordinator.device_scan_result["failed_addresses"]
+        unknown_regs = coordinator.device_scan_result.get("unknown_registers", {})
+        failed_addrs = coordinator.device_scan_result.get("failed_addresses", {})
+    if not unknown_regs and hasattr(coordinator, "unknown_registers"):
+        unknown_regs = coordinator.unknown_registers
+    diagnostics.setdefault("unknown_registers", unknown_regs)
+    diagnostics.setdefault("failed_addresses", failed_addrs)
 
     # Add human-readable descriptions for active error/status registers
     translations = await translation.async_get_translations(
