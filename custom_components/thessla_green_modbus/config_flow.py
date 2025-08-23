@@ -331,7 +331,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 caps_data = DeviceCapabilities()
         else:
             caps_data = DeviceCapabilities()
-        capabilities = caps_data.as_dict()
 
         register_count = self._scan_result.get(
             "register_count",
@@ -339,7 +338,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
         capabilities_list = [
-            k.replace("_", " ").title() for k, v in capabilities.items() if v
+            k.replace("_", " ").title() for k, v in caps_data.items() if v
         ]
 
         scan_success_rate = "100%" if register_count > 0 else "0%"

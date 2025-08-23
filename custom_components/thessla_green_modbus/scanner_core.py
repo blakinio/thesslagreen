@@ -66,6 +66,15 @@ class DeviceInfo:
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    def items(self):
+        return asdict(self).items()
+
+    def keys(self):
+        return asdict(self).keys()
+
+    def __iter__(self):
+        return iter(self.items())
+
 
 @dataclass
 class DeviceCapabilities:
@@ -123,6 +132,15 @@ class DeviceCapabilities:
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    def items(self):
+        return asdict(self).items()
+
+    def keys(self):
+        return asdict(self).keys()
+
+    def __iter__(self):
+        return iter(self.items())
 
 
 class ThesslaGreenDeviceScanner:
