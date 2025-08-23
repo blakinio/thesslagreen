@@ -158,7 +158,7 @@ custom_components/thessla_green_modbus/
 ├── config_flow.py           # Configuration UI
 ├── const.py                 # Constants and register definitions
 ├── coordinator.py           # Data coordinator (optimized)
-├── device_scanner.py        # Device capability scanner
+├── scanner_core.py          # Device capability scanner
 ├── climate.py               # Climate entity (enhanced)
 ├── sensor.py                # Sensor entities
 ├── binary_sensor.py         # Binary sensor entities (enhanced)
