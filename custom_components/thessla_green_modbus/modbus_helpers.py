@@ -64,11 +64,23 @@ async def _call_modbus(
             kwarg = ""
         _KWARG_CACHE[func] = kwarg
 
+    _LOGGER.debug(
+        "Sending %s to slave %s: args=%s kwargs=%s",
+        getattr(func, "__name__", repr(func)),
+        slave_id,
+        positional,
+        kwargs,
+    )
+
     if kwarg == "slave":
-        return await func(*positional, slave=slave_id, **kwargs)
-    if kwarg == "unit":
-        return await func(*positional, unit=slave_id, **kwargs)
-    return await func(*positional, **kwargs)
+        response = await func(*positional, slave=slave_id, **kwargs)
+    elif kwarg == "unit":
+        response = await func(*positional, unit=slave_id, **kwargs)
+    else:
+        response = await func(*positional, **kwargs)
+
+    _LOGGER.debug("Received from %s: %s", getattr(func, "__name__", repr(func)), response)
+    return response
 
 
 def group_reads(addresses: Iterable[int], max_block_size: int = 64) -> List[Tuple[int, int]]:
