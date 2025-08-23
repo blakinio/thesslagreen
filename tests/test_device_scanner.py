@@ -1359,7 +1359,7 @@ async def test_scan_populates_device_name():
     regs = [(name_bytes[i] << 8) | name_bytes[i + 1] for i in range(0, 16, 2)]
 
     async def fake_read_holding(client, address, count, *, skip_cache=False):
-        if address == HOLDING_REGISTERS["device_name_1"]:
+        if address == HOLDING_REGISTERS["device_name"]:
             return regs
         return None
 
@@ -1573,7 +1573,7 @@ async def test_scan_logs_missing_expected_registers(caplog):
         "version_major": 0,
         "version_minor": 1,
         "version_patch": 2,
-        "serial_number_1": 3,
+        "serial_number": 3,
         "reg_a": 4,
     }
 

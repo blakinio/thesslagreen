@@ -15,8 +15,30 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+try:  # pragma: no cover - handle absence of Home Assistant
+    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+except Exception:  # pragma: no cover - executed in tests without HA
+    class BinarySensorDeviceClass:  # type: ignore[no-redef]
+        RUNNING = "running"
+        OPENING = "opening"
+        POWER = "power"
+        HEAT = "heat"
+        CONNECTIVITY = "connectivity"
+        PROBLEM = "problem"
+        SAFETY = "safety"
+        MOISTURE = "moisture"
+
+    class SensorDeviceClass:  # type: ignore[no-redef]
+        TEMPERATURE = "temperature"
+        VOLTAGE = "voltage"
+        POWER = "power"
+        ENERGY = "energy"
+        EFFICIENCY = "efficiency"
+
+    class SensorStateClass:  # type: ignore[no-redef]
+        MEASUREMENT = "measurement"
+        TOTAL_INCREASING = "total_increasing"
 
 try:  # pragma: no cover - use HA constants when available
     from homeassistant.const import (
@@ -503,33 +525,8 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
         "icon": "mdi:information",
         "register_type": "input_registers",
     },
-    "serial_number_1": {
-        "translation_key": "serial_number_1",
-        "icon": "mdi:barcode",
-        "register_type": "input_registers",
-    },
-    "serial_number_2": {
-        "translation_key": "serial_number_2",
-        "icon": "mdi:barcode",
-        "register_type": "input_registers",
-    },
-    "serial_number_3": {
-        "translation_key": "serial_number_3",
-        "icon": "mdi:barcode",
-        "register_type": "input_registers",
-    },
-    "serial_number_4": {
-        "translation_key": "serial_number_4",
-        "icon": "mdi:barcode",
-        "register_type": "input_registers",
-    },
-    "serial_number_5": {
-        "translation_key": "serial_number_5",
-        "icon": "mdi:barcode",
-        "register_type": "input_registers",
-    },
-    "serial_number_6": {
-        "translation_key": "serial_number_6",
+    "serial_number": {
+        "translation_key": "serial_number",
         "icon": "mdi:barcode",
         "register_type": "input_registers",
     },

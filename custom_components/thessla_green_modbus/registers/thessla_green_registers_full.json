@@ -781,15 +781,18 @@
       "function": "04",
       "address_dec": 24,
       "address_hex": "0x0018",
-      "name": "serial_number_1",
+      "name": "serial_number",
       "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0018": "0x001D tworzą numer seryjny"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Numer seryjny sterownika - liczba 1"
+      "unit": "ASCII",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Numer seryjny sterownika",
+      "length": 6,
+      "extra": {
+        "type": "string",
+        "encoding": "ascii"
+      }
     },
     {
       "function": "03",
@@ -804,18 +807,6 @@
       "description": "LATO - Środa - 2"
     },
     {
-      "function": "04",
-      "address_dec": 25,
-      "address_hex": "0x0019",
-      "name": "serial_number_2",
-      "access": "R/-",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Numer seryjny sterownika - liczba 2"
-    },
-    {
       "function": "03",
       "address_dec": 26,
       "address_hex": "0x001A",
@@ -826,18 +817,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 3"
-    },
-    {
-      "function": "04",
-      "address_dec": 26,
-      "address_hex": "0x001A",
-      "name": "serial_number_3",
-      "access": "R/-",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Numer seryjny sterownika - liczba 3"
     },
     {
       "function": "03",
@@ -852,18 +831,6 @@
       "description": "LATO - Środa - 4"
     },
     {
-      "function": "04",
-      "address_dec": 27,
-      "address_hex": "0x001B",
-      "name": "serial_number_4",
-      "access": "R/-",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Numer seryjny sterownika - liczba 4"
-    },
-    {
       "function": "03",
       "address_dec": 28,
       "address_hex": "0x001C",
@@ -876,18 +843,6 @@
       "description": "LATO - Czwartek - 1"
     },
     {
-      "function": "04",
-      "address_dec": 28,
-      "address_hex": "0x001C",
-      "name": "serial_number_5",
-      "access": "R/-",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Numer seryjny sterownika - liczba 5"
-    },
-    {
       "function": "03",
       "address_dec": 29,
       "address_hex": "0x001D",
@@ -898,18 +853,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 2"
-    },
-    {
-      "function": "04",
-      "address_dec": 29,
-      "address_hex": "0x001D",
-      "name": "serial_number_6",
-      "access": "R/-",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Numer seryjny sterownika - liczba 6"
     },
     {
       "function": "03",
@@ -3558,121 +3501,35 @@
       "function": "03",
       "address_dec": 8144,
       "address_hex": "0x1FD0",
-      "name": "device_name_1",
+      "name": "device_name",
       "access": "R/W",
       "unit": "ASCII",
       "enum": null,
       "multiplier": 1.0,
       "resolution": 1.0,
-      "description": "Nazwa urządzenia"
-    },
-    {
-      "function": "03",
-      "address_dec": 8145,
-      "address_hex": "0x1FD1",
-      "name": "device_name_2",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Nazwa urządzenia"
-    },
-    {
-      "function": "03",
-      "address_dec": 8146,
-      "address_hex": "0x1FD2",
-      "name": "device_name_3",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Nazwa urządzenia"
-    },
-    {
-      "function": "03",
-      "address_dec": 8147,
-      "address_hex": "0x1FD3",
-      "name": "device_name_4",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Nazwa urządzenia"
-    },
-    {
-      "function": "03",
-      "address_dec": 8148,
-      "address_hex": "0x1FD4",
-      "name": "device_name_5",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Nazwa urządzenia"
-    },
-    {
-      "function": "03",
-      "address_dec": 8149,
-      "address_hex": "0x1FD5",
-      "name": "device_name_6",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Nazwa urządzenia"
-    },
-    {
-      "function": "03",
-      "address_dec": 8150,
-      "address_hex": "0x1FD6",
-      "name": "device_name_7",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Nazwa urządzenia"
-    },
-    {
-      "function": "03",
-      "address_dec": 8151,
-      "address_hex": "0x1FD7",
-      "name": "device_name_8",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Nazwa urządzenia"
+      "description": "Nazwa urządzenia",
+      "length": 8,
+      "extra": {
+        "type": "string",
+        "encoding": "ascii"
+      }
     },
     {
       "function": "03",
       "address_dec": 8187,
       "address_hex": "0x1FFB",
-      "name": "lock_pass1",
+      "name": "lock_pass",
       "access": "R/W",
-      "unit": "Pod tymi adresami można zapisać klucz produktu wprowadzony przez użytkownika",
+      "unit": null,
       "enum": null,
       "multiplier": 1.0,
       "resolution": 1.0,
-      "description": "Klucz produktu użytkownika słowo młodsze"
-    },
-    {
-      "function": "03",
-      "address_dec": 8188,
-      "address_hex": "0x1FFC",
-      "name": "lock_pass2",
-      "access": "R/W",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Klucz produktu użytkownika słowo starsze"
+      "description": "Klucz produktu użytkownika",
+      "length": 2,
+      "extra": {
+        "type": "uint32",
+        "endianness": "little"
+      }
     },
     {
       "function": "03",

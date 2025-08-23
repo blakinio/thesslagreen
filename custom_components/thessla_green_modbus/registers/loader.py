@@ -23,7 +23,8 @@ import importlib.resources as resources
 from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
+import struct
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
@@ -66,13 +67,53 @@ class Register:
     # ------------------------------------------------------------------
     # Value helpers
     # ------------------------------------------------------------------
-    def decode(self, raw: int) -> Any:
+    def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
 
-        if raw == 0x8000:  # common sentinel used by the device
+        if self.length > 1 and isinstance(raw, Sequence):
+            raw_list = list(raw)
+            if all(v == 0x8000 for v in raw_list):
+                return None
+
+            if self.extra and self.extra.get("type") == "string":
+                encoding = self.extra.get("encoding", "ascii")
+                data = bytearray()
+                for word in raw_list:
+                    data.extend(word.to_bytes(2, "big"))
+                return data.rstrip(b"\x00").decode(encoding)
+
+            endianness = "big"
+            if self.extra:
+                endianness = self.extra.get("endianness", "big")
+            words = raw_list if endianness == "big" else list(reversed(raw_list))
+            data = b"".join(w.to_bytes(2, "big") for w in words)
+
+            typ = self.extra.get("type") if self.extra else None
+            if typ == "float32":
+                value = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+            elif typ == "float64":
+                value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+            elif typ == "int32":
+                value = int.from_bytes(data, "big", signed=True)
+            elif typ == "uint32":
+                value = int.from_bytes(data, "big", signed=False)
+            else:
+                value = int.from_bytes(data, "big", signed=False)
+
+            if self.multiplier is not None:
+                value = value * self.multiplier
+            if self.resolution is not None:
+                steps = round(value / self.resolution)
+                value = steps * self.resolution
+            return value
+
+        if isinstance(raw, Sequence):
+            # Defensive: unexpected sequence for single register
+            raw = raw[0]
+
+        if raw == 0x8000:
             return None
 
-        # Bitmask registers return a list of active flag labels
         if self.extra and self.extra.get("bitmask") and self.enum:
             flags: list[Any] = []
             for key, label in sorted(
@@ -82,7 +123,6 @@ class Register:
                     flags.append(label)
             return flags
 
-        # Enumerations map raw numeric values to labels when provided
         if self.enum is not None:
             if raw in self.enum:
                 return self.enum[raw]
@@ -124,8 +164,48 @@ class Register:
 
         return value
 
-    def encode(self, value: Any) -> int:
+    def encode(self, value: Any) -> int | List[int]:
         """Encode ``value`` into the raw register representation."""
+
+        if self.length > 1:
+            if self.extra and self.extra.get("type") == "string":
+                encoding = self.extra.get("encoding", "ascii")
+                data = str(value).encode(encoding)
+                data = data.ljust(self.length * 2, b"\x00")
+                return [int.from_bytes(data[i:i+2], "big") for i in range(0, self.length * 2, 2)]
+
+            endianness = "big"
+            if self.extra:
+                endianness = self.extra.get("endianness", "big")
+
+            raw_val: Any = value
+            if self.enum and isinstance(value, str):
+                for k, v in self.enum.items():
+                    if v == value:
+                        raw_val = int(k)
+                        break
+            if self.multiplier is not None:
+                raw_val = int(round(float(raw_val) / self.multiplier))
+            if self.resolution is not None:
+                step = self.resolution
+                raw_val = int(round(float(raw_val) / step) * step)
+
+            typ = self.extra.get("type") if self.extra else None
+            if typ == "float32":
+                data = struct.pack(">f" if endianness == "big" else "<f", float(raw_val))
+            elif typ == "float64":
+                data = struct.pack(">d" if endianness == "big" else "<d", float(raw_val))
+            elif typ == "int32":
+                data = int(raw_val).to_bytes(4, "big", signed=True)
+            elif typ == "uint32":
+                data = int(raw_val).to_bytes(4, "big", signed=False)
+            else:
+                data = int(raw_val).to_bytes(self.length * 2, "big", signed=False)
+
+            words = [int.from_bytes(data[i:i+2], "big") for i in range(0, len(data), 2)]
+            if endianness == "little":
+                words = list(reversed(words))
+            return words
 
         if self.extra and self.extra.get("bitmask") and self.enum:
             raw_int = 0
@@ -161,7 +241,6 @@ class Register:
 
         raw: Any = value
         if self.enum and isinstance(value, str):
-            # Reverse lookup
             for k, v in self.enum.items():
                 if v == value:
                     raw = int(k)
