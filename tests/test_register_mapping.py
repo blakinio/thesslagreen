@@ -1,6 +1,5 @@
 import pytest
 from custom_components.thessla_green_modbus.registers import get_registers_by_function
-from custom_components.thessla_green_modbus.registers.loader import _normalise_name
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 from pathlib import Path
@@ -82,7 +81,7 @@ def test_registers_match_json() -> None:
             addr -= 1
         elif fn == "03" and addr >= 111:
             addr -= 111
-        by_func[fn][_normalise_name(item["name"])] = addr
+        by_func[fn][_to_snake_case(item["name"])] = addr
 
     for fn in ["01", "02", "03", "04"]:
         regs = {r.name: r.address for r in get_registers_by_function(fn)}
