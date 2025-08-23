@@ -123,7 +123,7 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
 
 
 def test_register_file_sorted() -> None:
-    """Ensure register JSON is sorted by function then address."""
+    """Ensure register JSON is sorted and loader preserves ordering."""
 
     from custom_components.thessla_green_modbus.registers import loader
 
@@ -131,3 +131,7 @@ def test_register_file_sorted() -> None:
     regs = data["registers"]
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
+
+    loaded_names = [r.name for r in loader.get_all_registers()]
+    expected = [loader._normalise_name(r["name"]) for r in regs]
+    assert loaded_names == expected
