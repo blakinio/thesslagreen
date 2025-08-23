@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 
@@ -93,3 +94,29 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
 
     # The file should be read only once thanks to caching
     assert read_calls == 1
+
+
+@pytest.mark.parametrize(
+    "registers",
+    [
+        [
+            {"function": "01", "address_dec": 1, "name": "dup1", "access": "R"},
+            {"function": "01", "address_dec": 1, "name": "dup2", "access": "R"},
+        ],
+        [
+            {"function": "01", "address_dec": 1, "name": "dup", "access": "R"},
+            {"function": "02", "address_dec": 2, "name": "dup", "access": "R"},
+        ],
+    ],
+)
+def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> None:
+    """Duplicate names or addresses should raise an error."""
+
+    from custom_components.thessla_green_modbus.registers import loader
+
+    path = tmp_path / "regs.json"
+    path.write_text(json.dumps({"registers": registers}))
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
+
+    with pytest.raises(ValueError):
+        loader._load_registers_from_file()

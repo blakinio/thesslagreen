@@ -23,7 +23,7 @@ import importlib.resources as resources
 from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence, Set, Tuple
 import struct
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
@@ -401,20 +401,33 @@ def _load_registers_from_file() -> List[Register]:
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
     registers: List[Register] = []
+    seen_pairs: Set[Tuple[str, int]] = set()
+    seen_names: Set[str] = set()
+
     for item in items:
         _validate_item(item)
 
         function = _normalise_function(str(item.get("function", "")))
         if item.get("address_dec") is not None:
-            address = int(item["address_dec"])
+            raw_address = int(item["address_dec"])
         else:
-            address = int(str(item.get("address_hex")), 16)
+            raw_address = int(str(item.get("address_hex")), 16)
+
+        address = raw_address
         if function == "02":
             address -= 1
         elif function == "03" and address >= 111:
             address -= 111
 
         name = _normalise_name(str(item["name"]))
+
+        pair = (function, raw_address)
+        if pair in seen_pairs:
+            raise ValueError(f"duplicate register pair: {pair}")
+        if name in seen_names:
+            raise ValueError(f"duplicate register name: {name}")
+        seen_pairs.add(pair)
+        seen_names.add(name)
 
         enum_map = item.get("enum")
         if name == "special_mode":
