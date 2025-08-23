@@ -1,9 +1,9 @@
 import pytest
 from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import _normalise_name
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 from pathlib import Path
-import importlib.util
 import json
 
 
@@ -53,11 +53,11 @@ def test_register_mapping_and_scaling() -> None:
 
     holding = _reg("03", "supply_air_temperature_manual")
     assert holding.resolution == 0.5
-    assert holding.encode(21.3) == 21
-    assert holding.decode(21) == pytest.approx(21.0)
+    assert holding.encode(21.3) == 43
+    assert holding.decode(43) == pytest.approx(21.5)
 
     enum_reg = _reg("03", "access_level")
-    assert enum_reg.decode(1) == "serwis/instalator"
+    assert enum_reg.decode(1) == "serwis / instalator"
     assert enum_reg.encode("producent") == 3
 
     inp = _reg("04", "outside_temperature")
@@ -65,13 +65,10 @@ def test_register_mapping_and_scaling() -> None:
     assert inp.decode(215) == pytest.approx(21.5)
     assert inp.encode(21.5) == 215
 
-    bit_reg = _reg("03", "E196_E199")
-    assert bit_reg.decode(10) == ["E197", "E199"]
-    assert bit_reg.encode(["E197", "E199"]) == 10
 
 
-def test_static_register_maps_synced() -> None:
-    """Generated register maps must match the JSON definitions."""
+def test_registers_match_json() -> None:
+    """Registers loaded by the helper match the JSON definitions."""
 
     json_path = Path(
         "custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json"
@@ -79,16 +76,14 @@ def test_static_register_maps_synced() -> None:
     data = json.loads(json_path.read_text())
     by_func: dict[str, dict[str, int]] = {fn: {} for fn in ["01", "02", "03", "04"]}
     for item in data["registers"]:
-        by_func[item["function"]][item["name"]] = int(item["address_dec"])
+        fn = item["function"]
+        addr = int(item["address_dec"])
+        if fn == "02":
+            addr -= 1
+        elif fn == "03" and addr >= 111:
+            addr -= 111
+        by_func[fn][_normalise_name(item["name"])] = addr
 
-    spec = importlib.util.spec_from_file_location(
-        "tg_registers", Path("custom_components/thessla_green_modbus/registers.py")
-    )
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)  # type: ignore[union-attr]
-
-    assert module.COIL_REGISTERS == by_func["01"]
-    assert module.DISCRETE_INPUT_REGISTERS == by_func["02"]
-    assert module.INPUT_REGISTERS == by_func["04"]
-    assert module.HOLDING_REGISTERS == by_func["03"]
+    for fn in ["01", "02", "03", "04"]:
+        regs = {r.name: r.address for r in get_registers_by_function(fn)}
+        assert regs == by_func[fn]

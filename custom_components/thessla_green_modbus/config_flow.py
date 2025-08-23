@@ -147,7 +147,11 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         )
 
         # Perform full device scan
-        scan_result = await asyncio.wait_for(scanner.scan_device(), timeout=timeout)
+        scan_result = await _run_with_retry(
+            lambda: asyncio.wait_for(scanner.scan_device(), timeout=timeout),
+            retries=DEFAULT_RETRY,
+            backoff=CONFIG_FLOW_BACKOFF,
+        )
 
         caps_obj = scan_result.get("capabilities")
         if caps_obj is None:

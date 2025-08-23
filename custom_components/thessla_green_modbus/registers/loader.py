@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence, Set, Tuple, Literal
 
 import pydantic
+from typing import Any, Dict, List, Sequence, Set, Tuple
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case

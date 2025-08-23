@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 from datetime import datetime, timezone
 from types import SimpleNamespace, ModuleType
 from unittest.mock import AsyncMock, patch
@@ -221,3 +222,40 @@ async def test_diagnostics_json_serializable():
 
     serialized = json.dumps(result)
     assert isinstance(serialized, str)
+
+
+@pytest.mark.asyncio
+async def test_translation_failure_handled(caplog):
+    """Ensure translation errors do not break diagnostics."""
+
+    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = last_scan
+            self.device_scan_result = None
+            self.data = {"e_fault": True}
+            self.device_info = {}
+            self.available_registers = {}
+            self.statistics = {}
+            self.capabilities = SimpleNamespace(as_dict=lambda: {})
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}},
+        config=SimpleNamespace(language="en"),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(side_effect=Exception("boom")),
+    ):
+        with caplog.at_level(logging.DEBUG):
+            result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["active_errors"] == {"e_fault": "e_fault"}
+    assert any("translation" in record.message.lower() for record in caplog.records)

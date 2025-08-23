@@ -106,13 +106,14 @@ pomijane w kolejnych skanach.
 Szczegóły migracji z czujników procentowych opisano w pliku [docs/airflow_migration.md](docs/airflow_migration.md).
 
 ### Proces autoskanu
-Podczas dodawania integracji moduł `device_scanner` wykonuje funkcję
-`scan_device()`, która wykrywa dostępne rejestry oraz możliwości
-urządzenia. Wynik skanowania trafia do struktury `available_registers`,
-z której koordynator tworzy jedynie encje obsługiwane przez dane
-urządzenie. Jeśli po aktualizacji firmware pojawią się nowe rejestry,
-ponownie uruchom skanowanie (np. usuń i dodaj integrację), aby
-zaktualizować listę `available_registers`.
+Podczas dodawania integracji moduł `ThesslaGreenDeviceScanner` (plik
+`scanner_core.py`) wywołuje metodę `ThesslaGreenDeviceScanner.scan_device()`,
+która otwiera połączenie Modbus, wykrywa dostępne rejestry oraz
+możliwości urządzenia, a następnie zamyka klienta. Wynik skanowania
+trafia do struktury `available_registers`, z której koordynator tworzy
+jedynie encje obsługiwane przez dane urządzenie. Jeśli po aktualizacji
+firmware pojawią się nowe rejestry, ponownie uruchom skanowanie (np.
+usuń i dodaj integrację), aby zaktualizować listę `available_registers`.
 
 Podczas skanowania rejestry są grupowane według funkcji i tylko część z nich
 przekłada się na utworzone encje. Niektóre służą jedynie do diagnostyki lub
@@ -495,18 +496,17 @@ python3 tools/cleanup_old_entities.py \
 - 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Aktualizacja `registers.py`
-Zmiany w pliku `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` wymagają ponownego
-wygenerowania modułu z definicjami rejestrów i jego walidacji:
+### Generowanie `registers.py` (opcjonalne)
+Integracja korzysta bezpośrednio z pliku
+`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
+który stanowi jedyne źródło prawdy o rejestrach. Skrypt
+`tools/generate_registers.py` może wygenerować pomocniczy moduł
+`registers.py` dla zewnętrznych narzędzi, lecz plik ten nie jest
+przechowywany w repozytorium.
 
 ```bash
-python tools/generate_registers.py
-python tools/validate_registers.py  # opcjonalna kontrola spójności
+python tools/generate_registers.py  # jeśli potrzebujesz statycznej mapy
 ```
-
-Do commitu dołącz zaktualizowany plik
-`custom_components/thessla_green_modbus/registers.py` oraz zmodyfikowany plik
-JSON.
 
 ### Validate translations
 Ensure translation files are valid JSON:
@@ -552,14 +552,13 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 pytest tests/test_register_loader.py
 ```
 
-4. Wygeneruj moduł `registers.py` i opcjonalnie zweryfikuj spójność:
+4. (Opcjonalnie) wygeneruj moduł `registers.py` dla dodatkowych narzędzi:
 
 ```bash
 python tools/generate_registers.py
-python tools/validate_registers.py
 ```
 
-5. Dołącz zmienione pliki (`registers.py` oraz JSON) do commitu.
+5. Dołącz zmieniony plik JSON do commitu.
 
 ### Migracja z CSV na JSON
 

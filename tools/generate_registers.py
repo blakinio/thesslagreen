@@ -1,4 +1,10 @@
-"""Generate ``registers.py`` from ``thessla_green_registers_full.json``."""
+"""Generate a legacy ``registers.py`` module from the JSON register data.
+
+``thessla_green_registers_full.json`` is the canonical source of register
+definitions and is used directly by the integration.  This helper script is
+only needed when a static Python mapping is required for debugging or external
+tools.
+"""
 
 from __future__ import annotations
 
@@ -8,8 +14,8 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 # Path to the canonical JSON register definition file bundled with the
-# integration.  The generator consumes this file and produces
-# ``custom_components/thessla_green_modbus/registers.py``.
+# integration.  ``registers.py`` is generated from this file and should never be
+# edited manually.
 JSON_PATH = (
     ROOT
     / "custom_components"

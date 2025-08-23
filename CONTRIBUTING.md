@@ -99,16 +99,16 @@ pre-commit run --all-files
 
 ### Updating register maps
 
-Register address maps are generated from
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
-After editing this file, regenerate the Python module:
+Register addresses are defined in
+`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
+and this file serves as the sole source of truth.  The integration reads the
+JSON directly; if you require a static Python mapping for other tools, run:
 
 ```bash
 python tools/generate_registers.py
 ```
 
-The test suite (`tests/test_register_mapping.py`) verifies that the generated
-maps stay in sync with the JSON definition.
+The test suite ensures the JSON definitions remain valid.
 
 ## Making Changes
 
@@ -174,17 +174,17 @@ custom_components/thessla_green_modbus/
 
 ### Regenerating register definitions
 
-The canonical register specification lives in `tools/modbus_registers.csv`.
-After editing this file, regenerate the JSON and Python artifacts:
+The canonical register specification lives in
+`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
+After editing this file, run the validation tests and, if needed, regenerate the
+helper Python module:
 
 ```bash
-python tools/convert_registers_csv_to_json.py
-python tools/generate_registers.py
-python tools/validate_registers.py
+python tools/generate_registers.py  # optional helper
 ```
 
-Commit the updated CSV, JSON and Python files together. The `generate-registers`
-and `validate-registers` pre-commit hooks run these checks automatically.
+Commit the updated JSON file. The `generate-registers` pre-commit hook runs the
+generator when necessary.
 
 ## Testing
 
@@ -202,7 +202,6 @@ python -m pytest tests/ --cov=custom_components.thessla_green_modbus
 
 # Validate register file
 python -m pytest tests/test_register_loader.py -v
-python tools/validate_registers.py
 
 # Validate translation files
 python -m json.tool custom_components/thessla_green_modbus/translations/*.json
