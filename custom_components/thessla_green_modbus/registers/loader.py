@@ -18,15 +18,16 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import struct
 import importlib.resources as resources
 from dataclasses import dataclass
 from datetime import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Set, Tuple
-import struct
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence, Set, Tuple, Literal
+
+import pydantic
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
@@ -326,46 +327,42 @@ def _normalise_function(fn: str) -> str:
     return mapping.get(fn.lower(), fn)
 
 
+class RegisterDefinition(pydantic.BaseModel):
+    """Schema describing a raw register definition from JSON."""
 
-def _validate_item(item: Dict[str, Any]) -> None:
-    """Validate raw register definition ``item``.
+    function: Literal["01", "02", "03", "04"]
+    address_dec: int
+    address_hex: str
+    name: str
+    access: Literal["R/-", "R/W", "R", "W"]
+    unit: str | None = None
+    enum: Dict[str, Any] | None = None
+    multiplier: float | None = None
+    resolution: float | None = None
+    description: str | None = None
+    min: float | None = None
+    max: float | None = None
+    default: float | None = None
+    notes: str | None = None
+    information: str | None = None
+    extra: Dict[str, Any] | None = None
+    length: int = 1
+    bcd: bool = False
 
-    Only a minimal subset of fields is required by the tests.  We ensure
-    presence of the mandatory keys and verify basic types so that obviously
-    malformed definitions are rejected with a :class:`ValueError`.
-    """
+    model_config = pydantic.ConfigDict(extra="allow")
 
-    if not isinstance(item, dict):
-        raise ValueError("register entry must be an object")
-    if not isinstance(item.get("name"), str):
-        raise ValueError("missing or invalid 'name'")
-    if item.get("function") is None:
-        raise ValueError("missing 'function'")
-    if not isinstance(item["function"], (str, int)):
-        raise ValueError("invalid 'function'")
-    if str(item["function"]) not in {"01", "02", "03", "04"}:
-        raise ValueError("invalid 'function'")
-    if not isinstance(item.get("access"), str):
-        raise ValueError("missing or invalid 'access'")
-    if item["access"] not in {"R/-", "R/W", "R", "W"}:
-        raise ValueError("invalid 'access'")
-    if item.get("address_dec") is None and item.get("address_hex") is None:
-        raise ValueError("missing address field")
-    if item.get("address_dec") is not None and not isinstance(item["address_dec"], int):
-        raise ValueError("'address_dec' must be int")
-    if item.get("address_hex") is not None:
-        if not isinstance(item["address_hex"], str):
-            raise ValueError("'address_hex' must be str")
-        # ensure the value is a valid hexadecimal number
-        int(str(item["address_hex"]), 16)
-    if item.get("enum") is not None and not isinstance(item["enum"], dict):
-        raise ValueError("'enum' must be a mapping")
-    if item.get("extra") is not None and not isinstance(item["extra"], dict):
-        raise ValueError("'extra' must be a mapping")
-    if item.get("length") is not None and not isinstance(item["length"], int):
-        raise ValueError("'length' must be an integer")
-    if item.get("bcd") is not None and not isinstance(item["bcd"], bool):
-        raise ValueError("'bcd' must be a boolean")
+    @pydantic.model_validator(mode="after")
+    def check_address(self) -> "RegisterDefinition":
+        if int(self.address_hex, 16) != self.address_dec:
+            raise ValueError("address_hex does not match address_dec")
+        return self
+
+    @pydantic.field_validator("name")
+    @classmethod
+    def name_is_snake(cls, v: str) -> str:
+        if not re.fullmatch(r"[a-z0-9_]+", v):
+            raise ValueError("name must be snake_case")
+        return v
 
 
 def _normalise_name(name: str) -> str:
@@ -413,13 +410,10 @@ def _load_registers_from_file(
     seen_names: Set[str] = set()
 
     for item in items:
-        _validate_item(item)
+        parsed = RegisterDefinition.model_validate(item)
 
-        function = _normalise_function(str(item.get("function", "")))
-        if item.get("address_dec") is not None:
-            raw_address = int(item["address_dec"])
-        else:
-            raw_address = int(str(item.get("address_hex")), 16)
+        function = _normalise_function(parsed.function)
+        raw_address = int(parsed.address_dec)
 
         address = raw_address
         if function == "02":
@@ -427,7 +421,7 @@ def _load_registers_from_file(
         elif function == "03" and address >= 111:
             address -= 111
 
-        name = _normalise_name(str(item["name"]))
+        name = _normalise_name(parsed.name)
 
         pair = (function, raw_address)
         if pair in seen_pairs:
@@ -437,7 +431,7 @@ def _load_registers_from_file(
         seen_pairs.add(pair)
         seen_names.add(name)
 
-        enum_map = item.get("enum")
+        enum_map = parsed.enum
         if name == "special_mode":
             enum_map = _SPECIAL_MODES_ENUM
         elif enum_map:
@@ -448,28 +442,28 @@ def _load_registers_from_file(
             ):
                 enum_map = {int(v): k for k, v in enum_map.items()}
 
-        multiplier = item.get("multiplier")
-        resolution = item.get("resolution")
+        multiplier = parsed.multiplier
+        resolution = parsed.resolution
 
         registers.append(
             Register(
                 function=function,
                 address=address,
                 name=name,
-                access=str(item.get("access", "ro")),
-                description=item.get("description"),
-                unit=item.get("unit"),
+                access=str(parsed.access),
+                description=parsed.description,
+                unit=parsed.unit,
                 multiplier=multiplier,
                 resolution=resolution,
-                min=item.get("min"),
-                max=item.get("max"),
-                default=item.get("default"),
+                min=parsed.min,
+                max=parsed.max,
+                default=parsed.default,
                 enum=enum_map,
-                notes=item.get("notes"),
-                information=item.get("information"),
-                extra=item.get("extra"),
-                length=int(item.get("length", 1)),
-                bcd=bool(item.get("bcd", False)),
+                notes=parsed.notes,
+                information=parsed.information,
+                extra=parsed.extra,
+                length=int(parsed.length),
+                bcd=bool(parsed.bcd),
             )
         )
 
@@ -561,6 +555,7 @@ def group_reads(max_block_size: int = 64) -> List[ReadPlan]:
 
 __all__ = [
     "Register",
+    "RegisterDefinition",
     "ReadPlan",
     "get_all_registers",
     "get_registers_by_function",

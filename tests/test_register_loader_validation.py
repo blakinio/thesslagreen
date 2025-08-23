@@ -1,42 +1,14 @@
 from __future__ import annotations
 
 import json
-import re
 from importlib import resources
 from pathlib import Path
 
 from tools.validate_register_pdf import parse_pdf_registers
-from typing import Literal
 
 import pydantic
 import pytest
-from custom_components.thessla_green_modbus.registers.loader import _validate_item
-
-
-class Register(pydantic.BaseModel):
-    function: Literal["01", "02", "03", "04"]
-    address_dec: int
-    address_hex: str
-    name: str
-    access: Literal["R/-", "R/W", "R", "W"]
-    unit: str | None = None
-    enum: dict[str, int | str] | None = None
-    multiplier: float | None = None
-    resolution: float | None = None
-    description: str | None = None
-
-    model_config = pydantic.ConfigDict(extra="allow")
-
-    @pydantic.model_validator(mode="after")
-    def check_address(self) -> "Register":
-        assert int(self.address_hex, 16) == self.address_dec
-        return self
-
-    @pydantic.field_validator("name")
-    @classmethod
-    def name_is_snake(cls, v: str) -> str:
-        assert re.fullmatch(r"[a-z0-9_]+", v)
-        return v
+from custom_components.thessla_green_modbus.registers.loader import RegisterDefinition
 
 
 EXPECTED = {
@@ -57,7 +29,7 @@ def test_register_file_valid() -> None:
     data = json.loads(json_file.read_text(encoding="utf-8"))
     registers = data.get("registers", data)
 
-    parsed = [Register(**item) for item in registers]
+    parsed = [RegisterDefinition.model_validate(item) for item in registers]
 
     by_fn: dict[str, list[int]] = {}
     for reg in parsed:
@@ -98,17 +70,29 @@ def test_registers_match_pdf() -> None:
         parsed = pdf_map[key]
         assert expected["access"] == parsed["access"]
 
-def test_validate_item_rejects_unknown_function() -> None:
+def test_schema_rejects_unknown_function() -> None:
     """Unknown function codes should be rejected."""
 
-    bad = {"name": "x", "function": "05", "address_dec": 0, "access": "R/W"}
-    with pytest.raises(ValueError):
-        _validate_item(bad)
+    bad = {
+        "name": "x",
+        "function": "05",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "access": "R/W",
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
 
 
-def test_validate_item_rejects_unknown_access() -> None:
+def test_schema_rejects_unknown_access() -> None:
     """Unexpected access types should raise an error."""
 
-    bad = {"name": "x", "function": "03", "address_dec": 0, "access": "RW"}
-    with pytest.raises(ValueError):
-        _validate_item(bad)
+    bad = {
+        "name": "x",
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "access": "RW",
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
