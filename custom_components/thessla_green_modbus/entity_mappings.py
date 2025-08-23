@@ -138,7 +138,7 @@ def _infer_icon(name: str, unit: str | None) -> str:
         return "mdi:thermometer"
     if unit in {"m³/h", "m3/h"} or "flow" in name or "fan" in name:
         return "mdi:fan"
-    if unit == "%" or "percentage" in name:
+    if unit == PERCENTAGE or "percentage" in name:
         return "mdi:percent-outline"
     if unit in {"s", "min", "h", "d"} or "time" in name:
         return "mdi:timer"
