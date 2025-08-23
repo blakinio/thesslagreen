@@ -1,7 +1,6 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
 import json
-import logging
 from pathlib import Path
 from typing import Any, Dict, cast
 
@@ -21,7 +20,6 @@ MULTI_REGISTER_SIZES = {
 }
 
 OPTIONS_PATH = Path(__file__).parent / "options"
-_LOGGER = logging.getLogger(__name__)
 
 # Integration constants
 DOMAIN = "thessla_green_modbus"
@@ -224,8 +222,7 @@ def _load_json_option(filename: str) -> list[Any]:
             list[Any],
             json.loads((OPTIONS_PATH / filename).read_text(encoding="utf-8")),
         )
-    except (FileNotFoundError, json.JSONDecodeError) as err:
-        _LOGGER.warning("Failed to load %s: %s", filename, err)
+    except (FileNotFoundError, json.JSONDecodeError):
         return []
 
 
