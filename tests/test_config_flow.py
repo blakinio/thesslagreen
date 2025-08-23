@@ -1102,7 +1102,7 @@ async def test_validate_input_retries_transient_failures():
 
     scanner_instance = SimpleNamespace(
         verify_connection=AsyncMock(side_effect=[ConnectionException("fail"), None]),
-        scan_device=AsyncMock(return_value=scan_result),
+        scan_device=AsyncMock(side_effect=[ConnectionException("fail"), scan_result]),
         close=AsyncMock(),
     )
 
@@ -1121,7 +1121,8 @@ async def test_validate_input_retries_transient_failures():
     assert result["scan_result"] == scan_result
     assert create_mock.await_count == 2
     assert scanner_instance.verify_connection.await_count == 2
-    assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.1]
+    assert scanner_instance.scan_device.await_count == 2
+    assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.1, 0.1]
 
 
 @pytest.mark.parametrize("exc", [asyncio.TimeoutError, ModbusIOException])
