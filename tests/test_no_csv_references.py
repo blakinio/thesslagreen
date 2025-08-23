@@ -40,3 +40,37 @@ def test_modbus_registers_csv_excluded_from_package_data() -> None:
     )
     assert "*.csv" in exclude_patterns
 
+
+def test_no_csv_path_references_outside_tools() -> None:
+    """Ensure no CSV file paths are referenced outside ``tools/``."""
+
+    repo_root = Path(__file__).resolve().parent.parent
+    tools_dir = repo_root / "tools"
+    tests_dir = repo_root / "tests"
+
+    offenders: list[Path] = []
+    for py_file in repo_root.rglob("*.py"):
+        if tools_dir in py_file.parents or tests_dir in py_file.parents:
+            continue
+        if ".csv" in py_file.read_text(encoding="utf-8"):
+            offenders.append(py_file.relative_to(repo_root))
+
+    assert not offenders, f"CSV paths referenced outside tools/: {offenders}"
+
+
+def test_modbus_registers_csv_only_used_by_converter() -> None:
+    """Ensure ``modbus_registers.csv`` is only referenced by the converter tool."""
+
+    repo_root = Path(__file__).resolve().parent.parent
+    tests_dir = repo_root / "tests"
+    expected = {Path("tools/convert_registers_csv_to_json.py")}
+
+    consumers: set[Path] = set()
+    for py_file in repo_root.rglob("*.py"):
+        if tests_dir in py_file.parents:
+            continue
+        if "modbus_registers.csv" in py_file.read_text(encoding="utf-8"):
+            consumers.add(py_file.relative_to(repo_root))
+
+    assert consumers == expected, f"Unexpected consumers: {sorted(consumers)}"
+

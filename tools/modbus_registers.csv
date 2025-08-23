@@ -1,3 +1,4 @@
+# This file is developer input only; used by tools/convert_registers_csv_to_json.py to generate JSON and not used at runtime.
 Function_Code,Address_HEX,Address_DEC,Access,Register_Name,Description,Min,Max,Default_Value,Multiplier,Unit,Information,Software_Version,Notes
 # 01 - READ COILS
 01,0x0005,5,R/-,duct_water_heater_pump,Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy,0,1,,,0 - OFF; 1 - ON,,,
