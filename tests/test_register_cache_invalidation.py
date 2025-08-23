@@ -1,9 +1,8 @@
 import json
 from pathlib import Path
-from importlib import resources
 
 from custom_components.thessla_green_modbus.registers.loader import (
-    _cache_clear,
+    clear_cache,
     _load_registers,
     _REGISTERS_PATH,
 )
@@ -19,7 +18,7 @@ def test_register_cache_invalidation(tmp_path: Path, monkeypatch) -> None:
         tmp_json,
     )
 
-    _cache_clear()
+    clear_cache()
     first = _load_registers()[0]
     assert first.description
 
@@ -27,8 +26,8 @@ def test_register_cache_invalidation(tmp_path: Path, monkeypatch) -> None:
     data["registers"][0]["description"] = "changed description"
     tmp_json.write_text(json.dumps(data), encoding="utf-8")
 
-    _cache_clear()
+    clear_cache()
     updated = _load_registers()[0]
     assert updated.description == "changed description"
 
-    _cache_clear()
+    clear_cache()
