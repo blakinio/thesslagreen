@@ -131,3 +131,46 @@ async def test_additional_diagnostic_fields():
         "timeout_errors": 1,
     }
     assert result["last_scan"] == last_scan.isoformat()
+
+
+@pytest.mark.asyncio
+async def test_unknown_registers_in_diagnostics():
+    """Ensure diagnostics include skipped and unknown registers from scan."""
+
+    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    scan_result = {
+        "unknown_registers": {"input_registers": {1: 99}},
+        "failed_addresses": {
+            "modbus_exceptions": {"input_registers": [2]},
+            "invalid_values": {},
+        },
+    }
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = last_scan
+            self.device_scan_result = scan_result
+            self.data = {}
+            self.device_info = {}
+            self.available_registers = {}
+            self.statistics = {}
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}},
+        config=SimpleNamespace(language="en"),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(return_value={}),
+    ):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["unknown_registers"] == scan_result["unknown_registers"]
+    assert result["failed_addresses"] == scan_result["failed_addresses"]
