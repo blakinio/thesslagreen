@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from importlib import resources
 from pathlib import Path
 
@@ -16,6 +17,72 @@ EXPECTED = {
     "02": {"min": 0, "max": 21, "count": 16},
     "03": {"min": 0, "max": 8444, "count": 270},
     "04": {"min": 0, "max": 298, "count": 24},
+}
+
+# Registers present in the vendor PDF but intentionally omitted in the JSON
+# definition. Some of them are covered by aggregated entries or lack enough
+# details in the documentation to be represented cleanly.
+PDF_OMISSIONS: set[tuple[str, int]] = {
+    ("04", 25),
+    ("04", 26),
+    ("04", 27),
+    ("04", 28),
+    ("04", 29),
+    ("03", 241),
+    ("03", 8145),
+    ("03", 8146),
+    ("03", 8147),
+    ("03", 8148),
+    ("03", 8149),
+    ("03", 8150),
+    ("03", 8151),
+    ("03", 8188),
+}
+
+# Fields where the JSON intentionally diverges from the PDF (e.g. corrected
+# units or scaling).  The mapping is keyed by (function, address) and contains
+# a set of field names that should be skipped during comparison.
+PDF_FIELD_OVERRIDES: dict[tuple[str, int], set[str]] = {
+    ("04", 16): {"resolution"},
+    ("04", 17): {"resolution"},
+    ("04", 18): {"resolution"},
+    ("04", 19): {"resolution"},
+    ("04", 20): {"resolution"},
+    ("04", 21): {"resolution"},
+    ("04", 22): {"resolution"},
+    ("03", 0): {"unit"},
+    ("03", 1): {"unit"},
+    ("03", 7): {"unit"},
+    ("03", 128): {"unit"},
+    ("03", 132): {"unit"},
+    ("03", 136): {"unit"},
+    ("03", 140): {"unit"},
+    ("03", 144): {"unit"},
+    ("03", 148): {"unit"},
+    ("03", 152): {"unit"},
+    ("03", 156): {"unit"},
+    ("03", 160): {"unit"},
+    ("03", 164): {"unit"},
+    ("03", 168): {"unit"},
+    ("03", 172): {"unit"},
+    ("03", 176): {"unit"},
+    ("03", 180): {"unit"},
+    ("03", 1280): {"resolution"},
+    ("03", 1281): {"resolution"},
+    ("03", 1282): {"resolution"},
+    ("03", 1283): {"resolution"},
+    ("03", 4212): {"resolution"},
+    ("03", 4213): {"resolution"},
+    ("03", 4257): {"resolution"},
+    ("03", 4258): {"resolution"},
+    ("03", 4266): {"resolution"},
+    ("03", 4321): {"resolution"},
+    ("03", 4322): {"resolution"},
+    ("03", 4323): {"resolution"},
+    ("03", 4404): {"resolution"},
+    ("03", 4453): {"resolution"},
+    ("03", 4457): {"resolution"},
+    ("03", 8190): {"resolution"},
 }
 
 
@@ -43,7 +110,7 @@ def test_register_file_valid() -> None:
 
 
 def test_registers_match_pdf() -> None:
-    """Ensure registers JSON matches vendor PDF documentation."""
+    """Ensure register JSON mirrors the vendor PDF documentation."""
 
     json_file = (
         resources.files("custom_components.thessla_green_modbus.registers")
@@ -55,20 +122,26 @@ def test_registers_match_pdf() -> None:
     pdf_data = parse_pdf_registers(pdf_path)
 
     json_map = {(r["function"], r["address_dec"]): r for r in json_data}
-    pdf_map = {
-        (r["function"], r["address_dec"]): r
-        for r in pdf_data
-        if (r["function"], r["address_dec"]) in json_map
-    }
+    pdf_map = {(r["function"], r["address_dec"]): r for r in pdf_data}
 
-    # Known omission in PDF: heating_temperature (function 04 addr 23)
-    json_map.pop(("04", 23), None)
+    missing = pdf_map.keys() - json_map.keys() - PDF_OMISSIONS
+    assert not missing, f"Missing registers: {sorted(missing)}"
 
-    assert json_map.keys() == pdf_map.keys()
-    for key in json_map:
+    for key, parsed in pdf_map.items():
+        if key in PDF_OMISSIONS:
+            continue
         expected = json_map[key]
-        parsed = pdf_map[key]
+        # Ensure names follow snake_case convention
+        assert re.fullmatch(r"[a-z0-9_]+", expected["name"])
+        # Access should always match
         assert expected["access"] == parsed["access"]
+        overrides = PDF_FIELD_OVERRIDES.get(key, set())
+        if parsed.get("unit") is not None and "unit" not in overrides:
+            assert expected.get("unit") == parsed["unit"]
+        if parsed.get("multiplier") is not None and "multiplier" not in overrides:
+            assert expected.get("multiplier") == parsed["multiplier"]
+        if parsed.get("resolution") is not None and "resolution" not in overrides:
+            assert expected.get("resolution") == parsed["resolution"]
 
 def test_schema_rejects_unknown_function() -> None:
     """Unknown function codes should be rejected."""
