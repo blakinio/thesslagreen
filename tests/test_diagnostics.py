@@ -1,4 +1,5 @@
 import copy
+import json
 from datetime import datetime, timezone
 from types import SimpleNamespace, ModuleType
 from unittest.mock import AsyncMock, patch
@@ -19,6 +20,7 @@ from custom_components.thessla_green_modbus.diagnostics import (
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
+from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
 DOMAIN = "thessla_green_modbus"
 
@@ -157,6 +159,7 @@ async def test_unknown_registers_in_diagnostics():
             self.device_info = {}
             self.available_registers = {}
             self.statistics = {}
+            self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
 
         def get_diagnostic_data(self):
             return {}
@@ -178,3 +181,42 @@ async def test_unknown_registers_in_diagnostics():
     assert result["failed_addresses"] == scan_result["failed_addresses"]
     assert result["registers_hash"] == "hash"
     assert result["capabilities"] == {"fan": True}
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_json_serializable():
+    """Ensure diagnostics data is JSON serializable."""
+
+    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = last_scan
+            self.device_scan_result = None
+            self.data = {}
+            self.device_info = {}
+            self.available_registers = {}
+            self.statistics = {}
+            self.capabilities = DeviceCapabilities(
+                temperature_sensors={"t1", "t2"},
+                flow_sensors={"f1"},
+            )
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}},
+        config=SimpleNamespace(language="en"),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(return_value={}),
+    ):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+
+    serialized = json.dumps(result)
+    assert isinstance(serialized, str)
