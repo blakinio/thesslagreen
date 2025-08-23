@@ -1,5 +1,6 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 
+import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -111,6 +112,30 @@ async def test_read_holding_exception_response(caplog):
     assert result is None
     assert call_mock.await_count == scanner.retry
     assert f"Exception code {error_response.exception_code}" in caplog.text
+
+
+async def test_read_holding_timeout_logging(caplog):
+    """Timeout errors should log a warning and a final error."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            AsyncMock(side_effect=asyncio.TimeoutError()),
+        ),
+        patch("asyncio.sleep", AsyncMock()),
+        caplog.at_level(logging.WARNING),
+    ):
+        result = await scanner._read_holding(mock_client, 0x0001, 1)
+
+    assert result is None
+    warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+    assert any("Timeout reading holding 0x0001" in msg for msg in warnings)
+    errors = [r.message for r in caplog.records if r.levelno == logging.ERROR]
+    assert any(
+        "Failed to read holding registers 0x0001-0x0001" in msg for msg in errors
+    )
 
 
 @pytest.mark.parametrize(

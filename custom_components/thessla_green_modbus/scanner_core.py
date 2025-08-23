@@ -349,6 +349,7 @@ class ThesslaGreenDeviceScanner:
                             timeout=self.timeout,
                         )
                 except asyncio.TimeoutError as exc:  # pragma: no cover - network issues
+                    _LOGGER.warning("Timeout reading %s", name)
                     raise ConnectionException(f"Timeout reading {name}") from exc
                 except ModbusException:
                     raise
@@ -1107,7 +1108,14 @@ class ThesslaGreenDeviceScanner:
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
-                    return cast(list[int], response.registers)
+                    registers = cast(list[int], response.registers)
+                    _LOGGER.debug(
+                        "Read input registers 0x%04X-0x%04X: %s",
+                        start,
+                        end,
+                        registers,
+                    )
+                    return registers
                 _LOGGER.debug(
                     "Attempt %d failed to read input 0x%04X: %s",
                     attempt,
@@ -1122,7 +1130,16 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-            except (OSError, asyncio.TimeoutError) as exc:
+            except asyncio.TimeoutError as exc:
+                _LOGGER.warning(
+                    "Timeout reading input 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            except OSError as exc:
                 _LOGGER.error(
                     "Unexpected error reading input 0x%04X on attempt %d: %s",
                     address,
@@ -1149,7 +1166,17 @@ class ThesslaGreenDeviceScanner:
                             address
                         )
                         _LOGGER.warning("Device does not expose register 0x%04X", address)
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+            except asyncio.TimeoutError as exc:
+                _LOGGER.warning(
+                    "Timeout reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    start,
+                    end,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
                     "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
                     start,
@@ -1183,7 +1210,14 @@ class ThesslaGreenDeviceScanner:
                         return None
                     if skip_cache and count == 1:
                         self._mark_input_supported(address)
-                    return cast(list[int], response.registers)
+                    registers = cast(list[int], response.registers)
+                    _LOGGER.debug(
+                        "Read holding registers 0x%04X-0x%04X (fallback): %s",
+                        start,
+                        end,
+                        registers,
+                    )
+                    return registers
                 _LOGGER.debug(
                     "Fallback attempt %d failed to read holding 0x%04X: %s",
                     attempt,
@@ -1198,7 +1232,16 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-            except (OSError, asyncio.TimeoutError) as exc:
+            except asyncio.TimeoutError as exc:
+                _LOGGER.warning(
+                    "Timeout reading holding 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            except OSError as exc:
                 _LOGGER.error(
                     "Unexpected error reading holding 0x%04X on attempt %d: %s",
                     address,
@@ -1217,6 +1260,12 @@ class ThesslaGreenDeviceScanner:
 
         self.failed_addresses["modbus_exceptions"]["input_registers"].update(
             range(start, end + 1)
+        )
+        _LOGGER.error(
+            "Failed to read input registers 0x%04X-0x%04X after %d retries",
+            start,
+            end,
+            self.retry,
         )
         return None
 
@@ -1278,8 +1327,33 @@ class ThesslaGreenDeviceScanner:
                         self._mark_holding_supported(address)
                     if address in self._holding_failures:
                         del self._holding_failures[address]
-                    return cast(list[int], response.registers)
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                    registers = cast(list[int], response.registers)
+                    _LOGGER.debug(
+                        "Read holding registers 0x%04X-0x%04X: %s",
+                        start,
+                        end,
+                        registers,
+                    )
+                    return registers
+            except asyncio.TimeoutError as exc:
+                _LOGGER.warning(
+                    "Timeout reading holding 0x%04X (attempt %d/%d): %s",
+                    address,
+                    attempt,
+                    self.retry,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(
+                            address
+                        )
+                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
                     "Failed to read holding 0x%04X (attempt %d/%d): %s",
                     address,
@@ -1322,7 +1396,7 @@ class ThesslaGreenDeviceScanner:
                     _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
                     raise
 
-        _LOGGER.warning(
+        _LOGGER.error(
             "Failed to read holding registers 0x%04X-0x%04X after %d retries",
             start,
             end,
@@ -1349,8 +1423,23 @@ class ThesslaGreenDeviceScanner:
                     timeout=self.timeout,
                 )
                 if response is not None and not response.isError():
-                    return cast(list[bool], response.bits[:count])
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                    bits = cast(list[bool], response.bits[:count])
+                    _LOGGER.debug(
+                        "Read coil registers 0x%04X-0x%04X: %s",
+                        address,
+                        address + count - 1,
+                        bits,
+                    )
+                    return bits
+            except asyncio.TimeoutError as exc:
+                _LOGGER.warning(
+                    "Timeout reading coil 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
                     "Failed to read coil 0x%04X on attempt %d: %s",
                     address,
@@ -1383,6 +1472,12 @@ class ThesslaGreenDeviceScanner:
         self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
             range(address, address + count)
         )
+        _LOGGER.error(
+            "Failed to read coil registers 0x%04X-0x%04X after %d retries",
+            address,
+            address + count - 1,
+            self.retry,
+        )
         return None
 
     async def _read_discrete(
@@ -1404,8 +1499,23 @@ class ThesslaGreenDeviceScanner:
                     timeout=self.timeout,
                 )
                 if response is not None and not response.isError():
-                    return cast(list[bool], response.bits[:count])
-            except (ModbusException, ConnectionException, asyncio.TimeoutError) as exc:
+                    bits = cast(list[bool], response.bits[:count])
+                    _LOGGER.debug(
+                        "Read discrete inputs 0x%04X-0x%04X: %s",
+                        address,
+                        address + count - 1,
+                        bits,
+                    )
+                    return bits
+            except asyncio.TimeoutError as exc:
+                _LOGGER.warning(
+                    "Timeout reading discrete 0x%04X on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
                     "Failed to read discrete 0x%04X on attempt %d: %s",
                     address,
@@ -1437,5 +1547,11 @@ class ThesslaGreenDeviceScanner:
                     raise
         self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
             range(address, address + count)
+        )
+        _LOGGER.error(
+            "Failed to read discrete inputs 0x%04X-0x%04X after %d retries",
+            address,
+            address + count - 1,
+            self.retry,
         )
         return None

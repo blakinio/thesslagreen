@@ -6,16 +6,19 @@ from importlib import resources
 from pathlib import Path
 
 from tools.validate_register_pdf import parse_pdf_registers
+from typing import Literal
 
 import pydantic
+import pytest
+from custom_components.thessla_green_modbus.registers.loader import _validate_item
 
 
 class Register(pydantic.BaseModel):
-    function: str
+    function: Literal["01", "02", "03", "04"]
     address_dec: int
     address_hex: str
     name: str
-    access: str
+    access: Literal["R/-", "R/W", "R", "W"]
     unit: str | None = None
     enum: dict[str, int | str] | None = None
     multiplier: float | None = None
@@ -94,3 +97,18 @@ def test_registers_match_pdf() -> None:
         expected = json_map[key]
         parsed = pdf_map[key]
         assert expected["access"] == parsed["access"]
+
+def test_validate_item_rejects_unknown_function() -> None:
+    """Unknown function codes should be rejected."""
+
+    bad = {"name": "x", "function": "05", "address_dec": 0, "access": "R/W"}
+    with pytest.raises(ValueError):
+        _validate_item(bad)
+
+
+def test_validate_item_rejects_unknown_access() -> None:
+    """Unexpected access types should raise an error."""
+
+    bad = {"name": "x", "function": "03", "address_dec": 0, "access": "RW"}
+    with pytest.raises(ValueError):
+        _validate_item(bad)

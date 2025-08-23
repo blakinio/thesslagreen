@@ -283,6 +283,40 @@ async def test_async_step_confirm_auto_detected_note(registers, expected_note):
     assert result["description_placeholders"]["auto_detected_note"] == translations[expected_note]
 
 
+async def test_async_step_confirm_capabilities_only_bool():
+    """Ensure capabilities list includes only boolean fields."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "My Device",
+    }
+    flow._device_info = {}
+    flow._scan_result = {
+        "available_registers": {},
+        "capabilities": {
+            "temperature_sensors": {"t1"},
+            "expansion_module": True,
+            "temperature_sensors_count": 1,
+        },
+        "register_count": 1,
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    placeholders = result["description_placeholders"]
+    assert "Expansion Module" in placeholders["capabilities_list"]
+    assert "Temperature Sensors" not in placeholders["capabilities_list"]
+    assert placeholders["capabilities_count"] == "1"
+
+
 async def test_unique_id_sanitized():
     """Ensure unique ID replaces colons in host with hyphens."""
     flow = ConfigFlow()
