@@ -66,6 +66,15 @@ class DeviceInfo:
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    def items(self):
+        return asdict(self).items()
+
+    def keys(self):
+        return asdict(self).keys()
+
+    def __iter__(self):
+        return iter(self.items())
+
 
 @dataclass
 class DeviceCapabilities:
@@ -123,6 +132,15 @@ class DeviceCapabilities:
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    def items(self):
+        return asdict(self).items()
+
+    def keys(self):
+        return asdict(self).keys()
+
+    def __iter__(self):
+        return iter(self.items())
 
 
 class ThesslaGreenDeviceScanner:
@@ -542,15 +560,17 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.warning(msg)
             device.firmware_available = False
         try:
-            start = INPUT_REGISTERS["serial_number_1"]
-            parts = info_regs[start : start + 6]  # noqa: E203
+            start = INPUT_REGISTERS["serial_number"]
+            parts = info_regs[start : start + REGISTER_DEFINITIONS["serial_number"].length]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
         except Exception:  # pragma: no cover
             pass
         try:
-            start = HOLDING_REGISTERS["device_name_1"]
-            name_regs = await self._read_holding(client, start, 8) or []
+            start = HOLDING_REGISTERS["device_name"]
+            name_regs = await self._read_holding(
+                client, start, REGISTER_DEFINITIONS["device_name"].length
+            ) or []
             if name_regs:
                 name_bytes = bytearray()
                 for reg in name_regs:

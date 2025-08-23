@@ -1,6 +1,10 @@
 {
   "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
   "auto_detected_note_success": "Auto-detection successful!",
+  "diagnostics": {
+    "registers_hash": "Register definitions hash",
+    "capabilities": "Device capabilities"
+  },
   "config": {
     "abort": {
       "already_configured": "Device with this IP address and Device ID is already configured."
@@ -348,29 +352,8 @@
       "date_time_4": {
         "name": "Date Time 4"
       },
-      "device_name_1": {
-        "name": "Device Name 1"
-      },
-      "device_name_2": {
-        "name": "Device Name 2"
-      },
-      "device_name_3": {
-        "name": "Device Name 3"
-      },
-      "device_name_4": {
-        "name": "Device Name 4"
-      },
-      "device_name_5": {
-        "name": "Device Name 5"
-      },
-      "device_name_6": {
-        "name": "Device Name 6"
-      },
-      "device_name_7": {
-        "name": "Device Name 7"
-      },
-      "device_name_8": {
-        "name": "Device Name 8"
+      "device_name": {
+        "name": "Device Name"
       },
       "e_100": {
         "name": "E 100"
@@ -504,11 +487,8 @@
       "lock_flag": {
         "name": "Lock Flag"
       },
-      "lock_pass_1": {
-        "name": "Lock Pass 1"
-      },
-      "lock_pass_2": {
-        "name": "Lock Pass 2"
+      "lock_pass": {
+        "name": "Lock Pass"
       },
       "manual_airing_time_to_start": {
         "name": "Manual Airing Time To Start"
@@ -1204,23 +1184,8 @@
           "winter": "Winter"
         }
       },
-      "serial_number_1": {
-        "name": "Serial Number Part 1"
-      },
-      "serial_number_2": {
-        "name": "Serial Number Part 2"
-      },
-      "serial_number_3": {
-        "name": "Serial Number Part 3"
-      },
-      "serial_number_4": {
-        "name": "Serial Number Part 4"
-      },
-      "serial_number_5": {
-        "name": "Serial Number 5"
-      },
-      "serial_number_6": {
-        "name": "Serial Number 6"
+      "serial_number": {
+        "name": "Serial Number"
       },
       "supply_air_flow": {
         "name": "Supply Air Flow"

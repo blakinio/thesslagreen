@@ -1124,3 +1124,21 @@ async def test_validate_input_timeout_errors(exc):
 
     assert err.value.args[0] == "timeout"
     scanner_instance.close.assert_awaited_once()
+
+
+def test_device_capabilities_iteration():
+    """DeviceCapabilities should support iteration like a dict."""
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+
+    caps = DeviceCapabilities(basic_control=True, bypass_system=True)
+
+    # items() should yield key-value pairs
+    items = dict(caps.items())
+    assert items["basic_control"] is True
+    assert items["bypass_system"] is True
+
+    # direct iteration should also yield pairs
+    iterated = dict(iter(caps))
+    assert iterated["basic_control"] is True
+    # keys() should include attribute names
+    assert "bypass_system" in caps.keys()

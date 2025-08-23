@@ -762,25 +762,20 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 # Convert string to 16-bit register values (ASCII)
                 name_bytes = device_name.encode("ascii")[:16].ljust(16, b"\x00")
 
-                success = True
-                for i in range(8):  # 8 registers for 16 characters
-                    char1 = name_bytes[i * 2]
-                    char2 = name_bytes[i * 2 + 1]
-                    reg_value = (char1 << 8) | char2
-                    if not await _write_register(
-                        coordinator,
-                        f"device_name_{i + 1}",
-                        reg_value,
-                        entity_id,
-                        "set device name",
-                    ):
-                        _LOGGER.error(
-                            "Failed to set device name for %s", entity_id
-                        )
-                        success = False
-                        break
-
-                if not success:
+                regs = [
+                    (name_bytes[i] << 8) | name_bytes[i + 1]
+                    for i in range(0, 16, 2)
+                ]
+                if not await _write_register(
+                    coordinator,
+                    "device_name",
+                    regs,
+                    entity_id,
+                    "set device name",
+                ):
+                    _LOGGER.error(
+                        "Failed to set device name for %s", entity_id
+                    )
                     continue
 
                 await coordinator.async_request_refresh()

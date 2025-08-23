@@ -9,7 +9,7 @@ import pytest
 # Stub registers module to avoid heavy imports during diagnostics import
 registers_stub = ModuleType("custom_components.thessla_green_modbus.registers")
 registers_stub.get_all_registers = lambda: []
-registers_stub.get_registers_hash = lambda: ""
+registers_stub.get_registers_hash = lambda: "hash"
 registers_stub.get_registers_by_function = lambda *args, **kwargs: []
 registers_stub.group_reads = lambda *args, **kwargs: []
 sys.modules["custom_components.thessla_green_modbus.registers"] = registers_stub
@@ -73,6 +73,7 @@ async def test_last_scan_in_diagnostics():
             self.device_info = {}
             self.available_registers = {}
             self.statistics = {}
+            self.capabilities = SimpleNamespace(as_dict=lambda: {})
 
         def get_diagnostic_data(self):
             return {}
@@ -107,6 +108,7 @@ async def test_additional_diagnostic_fields():
                 "holding_registers": {"c"},
             }
             self.statistics = {"connection_errors": 2, "timeout_errors": 1}
+            self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
 
         def get_diagnostic_data(self):
             return {}
@@ -174,3 +176,5 @@ async def test_unknown_registers_in_diagnostics():
 
     assert result["unknown_registers"] == scan_result["unknown_registers"]
     assert result["failed_addresses"] == scan_result["failed_addresses"]
+    assert result["registers_hash"] == "hash"
+    assert result["capabilities"] == {"fan": True}
