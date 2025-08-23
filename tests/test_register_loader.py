@@ -72,7 +72,7 @@ def test_function_aliases() -> None:
 def test_registers_loaded_only_once(monkeypatch) -> None:
     """Ensure register file is read only once thanks to caching."""
 
-    from custom_components.thessla_green_modbus.registers.loader import _load_registers
+    from custom_components.thessla_green_modbus.registers import loader
 
     read_calls = 0
     real_read_text = Path.read_text
@@ -87,10 +87,10 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     # Spy on read_text to count disk reads
     monkeypatch.setattr(Path, "read_text", spy)
 
-    _load_registers.cache_clear()
+    loader.clear_cache()
 
-    _load_registers()
-    _load_registers()
+    loader.get_all_registers()
+    loader.get_all_registers()
 
     # The file should be read only once thanks to caching
     assert read_calls == 1
@@ -119,4 +119,15 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
     monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file()
+        loader._load_registers_from_file(path, file_hash="")
+
+
+def test_register_file_sorted() -> None:
+    """Ensure register JSON is sorted by function then address."""
+
+    from custom_components.thessla_green_modbus.registers import loader
+
+    data = json.loads(loader._REGISTERS_PATH.read_text(encoding="utf-8"))
+    regs = data["registers"]
+    keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
+    assert keys == sorted(keys)

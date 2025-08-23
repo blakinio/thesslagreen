@@ -158,8 +158,8 @@ Każdy wpis w sekcji `registers` zawiera m.in. pola:
 
 Opcjonalnie można określić `unit`, `enum`, `multiplier`, `resolution` oraz inne
 metadane. Aby dodać nowy rejestr, dopisz obiekt do listy `registers` zachowując
-porządek adresów i uruchom `pytest tests/test_register_loader.py`, aby
-zweryfikować poprawność pliku.
+sortowanie według `function` i `address_dec`, po czym uruchom
+`pytest tests/test_register_loader.py`, aby zweryfikować poprawność pliku.
 
 ### Włączanie logów debug
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
@@ -545,7 +545,7 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 
 1. Otwórz `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` i wprowadź nowe wpisy
    lub zmodyfikuj istniejące.
-2. Zadbaj o unikalność adresów i zachowanie posortowanej kolejności.
+2. Zadbaj o unikalność adresów i zachowanie sortowania według `function` i `address_dec`.
 3. Uruchom test walidacyjny:
 
 ```bash
@@ -569,7 +569,7 @@ logach. Aby ręcznie przekonwertować dane:
 1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
 2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
    z polami `function`, `address_dec`, `address_hex`, `name`, `description` i `access`.
-3. Zachowaj sortowanie adresów oraz format liczbowy (`0x` dla wartości hex).
+3. Zachowaj sortowanie według `function` i `address_dec` oraz format liczbowy (`0x` dla wartości hex).
 4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych
    rejestrów.
 

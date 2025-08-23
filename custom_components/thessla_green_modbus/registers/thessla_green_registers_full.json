@@ -1,16 +1,124 @@
 {
   "registers": [
     {
-      "function": "03",
-      "address_dec": 0,
-      "address_hex": "0x0000",
-      "name": "date_time",
-      "access": "R/W",
-      "unit": "RRMM",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Data i godzina - liczba dziesiątek / jedności roku i miesiąc [RRMM]"
+      "function": "01",
+      "address_dec": 5,
+      "address_hex": "0x0005",
+      "name": "duct_water_heater_pump",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy"
+    },
+    {
+      "function": "01",
+      "address_dec": 9,
+      "address_hex": "0x0009",
+      "name": "bypass",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia siłownika przepustnicy bypass"
+    },
+    {
+      "function": "01",
+      "address_dec": 10,
+      "address_hex": "0x000A",
+      "name": "info",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia sygnału potwierdzenia pracy centrali (O1)"
+    },
+    {
+      "function": "01",
+      "address_dec": 11,
+      "address_hex": "0x000B",
+      "name": "power_supply_fans",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia przekaźnika zasilania wentylatorów"
+    },
+    {
+      "function": "01",
+      "address_dec": 12,
+      "address_hex": "0x000C",
+      "name": "heating_cable",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia przekaźnika zasilania kabla grzejnego"
+    },
+    {
+      "function": "01",
+      "address_dec": 13,
+      "address_hex": "0x000D",
+      "name": "work_permit",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)"
+    },
+    {
+      "function": "01",
+      "address_dec": 14,
+      "address_hex": "0x000E",
+      "name": "gwc",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia przekaźnika GWC"
+    },
+    {
+      "function": "01",
+      "address_dec": 15,
+      "address_hex": "0x000F",
+      "name": "hood_output",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wyjścia zasilającego przepustnicę okapu"
     },
     {
       "function": "02",
@@ -28,30 +136,6 @@
       "description": "Stan wejścia zabezpieczenia termicznego elektrycznej nagrzewnicy kanałowej"
     },
     {
-      "function": "04",
-      "address_dec": 0,
-      "address_hex": "0x0000",
-      "name": "version_major",
-      "access": "R/-",
-      "unit": null,
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Główna wersja oprogramowania"
-    },
-    {
-      "function": "03",
-      "address_dec": 1,
-      "address_hex": "0x0001",
-      "name": "date_time_ddtt",
-      "access": "R/W",
-      "unit": "DDTT",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Data i godzina - dzień miesiąca i dzień tygodnia [DDTT]"
-    },
-    {
       "function": "02",
       "address_dec": 1,
       "address_hex": "0x0001",
@@ -65,62 +149,6 @@
       "multiplier": null,
       "resolution": null,
       "description": "Komunikacja z modułem Expansion"
-    },
-    {
-      "function": "04",
-      "address_dec": 1,
-      "address_hex": "0x0001",
-      "name": "version_minor",
-      "access": "R/-",
-      "unit": null,
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Wersja poboczna oprogramowania"
-    },
-    {
-      "function": "03",
-      "address_dec": 2,
-      "address_hex": "0x0002",
-      "name": "date_time_ggmm",
-      "access": "R/W",
-      "unit": "h",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Data i godzina - godzina i minuta [GGmm]"
-    },
-    {
-      "function": "04",
-      "address_dec": 2,
-      "address_hex": "0x0002",
-      "name": "day_of_week",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "Poniedziałek",
-        "1": "Wtorek",
-        "2": "Środa",
-        "3": "Czwartek",
-        "4": "Piątek",
-        "5": "Sobota",
-        "6": "Niedziela"
-      },
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Bieżący dzień tygodnia dla trybu automatycznego"
-    },
-    {
-      "function": "03",
-      "address_dec": 3,
-      "address_hex": "0x0003",
-      "name": "date_time_sscc",
-      "access": "R/W",
-      "unit": "s",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Data i godzina - sekunda i setne części sekundy [sscc]"
     },
     {
       "function": "02",
@@ -138,23 +166,6 @@
       "description": "Stan wejścia presostatu filtra kanałowego"
     },
     {
-      "function": "04",
-      "address_dec": 3,
-      "address_hex": "0x0003",
-      "name": "period",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "Odcinek czasowy 1",
-        "1": "Odcinek czasowy 2",
-        "2": "Odcinek czasowy 3",
-        "3": "Odcinek czasowy 4"
-      },
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Bieżący odcinek czasowy dla trybu automatycznego"
-    },
-    {
       "function": "02",
       "address_dec": 4,
       "address_hex": "0x0004",
@@ -170,18 +181,6 @@
       "description": "Stan wejścia włącznika funkcji OKAP"
     },
     {
-      "function": "04",
-      "address_dec": 4,
-      "address_hex": "0x0004",
-      "name": "version_patch",
-      "access": "R/-",
-      "unit": null,
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Wersja poprawki oprogramowania"
-    },
-    {
       "function": "02",
       "address_dec": 5,
       "address_hex": "0x0005",
@@ -195,21 +194,6 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia dwustanowego czujnika jakości powietrza"
-    },
-    {
-      "function": "01",
-      "address_dec": 5,
-      "address_hex": "0x0005",
-      "name": "duct_water_heater_pump",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy"
     },
     {
       "function": "02",
@@ -242,6 +226,189 @@
       "description": "Stan wejścia włącznika funkcji WIETRZENIE"
     },
     {
+      "function": "02",
+      "address_dec": 10,
+      "address_hex": "0x000A",
+      "name": "airing_mini",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia przełącznika AirS w pozycji \"Wietrzenie\""
+    },
+    {
+      "function": "02",
+      "address_dec": 11,
+      "address_hex": "0x000B",
+      "name": "fan_speed_3",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia przełącznika AirS w pozycji \"3 bieg\""
+    },
+    {
+      "function": "02",
+      "address_dec": 12,
+      "address_hex": "0x000C",
+      "name": "fan_speed_2",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia przełącznika AirS w pozycji \"2 bieg\""
+    },
+    {
+      "function": "02",
+      "address_dec": 13,
+      "address_hex": "0x000D",
+      "name": "fan_speed_1",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia przełącznika AirS w pozycji \"1 bieg\""
+    },
+    {
+      "function": "02",
+      "address_dec": 14,
+      "address_hex": "0x000E",
+      "name": "fireplace",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia włącznika funkcji KOMINEK"
+    },
+    {
+      "function": "02",
+      "address_dec": 15,
+      "address_hex": "0x000F",
+      "name": "fire_alarm",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia sygnału alarmu pożarowego (P.POZ.)"
+    },
+    {
+      "function": "02",
+      "address_dec": 18,
+      "address_hex": "0x0012",
+      "name": "dp_ahu_filter_overflow",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia presostatu filtrów w rekuperatorze (DP1)"
+    },
+    {
+      "function": "02",
+      "address_dec": 19,
+      "address_hex": "0x0013",
+      "name": "ahu_filter_protection",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia zabezpieczenia termicznego nagrzewnicy systemu przeciwzamrożeniowego FPX"
+    },
+    {
+      "function": "02",
+      "address_dec": 21,
+      "address_hex": "0x0015",
+      "name": "empty_house",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "OFF",
+        "1": "ON"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Stan wejścia sygnału załączenia funkcji PUSTY DOM"
+    },
+    {
+      "function": "03",
+      "address_dec": 0,
+      "address_hex": "0x0000",
+      "name": "date_time",
+      "access": "R/W",
+      "unit": "RRMM",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Data i godzina - liczba dziesiątek / jedności roku i miesiąc [RRMM]"
+    },
+    {
+      "function": "03",
+      "address_dec": 1,
+      "address_hex": "0x0001",
+      "name": "date_time_ddtt",
+      "access": "R/W",
+      "unit": "DDTT",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Data i godzina - dzień miesiąca i dzień tygodnia [DDTT]"
+    },
+    {
+      "function": "03",
+      "address_dec": 2,
+      "address_hex": "0x0002",
+      "name": "date_time_ggmm",
+      "access": "R/W",
+      "unit": "h",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Data i godzina - godzina i minuta [GGmm]"
+    },
+    {
+      "function": "03",
+      "address_dec": 3,
+      "address_hex": "0x0003",
+      "name": "date_time_sscc",
+      "access": "R/W",
+      "unit": "s",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Data i godzina - sekunda i setne części sekundy [sscc]"
+    },
+    {
       "function": "03",
       "address_dec": 7,
       "address_hex": "0x0007",
@@ -266,21 +433,6 @@
       "description": "Data zablokowania centrali kluczem produktu - miesiąc [00MM]"
     },
     {
-      "function": "01",
-      "address_dec": 9,
-      "address_hex": "0x0009",
-      "name": "bypass",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia siłownika przepustnicy bypass"
-    },
-    {
       "function": "03",
       "address_dec": 9,
       "address_hex": "0x0009",
@@ -291,96 +443,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data zablokowania centrali kluczem produktu - dzień [00DD]"
-    },
-    {
-      "function": "02",
-      "address_dec": 10,
-      "address_hex": "0x000A",
-      "name": "airing_mini",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia przełącznika AirS w pozycji \"Wietrzenie\""
-    },
-    {
-      "function": "01",
-      "address_dec": 10,
-      "address_hex": "0x000A",
-      "name": "info",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia sygnału potwierdzenia pracy centrali (O1)"
-    },
-    {
-      "function": "02",
-      "address_dec": 11,
-      "address_hex": "0x000B",
-      "name": "fan_speed_3",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia przełącznika AirS w pozycji \"3 bieg\""
-    },
-    {
-      "function": "01",
-      "address_dec": 11,
-      "address_hex": "0x000B",
-      "name": "power_supply_fans",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia przekaźnika zasilania wentylatorów"
-    },
-    {
-      "function": "02",
-      "address_dec": 12,
-      "address_hex": "0x000C",
-      "name": "fan_speed_2",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia przełącznika AirS w pozycji \"2 bieg\""
-    },
-    {
-      "function": "01",
-      "address_dec": 12,
-      "address_hex": "0x000C",
-      "name": "heating_cable",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia przekaźnika zasilania kabla grzejnego"
     },
     {
       "function": "03",
@@ -399,78 +461,6 @@
       "description": "Tryby specjalne pracy centrali"
     },
     {
-      "function": "02",
-      "address_dec": 13,
-      "address_hex": "0x000D",
-      "name": "fan_speed_1",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia przełącznika AirS w pozycji \"1 bieg\""
-    },
-    {
-      "function": "01",
-      "address_dec": 13,
-      "address_hex": "0x000D",
-      "name": "work_permit",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)"
-    },
-    {
-      "function": "04",
-      "address_dec": 14,
-      "address_hex": "0x000E",
-      "name": "compilation_days",
-      "access": "R/-",
-      "unit": "d",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Data kompilacji oprogramowania Basic"
-    },
-    {
-      "function": "02",
-      "address_dec": 14,
-      "address_hex": "0x000E",
-      "name": "fireplace",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia włącznika funkcji KOMINEK"
-    },
-    {
-      "function": "01",
-      "address_dec": 14,
-      "address_hex": "0x000E",
-      "name": "gwc",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia przekaźnika GWC"
-    },
-    {
       "function": "03",
       "address_dec": 15,
       "address_hex": "0x000F",
@@ -485,60 +475,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Poziom dostępu"
-    },
-    {
-      "function": "04",
-      "address_dec": 15,
-      "address_hex": "0x000F",
-      "name": "compilation_seconds",
-      "access": "R/-",
-      "unit": "s",
-      "enum": null,
-      "multiplier": 2.0,
-      "resolution": 2.0,
-      "description": "Godzina kompilacji oprogramowania Basic"
-    },
-    {
-      "function": "02",
-      "address_dec": 15,
-      "address_hex": "0x000F",
-      "name": "fire_alarm",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia sygnału alarmu pożarowego (P.POZ.)"
-    },
-    {
-      "function": "01",
-      "address_dec": 15,
-      "address_hex": "0x000F",
-      "name": "hood_output",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wyjścia zasilającego przepustnicę okapu"
-    },
-    {
-      "function": "04",
-      "address_dec": 16,
-      "address_hex": "0x0010",
-      "name": "outside_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura powietrza zewnętrznego (TZ1)"
     },
     {
       "function": "03",
@@ -565,45 +501,6 @@
       "description": "LATO - Poniedziałek - 2"
     },
     {
-      "function": "04",
-      "address_dec": 17,
-      "address_hex": "0x0011",
-      "name": "supply_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura powietrza nawiewanego (TN1)"
-    },
-    {
-      "function": "02",
-      "address_dec": 18,
-      "address_hex": "0x0012",
-      "name": "dp_ahu_filter_overflow",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia presostatu filtrów w rekuperatorze (DP1)"
-    },
-    {
-      "function": "04",
-      "address_dec": 18,
-      "address_hex": "0x0012",
-      "name": "exhaust_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura powietrza usuwanego z pomieszczenia (TP)"
-    },
-    {
       "function": "03",
       "address_dec": 18,
       "address_hex": "0x0012",
@@ -614,33 +511,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 3"
-    },
-    {
-      "function": "02",
-      "address_dec": 19,
-      "address_hex": "0x0013",
-      "name": "ahu_filter_protection",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia zabezpieczenia termicznego nagrzewnicy systemu przeciwzamrożeniowego FPX"
-    },
-    {
-      "function": "04",
-      "address_dec": 19,
-      "address_hex": "0x0013",
-      "name": "fpx_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura powietrza za nagrzewnicą FPX (TZ2)"
     },
     {
       "function": "03",
@@ -655,18 +525,6 @@
       "description": "LATO - Poniedziałek - 4"
     },
     {
-      "function": "04",
-      "address_dec": 20,
-      "address_hex": "0x0014",
-      "name": "duct_supply_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura powietrza za nagrzewnicą / chłodnicą kanałową (TN2)"
-    },
-    {
       "function": "03",
       "address_dec": 20,
       "address_hex": "0x0014",
@@ -677,33 +535,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 1"
-    },
-    {
-      "function": "02",
-      "address_dec": 21,
-      "address_hex": "0x0015",
-      "name": "empty_house",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "OFF",
-        "1": "ON"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Stan wejścia sygnału załączenia funkcji PUSTY DOM"
-    },
-    {
-      "function": "04",
-      "address_dec": 21,
-      "address_hex": "0x0015",
-      "name": "gwc_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura przed wymiennikiem systemu glikolowego GWC (TZ3)"
     },
     {
       "function": "03",
@@ -718,18 +549,6 @@
       "description": "LATO - Wtorek - 2"
     },
     {
-      "function": "04",
-      "address_dec": 22,
-      "address_hex": "0x0016",
-      "name": "ambient_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura otoczenia (TO)"
-    },
-    {
       "function": "03",
       "address_dec": 22,
       "address_hex": "0x0016",
@@ -740,18 +559,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 3"
-    },
-    {
-      "function": "04",
-      "address_dec": 23,
-      "address_hex": "0x0017",
-      "name": "heating_temperature",
-      "access": "R/-",
-      "unit": "°C",
-      "enum": null,
-      "multiplier": 0.1,
-      "resolution": 0.1,
-      "description": "Temperatura nagrzewnicy (TH)"
     },
     {
       "function": "03",
@@ -776,23 +583,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 1"
-    },
-    {
-      "function": "04",
-      "address_dec": 24,
-      "address_hex": "0x0018",
-      "name": "serial_number",
-      "access": "R/-",
-      "unit": "ASCII",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Numer seryjny sterownika",
-      "length": 6,
-      "extra": {
-        "type": "string",
-        "encoding": "ascii"
-      }
     },
     {
       "function": "03",
@@ -2245,108 +2035,6 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wartość chwilowa strumienia powietrza - wywiew"
-    },
-    {
-      "function": "04",
-      "address_dec": 271,
-      "address_hex": "0x010F",
-      "name": "constant_flow_active",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "nieaktywny",
-        "1": "aktywny"
-      },
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Status aktywności systemu Constant Flow"
-    },
-    {
-      "function": "04",
-      "address_dec": 272,
-      "address_hex": "0x0110",
-      "name": "supply_percentage",
-      "access": "R/-",
-      "unit": "%",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Zadana intensywność wentylacji (nawiew)"
-    },
-    {
-      "function": "04",
-      "address_dec": 273,
-      "address_hex": "0x0111",
-      "name": "exhaust_percentage",
-      "access": "R/-",
-      "unit": "%",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Zadana intensywność wentylacji (nawiew)"
-    },
-    {
-      "function": "04",
-      "address_dec": 274,
-      "address_hex": "0x0112",
-      "name": "supply_flow_rate",
-      "access": "R/-",
-      "unit": "m3/h",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Zadany strumień przepływu (nawiew)"
-    },
-    {
-      "function": "04",
-      "address_dec": 275,
-      "address_hex": "0x0113",
-      "name": "exhaust_flow_rate",
-      "access": "R/-",
-      "unit": "m3/h",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Zadany strumień przepływu (wywiew)"
-    },
-    {
-      "function": "04",
-      "address_dec": 276,
-      "address_hex": "0x0114",
-      "name": "min_percentage",
-      "access": "R/-",
-      "unit": "%",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Minimalna możliwa do ustawienia intensywność wentylacji"
-    },
-    {
-      "function": "04",
-      "address_dec": 277,
-      "address_hex": "0x0115",
-      "name": "max_percentage",
-      "access": "R/-",
-      "unit": "%",
-      "enum": null,
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Maksymalna możliwa do ustawienia intensywność wentylacji"
-    },
-    {
-      "function": "04",
-      "address_dec": 298,
-      "address_hex": "0x012A",
-      "name": "water_removal_active",
-      "access": "R/-",
-      "unit": null,
-      "enum": {
-        "0": "brak (procedura nieaktywna)",
-        "1": "jest (trwa procedura)"
-      },
-      "multiplier": 1.0,
-      "resolution": 1.0,
-      "description": "Status działania procedury HEWR"
     },
     {
       "function": "03",
@@ -4198,6 +3886,318 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Sygnalizacja konieczności wymiany filtrów w centrali wyposażonej w presostat"
+    },
+    {
+      "function": "04",
+      "address_dec": 0,
+      "address_hex": "0x0000",
+      "name": "version_major",
+      "access": "R/-",
+      "unit": null,
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Główna wersja oprogramowania"
+    },
+    {
+      "function": "04",
+      "address_dec": 1,
+      "address_hex": "0x0001",
+      "name": "version_minor",
+      "access": "R/-",
+      "unit": null,
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Wersja poboczna oprogramowania"
+    },
+    {
+      "function": "04",
+      "address_dec": 2,
+      "address_hex": "0x0002",
+      "name": "day_of_week",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "Poniedziałek",
+        "1": "Wtorek",
+        "2": "Środa",
+        "3": "Czwartek",
+        "4": "Piątek",
+        "5": "Sobota",
+        "6": "Niedziela"
+      },
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Bieżący dzień tygodnia dla trybu automatycznego"
+    },
+    {
+      "function": "04",
+      "address_dec": 3,
+      "address_hex": "0x0003",
+      "name": "period",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "Odcinek czasowy 1",
+        "1": "Odcinek czasowy 2",
+        "2": "Odcinek czasowy 3",
+        "3": "Odcinek czasowy 4"
+      },
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Bieżący odcinek czasowy dla trybu automatycznego"
+    },
+    {
+      "function": "04",
+      "address_dec": 4,
+      "address_hex": "0x0004",
+      "name": "version_patch",
+      "access": "R/-",
+      "unit": null,
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Wersja poprawki oprogramowania"
+    },
+    {
+      "function": "04",
+      "address_dec": 14,
+      "address_hex": "0x000E",
+      "name": "compilation_days",
+      "access": "R/-",
+      "unit": "d",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Data kompilacji oprogramowania Basic"
+    },
+    {
+      "function": "04",
+      "address_dec": 15,
+      "address_hex": "0x000F",
+      "name": "compilation_seconds",
+      "access": "R/-",
+      "unit": "s",
+      "enum": null,
+      "multiplier": 2.0,
+      "resolution": 2.0,
+      "description": "Godzina kompilacji oprogramowania Basic"
+    },
+    {
+      "function": "04",
+      "address_dec": 16,
+      "address_hex": "0x0010",
+      "name": "outside_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura powietrza zewnętrznego (TZ1)"
+    },
+    {
+      "function": "04",
+      "address_dec": 17,
+      "address_hex": "0x0011",
+      "name": "supply_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura powietrza nawiewanego (TN1)"
+    },
+    {
+      "function": "04",
+      "address_dec": 18,
+      "address_hex": "0x0012",
+      "name": "exhaust_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura powietrza usuwanego z pomieszczenia (TP)"
+    },
+    {
+      "function": "04",
+      "address_dec": 19,
+      "address_hex": "0x0013",
+      "name": "fpx_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura powietrza za nagrzewnicą FPX (TZ2)"
+    },
+    {
+      "function": "04",
+      "address_dec": 20,
+      "address_hex": "0x0014",
+      "name": "duct_supply_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura powietrza za nagrzewnicą / chłodnicą kanałową (TN2)"
+    },
+    {
+      "function": "04",
+      "address_dec": 21,
+      "address_hex": "0x0015",
+      "name": "gwc_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura przed wymiennikiem systemu glikolowego GWC (TZ3)"
+    },
+    {
+      "function": "04",
+      "address_dec": 22,
+      "address_hex": "0x0016",
+      "name": "ambient_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura otoczenia (TO)"
+    },
+    {
+      "function": "04",
+      "address_dec": 23,
+      "address_hex": "0x0017",
+      "name": "heating_temperature",
+      "access": "R/-",
+      "unit": "°C",
+      "enum": null,
+      "multiplier": 0.1,
+      "resolution": 0.1,
+      "description": "Temperatura nagrzewnicy (TH)"
+    },
+    {
+      "function": "04",
+      "address_dec": 24,
+      "address_hex": "0x0018",
+      "name": "serial_number",
+      "access": "R/-",
+      "unit": "ASCII",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Numer seryjny sterownika",
+      "length": 6,
+      "extra": {
+        "type": "string",
+        "encoding": "ascii"
+      }
+    },
+    {
+      "function": "04",
+      "address_dec": 271,
+      "address_hex": "0x010F",
+      "name": "constant_flow_active",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "nieaktywny",
+        "1": "aktywny"
+      },
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Status aktywności systemu Constant Flow"
+    },
+    {
+      "function": "04",
+      "address_dec": 272,
+      "address_hex": "0x0110",
+      "name": "supply_percentage",
+      "access": "R/-",
+      "unit": "%",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Zadana intensywność wentylacji (nawiew)"
+    },
+    {
+      "function": "04",
+      "address_dec": 273,
+      "address_hex": "0x0111",
+      "name": "exhaust_percentage",
+      "access": "R/-",
+      "unit": "%",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Zadana intensywność wentylacji (nawiew)"
+    },
+    {
+      "function": "04",
+      "address_dec": 274,
+      "address_hex": "0x0112",
+      "name": "supply_flow_rate",
+      "access": "R/-",
+      "unit": "m3/h",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Zadany strumień przepływu (nawiew)"
+    },
+    {
+      "function": "04",
+      "address_dec": 275,
+      "address_hex": "0x0113",
+      "name": "exhaust_flow_rate",
+      "access": "R/-",
+      "unit": "m3/h",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Zadany strumień przepływu (wywiew)"
+    },
+    {
+      "function": "04",
+      "address_dec": 276,
+      "address_hex": "0x0114",
+      "name": "min_percentage",
+      "access": "R/-",
+      "unit": "%",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Minimalna możliwa do ustawienia intensywność wentylacji"
+    },
+    {
+      "function": "04",
+      "address_dec": 277,
+      "address_hex": "0x0115",
+      "name": "max_percentage",
+      "access": "R/-",
+      "unit": "%",
+      "enum": null,
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Maksymalna możliwa do ustawienia intensywność wentylacji"
+    },
+    {
+      "function": "04",
+      "address_dec": 298,
+      "address_hex": "0x012A",
+      "name": "water_removal_active",
+      "access": "R/-",
+      "unit": null,
+      "enum": {
+        "0": "brak (procedura nieaktywna)",
+        "1": "jest (trwa procedura)"
+      },
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Status działania procedury HEWR"
     }
   ]
 }
