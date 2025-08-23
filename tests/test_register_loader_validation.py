@@ -3,16 +3,19 @@ from __future__ import annotations
 import json
 import re
 from importlib import resources
+from typing import Literal
 
 import pydantic
+import pytest
+from custom_components.thessla_green_modbus.registers.loader import _validate_item
 
 
 class Register(pydantic.BaseModel):
-    function: str
+    function: Literal["01", "02", "03", "04"]
     address_dec: int
     address_hex: str
     name: str
-    access: str
+    access: Literal["R/-", "R/W", "R", "W"]
     unit: str | None = None
     enum: dict[str, int | str] | None = None
     multiplier: float | None = None
@@ -36,8 +39,8 @@ class Register(pydantic.BaseModel):
 EXPECTED = {
     "01": {"min": 5, "max": 15, "count": 8},
     "02": {"min": 0, "max": 21, "count": 16},
-    "03": {"min": 0, "max": 8444, "count": 278},
-    "04": {"min": 0, "max": 298, "count": 29},
+    "03": {"min": 0, "max": 8444, "count": 270},
+    "04": {"min": 0, "max": 298, "count": 24},
 }
 
 
@@ -62,3 +65,19 @@ def test_register_file_valid() -> None:
         assert len(addrs) == spec["count"]
         assert min(addrs) == spec["min"]
         assert max(addrs) == spec["max"]
+
+
+def test_validate_item_rejects_unknown_function() -> None:
+    """Unknown function codes should be rejected."""
+
+    bad = {"name": "x", "function": "05", "address_dec": 0, "access": "R/W"}
+    with pytest.raises(ValueError):
+        _validate_item(bad)
+
+
+def test_validate_item_rejects_unknown_access() -> None:
+    """Unexpected access types should raise an error."""
+
+    bad = {"name": "x", "function": "03", "address_dec": 0, "access": "RW"}
+    with pytest.raises(ValueError):
+        _validate_item(bad)
