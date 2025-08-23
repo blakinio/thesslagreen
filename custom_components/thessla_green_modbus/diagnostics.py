@@ -56,9 +56,14 @@ async def async_get_config_entry_diagnostics(
         diagnostics.setdefault(
             "raw_registers", coordinator.device_scan_result["raw_registers"]
         )
-    # Include unknown registers from full scan if available
-    if coordinator.device_scan_result and coordinator.device_scan_result.get("unknown_registers"):
-        diagnostics["unknown_registers"] = coordinator.device_scan_result["unknown_registers"]
+
+    if coordinator.device_scan_result:
+        # Always expose registers that were skipped due to errors and any
+        # unknown addresses discovered during the scan
+        if "unknown_registers" in coordinator.device_scan_result:
+            diagnostics["unknown_registers"] = coordinator.device_scan_result["unknown_registers"]
+        if "failed_addresses" in coordinator.device_scan_result:
+            diagnostics["failed_addresses"] = coordinator.device_scan_result["failed_addresses"]
 
     # Add human-readable descriptions for active error/status registers
     translations = await translation.async_get_translations(
