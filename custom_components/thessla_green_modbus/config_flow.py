@@ -78,7 +78,7 @@ async def _run_with_retry(
             ModbusException,
             asyncio.TimeoutError,
             OSError,
-        ) as exc:
+        ):
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -158,8 +158,15 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
             raise CannotConnect("invalid_capabilities")
 
         if isinstance(caps_obj, DeviceCapabilities):
-            required_fields = {field.name for field in dataclasses.fields(DeviceCapabilities)}
-            missing = [f for f in required_fields if f not in vars(caps_obj)]
+            required_fields = {
+                field.name for field in dataclasses.fields(DeviceCapabilities)
+            }
+            try:
+                caps_dict = dataclasses.asdict(caps_obj)
+            except AttributeError as err:  # pragma: no cover - defensive
+                _LOGGER.error("Capabilities missing required fields: %s", err)
+                raise CannotConnect("invalid_capabilities") from err
+            missing = [f for f in required_fields if f not in caps_dict]
             if missing:
                 _LOGGER.error("Capabilities missing required fields: %s", set(missing))
                 raise CannotConnect("invalid_capabilities")

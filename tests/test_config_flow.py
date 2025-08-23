@@ -5,7 +5,7 @@ import asyncio
 import sys
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, patch, call
+from unittest.mock import AsyncMock, patch
 
 import logging
 import pytest
@@ -21,6 +21,7 @@ sys.modules.setdefault(
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.registers",
     SimpleNamespace(
+        loader=None,
         get_registers_by_function=lambda *args, **kwargs: [],
         get_all_registers=lambda *args, **kwargs: [],
         get_registers_hash=lambda *args, **kwargs: "",
@@ -949,7 +950,9 @@ async def test_validate_input_missing_capabilities():
 
 
 async def test_validate_input_capabilities_missing_fields():
-    """DeviceCapabilities object missing fields should raise CannotConnect."""
+    """Missing dataclass fields should raise CannotConnect."""
+    import dataclasses
+
     from custom_components.thessla_green_modbus.config_flow import (
         CannotConnect,
         validate_input,
@@ -964,6 +967,62 @@ async def test_validate_input_capabilities_missing_fields():
     }
 
     caps = DeviceCapabilities()
+
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": caps,
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(),
+        scan_device=AsyncMock(return_value=scan_result),
+        close=AsyncMock(),
+    )
+
+    orig_asdict = dataclasses.asdict
+
+    def _missing_basic_control(obj):
+        data = orig_asdict(obj)
+        data.pop("basic_control", None)
+        return data
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ), patch(
+        "custom_components.thessla_green_modbus.config_flow.dataclasses.asdict",
+        side_effect=_missing_basic_control,
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert str(err.value) == "invalid_capabilities"
+    scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_slotted_capabilities_missing_fields():
+    """Slotted DeviceCapabilities object missing fields should raise CannotConnect."""
+    from dataclasses import dataclass
+
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+        validate_input,
+    )
+
+    @dataclass(slots=True)
+    class SlotCaps:
+        basic_control: bool = False
+        bypass_system: bool = False
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    caps = SlotCaps()
     delattr(caps, "basic_control")
 
     scan_result = {
@@ -981,6 +1040,9 @@ async def test_validate_input_capabilities_missing_fields():
     with patch(
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
+    ), patch(
+        "custom_components.thessla_green_modbus.config_flow.DeviceCapabilities",
+        SlotCaps,
     ):
         with pytest.raises(CannotConnect) as err:
             await validate_input(None, data)
