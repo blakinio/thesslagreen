@@ -1190,7 +1190,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "available_registers": {
                 key: sorted(list(value)) for key, value in self.available_registers.items()
             },
-            "capabilities": dict(self.capabilities),
+            "capabilities": self.capabilities.as_dict(),
             "scan_result": self.device_scan_result,
             "unknown_registers": self.unknown_registers,
             "scanned_registers": self.scanned_registers,
