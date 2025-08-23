@@ -37,7 +37,9 @@ def convert(csv_path: Path = CSV_PATH, json_path: Path = JSON_PATH) -> None:
     seen_pairs: set[tuple[str, int]] = set()
 
     with csv_path.open("r", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
+        reader = csv.DictReader(
+            line for line in fh if not line.lstrip().startswith("#")
+        )
         for row in reader:
             name = row.get("Register_Name")
             if not name:
