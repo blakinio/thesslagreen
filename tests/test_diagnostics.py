@@ -8,6 +8,7 @@ import sys
 import pytest
 
 # Stub registers module to avoid heavy imports during diagnostics import
+original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
 registers_stub = ModuleType("custom_components.thessla_green_modbus.registers")
 registers_stub.get_all_registers = lambda: []
 registers_stub.get_registers_hash = lambda: "hash"
@@ -21,6 +22,12 @@ from custom_components.thessla_green_modbus.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+
+# Restore real registers module for subsequent tests
+if original_registers is not None:
+    sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
+else:  # pragma: no cover - defensive
+    del sys.modules["custom_components.thessla_green_modbus.registers"]
 
 DOMAIN = "thessla_green_modbus"
 
