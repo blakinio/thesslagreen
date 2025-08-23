@@ -131,7 +131,11 @@ class DeviceCapabilities:
     temperature_sensors_count: int = 0
 
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        for key, value in data.items():
+            if isinstance(value, set):
+                data[key] = sorted(value)
+        return data
 
     def items(self):
         return asdict(self).items()
