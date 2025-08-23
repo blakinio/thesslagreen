@@ -25,8 +25,6 @@ from datetime import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Set, Tuple
-import struct
-from typing import Any, Dict, List, Sequence
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
