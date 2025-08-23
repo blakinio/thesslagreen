@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Set, Tuple, Literal
+from typing import Any, Literal, Sequence
 
 import pydantic
 
@@ -60,10 +60,10 @@ class Register:
     min: float | None = None
     max: float | None = None
     default: float | None = None
-    enum: Dict[int | str, Any] | None = None
+    enum: dict[int | str, Any] | None = None
     notes: str | None = None
     information: str | None = None
-    extra: Dict[str, Any] | None = None
+    extra: dict[str, Any] | None = None
     length: int = 1
     bcd: bool = False
 
@@ -167,7 +167,7 @@ class Register:
 
         return value
 
-    def encode(self, value: Any) -> int | List[int]:
+    def encode(self, value: Any) -> int | list[int]:
         """Encode ``value`` into the raw register representation."""
 
         if self.length > 1:
@@ -279,7 +279,7 @@ try:  # pragma: no cover - defensive
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
 except Exception:  # pragma: no cover - defensive
-    _SPECIAL_MODES_ENUM: Dict[str, int] = {}
+    _SPECIAL_MODES_ENUM: dict[str, int] = {}
 
 
 def _normalise_function(fn: str) -> str:
@@ -336,7 +336,7 @@ class RegisterDefinition(pydantic.BaseModel):
     name: str
     access: Literal["R/-", "R/W", "R", "W"]
     unit: str | None = None
-    enum: Dict[str, Any] | None = None
+    enum: dict[str, Any] | None = None
     multiplier: float | None = None
     resolution: float | None = None
     description: str | None = None
@@ -345,7 +345,7 @@ class RegisterDefinition(pydantic.BaseModel):
     default: float | None = None
     notes: str | None = None
     information: str | None = None
-    extra: Dict[str, Any] | None = None
+    extra: dict[str, Any] | None = None
     length: int = 1
     bcd: bool = False
 
@@ -389,7 +389,7 @@ def _normalise_name(name: str) -> str:
 @lru_cache(maxsize=1)
 def _load_registers_from_file(
     path: Path, *, file_hash: str
-) -> List[Register]:
+) -> list[Register]:
     """Load register definitions from ``path``.
 
     ``file_hash`` is only used to invalidate the cache when the underlying file
@@ -408,9 +408,9 @@ def _load_registers_from_file(
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
-    registers: List[Register] = []
-    seen_pairs: Set[Tuple[str, int]] = set()
-    seen_names: Set[str] = set()
+    registers: list[Register] = []
+    seen_pairs: set[tuple[str, int]] = set()
+    seen_names: set[str] = set()
 
     for item in items:
         parsed = RegisterDefinition.model_validate(item)
@@ -479,7 +479,7 @@ def _compute_file_hash() -> str:
     return hashlib.sha256(_REGISTERS_PATH.read_bytes()).hexdigest()
 
 
-def _load_registers() -> List[Register]:
+def _load_registers() -> list[Register]:
     """Return cached register definitions, reloading if the file changed."""
 
     file_hash = _compute_file_hash()
@@ -505,12 +505,12 @@ _load_registers()
 # ---------------------------------------------------------------------------
 
 
-def get_all_registers() -> List[Register]:
+def get_all_registers() -> list[Register]:
     """Return a list of all known registers."""
     return list(_load_registers())
 
 
-def get_registers_by_function(fn: str) -> List[Register]:
+def get_registers_by_function(fn: str) -> list[Register]:
     """Return registers for the given function code or name."""
     code = _normalise_function(fn)
     return [r for r in _load_registers() if r.function == code]
@@ -533,11 +533,11 @@ class ReadPlan:
     length: int
 
 
-def group_reads(max_block_size: int = 64) -> List[ReadPlan]:
+def group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
-    plans: List[ReadPlan] = []
-    regs_by_fn: Dict[str, List[int]] = {}
+    plans: list[ReadPlan] = []
+    regs_by_fn: dict[str, list[int]] = {}
 
     for reg in _load_registers():
         addresses = list(range(reg.address, reg.address + reg.length))
