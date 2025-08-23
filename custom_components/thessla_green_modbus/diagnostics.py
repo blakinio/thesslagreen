@@ -72,9 +72,13 @@ async def async_get_config_entry_diagnostics(
     diagnostics.setdefault("failed_addresses", failed_addrs)
 
     # Add human-readable descriptions for active error/status registers
-    translations = await translation.async_get_translations(
-        hass, hass.config.language, f"component.{DOMAIN}"
-    )
+    translations: dict[str, str] = {}
+    try:
+        translations = await translation.async_get_translations(
+            hass, hass.config.language, f"component.{DOMAIN}"
+        )
+    except Exception as err:  # pragma: no cover - defensive
+        _LOGGER.debug("Translation load failed: %s", err)
     active_errors: dict[str, str] = {}
     if coordinator.data:
         for key, value in coordinator.data.items():
