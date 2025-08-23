@@ -31,6 +31,25 @@ MULTI_REGISTER_SIZES: dict[str, int] = {
 }
 
 
+def sort_registers_json() -> None:
+    """Sort the canonical JSON register file.
+
+    The file is ordered first by Modbus function code and then by the
+    decimal address to ensure deterministic diffs and easier manual
+    inspection.
+    """
+
+    data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
+    registers = data.get("registers", data)
+    registers.sort(
+        key=lambda r: (int(str(r["function"])), int(r["address_dec"]))
+    )
+    JSON_PATH.write_text(
+        json.dumps({"registers": registers}, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def _to_snake_case(name: str) -> str:
     """Convert register names to snake_case."""
     replacements = {"flowrate": "flow_rate"}
@@ -157,6 +176,7 @@ def write_file(
 
 
 def main() -> None:
+    sort_registers_json()
     coils, discrete_inputs, input_regs, holding_regs = load_registers()
     write_file(coils, discrete_inputs, input_regs, holding_regs)
 
