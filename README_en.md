@@ -96,13 +96,14 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 > [More details](docs/register_scanning.md).
 
 ### Auto-scan process
-During setup the `ThesslaGreenDeviceScanner` module (`scanner_core.py`)
-invokes `ThesslaGreenDeviceScanner.scan_device()` which opens a Modbus
-connection, detects available registers and device capabilities, then
-closes the client. The results populate `available_registers` from which
-the coordinator creates only entities supported by the device. After
-firmware updates run the scan again (e.g. remove and re-add the
-integration) to refresh `available_registers`.
+During setup the `ThesslaGreenDeviceScanner` module from
+`custom_components/thessla_green_modbus/scanner_core.py` invokes
+`scan_device()`. This method opens a Modbus connection, scans available
+registers and device capabilities, then closes the client. The results
+populate `available_registers`, from which the coordinator creates only
+entities supported by the device. After firmware updates run the scan
+again (e.g. remove and re-add the integration) to refresh
+`available_registers`.
 
 ## 📊 Available entities
 

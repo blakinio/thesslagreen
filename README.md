@@ -106,14 +106,14 @@ pomijane w kolejnych skanach.
 Szczegóły migracji z czujników procentowych opisano w pliku [docs/airflow_migration.md](docs/airflow_migration.md).
 
 ### Proces autoskanu
-Podczas dodawania integracji moduł `ThesslaGreenDeviceScanner` (plik
-`scanner_core.py`) wywołuje metodę `ThesslaGreenDeviceScanner.scan_device()`,
-która otwiera połączenie Modbus, wykrywa dostępne rejestry oraz
-możliwości urządzenia, a następnie zamyka klienta. Wynik skanowania
+Podczas dodawania integracji moduł `ThesslaGreenDeviceScanner` z pliku
+`custom_components/thessla_green_modbus/scanner_core.py` wywołuje metodę
+`scan_device()`. Funkcja ta otwiera połączenie Modbus, skanuje dostępne
+rejestry i możliwości urządzenia, a następnie zamyka klienta. Wynik
 trafia do struktury `available_registers`, z której koordynator tworzy
-jedynie encje obsługiwane przez dane urządzenie. Jeśli po aktualizacji
-firmware pojawią się nowe rejestry, ponownie uruchom skanowanie (np.
-usuń i dodaj integrację), aby zaktualizować listę `available_registers`.
+jedynie encje obsługiwane przez dane urządzenie. Po aktualizacji
+firmware uruchom ponownie skanowanie (np. usuń i dodaj integrację), aby
+zaktualizować listę `available_registers`.
 
 Podczas skanowania rejestry są grupowane według funkcji i tylko część z nich
 przekłada się na utworzone encje. Niektóre służą jedynie do diagnostyki lub
