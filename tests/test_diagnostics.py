@@ -160,6 +160,7 @@ async def test_unknown_registers_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
+            self.unknown_registers = scan_result["unknown_registers"]
 
         def get_diagnostic_data(self):
             return {}

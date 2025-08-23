@@ -341,6 +341,12 @@ def _validate_item(item: Dict[str, Any]) -> None:
         raise ValueError("missing 'function'")
     if not isinstance(item["function"], (str, int)):
         raise ValueError("invalid 'function'")
+    if str(item["function"]) not in {"01", "02", "03", "04"}:
+        raise ValueError("invalid 'function'")
+    if not isinstance(item.get("access"), str):
+        raise ValueError("missing or invalid 'access'")
+    if item["access"] not in {"R/-", "R/W", "R", "W"}:
+        raise ValueError("invalid 'access'")
     if item.get("address_dec") is None and item.get("address_hex") is None:
         raise ValueError("missing address field")
     if item.get("address_dec") is not None and not isinstance(item["address_dec"], int):

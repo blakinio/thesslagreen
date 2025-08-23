@@ -338,7 +338,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
         capabilities_list = [
-            k.replace("_", " ").title() for k, v in caps_data.items() if v
+            field.name.replace("_", " ").title()
+            for field in dataclasses.fields(DeviceCapabilities)
+            if field.type in (bool, "bool") and getattr(caps_data, field.name)
         ]
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
