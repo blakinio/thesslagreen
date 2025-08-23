@@ -11,7 +11,7 @@ def test_deep_scan_defaults():
 
 
 def test_missing_options_file(monkeypatch, caplog):
-    def missing(_self: Path) -> str:  # pragma: no cover - simple stub
+    def missing(_self: Path, **kwargs) -> str:  # pragma: no cover - simple stub
         raise FileNotFoundError
 
     monkeypatch.setattr(Path, "read_text", missing)
@@ -24,7 +24,7 @@ def test_missing_options_file(monkeypatch, caplog):
 
 
 def test_malformed_options_file(monkeypatch, caplog):
-    def malformed(_self: Path) -> str:  # pragma: no cover - simple stub
+    def malformed(_self: Path, **kwargs) -> str:  # pragma: no cover - simple stub
         return "{"
 
     monkeypatch.setattr(Path, "read_text", malformed)

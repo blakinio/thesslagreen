@@ -10,14 +10,14 @@ from .registers import get_registers_by_function
 
 def _build_map(fn: str) -> dict[str, int]:
     return {r.name: r.address for r in get_registers_by_function(fn) if r.name}
+
+
 COIL_REGISTERS = _build_map("coil")
 DISCRETE_INPUT_REGISTERS = _build_map("discrete")
 HOLDING_REGISTERS = _build_map("holding")
 INPUT_REGISTERS = _build_map("input")
 MULTI_REGISTER_SIZES = {
-    r.name: r.length
-    for r in get_registers_by_function("holding")
-    if r.name and r.length > 1
+    r.name: r.length for r in get_registers_by_function("holding") if r.name and r.length > 1
 }
 
 OPTIONS_PATH = Path(__file__).parent / "options"
@@ -206,6 +206,7 @@ def get_discrete_input_registers() -> Dict[str, int]:
     """Return mapping of discrete input registers loaded from JSON definitions."""
     return _build_map("discrete")
 
+
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
 # ============================================================================
@@ -219,7 +220,10 @@ def _load_json_option(filename: str) -> list[Any]:
     """
 
     try:
-        return cast(list[Any], json.loads((OPTIONS_PATH / filename).read_text()))
+        return cast(
+            list[Any],
+            json.loads((OPTIONS_PATH / filename).read_text(encoding="utf-8")),
+        )
     except (FileNotFoundError, json.JSONDecodeError) as err:
         _LOGGER.warning("Failed to load %s: %s", filename, err)
         return []
