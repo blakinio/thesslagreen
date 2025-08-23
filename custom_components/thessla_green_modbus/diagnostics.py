@@ -17,6 +17,7 @@ from homeassistant.helpers import translation
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
+from .registers import get_registers_hash
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ async def async_get_config_entry_diagnostics(
 
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
+    diagnostics.setdefault("registers_hash", get_registers_hash())
+    diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
 
     # Supplement diagnostics with coordinator statistics
     diagnostics.setdefault(

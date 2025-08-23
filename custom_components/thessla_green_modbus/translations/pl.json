@@ -1,6 +1,10 @@
 {
   "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
   "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
+  "diagnostics": {
+    "registers_hash": "Suma kontrolna rejestrów",
+    "capabilities": "Możliwości urządzenia"
+  },
   "config": {
     "abort": {
       "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."

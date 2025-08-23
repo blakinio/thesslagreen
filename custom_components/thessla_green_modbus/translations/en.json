@@ -1,6 +1,10 @@
 {
   "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
   "auto_detected_note_success": "Auto-detection successful!",
+  "diagnostics": {
+    "registers_hash": "Register definitions hash",
+    "capabilities": "Device capabilities"
+  },
   "config": {
     "abort": {
       "already_configured": "Device with this IP address and Device ID is already configured."
