@@ -872,10 +872,34 @@ async def test_full_register_scan_collects_unknown_registers():
 async def test_scan_device_batch_fallback():
     """Batch read failures should fall back to single-register reads."""
     empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    with patch.object(
+        ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
+    ):
+        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+
+    async def fake_read_input(client, address, count, **kwargs):
+        if address == 0 and count == 5:
+            return [4, 85, 0, 0, 0]
+        if count > 1:
+            return None
+        return [0]
+
+    async def fake_read_holding(client, address, count, **kwargs):
+        if count > 1:
+            return None
+        return [0]
+
+    async def fake_read_coil(client, address, count, **kwargs):
+        if count > 1:
+            return None
+        return [False]
+
+    async def fake_read_discrete(client, address, count, **kwargs):
+        if count > 1:
+            return None
+        return [False]
+
     with (
-        patch.object(
-            ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
-        ),
         patch(
             "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
             {"ir1": 0x10, "ir2": 0x11},
@@ -892,46 +916,22 @@ async def test_scan_device_batch_fallback():
             "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
             {"dr1": 0x00, "dr2": 0x01},
         ),
+        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
     ):
-        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client.read_input_registers = AsyncMock(
+            return_value=MagicMock(isError=lambda: False, registers=[4, 85, 0, 0, 0])
+        )
+        mock_client_class.return_value = mock_client
 
-        async def fake_read_input(client, address, count, **kwargs):
-            if address == 0 and count == 5:
-                return [4, 85, 0, 0, 0]
-            if count > 1:
-                return None
-            return [0]
-
-        async def fake_read_holding(client, address, count, **kwargs):
-            if count > 1:
-                return None
-            return [0]
-
-        async def fake_read_coil(client, address, count, **kwargs):
-            if count > 1:
-                return None
-            return [False]
-
-        async def fake_read_discrete(client, address, count, **kwargs):
-            if count > 1:
-                return None
-            return [False]
-
-        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
-            mock_client = AsyncMock()
-            mock_client.connect.return_value = True
-            mock_client.read_input_registers = AsyncMock(
-                return_value=MagicMock(isError=lambda: False, registers=[4, 85, 0, 0, 0])
-            )
-            mock_client_class.return_value = mock_client
-
-            with (
-                patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)) as ri,
-                patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
-                patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
-                patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
-            ):
-                result = await scanner.scan_device()
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)) as ri,
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+        ):
+            result = await scanner.scan_device()
 
     assert set(result["available_registers"]["input_registers"]) == {"ir1", "ir2"}
     assert set(result["available_registers"]["holding_registers"]) == {"hr1", "hr2"}
@@ -1607,7 +1607,7 @@ async def test_scan_logs_missing_expected_registers(caplog):
         if address <= 4 < address + count:
             data[4 - address] = SENSOR_UNAVAILABLE
         return data
-
+    scanner = ThesslaGreenDeviceScanner("host", 502)
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS", input_regs),
         patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
@@ -1623,7 +1623,6 @@ async def test_scan_logs_missing_expected_registers(caplog):
             },
         ),
     ):
-        scanner = ThesslaGreenDeviceScanner("host", 502)
         scanner._client = object()
         with (
             patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),

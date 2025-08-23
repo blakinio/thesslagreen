@@ -37,12 +37,71 @@ if TYPE_CHECKING:  # pragma: no cover
 
 _LOGGER = logging.getLogger(__name__)
 
-REGISTER_DEFINITIONS = {r.name: r for r in get_all_registers()}
-INPUT_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "04"}
-HOLDING_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03"}
-COIL_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "01"}
-DISCRETE_INPUT_REGISTERS = {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "02"}
-MULTI_REGISTER_SIZES = {name: reg.length for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03" and reg.length > 1}
+# Register definition caches - populated lazily
+REGISTER_DEFINITIONS: dict[str, Any] = {}
+INPUT_REGISTERS: dict[str, int] = {}
+HOLDING_REGISTERS: dict[str, int] = {}
+COIL_REGISTERS: dict[str, int] = {}
+DISCRETE_INPUT_REGISTERS: dict[str, int] = {}
+MULTI_REGISTER_SIZES: dict[str, int] = {}
+
+
+def _build_register_maps() -> None:
+    """Populate register lookup maps from current register definitions."""
+    regs = get_all_registers()
+
+    REGISTER_DEFINITIONS.clear()
+    REGISTER_DEFINITIONS.update({r.name: r for r in regs})
+
+    INPUT_REGISTERS.clear()
+    INPUT_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "04"}
+    )
+
+    HOLDING_REGISTERS.clear()
+    HOLDING_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03"}
+    )
+
+    COIL_REGISTERS.clear()
+    COIL_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "01"}
+    )
+
+    DISCRETE_INPUT_REGISTERS.clear()
+    DISCRETE_INPUT_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "02"}
+    )
+
+    MULTI_REGISTER_SIZES.clear()
+    MULTI_REGISTER_SIZES.update(
+        {
+            name: reg.length
+            for name, reg in REGISTER_DEFINITIONS.items()
+            if reg.function == "03" and reg.length > 1
+        }
+    )
+
+
+def _ensure_register_maps() -> None:
+    """Ensure register lookup maps are populated."""
+    if not REGISTER_DEFINITIONS:
+        _build_register_maps()
+
+
+def clear_register_cache() -> None:
+    """Clear register definition cache and rebuild lookup maps."""
+    from .registers.loader import clear_cache as _clear_cache
+
+    _clear_cache()
+    # Rebuild maps from fresh cache
+    REGISTER_DEFINITIONS.clear()
+    INPUT_REGISTERS.clear()
+    HOLDING_REGISTERS.clear()
+    COIL_REGISTERS.clear()
+    DISCRETE_INPUT_REGISTERS.clear()
+    MULTI_REGISTER_SIZES.clear()
+    _build_register_maps()
 
 
 @dataclass
@@ -166,6 +225,7 @@ class ThesslaGreenDeviceScanner:
         scan_max_block_size: int = MAX_BATCH_REGISTERS,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
+        _ensure_register_maps()
         self.host = host
         self.port = port
         self.slave_id = slave_id

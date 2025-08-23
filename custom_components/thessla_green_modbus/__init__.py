@@ -41,6 +41,7 @@ from .const import (
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .modbus_exceptions import ConnectionException, ModbusException
+from .registers import loader
 
 # Migration message for start-up logs
 MIGRATION_MESSAGE = (
