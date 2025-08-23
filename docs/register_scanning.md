@@ -39,6 +39,26 @@ primarily for debugging or development purposes.
    upewnić się, że tłumaczenia są aktualne.
 6. Do commitu dodaj zmodyfikowany plik JSON.
 
+## Walidacja rejestrów z dokumentacją PDF
+
+Definicje rejestrów są okresowo porównywane z oficjalną dokumentacją
+producenta. Skrypt `tools/validate_register_pdf.py` parsuje plik
+`MODBUS_USER_AirPack_Home_08.2021.01 1.pdf` i zwraca listę rejestrów wraz z
+informacjami o dostępie, jednostkach i skalowaniu. Dane te są używane w teście
+`tests/test_register_loader_validation.py::test_registers_match_pdf`, który
+sprawdza, czy każdy adres z PDF został odwzorowany w pliku JSON oraz czy
+podstawowe atrybuty są zgodne.
+
+Aby ręcznie uruchomić walidację:
+
+```bash
+python tools/validate_register_pdf.py  # opcjonalny podgląd danych
+pytest tests/test_register_loader_validation.py::test_registers_match_pdf
+```
+
+Jeżeli test zgłasza brakujące rejestry lub rozbieżności w atrybutach,
+należy zaktualizować plik JSON przed wysłaniem zmian.
+
 ## Migracja z CSV na JSON
 Rejestry są definiowane wyłącznie w pliku JSON
 `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
