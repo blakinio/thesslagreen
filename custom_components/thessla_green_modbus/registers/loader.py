@@ -29,7 +29,6 @@ from typing import Any, Literal, Sequence
 
 import pydantic
 
-from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
 from ..modbus_helpers import group_reads as _group_reads
@@ -382,9 +381,6 @@ def _normalise_name(name: str) -> str:
     }
     snake = _to_snake_case(name)
     return fixes.get(snake, snake)
-
-
-
 # ---------------------------------------------------------------------------
 # Register loading helpers
 # ---------------------------------------------------------------------------
