@@ -367,6 +367,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _load_full_register_list(self) -> None:
         """Load full register list when forced."""
         self.available_registers = {
+            key: set(mapping.keys()) for key, mapping in self._register_maps.items()
+        }
+
+        self.device_info = {
+            "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
+            "model": UNKNOWN_MODEL,
+            "firmware": "Unknown",
+            "serial_number": "Unknown",
             "input_registers": set(self._register_maps["input_registers"].keys()),
             "holding_registers": set(self._register_maps["holding_registers"].keys()),
             "coil_registers": set(self._register_maps["coil_registers"].keys()),
