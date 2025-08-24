@@ -4,7 +4,7 @@ import asyncio
 import sys
 import types
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -152,8 +152,7 @@ def test_number_creation_and_state(mock_coordinator):
     """Test creation and state changes of number entity."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    address = 8190
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
     assert number.native_value == 20
     assert "scale_factor" not in number.extra_state_attributes
 
@@ -165,8 +164,7 @@ def test_number_set_value(mock_coordinator):
     """Test setting a new value on the number entity."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    address = 8190
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
 
     asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_write_register.assert_awaited_with(
@@ -179,8 +177,7 @@ def test_number_set_value_modbus_failure(mock_coordinator):
     """Ensure Modbus errors are surfaced when setting the number."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    address = 8190
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
 
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
@@ -192,8 +189,7 @@ def test_number_set_value_write_failure(mock_coordinator):
     """Ensure failures to write registers raise RuntimeError."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    address = 8190
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
 
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
     with pytest.raises(RuntimeError):
@@ -206,8 +202,7 @@ def test_number_set_value_other_errors(mock_coordinator, exc_cls):
     """Ensure ValueError and OSError propagate when setting the number."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    address = 8190
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
 
     mock_coordinator.async_write_register = AsyncMock(side_effect=exc_cls("fail"))
     with pytest.raises(exc_cls):
@@ -226,8 +221,7 @@ def test_new_number_entities(mock_coordinator, register, value):
     """Test number entities for newly added registers."""
     mock_coordinator.data[register] = value
     entity_config = ENTITY_MAPPINGS["number"][register]
-    address = 4117 if register == "max_supply_air_flow_rate" else 4320
-    number = ThesslaGreenNumber(mock_coordinator, register, address, entity_config)
+    number = ThesslaGreenNumber(mock_coordinator, register, entity_config)
     assert number.native_value == value
 
 
@@ -253,6 +247,27 @@ async def test_async_setup_skips_missing_numbers(mock_coordinator, mock_config_e
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_coordinator.available_registers = {"holding_registers": set()}
+
+    add_entities = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+    add_entities.assert_not_called()
+
+
+def test_number_invalid_register_raises(mock_coordinator):
+    """Ensure unknown registers raise KeyError."""
+    with pytest.raises(KeyError):
+        ThesslaGreenNumber(mock_coordinator, "invalid_register", {})
+
+
+@pytest.mark.asyncio
+@patch.dict(ENTITY_MAPPINGS["number"], {"invalid_register": {}}, clear=False)
+async def test_async_setup_skips_unknown_register(
+    mock_coordinator, mock_config_entry
+):
+    """Ensure setup skips registers missing from HOLDING_REGISTERS."""
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_coordinator.available_registers["holding_registers"] = {"invalid_register"}
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
