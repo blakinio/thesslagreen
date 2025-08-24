@@ -42,6 +42,7 @@ from .const import (
     DEFAULT_TIMEOUT,
     DEFAULT_DEEP_SCAN,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    MAX_BATCH_REGISTERS,
     DOMAIN,
 )
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
@@ -101,9 +102,7 @@ class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
 
 
-async def validate_input(
-    _hass: HomeAssistant, data: dict[str, Any]
-) -> dict[str, Any]:
+async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     host = data[CONF_HOST]
     port = data[CONF_PORT]
@@ -144,9 +143,7 @@ async def validate_input(
 
         # Verify connection by reading a few safe registers
         await _run_with_retry(
-            lambda: asyncio.wait_for(
-                scanner.verify_connection(), timeout=timeout
-            ),
+            lambda: asyncio.wait_for(scanner.verify_connection(), timeout=timeout),
             retries=DEFAULT_RETRY,
             backoff=CONFIG_FLOW_BACKOFF,
         )
@@ -163,9 +160,7 @@ async def validate_input(
             raise CannotConnect("invalid_capabilities")
 
         if isinstance(caps_obj, DeviceCapabilities):
-            required_fields = {
-                field.name for field in dataclasses.fields(DeviceCapabilities)
-            }
+            required_fields = {field.name for field in dataclasses.fields(DeviceCapabilities)}
             try:
                 caps_dict = caps_obj.as_dict()
             except AttributeError as err:  # pragma: no cover - defensive
@@ -173,9 +168,7 @@ async def validate_input(
                 raise CannotConnect("invalid_capabilities") from err
             missing = [f for f in required_fields if f not in caps_dict]
             if missing:
-                _LOGGER.error(
-                    "Capabilities missing required fields: %s", set(missing)
-                )
+                _LOGGER.error("Capabilities missing required fields: %s", set(missing))
                 raise CannotConnect("invalid_capabilities")
         elif isinstance(caps_obj, dict):
             try:
@@ -287,9 +280,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     err.path[0] if err.path else "unknown",
                     err,
                 )
-                errors[err.path[0] if err.path else CONF_HOST] = (
-                    err.error_message
-                )
+                errors[err.path[0] if err.path else CONF_HOST] = err.error_message
             except (ConnectionException, ModbusException):
                 _LOGGER.exception("Modbus communication error")
                 errors["base"] = "cannot_connect"
@@ -329,9 +320,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             errors=errors,
         )
 
-    async def async_step_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the confirm step."""
         if user_input is not None:
             # Ensure unique ID is set and not already configured
@@ -364,11 +353,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
                     "capabilities": caps_dict,
                 },
-                options={
-                    CONF_DEEP_SCAN: self._data.get(
-                        CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
-                    )
-                },
+                options={CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)},
             )
 
         # Prepare description with device info
@@ -402,9 +387,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
 
-        language = getattr(
-            getattr(self.hass, "config", None), "language", "en"
-        )
+        language = getattr(getattr(self.hass, "config", None), "language", "en")
         translations: dict[str, str] = {}
         try:
             translations = await translation.async_get_translations(
@@ -413,11 +396,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         except Exception as err:  # pragma: no cover - defensive
             _LOGGER.debug("Translation load failed: %s", err)
 
-        key = (
-            "auto_detected_note_success"
-            if register_count > 0
-            else "auto_detected_note_limited"
-        )
+        key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"
         auto_detected_note = translations.get(
             f"component.{DOMAIN}.{key}",
             (
@@ -437,9 +416,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             "register_count": str(register_count),
             "scan_success_rate": scan_success_rate,
             "capabilities_count": str(len(capabilities_list)),
-            "capabilities_list": ", ".join(capabilities_list)
-            if capabilities_list
-            else "None",
+            "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
             "auto_detected_note": auto_detected_note,
         }
 
@@ -482,13 +459,9 @@ class OptionsFlow(config_entries.OptionsFlow):
                 CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
             )
             if max_regs < 1:
-                errors[CONF_MAX_REGISTERS_PER_REQUEST] = (
-                    "invalid_max_registers_per_request_low"
-                )
-            elif max_regs > 16:
-                errors[CONF_MAX_REGISTERS_PER_REQUEST] = (
-                    "invalid_max_registers_per_request_high"
-                )
+                errors[CONF_MAX_REGISTERS_PER_REQUEST] = "invalid_max_registers_per_request_low"
+            elif max_regs > MAX_BATCH_REGISTERS:
+                errors[CONF_MAX_REGISTERS_PER_REQUEST] = "invalid_max_registers_per_request_high"
             else:
                 user_input = dict(user_input)
                 return self.async_create_entry(title="", data=user_input)
@@ -497,15 +470,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_scan_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
         )
-        current_timeout = self.config_entry.options.get(
-            CONF_TIMEOUT, DEFAULT_TIMEOUT
-        )
-        current_retry = self.config_entry.options.get(
-            CONF_RETRY, DEFAULT_RETRY
-        )
-        force_full = self.config_entry.options.get(
-            CONF_FORCE_FULL_REGISTER_LIST, False
-        )
+        current_timeout = self.config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+        current_retry = self.config_entry.options.get(CONF_RETRY, DEFAULT_RETRY)
+        force_full = self.config_entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
         current_scan_uart = self.config_entry.options.get(
             CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS
         )
@@ -515,9 +482,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_airflow_unit = self.config_entry.options.get(
             CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
         )
-        current_deep_scan = self.config_entry.options.get(
-            CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
-        )
+        current_deep_scan = self.config_entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
         current_max_registers_per_request = self.config_entry.options.get(
             CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
         )
@@ -561,7 +526,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
                     description={"advanced": True},
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=16)),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=MAX_BATCH_REGISTERS)),
             }
         )
 
@@ -578,8 +543,6 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "skip_missing_enabled": "Yes" if current_skip_missing else "No",
                 "current_airflow_unit": current_airflow_unit,
                 "deep_scan_enabled": "Yes" if current_deep_scan else "No",
-                "current_max_registers_per_request": str(
-                    current_max_registers_per_request
-                ),
+                "current_max_registers_per_request": str(current_max_registers_per_request),
             },
         )

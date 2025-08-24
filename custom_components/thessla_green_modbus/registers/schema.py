@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 import pydantic
 
-from ..utils import _to_snake_case
+from ..utils import _normalise_name
 
 
 def _normalise_function(fn: str) -> str:
@@ -25,17 +25,6 @@ def _normalise_function(fn: str) -> str:
     }
     key = fn.lower().replace(" ", "_")
     return mapping.get(key, fn)
-
-
-def _normalise_name(name: str) -> str:
-    """Convert register names to ``snake_case`` and fix known typos."""
-    fixes = {
-        "duct_warter_heater_pump": "duct_water_heater_pump",
-        "required_temp": "required_temperature",
-        "specialmode": "special_mode",
-    }
-    snake = _to_snake_case(name)
-    return fixes.get(snake, snake)
 
 
 class RegisterDefinition(pydantic.BaseModel):
@@ -70,22 +59,38 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("address_hex does not match address_dec")
 
         typ = (self.extra or {}).get("type")
-        expected_len = {
-            "uint32": 2,
-            "int32": 2,
-            "float32": 2,
-            "uint64": 4,
-            "int64": 4,
-            "float64": 4,
-        }.get(typ)
-        if expected_len is not None and self.length != expected_len:
-            raise ValueError("length does not match type")
+        if typ == "string":
+            if self.length < 1:
+                raise ValueError("string type requires length >= 1")
+        else:
+            expected_len = {
+                "uint32": 2,
+                "int32": 2,
+                "float32": 2,
+                "uint64": 4,
+                "int64": 4,
+                "float64": 4,
+            }.get(typ)
+            if expected_len is not None and self.length != expected_len:
+                raise ValueError("length does not match type")
 
         if self.function in {"01", "02"} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
-        if self.bits is not None and not (self.extra and self.extra.get("bitmask")):
-            raise ValueError("bits provided without extra.bitmask")
+        if self.bits is not None:
+            if not (self.extra and self.extra.get("bitmask")):
+                raise ValueError("bits provided without extra.bitmask")
+            bitmask_val = self.extra.get("bitmask") if self.extra else None
+            mask_int: int | None = None
+            if isinstance(bitmask_val, str):
+                try:
+                    mask_int = int(bitmask_val, 0)
+                except ValueError:
+                    mask_int = None
+            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+                mask_int = bitmask_val
+            if mask_int is not None and len(self.bits) > mask_int.bit_length():
+                raise ValueError("bits exceed bitmask width")
 
         return self
 

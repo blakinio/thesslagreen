@@ -1,11 +1,11 @@
 """Test config flow for ThesslaGreen Modbus integration."""
+
 # ruff: noqa: E402
 
 import asyncio
 import sys
 import socket
 import types
-from types import SimpleNamespace
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -27,19 +27,13 @@ network_module = SimpleNamespace(
     and not host.replace(".", "").isdigit()
     and "." in host,
 )
-sys.modules.setdefault(
-    "homeassistant.util", SimpleNamespace(network=network_module)
-)
+sys.modules.setdefault("homeassistant.util", SimpleNamespace(network=network_module))
 sys.modules.setdefault("homeassistant.util.network", network_module)
 
 # Stub registers module to avoid heavy imports during tests
-registers_module = types.ModuleType(
-    "custom_components.thessla_green_modbus.registers"
-)
+registers_module = types.ModuleType("custom_components.thessla_green_modbus.registers")
 registers_module.__path__ = []  # type: ignore[attr-defined]
-registers_loader = types.ModuleType(
-    "custom_components.thessla_green_modbus.registers.loader"
-)
+registers_loader = types.ModuleType("custom_components.thessla_green_modbus.registers.loader")
 registers_loader.get_registers_by_function = lambda *args, **kwargs: []
 registers_loader.get_all_registers = lambda *args, **kwargs: []
 registers_loader.get_registers_hash = lambda *args, **kwargs: ""
@@ -50,12 +44,8 @@ registers_module.get_registers_by_function = registers_loader.get_registers_by_f
 registers_module.get_all_registers = registers_loader.get_all_registers
 registers_module.get_registers_hash = registers_loader.get_registers_hash
 registers_module.plan_group_reads = registers_loader.plan_group_reads
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers", registers_module
-)
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers.loader", registers_loader
-)
+sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
+sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", registers_loader)
 registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
 registers_module.__path__ = []
 registers_module.loader = None
@@ -63,23 +53,18 @@ registers_module.get_registers_by_function = lambda *args, **kwargs: []
 registers_module.get_all_registers = lambda *args, **kwargs: []
 registers_module.get_registers_hash = lambda *args, **kwargs: ""
 registers_module.plan_group_reads = lambda *args, **kwargs: []
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers", registers_module
-)
-loader_module = ModuleType(
-    "custom_components.thessla_green_modbus.registers.loader"
-)
+sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
+loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
 loader_module.get_registers_by_function = lambda *args, **kwargs: []
 loader_module.load_registers = lambda *args, **kwargs: []
 loader_module.get_all_registers = lambda *args, **kwargs: []
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers.loader", loader_module
-)
+sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_module)
 
 from custom_components.thessla_green_modbus.const import (
     CONF_DEEP_SCAN,
     CONF_SLAVE_ID,
     CONF_MAX_REGISTERS_PER_REQUEST,
+    MAX_BATCH_REGISTERS,
 )
 
 from custom_components.thessla_green_modbus.config_flow import (
@@ -102,9 +87,7 @@ pytestmark = pytest.mark.asyncio
 class AbortFlow(Exception):
     """Mock AbortFlow to simulate Home Assistant aborts."""
 
-    def __init__(
-        self, reason: str
-    ) -> None:  # pragma: no cover - simple container
+    def __init__(self, reason: str) -> None:  # pragma: no cover - simple container
         super().__init__(reason)
         self.reason = reason
 
@@ -251,9 +234,7 @@ async def test_form_user_valid_ipv6():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured"
@@ -292,9 +273,7 @@ async def test_form_user_valid_domain():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured"
@@ -350,9 +329,7 @@ async def test_form_user_success():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured"
@@ -409,9 +386,7 @@ async def test_duplicate_entry_aborts():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured",
@@ -447,9 +422,7 @@ async def test_user_step_duplicate_entry_aborts_silently(caplog):
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured",
@@ -513,10 +486,7 @@ async def test_async_step_confirm_auto_detected_note(registers, expected_note):
 
     assert result["type"] == "form"
     assert result["step_id"] == "confirm"
-    assert (
-        result["description_placeholders"]["auto_detected_note"]
-        == translations[expected_note]
-    )
+    assert result["description_placeholders"]["auto_detected_note"] == translations[expected_note]
 
 
 async def test_async_step_confirm_capabilities_only_bool():
@@ -651,9 +621,7 @@ async def test_confirm_step_aborts_on_existing_entry():
 
     # Attempt to confirm after a duplicate has been configured elsewhere
     with (
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured",
@@ -689,9 +657,7 @@ async def test_confirm_step_aborts_on_existing_entry():
 
         result1 = await flow1.async_step_confirm({})
         assert result1["type"] == "create_entry"
-        entries.add(
-            f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input['slave_id']}"
-        )
+        entries.add(f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input['slave_id']}")
 
         with pytest.raises(AbortFlow) as err:
             await flow2.async_step_confirm({})
@@ -822,9 +788,7 @@ async def test_form_user_invalid_value():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             side_effect=ValueError,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow._LOGGER"
-        ) as logger_mock,
+        patch("custom_components.thessla_green_modbus.config_flow._LOGGER") as logger_mock,
     ):
         result = await flow.async_step_user(
             {
@@ -850,9 +814,7 @@ async def test_form_user_missing_key():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             side_effect=KeyError("test"),
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow._LOGGER"
-        ) as logger_mock,
+        patch("custom_components.thessla_green_modbus.config_flow._LOGGER") as logger_mock,
     ):
         result = await flow.async_step_user(
             {
@@ -878,9 +840,7 @@ async def test_form_user_unexpected_exception():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             side_effect=RuntimeError,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow._LOGGER"
-        ) as logger_mock,
+        patch("custom_components.thessla_green_modbus.config_flow._LOGGER") as logger_mock,
     ):
         with pytest.raises(RuntimeError):
             await flow.async_step_user(
@@ -1646,18 +1606,12 @@ async def test_validate_input_retries_transient_failures():
     }
 
     scanner_instance = SimpleNamespace(
-        verify_connection=AsyncMock(
-            side_effect=[ConnectionException("fail"), None]
-        ),
-        scan_device=AsyncMock(
-            side_effect=[ConnectionException("fail"), scan_result]
-        ),
+        verify_connection=AsyncMock(side_effect=[ConnectionException("fail"), None]),
+        scan_device=AsyncMock(side_effect=[ConnectionException("fail"), scan_result]),
         close=AsyncMock(),
     )
 
-    create_mock = AsyncMock(
-        side_effect=[ConnectionException("fail"), scanner_instance]
-    )
+    create_mock = AsyncMock(side_effect=[ConnectionException("fail"), scanner_instance])
     sleep_mock = AsyncMock()
 
     with (
@@ -1700,9 +1654,7 @@ async def test_validate_input_timeout_errors(exc):
 
     scanner_instance = SimpleNamespace(
         verify_connection=AsyncMock(side_effect=exc),
-        scan_device=AsyncMock(
-            return_value={"capabilities": DeviceCapabilities()}
-        ),
+        scan_device=AsyncMock(return_value={"capabilities": DeviceCapabilities()}),
         close=AsyncMock(),
     )
 
@@ -1795,7 +1747,9 @@ def test_device_capabilities_serialization():
 
 
 async def test_options_flow_max_registers_per_request_validation():
-    """Options flow validates max registers per request within 1-16."""
+    """Options flow validates max registers per request within range."""
+
+
 async def test_options_flow_max_registers_per_request_validated():
     """Options flow should validate max registers per request range."""
     config_entry = SimpleNamespace(options={})
@@ -1803,13 +1757,12 @@ async def test_options_flow_max_registers_per_request_validated():
 
     result = await flow.async_step_init()
     schema_keys = {
-        key.schema if hasattr(key, "schema") else key
-        for key in result["data_schema"].schema
+        key.schema if hasattr(key, "schema") else key for key in result["data_schema"].schema
     }
     assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
 
     # Accept values within range
-    for value in (1, 16):
+    for value in (1, MAX_BATCH_REGISTERS):
         flow = OptionsFlow(SimpleNamespace(options={}))
         result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: value})
         assert result["type"] == "create_entry"
@@ -1820,8 +1773,7 @@ async def test_options_flow_max_registers_per_request_validated():
     result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 0})
     assert result["type"] == "form"
     assert (
-        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST]
-        == "invalid_max_registers_per_request_low"
+        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "invalid_max_registers_per_request_low"
     )
 
     # Reject values above range
@@ -1829,6 +1781,5 @@ async def test_options_flow_max_registers_per_request_validated():
     result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 20})
     assert result["type"] == "form"
     assert (
-        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST]
-        == "invalid_max_registers_per_request_high"
+        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "invalid_max_registers_per_request_high"
     )

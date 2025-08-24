@@ -11,4 +11,5 @@ python tools/sort_registers_json.py
 
 By default the script operates on
 `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-but an alternate path may be supplied as an argument.
+but an alternate path may be supplied as an argument. Other helper scripts import
+this module to ensure the sorting logic lives in a single place.
