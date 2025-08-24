@@ -319,8 +319,30 @@ def test_register_file_sorted() -> None:
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
 
-    loaded_keys = [(r.function, r.address) for r in loader.get_all_registers()]
-    assert loaded_keys == sorted(loaded_keys)
+
+def test_special_modes_invalid_json(monkeypatch) -> None:
+    """Loader falls back to empty special mode enum on invalid file."""
+
+    import importlib
+    from pathlib import Path
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    special_path = loader._SPECIAL_MODES_PATH
+    real_read_text = Path.read_text
+
+    def bad_read(self, *args, **kwargs):  # pragma: no cover - simple stub
+        if self == special_path:
+            return "{"
+        return real_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", bad_read)
+
+    loader = importlib.reload(loader)
+    assert loader._SPECIAL_MODES_ENUM == {}  # nosec B101
+
+    monkeypatch.setattr(Path, "read_text", real_read_text)
+    importlib.reload(loader)
 
 
 def test_get_all_registers_sorted(monkeypatch, tmp_path) -> None:
