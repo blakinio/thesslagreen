@@ -19,7 +19,9 @@ from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers.loader import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
