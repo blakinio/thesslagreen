@@ -24,11 +24,8 @@ from dataclasses import dataclass
 from datetime import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Iterable, Sequence
 
-from ..modbus_helpers import (
-    group_reads as _group_reads,  # alias for plan_group_reads
-)
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import (
     RegisterDefinition,
@@ -310,15 +307,14 @@ except Exception:  # pragma: no cover - defensive
 
 
 @lru_cache(maxsize=1)
-def _load_registers_from_file(path: Path, *, mtime: float) -> list[RegisterDef]:
+def _load_registers_from_file(path: Path, *, mtime: float, **_: Any) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
-    ``mtime`` is included in the cache key so that the expensive SHA256 hash is
-    only computed when the file's modification time changes.
+    ``mtime`` is included in the cache key so that the cached registers are
+    invalidated when the file's modification time changes.
     """
 
     try:
-        _compute_file_hash(path, mtime)
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
@@ -383,6 +379,21 @@ def _load_registers_from_file(path: Path, *, mtime: float) -> list[RegisterDef]:
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
     """Return the SHA256 hash of ``path``.
+
+    The hash is cached based on ``path`` and ``mtime`` so reading the file can
+    be avoided when the file has not changed.
+    """
+
+    global _cached_file_info
+    path_str = str(path)
+    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
+        return _cached_file_info[2]
+
+    file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    _cached_file_info = (path_str, mtime, file_hash)
+    return file_hash
+
+
 # Ensure clearing the LRU cache also resets the file hash cache
 _orig_load_cache_clear = _load_registers_from_file.cache_clear
 
@@ -396,52 +407,32 @@ def _load_registers_cache_clear() -> None:
 _load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
 
 
-def _compute_file_hash() -> str:
-    """Return the SHA256 hash of the registers file."""
-
-    The hash is cached based on ``mtime`` so reading the file can be avoided
-    when its modification time has not changed.
-    """
-
-    global _cached_file_info
-    path_str = str(path)
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
-        return _cached_file_info[2]
-
-    file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-    _cached_file_info = (path_str, mtime, file_hash)
-    return file_hash
-
-
 def _get_file_info() -> tuple[float, str]:
     """Return ``(mtime, hash)`` for the registers file using a cache."""
 
-    global _cached_file_info
-    stat = _REGISTERS_PATH.stat()
+    path = _REGISTERS_PATH
+    stat = path.stat()
     mtime = stat.st_mtime
-    if _cached_file_info and _cached_file_info[0] == mtime:
-        return _cached_file_info
+    path_str = str(path)
 
-    file_hash = _compute_file_hash()
-    _cached_file_info = (mtime, file_hash)
-    return _cached_file_info
+    global _cached_file_info
+    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
+        return mtime, _cached_file_info[2]
+
+    file_hash = _compute_file_hash(path, mtime)
+    return mtime, file_hash
 
 
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    stat = _REGISTERS_PATH.stat()
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=stat.st_mtime)
     try:
-        mtime, file_hash = _get_file_info()
-    except Exception:
+        mtime, _ = _get_file_info()
+    except Exception:  # pragma: no cover - defensive
         stat = _REGISTERS_PATH.stat()
         mtime = stat.st_mtime
-        file_hash = _compute_file_hash()
 
-    return _load_registers_from_file(
-        _REGISTERS_PATH, file_hash=file_hash, mtime=mtime
-    )
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
 
 def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
@@ -473,8 +464,6 @@ def get_registers_by_function(fn: str) -> list[RegisterDef]:
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
     try:
-        stat = _REGISTERS_PATH.stat()
-        return _compute_file_hash(_REGISTERS_PATH, stat.st_mtime)
         return _get_file_info()[1]
     except Exception:  # pragma: no cover - defensive
         return ""
@@ -498,6 +487,32 @@ class ReadPlan:
     function: str
     address: int
     length: int
+
+
+def _group_reads(addresses: Iterable[int], max_block_size: int) -> list[tuple[int, int]]:
+    """Group raw addresses into contiguous blocks up to ``max_block_size``."""
+
+    sorted_addrs = sorted(set(addresses))
+    if not sorted_addrs:
+        return []
+
+    blocks: list[tuple[int, int]] = []
+    start = prev = sorted_addrs[0]
+    for addr in sorted_addrs[1:]:
+        if addr != prev + 1 or addr - start + 1 > max_block_size:
+            blocks.append((start, prev - start + 1))
+            start = addr
+        prev = addr
+    blocks.append((start, prev - start + 1))
+
+    result: list[tuple[int, int]] = []
+    for s, length in blocks:
+        while length > max_block_size:
+            result.append((s, max_block_size))
+            s += max_block_size
+            length -= max_block_size
+        result.append((s, length))
+    return result
 
 
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
