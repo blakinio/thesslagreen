@@ -1273,7 +1273,7 @@
           "skip_missing_registers": "Do not poll registers known to be unavailable",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics",
-          "max_registers_per_request": "Maximum registers per request"
+          "max_registers_per_request": "Select maximum registers per request (1-16)"
         },
         "error": {
           "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
