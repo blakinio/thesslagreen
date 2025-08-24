@@ -3,6 +3,11 @@
 from pathlib import Path
 from typing import Any, Dict, cast
 
+# Importing ``MAX_BATCH_REGISTERS`` from this module in ``modbus_helpers``
+# creates a circular dependency if it is defined after the registers loader is
+# imported.  Define it here before pulling in the loader to break the cycle.
+MAX_BATCH_REGISTERS = 16
+
 from .registers.loader import get_registers_by_function
 
 
@@ -79,7 +84,6 @@ AIRFLOW_RATE_REGISTERS = {"supply_flow_rate", "exhaust_flow_rate"}
 DEFAULT_SCAN_UART_SETTINGS = False
 DEFAULT_SKIP_MISSING_REGISTERS = False
 DEFAULT_DEEP_SCAN = False
-MAX_BATCH_REGISTERS = 16
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
 
 # Registers that are known to be unavailable on some devices

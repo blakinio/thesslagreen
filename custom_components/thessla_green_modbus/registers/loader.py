@@ -316,6 +316,17 @@ except Exception as err:  # pragma: no cover - unexpected
 
 @lru_cache(maxsize=1)
 def _load_registers_from_file(
+    path: Path, *, file_hash: str = "", mtime: float
+) -> list[RegisterDef]:
+    """Load register definitions from ``path``.
+
+    ``file_hash`` and ``mtime`` are included in the cache key so that the JSON
+    file is only parsed again when its contents change.
+    """
+
+    try:
+        if not file_hash:
+            file_hash = _compute_file_hash(path, mtime)
     path: Path, *, mtime: float, file_hash: str | None = None
 ) -> list[RegisterDef]:
     """Load register definitions from ``path``.
@@ -423,9 +434,37 @@ def _load_registers_cache_clear() -> None:
 _load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
 
 
+def _get_file_info() -> tuple[float, str]:
+    """Return ``(mtime, hash)`` for the registers file using a cache."""
+
+def _load_registers_cache_clear() -> None:
+    global _cached_file_info
+    stat = _REGISTERS_PATH.stat()
+    mtime = stat.st_mtime
+    path_str = str(_REGISTERS_PATH)
+    if (
+        _cached_file_info
+        and _cached_file_info[0] == path_str
+        and _cached_file_info[1] == mtime
+    ):
+        return _cached_file_info[1], _cached_file_info[2]
+
+    file_hash = _compute_file_hash(_REGISTERS_PATH, mtime)
+    return mtime, file_hash
+    _cached_file_info = None
+    _orig_load_cache_clear()
+
+
+_load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
+
+
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
+    mtime, file_hash = _get_file_info()
+    return _load_registers_from_file(
+        _REGISTERS_PATH, file_hash=file_hash, mtime=mtime
+    )
     stat = _REGISTERS_PATH.stat()
     mtime = stat.st_mtime
     if not (
@@ -476,6 +515,7 @@ def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
 
     try:
+        return _get_file_info()[1]
         stat = _REGISTERS_PATH.stat()
         return _compute_file_hash(_REGISTERS_PATH, stat.st_mtime)
     except Exception:  # pragma: no cover - defensive
