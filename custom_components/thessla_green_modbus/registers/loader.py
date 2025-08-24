@@ -39,9 +39,9 @@ _LOGGER = logging.getLogger(__name__)
 _REGISTERS_PATH = Path(
     str(resources.files(__package__).joinpath("thessla_green_registers_full.json"))
 )
-# Cache for the last (path, mtime, hash) triple of the registers file.  The
-# hash is only recomputed when either the path or ``mtime`` changes.
-_cached_file_info: tuple[str, float, str] | None = None
+# Cache for file metadata keyed by path. Each entry stores ``(mtime, sha256)``
+# for the most recently seen state of that file.
+_cached_file_info: dict[str, tuple[float, str]] = {}
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ except Exception as err:  # pragma: no cover - unexpected
 # ---------------------------------------------------------------------------
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
 def _load_registers_from_file(
     path: Path, *, mtime: float, file_hash: str
 ) -> list[RegisterDef]:
@@ -398,56 +398,36 @@ def _load_registers_from_file(
     return registers
 
 
-def _compute_file_hash(path: Path, mtime: float) -> str:
-    """Return the SHA256 hash of ``path``.
+def registers_sha256(json_path: Path | str) -> str:
+    """Return the SHA256 hash of ``json_path``.
 
     Results are cached based on the file path and modification time so repeated
     calls for an unchanged file avoid reading from disk.
     """
 
-    global _cached_file_info
+    path = Path(json_path)
+    mtime = path.stat().st_mtime
     path_str = str(path)
-    if (
-        _cached_file_info
-        and _cached_file_info[0] == path_str
-        and _cached_file_info[1] == mtime
-    ):
-        return _cached_file_info[2]
+    cached = _cached_file_info.get(path_str)
+    if cached and cached[0] == mtime:
+        return cached[1]
 
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    _cached_file_info = (path_str, mtime, digest)
+    _cached_file_info[path_str] = (mtime, digest)
     return digest
 
 
-def _get_file_info() -> tuple[float, str]:
-    """Return ``(mtime, hash)`` for the bundled registers file.
+def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
+    """Return cached register definitions, reloading if the file changed.
 
-    ``_compute_file_hash`` is only invoked when the modification time changes so
-    repeated calls avoid both hashing and disk access.
+    ``json_path`` may be provided to load register definitions from an
+    alternate file.  When omitted, the bundled definitions are used.
     """
 
-    stat = _REGISTERS_PATH.stat()
-    mtime = stat.st_mtime
-    path_str = str(_REGISTERS_PATH)
-
-    if (
-        _cached_file_info
-        and _cached_file_info[0] == path_str
-        and _cached_file_info[1] == mtime
-    ):
-        return mtime, _cached_file_info[2]
-
-    file_hash = _compute_file_hash(_REGISTERS_PATH, mtime)
-    return mtime, file_hash
-
-
-def load_registers() -> list[RegisterDef]:
-    """Return cached register definitions, reloading if the file changed."""
-
-    mtime, file_hash = _get_file_info()
-    registers = _load_registers_from_file(
-        _REGISTERS_PATH, mtime=mtime, file_hash=file_hash
-    )
+    path = Path(json_path) if json_path is not None else _REGISTERS_PATH
+    file_hash = registers_sha256(path)
+    mtime = _cached_file_info[str(path)][0]
+    registers = _load_registers_from_file(path, mtime=mtime, file_hash=file_hash)
     return registers
 
 
@@ -457,8 +437,7 @@ def clear_cache() -> None:  # pragma: no cover
     Exposed for tests and tooling that need to reload register
     definitions.
     """
-    global _cached_file_info
-    _cached_file_info = None
+    _cached_file_info.clear()
     _load_registers_from_file.cache_clear()
     _register_map.cache_clear()
 
@@ -468,21 +447,25 @@ def clear_cache() -> None:  # pragma: no cover
 # ---------------------------------------------------------------------------
 
 
-def get_all_registers() -> list[RegisterDef]:
-    """Return a list of all known registers ordered by function and address."""
-    return sorted(load_registers(), key=lambda r: (r.function, r.address))
+def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
+    """Return all known registers ordered by function and address."""
+    return sorted(
+        load_registers(json_path), key=lambda r: (r.function, r.address)
+    )
 
 
-def get_registers_by_function(fn: str) -> list[RegisterDef]:
+def get_registers_by_function(
+    fn: str, json_path: Path | str | None = None
+) -> list[RegisterDef]:
     """Return registers for the given function code or name."""
     code = _normalise_function(fn)
-    return [r for r in load_registers() if r.function == code]
+    return [r for r in load_registers(json_path) if r.function == code]
 
 
-def get_registers_hash() -> str:
-    """Return the hash of the currently loaded register file."""
+def get_registers_hash(json_path: Path | str | None = None) -> str:
+    """Return the hash of the register definition file."""
     try:
-        return _get_file_info()[1]
+        return registers_sha256(json_path or _REGISTERS_PATH)
     except Exception:  # pragma: no cover - defensive
         return ""
 
