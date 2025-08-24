@@ -9,7 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRANS = ROOT / "custom_components" / "thessla_green_modbus" / "translations"
 
-LANGS = ("en", "pl")
+BASE_LANG = "en"
+LANGS = (BASE_LANG, "pl")
 
 OPTION_KEYS = [
     "force_full_register_list",
@@ -28,6 +29,20 @@ OPTION_ERROR_KEYS = [
 
 def _load(lang: str) -> dict:
     return json.loads((TRANS / f"{lang}.json").read_text(encoding="utf-8"))
+
+
+def _check_section(
+    data_keys: set[str],
+    ref_keys: set[str],
+    lang: str,
+    label: str,
+) -> list[str]:
+    msg: list[str] = []
+    if missing := ref_keys - data_keys:
+        msg.append(f"{lang}: missing {label}: {sorted(missing)}")
+    if extra := data_keys - ref_keys:
+        msg.append(f"{lang}: unused {label}: {sorted(extra)}")
+    return msg
 
 
 def _check_options(data: dict, lang: str) -> list[str]:
@@ -54,10 +69,27 @@ def _check_options(data: dict, lang: str) -> list[str]:
     return msg
 
 
+def _check_diagnostics(data: dict, ref: dict, lang: str) -> list[str]:
+    data_keys = set(data.get("diagnostics", {}).keys())
+    ref_keys = set(ref.get("diagnostics", {}).keys())
+    return _check_section(data_keys, ref_keys, lang, "diagnostic keys")
+
+
+def _check_errors(data: dict, ref: dict, lang: str) -> list[str]:
+    data_keys = set(data.get("config", {}).get("error", {}).keys())
+    ref_keys = set(ref.get("config", {}).get("error", {}).keys())
+    return _check_section(data_keys, ref_keys, lang, "error keys")
+
+
 def main() -> int:
     problems: list[str] = []
+    ref = _load(BASE_LANG)
     for lang in LANGS:
-        problems.extend(_check_options(_load(lang), lang))
+        data = _load(lang)
+        problems.extend(_check_options(data, lang))
+        if lang != BASE_LANG:
+            problems.extend(_check_diagnostics(data, ref, lang))
+            problems.extend(_check_errors(data, ref, lang))
 
     if problems:
         for p in problems:
