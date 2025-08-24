@@ -4,6 +4,7 @@ import asyncio
 import sys
 import types
 from unittest.mock import MagicMock, patch
+import pytest
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -12,6 +13,13 @@ from unittest.mock import MagicMock, patch
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
 setattr(const, "PERCENTAGE", "%")
 setattr(const, "STATE_UNAVAILABLE", "unavailable")
+
+# Stub network utilities used by config_flow when select module is imported
+network_mod = types.ModuleType("homeassistant.util.network")
+def is_host_valid(host: str) -> bool:  # pragma: no cover - simple stub
+    return True
+network_mod.is_host_valid = is_host_valid
+sys.modules["homeassistant.util.network"] = network_mod
 
 
 class UnitOfTemperature:  # pragma: no cover - enum stub
@@ -130,6 +138,7 @@ from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     ThesslaGreenSensor,
     async_setup_entry,
 )
+import custom_components.thessla_green_modbus.select as select_module
 
 
 def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
@@ -212,6 +221,56 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
         assert sensor.native_value == "Device status S 2"  # nosec B101
 
     asyncio.run(run_test())
+
+
+@pytest.mark.asyncio
+async def test_force_full_register_list_adds_missing_entities(
+    mock_coordinator, mock_config_entry
+):
+    """Sensors and selects are created from register map when forcing full list."""
+
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    # Simulate no registers discovered
+    mock_coordinator.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "calculated": set(),
+    }
+    mock_coordinator.force_full_register_list = True
+
+    sensor_map = {
+        "supply_temperature": {
+            "register_type": "input_registers",
+            "translation_key": "supply_temperature",
+        }
+    }
+    select_map = {
+        "mode": {
+            "register_type": "holding_registers",
+            "translation_key": "mode",
+            "states": {"auto": 0, "manual": 1},
+        }
+    }
+
+    with patch.dict(SENSOR_DEFINITIONS, sensor_map, clear=True):
+        add_sensors = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_sensors)
+        sensors = [
+            e._register_name
+            for e in add_sensors.call_args[0][0]
+            if isinstance(e, ThesslaGreenSensor)
+        ]
+        assert sensors == ["supply_temperature"]  # nosec B101
+
+    with patch.dict(select_module.ENTITY_MAPPINGS["select"], select_map, clear=True):
+        add_selects = MagicMock()
+        await select_async_setup_entry(hass, mock_config_entry, add_selects)
+        selects = [e._register_name for e in add_selects.call_args[0][0]]
+        assert selects == ["mode"]  # nosec B101
 
 
 def test_sensor_registers_match_definition():

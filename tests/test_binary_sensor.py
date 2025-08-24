@@ -199,3 +199,35 @@ async def test_dynamic_register_entity_creation(
     await async_setup_entry(hass, mock_config_entry, add_entities)
     created = {entity._register_name for entity in add_entities.call_args[0][0]}
     assert {"alarm", "e_99"} <= created  # nosec B101
+
+
+@pytest.mark.asyncio
+async def test_force_full_register_list_adds_missing_binary_sensor(
+    mock_coordinator: MagicMock, mock_config_entry: MagicMock
+) -> None:
+    """Binary sensors are created from register map when forcing full list."""
+
+    hass: MagicMock = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    mock_coordinator.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "calculated": set(),
+    }
+    mock_coordinator.force_full_register_list = True
+
+    sensor_map = {
+        "contamination_sensor": {
+            "register_type": "discrete_inputs",
+            "translation_key": "contamination_sensor",
+        }
+    }
+
+    with patch.dict(BINARY_SENSOR_DEFINITIONS, sensor_map, clear=True):
+        add_entities: MagicMock = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+        created = {entity._register_name for entity in add_entities.call_args[0][0]}
+        assert created == {"contamination_sensor"}  # nosec B101
