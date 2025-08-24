@@ -89,26 +89,16 @@ class RegisterDef:
                 for word in raw_list:
                     buffer.extend(word.to_bytes(2, "big"))
                 return buffer.rstrip(b"\x00").decode(encoding)
-                data = b"".join(w.to_bytes(2, "big") for w in raw_list)
-                return data.rstrip(b"\x00").decode(encoding)
 
             endianness = self.extra.get("endianness", "big") if self.extra else "big"
             words = raw_list if endianness == "big" else list(reversed(raw_list))
             data = b"".join(w.to_bytes(2, "big") for w in words)
 
             typ = self.extra.get("type") if self.extra else None
-            result: Any
             if typ == "float32":
-                result = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+                result: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
                 result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
-                value: Any = struct.unpack(
-                    ">f" if endianness == "big" else "<f", data
-                )[0]
-            elif typ == "float64":
-                value = struct.unpack(
-                    ">d" if endianness == "big" else "<d", data
-                )[0]
             elif typ == "int32":
                 result = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
@@ -126,9 +116,6 @@ class RegisterDef:
                 steps = round(result / self.resolution)
                 result = steps * self.resolution
             return result
-                steps = round(value / self.resolution)
-                value = steps * self.resolution
-            return value
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
@@ -167,6 +154,7 @@ class RegisterDef:
                 value = struct.unpack(">q", raw_bytes)[0]
             elif dtype == "uint64":
                 value = struct.unpack(">Q", raw_bytes)[0]
+
         if self.multiplier is not None:
             value = value * self.multiplier
         if self.resolution is not None:
@@ -397,10 +385,10 @@ def _load_registers_from_file(
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
-    """Return the SHA256 hash of ``path`` and cache the result.
+    """Return the SHA256 hash of ``path``.
 
-    The hash is cached using ``(path_str, mtime, hash)`` so the file is only
-    read when its modification time changes.
+    Results are cached based on the file path and modification time so repeated
+    calls for an unchanged file avoid reading from disk.
     """
 
     global _cached_file_info
@@ -418,7 +406,11 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
 
 
 def _get_file_info() -> tuple[float, str]:
-    """Return ``(mtime, hash)`` for the registers file using a cache."""
+    """Return ``(mtime, hash)`` for the bundled registers file.
+
+    ``_compute_file_hash`` is only invoked when the modification time changes so
+    repeated calls avoid both hashing and disk access.
+    """
 
     stat = _REGISTERS_PATH.stat()
     mtime = stat.st_mtime
@@ -438,8 +430,10 @@ def _get_file_info() -> tuple[float, str]:
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    mtime, _ = _get_file_info()
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
+    mtime, file_hash = _get_file_info()
+    return _load_registers_from_file(
+        _REGISTERS_PATH, mtime=mtime, file_hash=file_hash
+    )
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -473,20 +467,9 @@ def get_registers_by_function(fn: str) -> list[RegisterDef]:
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
     try:
-        stat = _REGISTERS_PATH.stat()
-    except OSError:  # pragma: no cover - defensive
         return _get_file_info()[1]
     except Exception:  # pragma: no cover - defensive
         return ""
-    mtime = stat.st_mtime
-    path_str = str(_REGISTERS_PATH)
-    if (
-        _cached_file_info
-        and _cached_file_info[0] == path_str
-        and _cached_file_info[1] == mtime
-    ):
-        return _cached_file_info[2]
-    return _compute_file_hash(_REGISTERS_PATH, mtime)
 
 
 @lru_cache(maxsize=1)
@@ -519,7 +502,6 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
     for fn, addresses in regs_by_fn.items():
-        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
         for start, length in _group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
