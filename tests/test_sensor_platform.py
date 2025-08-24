@@ -216,7 +216,9 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
 def test_sensor_registers_match_definition():
     """Cross-check register_type against registers module."""
 
-    from custom_components.thessla_green_modbus.registers import get_registers_by_function
+    from custom_components.thessla_green_modbus.registers.loader import (
+        get_registers_by_function,
+    )
 
     mapping = {
         "input_registers": {r.name for r in get_registers_by_function("04")},

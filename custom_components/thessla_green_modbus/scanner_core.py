@@ -23,7 +23,7 @@ from .modbus_exceptions import (
     ModbusIOException,
 )
 from .modbus_helpers import _call_modbus, group_reads as _group_reads
-from .registers import get_all_registers
+from .registers.loader import get_all_registers
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,

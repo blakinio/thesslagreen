@@ -9,8 +9,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_register_definition,
+    get_registers_by_function,
+)
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
@@ -108,7 +110,7 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
     async def async_write_register(self, *args, **kwargs):
         register, value = args[0], args[1]
         address = HOLDING_REGISTERS[register]
-        definition = loader.get_register_definition(register)
+        definition = get_register_definition(register)
         raw = definition.encode(value)
         await self.client.write_register(address, raw, slave=self.slave_id)
         return True

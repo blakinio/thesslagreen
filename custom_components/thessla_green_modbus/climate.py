@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .registers import get_registers_by_function
+from .registers.loader import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 

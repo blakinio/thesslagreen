@@ -72,7 +72,7 @@ except Exception:  # pragma: no cover - executed only in tests
 
 from .const import SPECIAL_FUNCTION_MAP
 from .const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, HOLDING_REGISTERS
-from .registers import get_all_registers
+from .registers.loader import get_all_registers
 from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
