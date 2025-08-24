@@ -22,8 +22,7 @@ OPTION_KEYS = [
 ]
 
 OPTION_ERROR_KEYS = [
-    "invalid_max_registers_per_request_low",
-    "invalid_max_registers_per_request_high",
+    "max_registers_range",
 ]
 
 

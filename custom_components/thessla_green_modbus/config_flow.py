@@ -483,10 +483,8 @@ class OptionsFlow(config_entries.OptionsFlow):
             max_regs = user_input.get(
                 CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
             )
-            if max_regs < 1:
-                errors[CONF_MAX_REGISTERS_PER_REQUEST] = "invalid_max_registers_per_request_low"
-            elif max_regs > MAX_BATCH_REGISTERS:
-                errors[CONF_MAX_REGISTERS_PER_REQUEST] = "invalid_max_registers_per_request_high"
+            if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
+                errors[CONF_MAX_REGISTERS_PER_REQUEST] = "max_registers_range"
             else:
                 user_input = dict(user_input)
                 return self.async_create_entry(title="", data=user_input)
