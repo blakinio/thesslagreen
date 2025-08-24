@@ -8,7 +8,9 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, cast
 
-from .registers.loader import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant

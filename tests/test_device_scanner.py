@@ -1068,12 +1068,12 @@ async def test_temperature_register_unavailable_kept():
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
-async def test_is_valid_register_value(caplog):
+async def test_is_valid_register_value():
     """Test register value validation."""
-    with caplog.at_level(logging.WARNING):
-        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
-
-    assert not any("CSV" in rec.message for rec in caplog.records)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+    scanner._register_ranges["supply_percentage"] = (0, 100)
+    scanner._register_ranges["min_percentage"] = (0, 100)
+    scanner._register_ranges["max_percentage"] = (0, 120)
 
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True

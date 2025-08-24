@@ -88,6 +88,7 @@ class RegisterDefinition(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="allow")  # pragma: no cover
 
+
     @pydantic.model_validator(mode="before")
     @classmethod
     def _normalise_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
@@ -95,6 +96,22 @@ class RegisterDefinition(pydantic.BaseModel):
         if "function" in data:
             data["function"] = _normalise_function(data["function"])
         return data
+    @pydantic.field_validator("function", mode="before")
+    @classmethod
+    def normalise_function(cls, v: Any) -> str:
+        """Accept numeric/alias function codes and normalise to two digits."""
+        if isinstance(v, int):
+            if 1 <= v <= 4:
+                return f"{v:02d}"
+            raise ValueError("function code must be between 1 and 4")
+        if isinstance(v, str):
+            v = _normalise_function(v)
+            if v.isdigit():
+                iv = int(v)
+                if 1 <= iv <= 4:
+                    return f"{iv:02d}"
+            return v
+        raise TypeError("function code must be str or int")
 
     @pydantic.model_validator(mode="after")
     def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
@@ -123,6 +140,9 @@ class RegisterDefinition(pydantic.BaseModel):
         }
 
         if reg_type == RegisterType.STRING:
+        if typ in {"uint", "int", "float"}:
+            raise ValueError("type aliases are not allowed")
+        if typ == "string":
             if self.length < 1:
                 raise ValueError("string type requires length >= 1")
         elif reg_type in type_lengths:
@@ -133,9 +153,37 @@ class RegisterDefinition(pydantic.BaseModel):
         if self.function in {1, 2} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("min greater than max")
+        if self.default is not None:
+            if self.min is not None and self.default < self.min:
+                raise ValueError("default below min")
+            if self.max is not None and self.default > self.max:
+                raise ValueError("default above max")
+
         if self.bits is not None:
             if not (self.extra and self.extra.get("bitmask")):
                 raise ValueError("bits provided without extra.bitmask")
+
+            if len(self.bits) > 16:
+                raise ValueError("bits index out of range")
+
+            for idx, bit in enumerate(self.bits):
+                if not isinstance(bit, dict):
+                    raise ValueError("bits entries must be objects")
+
+                name = bit.get("name")
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError("bit name must be snake_case")
+
+                index = bit.get("index", idx)
+                if not isinstance(index, int) or isinstance(index, bool):
+                    raise ValueError("bit index must be an integer")
+                if index != idx:
+                    raise ValueError("bits must be in implicit index order")
+                if not 0 <= index <= 15:
+                    raise ValueError("bit index out of range")
+
             bitmask_val = self.extra.get("bitmask") if self.extra else None
             mask_int: int | None = None
             if isinstance(bitmask_val, str):
@@ -154,6 +202,9 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("bit index out of range")
                 name = bit.get("name") if isinstance(bit, dict) else str(bit)
                 if name and not re.fullmatch(r"[a-z0-9_]+", name):
+            for bit in self.bits:
+                name = bit.get("name") if isinstance(bit, dict) else bit
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
                     raise ValueError("bit names must be snake_case")
 
         return self

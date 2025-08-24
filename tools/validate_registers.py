@@ -88,6 +88,10 @@ def validate(path: Path) -> list[RegisterDefinition]:
                     raise ValueError("bit names must be snake_case")
                 if idx > 15:
                     raise ValueError("bit index out of range")
+        if reg.bits is not None:
+            for idx, bit in enumerate(reg.bits):
+                if bit.get("index", idx) != idx:
+                    raise ValueError("bits must be in implicit index order")
 
         parsed.append(reg)
 

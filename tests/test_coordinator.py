@@ -22,6 +22,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
 )
 from custom_components.thessla_green_modbus.registers.loader import (
+    RegisterDef,
     get_register_definition,
     get_registers_by_function,
 )  # noqa: E402,F811,E501
@@ -133,6 +134,10 @@ class ConfigEntryNotReady(Exception):
     pass
 
 
+class HomeAssistantError(Exception):
+    pass
+
+exceptions.HomeAssistantError = HomeAssistantError
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
 
 
@@ -254,6 +259,36 @@ async def test_async_write_valid_register(coordinator):
     assert result is True
     coordinator.async_request_refresh.assert_called_once()
     assert lock_state_during_refresh is False
+
+
+@pytest.mark.asyncio
+async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatch):
+    """Numeric values outside defined range should raise."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.client = MagicMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    reg = RegisterDef(function="03", address=0, name="num", access="rw", min=0, max=10)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
+
+    with pytest.raises(ValueError):
+        await coordinator.async_write_register("num", 11)
+
+
+@pytest.mark.asyncio
+async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
+    """Invalid enum values should raise and be propagated."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.client = MagicMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    reg = RegisterDef(function="03", address=0, name="mode", access="rw", enum={0: "off", 1: "on"})
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
+
+    with pytest.raises(ValueError):
+        await coordinator.async_write_register("mode", "invalid")
 
 
 @pytest.mark.asyncio

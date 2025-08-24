@@ -91,7 +91,10 @@ from .const import (
     UNKNOWN_MODEL,
 )
 from .modbus_helpers import _call_modbus, group_reads
-from .registers.loader import get_all_registers, get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_all_registers,
+    get_registers_by_function,
+)
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
@@ -1254,7 +1257,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             )
                             return False
                         continue
-                    except (OSError, ValueError):
+                    except OSError:
                         _LOGGER.exception("Unexpected error writing register %s", register_name)
                         return False
 
