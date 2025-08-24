@@ -1,4 +1,3 @@
-from __future__ import annotations
 """Parse MODBUS register definitions from the official PDF.
 
 This module extracts register metadata such as address, function code, access,
@@ -6,6 +5,8 @@ unit, multiplier, resolution and enumerated values from the documentation
 PDF.  It is used in tests to verify that the bundled JSON definition is in
 sync with the vendor documentation.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
