@@ -24,8 +24,6 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
 
-# Backwards compatibility: old name used in tests/utilities
-_decode_setting_value = _decode_aatt
 
 
 def _format_register_value(name: str, value: int) -> int | str | None:
@@ -101,7 +99,6 @@ __all__ = [
     "REGISTER_ALLOWED_VALUES",
     "SETTING_PREFIX",
     "_decode_aatt",
-    "_decode_setting_value",
     "_format_register_value",
     "_decode_season_mode",
     "SPECIAL_VALUE_DECODERS",
