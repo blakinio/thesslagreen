@@ -27,7 +27,6 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads as _group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -78,21 +77,23 @@ class RegisterDef:
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
 
-        if self.length > 1 and isinstance(raw, Sequence):
-            raw_list = list(raw)
-            if all(v == 0x8000 for v in raw_list):
-                return None
+        if self.length > 1:
+            raw_list: list[int]
+            if isinstance(raw, Sequence):
+                raw_list = list(raw)
+                if all(v == 0x8000 for v in raw_list):
+                    return None
+            else:
+                raw_int = int(raw)
+                raw_list = [
+                    (raw_int >> (16 * (self.length - 1 - i))) & 0xFFFF
+                    for i in range(self.length)
+                ]
 
             if self.extra and self.extra.get("type") == "string":
                 encoding = self.extra.get("encoding", "ascii")
-                buffer = bytearray()
-                for word in raw_list:
-                    buffer.extend(word.to_bytes(2, "big"))
-                return buffer.rstrip(b"\x00").decode(encoding)
-                buf = bytearray()
-                for word in raw_list:
-                    buf.extend(word.to_bytes(2, "big"))
-                return bytes(buf).rstrip(b"\x00").decode(encoding)
+                data = b"".join(w.to_bytes(2, "big") for w in raw_list)
+                return data.rstrip(b"\x00").decode(encoding)
 
             endianness = "big"
             if self.extra:
@@ -101,48 +102,27 @@ class RegisterDef:
             data = b"".join(w.to_bytes(2, "big") for w in words)
 
             typ = self.extra.get("type") if self.extra else None
-            result: Any
             if typ == "float32":
-                result = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+                value: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
-                result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+                value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
             elif typ == "int32":
-                result = int.from_bytes(data, "big", signed=True)
+                value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
             elif typ == "int64":
-                result = int.from_bytes(data, "big", signed=True)
+                value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint64":
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
             else:
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
 
             if self.multiplier is not None:
-                result = result * self.multiplier
+                value = value * self.multiplier
             if self.resolution is not None:
-                steps = round(result / self.resolution)
-                result = steps * self.resolution
-            return result
-                decoded: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
-            elif typ == "float64":
-                decoded = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
-            elif typ == "int32":
-                decoded = int.from_bytes(data, "big", signed=True)
-            elif typ == "uint32":
-                decoded = int.from_bytes(data, "big", signed=False)
-            elif typ == "int64":
-                decoded = int.from_bytes(data, "big", signed=True)
-            elif typ == "uint64":
-                decoded = int.from_bytes(data, "big", signed=False)
-            else:
-                decoded = int.from_bytes(data, "big", signed=False)
-
-            if self.multiplier is not None:
-                decoded = decoded * self.multiplier
-            if self.resolution is not None:
-                steps = round(decoded / self.resolution)
-                decoded = steps * self.resolution
-            return decoded
+                steps = round(value / self.resolution)
+                value = steps * self.resolution
+            return value
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
@@ -167,20 +147,6 @@ class RegisterDef:
                 return self.enum[str(raw)]
 
         value: Any = raw
-        if self.length > 1 and self.extra and self.extra.get("type"):
-            dtype = self.extra["type"]
-            byte_len = self.length * 2
-            raw_bytes = raw.to_bytes(byte_len, "big", signed=False)
-            if dtype == "float32":
-                value = struct.unpack(">f", raw_bytes)[0]
-            elif dtype == "int32":
-                value = struct.unpack(">i", raw_bytes)[0]
-            elif dtype == "uint32":
-                value = struct.unpack(">I", raw_bytes)[0]
-            elif dtype == "int64":
-                value = struct.unpack(">q", raw_bytes)[0]
-            elif dtype == "uint64":
-                value = struct.unpack(">Q", raw_bytes)[0]
         if self.multiplier is not None:
             value = value * self.multiplier
         if self.resolution is not None:
@@ -322,7 +288,6 @@ try:  # pragma: no cover - defensive
         key.split("_")[-1]: idx
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
-except Exception:  # pragma: no cover - defensive
 except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
     _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
@@ -410,19 +375,8 @@ def _load_registers_from_file(
         )
 
     return registers
-
-
 def _compute_file_hash(path: Path, mtime: float) -> str:
     """Return the SHA256 hash of ``path`` and cache the result."""
-
-    global _cached_file_info
-    path_str = str(path)
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
-    """Return the SHA256 hash of ``path``.
-
-    The hash is cached using ``(path_str, mtime, hash)`` so the file is only
-    read when its modification time changes.
-    """
 
     global _cached_file_info
     path_str = str(path)
@@ -438,18 +392,6 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     return digest
 
 
-
-def load_registers() -> list[RegisterDef]:
-    """Return cached register definitions, reloading if the file changed."""
-    stat = _REGISTERS_PATH.stat()
-    mtime = stat.st_mtime
-    path_str = str(_REGISTERS_PATH)
-    if not (
-        _cached_file_info
-        and _cached_file_info[0] == path_str
-        and _cached_file_info[1] == mtime
-    ):
-        _compute_file_hash(_REGISTERS_PATH, mtime)
 def _get_file_info() -> tuple[float, str]:
     """Return ``(mtime, hash)`` for the registers file using a cache."""
 
@@ -471,8 +413,8 @@ def _get_file_info() -> tuple[float, str]:
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    mtime, _ = _get_file_info()
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
+    mtime, file_hash = _get_file_info()
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime, file_hash=file_hash)
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -554,12 +496,6 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     for reg in load_registers():
         addr_range = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
-
-    for fn, addrs in regs_by_fn.items():
-        for start, length in _group_reads(addrs, max_block_size=max_block_size):
-        regs_by_fn.setdefault(reg.function, []).extend(
-            range(reg.address, reg.address + reg.length)
-        )
 
     for fn, addresses in regs_by_fn.items():
         for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
