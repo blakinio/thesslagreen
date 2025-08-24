@@ -18,9 +18,9 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
         @staticmethod
         def now():
-            from datetime import datetime
+            from datetime import datetime, timezone
 
-            return datetime.now()
+            return datetime.now(timezone.utc)
 
         @staticmethod
         def utcnow():
