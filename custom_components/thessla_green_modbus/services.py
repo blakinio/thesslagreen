@@ -31,7 +31,6 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
     dt_util = _DTUtil()  # type: ignore
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
