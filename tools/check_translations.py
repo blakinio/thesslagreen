@@ -18,7 +18,6 @@ OPTION_KEYS = [
     "skip_missing_registers",
     "timeout",
     "deep_scan",
-    "scan_max_block_size",
     "max_registers_per_request",
 ]
 
