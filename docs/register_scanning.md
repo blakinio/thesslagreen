@@ -69,7 +69,8 @@ użycie zapisuje ostrzeżenie w logach. Każdy obiekt w tablicy `registers` zawi
 - `function` – kod funkcji Modbus
 - `address_dec` / `address_hex` – adres rejestru
 - `name` – unikalna nazwa
-- `description` – opis
+- `description` – opis po polsku
+- `description_en` – opis po angielsku
 - `access` – tryb dostępu (`R`/`W`)
 
 Opcjonalnie można zdefiniować `unit`, `enum`, `multiplier`, `resolution` i inne

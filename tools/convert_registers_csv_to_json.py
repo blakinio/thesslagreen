@@ -103,6 +103,7 @@ def convert(csv_path: Path = CSV_PATH, json_path: Path = JSON_PATH) -> None:
                     ("multiplier", multiplier),
                     ("resolution", resolution),
                     ("description", row.get("Description")),
+                    ("description_en", row.get("Description_EN") or row.get("Description")),
                 ]
             )
 

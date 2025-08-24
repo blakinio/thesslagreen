@@ -54,6 +54,7 @@ class Register:
     name: str
     access: str
     description: str | None = None
+    description_en: str | None = None
     unit: str | None = None
     multiplier: float | None = None
     resolution: float | None = None
@@ -340,6 +341,7 @@ class RegisterDefinition(pydantic.BaseModel):
     multiplier: float | None = None
     resolution: float | None = None
     description: str | None = None
+    description_en: str | None = None
     min: float | None = None
     max: float | None = None
     default: float | None = None
@@ -455,6 +457,7 @@ def _load_registers_from_file(
                 name=name,
                 access=str(parsed.access),
                 description=parsed.description,
+                description_en=parsed.description_en,
                 unit=parsed.unit,
                 multiplier=multiplier,
                 resolution=resolution,
