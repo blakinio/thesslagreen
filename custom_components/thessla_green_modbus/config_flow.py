@@ -6,6 +6,7 @@ import asyncio
 import dataclasses
 import ipaddress
 import logging
+from importlib import import_module
 import socket
 import traceback
 from typing import Any, Awaitable, Callable
@@ -46,7 +47,6 @@ from .const import (
     MAX_BATCH_REGISTERS,
     DOMAIN,
 )
-from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 from .modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -54,6 +54,9 @@ from .modbus_exceptions import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+ThesslaGreenDeviceScanner: Any | None = None
+DeviceCapabilities: Any | None = None
 
 # Delay between retries when establishing the connection during the config flow.
 # Uses exponential backoff: ``backoff * 2 ** (attempt-1)``.
@@ -103,7 +106,9 @@ class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
 
 
-async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(
+    hass: HomeAssistant | None, data: dict[str, Any]
+) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     host = data[CONF_HOST]
     port = data[CONF_PORT]
@@ -126,10 +131,22 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         if not is_host_valid(host):
             raise vol.Invalid("invalid_host", path=[CONF_HOST])
 
-    scanner: ThesslaGreenDeviceScanner | None = None
+    import_func: Callable[..., Awaitable[Any]]
+    if hass:
+        import_func = hass.async_add_executor_job
+    else:
+        import_func = asyncio.to_thread
+
+    module = await import_func(
+        import_module, "custom_components.thessla_green_modbus.scanner_core"
+    )
+    scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
+    capabilities_cls = DeviceCapabilities or module.DeviceCapabilities
+
+    scanner: Any | None = None
     try:
         scanner = await _run_with_retry(
-            lambda: ThesslaGreenDeviceScanner.create(
+            lambda: scanner_cls.create(
                 host=host,
                 port=port,
                 slave_id=slave_id,
@@ -160,8 +177,10 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         if caps_obj is None:
             raise CannotConnect("invalid_capabilities")
 
-        if isinstance(caps_obj, DeviceCapabilities):
-            required_fields = {field.name for field in dataclasses.fields(DeviceCapabilities)}
+        if isinstance(caps_obj, capabilities_cls):
+            required_fields = {
+                field.name for field in dataclasses.fields(capabilities_cls)
+            }
             try:
                 caps_dict = caps_obj.as_dict()
             except AttributeError as err:  # pragma: no cover - defensive
@@ -173,7 +192,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
                 raise CannotConnect("invalid_capabilities")
         elif isinstance(caps_obj, dict):
             try:
-                caps_dict = DeviceCapabilities(**caps_obj).as_dict()
+                caps_dict = capabilities_cls(**caps_obj).as_dict()
             except (TypeError, ValueError) as exc:
                 _LOGGER.error("Error parsing capabilities: %s", exc)
                 raise CannotConnect("invalid_capabilities") from exc
@@ -323,6 +342,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the confirm step."""
+        module = import_module("custom_components.thessla_green_modbus.scanner_core")
+        cap_cls = DeviceCapabilities or module.DeviceCapabilities
+
         if user_input is not None:
             # Ensure unique ID is set and not already configured
             unique_host = self._data[CONF_HOST].replace(":", "-")
@@ -334,13 +356,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             caps_obj = self._scan_result.get("capabilities")
             if isinstance(caps_obj, dict):
                 try:
-                    caps_dict = DeviceCapabilities(**caps_obj).as_dict()
+                    caps_dict = cap_cls(**caps_obj).as_dict()
                 except (TypeError, ValueError):
-                    caps_dict = DeviceCapabilities().as_dict()
-            elif isinstance(caps_obj, DeviceCapabilities):
+                    caps_dict = cap_cls().as_dict()
+            elif isinstance(caps_obj, cap_cls):
                 caps_dict = caps_obj.as_dict()
             else:
-                caps_dict = DeviceCapabilities().as_dict()
+                caps_dict = cap_cls().as_dict()
 
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility
@@ -367,13 +389,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         caps_obj = self._scan_result.get("capabilities")
         if isinstance(caps_obj, dict):
             try:
-                caps_data = DeviceCapabilities(**caps_obj)
+                caps_data = cap_cls(**caps_obj)
             except TypeError:
-                caps_data = DeviceCapabilities()
-        elif isinstance(caps_obj, DeviceCapabilities):
+                caps_data = cap_cls()
+        elif isinstance(caps_obj, cap_cls):
             caps_data = caps_obj
         else:
-            caps_data = DeviceCapabilities()
+            caps_data = cap_cls()
 
         register_count = self._scan_result.get(
             "register_count",
@@ -382,7 +404,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         capabilities_list = [
             field.name.replace("_", " ").title()
-            for field in dataclasses.fields(DeviceCapabilities)
+            for field in dataclasses.fields(cap_cls)
             if field.type in (bool, "bool") and getattr(caps_data, field.name)
         ]
 
