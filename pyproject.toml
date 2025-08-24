@@ -26,6 +26,7 @@ requires-python = ">=3.12"
 dependencies = [
     "pymodbus>=3.5.0,<4.0.0",
     "voluptuous>=0.13.1",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
