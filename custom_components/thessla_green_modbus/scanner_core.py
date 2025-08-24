@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import collections.abc
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Self, cast
 
@@ -88,7 +89,7 @@ def _ensure_register_maps() -> None:
     if not REGISTER_DEFINITIONS:
         _build_register_maps()
 @dataclass
-class DeviceInfo:  # pragma: no cover
+class DeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
 
     The attributes are populated dynamically and accessed via ``as_dict`` in
@@ -112,20 +113,29 @@ class DeviceInfo:  # pragma: no cover
         return asdict(self)
 
     def items(self):
-        return asdict(self).items()
+        return self.as_dict().items()
 
     def keys(self):
-        return asdict(self).keys()
+        return self.as_dict().keys()
+
+    def values(self):
+        return self.as_dict().values()
+
+    def __getitem__(self, key: str) -> Any:
+        return self.as_dict()[key]
 
     def __iter__(self):
-        return iter(self.items())
+        return iter(self.as_dict())
+
+    def __len__(self) -> int:
+        return len(self.as_dict())
 
 
 # Attributes of this dataclass are read dynamically at runtime to determine
 # which features the device exposes; static analysis may therefore mark them
 # as unused even though they are relied upon.
 @dataclass
-class DeviceCapabilities:  # pragma: no cover
+class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
 
     Although capabilities are typically determined once during the initial scan,
@@ -189,8 +199,17 @@ class DeviceCapabilities:  # pragma: no cover
     def keys(self):
         return self.as_dict().keys()
 
+    def values(self):
+        return self.as_dict().values()
+
+    def __getitem__(self, key: str) -> Any:
+        return self.as_dict()[key]
+
     def __iter__(self):
-        return iter(self.items())
+        return iter(self.as_dict())
+
+    def __len__(self) -> int:
+        return len(self.as_dict())
 
 
 class ThesslaGreenDeviceScanner:
