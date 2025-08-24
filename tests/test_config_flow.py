@@ -79,8 +79,8 @@ async def test_form_user_port_out_of_range(invalid_port: int):
         schema({CONF_HOST: "192.168.1.100", CONF_PORT: invalid_port, "slave_id": 10})
 
 
-async def test_form_user_invalid_host():
-    """Test invalid host names produce a helpful error."""
+async def test_form_user_invalid_domain():
+    """Test invalid domain names produce a helpful error."""
     flow = ConfigFlow()
     flow.hass = None
 
@@ -92,8 +92,110 @@ async def test_form_user_invalid_host():
         )
 
     assert result["type"] == "form"
-    assert result["errors"] == {CONF_HOST: "invalid_host"}
+    assert result["errors"] == {CONF_HOST: "invalid_domain"}
     create_mock.assert_not_called()
+
+
+async def test_form_user_invalid_ipv4():
+    """Test invalid IPv4 addresses are rejected."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        result = await flow.async_step_user(
+            {CONF_HOST: "256.256.256.256", CONF_PORT: 502, "slave_id": 10, CONF_NAME: "My Device"}
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {CONF_HOST: "invalid_ipv4"}
+    create_mock.assert_not_called()
+
+
+async def test_form_user_invalid_ipv6():
+    """Test invalid IPv6 addresses are rejected."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        result = await flow.async_step_user(
+            {CONF_HOST: "fe80::1::", CONF_PORT: 502, "slave_id": 10, CONF_NAME: "My Device"}
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {CONF_HOST: "invalid_ipv6"}
+    create_mock.assert_not_called()
+
+
+async def test_form_user_valid_ipv6():
+    """Test IPv6 addresses are accepted."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    validation_result = {
+        "title": "ThesslaGreen fe80::1",
+        "device_info": {},
+        "scan_result": {},
+    }
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured"
+        ),
+        patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            new=AsyncMock(return_value={}),
+        ),
+    ):
+        result = await flow.async_step_user(
+            {CONF_HOST: "fe80::1", CONF_PORT: 502, "slave_id": 10, CONF_NAME: "My Device"}
+        )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "confirm"
+
+
+async def test_form_user_valid_domain():
+    """Test domain names are accepted."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    validation_result = {
+        "title": "ThesslaGreen example.com",
+        "device_info": {},
+        "scan_result": {},
+    }
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured"
+        ),
+        patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            new=AsyncMock(return_value={}),
+        ),
+    ):
+        result = await flow.async_step_user(
+            {CONF_HOST: "example.com", CONF_PORT: 502, "slave_id": 10, CONF_NAME: "My Device"}
+        )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "confirm"
 
 async def test_form_user_success():
     """Test successful configuration with confirm step."""
@@ -128,7 +230,9 @@ async def test_form_user_success():
             "custom_components.thessla_green_modbus.config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+        ),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured"
@@ -147,15 +251,16 @@ async def test_form_user_success():
                 CONF_DEEP_SCAN: True,
             }
         )
+        assert result["type"] == "form"
+        assert result["step_id"] == "confirm"
+        assert (
+            result["description_placeholders"]["auto_detected_note"]
+            == translations["auto_detected_note_success"]
+        )
 
-    assert result["type"] == "form"
-    assert result["step_id"] == "confirm"
-    assert (
-        result["description_placeholders"]["auto_detected_note"]
-        == translations["auto_detected_note_success"]
-    )
+        result2 = await flow.async_step_confirm({})
 
-    result2 = await flow.async_step_confirm({})
+    assert result2["type"] == "create_entry"
     assert result2["type"] == "create_entry"
     assert result2["title"] == "My Device"
     assert result2["data"] == {
@@ -411,10 +516,15 @@ async def test_confirm_step_aborts_on_existing_entry():
         await flow.async_step_user(user_input)
 
     # Attempt to confirm after a duplicate has been configured elsewhere
-    with patch(
-        "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
-        "_abort_if_unique_id_configured",
-        side_effect=RuntimeError("already_configured"),
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured",
+            side_effect=RuntimeError("already_configured"),
+        ),
     ):
         with pytest.raises(RuntimeError):
             await flow.async_step_confirm({})
@@ -662,8 +772,8 @@ async def test_validate_input_success():
     scanner_instance.verify_connection.assert_awaited_once()
 
 
-async def test_validate_input_invalid_host():
-    """Test validate_input rejects invalid host values."""
+async def test_validate_input_invalid_domain():
+    """Test validate_input rejects invalid domain values."""
     from custom_components.thessla_green_modbus.config_flow import (
         validate_input,
     )
@@ -678,9 +788,123 @@ async def test_validate_input_invalid_host():
     with patch(
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
-        with pytest.raises(vol.Invalid):
+        with pytest.raises(vol.Invalid) as err:
             await validate_input(None, data)
+
+    assert err.value.error_message == "invalid_domain"
     create_mock.assert_not_called()
+
+
+async def test_validate_input_invalid_ipv4():
+    """Test validate_input rejects invalid IPv4 addresses."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "256.256.256.256",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        with pytest.raises(vol.Invalid) as err:
+            await validate_input(None, data)
+
+    assert err.value.error_message == "invalid_ipv4"
+    create_mock.assert_not_called()
+
+
+async def test_validate_input_invalid_ipv6():
+    """Test validate_input rejects invalid IPv6 addresses."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "fe80::1::",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        with pytest.raises(vol.Invalid) as err:
+            await validate_input(None, data)
+
+    assert err.value.error_message == "invalid_ipv6"
+    create_mock.assert_not_called()
+
+
+async def test_validate_input_valid_ipv6():
+    """Test validate_input accepts IPv6 addresses."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
+
+    hass = None
+    data = {
+        CONF_HOST: "fe80::1",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = AsyncMock()
+    scanner_instance.scan_device.return_value = {
+        "available_registers": {},
+        "device_info": {},
+        "capabilities": {},
+    }
+    scanner_instance.verify_connection = AsyncMock()
+    scanner_instance.close = AsyncMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        result = await validate_input(hass, data)
+
+    assert result["title"] == "Test"
+    scanner_instance.verify_connection.assert_awaited_once()
+
+
+async def test_validate_input_valid_domain():
+    """Test validate_input accepts domain names."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
+
+    hass = None
+    data = {
+        CONF_HOST: "example.com",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = AsyncMock()
+    scanner_instance.scan_device.return_value = {
+        "available_registers": {},
+        "device_info": {},
+        "capabilities": {},
+    }
+    scanner_instance.verify_connection = AsyncMock()
+    scanner_instance.close = AsyncMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        result = await validate_input(hass, data)
+
+    assert result["title"] == "Test"
+    scanner_instance.verify_connection.assert_awaited_once()
 
 
 async def test_validate_input_no_data():
