@@ -102,7 +102,7 @@ async def test_form_user_invalid_domain():
         )
 
     assert result["type"] == "form"
-    assert result["errors"] == {CONF_HOST: "invalid_domain"}
+    assert result["errors"] == {CONF_HOST: "invalid_host"}
     create_mock.assert_not_called()
 
 
@@ -119,7 +119,7 @@ async def test_form_user_invalid_ipv4():
         )
 
     assert result["type"] == "form"
-    assert result["errors"] == {CONF_HOST: "invalid_ipv4"}
+    assert result["errors"] == {CONF_HOST: "invalid_host"}
     create_mock.assert_not_called()
 
 
@@ -136,7 +136,7 @@ async def test_form_user_invalid_ipv6():
         )
 
     assert result["type"] == "form"
-    assert result["errors"] == {CONF_HOST: "invalid_ipv6"}
+    assert result["errors"] == {CONF_HOST: "invalid_host"}
     create_mock.assert_not_called()
 
 
@@ -800,8 +800,7 @@ async def test_validate_input_invalid_domain():
     ) as create_mock:
         with pytest.raises(vol.Invalid) as err:
             await validate_input(None, data)
-
-    assert err.value.error_message == "invalid_domain"
+    assert err.value.error_message == "invalid_host"
     create_mock.assert_not_called()
 
 
@@ -823,8 +822,7 @@ async def test_validate_input_invalid_ipv4():
     ) as create_mock:
         with pytest.raises(vol.Invalid) as err:
             await validate_input(None, data)
-
-    assert err.value.error_message == "invalid_ipv4"
+    assert err.value.error_message == "invalid_host"
     create_mock.assert_not_called()
 
 
@@ -846,8 +844,7 @@ async def test_validate_input_invalid_ipv6():
     ) as create_mock:
         with pytest.raises(vol.Invalid) as err:
             await validate_input(None, data)
-
-    assert err.value.error_message == "invalid_ipv6"
+    assert err.value.error_message == "invalid_host"
     create_mock.assert_not_called()
 
 
