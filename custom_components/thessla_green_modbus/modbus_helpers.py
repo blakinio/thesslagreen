@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import inspect
 import logging
+import weakref
 from collections.abc import Awaitable, Callable, Iterable
 from typing import Any, List, Tuple
 
 _LOGGER = logging.getLogger(__name__)
 
 # Cache which keyword ("slave" or "unit") a given function accepts
-_KWARG_CACHE: dict[Callable[..., Awaitable[Any]], str | None] = {}
+_KWARG_CACHE: weakref.WeakKeyDictionary[
+    Callable[..., Awaitable[Any]], str | None
+] = weakref.WeakKeyDictionary()
 # Cache function signatures to avoid repeated inspection
-_SIG_CACHE: dict[Callable[..., Awaitable[Any]], inspect.Signature] = {}
+_SIG_CACHE: weakref.WeakKeyDictionary[
+    Callable[..., Awaitable[Any]], inspect.Signature
+] = weakref.WeakKeyDictionary()
 
 
 def _mask_frame(frame: bytes) -> str:

@@ -6,6 +6,7 @@ import sys
 import socket
 import types
 from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -54,6 +55,24 @@ sys.modules.setdefault(
 )
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.registers.loader", registers_loader
+registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
+registers_module.__path__ = []
+registers_module.loader = None
+registers_module.get_registers_by_function = lambda *args, **kwargs: []
+registers_module.get_all_registers = lambda *args, **kwargs: []
+registers_module.get_registers_hash = lambda *args, **kwargs: ""
+registers_module.plan_group_reads = lambda *args, **kwargs: []
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.registers", registers_module
+)
+loader_module = ModuleType(
+    "custom_components.thessla_green_modbus.registers.loader"
+)
+loader_module.get_registers_by_function = lambda *args, **kwargs: []
+loader_module.load_registers = lambda *args, **kwargs: []
+loader_module.get_all_registers = lambda *args, **kwargs: []
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.registers.loader", loader_module
 )
 
 from custom_components.thessla_green_modbus.const import (
@@ -797,9 +816,14 @@ async def test_form_user_invalid_value():
     flow = ConfigFlow()
     flow.hass = None
 
-    with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
-        side_effect=ValueError,
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            side_effect=ValueError,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow._LOGGER"
+        ) as logger_mock,
     ):
         result = await flow.async_step_user(
             {
@@ -812,6 +836,7 @@ async def test_form_user_invalid_value():
 
     assert result["type"] == "form"
     assert result["errors"] == {"base": "invalid_input"}
+    logger_mock.error.assert_called_once()
 
 
 async def test_form_user_missing_key():
@@ -819,9 +844,14 @@ async def test_form_user_missing_key():
     flow = ConfigFlow()
     flow.hass = None
 
-    with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
-        side_effect=KeyError("test"),
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            side_effect=KeyError("test"),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow._LOGGER"
+        ) as logger_mock,
     ):
         result = await flow.async_step_user(
             {
@@ -834,6 +864,7 @@ async def test_form_user_missing_key():
 
     assert result["type"] == "form"
     assert result["errors"] == {"base": "invalid_input"}
+    logger_mock.error.assert_called_once()
 
 
 async def test_form_user_unexpected_exception():
@@ -841,9 +872,14 @@ async def test_form_user_unexpected_exception():
     flow = ConfigFlow()
     flow.hass = None
 
-    with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
-        side_effect=RuntimeError,
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            side_effect=RuntimeError,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow._LOGGER"
+        ) as logger_mock,
     ):
         with pytest.raises(RuntimeError):
             await flow.async_step_user(
@@ -854,6 +890,8 @@ async def test_form_user_unexpected_exception():
                     CONF_NAME: "My Device",
                 }
             )
+
+    logger_mock.exception.assert_not_called()
 
 
 async def test_validate_input_success():

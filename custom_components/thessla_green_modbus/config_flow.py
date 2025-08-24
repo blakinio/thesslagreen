@@ -299,11 +299,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             except KeyError as err:
                 _LOGGER.error("Missing required data: %s", err)
                 errors["base"] = "invalid_input"
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.exception(
-                    "Unexpected error during configuration: %s", err
-                )
-                raise
             else:
                 self._abort_if_unique_id_configured()
                 # Show confirmation step with device info
