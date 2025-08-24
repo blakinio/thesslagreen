@@ -1,4 +1,5 @@
 import asyncio
+import struct
 import pytest
 
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
@@ -147,6 +148,50 @@ def test_register_decode_encode_float32():
     raw = reg.encode(12.34)
     assert isinstance(raw, list)
     assert reg.decode(raw) == pytest.approx(12.34, rel=1e-6)
+
+
+def test_multi_register_decode_string() -> None:
+    """Multi-register string values decode correctly."""
+    reg = Register(
+        function="holding",
+        address=0,
+        name="string_reg",
+        access="ro",
+        length=3,
+        extra={"type": "string"},
+    )
+    raw = [0x4142, 0x4344, 0x4500]  # "ABCDE"
+    assert reg.decode(raw) == "ABCDE"
+
+
+def test_multi_register_decode_float32() -> None:
+    """Multi-register float values decode correctly."""
+    reg = Register(
+        function="holding",
+        address=0,
+        name="float_multi",
+        access="ro",
+        length=2,
+        extra={"type": "float32"},
+    )
+    value = 12.34
+    raw_bytes = struct.pack(">f", value)
+    raw = [int.from_bytes(raw_bytes[i : i + 2], "big") for i in (0, 2)]
+    assert reg.decode(raw) == pytest.approx(value, rel=1e-6)
+
+
+def test_multi_register_decode_int32() -> None:
+    """Multi-register integer values decode correctly."""
+    reg = Register(
+        function="holding",
+        address=0,
+        name="int_multi",
+        access="ro",
+        length=2,
+        extra={"type": "int32"},
+    )
+    raw = [0x1234, 0x5678]
+    assert reg.decode(raw) == 0x12345678
 @pytest.fixture
 def float32_register() -> Register:
     """Register representing a 32-bit floating point value."""
