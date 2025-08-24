@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import re
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, cast
@@ -155,46 +156,37 @@ def migrate_unique_id(
             uid = uid[: -len(suffix)]
             break
 
-    serial_valid = serial_number and serial_number != "Unknown"
-    host_prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_"
-    if serial_valid and uid.startswith(host_prefix):
-        uid = f"{DOMAIN}_{serial_number}_{uid[len(host_prefix):]}"
+    pattern_new = rf"{DOMAIN}_{slave_id}_\d+(?:_bit\d+)?$"
+    if re.fullmatch(pattern_new, uid):
+        return uid
 
-    device_prefix = (
-        f"{DOMAIN}_{serial_number}" if serial_valid else f"{DOMAIN}_{host.replace(':', '-')}_{port}"
-    )
-    uid_prefix = f"{device_prefix}_"
-    entity_key: str | None = None
-    if uid.startswith(uid_prefix):
-        entity_key = uid[len(uid_prefix) :]
+    match = re.match(rf"{DOMAIN}_.+?_{slave_id}_(.+)", uid)
+    if not match:
+        return uid
 
-    if entity_key is not None:
-        parts = entity_key.split("_", 1)
-        if parts[0].isdigit():
-            if len(parts) > 1 and parts[1].isdigit():
-                uid = f"{device_prefix}_{entity_key}"
-                entity_key = None
-            elif len(parts) > 1:
-                entity_key = parts[1]
+    remainder = match.group(1)
 
-        if entity_key is not None:
-            lookup = _build_entity_lookup()
-            register_name, register_type, bit = lookup.get(entity_key, (entity_key, None, None))
-            address: int | None = None
-            if register_type == "holding_registers":
-                address = HOLDING_REGISTERS.get(register_name)
-            elif register_type == "input_registers":
-                address = INPUT_REGISTERS.get(register_name)
-            elif register_type == "coil_registers":
-                address = COIL_REGISTERS.get(register_name)
-            elif register_type == "discrete_inputs":
-                address = DISCRETE_INPUT_REGISTERS.get(register_name)
+    if re.match(r"^\d+", remainder):
+        return f"{DOMAIN}_{slave_id}_{remainder}"
 
-            if address is not None:
-                bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
-                uid = f"{device_prefix}_{slave_id}_{address}{bit_suffix}"
-            else:
-                uid = f"{device_prefix}_{entity_key}"
+    lookup = _build_entity_lookup()
+    register_name, register_type, bit = lookup.get(remainder, (remainder, None, None))
+    address: int | None = None
+    if register_type == "holding_registers":
+        address = HOLDING_REGISTERS.get(register_name)
+    elif register_type == "input_registers":
+        address = INPUT_REGISTERS.get(register_name)
+    elif register_type == "coil_registers":
+        address = COIL_REGISTERS.get(register_name)
+    elif register_type == "discrete_inputs":
+        address = DISCRETE_INPUT_REGISTERS.get(register_name)
+
+    if address is not None:
+        bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
+        return f"{DOMAIN}_{slave_id}_{address}{bit_suffix}"
+
+    if remainder == "fan":
+        return f"{DOMAIN}_{slave_id}_0"
 
     return uid
 
