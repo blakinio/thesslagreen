@@ -333,7 +333,7 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
             "address_hex": "0x0",
             "name": "bad_bits",
             "access": "R",
-            "bits": ["a"],
+            "bits": [{"name": "a"}],
         },
         {
             "function": "03",
@@ -348,10 +348,37 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
             "function": "03",
             "address_dec": 0,
             "address_hex": "0x0",
+            "name": "bad_bit_name",
+            "access": "R",
+            "extra": {"bitmask": 0b1},
+            "bits": [{"name": "BadName"}],
+        },
+        {
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "name": "bad_bit_index",
+            "access": "R",
+            "extra": {"bitmask": 0b1},
+            "bits": [{"name": "a", "index": 1}],
+        },
+        {
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "name": "bit_index_out_of_range",
+            "access": "R",
+            "extra": {"bitmask": 0xFFFF},
+            "bits": [{"name": f"b{i}"} for i in range(17)],
+        },
+        {
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
             "name": "too_many_bits",
             "access": "R",
             "extra": {"bitmask": 0b11},
-            "bits": ["a", "b", "c"],
+            "bits": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
         },
     ],
 )
@@ -380,7 +407,7 @@ def test_bits_within_bitmask_width(tmp_path, monkeypatch) -> None:
         "name": "good_bits",
         "access": "R",
         "extra": {"bitmask": 0b11},
-        "bits": ["a", "b"],
+        "bits": [{"name": "a"}, {"name": "b"}],
     }
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": [reg]}))

@@ -149,7 +149,67 @@ def test_validator_rejects_bits_without_bitmask(tmp_path: Path) -> None:
                 "address_hex": "0x0001",
                 "name": "bad_bits",
                 "access": "R/W",
-                "bits": ["a"],
+                "bits": [{"name": "a"}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bit_name(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_bit_name",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": [{"name": "BadName"}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bit_index(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_bit_index",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": [{"name": "a", "index": 1}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bit_index_out_of_range(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bit_index_out_of_range",
+                "access": "R/W",
+                "extra": {"bitmask": 0xFFFF},
+                "bits": [{"name": f"b{i}"} for i in range(17)],
             }
         ],
     )

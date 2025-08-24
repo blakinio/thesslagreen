@@ -80,6 +80,26 @@ class RegisterDefinition(pydantic.BaseModel):
         if self.bits is not None:
             if not (self.extra and self.extra.get("bitmask")):
                 raise ValueError("bits provided without extra.bitmask")
+
+            if len(self.bits) > 16:
+                raise ValueError("bits index out of range")
+
+            for idx, bit in enumerate(self.bits):
+                if not isinstance(bit, dict):
+                    raise ValueError("bits entries must be objects")
+
+                name = bit.get("name")
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError("bit name must be snake_case")
+
+                index = bit.get("index", idx)
+                if not isinstance(index, int) or isinstance(index, bool):
+                    raise ValueError("bit index must be an integer")
+                if index != idx:
+                    raise ValueError("bits must be in implicit index order")
+                if not 0 <= index <= 15:
+                    raise ValueError("bit index out of range")
+
             bitmask_val = self.extra.get("bitmask") if self.extra else None
             mask_int: int | None = None
             if isinstance(bitmask_val, str):
