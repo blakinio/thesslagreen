@@ -8,16 +8,18 @@ import weakref
 from collections.abc import Awaitable, Callable, Iterable
 from typing import Any, List, Tuple
 
+from .const import MAX_BATCH_REGISTERS
+
 _LOGGER = logging.getLogger(__name__)
 
 # Cache which keyword ("slave" or "unit") a given function accepts
-_KWARG_CACHE: weakref.WeakKeyDictionary[
-    Callable[..., Awaitable[Any]], str | None
-] = weakref.WeakKeyDictionary()
+_KWARG_CACHE: weakref.WeakKeyDictionary[Callable[..., Awaitable[Any]], str | None] = (
+    weakref.WeakKeyDictionary()
+)
 # Cache function signatures to avoid repeated inspection
-_SIG_CACHE: weakref.WeakKeyDictionary[
-    Callable[..., Awaitable[Any]], inspect.Signature
-] = weakref.WeakKeyDictionary()
+_SIG_CACHE: weakref.WeakKeyDictionary[Callable[..., Awaitable[Any]], inspect.Signature] = (
+    weakref.WeakKeyDictionary()
+)
 
 
 def _mask_frame(frame: bytes) -> str:
@@ -41,36 +43,28 @@ def _build_request_frame(
         if func_name == "read_input_registers":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes(
-                [slave_id, 0x04, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
-            )
+            return bytes([slave_id, 0x04, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
         if func_name == "read_holding_registers":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes(
-                [slave_id, 0x03, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
-            )
+            return bytes([slave_id, 0x03, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
         if func_name == "read_coils":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes(
-                [slave_id, 0x01, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
-            )
+            return bytes([slave_id, 0x01, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
         if func_name == "read_discrete_inputs":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes(
-                [slave_id, 0x02, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
-            )
+            return bytes([slave_id, 0x02, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
         if func_name == "write_register":
             addr = int(kwargs.get("address", positional[0]))
             value = int(kwargs.get("value", positional[1] if len(positional) > 1 else 0))
-            return bytes(
-                [slave_id, 0x06, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF]
-            )
+            return bytes([slave_id, 0x06, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF])
         if func_name == "write_registers":
             addr = int(kwargs.get("address", positional[0]))
-            values = [int(v) for v in kwargs.get("values", positional[1] if len(positional) > 1 else [])]
+            values = [
+                int(v) for v in kwargs.get("values", positional[1] if len(positional) > 1 else [])
+            ]
             qty = len(values)
             frame = bytearray(
                 [
@@ -88,10 +82,12 @@ def _build_request_frame(
             return bytes(frame)
         if func_name == "write_coil":
             addr = int(kwargs.get("address", positional[0]))
-            value = 0xFF00 if kwargs.get("value", positional[1] if len(positional) > 1 else False) else 0x0000
-            return bytes(
-                [slave_id, 0x05, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF]
+            value = (
+                0xFF00
+                if kwargs.get("value", positional[1] if len(positional) > 1 else False)
+                else 0x0000
             )
+            return bytes([slave_id, 0x05, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF])
     except Exception:  # pragma: no cover - best-effort logging only
         return b""
 
@@ -165,7 +161,9 @@ async def _call_modbus(
         if request_frame:
             _LOGGER.debug("Modbus request: %s", _mask_frame(request_frame))
         else:
-            _LOGGER.debug("Sending %s to slave %s: args=%s kwargs=%s", func_name, slave_id, positional, kwargs)
+            _LOGGER.debug(
+                "Sending %s to slave %s: args=%s kwargs=%s", func_name, slave_id, positional, kwargs
+            )
 
     if kwarg == "slave":
         response = await func(*positional, slave=slave_id, **kwargs)
@@ -186,7 +184,10 @@ async def _call_modbus(
     return response
 
 
-def group_reads(addresses: Iterable[int], max_block_size: int = 16) -> List[Tuple[int, int]]:
+def group_reads(
+    addresses: Iterable[int],
+    max_block_size: int = MAX_BATCH_REGISTERS,
+) -> List[Tuple[int, int]]:
     """Group raw register addresses into contiguous read blocks.
 
     The addresses are sorted and sequential ranges are merged up to
@@ -194,7 +195,7 @@ def group_reads(addresses: Iterable[int], max_block_size: int = 16) -> List[Tupl
     tuples suitable for bulk Modbus read operations.
     """
 
-    max_block_size = min(max_block_size, 16)
+    max_block_size = min(max_block_size, MAX_BATCH_REGISTERS)
     sorted_addresses = sorted(set(addresses))
     if not sorted_addresses:
         return []

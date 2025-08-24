@@ -9,6 +9,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
     Register,
     plan_group_reads,
 )
+
 try:
     from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 except Exception:  # pragma: no cover - scanner requires HA deps
@@ -21,18 +22,17 @@ def test_group_reads_merges_consecutive_addresses():
     assert group_reads(addresses) == [(0, 4), (10, 3)]
 
 
-@pytest.mark.parametrize("size", [1, 8, 16, 32])
+@pytest.mark.parametrize("size", [1, 8, MAX_BATCH_REGISTERS, 32])
 def test_group_reads_respects_max_block_size(size):
     addresses = list(range(40))
     groups = group_reads(addresses, max_block_size=size)
     assert max(length for _, length in groups) <= min(size, MAX_BATCH_REGISTERS)
     if size > MAX_BATCH_REGISTERS:
         assert groups == group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+
+
 def test_plan_group_reads_merges_consecutive_addresses(monkeypatch):
-    regs = [
-        Register("input", addr, f"r{addr}", "r")
-        for addr in [0, 1, 2, 3, 10, 11, 12]
-    ]
+    regs = [Register("input", addr, f"r{addr}", "r") for addr in [0, 1, 2, 3, 10, 11, 12]]
     monkeypatch.setattr(loader, "load_registers", lambda: regs)
     assert plan_group_reads() == [ReadPlan("input", 0, 4), ReadPlan("input", 10, 3)]
 
@@ -40,9 +40,9 @@ def test_plan_group_reads_merges_consecutive_addresses(monkeypatch):
 def test_plan_group_reads_respects_max_block_size(monkeypatch):
     regs = [Register("input", addr, f"r{addr}", "r") for addr in range(22)]
     monkeypatch.setattr(loader, "load_registers", lambda: regs)
-    assert plan_group_reads(max_block_size=16) == [
-        ReadPlan("input", 0, 16),
-        ReadPlan("input", 16, 6),
+    assert plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) == [
+        ReadPlan("input", 0, MAX_BATCH_REGISTERS),
+        ReadPlan("input", MAX_BATCH_REGISTERS, 6),
     ]
 
 

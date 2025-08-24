@@ -15,6 +15,7 @@ import pytest
 from custom_components.thessla_green_modbus.const import (
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
+    MAX_BATCH_REGISTERS,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -166,8 +167,6 @@ modules = {
     "pymodbus": pymodbus,
     "pymodbus.client": pymodbus_client,
     "pymodbus.exceptions": pymodbus_exceptions,
-    "homeassistant.util": util,
-    "homeassistant.util.network": network_module,
 }
 for name, module in modules.items():
     sys.modules[name] = module
@@ -343,14 +342,14 @@ async def test_async_write_multi_register_wrong_length(coordinator):
     [
         (1, 4),
         (8, 1),
-        (16, 1),
+        (MAX_BATCH_REGISTERS, 1),
         (32, 1),
     ],
 )
 async def test_async_write_register_chunks(coordinator, batch, expected_calls, monkeypatch):
     """Writes are chunked according to configured batch size."""
     coordinator.max_registers_per_request = batch
-    coordinator.effective_batch = min(batch, 16)
+    coordinator.effective_batch = min(batch, MAX_BATCH_REGISTERS)
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     response = MagicMock()
@@ -374,10 +373,10 @@ async def test_async_write_register_chunks(coordinator, batch, expected_calls, m
 
 
 @pytest.mark.asyncio
-async def test_async_write_register_truncates_over_16(coordinator, monkeypatch):
-    """Batch sizes over 16 are truncated to 16 when writing."""
+async def test_async_write_register_truncates_over_limit(coordinator, monkeypatch):
+    """Batch sizes over the limit are truncated to the maximum when writing."""
     coordinator.max_registers_per_request = 100
-    coordinator.effective_batch = 16
+    coordinator.effective_batch = MAX_BATCH_REGISTERS
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     response = MagicMock()
@@ -395,7 +394,10 @@ async def test_async_write_register_truncates_over_16(coordinator, monkeypatch):
 
     assert result is True
     assert client.write_registers.await_count == 2
-    assert [len(call.kwargs["values"]) for call in client.write_registers.await_args_list] == [16, 4]
+    assert [len(call.kwargs["values"]) for call in client.write_registers.await_args_list] == [
+        MAX_BATCH_REGISTERS,
+        4,
+    ]
     coordinator.async_request_refresh.assert_called_once()
 
 
@@ -548,8 +550,7 @@ def test_dac_value_processing(coordinator, caplog):
 def test_process_register_value_sensor_unavailable(coordinator, register_name):
     """Return sentinel when sensors report unavailable for known sensor registers."""
     assert (
-        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE)
-        == SENSOR_UNAVAILABLE
+        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) == SENSOR_UNAVAILABLE
     )
 
 
@@ -759,6 +760,7 @@ async def test_capabilities_loaded_from_config_entry():
     await coordinator.async_setup()
 
     assert coordinator.capabilities.expansion_module is True
+
 
 @pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):
