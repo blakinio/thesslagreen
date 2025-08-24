@@ -101,11 +101,21 @@ pre-commit run --all-files
 
 Register addresses are defined in
 `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-and this file serves as the sole source of truth.  The integration reads the
-JSON directly; if you require a static Python mapping for other tools, run:
+and this file serves as the sole source of truth. The integration reads the JSON
+directly.
+
+If you need a static Python mapping for external tools, generate
+`custom_components/thessla_green_modbus/registers.py` using:
 
 ```bash
 python tools/generate_registers.py
+```
+
+The generated file is ignored by Git and should not be committed. You can verify
+that it matches the JSON source with:
+
+```bash
+python tools/validate_registers.py
 ```
 
 The test suite ensures the JSON definitions remain valid.
