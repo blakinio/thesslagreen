@@ -12,7 +12,9 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_register_time,
 )
 from custom_components.thessla_green_modbus.registers.loader import Register
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)
 
 
 def test_decode_register_time_valid():

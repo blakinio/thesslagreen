@@ -142,7 +142,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             return func(*args)
 
     class ServiceCall:  # type: ignore[override]
-        pass
+        def __init__(self, *args, **kwargs):
+            self.domain = args[0] if len(args) > 0 else kwargs.get("domain")
+            self.service = args[1] if len(args) > 1 else kwargs.get("service")
+            self.data = args[2] if len(args) > 2 else kwargs.get("data")
 
     def callback(func):  # type: ignore[override]
         return func
@@ -412,6 +415,13 @@ def mock_config_entry():
 @pytest.fixture
 def mock_coordinator():
     """Return a mock coordinator."""
+    from custom_components.thessla_green_modbus.const import (
+        COIL_REGISTERS,
+        DISCRETE_INPUT_REGISTERS,
+        HOLDING_REGISTERS,
+        INPUT_REGISTERS,
+    )
+
     coordinator = CoordinatorMock()
     coordinator.host = "192.168.1.100"
     coordinator.port = 502
@@ -443,6 +453,12 @@ def mock_coordinator():
         "coil_registers": {"power_supply_fans", "bypass"},
         "discrete_inputs": {"expansion", "contamination_sensor"},
         "calculated": {"estimated_power", "total_energy"},
+    }
+    coordinator._register_maps = {
+        "input_registers": INPUT_REGISTERS,
+        "holding_registers": HOLDING_REGISTERS,
+        "coil_registers": COIL_REGISTERS,
+        "discrete_inputs": DISCRETE_INPUT_REGISTERS,
     }
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()

@@ -17,7 +17,7 @@ from homeassistant.helpers import translation
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
-from .registers import get_all_registers, get_registers_hash
+from .registers.loader import get_all_registers, get_registers_hash
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +56,11 @@ async def async_get_config_entry_diagnostics(
     diagnostics.setdefault("deep_scan", coordinator.deep_scan)
     diagnostics.setdefault(
         "force_full_register_list", coordinator.force_full_register_list
+    )
+    diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
+    diagnostics.setdefault(
+        "registers_discovered",
+        {key: len(val) for key, val in coordinator.available_registers.items()},
     )
     diagnostics["last_scan"] = (
         coordinator.last_scan.isoformat() if coordinator.last_scan else None

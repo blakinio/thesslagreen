@@ -58,6 +58,8 @@ async def async_setup_entry(
                 ThesslaGreenBinarySensor(
                     coordinator, register_name, sensor_def, address
                 )
+                ThesslaGreenBinarySensor(coordinator, register_name, address, sensor_def)
+
             )
             _LOGGER.debug("Created binary sensor: %s", sensor_def["translation_key"])
 
@@ -89,6 +91,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         sensor_definition: Dict[str, Any],
         address: int,
     ) -> None:

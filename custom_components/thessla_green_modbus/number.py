@@ -27,7 +27,7 @@ from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import get_registers_by_function
+from .registers.loader import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,10 +66,12 @@ async def async_setup_entry(
     # ThesslaGreenDeviceScanner.scan_device()
     for register_name, entity_config in number_mappings.items():
         if register_name in coordinator.available_registers.get("holding_registers", set()):
+            address = HOLDING_REGISTERS[register_name]
             entities.append(
                 ThesslaGreenNumber(
                     coordinator=coordinator,
                     register_name=register_name,
+                    address=address,
                     entity_config=entity_config,
                     register_type="holding_registers",
                 )
@@ -101,6 +103,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         entity_config: dict[str, Any],
         register_type: str | None = None,
     ) -> None:
@@ -109,6 +112,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             address = HOLDING_REGISTERS.get(register_name, 0)
         else:
             address = 0
+
         super().__init__(coordinator, register_name, address)
 
         self.register_name = register_name
@@ -217,7 +221,8 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
 
         # Add register information
         attributes["register_name"] = self.register_name
-        attributes["register_address"] = f"0x{HOLDING_REGISTERS.get(self.register_name, 0):04X}"
+        register_address = self._address if self._address is not None else 0
+        attributes["register_address"] = f"0x{register_address:04X}"
 
         # Add raw value for debugging
         if self.register_name in self.coordinator.data:

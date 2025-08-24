@@ -59,7 +59,7 @@ async def async_setup_entry(
         if register_name in coordinator.available_registers.get(register_type, set()):
             address = coordinator._register_maps[register_type][register_name]
             entities.append(
-                ThesslaGreenSensor(coordinator, register_name, sensor_def, address)
+                ThesslaGreenSensor(coordinator, register_name, address, sensor_def)
             )
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
             if is_temp:
@@ -111,6 +111,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         sensor_definition: dict[str, Any],
         address: int,
     ) -> None:

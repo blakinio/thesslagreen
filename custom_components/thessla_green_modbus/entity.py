@@ -18,6 +18,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         coordinator: ThesslaGreenModbusCoordinator,
         key: str,
         address: int | None = None,
+        *,
         bit: int | None = None,
     ) -> None:
         """Initialize the entity."""
@@ -47,6 +48,21 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
             return f"{DOMAIN}_{serial}_{key_part}"
         host = self.coordinator.host.replace(":", "-")
         return f"{DOMAIN}_{host}_{self.coordinator.port}_{key_part}"
+            prefix = f"{DOMAIN}_{serial}"
+        else:
+            host = self.coordinator.host.replace(":", "-")
+            prefix = f"{DOMAIN}_{host}_{self.coordinator.port}"
+
+        if self._address is not None:
+            bit_suffix = (
+                f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
+            )
+            return f"{prefix}_{self.coordinator.slave_id}_{self._address}{bit_suffix}"
+
+        # Fallback to legacy key-based unique ID
+        if serial and serial != "Unknown":
+            return f"{prefix}_{self._key}"
+        return f"{prefix}_{self.coordinator.slave_id}_{self._key}"
 
     @property
     def available(self) -> bool:  # pragma: no cover

@@ -43,7 +43,7 @@ async def async_setup_entry(
         if register_name in coordinator.available_registers.get(register_type, set()):
             address = coordinator._register_maps[register_type][register_name]
             entities.append(
-                ThesslaGreenSelect(coordinator, register_name, select_def, address)
+                ThesslaGreenSelect(coordinator, register_name, address, select_def)
             )
 
     if entities:
@@ -69,6 +69,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         definition: dict[str, Any],
         address: int,
     ) -> None:
