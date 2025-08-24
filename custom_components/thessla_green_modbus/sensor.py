@@ -113,6 +113,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         register_name: str,
         address: int,
         sensor_definition: dict[str, Any],
+        address: int,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, register_name, address)

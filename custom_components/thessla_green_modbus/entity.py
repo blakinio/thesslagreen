@@ -34,7 +34,20 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
         serial = self.coordinator.device_info.get("serial_number")
+        bit_suffix = ""
+        key_part: str
+        if self._bit is not None:
+            bit_index = self._bit.bit_length() - 1
+            bit_suffix = f"_bit{bit_index}"
+        if self._address is not None:
+            key_part = f"{self.coordinator.slave_id}_{self._address}{bit_suffix}"
+        else:
+            key_part = self._key
+
         if serial and serial != "Unknown":
+            return f"{DOMAIN}_{serial}_{key_part}"
+        host = self.coordinator.host.replace(":", "-")
+        return f"{DOMAIN}_{host}_{self.coordinator.port}_{key_part}"
             prefix = f"{DOMAIN}_{serial}"
         else:
             host = self.coordinator.host.replace(":", "-")

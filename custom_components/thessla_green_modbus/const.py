@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import Any, Dict, cast
+import re
 
 from .registers.loader import get_registers_by_function
 
@@ -140,6 +141,37 @@ def migrate_unique_id(
             uid = uid[: -len(suffix)]
             break
 
+    if serial_number and serial_number != "Unknown":
+        prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_"
+        if new_unique_id.startswith(prefix):
+            new_unique_id = f"{DOMAIN}_{serial_number}_{new_unique_id[len(prefix):]}"
+
+    # Convert register name suffix to address-based format if needed
+    try:
+        if serial_number and serial_number != "Unknown":
+            device_prefix = f"{DOMAIN}_{serial_number}_"
+        else:
+            device_prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_"
+        if new_unique_id.startswith(device_prefix):
+            suffix = new_unique_id[len(device_prefix) :]
+            if not re.fullmatch(r"\d+_\d+(?:_bit\d+)?", suffix):
+                reg_name = suffix
+                address = None
+                for mapping in (
+                    COIL_REGISTERS,
+                    DISCRETE_INPUT_REGISTERS,
+                    HOLDING_REGISTERS,
+                    INPUT_REGISTERS,
+                ):
+                    if reg_name in mapping:
+                        address = mapping[reg_name]
+                        break
+                if address is not None:
+                    new_unique_id = f"{device_prefix}{slave_id}_{address}"
+    except Exception:  # pragma: no cover - defensive
+        pass
+
+    return new_unique_id
     serial_valid = serial_number and serial_number != "Unknown"
     host_prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_"
     serial_prefix = f"{DOMAIN}_{serial_number}_" if serial_valid else None

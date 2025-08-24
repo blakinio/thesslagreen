@@ -108,6 +108,11 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
+        if register_type == "holding_registers":
+            address = HOLDING_REGISTERS.get(register_name, 0)
+        else:
+            address = 0
+
         super().__init__(coordinator, register_name, address)
 
         self.register_name = register_name

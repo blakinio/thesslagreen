@@ -41,6 +41,11 @@ def _make_coordinator(unit):
 
 def test_unique_id_same_for_all_units():
     coord = _make_coordinator(AIRFLOW_UNIT_PERCENTAGE)
+    entity = ThesslaGreenEntity(coord, "supply_flow_rate", 274)
+    uid_percentage = entity.unique_id
+
+    coord.entry.options[CONF_AIRFLOW_UNIT] = AIRFLOW_UNIT_M3H
+    entity = ThesslaGreenEntity(coord, "supply_flow_rate", 274)
     address = 274
     entity = ThesslaGreenEntity(coord, "supply_flow_rate", address)
     uid_percentage = entity.unique_id

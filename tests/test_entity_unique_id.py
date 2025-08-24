@@ -36,6 +36,8 @@ def test_unique_id_host_fallback():
     coordinator.device_info = {}
     coordinator.get_device_info.return_value = {}
 
+    entity = ThesslaGreenEntity(coordinator, "test", 1)
+    assert entity.unique_id == f"{DOMAIN}_fd00-1-2--1_502_10_1"  # nosec
     entity = ThesslaGreenEntity(coordinator, "test", 2)
     assert entity.unique_id == f"{DOMAIN}_fd00-1-2--1_502_10_2"  # nosec
 
@@ -51,6 +53,11 @@ def test_unique_id_not_changed_by_airflow_unit():
     coordinator.entry = MagicMock()
     coordinator.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}
 
+    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", 274)
+    uid_percentage = entity.unique_id
+
+    coordinator.entry.options[CONF_AIRFLOW_UNIT] = AIRFLOW_UNIT_M3H
+    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", 274)
     address = 274
     entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", address)
     uid_percentage = entity.unique_id
