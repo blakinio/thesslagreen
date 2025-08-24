@@ -4087,7 +4087,7 @@
     },
     {
       "function": "03",
-      "address_dec": 8392,
+      "address_dec": 8394,
       "address_hex": "0x20CA",
       "name": "e200",
       "access": "R/W",
@@ -4103,7 +4103,7 @@
     },
     {
       "function": "03",
-      "address_dec": 8393,
+      "address_dec": 8395,
       "address_hex": "0x20CB",
       "name": "e201",
       "access": "R/W",
