@@ -91,7 +91,7 @@ def _ensure_register_maps() -> None:
         _build_register_maps()
 
 
-@dataclass
+@dataclass(slots=True)
 class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
 
