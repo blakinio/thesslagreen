@@ -1,10 +1,15 @@
 from collections.abc import Mapping
 
-from custom_components.thessla_green_modbus.scanner_core import DeviceInfo, DeviceCapabilities
+from custom_components.thessla_green_modbus.scanner_core import (
+    ScannerDeviceInfo,
+    DeviceCapabilities,
+)
 
 
 def test_device_info_mapping_and_values() -> None:
-    info = DeviceInfo(model="m", firmware="f", serial_number="s", capabilities=["c"])
+    info = ScannerDeviceInfo(
+        model="m", firmware="f", serial_number="s", capabilities=["c"]
+    )
     assert isinstance(info, Mapping)
     assert list(info.values()) == list(info.as_dict().values())
 
