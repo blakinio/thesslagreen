@@ -704,53 +704,143 @@ class ThesslaGreenDeviceScanner:
         discrete_max = max(self._registers.get("02", {}).keys(), default=-1)
 
         if self.full_register_scan:
-            for addr in range(0, input_max + 1):
-                scanned_registers["input_registers"] += 1
-                input_data = await self._read_input(client, addr, 1, skip_cache=True)
-                if not input_data:
+            for start, count in _group_reads(
+                range(input_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["input_registers"] += count
+                input_data = await self._read_input(
+                    client, start, count, skip_cache=True
+                )
+                if input_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single = await self._read_input(
+                            client, addr, 1, skip_cache=True
+                        )
+                        if not single:
+                            continue
+                        reg_name = self._registers.get("04", {}).get(addr)
+                        if reg_name and self._is_valid_register_value(
+                            reg_name, single[0]
+                        ):
+                            self.available_registers["input_registers"].add(
+                                reg_name
+                            )
+                        else:
+                            unknown_registers["input_registers"][addr] = single[0]
+                            if reg_name:
+                                self.failed_addresses["invalid_values"][
+                                    "input_registers"
+                                ].add(addr)
+                                self._log_invalid_value(reg_name, single[0])
                     continue
-                reg_name = self._registers.get("04", {}).get(addr)
-                if reg_name and self._is_valid_register_value(reg_name, input_data[0]):
-                    self.available_registers["input_registers"].add(reg_name)
-                else:
-                    unknown_registers["input_registers"][addr] = input_data[0]
-                    if reg_name:
-                        self.failed_addresses["invalid_values"]["input_registers"].add(addr)
-                        self._log_invalid_value(reg_name, input_data[0])
+                for offset, value in enumerate(input_data):
+                    addr = start + offset
+                    reg_name = self._registers.get("04", {}).get(addr)
+                    if reg_name and self._is_valid_register_value(reg_name, value):
+                        self.available_registers["input_registers"].add(reg_name)
+                    else:
+                        unknown_registers["input_registers"][addr] = value
+                        if reg_name:
+                            self.failed_addresses["invalid_values"][
+                                "input_registers"
+                            ].add(addr)
+                            self._log_invalid_value(reg_name, value)
 
-            for addr in range(0, holding_max + 1):
-                scanned_registers["holding_registers"] += 1
-                holding_data = await self._read_holding(client, addr, 1, skip_cache=True)
-                if not holding_data:
+            for start, count in _group_reads(
+                range(holding_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["holding_registers"] += count
+                holding_data = await self._read_holding(
+                    client, start, count, skip_cache=True
+                )
+                if holding_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single = await self._read_holding(
+                            client, addr, 1, skip_cache=True
+                        )
+                        if not single:
+                            continue
+                        reg_name = self._registers.get("03", {}).get(addr)
+                        if reg_name and self._is_valid_register_value(
+                            reg_name, single[0]
+                        ):
+                            self.available_registers["holding_registers"].add(
+                                reg_name
+                            )
+                        else:
+                            unknown_registers["holding_registers"][addr] = single[0]
+                            if reg_name:
+                                self.failed_addresses["invalid_values"][
+                                    "holding_registers"
+                                ].add(addr)
+                                self._log_invalid_value(reg_name, single[0])
                     continue
-                reg_name = self._registers.get("03", {}).get(addr)
-                if reg_name and self._is_valid_register_value(reg_name, holding_data[0]):
-                    self.available_registers["holding_registers"].add(reg_name)
-                else:
-                    unknown_registers["holding_registers"][addr] = holding_data[0]
-                    if reg_name:
-                        self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
-                        self._log_invalid_value(reg_name, holding_data[0])
+                for offset, value in enumerate(holding_data):
+                    addr = start + offset
+                    reg_name = self._registers.get("03", {}).get(addr)
+                    if reg_name and self._is_valid_register_value(reg_name, value):
+                        self.available_registers["holding_registers"].add(reg_name)
+                    else:
+                        unknown_registers["holding_registers"][addr] = value
+                        if reg_name:
+                            self.failed_addresses["invalid_values"][
+                                "holding_registers"
+                            ].add(addr)
+                            self._log_invalid_value(reg_name, value)
 
-            for addr in range(0, coil_max + 1):
-                scanned_registers["coil_registers"] += 1
-                coil_data = await self._read_coil(client, addr, 1)
-                if not coil_data:
+            for start, count in _group_reads(
+                range(coil_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["coil_registers"] += count
+                coil_data = await self._read_coil(client, start, count)
+                if coil_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single_coil = await self._read_coil(client, addr, 1)
+                        if not single_coil:
+                            continue
+                        if (
+                            reg_name := self._registers.get("01", {}).get(addr)
+                        ) is not None:
+                            self.available_registers["coil_registers"].add(reg_name)
+                        else:
+                            unknown_registers["coil_registers"][addr] = single_coil[0]
                     continue
-                if (reg_name := self._registers.get("01", {}).get(addr)) is not None:
-                    self.available_registers["coil_registers"].add(reg_name)
-                else:
-                    unknown_registers["coil_registers"][addr] = coil_data[0]
+                for offset, value in enumerate(coil_data):
+                    addr = start + offset
+                    if (reg_name := self._registers.get("01", {}).get(addr)) is not None:
+                        self.available_registers["coil_registers"].add(reg_name)
+                    else:
+                        unknown_registers["coil_registers"][addr] = value
 
-            for addr in range(0, discrete_max + 1):
-                scanned_registers["discrete_inputs"] += 1
-                discrete_data = await self._read_discrete(client, addr, 1)
-                if not discrete_data:
+            for start, count in _group_reads(
+                range(discrete_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["discrete_inputs"] += count
+                discrete_data = await self._read_discrete(client, start, count)
+                if discrete_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single_discrete = await self._read_discrete(client, addr, 1)
+                        if not single_discrete:
+                            continue
+                        if (
+                            reg_name := self._registers.get("02", {}).get(addr)
+                        ) is not None:
+                            self.available_registers["discrete_inputs"].add(
+                                reg_name
+                            )
+                        else:
+                            unknown_registers["discrete_inputs"][addr] = single_discrete[0]
                     continue
-                if (reg_name := self._registers.get("02", {}).get(addr)) is not None:
-                    self.available_registers["discrete_inputs"].add(reg_name)
-                else:
-                    unknown_registers["discrete_inputs"][addr] = discrete_data[0]
+                for offset, value in enumerate(discrete_data):
+                    addr = start + offset
+                    if (reg_name := self._registers.get("02", {}).get(addr)) is not None:
+                        self.available_registers["discrete_inputs"].add(reg_name)
+                    else:
+                        unknown_registers["discrete_inputs"][addr] = value
         else:
             # Scan Input Registers in batches
             input_addr_to_name: dict[int, str] = {}
