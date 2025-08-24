@@ -181,11 +181,31 @@ class RegisterDef:
                 endianness = self.extra.get("endianness", "big")
 
             raw_val: Any = value
-            if self.enum and isinstance(value, str):
-                for k, v in self.enum.items():
-                    if v == value:
-                        raw_val = int(k)
-                        break
+            if self.enum:
+                if isinstance(value, str):
+                    for k, v in self.enum.items():
+                        if v == value:
+                            raw_val = int(k)
+                            break
+                    else:
+                        raise ValueError(f"Invalid enum value {value!r} for {self.name}")
+                elif value not in self.enum and str(value) not in self.enum:
+                    raise ValueError(f"Invalid enum value {value!r} for {self.name}")
+
+            try:
+                num_val = float(value)
+            except (TypeError, ValueError):
+                num_val = None
+            if num_val is not None:
+                if self.min is not None and num_val < self.min:
+                    raise ValueError(
+                        f"{value} is below minimum {self.min} for {self.name}"
+                    )
+                if self.max is not None and num_val > self.max:
+                    raise ValueError(
+                        f"{value} is above maximum {self.max} for {self.name}"
+                    )
+
             if self.multiplier is not None:
                 raw_val = int(round(float(raw_val) / self.multiplier))
             if self.resolution is not None:
@@ -246,11 +266,28 @@ class RegisterDef:
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
         raw: Any = value
-        if self.enum and isinstance(value, str):
-            for k, v in self.enum.items():
-                if v == value:
-                    raw = int(k)
-                    break
+        if self.enum and not (self.extra and self.extra.get("bitmask")):
+            if isinstance(value, str):
+                for k, v in self.enum.items():
+                    if v == value:
+                        raw = int(k)
+                        break
+                else:
+                    raise ValueError(f"Invalid enum value {value!r} for {self.name}")
+            elif value in self.enum or str(value) in self.enum:
+                raw = int(value)
+            else:
+                raise ValueError(f"Invalid enum value {value!r} for {self.name}")
+
+        try:
+            num_val = float(value)
+        except (TypeError, ValueError):
+            num_val = None
+        if num_val is not None:
+            if self.min is not None and num_val < self.min:
+                raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
+            if self.max is not None and num_val > self.max:
+                raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
         if self.multiplier is not None:
             raw = int(round(float(raw) / self.multiplier))
         if self.resolution is not None:

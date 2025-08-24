@@ -1257,7 +1257,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             )
                             return False
                         continue
-                    except (OSError, ValueError):
+                    except OSError:
                         _LOGGER.exception("Unexpected error writing register %s", register_name)
                         return False
 
