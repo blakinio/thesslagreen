@@ -23,7 +23,7 @@ from .modbus_exceptions import (
     ModbusIOException,
 )
 from .modbus_helpers import _call_modbus, group_reads as _group_reads
-from .registers.loader import get_all_registers, registers_sha256
+from .registers import loader as registers_loader
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
@@ -51,8 +51,10 @@ REGISTER_HASH: str | None = None
 def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
     global REGISTER_HASH
-    regs = get_all_registers()
-    REGISTER_HASH = registers_sha256()
+    regs = registers_loader.get_all_registers()
+    REGISTER_HASH = registers_loader.registers_sha256(
+        registers_loader._REGISTERS_PATH
+    )
 
     REGISTER_DEFINITIONS.clear()
     REGISTER_DEFINITIONS.update({r.name: r for r in regs})
@@ -90,7 +92,9 @@ def _build_register_maps() -> None:
 # Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    current_hash = registers_sha256()
+    current_hash = registers_loader.registers_sha256(
+        registers_loader._REGISTERS_PATH
+    )
     if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
         _build_register_maps()
 
@@ -1142,7 +1146,7 @@ class ThesslaGreenDeviceScanner:
         """Load Modbus register definitions and value ranges."""
         register_map: Dict[int, Dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
         register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-        for reg in get_all_registers():
+        for reg in registers_loader.get_all_registers():
             if not reg.name:
                 continue
             register_map[reg.function][reg.address] = reg.name

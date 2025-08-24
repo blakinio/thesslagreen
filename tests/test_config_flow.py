@@ -6,6 +6,7 @@ import asyncio
 import sys
 import socket
 import types
+from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -39,6 +40,7 @@ registers_loader.get_all_registers = lambda *args, **kwargs: []
 registers_loader.registers_sha256 = lambda *args, **kwargs: ""
 registers_loader.plan_group_reads = lambda *args, **kwargs: []
 registers_loader.load_registers = lambda *args, **kwargs: []
+registers_loader._REGISTERS_PATH = Path("dummy")
 registers_module.loader = registers_loader
 registers_module.get_registers_by_function = registers_loader.get_registers_by_function
 registers_module.get_all_registers = registers_loader.get_all_registers
@@ -59,6 +61,7 @@ loader_module.get_registers_by_function = lambda *args, **kwargs: []
 loader_module.load_registers = lambda *args, **kwargs: []
 loader_module.get_all_registers = lambda *args, **kwargs: []
 loader_module.registers_sha256 = lambda *args, **kwargs: ""
+loader_module._REGISTERS_PATH = Path("dummy")
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_module)
 
 from custom_components.thessla_green_modbus.const import (
