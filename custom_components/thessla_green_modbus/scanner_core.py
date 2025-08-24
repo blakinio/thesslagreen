@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import logging
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Self
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Self, cast
 
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
@@ -129,12 +129,11 @@ class DeviceCapabilities:  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
 
     Although capabilities are typically determined once during the initial scan,
-    the dataclass caches the result of :meth:`as_dict` for efficiency.  Any
+    the dataclass caches the result of :meth:`as_dict` for efficiency. Any
     attribute assignment will clear this cache so subsequent calls reflect the
-    new values.  The capability sets are mutable; modify them via assignment to
+    new values. The capability sets are mutable; modify them via assignment to
     trigger cache invalidation.
     """
-
     basic_control: bool = False
     temperature_sensors: set[str] = field(
         default_factory=set
@@ -183,6 +182,15 @@ class DeviceCapabilities:  # pragma: no cover
                     data[key] = sorted(value)
             self._as_dict_cache = data
         return self._as_dict_cache
+
+    def items(self):
+        return self.as_dict().items()
+
+    def keys(self):
+        return self.as_dict().keys()
+
+    def __iter__(self):
+        return iter(self.items())
 
 
 class ThesslaGreenDeviceScanner:
@@ -557,7 +565,9 @@ class ThesslaGreenDeviceScanner:
 
         # Basic firmware/serial information
         info_regs = await self._read_input(client, 0, 30) or []
-        major = minor = patch = None
+        major: int | None = None
+        minor: int | None = None
+        patch: int | None = None
         firmware_err: Exception | None = None
 
         for name in ("version_major", "version_minor", "version_patch"):

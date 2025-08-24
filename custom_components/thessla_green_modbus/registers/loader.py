@@ -31,7 +31,7 @@ import pydantic
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
-from ..modbus_helpers import group_reads as _group_reads
+from ..modbus_helpers import group_reads as _group_reads  # alias for plan_group_reads
 
 _LOGGER = logging.getLogger(__name__)
 

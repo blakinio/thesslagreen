@@ -1521,3 +1521,9 @@ def test_device_capabilities_serialization():
     assert serialized["bypass_system"] is True
     # sets should be sorted lists for JSON serialization
     assert serialized["temperature_sensors"] == ["t1", "t2"]
+
+    # Iteration helpers should delegate to as_dict
+    # __iter__ should yield key/value pairs
+    assert list(caps) == list(serialized.items())
+    assert list(caps.keys()) == list(serialized.keys())
+    assert list(caps.items()) == list(serialized.items())
