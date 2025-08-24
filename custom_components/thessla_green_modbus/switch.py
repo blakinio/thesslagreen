@@ -97,11 +97,18 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         entity_config: dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
-        super().__init__(coordinator, key)
+        register_name = entity_config["register"]
+        register_type = entity_config["register_type"]
+        if register_type == "holding_registers":
+            address = HOLDING_REGISTERS.get(register_name, 0)
+        else:
+            address = COIL_REGISTERS.get(register_name, 0)
+        bit = entity_config.get("bit")
+        super().__init__(coordinator, key, address, bit)
 
         self.entity_config = entity_config
-        self.register_name = entity_config["register"]
-        self.bit = entity_config.get("bit")
+        self.register_name = register_name
+        self.bit = bit
 
         # Entity configuration
         self._attr_translation_key = entity_config["translation_key"]  # pragma: no cover

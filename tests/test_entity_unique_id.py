@@ -23,8 +23,8 @@ def test_unique_id_serial_based():
     coordinator.device_info = {"serial_number": "ABC123"}
     coordinator.get_device_info.return_value = {}
 
-    entity = ThesslaGreenEntity(coordinator, "test")
-    assert entity.unique_id == f"{DOMAIN}_ABC123_test"  # nosec
+    entity = ThesslaGreenEntity(coordinator, "test", 1)
+    assert entity.unique_id == f"{DOMAIN}_ABC123_10_1"  # nosec
 
 
 def test_unique_id_host_fallback():
@@ -36,8 +36,8 @@ def test_unique_id_host_fallback():
     coordinator.device_info = {}
     coordinator.get_device_info.return_value = {}
 
-    entity = ThesslaGreenEntity(coordinator, "test")
-    assert entity.unique_id == f"{DOMAIN}_fd00-1-2--1_502_10_test"  # nosec
+    entity = ThesslaGreenEntity(coordinator, "test", 1)
+    assert entity.unique_id == f"{DOMAIN}_fd00-1-2--1_502_10_1"  # nosec
 
 
 def test_unique_id_not_changed_by_airflow_unit():
@@ -51,11 +51,11 @@ def test_unique_id_not_changed_by_airflow_unit():
     coordinator.entry = MagicMock()
     coordinator.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}
 
-    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate")
+    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", 274)
     uid_percentage = entity.unique_id
 
     coordinator.entry.options[CONF_AIRFLOW_UNIT] = AIRFLOW_UNIT_M3H
-    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate")
+    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", 274)
     uid_m3h = entity.unique_id
 
     assert uid_percentage == uid_m3h  # nosec
@@ -123,7 +123,7 @@ async def test_migrate_entity_unique_ids(hass):
     )
 
     registry = FakeRegistry()
-    old_unique_id = f"{DOMAIN}_{host}_{port}_{slave_id}_sensor"
+    old_unique_id = f"{DOMAIN}_{host}_{port}_{slave_id}_supply_flow_rate"
     dummy_entry = DummyEntry("sensor.test", old_unique_id, "sensor", DOMAIN)
     registry.entities[dummy_entry.entity_id] = dummy_entry
 
@@ -151,7 +151,7 @@ async def test_migrate_entity_unique_ids(hass):
 
         assert await async_setup_entry(hass, entry)  # nosec
 
-    new_unique_id = f"{DOMAIN}_ABC123_sensor"
+    new_unique_id = f"{DOMAIN}_ABC123_{slave_id}_274"
     entity_id = registry.async_get_entity_id("sensor", DOMAIN, new_unique_id)
     assert entity_id is not None  # nosec
     assert registry.entities[entity_id].unique_id == new_unique_id  # nosec

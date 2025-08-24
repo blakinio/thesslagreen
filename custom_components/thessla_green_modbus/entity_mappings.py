@@ -352,6 +352,47 @@ def _load_discrete_mappings() -> tuple[
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)
 
+    # Registers exposing bitmask flags
+    func_map = {
+        "01": "coil_registers",
+        "02": "discrete_inputs",
+        "03": "holding_registers",
+        "04": "input_registers",
+    }
+    for reg in get_all_registers():
+        if not reg.name:
+            continue
+        if not reg.extra or not reg.extra.get("bitmask"):
+            continue
+        register_type = func_map.get(reg.function)
+        if not register_type:
+            continue
+        bits = reg.bits or []
+        if bits:
+            for idx, bit_def in enumerate(bits):
+                if isinstance(bit_def, dict):
+                    bit_name = bit_def.get("name", f"bit_{idx}")
+                else:
+                    bit_name = str(bit_def)
+                key = f"{reg.name}_{_to_snake_case(bit_name)}"
+                if key not in binary_keys:
+                    continue
+                binary_configs[key] = {
+                    "translation_key": key,
+                    "register_type": register_type,
+                    "register": reg.name,
+                    "bit": 1 << idx,
+                }
+        elif reg.name in binary_keys:
+            binary_configs.setdefault(
+                reg.name,
+                {
+                    "translation_key": reg.name,
+                    "register_type": register_type,
+                    "bitmask": True,
+                },
+            )
+
     return binary_configs, switch_configs, select_configs
 
 

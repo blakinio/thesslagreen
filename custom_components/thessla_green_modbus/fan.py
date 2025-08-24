@@ -82,7 +82,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
-        super().__init__(coordinator, "fan")
+        super().__init__(coordinator, "fan", 0)
 
         # Entity configuration
         self._attr_translation_key = "thessla_green_fan"  # pragma: no cover
