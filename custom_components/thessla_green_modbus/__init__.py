@@ -89,6 +89,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     _LOGGER.info(REGISTER_FORMAT_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
+    await hass.async_add_executor_job(import_module, ".config_flow", __name__)
+
     # Get configuration - support both new and legacy keys
     host = entry.data[CONF_HOST]
     port = entry.data.get(
