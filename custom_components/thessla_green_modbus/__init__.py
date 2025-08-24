@@ -40,15 +40,12 @@ from .const import (
     DEFAULT_DEEP_SCAN,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DOMAIN,
-    AIRFLOW_UNIT_M3H,
-    AIRFLOW_UNIT_PERCENTAGE,
     async_setup_options,
     migrate_unique_id,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .entity_mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers.loader import load_registers
 
 # Informational message for start-up logs
 REGISTER_FORMAT_MESSAGE = (
