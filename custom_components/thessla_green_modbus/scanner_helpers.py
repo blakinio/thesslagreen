@@ -87,10 +87,10 @@ UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 # Each entry is a tuple of Modbus function code and register name. The
 # corresponding addresses are resolved from the JSON register definitions at
 # runtime, ensuring we do not hardcode register addresses here.
-SAFE_REGISTERS: list[tuple[str, str]] = [
-    ("04", "version_major"),
-    ("04", "version_minor"),
-    ("03", "date_time_rrmm"),
+SAFE_REGISTERS: list[tuple[int, str]] = [
+    (4, "version_major"),
+    (4, "version_minor"),
+    (3, "date_time_rrmm"),
 ]
 
 __all__ = [

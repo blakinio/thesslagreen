@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from enum import Enum
 from typing import Any, Literal
 
 import pydantic
@@ -8,29 +9,63 @@ import pydantic
 from ..utils import _normalise_name
 
 
-def _normalise_function(fn: str) -> str:
-    """Normalise function codes to two-digit strings."""
+def _normalise_function(fn: int | str) -> int:
+    """Return canonical integer Modbus function code.
+
+    String aliases like ``"coil_registers"`` or zero-padded values are mapped to
+    their numeric equivalents. Values outside the 1–4 range raise ``ValueError``.
+    """
+
     mapping = {
-        "coil": "01",
-        "coils": "01",
-        "coil_registers": "01",
-        "discrete_input": "02",
-        "discrete_inputs": "02",
-        "holding_register": "03",
-        "holding_registers": "03",
-        "input_register": "04",
-        "input_registers": "04",
-        "inputregister": "04",
-        "inputregisters": "04",
+        "coil": 1,
+        "coils": 1,
+        "coil_registers": 1,
+        "discrete": 2,
+        "discrete_input": 2,
+        "discrete_inputs": 2,
+        "holding": 3,
+        "holding_register": 3,
+        "holding_registers": 3,
+        "input": 4,
+        "input_register": 4,
+        "input_registers": 4,
+        "inputregister": 4,
+        "inputregisters": 4,
     }
-    key = fn.lower().replace(" ", "_")
-    return mapping.get(key, fn)
+
+    if isinstance(fn, str):
+        key = fn.lower().replace(" ", "_")
+        fn = mapping.get(key, fn)
+        try:
+            fn = int(fn)
+        except (TypeError, ValueError) as err:  # pragma: no cover - defensive
+            raise ValueError(f"unknown function code: {fn}") from err
+
+    if fn not in {1, 2, 3, 4}:  # pragma: no cover - defensive
+        raise ValueError(f"unknown function code: {fn}")
+
+    return fn
+
+
+class RegisterType(str, Enum):
+    """Supported register data types."""
+
+    U16 = "u16"
+    I16 = "i16"
+    U32 = "u32"
+    I32 = "i32"
+    F32 = "f32"
+    U64 = "u64"
+    I64 = "i64"
+    F64 = "f64"
+    STRING = "string"
+    BITMASK = "bitmask"
 
 
 class RegisterDefinition(pydantic.BaseModel):
     """Schema describing a raw register definition from JSON."""
 
-    function: Literal["01", "02", "03", "04"]
+    function: int
     address_dec: int
     address_hex: str
     name: str
@@ -53,6 +88,14 @@ class RegisterDefinition(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="allow")  # pragma: no cover
 
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def _normalise_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
+        # Allow string/int function codes and normalise them early
+        if "function" in data:
+            data["function"] = _normalise_function(data["function"])
+        return data
     @pydantic.field_validator("function", mode="before")
     @classmethod
     def normalise_function(cls, v: Any) -> str:
@@ -76,24 +119,38 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("address_hex does not match address_dec")
 
         typ = (self.extra or {}).get("type")
+        if typ is not None:
+            try:
+                reg_type = RegisterType(typ)
+            except ValueError as err:
+                raise ValueError(f"unsupported type: {typ}") from err
+        else:
+            reg_type = None
+
+        type_lengths = {
+            RegisterType.U16: 1,
+            RegisterType.I16: 1,
+            RegisterType.BITMASK: 1,
+            RegisterType.U32: 2,
+            RegisterType.I32: 2,
+            RegisterType.F32: 2,
+            RegisterType.U64: 4,
+            RegisterType.I64: 4,
+            RegisterType.F64: 4,
+        }
+
+        if reg_type == RegisterType.STRING:
         if typ in {"uint", "int", "float"}:
             raise ValueError("type aliases are not allowed")
         if typ == "string":
             if self.length < 1:
                 raise ValueError("string type requires length >= 1")
-        else:
-            expected_len = {
-                "uint32": 2,
-                "int32": 2,
-                "float32": 2,
-                "uint64": 4,
-                "int64": 4,
-                "float64": 4,
-            }.get(typ)
-            if expected_len is not None and self.length != expected_len:
+        elif reg_type in type_lengths:
+            expected = type_lengths[reg_type]
+            if self.length != expected:
                 raise ValueError("length does not match type")
 
-        if self.function in {"01", "02"} and self.access not in {"R", "R/-"}:
+        if self.function in {1, 2} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
         if self.min is not None and self.max is not None and self.min > self.max:
@@ -138,6 +195,13 @@ class RegisterDefinition(pydantic.BaseModel):
                 mask_int = bitmask_val
             if mask_int is not None and len(self.bits) > mask_int.bit_length():
                 raise ValueError("bits exceed bitmask width")
+            if len(self.bits) > 16:
+                raise ValueError("bits exceed 16 entries")
+            for idx, bit in enumerate(self.bits):
+                if idx > 15:
+                    raise ValueError("bit index out of range")
+                name = bit.get("name") if isinstance(bit, dict) else str(bit)
+                if name and not re.fullmatch(r"[a-z0-9_]+", name):
             for bit in self.bits:
                 name = bit.get("name") if isinstance(bit, dict) else bit
                 if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
@@ -158,7 +222,7 @@ class RegisterList(pydantic.RootModel[list[RegisterDefinition]]):
 
     @pydantic.model_validator(mode="after")
     def unique(self) -> "RegisterList":  # pragma: no cover
-        seen_pairs: set[tuple[str, int]] = set()
+        seen_pairs: set[tuple[int, int]] = set()
         seen_names: set[str] = set()
         for reg in self.root:
             fn = _normalise_function(reg.function)

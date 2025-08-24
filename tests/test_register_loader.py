@@ -63,7 +63,7 @@ def test_multi_register_metadata() -> None:
 
     lock = next(r for r in holding_regs if r.name == "lock_pass")
     assert lock.length == 2
-    assert lock.extra["type"] == "uint32"
+    assert lock.extra["type"] == "u32"
     assert lock.extra["endianness"] == "little"
 
     input_regs = get_registers_by_function("04")
@@ -75,7 +75,7 @@ def test_multi_register_metadata() -> None:
 def test_decode_multi_register_string() -> None:
     """Multi-register strings decode without applying scaling."""
     reg = RegisterDef(
-        function="holding",
+        function=3,
         address=0,
         name="device_name",
         access="ro",
@@ -91,12 +91,12 @@ def test_decode_multi_register_string() -> None:
 def test_decode_multi_register_number_scaled_once() -> None:
     """Numeric multi-register values apply multiplier/resolution exactly once."""
     reg = RegisterDef(
-        function="holding",
+        function=3,
         address=0,
         name="counter",
         access="ro",
         length=2,
-        extra={"type": "int32"},
+        extra={"type": "i32"},
         multiplier=10,
         resolution=1,
     )
@@ -107,7 +107,7 @@ def test_decode_multi_register_number_scaled_once() -> None:
 def test_decode_bitmask_ignores_scaling() -> None:
     """Bitmask registers return labels without scaling the raw value."""
     reg = RegisterDef(
-        function="holding",
+        function=3,
         address=0,
         name="flags",
         access="ro",
@@ -312,7 +312,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
             "name": "bad_len",
             "access": "R",
             "length": 1,
-            "extra": {"type": "uint32"},
+            "extra": {"type": "u32"},
         },
         {
             "function": "01",

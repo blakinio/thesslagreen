@@ -26,13 +26,13 @@ async def _setup_coordinator():
         "discrete_inputs": [],
     }
     for reg in get_all_registers():
-        if reg.function == "04":
+        if reg.function == 4:
             scan_regs["input_registers"].append(reg.name)
-        elif reg.function == "03":
+        elif reg.function == 3:
             scan_regs["holding_registers"].append(reg.name)
-        elif reg.function == "01":
+        elif reg.function == 1:
             scan_regs["coil_registers"].append(reg.name)
-        elif reg.function == "02":
+        elif reg.function == 2:
             scan_regs["discrete_inputs"].append(reg.name)
 
     scanner = AsyncMock()

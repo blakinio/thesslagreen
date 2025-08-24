@@ -212,7 +212,7 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
     number_configs: dict[str, dict[str, Any]] = {}
 
     for reg in get_all_registers():
-        if reg.function != "03" or not reg.name:
+        if reg.function != 3 or not reg.name:
             continue
         register = reg.name
         info = _get_register_info(register)
@@ -383,10 +383,10 @@ def _load_discrete_mappings() -> tuple[
 
     # Registers exposing bitmask flags
     func_map = {
-        "01": "coil_registers",
-        "02": "discrete_inputs",
-        "03": "holding_registers",
-        "04": "input_registers",
+        1: "coil_registers",
+        2: "discrete_inputs",
+        3: "holding_registers",
+        4: "input_registers",
     }
     for reg in get_all_registers():
         if not reg.name:
@@ -1081,7 +1081,7 @@ def _extend_entity_mappings_from_registers() -> None:
     """Populate entity mappings for registers not explicitly defined."""
 
     for reg in get_all_registers():
-        if reg.function != "03" or not reg.name:
+        if reg.function != 3 or not reg.name:
             continue
         register = reg.name
         if register in NUMBER_ENTITY_MAPPINGS:

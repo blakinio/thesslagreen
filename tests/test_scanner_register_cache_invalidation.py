@@ -33,7 +33,7 @@ def test_scanner_register_cache_invalidation(tmp_path: Path, monkeypatch) -> Non
 @pytest.mark.asyncio
 async def test_full_register_scan_batches_reads() -> None:
     """Full register scans should batch contiguous addresses."""
-    reg_map = {"04": {0: "ir0", 2: "ir2"}, "03": {0: "hr0", 2: "hr2"}, "01": {}, "02": {}}
+    reg_map = {4: {0: "ir0", 2: "ir2"}, 3: {0: "hr0", 2: "hr2"}, 1: {}, 2: {}}
     with patch.object(
         sc.ThesslaGreenDeviceScanner,
         "_load_registers",

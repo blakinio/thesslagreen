@@ -51,7 +51,7 @@ _cached_file_info: dict[str, tuple[float, str]] = {}
 class RegisterDef:
     """Definition of a single Modbus register."""
 
-    function: str
+    function: int
     address: int
     name: str
     access: str
@@ -100,14 +100,14 @@ class RegisterDef:
             data = b"".join(w.to_bytes(2, "big") for w in words)
 
             typ = self.extra.get("type") if self.extra else None
-            if typ in {"float32", "float64"}:
+            if typ in {"f32", "f64"}:
                 fmt = ">" if endianness == "big" else "<"
-                fmt += "f" if typ == "float32" else "d"
+                fmt += "f" if typ == "f32" else "d"
                 value = struct.unpack(fmt, data)[0]
+            elif typ in {"i32", "u32", "i64", "u64"}:
+                value = int.from_bytes(data, "big", signed=typ.startswith("i"))
             else:
-                value = int.from_bytes(
-                    data, "big", signed=typ in {"int32", "int64"}
-                )
+                value = int.from_bytes(data, "big", signed=False)
 
             if self.multiplier is not None:
                 value *= self.multiplier
@@ -139,6 +139,10 @@ class RegisterDef:
                 return self.enum[raw]
             if str(raw) in self.enum:
                 return self.enum[str(raw)]
+
+        typ = self.extra.get("type") if self.extra else None
+        if typ == "i16":
+            raw = raw if raw < 0x8000 else raw - 0x10000
 
         value: Any = raw
 
@@ -213,18 +217,13 @@ class RegisterDef:
                 raw_val = int(round(float(raw_val) / step) * step)
 
             typ = self.extra.get("type") if self.extra else None
-            if typ == "float32":
+            if typ == "f32":
                 data = struct.pack(">f" if endianness == "big" else "<f", float(raw_val))
-            elif typ == "float64":
+            elif typ == "f64":
                 data = struct.pack(">d" if endianness == "big" else "<d", float(raw_val))
-            elif typ == "int32":
-                data = int(raw_val).to_bytes(4, "big", signed=True)
-            elif typ == "uint32":
-                data = int(raw_val).to_bytes(4, "big", signed=False)
-            elif typ == "int64":
-                data = int(raw_val).to_bytes(8, "big", signed=True)
-            elif typ == "uint64":
-                data = int(raw_val).to_bytes(8, "big", signed=False)
+            elif typ in {"i32", "u32", "i64", "u64"}:
+                size = 4 if typ in {"i32", "u32"} else 8
+                data = int(raw_val).to_bytes(size, "big", signed=typ.startswith("i"))
             else:
                 data = int(raw_val).to_bytes(self.length * 2, "big", signed=False)
 
@@ -293,6 +292,9 @@ class RegisterDef:
         if self.resolution is not None:
             step = self.resolution
             raw = int(round(float(raw) / step) * step)
+        typ = self.extra.get("type") if self.extra else None
+        if typ == "i16":
+            return int(raw) & 0xFFFF
         return int(raw)
 
 
@@ -350,9 +352,9 @@ def _load_registers_from_file(
         raw_address = int(parsed.address_dec)
 
         address = raw_address
-        if function == "02":
+        if function == 2:
             address -= 1
-        elif function == "03" and address >= 111:
+        elif function == 3 and address >= 111:
             address -= 111
 
         name = _normalise_name(parsed.name)
@@ -484,7 +486,7 @@ def get_register_definition(name: str) -> RegisterDef:
 class ReadPlan:
     """Plan describing a consecutive block of registers to read."""
 
-    function: str
+    function: int
     address: int
     length: int
 
@@ -492,7 +494,7 @@ class ReadPlan:
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
-    regs_by_fn: dict[str, list[int]] = {}
+    regs_by_fn: dict[int, list[int]] = {}
     for reg in load_registers():
         addr_range = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)

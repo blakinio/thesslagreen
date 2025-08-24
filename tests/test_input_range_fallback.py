@@ -8,7 +8,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_input_range_read_after_block_failure():
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with (
         patch.object(
             ThesslaGreenDeviceScanner,
@@ -76,7 +76,7 @@ async def test_input_range_read_after_block_failure():
 
 
 async def test_block_exception_allows_single_register_reads():
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",

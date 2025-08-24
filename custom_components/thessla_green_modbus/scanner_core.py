@@ -62,22 +62,22 @@ def _build_register_maps() -> None:
 
     INPUT_REGISTERS.clear()
     INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "04"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 4}
     )
 
     HOLDING_REGISTERS.clear()
     HOLDING_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 3}
     )
 
     COIL_REGISTERS.clear()
     COIL_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "01"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 1}
     )
 
     DISCRETE_INPUT_REGISTERS.clear()
     DISCRETE_INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "02"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 2}
     )
 
     MULTI_REGISTER_SIZES.clear()
@@ -85,7 +85,7 @@ def _build_register_maps() -> None:
         {
             name: reg.length
             for name, reg in REGISTER_DEFINITIONS.items()
-            if reg.function == "03" and reg.length > 1
+            if reg.function == 3 and reg.length > 1
         }
     )
 
@@ -277,7 +277,7 @@ class ThesslaGreenDeviceScanner:
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
 
         # Placeholder for register map and value ranges loaded asynchronously
-        self._registers: Dict[str, Dict[int, str]] = {}
+        self._registers: Dict[int, Dict[int, str]] = {}
         self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
 
         # Track holding registers that consistently fail to respond so we
@@ -418,7 +418,7 @@ class ThesslaGreenDeviceScanner:
                     continue
                 addr = reg.address
                 try:
-                    if func == "04":
+                    if func == 4:
                         await asyncio.wait_for(
                             _call_modbus(
                                 client.read_input_registers,
@@ -428,7 +428,7 @@ class ThesslaGreenDeviceScanner:
                             ),
                             timeout=self.timeout,
                         )
-                    else:  # "03"
+                    else:  # holding register
                         await asyncio.wait_for(
                             _call_modbus(
                                 client.read_holding_registers,
@@ -701,10 +701,10 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": 0,
         }
 
-        input_max = max(self._registers.get("04", {}).keys(), default=-1)
-        holding_max = max(self._registers.get("03", {}).keys(), default=-1)
-        coil_max = max(self._registers.get("01", {}).keys(), default=-1)
-        discrete_max = max(self._registers.get("02", {}).keys(), default=-1)
+        input_max = max(self._registers.get(4, {}).keys(), default=-1)
+        holding_max = max(self._registers.get(3, {}).keys(), default=-1)
+        coil_max = max(self._registers.get(1, {}).keys(), default=-1)
+        discrete_max = max(self._registers.get(2, {}).keys(), default=-1)
 
         if self.full_register_scan:
             for start, count in _group_reads(
@@ -722,7 +722,7 @@ class ThesslaGreenDeviceScanner:
                         )
                         if not single:
                             continue
-                        reg_name = self._registers.get("04", {}).get(addr)
+                        reg_name = self._registers.get(4, {}).get(addr)
                         if reg_name and self._is_valid_register_value(
                             reg_name, single[0]
                         ):
@@ -739,7 +739,7 @@ class ThesslaGreenDeviceScanner:
                     continue
                 for offset, value in enumerate(input_data):
                     addr = start + offset
-                    reg_name = self._registers.get("04", {}).get(addr)
+                    reg_name = self._registers.get(4, {}).get(addr)
                     if reg_name and self._is_valid_register_value(reg_name, value):
                         self.available_registers["input_registers"].add(reg_name)
                     else:
@@ -765,7 +765,7 @@ class ThesslaGreenDeviceScanner:
                         )
                         if not single:
                             continue
-                        reg_name = self._registers.get("03", {}).get(addr)
+                        reg_name = self._registers.get(3, {}).get(addr)
                         if reg_name and self._is_valid_register_value(
                             reg_name, single[0]
                         ):
@@ -782,7 +782,7 @@ class ThesslaGreenDeviceScanner:
                     continue
                 for offset, value in enumerate(holding_data):
                     addr = start + offset
-                    reg_name = self._registers.get("03", {}).get(addr)
+                    reg_name = self._registers.get(3, {}).get(addr)
                     if reg_name and self._is_valid_register_value(reg_name, value):
                         self.available_registers["holding_registers"].add(reg_name)
                     else:
@@ -805,7 +805,7 @@ class ThesslaGreenDeviceScanner:
                         if not single_coil:
                             continue
                         if (
-                            reg_name := self._registers.get("01", {}).get(addr)
+                            reg_name := self._registers.get(1, {}).get(addr)
                         ) is not None:
                             self.available_registers["coil_registers"].add(reg_name)
                         else:
@@ -813,7 +813,7 @@ class ThesslaGreenDeviceScanner:
                     continue
                 for offset, value in enumerate(coil_data):
                     addr = start + offset
-                    if (reg_name := self._registers.get("01", {}).get(addr)) is not None:
+                    if (reg_name := self._registers.get(1, {}).get(addr)) is not None:
                         self.available_registers["coil_registers"].add(reg_name)
                     else:
                         unknown_registers["coil_registers"][addr] = value
@@ -830,7 +830,7 @@ class ThesslaGreenDeviceScanner:
                         if not single_discrete:
                             continue
                         if (
-                            reg_name := self._registers.get("02", {}).get(addr)
+                            reg_name := self._registers.get(2, {}).get(addr)
                         ) is not None:
                             self.available_registers["discrete_inputs"].add(
                                 reg_name
@@ -840,7 +840,7 @@ class ThesslaGreenDeviceScanner:
                     continue
                 for offset, value in enumerate(discrete_data):
                     addr = start + offset
-                    if (reg_name := self._registers.get("02", {}).get(addr)) is not None:
+                    if (reg_name := self._registers.get(2, {}).get(addr)) is not None:
                         self.available_registers["discrete_inputs"].add(reg_name)
                     else:
                         unknown_registers["discrete_inputs"][addr] = value
@@ -1139,11 +1139,11 @@ class ThesslaGreenDeviceScanner:
     async def _load_registers(
         self,
     ) -> Tuple[
-        Dict[str, Dict[int, str]],
+        Dict[int, Dict[int, str]],
         Dict[str, Tuple[Optional[int], Optional[int]]],
     ]:
         """Load Modbus register definitions and value ranges."""
-        register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+        register_map: Dict[int, Dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
         register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
         for reg in get_all_registers():
             if not reg.name:
