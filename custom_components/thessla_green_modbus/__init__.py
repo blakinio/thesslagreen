@@ -24,7 +24,7 @@ from .const import (
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     CONF_DEEP_SCAN,
-    CONF_SCAN_MAX_BLOCK_SIZE,
+    CONF_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
@@ -34,7 +34,7 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
     DEFAULT_DEEP_SCAN,
-    DEFAULT_SCAN_MAX_BLOCK_SIZE,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DOMAIN,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
@@ -119,8 +119,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
     )
     deep_scan = entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
-    scan_max_block_size = entry.options.get(
-        CONF_SCAN_MAX_BLOCK_SIZE, DEFAULT_SCAN_MAX_BLOCK_SIZE
+    max_registers_per_request = entry.options.get(
+        CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
     )
 
     _LOGGER.info(
@@ -148,7 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         scan_uart_settings=scan_uart_settings,
         deep_scan=deep_scan,
         skip_missing_registers=skip_missing_registers,
-        scan_max_block_size=scan_max_block_size,
+        max_registers_per_request=max_registers_per_request,
         entry=entry,
     )
 

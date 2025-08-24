@@ -28,7 +28,7 @@ from .const import (
     CONF_TIMEOUT,
     CONF_AIRFLOW_UNIT,
     CONF_DEEP_SCAN,
-    CONF_SCAN_MAX_BLOCK_SIZE,
+    CONF_MAX_REGISTERS_PER_REQUEST,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
     DEFAULT_AIRFLOW_UNIT,
@@ -41,7 +41,7 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
     DEFAULT_DEEP_SCAN,
-    DEFAULT_SCAN_MAX_BLOCK_SIZE,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DOMAIN,
 )
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
@@ -481,8 +481,17 @@ class OptionsFlow(config_entries.OptionsFlow):
         Home Assistant.
         """
 
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            max_regs = user_input.get(
+                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+            )
+            if not 1 <= max_regs <= DEFAULT_MAX_REGISTERS_PER_REQUEST:
+                errors[CONF_MAX_REGISTERS_PER_REQUEST] = (
+                    "invalid_max_registers_per_request"
+                )
+            else:
+                return self.async_create_entry(title="", data=user_input)
 
         # Get current values
         current_scan_interval = self.config_entry.options.get(
@@ -509,8 +518,8 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_deep_scan = self.config_entry.options.get(
             CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
         )
-        current_scan_max_block_size = self.config_entry.options.get(
-            CONF_SCAN_MAX_BLOCK_SIZE, DEFAULT_SCAN_MAX_BLOCK_SIZE
+        current_max_registers_per_request = self.config_entry.options.get(
+            CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
         )
 
         data_schema = vol.Schema(
@@ -549,29 +558,28 @@ class OptionsFlow(config_entries.OptionsFlow):
                     description={"advanced": True},
                 ): bool,
                 vol.Optional(
-                    CONF_SCAN_MAX_BLOCK_SIZE,
-                    default=current_scan_max_block_size,
+                    CONF_MAX_REGISTERS_PER_REQUEST,
+                    default=current_max_registers_per_request,
                     description={"advanced": True},
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=125)),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=16)),
             }
         )
 
         return self.async_show_form(
             step_id="init",
             data_schema=data_schema,
+            errors=errors,
             description_placeholders={
                 "current_scan_interval": str(current_scan_interval),
                 "current_timeout": str(current_timeout),
                 "current_retry": str(current_retry),
                 "force_full_enabled": "Yes" if force_full else "No",
                 "scan_uart_enabled": "Yes" if current_scan_uart else "No",
-                "skip_missing_enabled": "Yes"
-                if current_skip_missing
-                else "No",
+                "skip_missing_enabled": "Yes" if current_skip_missing else "No",
                 "current_airflow_unit": current_airflow_unit,
                 "deep_scan_enabled": "Yes" if current_deep_scan else "No",
-                "current_scan_max_block_size": str(
-                    current_scan_max_block_size
+                "current_max_registers_per_request": str(
+                    current_max_registers_per_request
                 ),
             },
         )
