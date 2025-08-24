@@ -66,10 +66,12 @@ async def async_setup_entry(
     # ThesslaGreenDeviceScanner.scan_device()
     for register_name, entity_config in number_mappings.items():
         if register_name in coordinator.available_registers.get("holding_registers", set()):
+            address = HOLDING_REGISTERS[register_name]
             entities.append(
                 ThesslaGreenNumber(
                     coordinator=coordinator,
                     register_name=register_name,
+                    address=address,
                     entity_config=entity_config,
                     register_type="holding_registers",
                 )
@@ -101,11 +103,12 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         entity_config: dict[str, Any],
         register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
-        super().__init__(coordinator, register_name)
+        super().__init__(coordinator, register_name, address)
 
         self.register_name = register_name
         self.entity_config = entity_config
@@ -213,7 +216,8 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
 
         # Add register information
         attributes["register_name"] = self.register_name
-        attributes["register_address"] = f"0x{HOLDING_REGISTERS.get(self.register_name, 0):04X}"
+        register_address = self._address if self._address is not None else 0
+        attributes["register_address"] = f"0x{register_address:04X}"
 
         # Add raw value for debugging
         if self.register_name in self.coordinator.data:

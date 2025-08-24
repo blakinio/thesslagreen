@@ -66,8 +66,9 @@ def test_binary_sensor_creation_and_state(mock_coordinator: MagicMock) -> None:
     # Prepare coordinator data
     mock_coordinator.data["bypass"] = 0
 
+    address = 9
     sensor = ThesslaGreenBinarySensor(
-        mock_coordinator, "bypass", BINARY_SENSOR_DEFINITIONS["bypass"]
+        mock_coordinator, "bypass", address, BINARY_SENSOR_DEFINITIONS["bypass"]
     )
     assert sensor.is_on is False  # nosec B101
 
@@ -81,9 +82,11 @@ def test_binary_sensor_icons(mock_coordinator: MagicMock) -> None:
 
     # Heating cable uses a heating icon when on
     mock_coordinator.data["heating_cable"] = 1
+    address = 12
     heating = ThesslaGreenBinarySensor(
         mock_coordinator,
         "heating_cable",
+        address,
         BINARY_SENSOR_DEFINITIONS["heating_cable"],
     )
     assert heating.icon == "mdi:heating-coil"  # nosec B101
@@ -94,8 +97,9 @@ def test_binary_sensor_icons(mock_coordinator: MagicMock) -> None:
 
     # Bypass uses pipe leak icon when active
     mock_coordinator.data["bypass"] = 1
+    address = 9
     bypass_sensor = ThesslaGreenBinarySensor(
-        mock_coordinator, "bypass", BINARY_SENSOR_DEFINITIONS["bypass"]
+        mock_coordinator, "bypass", address, BINARY_SENSOR_DEFINITIONS["bypass"]
     )
     assert bypass_sensor.icon == "mdi:pipe-leak"  # nosec B101
 
@@ -109,7 +113,10 @@ def test_binary_sensor_icon_fallback(mock_coordinator: MagicMock) -> None:
     mock_coordinator.data["bypass"] = 1
     sensor_def = BINARY_SENSOR_DEFINITIONS["bypass"].copy()
     sensor_def.pop("icon", None)
-    sensor_without_icon = ThesslaGreenBinarySensor(mock_coordinator, "bypass", sensor_def)
+    address = 9
+    sensor_without_icon = ThesslaGreenBinarySensor(
+        mock_coordinator, "bypass", address, sensor_def
+    )
     assert sensor_without_icon.icon == "mdi:fan-off"  # nosec B101
 
 

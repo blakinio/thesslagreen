@@ -41,7 +41,10 @@ async def async_setup_entry(
     for register_name, select_def in ENTITY_MAPPINGS["select"].items():
         register_type = select_def["register_type"]
         if register_name in coordinator.available_registers.get(register_type, set()):
-            entities.append(ThesslaGreenSelect(coordinator, register_name, select_def))
+            address = coordinator._register_maps[register_type][register_name]
+            entities.append(
+                ThesslaGreenSelect(coordinator, register_name, address, select_def)
+            )
 
     if entities:
         try:
@@ -66,9 +69,10 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         definition: dict[str, Any],
     ) -> None:
-        super().__init__(coordinator, register_name)
+        super().__init__(coordinator, register_name, address)
         self._register_name = register_name
 
         self._attr_translation_key = definition["translation_key"]  # pragma: no cover
