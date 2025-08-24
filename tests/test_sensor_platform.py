@@ -114,10 +114,11 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from homeassistant.const import STATE_UNAVAILABLE  # noqa: E402
 from custom_components.thessla_green_modbus.const import (  # noqa: E402
     DOMAIN,
     SENSOR_UNAVAILABLE,
+    CONF_AIRFLOW_UNIT,
+    AIRFLOW_UNIT_PERCENTAGE,
 )
 from custom_components.thessla_green_modbus.select import (  # noqa: E402
     async_setup_entry as select_async_setup_entry,
@@ -275,7 +276,7 @@ def test_time_sensor_formats_value(mock_coordinator):
 
 
 def test_sensor_reports_unavailable_when_no_data():
-    """Sensors return STATE_UNAVAILABLE and are marked unavailable when data missing."""
+    """Sensors return None and are marked unavailable when data missing."""
     coord = MagicMock()
     coord.host = "1.2.3.4"
     coord.port = 502
@@ -288,7 +289,25 @@ def test_sensor_reports_unavailable_when_no_data():
     sensor_def = SENSOR_DEFINITIONS["outside_temperature"]
     address = 16
     sensor = ThesslaGreenSensor(coord, "outside_temperature", address, sensor_def)
-    assert sensor.native_value == STATE_UNAVAILABLE
+    assert sensor.native_value is None
+    assert sensor.available is False
+
+
+def test_percentage_sensor_unavailable_without_nominal():
+    """Percentage sensors become unavailable when nominal flow is missing."""
+    coord = MagicMock()
+    coord.host = "1.2.3.4"
+    coord.port = 502
+    coord.slave_id = 10
+    coord.get_device_info.return_value = {}
+    coord.entry = MagicMock()
+    coord.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}
+    coord.data = {"supply_flow_rate": 150}
+    coord.last_update_success = True
+    sensor_def = SENSOR_DEFINITIONS["supply_flow_rate"]
+    address = 274
+    sensor = ThesslaGreenSensor(coord, "supply_flow_rate", address, sensor_def)
+    assert sensor.native_value is None
     assert sensor.available is False
 
 

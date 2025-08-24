@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 """Parse MODBUS register definitions from the official PDF.
 
 This module extracts register metadata such as address, function code, access,
@@ -11,11 +10,13 @@ sync with the vendor documentation.
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import re
+from io import BytesIO
+from urllib.request import urlopen
 
 import pdfplumber
 
-ROOT = Path(__file__).resolve().parents[1]
-PDF_PATH = ROOT / "MODBUS_USER_AirPack_Home_08.2021.01 1.pdf"
+# Official register documentation PDF
+PDF_URL = "https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf"
 
 
 def _parse_float(value: str) -> Optional[float]:
@@ -88,11 +89,17 @@ def _parse_register(rows: List[List[str]], start: int) -> tuple[Dict[str, Any], 
         "description": " ".join(desc.replace(";", "-").split()),
     }
     return register, j
-
-
-def parse_pdf_registers(path: Path = PDF_PATH) -> List[Dict[str, Any]]:
+def parse_pdf_registers(source: str | Path = PDF_URL) -> List[Dict[str, Any]]:
     """Return a list of register dictionaries extracted from the PDF."""
-    with pdfplumber.open(path) as pdf:
+
+    if str(source).startswith("http"):
+        with urlopen(str(source)) as resp:
+            pdf_file = BytesIO(resp.read())
+        pdf = pdfplumber.open(pdf_file)
+    else:
+        pdf = pdfplumber.open(Path(source))
+
+    with pdf:
         rows: List[List[str]] = []
         for page in pdf.pages:
             for table in page.extract_tables() or []:

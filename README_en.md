@@ -7,7 +7,7 @@
 
 ## ✨ Complete ThesslaGreen AirPack integration for Home Assistant
 
-The most complete integration for ThesslaGreen AirPack heat recovery units over Modbus TCP/RTU. Supports **all 200+ registers** from documentation `MODBUS_USER_AirPack_Home_08.2021.01` without exception.
+The most complete integration for ThesslaGreen AirPack heat recovery units over Modbus TCP/RTU. Supports **all 200+ registers** from documentation [MODBUS_USER_AirPack_Home_08.2021.01](https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf) without exception.
 The integration works as a **hub** in Home Assistant.
 
 ### 🚀 Key features v2.1+
@@ -292,6 +292,10 @@ The file `custom_components/thessla_green_modbus/registers/thessla_green_registe
 stores the complete register specification and is the single canonical source
 of truth (the former `registers/` copy was removed). All tools in `tools/`
 operate exclusively on this JSON format.
+
+> **New:** Utility modules can now be imported without the `homeassistant`
+> package installed. HA-specific imports are loaded only when the integration
+> runs inside Home Assistant.
 
 ### File format
 

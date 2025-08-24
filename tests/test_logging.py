@@ -38,7 +38,7 @@ async def test_call_modbus_logs(caplog):
     assert any(
         "batch=2" in r.message and "attempt 1/2" in r.message
         for r in caplog.records
-        if r.levelno == logging.INFO
+        if r.levelno == logging.DEBUG
     )
     assert any("Modbus request" in r.message and "**" in r.message for r in caplog.records)
     assert any("Modbus response" in r.message and "**" in r.message for r in caplog.records)
@@ -102,7 +102,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
     coord._register_groups["input_registers"] = [(0, 2)]
     coord._process_register_value = lambda name, value: value
 
-    caplog.set_level(logging.INFO)
+    caplog.set_level(logging.DEBUG)
     data = await coord._read_input_registers_optimized()
     assert data == {"reg0": 1, "reg1": 1}
     assert any(
@@ -111,7 +111,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
         if r.levelno == logging.WARNING
     )
     assert any("attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING)
-    assert sum(1 for r in caplog.records if r.levelno == logging.INFO and "batch=2" in r.message) == 2
+    assert sum(1 for r in caplog.records if r.levelno == logging.DEBUG and "batch=2" in r.message) == 2
 
 
 async def test_write_retries_logged(monkeypatch, caplog):

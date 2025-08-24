@@ -7,7 +7,7 @@
 
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
 
-Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokołem Modbus TCP/RTU. Obsługuje **wszystkie 200+ rejestrów** z dokumentacji MODBUS_USER_AirPack_Home_08.2021.01 bez wyjątku.
+Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokołem Modbus TCP/RTU. Obsługuje **wszystkie 200+ rejestrów** z dokumentacji [MODBUS_USER_AirPack_Home_08.2021.01](https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf) bez wyjątku.
 Integracja działa jako **hub** w Home Assistant.
 
 ### 🚀 Kluczowe funkcje v2.1+
@@ -450,6 +450,10 @@ podłączenie i wersję firmware.
 
 Po aktualizacji integracji możesz usunąć nieużywane encje przy pomocy
 skryptu `tools/cleanup_old_entities.py`.
+
+> **Nowość:** Skrypty i moduły narzędziowe można importować bez
+> zainstalowanego pakietu Home Assistant – importy specyficzne dla HA są
+> ładowane tylko podczas działania integracji.
 
 ```bash
 python3 tools/cleanup_old_entities.py
