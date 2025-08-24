@@ -31,6 +31,7 @@ def _make_coordinator(unit):
     coord.host = "1.2.3.4"
     coord.port = 502
     coord.slave_id = 10
+    coord.device_info = {}
     coord.get_device_info.return_value = {}
     coord.entry = MagicMock()
     coord.entry.options = {CONF_AIRFLOW_UNIT: unit}

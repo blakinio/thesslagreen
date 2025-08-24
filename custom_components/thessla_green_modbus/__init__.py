@@ -38,6 +38,7 @@ from .const import (
     DOMAIN,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
+    migrate_unique_id,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -181,7 +182,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     # Clean up legacy entity IDs left from early versions
-    await _async_cleanup_legacy_fan_entity(hass, host, port, slave_id)
+    await _async_cleanup_legacy_fan_entity(hass, coordinator)
 
     # Migrate entity unique IDs (replace ':' in host with '-')
     await _async_migrate_unique_ids(hass, entry)
@@ -254,12 +255,16 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def _async_cleanup_legacy_fan_entity(
-    hass: HomeAssistant, host: str, port: int, slave_id: int
+    hass: HomeAssistant, coordinator
 ) -> None:
     """Remove or rename legacy fan-related entity IDs."""
     registry = er.async_get(hass)
     new_entity_id = "fan.rekuperator_fan"
     migrated = False
+    host = coordinator.host
+    port = coordinator.port
+    slave_id = coordinator.slave_id
+    serial = coordinator.device_info.get("serial_number")
 
     if registry.async_get(new_entity_id):
         for old_entity_id in LEGACY_FAN_ENTITY_IDS:
@@ -269,7 +274,13 @@ async def _async_cleanup_legacy_fan_entity(
     else:
         for old_entity_id in LEGACY_FAN_ENTITY_IDS:
             if registry.async_get(old_entity_id):
-                new_unique_id = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_fan"
+                new_unique_id = migrate_unique_id(
+                    f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_fan",
+                    serial_number=serial,
+                    host=host,
+                    port=port,
+                    slave_id=slave_id,
+                )
                 registry.async_update_entity(
                     old_entity_id,
                     new_entity_id=new_entity_id,
@@ -294,13 +305,16 @@ async def _async_cleanup_legacy_fan_entity(
 async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Migrate entity unique IDs stored in the entity registry."""
     registry = er.async_get(hass)
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    serial = coordinator.device_info.get("serial_number")
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-        new_unique_id = reg_entry.unique_id.replace(":", "-")
-        for unit in (AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE):
-            suffix = f"_{unit}"
-            if new_unique_id.endswith(suffix):
-                new_unique_id = new_unique_id[: -len(suffix)]
-                break
+        new_unique_id = migrate_unique_id(
+            reg_entry.unique_id,
+            serial_number=serial,
+            host=coordinator.host,
+            port=coordinator.port,
+            slave_id=coordinator.slave_id,
+        )
         if new_unique_id != reg_entry.unique_id:
             _LOGGER.debug(
                 "Migrating unique_id for %s: %s -> %s",
