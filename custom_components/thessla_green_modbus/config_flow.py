@@ -483,13 +483,14 @@ class OptionsFlow(config_entries.OptionsFlow):
             )
             if max_regs < 1:
                 errors[CONF_MAX_REGISTERS_PER_REQUEST] = (
-                    "invalid_max_registers_per_request"
+                    "invalid_max_registers_per_request_low"
+                )
+            elif max_regs > DEFAULT_MAX_REGISTERS_PER_REQUEST:
+                errors[CONF_MAX_REGISTERS_PER_REQUEST] = (
+                    "invalid_max_registers_per_request_high"
                 )
             else:
                 user_input = dict(user_input)
-                user_input[CONF_MAX_REGISTERS_PER_REQUEST] = min(
-                    max_regs, DEFAULT_MAX_REGISTERS_PER_REQUEST
-                )
                 return self.async_create_entry(title="", data=user_input)
 
         # Get current values
@@ -560,7 +561,10 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
                     description={"advanced": True},
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=125)),
+                ): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=1, max=DEFAULT_MAX_REGISTERS_PER_REQUEST),
+                ),
             }
         )
 
