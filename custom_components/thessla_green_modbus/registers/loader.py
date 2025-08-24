@@ -47,7 +47,7 @@ _REGISTERS_PATH = resources.files(__package__).joinpath("thessla_green_registers
 
 
 @dataclass(slots=True)
-class Register:
+class RegisterDef:
     """Definition of a single Modbus register."""
 
     function: str
@@ -70,9 +70,10 @@ class Register:
     bcd: bool = False
     bits: list[Any] | None = None
 
-    # ------------------------------------------------------------------
-    # Value helpers
-    # ------------------------------------------------------------------
+
+# ------------------------------------------------------------------
+# Value helpers
+# ------------------------------------------------------------------
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
 
@@ -281,6 +282,9 @@ class Register:
         return int(raw)
 
 
+# Backwards compatible alias used throughout the project/tests
+Register = RegisterDef
+
 # ---------------------------------------------------------------------------
 # Loading helpers
 # ---------------------------------------------------------------------------
@@ -440,7 +444,9 @@ class RegisterList(pydantic.RootModel[list[RegisterDefinition]]):
 
 
 @lru_cache(maxsize=1)
-def _load_registers_from_file(path: Path, *, file_hash: str) -> list[Register]:
+def _load_registers_from_file(
+    path: Path, *, file_hash: str, mtime: float
+) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
     ``file_hash`` is only used to invalidate the cache when the underlying file
@@ -457,7 +463,7 @@ def _load_registers_from_file(path: Path, *, file_hash: str) -> list[Register]:
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
-    registers: list[Register] = []
+    registers: list[RegisterDef] = []
     parsed_items = RegisterList.model_validate(items).root
 
     for parsed in parsed_items:
@@ -485,7 +491,7 @@ def _load_registers_from_file(path: Path, *, file_hash: str) -> list[Register]:
         resolution = parsed.resolution
 
         registers.append(
-            Register(
+            RegisterDef(
                 function=function,
                 address=address,
                 name=name,
@@ -517,11 +523,14 @@ def _compute_file_hash() -> str:
     return hashlib.sha256(_REGISTERS_PATH.read_bytes()).hexdigest()
 
 
-def _load_registers() -> list[Register]:
+def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
+    stat = _REGISTERS_PATH.stat()
     file_hash = _compute_file_hash()
-    return _load_registers_from_file(_REGISTERS_PATH, file_hash=file_hash)
+    return _load_registers_from_file(
+        _REGISTERS_PATH, file_hash=file_hash, mtime=stat.st_mtime
+    )
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -532,10 +541,7 @@ def clear_cache() -> None:  # pragma: no cover
     """
 
     _load_registers_from_file.cache_clear()
-
-
-# Load register definitions once at import time
-_load_registers()
+    _register_map.cache_clear()
 
 
 # ---------------------------------------------------------------------------
@@ -543,15 +549,15 @@ _load_registers()
 # ---------------------------------------------------------------------------
 
 
-def get_all_registers() -> list[Register]:
+def get_all_registers() -> list[RegisterDef]:
     """Return a list of all known registers ordered by function and address."""
-    return sorted(_load_registers(), key=lambda r: (r.function, r.address))
+    return sorted(load_registers(), key=lambda r: (r.function, r.address))
 
 
-def get_registers_by_function(fn: str) -> list[Register]:
+def get_registers_by_function(fn: str) -> list[RegisterDef]:
     """Return registers for the given function code or name."""
     code = _normalise_function(fn)
-    return [r for r in _load_registers() if r.function == code]
+    return [r for r in load_registers() if r.function == code]
 
 
 def get_registers_hash() -> str:
@@ -560,6 +566,17 @@ def get_registers_hash() -> str:
         return _compute_file_hash()
     except Exception:  # pragma: no cover - defensive
         return ""
+
+
+@lru_cache(maxsize=1)
+def _register_map() -> dict[str, RegisterDef]:
+    return {r.name: r for r in load_registers()}
+
+
+def get_register_definition(name: str) -> RegisterDef:
+    """Return definition for register ``name``."""
+
+    return _register_map()[name]
 
 
 @dataclass(slots=True)
@@ -577,7 +594,7 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}
 
-    for reg in _load_registers():
+    for reg in load_registers():
         addresses = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addresses)
 
@@ -589,10 +606,14 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
 
 
 __all__ = [
+    "RegisterDef",
     "Register",
     "RegisterDefinition",
+    "load_registers",
+    "clear_cache",
     "get_all_registers",
     "get_registers_by_function",
+    "get_register_definition",
     "get_registers_hash",
     "plan_group_reads",
 ]

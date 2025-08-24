@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any, Dict, cast
 
-from .registers import get_registers_by_function
+from .registers.loader import get_registers_by_function
 
 
 def _build_map(fn: str) -> dict[str, int]:

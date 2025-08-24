@@ -142,7 +142,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             return func(*args)
 
     class ServiceCall:  # type: ignore[override]
-        pass
+        def __init__(self, *args, **kwargs):
+            self.domain = args[0] if len(args) > 0 else kwargs.get("domain")
+            self.service = args[1] if len(args) > 1 else kwargs.get("service")
+            self.data = args[2] if len(args) > 2 else kwargs.get("data")
 
     def callback(func):  # type: ignore[override]
         return func

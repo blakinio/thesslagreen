@@ -1,10 +1,10 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.registers.loader import (
+    Register,
     get_registers_by_function,
     plan_group_reads,
 )
-from custom_components.thessla_green_modbus.registers.loader import Register
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
@@ -66,7 +66,7 @@ def test_plan_group_reads_splits_large_block(monkeypatch):
     regs = [Register(function="04", address=i, name=f"r{i}", access="ro") for i in range(100)]
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.registers.loader._load_registers",
+        "custom_components.thessla_green_modbus.registers.loader.load_registers",
         lambda: regs,
     )
 
@@ -97,7 +97,7 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     ]
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.registers.loader._load_registers",
+        "custom_components.thessla_green_modbus.registers.loader.load_registers",
         lambda: regs,
     )
 
