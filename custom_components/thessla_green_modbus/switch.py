@@ -110,8 +110,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         else:
             address = COIL_REGISTERS.get(register_name, 0)
         bit = entity_config.get("bit")
-        super().__init__(coordinator, key, address, bit)
-        super().__init__(coordinator, key, address, bit=entity_config.get("bit"))
+        super().__init__(coordinator, key, address, bit=bit)
 
         self.entity_config = entity_config
         self.register_name = register_name
