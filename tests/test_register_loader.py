@@ -138,16 +138,14 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     """Ensure register file caching and invalidation behave correctly."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
-
     # Use a temporary copy of the register file so we can modify it
     path = tmp_path / "regs.json"
     path.write_text(loader._REGISTERS_PATH.read_text())
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     read_calls = 0
     hash_calls = 0
     real_read_text = Path.read_text
-    real_compute_hash = loader._compute_file_hash
+    real_read_bytes = Path.read_bytes
 
     def spy_read(self, *args, **kwargs):
         nonlocal read_calls
@@ -156,21 +154,21 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
         json.loads(text)
         return text
 
-    def spy_hash(file_path, mtime):
+    def spy_read_bytes(self):
         nonlocal hash_calls
         hash_calls += 1
-        return real_compute_hash(file_path, mtime)
+        return real_read_bytes(self)
 
-    # Spy on read_text and hash computation to count disk accesses
+    # Spy on disk access for both JSON parsing and hashing
     monkeypatch.setattr(Path, "read_text", spy_read)
-    monkeypatch.setattr(loader, "_compute_file_hash", spy_hash)
+    monkeypatch.setattr(Path, "read_bytes", spy_read_bytes)
 
     loader.clear_cache()
 
     # Initial load populates cache
-    hash_before = loader.get_registers_hash()
-    loader.get_all_registers()
-    loader.get_all_registers()
+    hash_before = loader.registers_sha256(path)
+    loader.load_registers(path)
+    loader.load_registers(path)
 
     # The file and hash should only be computed once thanks to caching
     assert read_calls == 1
@@ -179,8 +177,8 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     # Modify the file to invalidate caches
     path.write_text(real_read_text(path) + "\n")
 
-    loader.get_all_registers()
-    hash_after = loader.get_registers_hash()
+    loader.load_registers(path)
+    hash_after = loader.registers_sha256(path)
 
     # After modification both read and hash are recomputed
     assert read_calls == 2
@@ -188,8 +186,8 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     assert hash_before != hash_after
 
 
-def test_compute_file_hash_uses_cache(tmp_path, monkeypatch) -> None:
-    """_compute_file_hash should avoid re-reading unchanged files."""
+def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
+    """registers_sha256 should avoid re-reading unchanged files."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
     import os
@@ -208,38 +206,36 @@ def test_compute_file_hash_uses_cache(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr(Path, "read_bytes", spy_read_bytes)
 
-    digest1 = loader._compute_file_hash(path, mtime)
-    digest2 = loader._compute_file_hash(path, mtime)
+    digest1 = loader.registers_sha256(path)
+    digest2 = loader.registers_sha256(path)
 
     assert digest1 == digest2
     assert read_calls == 1
 
     path.write_text("data2")
     os.utime(path, (mtime + 1, mtime + 1))
-    mtime2 = path.stat().st_mtime
-    loader._compute_file_hash(path, mtime2)
+    loader.registers_sha256(path)
 
     assert read_calls == 2
 
-def test_registers_reload_on_file_change(tmp_path, monkeypatch) -> None:
+def test_registers_reload_on_file_change(tmp_path) -> None:
     """Changing the register JSON file triggers a reload."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text(loader._REGISTERS_PATH.read_text())
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     loader.clear_cache()
 
-    original = loader.get_all_registers()
+    original = loader.load_registers(path)
     assert not any(r.name == "cache_test_marker" for r in original)
 
     data = json.loads(path.read_text())
     data["registers"][0]["name"] = "cache_test_marker"
     path.write_text(json.dumps(data))
 
-    updated = loader.get_all_registers()
+    updated = loader.load_registers(path)
     assert any(r.name == "cache_test_marker" for r in updated)
 
 
@@ -250,28 +246,27 @@ def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
 
     path = tmp_path / "regs.json"
     path.write_text(loader._REGISTERS_PATH.read_text())
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     hash_calls = 0
-    real_compute_hash = loader._compute_file_hash
+    real_read_bytes = Path.read_bytes
 
-    def spy_hash(file_path, mtime):
+    def spy_read_bytes(self):
         nonlocal hash_calls
         hash_calls += 1
-        return real_compute_hash(file_path, mtime)
+        return real_read_bytes(self)
 
-    monkeypatch.setattr(loader, "_compute_file_hash", spy_hash)
+    monkeypatch.setattr(Path, "read_bytes", spy_read_bytes)
 
     loader.clear_cache()
 
     # First load computes hash once
-    loader.get_all_registers()
-    loader.get_all_registers()
+    loader.load_registers(path)
+    loader.load_registers(path)
     assert hash_calls == 1
 
     # Clearing the cache forces a re-computation
     loader.clear_cache()
-    loader.get_all_registers()
+    loader.load_registers(path)
     assert hash_calls == 2
 
 
@@ -288,14 +283,13 @@ def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
         ],
     ],
 )
-def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> None:
+def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
     """Duplicate names or addresses should raise an error."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": registers}))
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
         loader._load_registers_from_file(path, mtime=0, file_hash="")
@@ -355,20 +349,19 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
         },
     ],
 )
-def test_invalid_registers_rejected(tmp_path, monkeypatch, register) -> None:
+def test_invalid_registers_rejected(tmp_path, register) -> None:
     """Registers violating schema constraints should raise an error."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": [register]}))
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
         loader._load_registers_from_file(path, mtime=0, file_hash="")
 
 
-def test_bits_within_bitmask_width(tmp_path, monkeypatch) -> None:
+def test_bits_within_bitmask_width(tmp_path) -> None:
     """Registers with bits not exceeding bitmask width should load."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
@@ -384,7 +377,6 @@ def test_bits_within_bitmask_width(tmp_path, monkeypatch) -> None:
     }
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": [reg]}))
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     loader._load_registers_from_file(path, file_hash="", mtime=0)
 
@@ -448,7 +440,7 @@ def test_special_modes_invalid_json(monkeypatch) -> None:
     importlib.reload(loader)
 
 
-def test_get_all_registers_sorted(monkeypatch, tmp_path) -> None:
+def test_get_all_registers_sorted(tmp_path) -> None:
     """get_all_registers should order registers by function then address."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
@@ -479,9 +471,8 @@ def test_get_all_registers_sorted(monkeypatch, tmp_path) -> None:
 
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": regs}))
-    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     loader.clear_cache()
-    ordered = loader.get_all_registers()
+    ordered = loader.get_all_registers(path)
     keys = [(r.function, r.address) for r in ordered]
     assert keys == sorted(keys)
