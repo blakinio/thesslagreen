@@ -3,7 +3,13 @@
   "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
   "diagnostics": {
     "registers_hash": "Suma kontrolna rejestrów",
-    "capabilities": "Możliwości urządzenia"
+    "capabilities": "Możliwości urządzenia",
+    "effective_batch": "Efektywny rozmiar partii",
+    "total_registers_json": "Łączna liczba rejestrów w JSON",
+    "total_available_registers": "Łączna liczba dostępnych rejestrów",
+    "deep_scan": "Włączony głęboki skan",
+    "force_full_register_list": "Wymuś pełną listę rejestrów",
+    "error_statistics": "Statystyki błędów"
   },
   "config": {
     "abort": {
