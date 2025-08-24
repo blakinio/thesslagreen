@@ -1266,7 +1266,7 @@
           "skip_missing_registers": "Pomijaj znane brakujące rejestry",
           "timeout": "Limit czasu połączenia (s)",
           "deep_scan": "Głęboki skan rejestrów",
-          "max_registers_per_request": "Maksymalna liczba rejestrów na zapytanie"
+          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
         },
         "data_description": {
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
@@ -1277,7 +1277,10 @@
           "deep_scan": "Odczyt surowych rejestrów 0x0000-0x012C do diagnostyki",
           "max_registers_per_request": "Maksymalna liczba rejestrów w zapytaniu (1–16)"
         },
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na zapytanie: {current_max_registers_per_request}.",
+        "error": {
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-125)"
+        },
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}.",
         "title": "Opcje ThesslaGreen Modbus"
       }
     }
