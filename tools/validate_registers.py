@@ -9,17 +9,6 @@ from pathlib import Path
 import types
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-# Provide a stub package to avoid importing Home Assistant dependencies
-sys.modules.setdefault("custom_components", types.ModuleType("custom_components"))
-tg_pkg = types.ModuleType("custom_components.thessla_green_modbus")
-tg_pkg.__path__ = [str(ROOT / "custom_components" / "thessla_green_modbus")]
-sys.modules["custom_components.thessla_green_modbus"] = tg_pkg
-
-from custom_components.thessla_green_modbus.registers.schema import (
-    RegisterDefinition,
-)
 JSON_PATH = (
     ROOT
     / "custom_components"
@@ -29,8 +18,22 @@ JSON_PATH = (
 )
 
 
+def _prepare_environment() -> None:
+    """Add repository root and stub package to ``sys`` modules."""
+
+    sys.path.insert(0, str(ROOT))
+    sys.modules.setdefault("custom_components", types.ModuleType("custom_components"))
+    tg_pkg = types.ModuleType("custom_components.thessla_green_modbus")
+    tg_pkg.__path__ = [str(ROOT / "custom_components" / "thessla_green_modbus")]
+    sys.modules["custom_components.thessla_green_modbus"] = tg_pkg
+
+
 def validate(path: Path) -> list[RegisterDefinition]:
     """Validate ``path`` and return the parsed register definitions."""
+    _prepare_environment()
+    from custom_components.thessla_green_modbus.registers.schema import (
+        RegisterDefinition,
+    )
 
     data = json.loads(path.read_text(encoding="utf-8"))
     registers = data.get("registers", data)
