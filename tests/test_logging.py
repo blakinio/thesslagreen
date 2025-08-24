@@ -160,7 +160,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
 
     class Def:
         address = 0
-        function = "03"
+        function = 3
         length = 1
 
         def encode(self, val):

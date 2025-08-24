@@ -112,7 +112,7 @@ def test_validator_rejects_length_mismatch(tmp_path: Path) -> None:
                 "name": "bad_len",
                 "access": "R/W",
                 "length": 1,
-                "extra": {"type": "uint32"},
+                "extra": {"type": "u32"},
             }
         ],
     )
@@ -149,7 +149,67 @@ def test_validator_rejects_bits_without_bitmask(tmp_path: Path) -> None:
                 "address_hex": "0x0001",
                 "name": "bad_bits",
                 "access": "R/W",
-                "bits": ["a"],
+                "bits": [{"name": "a"}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bit_name(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_bit_name",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": [{"name": "BadName"}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bit_index(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_bit_index",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": [{"name": "a", "index": 1}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bit_index_out_of_range(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bit_index_out_of_range",
+                "access": "R/W",
+                "extra": {"bitmask": 0xFFFF},
+                "bits": [{"name": f"b{i}"} for i in range(17)],
             }
         ],
     )
@@ -168,6 +228,82 @@ def test_validator_rejects_non_snake_case(tmp_path: Path) -> None:
                 "address_hex": "0x0001",
                 "name": "NotSnake",
                 "access": "R/W",
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_accepts_numeric_function_code(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": 3,
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "numeric_fn",
+                "access": "R/W",
+            }
+        ],
+    )
+
+    validate_registers.main(path)
+
+
+def test_validator_rejects_type_alias(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_type",
+                "access": "R/W",
+                "extra": {"type": "uint"},
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bad_bit_name(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_bit_name",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": ["BadBit"],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_min_max_mismatch(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_range",
+                "access": "R/W",
+                "min": 5,
+                "max": 1,
             }
         ],
     )

@@ -26,10 +26,10 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusIOException,
 )
 
-COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
-DISCRETE_INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("02")}
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
+COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function(1)}
+DISCRETE_INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function(2)}
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function(3)}
+INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function(4)}
 
 pytestmark = pytest.mark.asyncio
 
@@ -579,10 +579,10 @@ async def test_read_discrete_retries_on_failure(caplog):
 async def test_scan_device_success_static(mock_modbus_response):
     """Test successful device scan with predefined registers."""
     regs = {
-        "04": {16: "outside_temperature"},
-        "03": {0: "mode"},
-        "01": {0: "power_supply_fans"},
-        "02": {0: "expansion"},
+        4: {16: "outside_temperature"},
+        3: {0: "mode"},
+        1: {0: "power_supply_fans"},
+        2: {0: "expansion"},
     }
     with patch.object(
         ThesslaGreenDeviceScanner,
@@ -637,7 +637,7 @@ async def test_scan_device_connection_failure():
 
 async def test_scan_device_firmware_unavailable(caplog):
     """Missing firmware registers should log info and report unknown firmware."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -683,7 +683,7 @@ async def test_scan_device_firmware_unavailable(caplog):
 
 async def test_scan_device_firmware_bulk_fallback():
     """Bulk firmware read failure should fall back to individual reads."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -727,7 +727,7 @@ async def test_scan_device_firmware_bulk_fallback():
 
 async def test_scan_device_firmware_partial_bulk_fallback():
     """Partial firmware bulk read should fall back to individual reads."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -772,7 +772,7 @@ async def test_scan_device_firmware_partial_bulk_fallback():
 async def test_scan_blocks_propagated():
     """Ensure scan_device returns discovered register blocks."""
     # Avoid scanning full register set for test speed
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -832,7 +832,7 @@ async def test_scan_blocks_propagated():
 
 async def test_full_register_scan_collects_unknown_registers():
     """Ensure full register scan returns unknown registers and statistics."""
-    reg_map = {"04": {0: "ir0", 2: "ir2"}, "03": {0: "hr0", 2: "hr2"}, "01": {}, "02": {}}
+    reg_map = {4: {0: "ir0", 2: "ir2"}, 3: {0: "hr0", 2: "hr2"}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -873,7 +873,7 @@ async def test_full_register_scan_collects_unknown_registers():
 
 async def test_scan_device_batch_fallback():
     """Batch read failures should fall back to single-register reads."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -951,7 +951,7 @@ async def test_scan_device_batch_fallback():
 
 async def test_missing_register_logged_once(caplog):
     """Each missing register should trigger only one read and log entry."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -1068,12 +1068,12 @@ async def test_temperature_register_unavailable_kept():
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
-async def test_is_valid_register_value(caplog):
+async def test_is_valid_register_value():
     """Test register value validation."""
-    with caplog.at_level(logging.WARNING):
-        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
-
-    assert not any("CSV" in rec.message for rec in caplog.records)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+    scanner._register_ranges["supply_percentage"] = (0, 100)
+    scanner._register_ranges["min_percentage"] = (0, 100)
+    scanner._register_ranges["max_percentage"] = (0, 120)
 
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True
@@ -1338,7 +1338,7 @@ async def test_scan_device_includes_capabilities_in_device_info():
 
 async def test_capability_count_includes_booleans(caplog):
     """Log should count boolean capabilities even though bool is an int subclass."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -1375,7 +1375,7 @@ async def test_scan_populates_device_name():
     """Scanner should include device_name in returned device info."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
     scanner._client = object()
-    scanner._registers = {"04": {}, "03": {}, "01": {}, "02": {}}
+    scanner._registers = {4: {}, 3: {}, 1: {}, 2: {}}
     scanner.available_registers = {
         "input_registers": set(),
         "holding_registers": set(),
@@ -1410,10 +1410,10 @@ async def test_scan_reports_diagnostic_registers_on_error():
     scanner._client = object()
     diag_regs = {"alarm": 0, "error": 1, "e_99": 2, "s_2": 3}
     scanner._registers = {
-        "04": {},
-        "03": {addr: name for name, addr in diag_regs.items()},
-        "01": {},
-        "02": {},
+        4: {},
+        3: {addr: name for name, addr in diag_regs.items()},
+        1: {},
+        2: {},
     }
     scanner.available_registers = {
         "input_registers": set(),

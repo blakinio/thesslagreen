@@ -1273,7 +1273,7 @@
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
           "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
           "deep_scan": "Odczyt surowych rejestrów 0x0000-0x012C do diagnostyki",
-          "max_registers_per_request": "Maksymalna liczba rejestrów w zapytaniu (1–16)"
+          "max_registers_per_request": "Maksymalna liczba rejestrów w zapytaniu"
         },
         "error": {
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"

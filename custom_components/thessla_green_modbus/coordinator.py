@@ -91,7 +91,10 @@ from .const import (
     UNKNOWN_MODEL,
 )
 from .modbus_helpers import _call_modbus, group_reads
-from .registers.loader import get_all_registers, get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_all_registers,
+    get_registers_by_function,
+)
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
@@ -1165,7 +1168,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 address = definition.address
                 for attempt in range(1, self.retry + 1):
                     try:
-                        if definition.function == "03":
+                        if definition.function == 3:
                             if encoded_values is not None:
                                 success = True
                                 for offset in range(0, len(encoded_values), self.effective_batch):
@@ -1196,7 +1199,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     value=int(value),
                                     attempt=attempt,
                                 )
-                        elif definition.function == "01":
+                        elif definition.function == 1:
                             response = await self._call_modbus(
                                 self.client.write_coil,
                                 address=address,
@@ -1254,7 +1257,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             )
                             return False
                         continue
-                    except (OSError, ValueError):
+                    except OSError:
                         _LOGGER.exception("Unexpected error writing register %s", register_name)
                         return False
 

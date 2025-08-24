@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 import types
@@ -39,7 +40,7 @@ def validate(path: Path) -> list[RegisterDefinition]:
     registers = data.get("registers", data)
 
     parsed: list[RegisterDefinition] = []
-    seen_pairs: set[tuple[str, int]] = set()
+    seen_pairs: set[tuple[int, int]] = set()
     seen_names: set[str] = set()
     for item in registers:
         reg = RegisterDefinition.model_validate(item)
@@ -59,21 +60,38 @@ def validate(path: Path) -> list[RegisterDefinition]:
                 raise ValueError("string type requires length >= 1")
         else:
             expected_len = {
-                "uint32": 2,
-                "int32": 2,
-                "float32": 2,
-                "uint64": 4,
-                "int64": 4,
-                "float64": 4,
+                "u16": 1,
+                "i16": 1,
+                "bitmask": 1,
+                "u32": 2,
+                "i32": 2,
+                "f32": 2,
+                "u64": 4,
+                "i64": 4,
+                "f64": 4,
             }.get(typ)
             if expected_len is not None and length != expected_len:
                 raise ValueError("length does not match type")
 
-        if reg.function in {"01", "02"} and reg.access not in {"R", "R/-"}:
+        if reg.function in {1, 2} and reg.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
-        if item.get("bits") is not None and not ((reg.extra or {}).get("bitmask")):
-            raise ValueError("bits provided without extra.bitmask")
+        if item.get("bits") is not None:
+            if not ((reg.extra or {}).get("bitmask")):
+                raise ValueError("bits provided without extra.bitmask")
+            bits = item["bits"]
+            if len(bits) > 16:
+                raise ValueError("bits exceed 16 entries")
+            for idx, bit in enumerate(bits):
+                name = bit.get("name") if isinstance(bit, dict) else str(bit)
+                if name and not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError("bit names must be snake_case")
+                if idx > 15:
+                    raise ValueError("bit index out of range")
+        if reg.bits is not None:
+            for idx, bit in enumerate(reg.bits):
+                if bit.get("index", idx) != idx:
+                    raise ValueError("bits must be in implicit index order")
 
         parsed.append(reg)
 

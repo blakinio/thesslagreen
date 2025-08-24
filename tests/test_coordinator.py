@@ -22,6 +22,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
 )
 from custom_components.thessla_green_modbus.registers.loader import (
+    RegisterDef,
     get_register_definition,
     get_registers_by_function,
 )  # noqa: E402,F811,E501
@@ -133,6 +134,10 @@ class ConfigEntryNotReady(Exception):
     pass
 
 
+class HomeAssistantError(Exception):
+    pass
+
+exceptions.HomeAssistantError = HomeAssistantError
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
 
 
@@ -257,6 +262,36 @@ async def test_async_write_valid_register(coordinator):
 
 
 @pytest.mark.asyncio
+async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatch):
+    """Numeric values outside defined range should raise."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.client = MagicMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    reg = RegisterDef(function="03", address=0, name="num", access="rw", min=0, max=10)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
+
+    with pytest.raises(ValueError):
+        await coordinator.async_write_register("num", 11)
+
+
+@pytest.mark.asyncio
+async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
+    """Invalid enum values should raise and be propagated."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.client = MagicMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    reg = RegisterDef(function="03", address=0, name="mode", access="rw", enum={0: "off", 1: "on"})
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
+
+    with pytest.raises(ValueError):
+        await coordinator.async_write_register("mode", "invalid")
+
+
+@pytest.mark.asyncio
 async def test_read_holding_registers_none_client(coordinator, caplog):
     """Return empty data when no Modbus client is present."""
     coordinator.client = None
@@ -360,7 +395,7 @@ async def test_async_write_register_chunks(coordinator, batch, expected_calls, m
 
     import custom_components.thessla_green_modbus.coordinator as coordinator_mod
 
-    fake_def = SimpleNamespace(length=4, address=0, function="03", encode=lambda v: v)
+    fake_def = SimpleNamespace(length=4, address=0, function=3, encode=lambda v: v)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
 
     result = await coordinator.async_write_register("date_time_1", [1, 2, 3, 4])
@@ -387,7 +422,7 @@ async def test_async_write_register_truncates_over_limit(coordinator, monkeypatc
 
     import custom_components.thessla_green_modbus.coordinator as coordinator_mod
 
-    fake_def = SimpleNamespace(length=20, address=0, function="03", encode=lambda v: v)
+    fake_def = SimpleNamespace(length=20, address=0, function=3, encode=lambda v: v)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
 
     result = await coordinator.async_write_register("large", list(range(20)))

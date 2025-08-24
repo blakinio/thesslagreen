@@ -11,7 +11,7 @@ INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
 
 def _expanded_addresses(fn: str) -> list[int]:
-    plans = [p for p in plan_group_reads(max_block_size=32) if p.function == fn]
+    plans = [p for p in plan_group_reads(max_block_size=32) if p.function == int(fn)]
     return [addr for plan in plans for addr in range(plan.address, plan.address + plan.length)]
 
 
@@ -52,14 +52,14 @@ def test_plan_group_reads_from_json():
     for reg in regs:
         addresses.extend(range(reg.address, reg.address + reg.length))
     expected = group_reads(addresses, max_block_size=64)
-    plans = [p for p in plan_group_reads(max_block_size=64) if p.function == "04"]
+    plans = [p for p in plan_group_reads(max_block_size=64) if p.function == 4]
     assert [(p.address, p.length) for p in plans] == expected
 
 
 def test_plan_group_reads_splits_large_block(monkeypatch):
     """A long list of consecutive addresses is split into multiple blocks."""
 
-    regs = [Register(function="04", address=i, name=f"r{i}", access="ro") for i in range(100)]
+    regs = [Register(function=4, address=i, name=f"r{i}", access="ro") for i in range(100)]
 
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader.load_registers",
@@ -71,7 +71,7 @@ def test_plan_group_reads_splits_large_block(monkeypatch):
     plans = [
         p
         for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS)
-        if p.function == "04"
+        if p.function == 4
     ]
 
     assert [(p.address, p.length) for p in plans] == expected
@@ -84,7 +84,7 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     first = list(range(32))
     second = list(range(40, 80))
     regs = [
-        Register(function="04", address=i, name=f"r{i}", access="ro")
+        Register(function=4, address=i, name=f"r{i}", access="ro")
         for i in first + second
     ]
 
@@ -98,7 +98,7 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     plans = [
         p
         for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS)
-        if p.function == "04"
+        if p.function == 4
     ]
 
     assert [(p.address, p.length) for p in plans] == expected
