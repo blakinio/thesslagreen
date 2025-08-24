@@ -77,14 +77,16 @@ class RegisterDef:
 # ------------------------------------------------------------------
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
-
         if self.length > 1 and isinstance(raw, Sequence):
             raw_list = list(raw)
             if all(v == 0x8000 for v in raw_list):
                 return None
 
+            # Multi-register strings are treated specially
             if self.extra and self.extra.get("type") == "string":
                 encoding = self.extra.get("encoding", "ascii")
+                data = b"".join(w.to_bytes(2, "big") for w in raw_list)
+                return data.rstrip(b"\x00").decode(encoding)
                 buffer = bytearray()
                 for word in raw_list:
                     buffer.extend(word.to_bytes(2, "big"))
@@ -96,34 +98,41 @@ class RegisterDef:
 
             typ = self.extra.get("type") if self.extra else None
             if typ == "float32":
+                value = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+            elif typ == "float64":
+                value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
                 result: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
                 result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
             elif typ == "int32":
-                result = int.from_bytes(data, "big", signed=True)
+                value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
             elif typ == "int64":
-                result = int.from_bytes(data, "big", signed=True)
+                value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint64":
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
             else:
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
 
             if self.multiplier is not None:
-                result = result * self.multiplier
+                value *= self.multiplier
             if self.resolution is not None:
+                steps = round(value / self.resolution)
+                value = steps * self.resolution
+            return value
                 steps = round(result / self.resolution)
                 result = steps * self.resolution
             return result
 
+        # Defensive: handle unexpected sequence for single-register values
         if isinstance(raw, Sequence):
-            # Defensive: unexpected sequence for single register
             raw = raw[0]
 
         if raw == 0x8000:
             return None
 
+        # Bitmask registers map set bits to enum labels
         if self.extra and self.extra.get("bitmask") and self.enum:
             flags: list[Any] = []
             for key, label in sorted(
@@ -133,12 +142,14 @@ class RegisterDef:
                     flags.append(label)
             return flags
 
+        # Regular enum registers return the mapped label
         if self.enum is not None:
             if raw in self.enum:
                 return self.enum[raw]
             if str(raw) in self.enum:
                 return self.enum[str(raw)]
 
+        # Combined airflow/temperature values use a custom decoding
         value: Any = raw
         if self.length > 1 and self.extra and self.extra.get("type"):
             dtype = self.extra["type"]
@@ -166,13 +177,21 @@ class RegisterDef:
             temp = (raw & 0xFF) / 2
             return airflow, temp
 
+        # Schedule registers using BCD time encoding
         if self.bcd:
             try:
                 t = bcd_to_time(raw)
             except Exception:  # pragma: no cover - defensive
-                return value
-            return f"{t.hour:02d}:{t.minute:02d}"
+                pass
+            else:
+                return f"{t.hour:02d}:{t.minute:02d}"
 
+        value: Any = raw
+        if self.multiplier is not None:
+            value *= self.multiplier
+        if self.resolution is not None:
+            steps = round(value / self.resolution)
+            value = steps * self.resolution
         return value
 
     def encode(self, value: Any) -> int | list[int]:

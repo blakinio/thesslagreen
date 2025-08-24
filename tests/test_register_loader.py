@@ -20,6 +20,7 @@ const_module.MAX_BATCH_REGISTERS = 64
 sys.modules.setdefault("custom_components.thessla_green_modbus.const", const_module)
 
 from custom_components.thessla_green_modbus.registers.loader import (
+    RegisterDef,
     get_registers_by_function,
 )
 
@@ -69,6 +70,53 @@ def test_multi_register_metadata() -> None:
     serial = next(r for r in input_regs if r.name == "serial_number")
     assert serial.length == 6
     assert serial.extra["encoding"] == "ascii"
+
+
+def test_decode_multi_register_string() -> None:
+    """Multi-register strings decode without applying scaling."""
+    reg = RegisterDef(
+        function="holding",
+        address=0,
+        name="device_name",
+        access="ro",
+        length=3,
+        extra={"type": "string"},
+        multiplier=2,
+        resolution=1,
+    )
+    raw = [0x4142, 0x4344, 0x4500]  # "ABCDE"
+    assert reg.decode(raw) == "ABCDE"
+
+
+def test_decode_multi_register_number_scaled_once() -> None:
+    """Numeric multi-register values apply multiplier/resolution exactly once."""
+    reg = RegisterDef(
+        function="holding",
+        address=0,
+        name="counter",
+        access="ro",
+        length=2,
+        extra={"type": "int32"},
+        multiplier=10,
+        resolution=1,
+    )
+    raw = [0x0000, 0x0001]
+    assert reg.decode(raw) == 10
+
+
+def test_decode_bitmask_ignores_scaling() -> None:
+    """Bitmask registers return labels without scaling the raw value."""
+    reg = RegisterDef(
+        function="holding",
+        address=0,
+        name="flags",
+        access="ro",
+        enum={1: "A", 2: "B", 4: "C"},
+        extra={"bitmask": True},
+        multiplier=2,
+        resolution=1,
+    )
+    assert reg.decode(5) == ["A", "C"]
 
 
 def test_function_aliases() -> None:
