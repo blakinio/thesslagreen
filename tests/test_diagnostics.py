@@ -14,7 +14,6 @@ registers_stub = ModuleType("custom_components.thessla_green_modbus.registers")
 registers_stub.get_all_registers = lambda: []
 registers_stub.get_registers_hash = lambda: "hash"
 registers_stub.get_registers_by_function = lambda *args, **kwargs: []
-registers_stub.group_reads = lambda *args, **kwargs: []
 sys.modules["custom_components.thessla_green_modbus.registers"] = registers_stub
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
 

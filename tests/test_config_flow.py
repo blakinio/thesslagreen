@@ -15,7 +15,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 # Stub loader module to avoid heavy imports during tests
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.loader",
-    SimpleNamespace(group_reads=lambda *args, **kwargs: []),
+    SimpleNamespace(),
 )
 # Stub registers module to avoid heavy imports during tests
 sys.modules.setdefault(
@@ -25,7 +25,6 @@ sys.modules.setdefault(
         get_registers_by_function=lambda *args, **kwargs: [],
         get_all_registers=lambda *args, **kwargs: [],
         get_registers_hash=lambda *args, **kwargs: "",
-        group_reads=lambda *args, **kwargs: [],
     ),
 )
 

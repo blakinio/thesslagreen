@@ -29,6 +29,7 @@ from typing import Any, Literal, Sequence
 
 import pydantic
 
+from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
 
@@ -524,46 +525,9 @@ def get_registers_hash() -> str:
         return ""
 
 
-@dataclass(slots=True)
-class ReadPlan:
-    """Plan describing a consecutive block of registers to read."""
-
-    function: str
-    address: int
-    length: int
-
-
-def group_reads(max_block_size: int = 64) -> list[ReadPlan]:
-    """Group registers into contiguous blocks for efficient reading."""
-
-    plans: list[ReadPlan] = []
-    regs_by_fn: dict[str, list[int]] = {}
-
-    for reg in _load_registers():
-        addresses = list(range(reg.address, reg.address + reg.length))
-        regs_by_fn.setdefault(reg.function, []).extend(addresses)
-
-    for fn, addresses in regs_by_fn.items():
-        addresses.sort()
-        start = prev = addresses[0]
-        length = 1
-        for addr in addresses[1:]:
-            if addr == prev + 1 and length < max_block_size:
-                length += 1
-            else:
-                plans.append(ReadPlan(fn, start, length))
-                start = addr
-                length = 1
-            prev = addr
-        plans.append(ReadPlan(fn, start, length))
-
-    return plans
-
-
 __all__ = [
     "Register",
     "RegisterDefinition",
-    "ReadPlan",
     "get_all_registers",
     "get_registers_by_function",
     "get_registers_hash",
