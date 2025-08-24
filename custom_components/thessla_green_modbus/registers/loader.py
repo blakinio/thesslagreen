@@ -29,12 +29,7 @@ from typing import Any, Sequence
 # Shared grouping helper
 from ..modbus_helpers import group_reads as _group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
-from .schema import (
-    RegisterDefinition,
-    RegisterList,
-    _normalise_function,
-    _normalise_name,
-)
+from .schema import RegisterList, _normalise_function, _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,6 +89,10 @@ class RegisterDef:
                 for word in raw_list:
                     buffer.extend(word.to_bytes(2, "big"))
                 return buffer.rstrip(b"\x00").decode(encoding)
+                buf = bytearray()
+                for word in raw_list:
+                    buf.extend(word.to_bytes(2, "big"))
+                return bytes(buf).rstrip(b"\x00").decode(encoding)
 
             endianness = "big"
             if self.extra:
@@ -124,6 +123,26 @@ class RegisterDef:
                 steps = round(result / self.resolution)
                 result = steps * self.resolution
             return result
+                decoded: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+            elif typ == "float64":
+                decoded = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+            elif typ == "int32":
+                decoded = int.from_bytes(data, "big", signed=True)
+            elif typ == "uint32":
+                decoded = int.from_bytes(data, "big", signed=False)
+            elif typ == "int64":
+                decoded = int.from_bytes(data, "big", signed=True)
+            elif typ == "uint64":
+                decoded = int.from_bytes(data, "big", signed=False)
+            else:
+                decoded = int.from_bytes(data, "big", signed=False)
+
+            if self.multiplier is not None:
+                decoded = decoded * self.multiplier
+            if self.resolution is not None:
+                steps = round(decoded / self.resolution)
+                decoded = steps * self.resolution
+            return decoded
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
@@ -304,6 +323,11 @@ try:  # pragma: no cover - defensive
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
 except Exception:  # pragma: no cover - defensive
+except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
+    _LOGGER.debug("Failed to load special modes: %s", err)
+    _SPECIAL_MODES_ENUM = {}
+except Exception as err:  # pragma: no cover - unexpected
+    _LOGGER.exception("Unexpected error loading special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
 
 
@@ -318,9 +342,9 @@ def _load_registers_from_file(
 ) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
-    ``mtime`` is included in the cache key so that the file is only parsed
-    again when its modification time changes. ``file_hash`` is accepted for
-    backward compatibility but otherwise ignored.
+    ``mtime`` is included in the cache key so that the file is reloaded only
+    when its modification time changes. ``file_hash`` is accepted for backward
+    compatibility but otherwise ignored.
     """
 
     try:
@@ -353,7 +377,9 @@ def _load_registers_from_file(
         elif enum_map:
             if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
                 enum_map = {int(k): v for k, v in enum_map.items()}
-            elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
+            elif all(
+                isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()
+            ):
                 enum_map = {int(v): k for k, v in enum_map.items()}
 
         multiplier = parsed.multiplier
@@ -392,11 +418,25 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     global _cached_file_info
     path_str = str(path)
     if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
+    """Return the SHA256 hash of ``path``.
+
+    The hash is cached using ``(path_str, mtime, hash)`` so the file is only
+    read when its modification time changes.
+    """
+
+    global _cached_file_info
+    path_str = str(path)
+    if (
+        _cached_file_info
+        and _cached_file_info[0] == path_str
+        and _cached_file_info[1] == mtime
+    ):
         return _cached_file_info[2]
 
-    file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-    _cached_file_info = (path_str, mtime, file_hash)
-    return file_hash
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    _cached_file_info = (path_str, mtime, digest)
+    return digest
+
 
 
 def load_registers() -> list[RegisterDef]:
@@ -410,6 +450,28 @@ def load_registers() -> list[RegisterDef]:
         and _cached_file_info[1] == mtime
     ):
         _compute_file_hash(_REGISTERS_PATH, mtime)
+def _get_file_info() -> tuple[float, str]:
+    """Return ``(mtime, hash)`` for the registers file using a cache."""
+
+    stat = _REGISTERS_PATH.stat()
+    mtime = stat.st_mtime
+    path_str = str(_REGISTERS_PATH)
+
+    if (
+        _cached_file_info
+        and _cached_file_info[0] == path_str
+        and _cached_file_info[1] == mtime
+    ):
+        return mtime, _cached_file_info[2]
+
+    file_hash = _compute_file_hash(_REGISTERS_PATH, mtime)
+    return mtime, file_hash
+
+
+def load_registers() -> list[RegisterDef]:
+    """Return cached register definitions, reloading if the file changed."""
+
+    mtime, _ = _get_file_info()
     return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
 
 
@@ -447,6 +509,8 @@ def get_registers_hash() -> str:
     try:
         stat = _REGISTERS_PATH.stat()
     except OSError:  # pragma: no cover - defensive
+        return _get_file_info()[1]
+    except Exception:  # pragma: no cover - defensive
         return ""
     mtime = stat.st_mtime
     path_str = str(_REGISTERS_PATH)
@@ -466,7 +530,6 @@ def _register_map() -> dict[str, RegisterDef]:
 
 def get_register_definition(name: str) -> RegisterDef:
     """Return definition for register ``name``."""
-
     return _register_map()[name]
 
 
@@ -482,6 +545,9 @@ class ReadPlan:
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
+
+    from ..modbus_helpers import group_reads as _group_reads_fn
+
     plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}
 
@@ -491,19 +557,12 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
 
     for fn, addrs in regs_by_fn.items():
         for start, length in _group_reads(addrs, max_block_size=max_block_size):
+        regs_by_fn.setdefault(reg.function, []).extend(
+            range(reg.address, reg.address + reg.length)
+        )
+
+    for fn, addresses in regs_by_fn.items():
+        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans
-
-
-__all__ = [
-    "RegisterDef",
-    "RegisterDefinition",
-    "load_registers",
-    "clear_cache",
-    "get_all_registers",
-    "get_registers_by_function",
-    "get_register_definition",
-    "get_registers_hash",
-    "plan_group_reads",
-]
