@@ -1,5 +1,23 @@
 from __future__ import annotations
 
+"""Pydantic models describing register definitions.
+
+This module validates the raw JSON register description bundled with the
+integration.  The previous implementation had become a little tangled due to
+multiple rounds of feature additions.  The file is rewritten here to add a few
+new capabilities while keeping the validation logic focused and explicit.
+
+Key features implemented:
+
+* ``function`` and ``address_dec`` may be provided as either integers or
+  strings (decimal or hexadecimal).  Values are normalised to integers and a
+  canonical hexadecimal representation is stored in ``address_hex``.
+* ``length`` accepts ``count`` as an alias.
+* Shorthand type identifiers (``u16``, ``i16`` … ``f64``, ``string``,
+  ``bitmask``) are mapped to the existing ``extra["type"]`` representation and
+  the expected register word count is enforced.
+"""
+
 import re
 from enum import Enum
 from typing import Any, Literal
@@ -9,11 +27,17 @@ import pydantic
 from ..utils import _normalise_name
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
 def _normalise_function(fn: int | str) -> int:
     """Return canonical integer Modbus function code.
 
-    String aliases like ``"coil_registers"`` or zero-padded values are mapped to
-    their numeric equivalents. Values outside the 1–4 range raise ``ValueError``.
+    String aliases like ``"coil_registers"`` or zero‑padded values are mapped
+    to their numeric equivalents.  Values outside the ``1``–``4`` range raise a
+    ``ValueError``.
     """
 
     mapping = {
@@ -62,6 +86,21 @@ class RegisterType(str, Enum):
     BITMASK = "bitmask"
 
 
+# Expected register counts for the shorthand types above
+_TYPE_LENGTHS: dict[str, int | None] = {
+    "u16": 1,
+    "i16": 1,
+    "bitmask": 1,
+    "u32": 2,
+    "i32": 2,
+    "f32": 2,
+    "u64": 4,
+    "i64": 4,
+    "f64": 4,
+    "string": None,  # variable length
+}
+
+
 class RegisterDefinition(pydantic.BaseModel):
     """Schema describing a raw register definition from JSON."""
 
@@ -88,67 +127,93 @@ class RegisterDefinition(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="allow")  # pragma: no cover
 
+    # ------------------------------------------------------------------
+    # Normalisation helpers
+    # ------------------------------------------------------------------
 
     @pydantic.model_validator(mode="before")
     @classmethod
     def _normalise_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
-        # Allow string/int function codes and normalise them early
+        """Normalise raw input from JSON.
+
+        * ``function`` and ``address_dec`` accept ``int`` or ``str`` (decimal or
+          hexadecimal) and are converted to integers.  ``address_hex`` is
+          canonicalised to a ``0x`` prefixed lowercase string.
+        * ``count`` may be supplied instead of ``length``.
+        * A top level ``type`` key is translated into ``extra['type']`` and the
+          expected ``length`` is enforced or filled in.
+        """
+
+        # Allow ``count`` as an alias for ``length``
+        if "count" in data and "length" not in data:
+            data["length"] = data.pop("count")
+
+        # Normalise function code
         if "function" in data:
             data["function"] = _normalise_function(data["function"])
+
+        # Normalise address
+        if "address_dec" in data:
+            addr_dec = data["address_dec"]
+            if isinstance(addr_dec, str):
+                addr_dec = int(addr_dec, 0)
+            elif not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
+                raise TypeError("address_dec must be int or str")
+            data["address_dec"] = addr_dec
+
+            # Canonical hex representation
+            addr_hex = data.get("address_hex")
+            if isinstance(addr_hex, int):
+                addr_hex = hex(addr_hex)
+            elif isinstance(addr_hex, str):
+                addr_hex = hex(int(addr_hex, 0))
+            else:
+                addr_hex = hex(addr_dec)
+            data["address_hex"] = addr_hex
+
+        # Map shorthand ``type`` field
+        typ = data.pop("type", None)
+        if typ is not None:
+            extra = data.setdefault("extra", {})
+            extra["type"] = typ
+
+        # Validate type and enforce/default length
+        extra = data.get("extra") or {}
+        typ = extra.get("type")
+        if typ is not None:
+            if typ in {"uint", "int", "float"}:
+                raise ValueError("type aliases are not allowed")
+
+            if typ in _TYPE_LENGTHS:
+                expected = _TYPE_LENGTHS[typ]
+                if expected is None:  # string type
+                    length = data.get("length")
+                    if length is None or length < 1:
+                        raise ValueError("string type requires length >= 1")
+                else:
+                    if "length" in data:
+                        if data["length"] != expected:
+                            raise ValueError("length does not match type")
+                    else:
+                        data["length"] = expected
+
         return data
-    @pydantic.field_validator("function", mode="before")
+
+    @pydantic.field_validator("function")
     @classmethod
-    def normalise_function(cls, v: Any) -> str:
-        """Accept numeric/alias function codes and normalise to two digits."""
-        if isinstance(v, int):
-            if 1 <= v <= 4:
-                return f"{v:02d}"
+    def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
+        if not 1 <= v <= 4:
             raise ValueError("function code must be between 1 and 4")
-        if isinstance(v, str):
-            v = _normalise_function(v)
-            if v.isdigit():
-                iv = int(v)
-                if 1 <= iv <= 4:
-                    return f"{iv:02d}"
-            return v
-        raise TypeError("function code must be str or int")
+        return v
+
+    # ------------------------------------------------------------------
+    # Additional consistency checks
+    # ------------------------------------------------------------------
 
     @pydantic.model_validator(mode="after")
     def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
         if int(self.address_hex, 16) != self.address_dec:
             raise ValueError("address_hex does not match address_dec")
-
-        typ = (self.extra or {}).get("type")
-        if typ is not None:
-            try:
-                reg_type = RegisterType(typ)
-            except ValueError as err:
-                raise ValueError(f"unsupported type: {typ}") from err
-        else:
-            reg_type = None
-
-        type_lengths = {
-            RegisterType.U16: 1,
-            RegisterType.I16: 1,
-            RegisterType.BITMASK: 1,
-            RegisterType.U32: 2,
-            RegisterType.I32: 2,
-            RegisterType.F32: 2,
-            RegisterType.U64: 4,
-            RegisterType.I64: 4,
-            RegisterType.F64: 4,
-        }
-
-        if reg_type == RegisterType.STRING:
-        if typ in {"uint", "int", "float"}:
-            raise ValueError("type aliases are not allowed")
-        if typ == "string":
-            if self.length < 1:
-                raise ValueError("string type requires length >= 1")
-        elif reg_type in type_lengths:
-            expected = type_lengths[reg_type]
-            if self.length != expected:
-                raise ValueError("length does not match type")
 
         if self.function in {1, 2} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
@@ -164,9 +229,8 @@ class RegisterDefinition(pydantic.BaseModel):
         if self.bits is not None:
             if not (self.extra and self.extra.get("bitmask")):
                 raise ValueError("bits provided without extra.bitmask")
-
             if len(self.bits) > 16:
-                raise ValueError("bits index out of range")
+                raise ValueError("bits exceed 16 entries")
 
             for idx, bit in enumerate(self.bits):
                 if not isinstance(bit, dict):
@@ -193,19 +257,9 @@ class RegisterDefinition(pydantic.BaseModel):
                     mask_int = None
             elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
                 mask_int = bitmask_val
+
             if mask_int is not None and len(self.bits) > mask_int.bit_length():
                 raise ValueError("bits exceed bitmask width")
-            if len(self.bits) > 16:
-                raise ValueError("bits exceed 16 entries")
-            for idx, bit in enumerate(self.bits):
-                if idx > 15:
-                    raise ValueError("bit index out of range")
-                name = bit.get("name") if isinstance(bit, dict) else str(bit)
-                if name and not re.fullmatch(r"[a-z0-9_]+", name):
-            for bit in self.bits:
-                name = bit.get("name") if isinstance(bit, dict) else bit
-                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("bit names must be snake_case")
 
         return self
 
