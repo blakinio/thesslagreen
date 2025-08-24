@@ -71,7 +71,6 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         register_name: str,
         address: int,
         definition: dict[str, Any],
-        address: int,
     ) -> None:
         super().__init__(coordinator, register_name, address)
         self._register_name = register_name
