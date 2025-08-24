@@ -485,7 +485,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 errors[CONF_MAX_REGISTERS_PER_REQUEST] = (
                     "invalid_max_registers_per_request_low"
                 )
-            elif max_regs > DEFAULT_MAX_REGISTERS_PER_REQUEST:
+            elif max_regs > 16:
                 errors[CONF_MAX_REGISTERS_PER_REQUEST] = (
                     "invalid_max_registers_per_request_high"
                 )
@@ -518,11 +518,8 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_deep_scan = self.config_entry.options.get(
             CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
         )
-        current_max_registers_per_request = min(
-            self.config_entry.options.get(
-                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-            ),
-            DEFAULT_MAX_REGISTERS_PER_REQUEST,
+        current_max_registers_per_request = self.config_entry.options.get(
+            CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
         )
 
         data_schema = vol.Schema(
@@ -564,10 +561,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
                     description={"advanced": True},
-                ): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=1, max=DEFAULT_MAX_REGISTERS_PER_REQUEST),
-                ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=16)),
             }
         )
 
