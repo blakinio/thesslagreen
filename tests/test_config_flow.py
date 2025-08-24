@@ -1447,19 +1447,18 @@ async def test_validate_input_timeout_errors(exc):
     scanner_instance.close.assert_awaited_once()
 
 
-def test_device_capabilities_iteration():
-    """DeviceCapabilities should support iteration like a dict."""
+def test_device_capabilities_serialization():
+    """DeviceCapabilities.as_dict returns a JSON-serializable dict."""
     from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
-    caps = DeviceCapabilities(basic_control=True, bypass_system=True)
+    caps = DeviceCapabilities(
+        basic_control=True,
+        bypass_system=True,
+        temperature_sensors={"t2", "t1"},
+    )
 
-    # items() should yield key-value pairs
-    items = dict(caps.items())
-    assert items["basic_control"] is True
-    assert items["bypass_system"] is True
-
-    # direct iteration should also yield pairs
-    iterated = dict(iter(caps))
-    assert iterated["basic_control"] is True
-    # keys() should include attribute names
-    assert "bypass_system" in caps.keys()
+    serialized = caps.as_dict()
+    assert serialized["basic_control"] is True
+    assert serialized["bypass_system"] is True
+    # sets should be sorted lists for JSON serialization
+    assert serialized["temperature_sensors"] == ["t1", "t2"]
