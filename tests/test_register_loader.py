@@ -140,6 +140,28 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     assert hash_before != hash_after
 
 
+def test_registers_reload_on_file_change(tmp_path, monkeypatch) -> None:
+    """Changing the register JSON file triggers a reload."""
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    path = tmp_path / "regs.json"
+    path.write_text(loader._REGISTERS_PATH.read_text())
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
+
+    loader.clear_cache()
+
+    original = loader.get_all_registers()
+    assert not any(r.name == "cache_test_marker" for r in original)
+
+    data = json.loads(path.read_text())
+    data["registers"][0]["name"] = "cache_test_marker"
+    path.write_text(json.dumps(data))
+
+    updated = loader.get_all_registers()
+    assert any(r.name == "cache_test_marker" for r in updated)
+
+
 def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
     """clear_cache should reset the cached file hash."""
 
@@ -319,8 +341,30 @@ def test_register_file_sorted() -> None:
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
 
-    loaded_keys = [(r.function, r.address) for r in loader.get_all_registers()]
-    assert loaded_keys == sorted(loaded_keys)
+
+def test_special_modes_invalid_json(monkeypatch) -> None:
+    """Loader falls back to empty special mode enum on invalid file."""
+
+    import importlib
+    from pathlib import Path
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    special_path = loader._SPECIAL_MODES_PATH
+    real_read_text = Path.read_text
+
+    def bad_read(self, *args, **kwargs):  # pragma: no cover - simple stub
+        if self == special_path:
+            return "{"
+        return real_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", bad_read)
+
+    loader = importlib.reload(loader)
+    assert loader._SPECIAL_MODES_ENUM == {}  # nosec B101
+
+    monkeypatch.setattr(Path, "read_text", real_read_text)
+    importlib.reload(loader)
 
 
 def test_get_all_registers_sorted(monkeypatch, tmp_path) -> None:

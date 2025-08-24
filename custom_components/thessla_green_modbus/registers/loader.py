@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads as _group_reads_fn
+from ..modbus_helpers import group_reads as _group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -78,49 +78,54 @@ class RegisterDef:
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
 
-        if self.length > 1:
-            raw_list: list[int]
-            if isinstance(raw, Sequence):
-                raw_list = list(raw)
-                if all(v == 0x8000 for v in raw_list):
-                    return None
-            else:
-                raw_int = int(raw)
-                raw_list = [
-                    (raw_int >> (16 * (self.length - 1 - i))) & 0xFFFF
-                    for i in range(self.length)
-                ]
+        if self.length > 1 and isinstance(raw, Sequence):
+            raw_list = list(raw)
+            if all(v == 0x8000 for v in raw_list):
+                return None
 
             if self.extra and self.extra.get("type") == "string":
                 encoding = self.extra.get("encoding", "ascii")
+                buffer = bytearray()
+                for word in raw_list:
+                    buffer.extend(word.to_bytes(2, "big"))
+                return buffer.rstrip(b"\x00").decode(encoding)
                 data = b"".join(w.to_bytes(2, "big") for w in raw_list)
                 return data.rstrip(b"\x00").decode(encoding)
 
-            endianness = "big"
-            if self.extra:
-                endianness = self.extra.get("endianness", "big")
+            endianness = self.extra.get("endianness", "big") if self.extra else "big"
             words = raw_list if endianness == "big" else list(reversed(raw_list))
             data = b"".join(w.to_bytes(2, "big") for w in words)
 
             typ = self.extra.get("type") if self.extra else None
+            result: Any
             if typ == "float32":
-                value: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+                result = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
-                value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+                result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+                value: Any = struct.unpack(
+                    ">f" if endianness == "big" else "<f", data
+                )[0]
+            elif typ == "float64":
+                value = struct.unpack(
+                    ">d" if endianness == "big" else "<d", data
+                )[0]
             elif typ == "int32":
-                value = int.from_bytes(data, "big", signed=True)
+                result = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
-                value = int.from_bytes(data, "big", signed=False)
+                result = int.from_bytes(data, "big", signed=False)
             elif typ == "int64":
-                value = int.from_bytes(data, "big", signed=True)
+                result = int.from_bytes(data, "big", signed=True)
             elif typ == "uint64":
-                value = int.from_bytes(data, "big", signed=False)
+                result = int.from_bytes(data, "big", signed=False)
             else:
-                value = int.from_bytes(data, "big", signed=False)
+                result = int.from_bytes(data, "big", signed=False)
 
             if self.multiplier is not None:
-                value = value * self.multiplier
+                result = result * self.multiplier
             if self.resolution is not None:
+                steps = round(result / self.resolution)
+                result = steps * self.resolution
+            return result
                 steps = round(value / self.resolution)
                 value = steps * self.resolution
             return value
@@ -148,6 +153,20 @@ class RegisterDef:
                 return self.enum[str(raw)]
 
         value: Any = raw
+        if self.length > 1 and self.extra and self.extra.get("type"):
+            dtype = self.extra["type"]
+            byte_len = self.length * 2
+            raw_bytes = raw.to_bytes(byte_len, "big", signed=False)
+            if dtype == "float32":
+                value = struct.unpack(">f", raw_bytes)[0]
+            elif dtype == "int32":
+                value = struct.unpack(">i", raw_bytes)[0]
+            elif dtype == "uint32":
+                value = struct.unpack(">I", raw_bytes)[0]
+            elif dtype == "int64":
+                value = struct.unpack(">q", raw_bytes)[0]
+            elif dtype == "uint64":
+                value = struct.unpack(">Q", raw_bytes)[0]
         if self.multiplier is not None:
             value = value * self.multiplier
         if self.resolution is not None:
@@ -283,7 +302,7 @@ Register = RegisterDef
 # ---------------------------------------------------------------------------
 
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
-_SPECIAL_MODES_ENUM: dict[str, int]
+_SPECIAL_MODES_ENUM: dict[str, int] = {}
 try:  # pragma: no cover - defensive
     _SPECIAL_MODES_ENUM = {
         key.split("_")[-1]: idx
@@ -375,6 +394,8 @@ def _load_registers_from_file(
         )
 
     return registers
+
+
 def _compute_file_hash(path: Path, mtime: float) -> str:
     """Return the SHA256 hash of ``path`` and cache the result.
 
@@ -417,8 +438,8 @@ def _get_file_info() -> tuple[float, str]:
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    mtime, file_hash = _get_file_info()
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime, file_hash=file_hash)
+    mtime, _ = _get_file_info()
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -499,6 +520,7 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
 
     for fn, addresses in regs_by_fn.items():
         for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
+        for start, length in _group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans
