@@ -26,9 +26,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Sequence
 
-from ..modbus_helpers import (
-    group_reads as _group_reads,  # alias for plan_group_reads
-)
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import (
     RegisterDefinition,
@@ -174,7 +171,11 @@ class RegisterDef:
         if self.bcd:
             try:
                 t = bcd_to_time(raw)
-            except Exception:  # pragma: no cover - defensive
+            except (ValueError, TypeError) as err:  # pragma: no cover - defensive
+                _LOGGER.debug("Invalid BCD value %s: %s", raw, err)
+                return value
+            except Exception as err:  # pragma: no cover - unexpected
+                _LOGGER.exception("Unexpected error decoding BCD value %s: %s", raw, err)
                 return value
             return f"{t.hour:02d}:{t.minute:02d}"
 
@@ -300,8 +301,12 @@ try:  # pragma: no cover - defensive
         key.split("_")[-1]: idx
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
-except Exception:  # pragma: no cover - defensive
+except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
+    _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM: dict[str, int] = {}
+except Exception as err:  # pragma: no cover - unexpected
+    _LOGGER.exception("Unexpected error loading special modes: %s", err)
+    _SPECIAL_MODES_ENUM = {}
 
 
 # ---------------------------------------------------------------------------
@@ -322,11 +327,23 @@ def _load_registers_from_file(
     try:
         if not file_hash:
             file_hash = _compute_file_hash(path, mtime)
+    path: Path, *, mtime: float, file_hash: str | None = None
+) -> list[RegisterDef]:
+    """Load register definitions from ``path``.
+
+    ``mtime`` is included in the cache key so that the file is reloaded only
+    when its modification time changes. ``file_hash`` is accepted for backward
+    compatibility but otherwise unused.
+    """
+
+    try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
-    except Exception as err:  # pragma: no cover - defensive
+    except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
+    except Exception as err:  # pragma: no cover - unexpected
+        raise RuntimeError(f"Unexpected error reading register definitions from {path}") from err
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
@@ -386,9 +403,8 @@ def _load_registers_from_file(
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
     """Return the SHA256 hash of ``path``.
-
-    The hash is cached based on ``path`` and ``mtime`` so reading the file can
-    be avoided when the modification time has not changed.
+    The hash is cached using ``(path_str, mtime, hash)`` so the file is only
+    read when its modification time changes.
     """
 
     global _cached_file_info
@@ -421,6 +437,7 @@ _load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ign
 def _get_file_info() -> tuple[float, str]:
     """Return ``(mtime, hash)`` for the registers file using a cache."""
 
+def _load_registers_cache_clear() -> None:
     global _cached_file_info
     stat = _REGISTERS_PATH.stat()
     mtime = stat.st_mtime
@@ -434,6 +451,11 @@ def _get_file_info() -> tuple[float, str]:
 
     file_hash = _compute_file_hash(_REGISTERS_PATH, mtime)
     return mtime, file_hash
+    _cached_file_info = None
+    _orig_load_cache_clear()
+
+
+_load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
 
 
 def load_registers() -> list[RegisterDef]:
@@ -443,13 +465,28 @@ def load_registers() -> list[RegisterDef]:
     return _load_registers_from_file(
         _REGISTERS_PATH, file_hash=file_hash, mtime=mtime
     )
+    stat = _REGISTERS_PATH.stat()
+    mtime = stat.st_mtime
+    if not (
+        _cached_file_info
+        and _cached_file_info[0] == str(_REGISTERS_PATH)
+        and _cached_file_info[1] == mtime
+    ):
+        _compute_file_hash(_REGISTERS_PATH, mtime)
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=stat.st_mtime)
+    try:
+        mtime, file_hash = _get_file_info()
+    except OSError:
+        stat = _REGISTERS_PATH.stat()
+        mtime = stat.st_mtime
+        file_hash = _compute_file_hash()
 
 
 def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
 
-    Exposed for tests and tooling that need to reload register
-    definitions.
+    Exposed for tests and tooling that need to reload register definitions.
     """
 
     global _cached_file_info
@@ -476,9 +513,14 @@ def get_registers_by_function(fn: str) -> list[RegisterDef]:
 
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
+
     try:
         return _get_file_info()[1]
+        stat = _REGISTERS_PATH.stat()
+        return _compute_file_hash(_REGISTERS_PATH, stat.st_mtime)
     except Exception:  # pragma: no cover - defensive
+        return _get_file_info()[1]
+    except OSError:  # pragma: no cover - defensive
         return ""
 
 
@@ -504,6 +546,8 @@ class ReadPlan:
 
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
+
+    from ..modbus_helpers import group_reads as _group_reads
 
     plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}

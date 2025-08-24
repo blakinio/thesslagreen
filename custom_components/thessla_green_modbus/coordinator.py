@@ -429,7 +429,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 try:
                     definition = get_register_definition(reg)
                     length = max(1, definition.length)
-                except Exception:
+                except (KeyError, AttributeError, TypeError) as err:
+                    _LOGGER.debug("Missing definition for %s: %s", reg, err)
+                    length = 1
+                except Exception as err:  # pragma: no cover - unexpected
+                    _LOGGER.exception("Unexpected error getting definition for %s: %s", reg, err)
                     length = 1
                 addresses.extend(range(addr, addr + length))
 
