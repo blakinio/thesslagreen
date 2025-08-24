@@ -408,15 +408,14 @@ def _load_registers_from_file(
     return registers
 
 
-def registers_sha256(json_path: Path | str | None = None) -> str:
+def registers_sha256(json_path: Path) -> str:
     """Return the SHA256 hash of ``json_path``.
 
-    When ``json_path`` is not provided, the bundled register definition file is
-    used. The result is cached based on the file's modification time so
-    repeated calls for an unchanged file avoid reading from disk.
+    The result is cached using the file's modification time so repeated calls
+    for an unchanged file avoid re-reading from disk.
     """
 
-    path = Path(json_path) if json_path is not None else _REGISTERS_PATH
+    path = Path(json_path)
     mtime = path.stat().st_mtime
     path_str = str(path)
     cached = _cached_file_info.get(path_str)
@@ -430,14 +429,16 @@ def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed.
 
     ``json_path`` may be provided to load register definitions from an
-    alternate file.  When omitted, the bundled definitions are used.
+    alternate file. When omitted, the bundled definitions are used.
+
+    The cache key is derived from the tuple ``(path, mtime, sha256)`` so
+    changes to either timestamp or content trigger a reload.
     """
 
     path = Path(json_path) if json_path is not None else _REGISTERS_PATH
     file_hash = registers_sha256(path)
     mtime = _cached_file_info[str(path)][0]
-    registers = _load_registers_from_file(path, mtime=mtime, file_hash=file_hash)
-    return registers
+    return _load_registers_from_file(path, mtime=mtime, file_hash=file_hash)
 
 
 def clear_cache() -> None:  # pragma: no cover
