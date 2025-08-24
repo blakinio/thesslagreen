@@ -18,6 +18,7 @@ from homeassistant.helpers import translation
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
+from .registers.loader import get_all_registers, registers_sha256
 from custom_components.thessla_green_modbus.registers.loader import (
     get_all_registers,
     get_registers_hash,
@@ -38,7 +39,7 @@ async def async_get_config_entry_diagnostics(
 
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
-    diagnostics.setdefault("registers_hash", get_registers_hash())
+    diagnostics.setdefault("registers_hash", registers_sha256())
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
     diagnostics.setdefault("total_registers_json", len(get_all_registers()))
     if "effective_batch" not in diagnostics:

@@ -23,6 +23,7 @@ from .modbus_exceptions import (
     ModbusIOException,
 )
 from .modbus_helpers import _call_modbus, group_reads as _group_reads
+from .registers.loader import get_all_registers, registers_sha256
 from custom_components.thessla_green_modbus.registers.loader import (
     get_all_registers,
     get_registers_hash,
@@ -55,7 +56,7 @@ def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
     global REGISTER_HASH
     regs = get_all_registers()
-    REGISTER_HASH = get_registers_hash()
+    REGISTER_HASH = registers_sha256()
 
     REGISTER_DEFINITIONS.clear()
     REGISTER_DEFINITIONS.update({r.name: r for r in regs})
@@ -93,7 +94,7 @@ def _build_register_maps() -> None:
 # Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    current_hash = get_registers_hash()
+    current_hash = registers_sha256()
     if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
         _build_register_maps()
 

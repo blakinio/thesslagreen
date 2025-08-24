@@ -36,13 +36,13 @@ registers_module.__path__ = []  # type: ignore[attr-defined]
 registers_loader = types.ModuleType("custom_components.thessla_green_modbus.registers.loader")
 registers_loader.get_registers_by_function = lambda *args, **kwargs: []
 registers_loader.get_all_registers = lambda *args, **kwargs: []
-registers_loader.get_registers_hash = lambda *args, **kwargs: ""
+registers_loader.registers_sha256 = lambda *args, **kwargs: ""
 registers_loader.plan_group_reads = lambda *args, **kwargs: []
 registers_loader.load_registers = lambda *args, **kwargs: []
 registers_module.loader = registers_loader
 registers_module.get_registers_by_function = registers_loader.get_registers_by_function
 registers_module.get_all_registers = registers_loader.get_all_registers
-registers_module.get_registers_hash = registers_loader.get_registers_hash
+registers_module.registers_sha256 = registers_loader.registers_sha256
 registers_module.plan_group_reads = registers_loader.plan_group_reads
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", registers_loader)
@@ -51,13 +51,14 @@ registers_module.__path__ = []
 registers_module.loader = None
 registers_module.get_registers_by_function = lambda *args, **kwargs: []
 registers_module.get_all_registers = lambda *args, **kwargs: []
-registers_module.get_registers_hash = lambda *args, **kwargs: ""
+registers_module.registers_sha256 = lambda *args, **kwargs: ""
 registers_module.plan_group_reads = lambda *args, **kwargs: []
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
 loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
 loader_module.get_registers_by_function = lambda *args, **kwargs: []
 loader_module.load_registers = lambda *args, **kwargs: []
 loader_module.get_all_registers = lambda *args, **kwargs: []
+loader_module.registers_sha256 = lambda *args, **kwargs: ""
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_module)
 
 from custom_components.thessla_green_modbus.const import (

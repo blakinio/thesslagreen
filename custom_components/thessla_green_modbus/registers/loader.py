@@ -464,6 +464,27 @@ def get_registers_by_function(
     return [r for r in load_registers(json_path) if r.function == code]
 
 
+def registers_sha256(path: Path | str | None = None) -> str:
+    """Return the SHA256 digest for ``path``.
+
+    The result is cached based on the file's modification time so repeated
+    calls for an unchanged file avoid reading from disk.  When ``path`` is not
+    provided, the bundled register definition file is used.
+    """
+
+    if path is None:
+        path = _REGISTERS_PATH
+    try:
+        file_path = Path(path)
+        mtime = file_path.stat().st_mtime
+        path_str = str(file_path)
+        if (
+            _cached_file_info
+            and _cached_file_info[0] == path_str
+            and _cached_file_info[1] == mtime
+        ):
+            return _cached_file_info[2]
+        return _compute_file_hash(file_path, mtime)
 def get_registers_hash(json_path: Path | str | None = None) -> str:
     """Return the hash of the register definition file."""
     try:
