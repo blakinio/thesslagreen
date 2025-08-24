@@ -470,7 +470,6 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
 
 __all__ = [
     "RegisterDef",
-    "Register",
     "RegisterDefinition",
     "load_registers",
     "clear_cache",
