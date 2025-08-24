@@ -24,11 +24,11 @@ config_flow_stub = ModuleType("custom_components.thessla_green_modbus.config_flo
 config_flow_stub.CannotConnect = type("CannotConnect", (), {})
 sys.modules["custom_components.thessla_green_modbus.config_flow"] = config_flow_stub
 
-from custom_components.thessla_green_modbus.diagnostics import (
+from custom_components.thessla_green_modbus.diagnostics import (  # noqa: E402
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
-from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities  # noqa: E402
 
 # Restore real registers module for subsequent tests
 if original_registers is not None:
