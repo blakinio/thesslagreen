@@ -139,10 +139,9 @@ class RegisterDefinition(pydantic.BaseModel):
             RegisterType.F64: 4,
         }
 
-        if reg_type == RegisterType.STRING:
         if typ in {"uint", "int", "float"}:
             raise ValueError("type aliases are not allowed")
-        if typ == "string":
+        if reg_type == RegisterType.STRING:
             if self.length < 1:
                 raise ValueError("string type requires length >= 1")
         elif reg_type in type_lengths:
@@ -164,25 +163,29 @@ class RegisterDefinition(pydantic.BaseModel):
         if self.bits is not None:
             if not (self.extra and self.extra.get("bitmask")):
                 raise ValueError("bits provided without extra.bitmask")
-
             if len(self.bits) > 16:
-                raise ValueError("bits index out of range")
+                raise ValueError("bits exceed 16 entries")
 
-            for idx, bit in enumerate(self.bits):
+            seen_indices: set[int] = set()
+            for bit in self.bits:
                 if not isinstance(bit, dict):
                     raise ValueError("bits entries must be objects")
+                if "index" not in bit or "name" not in bit:
+                    raise ValueError("bits entries must have index and name")
 
-                name = bit.get("name")
-                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("bit name must be snake_case")
+                index = bit["index"]
+                name = bit["name"]
 
-                index = bit.get("index", idx)
                 if not isinstance(index, int) or isinstance(index, bool):
                     raise ValueError("bit index must be an integer")
-                if index != idx:
-                    raise ValueError("bits must be in implicit index order")
                 if not 0 <= index <= 15:
                     raise ValueError("bit index out of range")
+                if index in seen_indices:
+                    raise ValueError("bit indices must be unique")
+                seen_indices.add(index)
+
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError("bit name must be snake_case")
 
             bitmask_val = self.extra.get("bitmask") if self.extra else None
             mask_int: int | None = None
@@ -193,19 +196,8 @@ class RegisterDefinition(pydantic.BaseModel):
                     mask_int = None
             elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
                 mask_int = bitmask_val
-            if mask_int is not None and len(self.bits) > mask_int.bit_length():
+            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
                 raise ValueError("bits exceed bitmask width")
-            if len(self.bits) > 16:
-                raise ValueError("bits exceed 16 entries")
-            for idx, bit in enumerate(self.bits):
-                if idx > 15:
-                    raise ValueError("bit index out of range")
-                name = bit.get("name") if isinstance(bit, dict) else str(bit)
-                if name and not re.fullmatch(r"[a-z0-9_]+", name):
-            for bit in self.bits:
-                name = bit.get("name") if isinstance(bit, dict) else bit
-                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("bit names must be snake_case")
 
         return self
 
