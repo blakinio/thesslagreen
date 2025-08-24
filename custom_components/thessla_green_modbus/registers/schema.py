@@ -79,11 +79,26 @@ class RegisterDefinition(pydantic.BaseModel):
         if expected_len is not None and self.length != expected_len:
             raise ValueError("length does not match type")
 
+        if typ == "string" and self.length < 1:
+            raise ValueError("string type requires length >= 1")
+
         if self.function in {"01", "02"} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
-        if self.bits is not None and not (self.extra and self.extra.get("bitmask")):
-            raise ValueError("bits provided without extra.bitmask")
+        if self.bits is not None:
+            if not (self.extra and self.extra.get("bitmask")):
+                raise ValueError("bits provided without extra.bitmask")
+            bitmask_val = self.extra.get("bitmask") if self.extra else None
+            mask_int: int | None = None
+            if isinstance(bitmask_val, str):
+                try:
+                    mask_int = int(bitmask_val, 0)
+                except ValueError:
+                    mask_int = None
+            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+                mask_int = bitmask_val
+            if mask_int is not None and len(self.bits) > mask_int.bit_length():
+                raise ValueError("bits exceed bitmask width")
 
         return self
 
