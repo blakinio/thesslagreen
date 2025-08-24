@@ -11,13 +11,27 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
   "quality_scale": "silver",
-  "requirements": ["pymodbus>=3.5.0"],
-  "files": [
-    "registers/thessla_green_registers_full.json"
-  ],
   "requirements": [
     "pymodbus>=3.5.0",
     "pydantic>=2.0"
+  ],
+  "files": [
+    "options/bypass_modes.json",
+    "options/days_of_week.json",
+    "options/filter_types.json",
+    "options/gwc_modes.json",
+    "options/modbus_baud_rates.json",
+    "options/modbus_parity.json",
+    "options/modbus_ports.json",
+    "options/modbus_stop_bits.json",
+    "options/periods.json",
+    "options/reset_types.json",
+    "options/special_modes.json",
+    "registers/thessla_green_registers_full.json",
+    "services.yaml",
+    "strings.json",
+    "translations/en.json",
+    "translations/pl.json"
   ],
   "version": "2.1.2",
   "integration_type": "hub",
