@@ -1,7 +1,15 @@
-"""Constants and register definitions for the ThesslaGreen Modbus integration."""
+"""Constants for the ThesslaGreen Modbus integration."""
 
+from __future__ import annotations
+
+import asyncio
+import importlib.util
+import sys
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import TYPE_CHECKING, Any, Dict, cast
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from homeassistant.core import HomeAssistant
 
 # Importing ``MAX_BATCH_REGISTERS`` from this module in ``modbus_helpers``
 # creates a circular dependency if it is defined after the registers loader is
@@ -259,11 +267,7 @@ ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
 
 
 def _load_json_option(filename: str) -> list[Any]:
-    """Load an option list from a JSON file in ``OPTIONS_PATH``.
-
-    Returns an empty list if the file does not exist or cannot be parsed.
-    ``filename`` should be relative to ``OPTIONS_PATH``.
-    """
+    """Load an option list from a JSON file in ``OPTIONS_PATH``."""
 
     import json
 
@@ -276,18 +280,85 @@ def _load_json_option(filename: str) -> list[Any]:
         return []
 
 
-# Shared option lists
-SPECIAL_MODE_OPTIONS = _load_json_option("special_modes.json")
-DAYS_OF_WEEK = _load_json_option("days_of_week.json")
-PERIODS = _load_json_option("periods.json")
-BYPASS_MODES = _load_json_option("bypass_modes.json")
-GWC_MODES = _load_json_option("gwc_modes.json")
-FILTER_TYPES = _load_json_option("filter_types.json")
-RESET_TYPES = _load_json_option("reset_types.json")
-MODBUS_PORTS = _load_json_option("modbus_ports.json")
-MODBUS_BAUD_RATES = _load_json_option("modbus_baud_rates.json")
-MODBUS_PARITY = _load_json_option("modbus_parity.json")
-MODBUS_STOP_BITS = _load_json_option("modbus_stop_bits.json")
+async def async_setup_options(hass: HomeAssistant | None = None) -> None:
+    """Asynchronously populate option lists from JSON files.
+
+    When ``hass`` is provided, file I/O is offloaded to the executor.
+    If Home Assistant utilities are unavailable, the lists are populated
+    synchronously for compatibility with tests.
+    """
+
+    global SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES
+    global FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES
+    global MODBUS_PARITY, MODBUS_STOP_BITS
+
+    filenames = [
+        ("special_modes.json", "SPECIAL_MODE_OPTIONS"),
+        ("days_of_week.json", "DAYS_OF_WEEK"),
+        ("periods.json", "PERIODS"),
+        ("bypass_modes.json", "BYPASS_MODES"),
+        ("gwc_modes.json", "GWC_MODES"),
+        ("filter_types.json", "FILTER_TYPES"),
+        ("reset_types.json", "RESET_TYPES"),
+        ("modbus_ports.json", "MODBUS_PORTS"),
+        ("modbus_baud_rates.json", "MODBUS_BAUD_RATES"),
+        ("modbus_parity.json", "MODBUS_PARITY"),
+        ("modbus_stop_bits.json", "MODBUS_STOP_BITS"),
+    ]
+
+    if hass is not None:
+        results = await asyncio.gather(
+            *[hass.async_add_executor_job(_load_json_option, fn) for fn, _ in filenames]
+        )
+    else:
+        results = [_load_json_option(fn) for fn, _ in filenames]
+
+    for (_, name), value in zip(filenames, results):
+        globals()[name] = value
+
+
+def _sync_setup_options() -> None:
+    """Populate option lists synchronously."""
+
+    global SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES
+    global FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES
+    global MODBUS_PARITY, MODBUS_STOP_BITS
+
+    SPECIAL_MODE_OPTIONS = _load_json_option("special_modes.json")
+    DAYS_OF_WEEK = _load_json_option("days_of_week.json")
+    PERIODS = _load_json_option("periods.json")
+    BYPASS_MODES = _load_json_option("bypass_modes.json")
+    GWC_MODES = _load_json_option("gwc_modes.json")
+    FILTER_TYPES = _load_json_option("filter_types.json")
+    RESET_TYPES = _load_json_option("reset_types.json")
+    MODBUS_PORTS = _load_json_option("modbus_ports.json")
+    MODBUS_BAUD_RATES = _load_json_option("modbus_baud_rates.json")
+    MODBUS_PARITY = _load_json_option("modbus_parity.json")
+    MODBUS_STOP_BITS = _load_json_option("modbus_stop_bits.json")
+
+
+# Shared option lists loaded during setup
+SPECIAL_MODE_OPTIONS: list[Any] = []
+DAYS_OF_WEEK: list[Any] = []
+PERIODS: list[Any] = []
+BYPASS_MODES: list[Any] = []
+GWC_MODES: list[Any] = []
+FILTER_TYPES: list[Any] = []
+RESET_TYPES: list[Any] = []
+MODBUS_PORTS: list[Any] = []
+MODBUS_BAUD_RATES: list[Any] = []
+MODBUS_PARITY: list[Any] = []
+MODBUS_STOP_BITS: list[Any] = []
+
+
+try:  # pragma: no cover - handle partially initialized module
+    _HAS_HA = importlib.util.find_spec("homeassistant") is not None
+except (ImportError, ValueError):
+    _HAS_HA = False
+
+# Load option lists immediately when Home Assistant isn't available or during tests
+if not _HAS_HA or "pytest" in sys.modules:  # pragma: no cover - test env
+    _sync_setup_options()
 
 # Special function bit mappings for services
 SPECIAL_FUNCTION_MAP = {

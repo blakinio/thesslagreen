@@ -10,11 +10,19 @@ The module also provides helpers for handling legacy entity IDs that
 were renamed in newer versions of the integration.
 """
 
+from __future__ import annotations
+
+import asyncio
+import importlib.util
+import sys
 import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from homeassistant.core import HomeAssistant
 
 try:  # pragma: no cover - handle absence of Home Assistant
     from homeassistant.components.binary_sensor import BinarySensorDeviceClass
@@ -419,8 +427,8 @@ def _load_discrete_mappings() -> tuple[
 # Entity configurations
 # ---------------------------------------------------------------------------
 
-# Number entity mappings loaded from register metadata
-NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = _load_number_mappings()
+# Number entity mappings loaded from register metadata during setup
+NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
 SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     # Temperature sensors (Input Registers)
     "outside_temperature": {
@@ -1061,40 +1069,10 @@ SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Generate discrete entity mappings from register metadata and allow
-# manual overrides
-_gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
-for key in BINARY_SENSOR_ENTITY_MAPPINGS:
-    _gen_switch.pop(key, None)
-    _gen_select.pop(key, None)
-for key in SWITCH_ENTITY_MAPPINGS:
-    _gen_binary.pop(key, None)
-    _gen_select.pop(key, None)
-for key in SELECT_ENTITY_MAPPINGS:
-    _gen_binary.pop(key, None)
-    _gen_switch.pop(key, None)
-BINARY_SENSOR_ENTITY_MAPPINGS = {
-    **_gen_binary,
-    **BINARY_SENSOR_ENTITY_MAPPINGS,
-}
-SWITCH_ENTITY_MAPPINGS = {
-    **_gen_switch,
-    **SWITCH_ENTITY_MAPPINGS,
-}
-SELECT_ENTITY_MAPPINGS = {
-    **_gen_select,
-    **SELECT_ENTITY_MAPPINGS,
-}
+# Discrete entity mappings and special modes are populated during setup
 
-for mode, bit in SPECIAL_FUNCTION_MAP.items():
-    SWITCH_ENTITY_MAPPINGS[mode] = {
-        "icon": SPECIAL_MODE_ICONS.get(mode, "mdi:toggle-switch"),
-        "register": "special_mode",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": mode,
-        "bit": bit,
-    }
+# Aggregated entity mappings for all platforms
+ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {}
 
 
 def _extend_entity_mappings_from_registers() -> None:
@@ -1205,12 +1183,62 @@ def _extend_entity_mappings_from_registers() -> None:
                 )
 
 
-_extend_entity_mappings_from_registers()
+def _build_entity_mappings() -> None:
+    """Populate entity mapping dictionaries."""
 
-ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {
-    "number": NUMBER_ENTITY_MAPPINGS,
-    "sensor": SENSOR_ENTITY_MAPPINGS,
-    "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
-    "switch": SWITCH_ENTITY_MAPPINGS,
-    "select": SELECT_ENTITY_MAPPINGS,
-}
+    global NUMBER_ENTITY_MAPPINGS, BINARY_SENSOR_ENTITY_MAPPINGS
+    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, ENTITY_MAPPINGS
+
+    NUMBER_ENTITY_MAPPINGS = _load_number_mappings()
+
+    _gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
+    for key in BINARY_SENSOR_ENTITY_MAPPINGS:
+        _gen_switch.pop(key, None)
+        _gen_select.pop(key, None)
+    for key in SWITCH_ENTITY_MAPPINGS:
+        _gen_binary.pop(key, None)
+        _gen_select.pop(key, None)
+    for key in SELECT_ENTITY_MAPPINGS:
+        _gen_binary.pop(key, None)
+        _gen_switch.pop(key, None)
+    BINARY_SENSOR_ENTITY_MAPPINGS.update(_gen_binary)
+    SWITCH_ENTITY_MAPPINGS.update(_gen_switch)
+    SELECT_ENTITY_MAPPINGS.update(_gen_select)
+
+    for mode, bit in SPECIAL_FUNCTION_MAP.items():
+        SWITCH_ENTITY_MAPPINGS[mode] = {
+            "icon": SPECIAL_MODE_ICONS.get(mode, "mdi:toggle-switch"),
+            "register": "special_mode",
+            "register_type": "holding_registers",
+            "category": None,
+            "translation_key": mode,
+            "bit": bit,
+        }
+
+    _extend_entity_mappings_from_registers()
+
+    ENTITY_MAPPINGS = {
+        "number": NUMBER_ENTITY_MAPPINGS,
+        "sensor": SENSOR_ENTITY_MAPPINGS,
+        "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
+        "switch": SWITCH_ENTITY_MAPPINGS,
+        "select": SELECT_ENTITY_MAPPINGS,
+    }
+
+
+async def async_setup_entity_mappings(hass: HomeAssistant | None = None) -> None:
+    """Asynchronously build entity mappings."""
+
+    if hass is not None:
+        await hass.async_add_executor_job(_build_entity_mappings)
+    else:
+        _build_entity_mappings()
+
+
+try:  # pragma: no cover - handle partially initialized module
+    _HAS_HA = importlib.util.find_spec("homeassistant") is not None
+except (ImportError, ValueError):
+    _HAS_HA = False
+
+if not _HAS_HA or "pytest" in sys.modules:  # pragma: no cover - test env
+    _build_entity_mappings()

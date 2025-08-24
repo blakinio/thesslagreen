@@ -42,9 +42,11 @@ from .const import (
     DOMAIN,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
+    async_setup_options,
     migrate_unique_id,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
+from .entity_mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 from .registers.loader import load_registers
 
@@ -220,6 +222,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     # Migrate entity unique IDs (replace ':' in host with '-')
     await _async_migrate_unique_ids(hass, entry)
+
+    # Load option lists and entity mappings
+    await async_setup_options(hass)
+    await async_setup_entity_mappings(hass)
 
     # Preload platform modules in the executor to avoid blocking the event loop
     for platform in PLATFORM_DOMAINS:
