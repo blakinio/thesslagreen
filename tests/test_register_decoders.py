@@ -159,6 +159,19 @@ def float32_register() -> Register:
 
 
 @pytest.fixture
+def float64_register() -> Register:
+    """Register representing a 64-bit floating point value."""
+    return Register(
+        function="holding",
+        address=0,
+        name="float64_test",
+        access="rw",
+        length=4,
+        extra={"type": "float64"},
+    )
+
+
+@pytest.fixture
 def int32_register() -> Register:
     """Register representing a signed 32-bit integer."""
     return Register(
@@ -208,6 +221,26 @@ def uint64_register() -> Register:
         length=4,
         extra={"type": "uint64"},
     )
+
+
+@pytest.mark.parametrize("value", [0.0, 12.5, -7.25, 1e20])
+def test_register_float64_encode_decode(float64_register: Register, value: float) -> None:
+    raw = float64_register.encode(value)
+    assert float64_register.decode(raw) == pytest.approx(value)
+
+
+@pytest.mark.parametrize("value", [0.0, 12.5, -7.25, 1e20])
+def test_register_float64_little_endian(float64_register: Register, value: float) -> None:
+    reg_le = Register(
+        function="holding",
+        address=0,
+        name="float64_le_test",
+        access="rw",
+        length=4,
+        extra={"type": "float64", "endianness": "little"},
+    )
+    raw = reg_le.encode(value)
+    assert reg_le.decode(raw) == pytest.approx(value)
 
 
 @pytest.mark.parametrize("value", [12.5, -7.25])

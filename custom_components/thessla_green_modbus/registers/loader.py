@@ -103,6 +103,10 @@ class Register:
                 value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
                 value = int.from_bytes(data, "big", signed=False)
+            elif typ == "int64":
+                value = int.from_bytes(data, "big", signed=True)
+            elif typ == "uint64":
+                value = int.from_bytes(data, "big", signed=False)
             else:
                 value = int.from_bytes(data, "big", signed=False)
 
@@ -205,6 +209,10 @@ class Register:
                 data = int(raw_val).to_bytes(4, "big", signed=True)
             elif typ == "uint32":
                 data = int(raw_val).to_bytes(4, "big", signed=False)
+            elif typ == "int64":
+                data = int(raw_val).to_bytes(8, "big", signed=True)
+            elif typ == "uint64":
+                data = int(raw_val).to_bytes(8, "big", signed=False)
             else:
                 data = int(raw_val).to_bytes(self.length * 2, "big", signed=False)
 
