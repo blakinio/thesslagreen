@@ -49,9 +49,9 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     hass.services = Services()
     coordinator = DummyCoordinator()
 
-    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda h, e: coordinator)
+    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: coordinator)
     monkeypatch.setattr(
-        services, "async_extract_entity_ids", lambda h, call: call.data["entity_id"]
+        services, "async_extract_entity_ids", lambda _h, call: call.data["entity_id"]
     )
 
     await services.async_setup_services(hass)
