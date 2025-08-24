@@ -27,19 +27,16 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from ..schedule_helpers import bcd_to_time, time_to_bcd
-from .schema import (
-    RegisterDefinition,
-    RegisterList,
-    _normalise_function,
-    _normalise_name,
-)
+from .schema import RegisterList, _normalise_function, _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
 
 # Path to the bundled register definition file.  Tests patch this constant to
 # supply temporary files, therefore it must be a module level variable instead
 # of being computed inside helper functions.
-_REGISTERS_PATH = resources.files(__package__).joinpath("thessla_green_registers_full.json")
+_REGISTERS_PATH = Path(
+    str(resources.files(__package__).joinpath("thessla_green_registers_full.json"))
+)
 # Cache for the last (path, mtime, hash) triple of the registers file.  The
 # hash is only recomputed when either the path or ``mtime`` changes.
 _cached_file_info: tuple[str, float, str] | None = None
@@ -86,10 +83,10 @@ class RegisterDef:
 
             if self.extra and self.extra.get("type") == "string":
                 encoding = self.extra.get("encoding", "ascii")
-                data = bytearray()
+                buf = bytearray()
                 for word in raw_list:
-                    data.extend(word.to_bytes(2, "big"))
-                return data.rstrip(b"\x00").decode(encoding)
+                    buf.extend(word.to_bytes(2, "big"))
+                return bytes(buf).rstrip(b"\x00").decode(encoding)
 
             endianness = "big"
             if self.extra:
@@ -99,26 +96,26 @@ class RegisterDef:
 
             typ = self.extra.get("type") if self.extra else None
             if typ == "float32":
-                value = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+                decoded: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
-                value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+                decoded = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
             elif typ == "int32":
-                value = int.from_bytes(data, "big", signed=True)
+                decoded = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
-                value = int.from_bytes(data, "big", signed=False)
+                decoded = int.from_bytes(data, "big", signed=False)
             elif typ == "int64":
-                value = int.from_bytes(data, "big", signed=True)
+                decoded = int.from_bytes(data, "big", signed=True)
             elif typ == "uint64":
-                value = int.from_bytes(data, "big", signed=False)
+                decoded = int.from_bytes(data, "big", signed=False)
             else:
-                value = int.from_bytes(data, "big", signed=False)
+                decoded = int.from_bytes(data, "big", signed=False)
 
             if self.multiplier is not None:
-                value = value * self.multiplier
+                decoded = decoded * self.multiplier
             if self.resolution is not None:
-                steps = round(value / self.resolution)
-                value = steps * self.resolution
-            return value
+                steps = round(decoded / self.resolution)
+                decoded = steps * self.resolution
+            return decoded
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
@@ -254,12 +251,12 @@ class RegisterDef:
                 hours, minutes = int(value[0]), int(value[1])
             else:  # pragma: no cover - defensive
                 raise ValueError(f"Unsupported BCD value: {value}")
-            return time_to_bcd(time(hours, minutes))
+            return int(time_to_bcd(time(hours, minutes)))
 
         if self.extra and self.extra.get("aatt"):
             airflow, temp = (
                 value if isinstance(value, (list, tuple)) else (value["airflow"], value["temp"])
-            )  # type: ignore[index]
+            )
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
         raw: Any = value
@@ -303,7 +300,7 @@ try:  # pragma: no cover - defensive
     }
 except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
     _LOGGER.debug("Failed to load special modes: %s", err)
-    _SPECIAL_MODES_ENUM: dict[str, int] = {}
+    _SPECIAL_MODES_ENUM = {}
 except Exception as err:  # pragma: no cover - unexpected
     _LOGGER.exception("Unexpected error loading special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
@@ -315,30 +312,14 @@ except Exception as err:  # pragma: no cover - unexpected
 
 
 @lru_cache(maxsize=1)
-def _load_registers_from_file(path: Path, *, mtime: float, **_: Any) -> list[RegisterDef]:
-    """Load register definitions from ``path``.
-
-    ``mtime`` is included in the cache key so that the cached registers are
-    invalidated when the file's modification time changes.
 def _load_registers_from_file(
-    path: Path, *, file_hash: str = "", mtime: float
-) -> list[RegisterDef]:
-    """Load register definitions from ``path``.
-
-    ``file_hash`` and ``mtime`` are included in the cache key so that the JSON
-    file is only parsed again when its contents change.
-    """
-
-    try:
-        if not file_hash:
-            file_hash = _compute_file_hash(path, mtime)
     path: Path, *, mtime: float, file_hash: str | None = None
 ) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
     ``mtime`` is included in the cache key so that the file is reloaded only
     when its modification time changes. ``file_hash`` is accepted for backward
-    compatibility but otherwise unused.
+    compatibility but otherwise ignored.
     """
 
     try:
@@ -373,7 +354,9 @@ def _load_registers_from_file(
         elif enum_map:
             if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
                 enum_map = {int(k): v for k, v in enum_map.items()}
-            elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
+            elif all(
+                isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()
+            ):
                 enum_map = {int(v): k for k, v in enum_map.items()}
 
         multiplier = parsed.multiplier
@@ -407,35 +390,7 @@ def _load_registers_from_file(
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
-    """Return the SHA256 hash of ``path`` and cache the result."""
-
-    global _cached_file_info
-    path_str = str(path)
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
     """Return the SHA256 hash of ``path``.
-
-    The hash is cached based on ``path`` and ``mtime`` so reading the file can
-    be avoided when the file has not changed.
-    """
-
-    global _cached_file_info
-    path_str = str(path)
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
-        return _cached_file_info[2]
-
-    file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-    _cached_file_info = (path_str, mtime, file_hash)
-    return file_hash
-
-
-# Ensure clearing the LRU cache also resets the file hash cache
-_orig_load_cache_clear = _load_registers_from_file.cache_clear
-
-
-def _load_registers_cache_clear() -> None:
-    global _cached_file_info
-    _cached_file_info = None
-    _orig_load_cache_clear()
 
     The hash is cached using ``(path_str, mtime, hash)`` so the file is only
     read when its modification time changes.
@@ -450,9 +405,9 @@ def _load_registers_cache_clear() -> None:
     ):
         return _cached_file_info[2]
 
-    file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-    _cached_file_info = (path_str, mtime, file_hash)
-    return file_hash
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    _cached_file_info = (path_str, mtime, digest)
+    return digest
 
 
 def _get_file_info() -> tuple[float, str]:
@@ -462,89 +417,23 @@ def _get_file_info() -> tuple[float, str]:
     mtime = stat.st_mtime
     path_str = str(_REGISTERS_PATH)
 
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
-        return _cached_file_info[1], _cached_file_info[2]
-
-    file_hash = _compute_file_hash(_REGISTERS_PATH, mtime)
-    return mtime, file_hash
-# Ensure clearing the LRU cache also resets the file hash cache
-_orig_load_cache_clear = _load_registers_from_file.cache_clear
-
-
-def _load_registers_cache_clear() -> None:
-    global _cached_file_info
-    _cached_file_info = None
-    _orig_load_cache_clear()
-
-
-_load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
-
-
-def _get_file_info() -> tuple[float, str]:
-    """Return ``(mtime, hash)`` for the registers file using a cache."""
-
-    path = _REGISTERS_PATH
-    stat = path.stat()
-    mtime = stat.st_mtime
-    path_str = str(path)
-
-    global _cached_file_info
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
-        return mtime, _cached_file_info[2]
-
-    file_hash = _compute_file_hash(path, mtime)
-    return mtime, file_hash
-def _load_registers_cache_clear() -> None:
-    global _cached_file_info
-    stat = _REGISTERS_PATH.stat()
-    mtime = stat.st_mtime
-    path_str = str(_REGISTERS_PATH)
     if (
         _cached_file_info
         and _cached_file_info[0] == path_str
         and _cached_file_info[1] == mtime
     ):
-        return _cached_file_info[1], _cached_file_info[2]
+        return mtime, _cached_file_info[2]
 
     file_hash = _compute_file_hash(_REGISTERS_PATH, mtime)
     return mtime, file_hash
-    _cached_file_info = None
-    _orig_load_cache_clear()
-
-
-_load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
 
 
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    try:
-        mtime, _ = _get_file_info()
-    except Exception:  # pragma: no cover - defensive
-
     mtime, _ = _get_file_info()
     return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
-    mtime, file_hash = _get_file_info()
-    return _load_registers_from_file(
-        _REGISTERS_PATH, file_hash=file_hash, mtime=mtime
-    )
-    stat = _REGISTERS_PATH.stat()
-    mtime = stat.st_mtime
-    if not (
-        _cached_file_info
-        and _cached_file_info[0] == str(_REGISTERS_PATH)
-        and _cached_file_info[1] == mtime
-    ):
-        _compute_file_hash(_REGISTERS_PATH, mtime)
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=stat.st_mtime)
-    try:
-        mtime, file_hash = _get_file_info()
-    except OSError:
-        stat = _REGISTERS_PATH.stat()
-        mtime = stat.st_mtime
 
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
 
 def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
@@ -579,12 +468,7 @@ def get_registers_hash() -> str:
 
     try:
         return _get_file_info()[1]
-
-        stat = _REGISTERS_PATH.stat()
-        return _compute_file_hash(_REGISTERS_PATH, stat.st_mtime)
     except Exception:  # pragma: no cover - defensive
-        return _get_file_info()[1]
-    except OSError:  # pragma: no cover - defensive
         return ""
 
 
@@ -595,7 +479,6 @@ def _register_map() -> dict[str, RegisterDef]:
 
 def get_register_definition(name: str) -> RegisterDef:
     """Return definition for register ``name``."""
-
     return _register_map()[name]
 
 
@@ -637,30 +520,18 @@ def _group_reads(addresses: Iterable[int], max_block_size: int) -> list[tuple[in
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
-    from ..modbus_helpers import group_reads as _group_reads
+    from ..modbus_helpers import group_reads as _group_reads_fn
 
     plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}
 
     for reg in load_registers():
-        addresses = range(reg.address, reg.address + reg.length)
-        regs_by_fn.setdefault(reg.function, []).extend(addresses)
+        regs_by_fn.setdefault(reg.function, []).extend(
+            range(reg.address, reg.address + reg.length)
+        )
 
     for fn, addresses in regs_by_fn.items():
-        for start, length in _group_reads(addresses, max_block_size=max_block_size):
+        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans
-
-
-__all__ = [
-    "RegisterDef",
-    "RegisterDefinition",
-    "load_registers",
-    "clear_cache",
-    "get_all_registers",
-    "get_registers_by_function",
-    "get_register_definition",
-    "get_registers_hash",
-    "plan_group_reads",
-]
