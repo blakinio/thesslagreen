@@ -107,11 +107,12 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
     def mask_ip(ip_str: str) -> str:
         """Return a redacted representation of an IP address."""
         try:
-            ip = ipaddress.ip_address(ip_str)
+            ip_str_clean = ip_str.split("%", 1)[0]
+            ip = ipaddress.ip_address(ip_str_clean)
         except ValueError:
             return ip_str
         if isinstance(ip, ipaddress.IPv4Address):
-            parts = ip_str.split(".")
+            parts = ip_str_clean.split(".")
             return f"{parts[0]}.xxx.xxx.{parts[3]}"
         segments = ip.exploded.split(":")
         return ":".join([segments[0]] + ["xxxx"] * 6 + [segments[-1]])

@@ -18,6 +18,11 @@ registers_stub.plan_group_reads = lambda *args, **kwargs: []
 registers_stub.loader = SimpleNamespace(load=lambda *args, **kwargs: None)
 sys.modules["custom_components.thessla_green_modbus.registers"] = registers_stub
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
+sys.modules.setdefault("homeassistant.util", ModuleType("homeassistant.util"))
+sys.modules.setdefault("homeassistant.util.network", ModuleType("homeassistant.util.network"))
+config_flow_stub = ModuleType("custom_components.thessla_green_modbus.config_flow")
+config_flow_stub.CannotConnect = type("CannotConnect", (), {})
+sys.modules["custom_components.thessla_green_modbus.config_flow"] = config_flow_stub
 
 from custom_components.thessla_green_modbus.diagnostics import (
     _redact_sensitive_data,
@@ -54,6 +59,16 @@ def test_redact_ipv6_connection():
     redacted = _redact_sensitive_data(data)
 
     assert redacted["connection"]["host"] == ("2001:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:7334")
+
+
+def test_redact_ipv6_zone():
+    data = {"connection": {"host": "fe80::1%eth0"}}
+
+    redacted = _redact_sensitive_data(data)
+
+    assert redacted["connection"]["host"] == (
+        "fe80:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:0001"
+    )
 
 
 def test_original_diagnostics_unchanged():
