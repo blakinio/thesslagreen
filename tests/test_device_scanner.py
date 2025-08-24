@@ -10,7 +10,7 @@ from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.registers import get_registers_by_function
 from custom_components.thessla_green_modbus.scanner_core import (
     DeviceCapabilities,
-    DeviceInfo,
+    ScannerDeviceInfo,
     ThesslaGreenDeviceScanner,
 )
 from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
@@ -1323,7 +1323,9 @@ async def test_capability_rules_detect_heating_and_bypass():
 async def test_scan_device_includes_capabilities_in_device_info():
     """Detected capabilities are exposed on device info returned by scanner."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-    info = DeviceInfo(model="m", firmware="f", serial_number="s", capabilities=["heating_system"])
+    info = ScannerDeviceInfo(
+        model="m", firmware="f", serial_number="s", capabilities=["heating_system"]
+    )
     caps = DeviceCapabilities(heating_system=True)
 
     with patch.object(scanner, "scan", AsyncMock(return_value=(info, caps, {}))):

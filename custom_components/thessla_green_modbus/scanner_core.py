@@ -84,12 +84,15 @@ def _build_register_maps() -> None:
     )
 
 
+# Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
     if not REGISTER_DEFINITIONS:
         _build_register_maps()
+
+
 @dataclass
-class DeviceInfo(collections.abc.Mapping):  # pragma: no cover
+class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
 
     The attributes are populated dynamically and accessed via ``as_dict`` in
@@ -581,7 +584,7 @@ class ThesslaGreenDeviceScanner:
         if client is None:
             raise ConnectionException("Client not connected")
 
-        device = DeviceInfo()
+        device = ScannerDeviceInfo()
 
         # Basic firmware/serial information
         info_regs = await self._read_input(client, 0, 30) or []
