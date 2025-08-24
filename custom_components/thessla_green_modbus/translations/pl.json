@@ -1439,15 +1439,15 @@
           "selector": {
             "select": {
               "options": {
-                "thessla_green_modbus.modbus_baud_rate_115200": "115200",
+                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
+                "thessla_green_modbus.modbus_baud_rate_9600": "9600",
                 "thessla_green_modbus.modbus_baud_rate_14400": "14400",
                 "thessla_green_modbus.modbus_baud_rate_19200": "19200",
                 "thessla_green_modbus.modbus_baud_rate_28800": "28800",
                 "thessla_green_modbus.modbus_baud_rate_38400": "38400",
-                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
                 "thessla_green_modbus.modbus_baud_rate_57600": "57600",
                 "thessla_green_modbus.modbus_baud_rate_76800": "76800",
-                "thessla_green_modbus.modbus_baud_rate_9600": "9600"
+                "thessla_green_modbus.modbus_baud_rate_115200": "115200"
               }
             }
           }
@@ -1458,8 +1458,8 @@
           "selector": {
             "select": {
               "options": {
-                "thessla_green_modbus.modbus_parity_even": "Parzysta",
                 "thessla_green_modbus.modbus_parity_none": "Brak",
+                "thessla_green_modbus.modbus_parity_even": "Parzysta",
                 "thessla_green_modbus.modbus_parity_odd": "Nieparzysta"
               }
             }
@@ -1505,16 +1505,16 @@
           "selector": {
             "select": {
               "options": {
-                "thessla_green_modbus.special_mode_away": "Nieobecność",
-                "thessla_green_modbus.special_mode_bathroom": "Łazienka",
+                "thessla_green_modbus.special_mode_none": "Brak",
                 "thessla_green_modbus.special_mode_boost": "Boost",
                 "thessla_green_modbus.special_mode_eco": "Eco",
+                "thessla_green_modbus.special_mode_away": "Nieobecność",
+                "thessla_green_modbus.special_mode_sleep": "Sen",
                 "thessla_green_modbus.special_mode_fireplace": "Kominek",
                 "thessla_green_modbus.special_mode_hood": "Okap",
-                "thessla_green_modbus.special_mode_kitchen": "Kuchnia",
-                "thessla_green_modbus.special_mode_none": "Brak",
                 "thessla_green_modbus.special_mode_party": "Impreza",
-                "thessla_green_modbus.special_mode_sleep": "Sen",
+                "thessla_green_modbus.special_mode_bathroom": "Łazienka",
+                "thessla_green_modbus.special_mode_kitchen": "Kuchnia",
                 "thessla_green_modbus.special_mode_summer": "Lato",
                 "thessla_green_modbus.special_mode_winter": "Zima"
               }
