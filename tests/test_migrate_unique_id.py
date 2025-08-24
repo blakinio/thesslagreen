@@ -1,7 +1,4 @@
-import pytest
-
 from custom_components.thessla_green_modbus.const import DOMAIN, migrate_unique_id
-
 
 HOST = "fd00:1:2::1"
 PORT = 502
@@ -19,7 +16,7 @@ def test_migrate_unique_id_with_serial():
         port=PORT,
         slave_id=SLAVE,
     )
-    assert new_uid == f"{DOMAIN}_ABC123_{SLAVE}_{REGISTER_ADDRESS}"
+    assert new_uid == f"{DOMAIN}_{SLAVE}_{REGISTER_ADDRESS}"
 
 
 def test_migrate_unique_id_without_serial():
@@ -31,8 +28,7 @@ def test_migrate_unique_id_without_serial():
         port=PORT,
         slave_id=SLAVE,
     )
-    host_sanitized = HOST.replace(":", "-")
-    assert new_uid == f"{DOMAIN}_{host_sanitized}_{PORT}_{SLAVE}_{REGISTER_ADDRESS}"
+    assert new_uid == f"{DOMAIN}_{SLAVE}_{REGISTER_ADDRESS}"
 
 
 def test_migrate_unique_id_register_name_to_address():
@@ -44,4 +40,4 @@ def test_migrate_unique_id_register_name_to_address():
         port=PORT,
         slave_id=SLAVE,
     )
-    assert new_uid == f"{DOMAIN}_ABC123_{SLAVE}_{REGISTER_ADDRESS}"
+    assert new_uid == f"{DOMAIN}_{SLAVE}_{REGISTER_ADDRESS}"
