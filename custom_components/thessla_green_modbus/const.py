@@ -103,6 +103,38 @@ PLATFORMS = [
 ]
 
 
+# Migration helpers
+def migrate_unique_id(
+    unique_id: str,
+    *,
+    serial_number: str | None,
+    host: str,
+    port: int,
+    slave_id: int,
+) -> str:
+    """Migrate a legacy unique_id to the current format.
+
+    Legacy IDs were based on host, port and slave ID.  New IDs use the
+    device serial number when available.  This helper converts the old
+    IDs to the new format while preserving any entity key suffix.
+    """
+
+    new_unique_id = unique_id.replace(":", "-")
+
+    for unit in (AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE):
+        suffix = f"_{unit}"
+        if new_unique_id.endswith(suffix):
+            new_unique_id = new_unique_id[: -len(suffix)]
+            break
+
+    if serial_number and serial_number != "Unknown":
+        prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_"
+        if new_unique_id.startswith(prefix):
+            new_unique_id = f"{DOMAIN}_{serial_number}_{new_unique_id[len(prefix):]}"
+
+    return new_unique_id
+
+
 # Mapping of writable register names to Home Assistant number entity metadata
 # (unit, ranges, scaling factors, etc.)
 NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {

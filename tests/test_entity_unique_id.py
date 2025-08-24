@@ -1,9 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.const import CONF_HOST, CONF_PORT
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.thessla_green_modbus import async_setup_entry
 from custom_components.thessla_green_modbus.const import (
@@ -15,12 +14,26 @@ from custom_components.thessla_green_modbus.const import (
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
 
 
-def test_unique_id_colon_replaced():
-    """Entity unique_id should replace colons in host with dashes."""
+def test_unique_id_serial_based():
+    """Entity unique_id should use device serial when available."""
+    coordinator = MagicMock()
+    coordinator.host = "1.2.3.4"
+    coordinator.port = 502
+    coordinator.slave_id = 10
+    coordinator.device_info = {"serial_number": "ABC123"}
+    coordinator.get_device_info.return_value = {}
+
+    entity = ThesslaGreenEntity(coordinator, "test")
+    assert entity.unique_id == f"{DOMAIN}_ABC123_test"  # nosec
+
+
+def test_unique_id_host_fallback():
+    """Entity unique_id should fall back to host when serial missing."""
     coordinator = MagicMock()
     coordinator.host = "fd00:1:2::1"
     coordinator.port = 502
     coordinator.slave_id = 10
+    coordinator.device_info = {}
     coordinator.get_device_info.return_value = {}
 
     entity = ThesslaGreenEntity(coordinator, "test")
@@ -33,6 +46,7 @@ def test_unique_id_not_changed_by_airflow_unit():
     coordinator.host = "1.2.3.4"
     coordinator.port = 502
     coordinator.slave_id = 10
+    coordinator.device_info = {}
     coordinator.get_device_info.return_value = {}
     coordinator.entry = MagicMock()
     coordinator.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}
@@ -49,7 +63,7 @@ def test_unique_id_not_changed_by_airflow_unit():
 
 @pytest.mark.asyncio
 async def test_migrate_entity_unique_ids(hass):
-    """Existing registry entries with colons should be migrated."""
+    """Existing registry entries should migrate to serial-based format."""
 
     @dataclass
     class DummyEntry:
@@ -85,13 +99,31 @@ async def test_migrate_entity_unique_ids(hass):
     hass.services.async_register = AsyncMock()
     hass.data = {}
     host = "fd00:1:2::1"
-    entry = MockConfigEntry(
+    port = 502
+    slave_id = 10
+
+    @dataclass
+    class SimpleConfigEntry:
+        domain: str
+        data: dict
+        options: dict = field(default_factory=dict)
+        title: str = ""
+        entry_id: str = "1"
+
+        def add_update_listener(self, listener):
+            self._listener = listener
+            return listener
+
+        def async_on_unload(self, func):
+            return None
+
+    entry = SimpleConfigEntry(
         domain=DOMAIN,
-        data={CONF_HOST: host, CONF_PORT: 502, "slave_id": 10},
+        data={CONF_HOST: host, CONF_PORT: port, "slave_id": slave_id},
     )
 
     registry = FakeRegistry()
-    old_unique_id = f"{DOMAIN}_{host}_502_10_sensor"
+    old_unique_id = f"{DOMAIN}_{host}_{port}_{slave_id}_sensor"
     dummy_entry = DummyEntry("sensor.test", old_unique_id, "sensor", DOMAIN)
     registry.entities[dummy_entry.entity_id] = dummy_entry
 
@@ -111,11 +143,15 @@ async def test_migrate_entity_unique_ids(hass):
         coordinator = MagicMock()
         coordinator.async_config_entry_first_refresh = AsyncMock()
         coordinator.async_setup = AsyncMock(return_value=True)
+        coordinator.host = host
+        coordinator.port = port
+        coordinator.slave_id = slave_id
+        coordinator.device_info = {"serial_number": "ABC123"}
         mock_coordinator_class.return_value = coordinator
 
         assert await async_setup_entry(hass, entry)  # nosec
 
-    new_unique_id = old_unique_id.replace(":", "-")
+    new_unique_id = f"{DOMAIN}_ABC123_sensor"
     entity_id = registry.async_get_entity_id("sensor", DOMAIN, new_unique_id)
     assert entity_id is not None  # nosec
     assert registry.entities[entity_id].unique_id == new_unique_id  # nosec

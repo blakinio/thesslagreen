@@ -24,6 +24,9 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
+        serial = self.coordinator.device_info.get("serial_number")
+        if serial and serial != "Unknown":
+            return f"{DOMAIN}_{serial}_{self._key}"
         host = self.coordinator.host.replace(":", "-")
         return (
             f"{DOMAIN}_{host}_{self.coordinator.port}_"
