@@ -124,7 +124,7 @@ class DeviceInfo:  # pragma: no cover
 # Attributes of this dataclass are read dynamically at runtime to determine
 # which features the device exposes; static analysis may therefore mark them
 # as unused even though they are relied upon.
-@dataclass
+@dataclass(slots=True)
 class DeviceCapabilities:  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
 
@@ -161,11 +161,12 @@ class DeviceCapabilities:  # pragma: no cover
     sensor_ambient_temperature: bool = False  # pragma: no cover
     sensor_heating_temperature: bool = False  # pragma: no cover
     temperature_sensors_count: int = 0  # pragma: no cover
+    _as_dict_cache: dict[str, Any] | None = field(init=False, repr=False, default=None)
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
         """Set attribute and invalidate cached ``as_dict`` result."""
-        if name != "_as_dict_cache" and hasattr(self, "_as_dict_cache"):
-            object.__delattr__(self, "_as_dict_cache")
+        if name != "_as_dict_cache" and self._as_dict_cache is not None:
+            object.__setattr__(self, "_as_dict_cache", None)
         object.__setattr__(self, name, value)
 
     def as_dict(self) -> dict[str, Any]:
@@ -175,12 +176,12 @@ class DeviceCapabilities:  # pragma: no cover
         invocations when capabilities are accessed multiple times.
         """
 
-        if not hasattr(self, "_as_dict_cache"):
+        if self._as_dict_cache is None:
             data = asdict(self)
             for key, value in data.items():
                 if isinstance(value, set):
                     data[key] = sorted(value)
-            self._as_dict_cache = data
+            object.__setattr__(self, "_as_dict_cache", data)
         return self._as_dict_cache
 
     def items(self):
