@@ -16,16 +16,21 @@ HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 class DummyCoordinator:
     """Minimal coordinator stub capturing written values."""
 
-    def __init__(self) -> None:
+    def __init__(self, max_registers_per_request: int = 16) -> None:
         self.slave_id = 1
         self.writes = []
         self.available_registers = {"holding_registers": set()}
+        self.max_registers_per_request = max_registers_per_request
+        self.effective_batch = min(max_registers_per_request, 16)
 
     async def async_write_register(self, register_name, value, refresh=True) -> None:
-        definition = loader.get_register_definition(register_name)
-        encoded = definition.encode(value)
-        address = HOLDING_REGISTERS[register_name]
-        self.writes.append((address, encoded, self.slave_id))
+        address = HOLDING_REGISTERS.get(register_name, 0)
+        if isinstance(value, (list, tuple)):
+            for offset in range(0, len(value), self.effective_batch):
+                chunk = list(value)[offset : offset + self.effective_batch]
+                self.writes.append((address + offset, chunk, self.slave_id))
+        else:
+            self.writes.append((address, value, self.slave_id))
 
     async def async_request_refresh(self) -> None:  # pragma: no cover - no behaviour
         pass
@@ -73,36 +78,50 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
 
     writes = coordinator.writes
 
-    expected_start = loader.get_register_definition(
-        "schedule_monday_period1_start"
-    ).encode("06:30")
-    expected_end = loader.get_register_definition(
-        "schedule_monday_period1_end"
-    ).encode("08:00")
-    expected_flow = loader.get_register_definition(
-        "schedule_monday_period1_flow"
-    ).encode(55)
-    expected_temp = loader.get_register_definition(
-        "schedule_monday_period1_temp"
-    ).encode(21.5)
-
     assert writes[0] == (
         HOLDING_REGISTERS["schedule_monday_period1_start"],
-        expected_start,
+        "06:30",
         1,
     )  # nosec: B101
     assert writes[1] == (
         HOLDING_REGISTERS["schedule_monday_period1_end"],
-        expected_end,
+        "08:00",
         1,
     )  # nosec: B101
     assert writes[2] == (
         HOLDING_REGISTERS["schedule_monday_period1_flow"],
-        expected_flow,
+        55,
         1,
     )  # nosec: B101
     assert writes[3] == (
         HOLDING_REGISTERS["schedule_monday_period1_temp"],
-        expected_temp,
+        21.5,
         1,
     )  # nosec: B101
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("batch,expected_chunks", [(1, 8), (8, 1), (16, 1), (32, 1)])
+async def test_set_device_name_chunking(monkeypatch, batch, expected_chunks):
+    """set_device_name respects configured batch size."""
+    hass = SimpleNamespace()
+    hass.services = Services()
+    coordinator = DummyCoordinator(batch)
+
+    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: coordinator)
+    monkeypatch.setattr(
+        services, "async_extract_entity_ids", lambda _h, call: call.data["entity_id"]
+    )
+    monkeypatch.setattr(services, "ServiceCall", SimpleNamespace)
+
+    await services.async_setup_services(hass)
+    handler = hass.services.handlers["set_device_name"]
+
+    call = SimpleNamespace(data={"entity_id": ["climate.device"], "device_name": "ABCDEFGHIJKLMNOP"})
+
+    await handler(call)
+
+    assert len(coordinator.writes) == expected_chunks
+    for _addr, values, _ in coordinator.writes:
+        if isinstance(values, list):
+            assert len(values) <= coordinator.effective_batch

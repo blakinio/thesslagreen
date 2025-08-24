@@ -79,7 +79,7 @@ class FakeCoordinator:
         force_full_register_list=False,
         scan_uart_settings=False,
         deep_scan=False,
-        scan_max_block_size=0,
+        max_registers_per_request=0,
         entry=None,
         skip_missing_registers=False,
     ) -> None:

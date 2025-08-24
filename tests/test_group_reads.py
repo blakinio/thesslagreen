@@ -1,13 +1,18 @@
 """Tests for ``plan_group_reads`` utility."""
 
+import pytest
+
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
 import custom_components.thessla_green_modbus.registers.loader as loader
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.registers.loader import (
     ReadPlan,
     Register,
     plan_group_reads,
 )
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+try:
+    from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+except Exception:  # pragma: no cover - scanner requires HA deps
+    ThesslaGreenDeviceScanner = None
 from custom_components.thessla_green_modbus.scanner_helpers import MAX_BATCH_REGISTERS
 
 
@@ -16,9 +21,13 @@ def test_group_reads_merges_consecutive_addresses():
     assert group_reads(addresses) == [(0, 4), (10, 3)]
 
 
-def test_group_reads_respects_max_block_size():
-    addresses = list(range(22))
-    assert group_reads(addresses, max_block_size=16) == [(0, 16), (16, 6)]
+@pytest.mark.parametrize("size", [1, 8, 16, 32])
+def test_group_reads_respects_max_block_size(size):
+    addresses = list(range(40))
+    groups = group_reads(addresses, max_block_size=size)
+    assert max(length for _, length in groups) <= min(size, MAX_BATCH_REGISTERS)
+    if size > MAX_BATCH_REGISTERS:
+        assert groups == group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
 def test_plan_group_reads_merges_consecutive_addresses(monkeypatch):
     regs = [
         Register("input", addr, f"r{addr}", "r")
@@ -37,6 +46,7 @@ def test_plan_group_reads_respects_max_block_size(monkeypatch):
     ]
 
 
+@pytest.mark.skipif(ThesslaGreenDeviceScanner is None, reason="scanner unavailable")
 def test_scanner_respects_default_max_block_size():
     scanner = ThesslaGreenDeviceScanner("host", 502)
     addresses = list(range(MAX_BATCH_REGISTERS + 6))

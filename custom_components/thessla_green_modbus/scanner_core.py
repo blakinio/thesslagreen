@@ -232,7 +232,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-        scan_max_block_size: int = MAX_BATCH_REGISTERS,
+        max_registers_per_request: int = MAX_BATCH_REGISTERS,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         _ensure_register_maps()
@@ -247,7 +247,8 @@ class ThesslaGreenDeviceScanner:
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
-        self.max_block_size = scan_max_block_size
+        self.max_registers_per_request = max_registers_per_request
+        self.effective_batch = min(max_registers_per_request, MAX_BATCH_REGISTERS)
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -336,7 +337,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-        scan_max_block_size: int = MAX_BATCH_REGISTERS,
+        max_registers_per_request: int = MAX_BATCH_REGISTERS,
     ) -> Self:
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -351,7 +352,7 @@ class ThesslaGreenDeviceScanner:
             skip_known_missing,
             deep_scan,
             full_register_scan,
-            scan_max_block_size,
+            max_registers_per_request,
         )
         await self._async_setup()
 
@@ -542,7 +543,7 @@ class ThesslaGreenDeviceScanner:
         _ = max_gap
 
         if max_batch is None:
-            max_batch = self.max_block_size
+            max_batch = self.effective_batch
 
         # First, compute contiguous blocks using the generic ``group_reads``
         # helper.  ``max_gap`` is kept for API compatibility but is not

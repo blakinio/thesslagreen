@@ -82,7 +82,7 @@ from .config_flow import CannotConnect
 from .const import (
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
-    DEFAULT_SCAN_MAX_BLOCK_SIZE,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
@@ -120,7 +120,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         force_full_register_list: bool = False,
         scan_uart_settings: bool = False,
         deep_scan: bool = False,
-        scan_max_block_size: int = DEFAULT_SCAN_MAX_BLOCK_SIZE,
+        max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
         entry: ConfigEntry | None = None,
         skip_missing_registers: bool = False,
     ) -> None:
@@ -150,7 +150,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.deep_scan = deep_scan
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
-        self.scan_max_block_size = scan_max_block_size
+        self.max_registers_per_request = max_registers_per_request
+        self.effective_batch = min(max_registers_per_request, 16)
 
         # Connection management
         self.client: AsyncModbusTcpClient | None = None
@@ -246,7 +247,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     scan_uart_settings=self.scan_uart_settings,
                     skip_known_missing=self.skip_missing_registers,
                     deep_scan=self.deep_scan,
-                    scan_max_block_size=self.scan_max_block_size,
+                    max_registers_per_request=self.max_registers_per_request,
                 )
 
                 self.device_scan_result = await scanner.scan_device()
@@ -426,7 +427,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 addresses.extend(range(addr, addr + length))
 
             self._register_groups[key] = group_reads(
-                addresses, max_block_size=self.scan_max_block_size
+                addresses, max_block_size=self.effective_batch
             )
 
         _LOGGER.debug(
@@ -1195,12 +1196,30 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     try:
                         if definition.function == "03":
                             if encoded_values is not None:
-                                response = await self._call_modbus(
-                                    self.client.write_registers,
-                                    address=address,
-                                    values=[int(v) for v in encoded_values],
-                                    attempt=attempt,
-                                )
+                                success = True
+                                for offset in range(0, len(encoded_values), self.effective_batch):
+                                    chunk = encoded_values[offset : offset + self.effective_batch]
+                                    response = await self._call_modbus(
+                                        self.client.write_registers,
+                                        address=address + offset,
+                                        values=[int(v) for v in chunk],
+                                        attempt=attempt,
+                                    )
+                                    if response is None or response.isError():
+                                        success = False
+                                        break
+                                if not success:
+                                    if attempt == self.retry:
+                                        _LOGGER.error(
+                                            "Error writing to register %s: %s",
+                                            register_name,
+                                            response,
+                                        )
+                                        return False
+                                    _LOGGER.info(
+                                        "Retrying write to register %s", register_name
+                                    )
+                                    continue
                             else:
                                 response = await self._call_modbus(
                                     self.client.write_register,

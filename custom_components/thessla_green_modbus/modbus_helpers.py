@@ -189,6 +189,7 @@ def group_reads(addresses: Iterable[int], max_block_size: int = 16) -> List[Tupl
     tuples suitable for bulk Modbus read operations.
     """
 
+    max_block_size = min(max_block_size, 16)
     sorted_addresses = sorted(set(addresses))
     if not sorted_addresses:
         return []

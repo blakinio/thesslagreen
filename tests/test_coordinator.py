@@ -7,6 +7,7 @@ import os
 import sys
 import types
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -163,6 +164,8 @@ modules = {
     "pymodbus": pymodbus,
     "pymodbus.client": pymodbus_client,
     "pymodbus.exceptions": pymodbus_exceptions,
+    "homeassistant.util": util,
+    "homeassistant.util.network": network_module,
 }
 for name, module in modules.items():
     sys.modules[name] = module
@@ -315,6 +318,68 @@ async def test_async_write_multi_register_wrong_length(coordinator):
     assert result is False
     client.write_registers.assert_not_awaited()
     coordinator.async_request_refresh.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "batch,expected_calls",
+    [
+        (1, 4),
+        (8, 1),
+        (16, 1),
+        (32, 1),
+    ],
+)
+async def test_async_write_register_chunks(coordinator, batch, expected_calls, monkeypatch):
+    """Writes are chunked according to configured batch size."""
+    coordinator.max_registers_per_request = batch
+    coordinator.effective_batch = min(batch, 16)
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+    coordinator.async_request_refresh = AsyncMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = SimpleNamespace(length=4, address=0, function="03", encode=lambda v: v)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+
+    result = await coordinator.async_write_register("date_time_1", [1, 2, 3, 4])
+
+    assert result is True
+    assert client.write_registers.await_count == expected_calls
+    for call in client.write_registers.await_args_list:
+        assert len(call.kwargs["values"]) <= coordinator.effective_batch
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_write_register_truncates_over_16(coordinator, monkeypatch):
+    """Batch sizes over 16 are truncated to 16 when writing."""
+    coordinator.max_registers_per_request = 100
+    coordinator.effective_batch = 16
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+    coordinator.async_request_refresh = AsyncMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = SimpleNamespace(length=20, address=0, function="03", encode=lambda v: v)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+
+    result = await coordinator.async_write_register("large", list(range(20)))
+
+    assert result is True
+    assert client.write_registers.await_count == 2
+    assert [len(call.kwargs["values"]) for call in client.write_registers.await_args_list] == [16, 4]
+    coordinator.async_request_refresh.assert_called_once()
 
 
 def test_performance_stats(coordinator):
