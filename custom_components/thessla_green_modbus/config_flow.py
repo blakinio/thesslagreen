@@ -6,6 +6,7 @@ import asyncio
 import dataclasses
 import ipaddress
 import logging
+import socket
 import traceback
 from typing import Any, Awaitable, Callable
 
@@ -111,8 +112,10 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     # Validate port and slave id ranges
     if not 1 <= port <= 65535:
         raise vol.Invalid("invalid_port")
-    if not 0 <= slave_id <= 247:
-        raise vol.Invalid("invalid_slave")
+    if slave_id < 0:
+        raise vol.Invalid("invalid_slave_low")
+    if slave_id > 247:
+        raise vol.Invalid("invalid_slave_high")
 
     # Validate host is either an IP address or a valid hostname
     try:
@@ -215,6 +218,14 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         # Provide a more helpful message when scanner methods are missing
         raise CannotConnect("missing_method") from exc
     except OSError as exc:
+        if isinstance(exc, socket.gaierror):
+            _LOGGER.error("DNS resolution failed: %s", exc)
+            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+            raise CannotConnect("dns_failure") from exc
+        if isinstance(exc, ConnectionRefusedError):
+            _LOGGER.error("Connection refused: %s", exc)
+            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+            raise CannotConnect("connection_refused") from exc
         _LOGGER.error("Unexpected error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc

@@ -3,6 +3,7 @@
 
 import asyncio
 import sys
+import socket
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -874,8 +875,11 @@ async def test_validate_input_invalid_port(invalid_port: int):
     create_mock.assert_not_called()
 
 
-@pytest.mark.parametrize("invalid_slave", [-1, 248])
-async def test_validate_input_invalid_slave(invalid_slave: int):
+@pytest.mark.parametrize(
+    ("invalid_slave", "err_code"),
+    [(-1, "invalid_slave_low"), (248, "invalid_slave_high")],
+)
+async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
     """Test validate_input rejects Device IDs outside valid range."""
     from custom_components.thessla_green_modbus.config_flow import (
         validate_input,
@@ -894,7 +898,7 @@ async def test_validate_input_invalid_slave(invalid_slave: int):
         with pytest.raises(vol.Invalid) as err:
             await validate_input(None, data)
 
-    assert err.value.error_message == "invalid_slave"
+    assert err.value.error_message == err_code
     create_mock.assert_not_called()
 
 
@@ -1504,6 +1508,54 @@ async def test_validate_input_timeout_errors(exc):
 
     assert err.value.args[0] == "timeout"
     scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_dns_failure():
+    """DNS resolution failures should raise a specific error."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "example.com",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(side_effect=socket.gaierror()),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert err.value.args[0] == "dns_failure"
+
+
+async def test_validate_input_connection_refused():
+    """Connection refused errors should raise a specific error."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(side_effect=ConnectionRefusedError()),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert err.value.args[0] == "connection_refused"
 
 
 def test_device_capabilities_serialization():
