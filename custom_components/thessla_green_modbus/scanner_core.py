@@ -24,10 +24,6 @@ from .modbus_exceptions import (
 )
 from .modbus_helpers import _call_modbus, group_reads as _group_reads
 from .registers.loader import get_all_registers, registers_sha256
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_all_registers,
-    get_registers_hash,
-)
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,

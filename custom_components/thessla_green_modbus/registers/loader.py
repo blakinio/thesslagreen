@@ -42,6 +42,14 @@ _REGISTERS_PATH = Path(
 # Cache for file metadata keyed by path. Each entry stores ``(mtime, sha256)``
 # for the most recently seen state of that file.
 _cached_file_info: dict[str, tuple[float, str]] = {}
+
+
+def _compute_file_hash(path: Path, mtime: float) -> str:
+    """Return SHA256 digest for ``path`` and update the cache."""
+
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    _cached_file_info[str(path)] = (mtime, digest)
+    return digest
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -400,23 +408,22 @@ def _load_registers_from_file(
     return registers
 
 
-def registers_sha256(json_path: Path | str) -> str:
+def registers_sha256(json_path: Path | str | None = None) -> str:
     """Return the SHA256 hash of ``json_path``.
 
-    Results are cached based on the file path and modification time so repeated
-    calls for an unchanged file avoid reading from disk.
+    When ``json_path`` is not provided, the bundled register definition file is
+    used. The result is cached based on the file's modification time so
+    repeated calls for an unchanged file avoid reading from disk.
     """
 
-    path = Path(json_path)
+    path = Path(json_path) if json_path is not None else _REGISTERS_PATH
     mtime = path.stat().st_mtime
     path_str = str(path)
     cached = _cached_file_info.get(path_str)
     if cached and cached[0] == mtime:
         return cached[1]
 
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    _cached_file_info[path_str] = (mtime, digest)
-    return digest
+    return _compute_file_hash(path, mtime)
 
 
 def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
@@ -464,33 +471,6 @@ def get_registers_by_function(
     return [r for r in load_registers(json_path) if r.function == code]
 
 
-def registers_sha256(path: Path | str | None = None) -> str:
-    """Return the SHA256 digest for ``path``.
-
-    The result is cached based on the file's modification time so repeated
-    calls for an unchanged file avoid reading from disk.  When ``path`` is not
-    provided, the bundled register definition file is used.
-    """
-
-    if path is None:
-        path = _REGISTERS_PATH
-    try:
-        file_path = Path(path)
-        mtime = file_path.stat().st_mtime
-        path_str = str(file_path)
-        if (
-            _cached_file_info
-            and _cached_file_info[0] == path_str
-            and _cached_file_info[1] == mtime
-        ):
-            return _cached_file_info[2]
-        return _compute_file_hash(file_path, mtime)
-def get_registers_hash(json_path: Path | str | None = None) -> str:
-    """Return the hash of the register definition file."""
-    try:
-        return registers_sha256(json_path or _REGISTERS_PATH)
-    except Exception:  # pragma: no cover - defensive
-        return ""
 
 
 @lru_cache(maxsize=1)

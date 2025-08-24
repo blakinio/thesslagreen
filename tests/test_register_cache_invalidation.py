@@ -11,7 +11,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
 import custom_components.thessla_green_modbus.registers.loader as loader
 
 
-def test_cache_invalidation_on_content_change(tmp_path: Path) -> None:
+def test_cache_invalidation_on_content_change(tmp_path: Path, monkeypatch) -> None:
     """Changing file contents should invalidate cache."""
 
     tmp_json = tmp_path / "registers.json"
@@ -22,7 +22,7 @@ def test_cache_invalidation_on_content_change(tmp_path: Path) -> None:
     )
 
     clear_cache()
-    first_hash = registers_sha256()
+    first_hash = registers_sha256(_REGISTERS_PATH)
     first = load_registers()[0]
     tmp_json.write_text(loader._REGISTERS_PATH.read_text(), encoding="utf-8")
 
@@ -36,7 +36,7 @@ def test_cache_invalidation_on_content_change(tmp_path: Path) -> None:
     data["registers"][0]["description"] = "changed description"
     tmp_json.write_text(json.dumps(data), encoding="utf-8")
 
-    second_hash = registers_sha256()
+    second_hash = registers_sha256(_REGISTERS_PATH)
     updated = load_registers()[0]
     second_hash = loader.registers_sha256(tmp_json)
     updated = loader.load_registers(tmp_json)[0]

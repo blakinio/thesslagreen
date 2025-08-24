@@ -139,10 +139,9 @@ class RegisterDefinition(pydantic.BaseModel):
             RegisterType.F64: 4,
         }
 
-        if reg_type == RegisterType.STRING:
         if typ in {"uint", "int", "float"}:
             raise ValueError("type aliases are not allowed")
-        if typ == "string":
+        if reg_type == RegisterType.STRING or typ == "string":
             if self.length < 1:
                 raise ValueError("string type requires length >= 1")
         elif reg_type in type_lengths:
@@ -201,9 +200,6 @@ class RegisterDefinition(pydantic.BaseModel):
                 if idx > 15:
                     raise ValueError("bit index out of range")
                 name = bit.get("name") if isinstance(bit, dict) else str(bit)
-                if name and not re.fullmatch(r"[a-z0-9_]+", name):
-            for bit in self.bits:
-                name = bit.get("name") if isinstance(bit, dict) else bit
                 if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
                     raise ValueError("bit names must be snake_case")
 
