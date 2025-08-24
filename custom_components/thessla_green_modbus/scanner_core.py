@@ -134,10 +134,8 @@ class DeviceInfo(collections.abc.Mapping):  # pragma: no cover
 # Attributes of this dataclass are read dynamically at runtime to determine
 # which features the device exposes; static analysis may therefore mark them
 # as unused even though they are relied upon.
-@dataclass
-class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
 @dataclass(slots=True)
-class DeviceCapabilities:  # pragma: no cover
+class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
 
     Although capabilities are typically determined once during the initial scan,
