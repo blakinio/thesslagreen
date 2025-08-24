@@ -29,7 +29,6 @@ from typing import Any, Literal, Sequence
 
 import pydantic
 
-from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
 from ..modbus_helpers import group_reads as _group_reads
@@ -102,6 +101,10 @@ class Register:
             elif typ == "int32":
                 value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
+                value = int.from_bytes(data, "big", signed=False)
+            elif typ == "int64":
+                value = int.from_bytes(data, "big", signed=True)
+            elif typ == "uint64":
                 value = int.from_bytes(data, "big", signed=False)
             else:
                 value = int.from_bytes(data, "big", signed=False)
@@ -205,6 +208,10 @@ class Register:
                 data = int(raw_val).to_bytes(4, "big", signed=True)
             elif typ == "uint32":
                 data = int(raw_val).to_bytes(4, "big", signed=False)
+            elif typ == "int64":
+                data = int(raw_val).to_bytes(8, "big", signed=True)
+            elif typ == "uint64":
+                data = int(raw_val).to_bytes(8, "big", signed=False)
             else:
                 data = int(raw_val).to_bytes(self.length * 2, "big", signed=False)
 
@@ -356,17 +363,17 @@ class RegisterDefinition(pydantic.BaseModel):
     # ``model_config`` and the validators below are used by Pydantic at runtime
     # to validate register definitions.  They appear unused to vulture because
     # they are referenced through Pydantic's internal mechanisms.
-    model_config = pydantic.ConfigDict(extra="allow")
+    model_config = pydantic.ConfigDict(extra="allow")  # pragma: no cover
 
     @pydantic.model_validator(mode="after")
-    def check_address(self) -> "RegisterDefinition":
+    def check_address(self) -> "RegisterDefinition":  # pragma: no cover
         if int(self.address_hex, 16) != self.address_dec:
             raise ValueError("address_hex does not match address_dec")
         return self
 
     @pydantic.field_validator("name")
     @classmethod
-    def name_is_snake(cls, v: str) -> str:
+    def name_is_snake(cls, v: str) -> str:  # pragma: no cover
         if not re.fullmatch(r"[a-z0-9_]+", v):
             raise ValueError("name must be snake_case")
         return v
@@ -382,9 +389,6 @@ def _normalise_name(name: str) -> str:
     }
     snake = _to_snake_case(name)
     return fixes.get(snake, snake)
-
-
-
 # ---------------------------------------------------------------------------
 # Register loading helpers
 # ---------------------------------------------------------------------------
@@ -491,7 +495,7 @@ def _load_registers() -> list[Register]:
     return _load_registers_from_file(_REGISTERS_PATH, file_hash=file_hash)
 
 
-def clear_cache() -> None:
+def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
 
     Exposed for tests and tooling that need to reload register

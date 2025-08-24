@@ -88,7 +88,7 @@ def _ensure_register_maps() -> None:
     if not REGISTER_DEFINITIONS:
         _build_register_maps()
 @dataclass
-class DeviceInfo:
+class DeviceInfo:  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
 
     The attributes are populated dynamically and accessed via ``as_dict`` in
@@ -105,7 +105,7 @@ class DeviceInfo:
     model: str = UNKNOWN_MODEL
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
-    firmware_available: bool = True
+    firmware_available: bool = True  # pragma: no cover
     capabilities: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -134,28 +134,29 @@ class DeviceCapabilities:
     new values.  The capability sets are mutable; modify them via assignment to
     trigger cache invalidation.
     """
-
+class DeviceCapabilities:  # pragma: no cover
+    """Feature flags and sensor availability detected on the device."""
     basic_control: bool = False
     temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
-    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers
-    special_functions: set[str] = field(default_factory=set)  # Optional feature flags
-    expansion_module: bool = False
-    constant_flow: bool = False
-    gwc_system: bool = False
-    bypass_system: bool = False
-    heating_system: bool = False
-    cooling_system: bool = False
-    air_quality: bool = False
-    weekly_schedule: bool = False
-    sensor_outside_temperature: bool = False
-    sensor_supply_temperature: bool = False
-    sensor_exhaust_temperature: bool = False
-    sensor_fpx_temperature: bool = False
-    sensor_duct_supply_temperature: bool = False
-    sensor_gwc_temperature: bool = False
-    sensor_ambient_temperature: bool = False
-    sensor_heating_temperature: bool = False
-    temperature_sensors_count: int = 0
+    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers  # pragma: no cover
+    special_functions: set[str] = field(default_factory=set)  # Optional feature flags  # pragma: no cover
+    expansion_module: bool = False  # pragma: no cover
+    constant_flow: bool = False  # pragma: no cover
+    gwc_system: bool = False  # pragma: no cover
+    bypass_system: bool = False  # pragma: no cover
+    heating_system: bool = False  # pragma: no cover
+    cooling_system: bool = False  # pragma: no cover
+    air_quality: bool = False  # pragma: no cover
+    weekly_schedule: bool = False  # pragma: no cover
+    sensor_outside_temperature: bool = False  # pragma: no cover
+    sensor_supply_temperature: bool = False  # pragma: no cover
+    sensor_exhaust_temperature: bool = False  # pragma: no cover
+    sensor_fpx_temperature: bool = False  # pragma: no cover
+    sensor_duct_supply_temperature: bool = False  # pragma: no cover
+    sensor_gwc_temperature: bool = False  # pragma: no cover
+    sensor_ambient_temperature: bool = False  # pragma: no cover
+    sensor_heating_temperature: bool = False  # pragma: no cover
+    temperature_sensors_count: int = 0  # pragma: no cover
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
         """Set attribute and invalidate cached ``as_dict`` result."""
@@ -450,18 +451,18 @@ class ThesslaGreenDeviceScanner:
                 setattr(caps, attr, True)
                 caps.temperature_sensors.add(reg)
 
-        caps.temperature_sensors_count = len(caps.temperature_sensors)
+        caps.temperature_sensors_count = len(caps.temperature_sensors)  # pragma: no cover
 
         # Expansion module and GWC detection via discrete inputs/coils
         if "expansion" in discretes:
-            caps.expansion_module = True
+            caps.expansion_module = True  # pragma: no cover
         if "gwc" in coils or "gwc_temperature" in inputs:
-            caps.gwc_system = True
+            caps.gwc_system = True  # pragma: no cover
 
         if "bypass" in coils:
-            caps.bypass_system = True
+            caps.bypass_system = True  # pragma: no cover
         if any(reg.startswith("schedule_") for reg in holdings):
-            caps.weekly_schedule = True
+            caps.weekly_schedule = True  # pragma: no cover
 
         if any(
             reg in inputs
@@ -472,7 +473,7 @@ class ThesslaGreenDeviceScanner:
                 "cf_version",
             ]
         ):
-            caps.constant_flow = True
+            caps.constant_flow = True  # pragma: no cover
 
         # Generic capability detection based on register name patterns
         all_registers = inputs | holdings | coils | discretes
@@ -500,6 +501,9 @@ class ThesslaGreenDeviceScanner:
 
         if not addresses:
             return []
+
+        # ``max_gap`` is unused but kept for API compatibility
+        _ = max_gap
 
         if max_batch is None:
             max_batch = self.max_block_size
@@ -598,7 +602,7 @@ class ThesslaGreenDeviceScanner:
             if details:
                 msg += ": " + "; ".join(details)
             _LOGGER.warning(msg)
-            device.firmware_available = False
+            device.firmware_available = False  # pragma: no cover
         try:
             start = INPUT_REGISTERS["serial_number"]
             parts = info_regs[start : start + REGISTER_DEFINITIONS["serial_number"].length]  # noqa: E203

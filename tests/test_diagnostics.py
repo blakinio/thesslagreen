@@ -15,6 +15,7 @@ registers_stub.get_all_registers = lambda: []
 registers_stub.get_registers_hash = lambda: "hash"
 registers_stub.get_registers_by_function = lambda *args, **kwargs: []
 registers_stub.plan_group_reads = lambda *args, **kwargs: []
+registers_stub.loader = SimpleNamespace(load=lambda *args, **kwargs: None)
 sys.modules["custom_components.thessla_green_modbus.registers"] = registers_stub
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
 
@@ -190,6 +191,49 @@ async def test_unknown_registers_in_diagnostics():
     assert result["failed_addresses"] == scan_result["failed_addresses"]
     assert result["registers_hash"] == "hash"
     assert result["capabilities"] == {"fan": True}
+
+
+@pytest.mark.asyncio
+async def test_raw_registers_in_diagnostics():
+    """Ensure diagnostics include raw register dumps when available."""
+
+    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    scan_result = {
+        "raw_registers": {
+            "input_registers": {1: 10},
+            "holding_registers": {2: 20},
+        }
+    }
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = last_scan
+            self.device_scan_result = scan_result
+            self.data = {}
+            self.device_info = {}
+            self.available_registers = {}
+            self.statistics = {}
+            self.capabilities = SimpleNamespace(as_dict=lambda: {})
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}},
+        config=SimpleNamespace(language="en"),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(return_value={}),
+    ):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["raw_registers"] == scan_result["raw_registers"]
+    assert result["last_scan"] == last_scan.isoformat()
+    assert result["error_statistics"] == {"connection_errors": 0, "timeout_errors": 0}
 
 
 @pytest.mark.asyncio

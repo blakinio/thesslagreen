@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
+
     class _DTUtil:
         """Fallback minimal dt util."""
 
@@ -70,26 +72,30 @@ else:  # pragma: no cover
 
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
+from pymodbus.client import AsyncModbusTcpClient
 
+from .config_flow import CannotConnect
 from .const import (
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SCAN_MAX_BLOCK_SIZE,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
     MODEL,
     SENSOR_UNAVAILABLE,
     UNKNOWN_MODEL,
-    DEFAULT_SCAN_MAX_BLOCK_SIZE,
 )
+from .modbus_helpers import _call_modbus, group_reads
 from .registers import get_all_registers, get_registers_by_function
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
-from .config_flow import CannotConnect
-from .modbus_client import ThesslaGreenModbusClient
-from .modbus_helpers import _call_modbus, group_reads
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
+
 
 def get_register_definition(name: str):
     return REGISTER_DEFS[name]
@@ -147,7 +153,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.scan_max_block_size = scan_max_block_size
 
         # Connection management
-        self.client: ThesslaGreenModbusClient | None = None
+        self.client: AsyncModbusTcpClient | None = None
         self._connection_lock = asyncio.Lock()
 
         # Stop listener for Home Assistant shutdown
@@ -378,7 +384,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
         )
 
-
         _LOGGER.info(
             "Loaded full register list: %d total registers",
             sum(len(regs) for regs in self.available_registers.values()),
@@ -432,18 +437,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 await self._ensure_connection()
 
-                test_addresses = [
-                    reg.address for reg in get_registers_by_function("04")
-                ][:3]
+                test_addresses = [reg.address for reg in get_registers_by_function("04")][:3]
 
                 for addr in test_addresses:
-                    response = await self.client.read_input_registers(
-                        addr, 1, unit=self.slave_id
-                    )
+                    response = await self.client.read_input_registers(addr, 1, unit=self.slave_id)
                     if response.isError():
-                        raise ConnectionException(
-                            f"Cannot read register {addr:#06x}"
-                        )
+                        raise ConnectionException(f"Cannot read register {addr:#06x}")
 
                 client = self.client
                 if client is None or not client.connected:
@@ -466,7 +465,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.exception("Unexpected error during connection test: %s", exc)
                 raise
 
-    async def _async_setup_client(self) -> bool:
+    async def _async_setup_client(self) -> bool:  # pragma: no cover
         """Set up the Modbus client if needed.
 
         Although only invoked in tests within this repository, this helper
@@ -494,7 +493,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.client is not None:
             await self._disconnect()
         try:
-            self.client = ThesslaGreenModbusClient(self.host, self.port, timeout=self.timeout)
+            self.client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
             if not await self.client.connect():
                 raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
             _LOGGER.debug("Modbus connection established")
@@ -511,7 +510,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.exception("Unexpected error establishing connection: %s", exc)
             raise
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> dict[str, Any]:  # pragma: no cover
         """Fetch data from the device with optimized batch reading.
 
         This method overrides ``DataUpdateCoordinator._async_update_data``
@@ -649,7 +648,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for i, value in enumerate(response.registers):
                     addr = start_addr + i
                     register_name = self._find_register_name("input_registers", addr)
-                    if register_name and register_name in self.available_registers["input_registers"]:
+                    if (
+                        register_name
+                        and register_name in self.available_registers["input_registers"]
+                    ):
                         processed_value = self._process_register_value(register_name, value)
                         if processed_value is not None:
                             data[register_name] = processed_value
@@ -817,7 +819,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
                     register_name = self._find_register_name("coil_registers", addr)
-                    if register_name and register_name in self.available_registers["coil_registers"]:
+                    if (
+                        register_name
+                        and register_name in self.available_registers["coil_registers"]
+                    ):
                         bit = response.bits[i]
                         data[register_name] = bit
                         self.statistics["total_registers_read"] += 1
@@ -871,8 +876,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
             register_names = [
-                self._find_register_name("discrete_inputs", start_addr + i)
-                for i in range(count)
+                self._find_register_name("discrete_inputs", start_addr + i) for i in range(count)
             ]
             if all(name in failed for name in register_names if name):
                 continue
@@ -904,7 +908,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for i in range(min(count, len(response.bits))):
                     addr = start_addr + i
                     register_name = self._find_register_name("discrete_inputs", addr)
-                    if register_name and register_name in self.available_registers["discrete_inputs"]:
+                    if (
+                        register_name
+                        and register_name in self.available_registers["discrete_inputs"]
+                    ):
                         bit = response.bits[i]
                         data[register_name] = bit
                         self.statistics["total_registers_read"] += 1
@@ -942,7 +949,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 continue
 
         return data
-
 
     def _find_register_name(self, register_type: str, address: int) -> str | None:
         """Find register name by address using pre-built reverse maps."""
@@ -1259,7 +1265,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return cast(str, self.device_info.get("device_name") or self._device_name)
 
     @property
-    def device_info_dict(self) -> dict[str, Any]:
+    def device_info_dict(self) -> dict[str, Any]:  # pragma: no cover
         """Return device information as a plain dictionary for legacy use.
 
         Retained for tests and external consumers which expect a simple

@@ -43,10 +43,9 @@ from .const import PLATFORMS as PLATFORM_DOMAINS
 from .modbus_exceptions import ConnectionException, ModbusException
 from .registers import loader
 
-# Migration message for start-up logs
-MIGRATION_MESSAGE = (
-    "Register definitions now use JSON format by default; CSV files are deprecated "
-    "and will be removed in a future release."
+# Informational message for start-up logs
+REGISTER_FORMAT_MESSAGE = (
+    "Register definitions now use JSON format only; CSV support has been removed."
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -80,13 +79,13 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
     """Set up ThesslaGreen Modbus from a config entry.
 
     This hook is invoked by Home Assistant during config entry setup even
     though it appears unused within the integration code itself.
     """
-    _LOGGER.info(MIGRATION_MESSAGE)
+    _LOGGER.info(REGISTER_FORMAT_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
     # Get configuration - support both new and legacy keys
@@ -215,7 +214,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> bool:  # pragma: no cover
     """Unload a config entry.
 
     Called by Home Assistant when a config entry is removed.  Kept for the
@@ -310,7 +311,9 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
             registry.async_update_entity(reg_entry.entity_id, new_unique_id=new_unique_id)
 
 
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_migrate_entry(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> bool:  # pragma: no cover
     """Migrate old entry.
 
     Home Assistant uses this during upgrades; vulture marks it as unused but

@@ -1,6 +1,5 @@
 """Constants and register definitions for the ThesslaGreen Modbus integration."""
 
-import json
 from pathlib import Path
 from typing import Any, Dict, cast
 
@@ -179,6 +178,8 @@ def _load_json_option(filename: str) -> list[Any]:
     Returns an empty list if the file does not exist or cannot be parsed.
     ``filename`` should be relative to ``OPTIONS_PATH``.
     """
+
+    import json
 
     try:
         return cast(

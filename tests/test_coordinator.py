@@ -20,7 +20,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
 )
 from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers import get_registers_by_function  # noqa: E402,F811,E501
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -151,8 +151,6 @@ for name, module in modules.items():
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
@@ -567,7 +565,7 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
             self.connected = False
 
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusClient",
+        "custom_components.thessla_green_modbus.coordinator.AsyncModbusTcpClient",
         FakeClient,
     ):
         for _ in range(3):

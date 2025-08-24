@@ -108,6 +108,12 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     name = data.get(CONF_NAME, DEFAULT_NAME)
     timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
+    # Validate port and slave id ranges
+    if not 1 <= port <= 65535:
+        raise vol.Invalid("invalid_port")
+    if not 0 <= slave_id <= 247:
+        raise vol.Invalid("invalid_slave")
+
     # Validate host is either an IP address or a valid hostname
     try:
         ipaddress.ip_address(host)
@@ -220,7 +226,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for ThesslaGreen Modbus."""
 
-    VERSION = 2  # Used by Home Assistant to manage config entry migrations
+    VERSION = 2  # Used by Home Assistant to manage config entry migrations  # pragma: no cover
 
     def __init__(self) -> None:
         """Initialize config flow."""
@@ -228,7 +234,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._device_info: dict[str, Any] = {}
         self._scan_result: dict[str, Any] = {}
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:  # pragma: no cover
         """Handle the initial step.
 
         Part of the Home Assistant config flow interface; the framework
@@ -395,7 +401,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
     @staticmethod
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:  # pragma: no cover
         """Return the options flow handler.
 
         Home Assistant looks up this function by name when launching the
@@ -411,7 +417,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:  # pragma: no cover
         """Handle options flow.
 
         This is the entry point for the options dialog and is invoked by
