@@ -50,10 +50,10 @@ RegisterDefinition = _load_schema()
 
 
 EXPECTED = {
-    1: {"min": 5, "max": 15, "count": 8},
-    2: {"min": 0, "max": 21, "count": 16},
-    3: {"min": 0, "max": 8444, "count": 270},
-    4: {"min": 0, "max": 298, "count": 24},
+    "01": {"min": 5, "max": 15, "count": 8},
+    "02": {"min": 0, "max": 21, "count": 16},
+    "03": {"min": 0, "max": 8444, "count": 270},
+    "04": {"min": 0, "max": 298, "count": 24},
 }
 
 # Registers present in the vendor PDF but intentionally omitted in the JSON
@@ -225,7 +225,99 @@ def test_schema_rejects_string_with_invalid_length(length: int) -> None:
         "address_hex": "0x0",
         "access": "R",
         "length": length,
-        "extra": {"type": "string"},
+        "type": "string",
     }
     with pytest.raises(pydantic.ValidationError):
         RegisterDefinition.model_validate(bad)
+
+
+def test_function_coerces_to_string() -> None:
+    """Integer function codes are normalised to two-digit strings."""
+
+    reg = RegisterDefinition.model_validate(
+        {
+            "name": "x",
+            "function": 3,
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "access": "R",
+        }
+    )
+    assert reg.function == "03"
+
+
+def test_address_hex_mismatch() -> None:
+    """Mismatched decimal and hexadecimal addresses should fail."""
+
+    bad = {
+        "name": "x",
+        "function": "03",
+        "address_dec": 1,
+        "address_hex": "0x2",
+        "access": "R",
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
+
+
+def test_enum_keys_numeric() -> None:
+    """Enum keys must be numeric and values strings."""
+
+    bad = {
+        "name": "x",
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "access": "R",
+        "enum": {"on": "ON"},
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
+
+
+def test_bits_validation() -> None:
+    """Bits must have unique 0-15 indices and snake_case names."""
+
+    bad = {
+        "name": "x",
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "access": "R",
+        "bits": [
+            {"index": 0, "name": "ok"},
+            {"index": 0, "name": "dup"},
+        ],
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
+
+
+def test_readonly_function_access() -> None:
+    """Functions 01/02 must not allow write access."""
+
+    bad = {
+        "name": "x",
+        "function": "01",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "access": "R/W",
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
+
+
+def test_type_defaults_length() -> None:
+    """Type field should default length when absent."""
+
+    reg = RegisterDefinition.model_validate(
+        {
+            "name": "x",
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "access": "R",
+            "type": "u32",
+        }
+    )
+    assert reg.length == 2
