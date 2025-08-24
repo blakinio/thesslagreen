@@ -16,7 +16,7 @@ from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import get_registers_by_function
+from .registers.loader import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,10 +58,15 @@ async def async_setup_entry(
                 is_available = True
 
         if is_available:
+            if config["register_type"] == "holding_registers":
+                address = HOLDING_REGISTERS[register_name]
+            else:
+                address = COIL_REGISTERS[register_name]
             entities.append(
                 ThesslaGreenSwitch(
                     coordinator=coordinator,
                     key=key,
+                    address=address,
                     entity_config=config,
                 )
             )
@@ -94,10 +99,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         key: str,
+        address: int,
         entity_config: dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
-        super().__init__(coordinator, key)
+        super().__init__(coordinator, key, address, bit=entity_config.get("bit"))
 
         self.entity_config = entity_config
         self.register_name = entity_config["register"]
@@ -178,11 +184,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         attributes["register_name"] = self.register_name
         register_type = self.entity_config["register_type"]
 
-        if register_type == "holding_registers":
-            register_address = HOLDING_REGISTERS.get(self.register_name, 0)
-        else:
-            register_address = COIL_REGISTERS.get(self.register_name, 0)
-
+        register_address = self._address if self._address is not None else 0
         attributes["register_address"] = f"0x{register_address:04X}"
         attributes["register_type"] = register_type
 

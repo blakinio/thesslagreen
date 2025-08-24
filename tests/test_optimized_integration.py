@@ -11,7 +11,13 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.const import (
+    SENSOR_UNAVAILABLE,
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+)
 
 # Setup logging for tests
 logging.basicConfig(level=logging.DEBUG)
@@ -123,6 +129,12 @@ class TestThesslaGreenIntegration:
             },
             "coil_registers": {"power_supply_fans", "bypass", "gwc"},
             "discrete_inputs": {"expansion", "contamination_sensor"},
+        }
+        coordinator._register_maps = {
+            "input_registers": INPUT_REGISTERS,
+            "holding_registers": HOLDING_REGISTERS,
+            "coil_registers": COIL_REGISTERS,
+            "discrete_inputs": DISCRETE_INPUT_REGISTERS,
         }
 
         return coordinator
@@ -578,6 +590,12 @@ class TestThesslaGreenClimate:
             "special_mode": 0,
         }
         coordinator.async_write_register = AsyncMock(return_value=True)
+        coordinator._register_maps = {
+            "input_registers": INPUT_REGISTERS,
+            "holding_registers": HOLDING_REGISTERS,
+            "coil_registers": COIL_REGISTERS,
+            "discrete_inputs": DISCRETE_INPUT_REGISTERS,
+        }
         coordinator.async_request_refresh = AsyncMock()
         return coordinator
 

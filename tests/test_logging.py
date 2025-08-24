@@ -40,8 +40,8 @@ async def test_call_modbus_logs(caplog):
         for r in caplog.records
         if r.levelno == logging.INFO
     )
-    assert any("Modbus request" in r.message for r in caplog.records)
-    assert any("Modbus response" in r.message for r in caplog.records)
+    assert any("Modbus request" in r.message and "**" in r.message for r in caplog.records)
+    assert any("Modbus response" in r.message and "**" in r.message for r in caplog.records)
 
 
 async def test_read_retries_logged(monkeypatch, caplog):

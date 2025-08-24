@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
-from custom_components.thessla_green_modbus.registers import get_all_registers
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_all_registers,
+)
 from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS
 from custom_components.thessla_green_modbus.const import DOMAIN
 

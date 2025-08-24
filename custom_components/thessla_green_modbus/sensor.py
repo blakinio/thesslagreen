@@ -57,7 +57,10 @@ async def async_setup_entry(
 
         # Check if this register is available on the device
         if register_name in coordinator.available_registers.get(register_type, set()):
-            entities.append(ThesslaGreenSensor(coordinator, register_name, sensor_def))
+            address = coordinator._register_maps[register_type][register_name]
+            entities.append(
+                ThesslaGreenSensor(coordinator, register_name, address, sensor_def)
+            )
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
             if is_temp:
                 temp_created += 1
@@ -108,10 +111,11 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator, register_name)
+        super().__init__(coordinator, register_name, address)
 
         self._register_name = register_name
         self._sensor_def = sensor_definition

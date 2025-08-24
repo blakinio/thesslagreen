@@ -67,7 +67,9 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus.sensor import SENSOR_DEFINITIONS  # noqa: E402
-from custom_components.thessla_green_modbus.registers import get_registers_by_function  # noqa: E402
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)  # noqa: E402
 
 INPUT_REGISTERS = {r.name for r in get_registers_by_function("04")}
 HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}

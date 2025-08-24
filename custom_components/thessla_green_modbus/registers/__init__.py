@@ -1,19 +1,7 @@
-"""Register definitions for the ThesslaGreen Modbus integration."""
+"""Helpers for loading ThesslaGreen register definitions.
 
-from __future__ import annotations
+Functionality is provided by the ``loader`` module; import helpers from
+``custom_components.thessla_green_modbus.registers.loader``.
+"""
 
-from .loader import (
-    Register,
-    get_all_registers,
-    get_registers_hash,
-    get_registers_by_function,
-    plan_group_reads,
-)
-
-__all__ = [
-    "Register",
-    "get_all_registers",
-    "get_registers_hash",
-    "get_registers_by_function",
-    "plan_group_reads",
-]
+__all__ = []
