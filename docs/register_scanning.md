@@ -28,17 +28,11 @@ primarily for debugging or development purposes.
    pytest tests/test_register_loader.py
    ```
 
-4. (Opcjonalnie) wygeneruj moduł `registers.py` na potrzeby zewnętrznych narzędzi:
-
-   ```bash
-   python tools/generate_registers.py
-   ```
-
-5. Zaktualizuj tłumaczenia w `custom_components/thessla_green_modbus/translations/en.json` i `pl.json`,
+4. Zaktualizuj tłumaczenia w `custom_components/thessla_green_modbus/translations/en.json` i `pl.json`,
    dodając nowe klucze i usuwając nieużywane. Uruchom `pytest tests/test_unused_translations.py`, aby
    upewnić się, że tłumaczenia są aktualne.
-6. Do commitu dodaj zmodyfikowany plik JSON.
-7. Jeżeli dany rejestr ma charakter stricte techniczny lub konfiguracyjny i nie powinien być
+5. Do commitu dodaj zmodyfikowany plik JSON.
+6. Jeżeli dany rejestr ma charakter stricte techniczny lub konfiguracyjny i nie powinien być
    eksponowany jako encja, dopisz jego nazwę do stałej `INTENTIONAL_OMISSIONS` w pliku
    `tests/test_register_coverage.py`.
 

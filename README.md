@@ -497,21 +497,6 @@ python3 tools/cleanup_old_entities.py \
 - 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Generowanie `registers.py` (opcjonalne)
-Integracja korzysta bezpośrednio z pliku
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
-który stanowi jedyne źródło prawdy o rejestrach. Skrypt
-`tools/generate_registers.py` może wygenerować pomocniczy moduł
-`custom_components/thessla_green_modbus/registers.py` dla zewnętrznych
-narzędzi. Plik ten jest ignorowany przez Git (`.gitignore`) i nie powinien być
-przechowywany w repozytorium. Mapę można zweryfikować skryptem
-`tools/validate_registers.py`.
-
-```bash
-python tools/generate_registers.py  # jeśli potrzebujesz statycznej mapy
-python tools/validate_registers.py  # opcjonalna walidacja
-```
-
 ### Validate translations
 Ensure translation files are valid JSON:
 
@@ -557,13 +542,7 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 pytest tests/test_register_loader.py
 ```
 
-4. (Opcjonalnie) wygeneruj moduł `registers.py` dla dodatkowych narzędzi:
-
-```bash
-python tools/generate_registers.py
-```
-
-5. Dołącz zmieniony plik JSON do commitu.
+4. Dołącz zmieniony plik JSON do commitu.
 
 ### Migracja z CSV na JSON
 

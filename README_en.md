@@ -276,19 +276,6 @@ only for diagnostic purposes.
 - 💡 [Feature requests](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Generating `registers.py` (optional)
-The integration reads register definitions directly from
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
-which is the single source of truth. The script `tools/generate_registers.py`
-can create a helper `custom_components/thessla_green_modbus/registers.py` module
-for external tools. The generated file is ignored via `.gitignore` and should
-not be committed. You can validate the mapping with `tools/validate_registers.py`.
-
-```bash
-python tools/generate_registers.py  # if a static mapping is required
-python tools/validate_registers.py  # optional validation
-```
-
 ### Validate translations
 Ensure translation files contain valid JSON:
 

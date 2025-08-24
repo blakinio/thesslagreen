@@ -53,14 +53,6 @@ repos:
         pass_filenames: false
   - repo: local
     hooks:
-      - id: generate-registers
-        name: Ensure registers.py is up to date
-        entry: >
-          bash -c 'python tools/generate_registers.py &&
-                   git diff --exit-code custom_components/thessla_green_modbus/registers.py'
-        language: system
-        pass_filenames: false
-        always_run: true
       - id: validate-registers
         name: Validate Modbus register coverage
         entry: python tools/validate_registers.py
