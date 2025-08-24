@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped minimum Home Assistant version to 2025.1.0
 - Regenerated Modbus register definitions from CSV and updated coverage test
 - Assigned new unique IDs for m³/h airflow sensors
+- Simplified runtime dependencies; only require `pymodbus>=3.5.0`
 
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient
