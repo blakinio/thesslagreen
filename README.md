@@ -153,7 +153,8 @@ Każdy wpis w sekcji `registers` zawiera m.in. pola:
 - `function` – kod funkcji Modbus (`01`–`04`)
 - `address_dec` / `address_hex` – adres rejestru
 - `name` – unikalna nazwa w formacie snake_case
-- `description` – opis z dokumentacji
+- `description` – opis z dokumentacji (język polski)
+- `description_en` – opis w języku angielskim
 - `access` – tryb dostępu (`R`/`W`)
 
 Opcjonalnie można określić `unit`, `enum`, `multiplier`, `resolution` oraz inne
@@ -535,7 +536,8 @@ Każdy wpis w pliku to obiekt z polami:
   "address_dec": 4097,
   "access": "rw",
   "name": "mode",
-  "description": "Work mode"
+  "description": "Tryb pracy",
+  "description_en": "Work mode"
 }
 ```
 
@@ -568,7 +570,7 @@ logach. Aby ręcznie przekonwertować dane:
 
 1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
 2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-   z polami `function`, `address_dec`, `address_hex`, `name`, `description` i `access`.
+   z polami `function`, `address_dec`, `address_hex`, `name`, `description`, `description_en` i `access`.
 3. Zachowaj sortowanie według `function` i `address_dec` oraz format liczbowy (`0x` dla wartości hex).
 4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych
    rejestrów.

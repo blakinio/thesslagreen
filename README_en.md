@@ -315,7 +315,8 @@ Each entry in the file is an object with fields:
   "address_dec": 4097,
   "access": "rw",
   "name": "mode",
-  "description": "Work mode"
+  "description": "Tryb pracy",
+  "description_en": "Work mode"
 }
 ```
 
@@ -324,7 +325,7 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 ### Adding new registers
 
 1. Edit `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` and append a new object
-   with the required fields.
+   with the required fields (`function`, `address_dec`, `address_hex`, `name`, `description`, `description_en`, `access`).
 2. Ensure addresses are unique and remain sorted.
 3. Run the validation test:
 
