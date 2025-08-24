@@ -9,13 +9,15 @@ new capabilities while keeping the validation logic focused and explicit.
 
 Key features implemented:
 
-* ``function`` and ``address_dec`` may be provided as either integers or
-  strings (decimal or hexadecimal).  Values are normalised to integers and a
-  canonical hexadecimal representation is stored in ``address_hex``.
+* ``function`` accepts integers or strings and is normalised to a two digit
+  string (``"01"`` … ``"04"``).
+* ``address_dec`` may be provided as either an integer or string.  A canonical
+  ``0x`` prefixed form is stored in ``address_hex`` and the two representations
+  are cross‑checked for consistency.
 * ``length`` accepts ``count`` as an alias.
-* Shorthand type identifiers (``u16``, ``i16`` … ``f64``, ``string``,
-  ``bitmask``) are mapped to the existing ``extra["type"]`` representation and
-  the expected register word count is enforced.
+* A top level ``type`` field is supported.  It accepts shorthand identifiers
+  (``u16``, ``i16`` … ``f64``, ``string``, ``bitmask``) and the expected
+  register count is enforced or defaulted.
 """
 
 import re
@@ -104,7 +106,7 @@ _TYPE_LENGTHS: dict[str, int | None] = {
 class RegisterDefinition(pydantic.BaseModel):
     """Schema describing a raw register definition from JSON."""
 
-    function: int
+    function: str
     address_dec: int
     address_hex: str
     name: str
@@ -124,6 +126,7 @@ class RegisterDefinition(pydantic.BaseModel):
     length: int = 1
     bcd: bool = False
     bits: list[Any] | None = None
+    type: RegisterType | None = None
 
     model_config = pydantic.ConfigDict(extra="allow")  # pragma: no cover
 
@@ -134,76 +137,78 @@ class RegisterDefinition(pydantic.BaseModel):
     @pydantic.model_validator(mode="before")
     @classmethod
     def _normalise_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
-        """Normalise raw input from JSON.
+        """Normalise raw input from JSON."""
 
-        * ``function`` and ``address_dec`` accept ``int`` or ``str`` (decimal or
-          hexadecimal) and are converted to integers.  ``address_hex`` is
-          canonicalised to a ``0x`` prefixed lowercase string.
-        * ``count`` may be supplied instead of ``length``.
-        * A top level ``type`` key is translated into ``extra['type']`` and the
-          expected ``length`` is enforced or filled in.
-        """
-
-        # Allow ``count`` as an alias for ``length``
         if "count" in data and "length" not in data:
             data["length"] = data.pop("count")
 
-        # Normalise function code
+        # Normalise function code -> two digit string
         if "function" in data:
-            data["function"] = _normalise_function(data["function"])
+            fn_int = _normalise_function(data["function"])
+            data["function"] = f"{fn_int:02d}"
 
-        # Normalise address
-        if "address_dec" in data:
-            addr_dec = data["address_dec"]
+        # Normalise address_dec
+        addr_dec = data.get("address_dec")
+        if addr_dec is not None:
             if isinstance(addr_dec, str):
                 addr_dec = int(addr_dec, 0)
             elif not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
                 raise TypeError("address_dec must be int or str")
             data["address_dec"] = addr_dec
 
-            # Canonical hex representation
-            addr_hex = data.get("address_hex")
-            if isinstance(addr_hex, int):
-                addr_hex = hex(addr_hex)
-            elif isinstance(addr_hex, str):
-                addr_hex = hex(int(addr_hex, 0))
-            else:
-                addr_hex = hex(addr_dec)
-            data["address_hex"] = addr_hex
+        # Normalise address_hex
+        addr_hex = data.get("address_hex")
+        if addr_hex is not None:
+            if isinstance(addr_hex, str):
+                addr_hex = addr_hex.lower()
+                addr_hex = addr_hex[2:] if addr_hex.startswith("0x") else addr_hex
+                addr_hex_int = int(addr_hex, 16)
+            elif isinstance(addr_hex, int) and not isinstance(addr_hex, bool):
+                addr_hex_int = addr_hex
+            else:  # pragma: no cover - defensive
+                raise TypeError("address_hex must be str or int")
+            data["address_hex"] = hex(addr_hex_int)
+        elif addr_dec is not None:
+            data["address_hex"] = hex(addr_dec)
 
-        # Map shorthand ``type`` field
+        # Handle type field (may be top level or inside extra)
         typ = data.pop("type", None)
+        extra = data.get("extra")
+        if typ is None and isinstance(extra, dict):
+            typ = extra.pop("type", None)
+            if not extra:
+                data.pop("extra")
+        elif extra is None:
+            extra = {}
         if typ is not None:
-            extra = data.setdefault("extra", {})
-            extra["type"] = typ
+            data["type"] = typ
+        if extra:
+            data["extra"] = extra
 
-        # Validate type and enforce/default length
-        extra = data.get("extra") or {}
-        typ = extra.get("type")
+        # Enforce/default length based on type
+        typ = data.get("type")
         if typ is not None:
             if typ in {"uint", "int", "float"}:
                 raise ValueError("type aliases are not allowed")
-
-            if typ in _TYPE_LENGTHS:
-                expected = _TYPE_LENGTHS[typ]
-                if expected is None:  # string type
-                    length = data.get("length")
-                    if length is None or length < 1:
-                        raise ValueError("string type requires length >= 1")
+            expected = _TYPE_LENGTHS.get(typ)
+            if expected is None:  # string type
+                length = data.get("length")
+                if length is None or length < 1:
+                    raise ValueError("string type requires length >= 1")
+            else:
+                if "length" in data:
+                    if data["length"] != expected:
+                        raise ValueError("length does not match type")
                 else:
-                    if "length" in data:
-                        if data["length"] != expected:
-                            raise ValueError("length does not match type")
-                    else:
-                        data["length"] = expected
+                    data["length"] = expected
 
         return data
 
     @pydantic.field_validator("function")
     @classmethod
-    def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
-        if not 1 <= v <= 4:
-            raise ValueError("function code must be between 1 and 4")
+    def _check_function(cls, v: str) -> str:  # pragma: no cover - defensive
+        if v not in {"01", "02", "03", "04"}:
+            raise ValueError("function code must be between 01 and 04")
         return v
 
     # ------------------------------------------------------------------
@@ -215,39 +220,52 @@ class RegisterDefinition(pydantic.BaseModel):
         if int(self.address_hex, 16) != self.address_dec:
             raise ValueError("address_hex does not match address_dec")
 
-        typ = (self.extra or {}).get("type")
-        if typ is not None:
+        if self.type is not None:
             try:
-                reg_type = RegisterType(typ)
-            except ValueError as err:
-                raise ValueError(f"unsupported type: {typ}") from err
-        else:
-            reg_type = None
-
-        type_lengths = {
-            RegisterType.U16: 1,
-            RegisterType.I16: 1,
-            RegisterType.BITMASK: 1,
-            RegisterType.U32: 2,
-            RegisterType.I32: 2,
-            RegisterType.F32: 2,
-            RegisterType.U64: 4,
-            RegisterType.I64: 4,
-            RegisterType.F64: 4,
-        }
-
-        if typ in {"uint", "int", "float"}:
-            raise ValueError("type aliases are not allowed")
-        if reg_type == RegisterType.STRING or typ == "string":
-            if self.length < 1:
-                raise ValueError("string type requires length >= 1")
-        elif reg_type in type_lengths:
-            expected = type_lengths[reg_type]
-            if self.length != expected:
+                reg_type = RegisterType(self.type)
+            except ValueError as err:  # pragma: no cover - defensive
+                raise ValueError(f"unsupported type: {self.type}") from err
+            expected = _TYPE_LENGTHS.get(self.type)
+            if expected is None:
+                if self.length < 1:
+                    raise ValueError("string type requires length >= 1")
+            elif self.length != expected:
                 raise ValueError("length does not match type")
 
-        if self.function in {1, 2} and self.access not in {"R", "R/-"}:
+        if self.function in {"01", "02"} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
+
+        if self.enum is not None:
+            if not isinstance(self.enum, dict):
+                raise ValueError("enum must be a mapping")
+            for k, v in self.enum.items():
+                try:
+                    int(k)
+                except (TypeError, ValueError):
+                    raise ValueError("enum keys must be numeric")
+                if not isinstance(v, str):
+                    raise ValueError("enum values must be strings")
+
+        if self.bits is not None:
+            if len(self.bits) > 16:
+                raise ValueError("bits exceed 16 entries")
+            seen: set[int] = set()
+            for bit in self.bits:
+                if not isinstance(bit, dict):
+                    raise ValueError("bits entries must be objects")
+                if "index" not in bit or "name" not in bit:
+                    raise ValueError("bits entries must have index and name")
+                idx = bit["index"]
+                name = bit["name"]
+                if not isinstance(idx, int) or isinstance(idx, bool):
+                    raise ValueError("bit index must be an integer")
+                if not 0 <= idx <= 15:
+                    raise ValueError("bit index out of range")
+                if idx in seen:
+                    raise ValueError("bit indices must be unique")
+                seen.add(idx)
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError("bit name must be snake_case")
 
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("min greater than max")
@@ -256,34 +274,6 @@ class RegisterDefinition(pydantic.BaseModel):
                 raise ValueError("default below min")
             if self.max is not None and self.default > self.max:
                 raise ValueError("default above max")
-
-        if self.bits is not None:
-            if not (self.extra and self.extra.get("bitmask")):
-                raise ValueError("bits provided without extra.bitmask")
-            if len(self.bits) > 16:
-                raise ValueError("bits exceed 16 entries")
-
-            seen_indices: set[int] = set()
-            for bit in self.bits:
-                if not isinstance(bit, dict):
-                    raise ValueError("bits entries must be objects")
-                if "index" not in bit or "name" not in bit:
-                    raise ValueError("bits entries must have index and name")
-
-                index = bit["index"]
-                name = bit["name"]
-
-                if not isinstance(index, int) or isinstance(index, bool):
-                    raise ValueError("bit index must be an integer")
-                if not 0 <= index <= 15:
-                    raise ValueError("bit index out of range")
-                if index in seen_indices:
-                    raise ValueError("bit indices must be unique")
-                seen_indices.add(index)
-
-                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("bit name must be snake_case")
-
             bitmask_val = self.extra.get("bitmask") if self.extra else None
             mask_int: int | None = None
             if isinstance(bitmask_val, str):
@@ -294,7 +284,6 @@ class RegisterDefinition(pydantic.BaseModel):
             elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
                 mask_int = bitmask_val
 
-            if mask_int is not None and len(self.bits) > mask_int.bit_length():
             if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
                 raise ValueError("bits exceed bitmask width")
             if len(self.bits) > 16:

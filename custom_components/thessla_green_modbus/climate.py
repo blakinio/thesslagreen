@@ -70,13 +70,21 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    # Only create climate entity if basic control is available
-    if coordinator.capabilities.basic_control:
+    # Create climate entity if basic control is available or if the full
+    # register list is forced and required registers exist in the map.
+    has_basic = coordinator.capabilities.basic_control
+    if not has_basic and coordinator.force_full_register_list:
+        holding_map = coordinator._register_maps.get("holding_registers", {})
+        has_basic = "mode" in holding_map and "on_off_panel_mode" in holding_map
+
+    if has_basic:
         entities = [ThesslaGreenClimate(coordinator)]
         try:
             async_add_entities(entities, True)
         except asyncio.CancelledError:
-            _LOGGER.warning("Cancelled while adding climate entity, retrying without initial state")
+            _LOGGER.warning(
+                "Cancelled while adding climate entity, retrying without initial state"
+            )
             async_add_entities(entities, False)
             return
         _LOGGER.info("Climate entity created for %s", coordinator.device_name)

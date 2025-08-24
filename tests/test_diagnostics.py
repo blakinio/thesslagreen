@@ -2,6 +2,7 @@ import copy
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace, ModuleType
 from unittest.mock import AsyncMock, patch
 import sys
@@ -27,6 +28,7 @@ loader_module.get_all_registers = lambda: []
 loader_module.registers_sha256 = lambda *args, **kwargs: "hash"
 loader_module.get_registers_by_function = lambda *args, **kwargs: []
 loader_module.plan_group_reads = lambda *args, **kwargs: []
+loader_module._REGISTERS_PATH = Path("dummy")
 registers_module.loader = loader_module
 registers_module.get_all_registers = loader_module.get_all_registers
 registers_module.registers_sha256 = loader_module.registers_sha256
@@ -34,6 +36,7 @@ registers_module.get_registers_by_function = (
     loader_module.get_registers_by_function
 )
 registers_module.plan_group_reads = loader_module.plan_group_reads
+registers_module._REGISTERS_PATH = loader_module._REGISTERS_PATH
 root_pkg.registers = registers_module
 sys.modules[
     "custom_components.thessla_green_modbus",

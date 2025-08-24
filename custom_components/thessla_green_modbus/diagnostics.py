@@ -22,6 +22,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_all_registers,
     registers_sha256,
 )
+from .registers import loader as registers_loader
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,9 +39,14 @@ async def async_get_config_entry_diagnostics(
 
     # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
-    diagnostics.setdefault("registers_hash", registers_sha256())
+    diagnostics.setdefault(
+        "registers_hash",
+        registers_loader.registers_sha256(registers_loader._REGISTERS_PATH),
+    )
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
-    diagnostics.setdefault("total_registers_json", len(get_all_registers()))
+    diagnostics.setdefault(
+        "total_registers_json", len(registers_loader.get_all_registers())
+    )
     if "effective_batch" not in diagnostics:
         batch_sizes = [
             count
