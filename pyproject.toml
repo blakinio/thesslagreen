@@ -25,6 +25,7 @@ requires-python = ">=3.12"
 # Core dependencies
 dependencies = [
     "pymodbus>=3.5.0",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]

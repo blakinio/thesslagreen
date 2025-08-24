@@ -12,7 +12,7 @@ from typing import Any, cast
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, STATE_UNAVAILABLE
+from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -143,7 +143,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         value = self.coordinator.data.get(self._register_name)
 
         if value in (None, SENSOR_UNAVAILABLE):
-            return STATE_UNAVAILABLE
+            return None
         if self._register_name.startswith(TIME_REGISTER_PREFIXES):
             if isinstance(value, int):
                 return f"{value // 60:02d}:{value % 60:02d}"
@@ -152,7 +152,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             nominal = self._get_nominal_flow()
             if nominal is not None:
                 return round((cast(float, value) / float(nominal)) * 100)
-            return STATE_UNAVAILABLE
+            return None
         value_map = self._sensor_def.get("value_map")
         if value_map is not None:
             return cast(float | int | str, value_map.get(value, value))

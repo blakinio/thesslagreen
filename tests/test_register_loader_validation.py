@@ -161,8 +161,7 @@ def test_registers_match_pdf() -> None:
     )
     json_data = json.loads(json_file.read_text(encoding="utf-8"))["registers"]
 
-    pdf_path = Path(__file__).resolve().parents[1] / "MODBUS_USER_AirPack_Home_08.2021.01 1.pdf"
-    pdf_data = parse_pdf_registers(pdf_path)
+    pdf_data = parse_pdf_registers()
 
     json_map = {(r["function"], r["address_dec"]): r for r in json_data}
     pdf_map = {(r["function"], r["address_dec"]): r for r in pdf_data}
