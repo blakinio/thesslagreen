@@ -59,12 +59,17 @@ async def async_setup_entry(
     # ThesslaGreenDeviceScanner.scan_device()
     for register_name, entity_config in number_mappings.items():
         if register_name in coordinator.available_registers.get("holding_registers", set()):
-            address = HOLDING_REGISTERS[register_name]
+            address = HOLDING_REGISTERS.get(register_name)
+            if address is None:
+                _LOGGER.error(
+                    "Register %s not defined in holding registers, skipping",
+                    register_name,
+                )
+                continue
             entities.append(
                 ThesslaGreenNumber(
                     coordinator=coordinator,
                     register_name=register_name,
-                    address=address,
                     entity_config=entity_config,
                     register_type="holding_registers",
                 )
@@ -96,15 +101,15 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        address: int,
         entity_config: dict[str, Any],
         register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
-        if register_type == "holding_registers":
-            address = HOLDING_REGISTERS.get(register_name, 0)
-        else:
-            address = 0
+        if register_name not in HOLDING_REGISTERS:
+            raise KeyError(
+                f"Register {register_name} not found in holding registers"
+            )
+        address = HOLDING_REGISTERS[register_name]
 
         super().__init__(coordinator, register_name, address)
 
