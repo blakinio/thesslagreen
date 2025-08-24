@@ -112,7 +112,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     # Validate port and slave id ranges
     if not 1 <= port <= 65535:
         raise vol.Invalid("invalid_port")
-    if slave_id < 0:
+    if slave_id < 1:
         raise vol.Invalid("invalid_slave_low")
     if slave_id > 247:
         raise vol.Invalid("invalid_slave_high")
