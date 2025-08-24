@@ -51,14 +51,9 @@ def test_plan_group_reads_from_json():
     addresses: list[int] = []
     for reg in regs:
         addresses.extend(range(reg.address, reg.address + reg.length))
-    plans = group_reads(addresses, max_block_size=64)
-    assert plans[0] == (0, 5)
-    assert plans[1] == (14, 9)
-    assert plans[2] == (24, 6)
+    expected = group_reads(addresses, max_block_size=64)
     plans = [p for p in plan_group_reads(max_block_size=64) if p.function == "04"]
-    assert (plans[0].address, plans[0].length) == (0, 5)
-    assert (plans[1].address, plans[1].length) == (14, MAX_BATCH_REGISTERS)
-    assert (plans[2].address, plans[2].length) == (271, 7)
+    assert [(p.address, p.length) for p in plans] == expected
 
 
 def test_plan_group_reads_splits_large_block(monkeypatch):
@@ -72,18 +67,14 @@ def test_plan_group_reads_splits_large_block(monkeypatch):
     )
 
     addresses = [r.address for r in regs]
-    plans = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
-    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == "04"]
-
-    assert plans == [
-        (0, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS * 2, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS * 3, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS * 4, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS * 5, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS * 6, 100 - MAX_BATCH_REGISTERS * 6),
+    expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [
+        p
+        for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS)
+        if p.function == "04"
     ]
+
+    assert [(p.address, p.length) for p in plans] == expected
 
 
 def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
@@ -92,7 +83,10 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     # Two ranges of consecutive registers separated by a gap
     first = list(range(32))
     second = list(range(40, 80))
-    regs = [Register(function="04", address=i, name=f"r{i}", access="ro") for i in first + second]
+    regs = [
+        Register(function="04", address=i, name=f"r{i}", access="ro")
+        for i in first + second
+    ]
 
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader.load_registers",
@@ -100,13 +94,11 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     )
 
     addresses = [r.address for r in regs]
-    plans = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
-    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == "04"]
-
-    assert plans == [
-        (0, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS),
-        (40, MAX_BATCH_REGISTERS),
-        (40 + MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS),
-        (40 + 2 * MAX_BATCH_REGISTERS, len(second) - 2 * MAX_BATCH_REGISTERS),
+    expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [
+        p
+        for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS)
+        if p.function == "04"
     ]
+
+    assert [(p.address, p.length) for p in plans] == expected

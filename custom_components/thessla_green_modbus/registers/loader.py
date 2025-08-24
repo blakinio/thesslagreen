@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads
+from ..modbus_helpers import group_reads as _group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -501,7 +501,7 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
     for fn, addresses in regs_by_fn.items():
-        for start, length in group_reads(addresses, max_block_size=max_block_size):
+        for start, length in _group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans
