@@ -95,10 +95,6 @@ class RegisterDef:
                 encoding = self.extra.get("encoding", "ascii")
                 data = b"".join(w.to_bytes(2, "big") for w in raw_list)
                 return data.rstrip(b"\x00").decode(encoding)
-                buffer = bytearray()
-                for word in raw_list:
-                    buffer.extend(word.to_bytes(2, "big"))
-                return buffer.rstrip(b"\x00").decode(encoding)
 
             endianness = "big"
             if self.extra:
@@ -128,9 +124,6 @@ class RegisterDef:
                 steps = round(value / self.resolution)
                 value = steps * self.resolution
             return value
-                steps = round(result / self.resolution)
-                result = steps * self.resolution
-            return result
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
