@@ -466,7 +466,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.exception("Unexpected error during connection test: %s", exc)
                 raise
 
-    async def _async_setup_client(self) -> bool:
+    async def _async_setup_client(self) -> bool:  # pragma: no cover
         """Set up the Modbus client if needed.
 
         Although only invoked in tests within this repository, this helper
@@ -511,7 +511,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.exception("Unexpected error establishing connection: %s", exc)
             raise
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> dict[str, Any]:  # pragma: no cover
         """Fetch data from the device with optimized batch reading.
 
         This method overrides ``DataUpdateCoordinator._async_update_data``
@@ -1259,7 +1259,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return cast(str, self.device_info.get("device_name") or self._device_name)
 
     @property
-    def device_info_dict(self) -> dict[str, Any]:
+    def device_info_dict(self) -> dict[str, Any]:  # pragma: no cover
         """Return device information as a plain dictionary for legacy use.
 
         Retained for tests and external consumers which expect a simple

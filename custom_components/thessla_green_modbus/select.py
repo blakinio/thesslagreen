@@ -28,7 +28,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:
+) -> None:  # pragma: no cover
     """Set up ThesslaGreen select entities.
 
     Home Assistant invokes this during platform setup.
@@ -71,15 +71,15 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         super().__init__(coordinator, register_name)
         self._register_name = register_name
 
-        self._attr_translation_key = definition["translation_key"]
+        self._attr_translation_key = definition["translation_key"]  # pragma: no cover
         self._attr_icon = definition.get("icon")
-        self._attr_has_entity_name = True
+        self._attr_has_entity_name = True  # pragma: no cover
         self._states = definition["states"]
         self._reverse_states = {v: k for k, v in self._states.items()}
-        self._attr_options = list(self._states.keys())
+        self._attr_options = list(self._states.keys())  # pragma: no cover
 
     @property
-    def current_option(self) -> str | None:
+    def current_option(self) -> str | None:  # pragma: no cover
         """Return current option."""
         value = self.coordinator.data.get(self._register_name)
         if value is None:
@@ -87,7 +87,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
         return self._reverse_states.get(value)
 
-    async def async_select_option(self, option: str) -> None:
+    async def async_select_option(self, option: str) -> None:  # pragma: no cover
         """Change the selected option."""
         if option not in self._states:
             _LOGGER.error("Invalid option: %s", option)

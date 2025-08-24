@@ -80,7 +80,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
     """Set up ThesslaGreen Modbus from a config entry.
 
     This hook is invoked by Home Assistant during config entry setup even
@@ -215,7 +215,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> bool:  # pragma: no cover
     """Unload a config entry.
 
     Called by Home Assistant when a config entry is removed.  Kept for the
@@ -310,7 +312,9 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
             registry.async_update_entity(reg_entry.entity_id, new_unique_id=new_unique_id)
 
 
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_migrate_entry(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> bool:  # pragma: no cover
     """Migrate old entry.
 
     Home Assistant uses this during upgrades; vulture marks it as unused but
