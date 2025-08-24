@@ -108,6 +108,12 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     name = data.get(CONF_NAME, DEFAULT_NAME)
     timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
+    # Validate port and slave id ranges
+    if not 1 <= port <= 65535:
+        raise vol.Invalid("invalid_port")
+    if not 0 <= slave_id <= 247:
+        raise vol.Invalid("invalid_slave")
+
     # Validate host is either an IP address or a valid hostname
     try:
         ipaddress.ip_address(host)

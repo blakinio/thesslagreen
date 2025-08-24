@@ -15,9 +15,17 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 # Stub loader module to avoid heavy imports during tests
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.loader",
-    SimpleNamespace(),
     SimpleNamespace(plan_group_reads=lambda *args, **kwargs: []),
 )
+# Stub network validation to avoid homeassistant dependency
+network_module = SimpleNamespace(
+    is_host_valid=lambda host: bool(host)
+    and " " not in host
+    and not host.replace(".", "").isdigit()
+    and "." in host,
+)
+sys.modules.setdefault("homeassistant.util", SimpleNamespace(network=network_module))
+sys.modules.setdefault("homeassistant.util.network", network_module)
 # Stub registers module to avoid heavy imports during tests
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.registers",
@@ -839,6 +847,54 @@ async def test_validate_input_invalid_ipv6():
             await validate_input(None, data)
 
     assert err.value.error_message == "invalid_ipv6"
+    create_mock.assert_not_called()
+
+
+@pytest.mark.parametrize("invalid_port", [0, 65536])
+async def test_validate_input_invalid_port(invalid_port: int):
+    """Test validate_input rejects ports outside valid range."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: invalid_port,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        with pytest.raises(vol.Invalid) as err:
+            await validate_input(None, data)
+
+    assert err.value.error_message == "invalid_port"
+    create_mock.assert_not_called()
+
+
+@pytest.mark.parametrize("invalid_slave", [-1, 248])
+async def test_validate_input_invalid_slave(invalid_slave: int):
+    """Test validate_input rejects Device IDs outside valid range."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": invalid_slave,
+        CONF_NAME: "Test",
+    }
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        with pytest.raises(vol.Invalid) as err:
+            await validate_input(None, data)
+
+    assert err.value.error_message == "invalid_slave"
     create_mock.assert_not_called()
 
 
