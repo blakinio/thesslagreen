@@ -12,6 +12,7 @@ were renamed in newer versions of the integration.
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict
 
@@ -197,26 +198,40 @@ def _parse_states(value: str | None) -> dict[str, int] | None:
 
 def _load_number_mappings() -> dict[str, dict[str, Any]]:
     """Build number entity configurations from register metadata."""
+
     number_configs: dict[str, dict[str, Any]] = {}
-    for register in HOLDING_REGISTERS:
+
+    for reg in get_all_registers():
+        if reg.function != "03" or not reg.name:
+            continue
+        register = reg.name
         info = _get_register_info(register)
         if not info:
             continue
-        if register.startswith(("s_", "e_", "alarm", "error")):
+
+        # Skip diagnostic/error registers (E/S codes and alarm/error flags)
+        if re.match(r"[se](?:_|\d)", register) or register in {"alarm", "error"}:
             continue
+
+        # Skip registers with enumerated states – handled as binary/select
         if _parse_states(info.get("unit")):
             continue
-        if info.get("min") is None and info.get("max") is None:
-            continue
-        number_configs[register] = {
+
+        cfg: dict[str, Any] = {
             "unit": info.get("unit"),
-            "min": info.get("min", 0),
-            "max": info.get("max", 0),
             "step": info.get("step", 1),
             "scale": info.get("scale", 1),
         }
+        if info.get("min") is not None:
+            cfg["min"] = info["min"]
+        if info.get("max") is not None:
+            cfg["max"] = info["max"]
+
+        number_configs[register] = cfg
+
     for register, override in NUMBER_OVERRIDES.items():
         number_configs.setdefault(register, {}).update(override)
+
     return number_configs
 
 # Manual overrides for number entities (icons, custom units, etc.)
@@ -337,7 +352,7 @@ def _load_discrete_mappings() -> tuple[
     # any previously generated switch/select configurations.
     diag_registers = {"alarm", "error"}
     diag_registers.update(
-        reg for reg in HOLDING_REGISTERS if reg.startswith("s_") or reg.startswith("e_")
+        reg for reg in HOLDING_REGISTERS if re.match(r"[se](?:_|\d)", reg)
     )
     for reg in diag_registers:
         if reg not in HOLDING_REGISTERS and reg not in {"alarm", "error"}:
