@@ -43,6 +43,9 @@ _LOGGER = logging.getLogger(__name__)
 # supply temporary files, therefore it must be a module level variable instead
 # of being computed inside helper functions.
 _REGISTERS_PATH = resources.files(__package__).joinpath("thessla_green_registers_full.json")
+# Cache for the last (mtime, hash) pair of the registers file.  The hash is
+# only recomputed when ``mtime`` changes.
+_cached_file_info: tuple[float, str] | None = None
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -389,8 +392,19 @@ def _compute_file_hash() -> str:
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    stat = _REGISTERS_PATH.stat()
-    file_hash = _compute_file_hash()
+    global _cached_file_info
+    try:
+        stat = _REGISTERS_PATH.stat()
+        mtime = stat.st_mtime
+        if _cached_file_info and _cached_file_info[0] == mtime:
+            file_hash = _cached_file_info[1]
+        else:
+            file_hash = _compute_file_hash()
+            _cached_file_info = (mtime, file_hash)
+    except Exception:
+        stat = _REGISTERS_PATH.stat()
+        file_hash = _compute_file_hash()
+
     return _load_registers_from_file(
         _REGISTERS_PATH, file_hash=file_hash, mtime=stat.st_mtime
     )
@@ -403,8 +417,10 @@ def clear_cache() -> None:  # pragma: no cover
     definitions.
     """
 
+    global _cached_file_info
     _load_registers_from_file.cache_clear()
     _register_map.cache_clear()
+    _cached_file_info = None
 
 
 # ---------------------------------------------------------------------------
