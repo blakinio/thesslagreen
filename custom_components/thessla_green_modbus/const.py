@@ -8,10 +8,10 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, cast
 
+from .registers.loader import get_registers_by_function
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
-
-from .registers.loader import get_registers_by_function
 
 # Maximum number of registers that can be read in a single request.
 # The registers loader previously created a circular dependency with
