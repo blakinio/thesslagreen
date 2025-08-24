@@ -159,10 +159,13 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         return cast(float | int | str, value)
 
     @property
-    def available(self) -> bool:  # type: ignore[override]  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover
         """Return if entity has valid data."""
         value = self.coordinator.data.get(self._register_name)
-        if not (self.coordinator.last_update_success and value not in (None, SENSOR_UNAVAILABLE)):
+        if not (
+            self.coordinator.last_update_success
+            and value not in (None, SENSOR_UNAVAILABLE)
+        ):
             return False
         if self._use_percentage() and self._get_nominal_flow() is None:
             return False
@@ -187,9 +190,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
     def _get_airflow_unit(self) -> str:
         """Return airflow unit option."""
-        return getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
+        options = getattr(getattr(self.coordinator, "entry", None), "options", {})
+        return str(options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT))
 
     def _use_percentage(self) -> bool:
         """Return True if airflow rates should be represented as percentage."""
@@ -230,7 +232,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
     @property
     def available(self) -> bool:  # pragma: no cover
         """Return sensor availability."""
-        return self.coordinator.last_update_success
+        return bool(self.coordinator.last_update_success)
 
     @property
     def native_value(self) -> str | None:  # pragma: no cover
