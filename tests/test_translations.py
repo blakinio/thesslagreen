@@ -84,6 +84,10 @@ const.UnitOfTemperature = UnitOfTemperature
 const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
 const.UnitOfElectricPotential = UnitOfElectricPotential
 
+network_mod = types.ModuleType("homeassistant.util.network")
+network_mod.is_host_valid = lambda host: True
+sys.modules["homeassistant.util.network"] = network_mod
+
 sensor_mod = types.ModuleType("homeassistant.components.sensor")
 
 
@@ -150,6 +154,22 @@ BINARY_KEYS = sorted(
 CODE_KEYS: list[str] = []
 ISSUE_KEYS = ["modbus_write_failed"]
 
+OPTION_KEYS = [
+    "force_full_register_list",
+    "retry",
+    "scan_interval",
+    "skip_missing_registers",
+    "timeout",
+    "deep_scan",
+    "scan_max_block_size",
+    "max_registers_per_request",
+]
+
+OPTION_ERROR_KEYS = [
+    "invalid_max_registers_per_request_low",
+    "invalid_max_registers_per_request_high",
+]
+
 
 class Loader(yaml.SafeLoader):
     pass
@@ -210,6 +230,21 @@ def test_translation_keys_present():
         assert (
             not missing_services
         ), f"Missing service translations: {missing_services}"  # nosec B101
+        opts = trans["options"]["step"]["init"]
+        missing_opts = [k for k in OPTION_KEYS if k not in opts["data"]]
+        assert (
+            not missing_opts
+        ), f"Missing option translations: {missing_opts}"  # nosec B101
+        missing_desc = [k for k in OPTION_KEYS if k not in opts["data_description"]]
+        assert (
+            not missing_desc
+        ), f"Missing option descriptions: {missing_desc}"  # nosec B101
+        missing_err = [
+            k for k in OPTION_ERROR_KEYS if k not in trans["options"].get("error", {})
+        ]
+        assert (
+            not missing_err
+        ), f"Missing option error translations: {missing_err}"  # nosec B101
 
 
 def test_translation_structures_match():
