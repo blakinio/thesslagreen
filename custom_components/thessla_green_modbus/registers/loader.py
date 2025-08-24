@@ -123,26 +123,6 @@ class RegisterDef:
                 steps = round(result / self.resolution)
                 result = steps * self.resolution
             return result
-                decoded: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
-            elif typ == "float64":
-                decoded = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
-            elif typ == "int32":
-                decoded = int.from_bytes(data, "big", signed=True)
-            elif typ == "uint32":
-                decoded = int.from_bytes(data, "big", signed=False)
-            elif typ == "int64":
-                decoded = int.from_bytes(data, "big", signed=True)
-            elif typ == "uint64":
-                decoded = int.from_bytes(data, "big", signed=False)
-            else:
-                decoded = int.from_bytes(data, "big", signed=False)
-
-            if self.multiplier is not None:
-                decoded = decoded * self.multiplier
-            if self.resolution is not None:
-                steps = round(decoded / self.resolution)
-                decoded = steps * self.resolution
-            return decoded
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
@@ -322,7 +302,6 @@ try:  # pragma: no cover - defensive
         key.split("_")[-1]: idx
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
-except Exception:  # pragma: no cover - defensive
 except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
     _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
@@ -413,11 +392,6 @@ def _load_registers_from_file(
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
-    """Return the SHA256 hash of ``path`` and cache the result."""
-
-    global _cached_file_info
-    path_str = str(path)
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
     """Return the SHA256 hash of ``path``.
 
     The hash is cached using ``(path_str, mtime, hash)`` so the file is only
@@ -438,18 +412,6 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     return digest
 
 
-
-def load_registers() -> list[RegisterDef]:
-    """Return cached register definitions, reloading if the file changed."""
-    stat = _REGISTERS_PATH.stat()
-    mtime = stat.st_mtime
-    path_str = str(_REGISTERS_PATH)
-    if not (
-        _cached_file_info
-        and _cached_file_info[0] == path_str
-        and _cached_file_info[1] == mtime
-    ):
-        _compute_file_hash(_REGISTERS_PATH, mtime)
 def _get_file_info() -> tuple[float, str]:
     """Return ``(mtime, hash)`` for the registers file using a cache."""
 
@@ -481,7 +443,6 @@ def clear_cache() -> None:  # pragma: no cover
     Exposed for tests and tooling that need to reload register
     definitions.
     """
-
     global _cached_file_info
     _cached_file_info = None
     _load_registers_from_file.cache_clear()
@@ -545,9 +506,6 @@ class ReadPlan:
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
-
-    from ..modbus_helpers import group_reads as _group_reads_fn
-
     plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}
 
@@ -555,14 +513,8 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         addr_range = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
-    for fn, addrs in regs_by_fn.items():
-        for start, length in _group_reads(addrs, max_block_size=max_block_size):
-        regs_by_fn.setdefault(reg.function, []).extend(
-            range(reg.address, reg.address + reg.length)
-        )
-
     for fn, addresses in regs_by_fn.items():
-        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
+        for start, length in _group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans
