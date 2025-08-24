@@ -383,29 +383,18 @@ def _load_registers_from_file(path: Path, *, mtime: float) -> list[RegisterDef]:
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
     """Return the SHA256 hash of ``path``.
-# Ensure clearing the LRU cache also resets the file hash cache
-_orig_load_cache_clear = _load_registers_from_file.cache_clear
 
-
-def _load_registers_cache_clear() -> None:
-    global _cached_file_info
-    _cached_file_info = None
-    _orig_load_cache_clear()
-
-
-_load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
-
-
-def _compute_file_hash() -> str:
-    """Return the SHA256 hash of the registers file."""
-
-    The hash is cached based on ``mtime`` so reading the file can be avoided
-    when its modification time has not changed.
+    The hash is cached using ``(path_str, mtime, hash)`` so the file is only
+    read when its modification time changes.
     """
 
     global _cached_file_info
     path_str = str(path)
-    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
+    if (
+        _cached_file_info
+        and _cached_file_info[0] == path_str
+        and _cached_file_info[1] == mtime
+    ):
         return _cached_file_info[2]
 
     file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -413,43 +402,21 @@ def _compute_file_hash() -> str:
     return file_hash
 
 
-def _get_file_info() -> tuple[float, str]:
-    """Return ``(mtime, hash)`` for the registers file using a cache."""
-
-    global _cached_file_info
-    stat = _REGISTERS_PATH.stat()
-    mtime = stat.st_mtime
-    if _cached_file_info and _cached_file_info[0] == mtime:
-        return _cached_file_info
-
-    file_hash = _compute_file_hash()
-    _cached_file_info = (mtime, file_hash)
-    return _cached_file_info
-
-
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
     stat = _REGISTERS_PATH.stat()
     return _load_registers_from_file(_REGISTERS_PATH, mtime=stat.st_mtime)
-    try:
-        mtime, file_hash = _get_file_info()
-    except Exception:
-        stat = _REGISTERS_PATH.stat()
-        mtime = stat.st_mtime
-        file_hash = _compute_file_hash()
 
-    return _load_registers_from_file(
-        _REGISTERS_PATH, file_hash=file_hash, mtime=mtime
-    )
 
 def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
 
-    Exposed for tests and tooling that need to reload register
-    definitions.
+    Exposed for tests and tooling that need to reload register definitions.
     """
 
+    global _cached_file_info
+    _cached_file_info = None
     _load_registers_from_file.cache_clear()
     _register_map.cache_clear()
 
@@ -475,7 +442,6 @@ def get_registers_hash() -> str:
     try:
         stat = _REGISTERS_PATH.stat()
         return _compute_file_hash(_REGISTERS_PATH, stat.st_mtime)
-        return _get_file_info()[1]
     except Exception:  # pragma: no cover - defensive
         return ""
 
