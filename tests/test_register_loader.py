@@ -159,6 +159,24 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
             "access": "R",
             "bits": ["a"],
         },
+        {
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "name": "bad_string_len",
+            "access": "R",
+            "length": 0,
+            "extra": {"type": "string"},
+        },
+        {
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "name": "too_many_bits",
+            "access": "R",
+            "extra": {"bitmask": 0b11},
+            "bits": ["a", "b", "c"],
+        },
     ],
 )
 def test_invalid_registers_rejected(tmp_path, monkeypatch, register) -> None:
@@ -172,6 +190,27 @@ def test_invalid_registers_rejected(tmp_path, monkeypatch, register) -> None:
 
     with pytest.raises(ValueError):
         loader._load_registers_from_file(path, file_hash="", mtime=0)
+
+
+def test_bits_within_bitmask_width(tmp_path, monkeypatch) -> None:
+    """Registers with bits not exceeding bitmask width should load."""
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    reg = {
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "name": "good_bits",
+        "access": "R",
+        "extra": {"bitmask": 0b11},
+        "bits": ["a", "b"],
+    }
+    path = tmp_path / "regs.json"
+    path.write_text(json.dumps({"registers": [reg]}))
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
+
+    loader._load_registers_from_file(path, file_hash="", mtime=0)
 
 
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
