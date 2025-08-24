@@ -323,13 +323,12 @@ except Exception as err:  # pragma: no cover - unexpected
 
 @lru_cache(maxsize=1)
 def _load_registers_from_file(
-    path: Path, *, mtime: float, file_hash: str | None = None
+    path: Path, *, mtime: float, file_hash: str
 ) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
-    ``mtime`` is included in the cache key so that the file is reloaded only
-    when its modification time changes. ``file_hash`` is accepted for backward
-    compatibility but otherwise ignored.
+    ``mtime`` and ``file_hash`` participate in the cache key so the file is
+    reloaded only when its timestamp or contents change.
     """
 
     try:
@@ -520,6 +519,7 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
     for fn, addresses in regs_by_fn.items():
+        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
         for start, length in _group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
