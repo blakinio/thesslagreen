@@ -5,7 +5,7 @@ from pathlib import Path
 from custom_components.thessla_green_modbus.registers.loader import (
     _REGISTERS_PATH,
     clear_cache,
-    get_registers_hash,
+    registers_sha256,
     load_registers,
 )
 
@@ -21,7 +21,7 @@ def test_cache_invalidation_on_content_change(tmp_path: Path, monkeypatch) -> No
     )
 
     clear_cache()
-    first_hash = get_registers_hash()
+    first_hash = registers_sha256()
     first = load_registers()[0]
     assert first.description
     assert first_hash
@@ -30,7 +30,7 @@ def test_cache_invalidation_on_content_change(tmp_path: Path, monkeypatch) -> No
     data["registers"][0]["description"] = "changed description"
     tmp_json.write_text(json.dumps(data), encoding="utf-8")
 
-    second_hash = get_registers_hash()
+    second_hash = registers_sha256()
     updated = load_registers()[0]
     assert updated.description == "changed description"
     assert first_hash != second_hash

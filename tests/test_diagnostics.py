@@ -9,14 +9,41 @@ import sys
 import pytest
 
 # Stub registers module to avoid heavy imports during diagnostics import
-original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
-registers_stub = ModuleType("custom_components.thessla_green_modbus.registers")
-registers_stub.get_all_registers = lambda: []
-registers_stub.get_registers_hash = lambda: "hash"
-registers_stub.get_registers_by_function = lambda *args, **kwargs: []
-registers_stub.plan_group_reads = lambda *args, **kwargs: []
-registers_stub.loader = SimpleNamespace(load=lambda *args, **kwargs: None)
-sys.modules["custom_components.thessla_green_modbus.registers"] = registers_stub
+original_registers = sys.modules.get(
+    "custom_components.thessla_green_modbus.registers"
+)
+root_pkg = ModuleType(
+    "custom_components.thessla_green_modbus"
+)
+root_pkg.__path__ = []  # type: ignore[attr-defined]
+registers_module = ModuleType(
+    "custom_components.thessla_green_modbus.registers"
+)
+registers_module.__path__ = []  # type: ignore[attr-defined]
+loader_module = ModuleType(
+    "custom_components.thessla_green_modbus.registers.loader"
+)
+loader_module.get_all_registers = lambda: []
+loader_module.registers_sha256 = lambda: "hash"
+loader_module.get_registers_by_function = lambda *args, **kwargs: []
+loader_module.plan_group_reads = lambda *args, **kwargs: []
+registers_module.loader = loader_module
+registers_module.get_all_registers = loader_module.get_all_registers
+registers_module.registers_sha256 = loader_module.registers_sha256
+registers_module.get_registers_by_function = (
+    loader_module.get_registers_by_function
+)
+registers_module.plan_group_reads = loader_module.plan_group_reads
+root_pkg.registers = registers_module
+sys.modules[
+    "custom_components.thessla_green_modbus",
+] = root_pkg
+sys.modules[
+    "custom_components.thessla_green_modbus.registers",
+] = registers_module
+sys.modules[
+    "custom_components.thessla_green_modbus.registers.loader"
+] = loader_module
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
 sys.modules.setdefault("homeassistant.util", ModuleType("homeassistant.util"))
 sys.modules.setdefault("homeassistant.util.network", ModuleType("homeassistant.util.network"))
@@ -32,9 +59,17 @@ from custom_components.thessla_green_modbus.scanner_core import DeviceCapabiliti
 
 # Restore real registers module for subsequent tests
 if original_registers is not None:
-    sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
+    sys.modules["custom_components.thessla_green_modbus.registers"] = (
+        original_registers
+    )
 else:  # pragma: no cover - defensive
-    del sys.modules["custom_components.thessla_green_modbus.registers"]
+    sys.modules.pop(
+        "custom_components.thessla_green_modbus.registers", None
+    )
+sys.modules.pop(
+    "custom_components.thessla_green_modbus.registers.loader", None
+)
+sys.modules.pop("custom_components.thessla_green_modbus", None)
 
 DOMAIN = "thessla_green_modbus"
 
