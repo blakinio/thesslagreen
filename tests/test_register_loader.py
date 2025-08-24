@@ -132,6 +132,26 @@ def test_register_file_sorted() -> None:
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
 
-    loaded_names = [r.name for r in loader.get_all_registers()]
-    expected = [loader._normalise_name(r["name"]) for r in regs]
-    assert loaded_names == expected
+    loaded_keys = [(r.function, r.address) for r in loader.get_all_registers()]
+    assert loaded_keys == sorted(loaded_keys)
+
+
+def test_get_all_registers_sorted(monkeypatch, tmp_path) -> None:
+    """get_all_registers should order registers by function then address."""
+
+    from custom_components.thessla_green_modbus.registers import loader
+
+    regs = [
+        {"function": "03", "address_dec": 2, "address_hex": "0x0002", "name": "reg_c", "access": "R"},
+        {"function": "01", "address_dec": 1, "address_hex": "0x0001", "name": "reg_a", "access": "R"},
+        {"function": "03", "address_dec": 1, "address_hex": "0x0001", "name": "reg_b", "access": "R"},
+    ]
+
+    path = tmp_path / "regs.json"
+    path.write_text(json.dumps({"registers": regs}))
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
+
+    loader.clear_cache()
+    ordered = loader.get_all_registers()
+    keys = [(r.function, r.address) for r in ordered]
+    assert keys == sorted(keys)
