@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads
+from ..modbus_helpers import group_reads as _group_reads_fn
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -95,10 +95,6 @@ class RegisterDef:
                 encoding = self.extra.get("encoding", "ascii")
                 data = b"".join(w.to_bytes(2, "big") for w in raw_list)
                 return data.rstrip(b"\x00").decode(encoding)
-                buffer = bytearray()
-                for word in raw_list:
-                    buffer.extend(word.to_bytes(2, "big"))
-                return buffer.rstrip(b"\x00").decode(encoding)
 
             endianness = "big"
             if self.extra:
@@ -128,9 +124,6 @@ class RegisterDef:
                 steps = round(value / self.resolution)
                 value = steps * self.resolution
             return value
-                steps = round(result / self.resolution)
-                result = steps * self.resolution
-            return result
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
@@ -311,13 +304,12 @@ except Exception as err:  # pragma: no cover - unexpected
 
 @lru_cache(maxsize=1)
 def _load_registers_from_file(
-    path: Path, *, mtime: float, file_hash: str | None = None
+    path: Path, *, mtime: float, file_hash: str
 ) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
-    ``mtime`` is included in the cache key so that the file is reloaded only
-    when its modification time changes. ``file_hash`` is accepted for backward
-    compatibility but otherwise ignored.
+    ``mtime`` and ``file_hash`` participate in the cache key so the file is
+    reloaded only when its timestamp or contents change.
     """
 
     try:
@@ -384,12 +376,11 @@ def _load_registers_from_file(
 
     return registers
 def _compute_file_hash(path: Path, mtime: float) -> str:
-    """Return the SHA256 hash of ``path``.
+    """Return the SHA256 hash of ``path`` and cache the result.
 
     The hash is cached using ``(path_str, mtime, hash)`` so the file is only
     read when its modification time changes.
     """
-    """Return the SHA256 hash of ``path`` and cache the result."""
 
     global _cached_file_info
     path_str = str(path)
@@ -507,7 +498,7 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
     for fn, addresses in regs_by_fn.items():
-        for start, length in group_reads(addresses, max_block_size=max_block_size):
+        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans

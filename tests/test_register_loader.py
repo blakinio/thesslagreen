@@ -195,7 +195,7 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
     monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, mtime=0)
+        loader._load_registers_from_file(path, mtime=0, file_hash="")
 
 
 @pytest.mark.parametrize(
@@ -262,7 +262,7 @@ def test_invalid_registers_rejected(tmp_path, monkeypatch, register) -> None:
     monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, mtime=0)
+        loader._load_registers_from_file(path, mtime=0, file_hash="")
 
 
 def test_bits_within_bitmask_width(tmp_path, monkeypatch) -> None:
@@ -293,7 +293,7 @@ def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
 
     path = tmp_path / "regs.json"
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, mtime=0)
+        loader._load_registers_from_file(path, mtime=0, file_hash="")
     assert str(path) in str(exc.value)
 
 
@@ -305,7 +305,7 @@ def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
     path = tmp_path / "regs.json"
     path.write_text("not json", encoding="utf-8")
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, mtime=0)
+        loader._load_registers_from_file(path, mtime=0, file_hash="")
     assert str(path) in str(exc.value)
 
 
