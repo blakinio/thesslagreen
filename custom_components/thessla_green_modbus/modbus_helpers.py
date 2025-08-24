@@ -88,7 +88,11 @@ def _build_request_frame(
                 else 0x0000
             )
             return bytes([slave_id, 0x05, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF])
-    except Exception:  # pragma: no cover - best-effort logging only
+    except (ValueError, TypeError, IndexError) as err:
+        _LOGGER.debug("Failed to build request frame: %s", err)
+        return b""
+    except Exception as err:  # pragma: no cover - unexpected
+        _LOGGER.exception("Unexpected error building request frame: %s", err)
         return b""
 
     return b""
@@ -175,7 +179,11 @@ async def _call_modbus(
     if _LOGGER.isEnabledFor(logging.DEBUG):
         try:
             encoded = response.encode() if hasattr(response, "encode") else b""
-        except Exception:  # pragma: no cover - best effort logging
+        except (AttributeError, ValueError, TypeError, UnicodeError) as err:
+            _LOGGER.debug("Failed to encode Modbus response: %s", err)
+            encoded = b""
+        except Exception as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error encoding Modbus response: %s", err)
             encoded = b""
         if encoded:
             _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))

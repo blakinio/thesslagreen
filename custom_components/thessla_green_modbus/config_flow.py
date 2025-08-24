@@ -15,6 +15,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 from homeassistant.util.network import is_host_valid
 
@@ -393,8 +394,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             translations = await translation.async_get_translations(
                 self.hass, language, "component", [DOMAIN]
             )
-        except Exception as err:  # pragma: no cover - defensive
+        except (OSError, ValueError, HomeAssistantError) as err:  # pragma: no cover - defensive
             _LOGGER.debug("Translation load failed: %s", err)
+        except Exception as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error loading translations: %s", err)
 
         key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"
         auto_detected_note = translations.get(

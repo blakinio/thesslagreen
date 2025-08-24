@@ -174,7 +174,11 @@ class RegisterDef:
         if self.bcd:
             try:
                 t = bcd_to_time(raw)
-            except Exception:  # pragma: no cover - defensive
+            except (ValueError, TypeError) as err:  # pragma: no cover - defensive
+                _LOGGER.debug("Invalid BCD value %s: %s", raw, err)
+                return value
+            except Exception as err:  # pragma: no cover - unexpected
+                _LOGGER.exception("Unexpected error decoding BCD value %s: %s", raw, err)
                 return value
             return f"{t.hour:02d}:{t.minute:02d}"
 
@@ -300,8 +304,12 @@ try:  # pragma: no cover - defensive
         key.split("_")[-1]: idx
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
-except Exception:  # pragma: no cover - defensive
+except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
+    _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM: dict[str, int] = {}
+except Exception as err:  # pragma: no cover - unexpected
+    _LOGGER.exception("Unexpected error loading special modes: %s", err)
+    _SPECIAL_MODES_ENUM = {}
 
 
 # ---------------------------------------------------------------------------
@@ -322,8 +330,10 @@ def _load_registers_from_file(path: Path, *, mtime: float) -> list[RegisterDef]:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
-    except Exception as err:  # pragma: no cover - defensive
+    except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
+    except Exception as err:  # pragma: no cover - unexpected
+        raise RuntimeError(f"Unexpected error reading register definitions from {path}") from err
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
@@ -434,7 +444,7 @@ def load_registers() -> list[RegisterDef]:
     return _load_registers_from_file(_REGISTERS_PATH, mtime=stat.st_mtime)
     try:
         mtime, file_hash = _get_file_info()
-    except Exception:
+    except OSError:
         stat = _REGISTERS_PATH.stat()
         mtime = stat.st_mtime
         file_hash = _compute_file_hash()
@@ -476,7 +486,7 @@ def get_registers_hash() -> str:
         stat = _REGISTERS_PATH.stat()
         return _compute_file_hash(_REGISTERS_PATH, stat.st_mtime)
         return _get_file_info()[1]
-    except Exception:  # pragma: no cover - defensive
+    except OSError:  # pragma: no cover - defensive
         return ""
 
 
