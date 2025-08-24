@@ -54,7 +54,7 @@ def validate(path: Path) -> list[RegisterDefinition]:
         seen_names.add(reg.name)
 
         typ = (reg.extra or {}).get("type")
-        length = item.get("length", item.get("count", 1))
+        length = reg.length
         if typ == "string":
             if length < 1:
                 raise ValueError("string type requires length >= 1")

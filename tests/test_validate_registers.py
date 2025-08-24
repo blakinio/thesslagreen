@@ -354,3 +354,63 @@ def test_validator_rejects_min_max_mismatch(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         validate_registers.main(path)
 
+
+def test_accepts_string_address_dec(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": 3,
+                "address_dec": "0x1",
+                "address_hex": "0x0001",
+                "name": "addr_str",
+                "access": "R/W",
+            }
+        ],
+    )
+
+    regs = validate_registers.validate(path)
+    assert regs[0].address_dec == 1
+    assert regs[0].address_hex == "0x1"
+
+
+def test_accepts_count_alias(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "count_alias",
+                "access": "R/W",
+                "count": 2,
+                "extra": {"type": "u32"},
+            }
+        ],
+    )
+
+    regs = validate_registers.validate(path)
+    assert regs[0].length == 2
+
+
+def test_accepts_shorthand_type(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "shorthand",
+                "access": "R/W",
+                "type": "u32",
+            }
+        ],
+    )
+
+    regs = validate_registers.validate(path)
+    reg = regs[0]
+    assert reg.length == 2
+    assert (reg.extra or {}).get("type") == "u32"
+
