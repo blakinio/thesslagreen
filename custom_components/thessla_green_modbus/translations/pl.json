@@ -1253,7 +1253,8 @@
   },
   "options": {
     "error": {
-      "invalid_max_registers_per_request": "Maksymalna liczba rejestrów na żądanie musi być co najmniej 1."
+      "invalid_max_registers_per_request_low": "Maksymalna liczba rejestrów na żądanie musi być co najmniej 1.",
+      "invalid_max_registers_per_request_high": "Maksymalna liczba rejestrów na żądanie nie może przekraczać 16."
     },
     "step": {
       "init": {
