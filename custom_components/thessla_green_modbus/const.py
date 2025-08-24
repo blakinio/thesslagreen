@@ -11,12 +11,13 @@ from typing import TYPE_CHECKING, Any, Dict, cast
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
 
-# Importing ``MAX_BATCH_REGISTERS`` from this module in ``modbus_helpers``
-# creates a circular dependency if it is defined after the registers loader is
-# imported.  Define it here before pulling in the loader to break the cycle.
-MAX_BATCH_REGISTERS = 16
-
 from .registers.loader import get_registers_by_function
+
+# Maximum number of registers that can be read in a single request.
+# The registers loader previously created a circular dependency with
+# ``modbus_helpers`` but this has been resolved, allowing the import to
+# appear before this constant.
+MAX_BATCH_REGISTERS = 16
 
 
 def _build_map(fn: str) -> dict[str, int]:

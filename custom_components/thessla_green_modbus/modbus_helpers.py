@@ -8,7 +8,7 @@ import weakref
 from collections.abc import Awaitable, Callable, Iterable
 from typing import Any, List, Tuple
 
-from .const import MAX_BATCH_REGISTERS
+from . import const
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -194,7 +194,7 @@ async def _call_modbus(
 
 def group_reads(
     addresses: Iterable[int],
-    max_block_size: int = MAX_BATCH_REGISTERS,
+    max_block_size: int | None = None,
 ) -> List[Tuple[int, int]]:
     """Group raw register addresses into contiguous read blocks.
 
@@ -203,7 +203,9 @@ def group_reads(
     tuples suitable for bulk Modbus read operations.
     """
 
-    max_block_size = min(max_block_size, MAX_BATCH_REGISTERS)
+    if max_block_size is None:
+        max_block_size = const.MAX_BATCH_REGISTERS
+    max_block_size = min(max_block_size, const.MAX_BATCH_REGISTERS)
     sorted_addresses = sorted(set(addresses))
     if not sorted_addresses:
         return []
