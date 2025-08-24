@@ -58,8 +58,6 @@ async def async_setup_entry(
                 ThesslaGreenBinarySensor(
                     coordinator, register_name, sensor_def, address
                 )
-                ThesslaGreenBinarySensor(coordinator, register_name, address, sensor_def)
-
             )
             _LOGGER.debug("Created binary sensor: %s", sensor_def["translation_key"])
 
@@ -91,7 +89,6 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        address: int,
         sensor_definition: Dict[str, Any],
         address: int,
     ) -> None:
@@ -137,10 +134,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
         elif register_type == "holding_registers":
             # Holding registers: depends on register
-            if self._register_name == "on_off_panel_mode":
-                return bool(value)
-            else:
-                return bool(value)
+            return bool(value)
 
         return False
 
