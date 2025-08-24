@@ -1,4 +1,6 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.modbus_helpers import group_reads
+from custom_components.thessla_green_modbus.registers import get_registers_by_function
 from custom_components.thessla_green_modbus.registers import (
     get_registers_by_function,
     plan_group_reads,
@@ -9,6 +11,12 @@ INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
 
 def _expanded_addresses(fn: str) -> list[int]:
+    regs = get_registers_by_function(fn)
+    addresses: list[int] = []
+    for reg in regs:
+        addresses.extend(range(reg.address, reg.address + reg.length))
+    plans = group_reads(addresses, max_block_size=32)
+    return [addr for start, length in plans for addr in range(start, start + length)]
     plans = [p for p in plan_group_reads(max_block_size=32) if p.function == fn]
     return [addr for plan in plans for addr in range(plan.address, plan.address + plan.length)]
 
@@ -45,6 +53,14 @@ def test_group_registers_split_known_missing():
 
 def test_plan_group_reads_from_json():
     """Group consecutive registers based on JSON definitions."""
+    regs = get_registers_by_function("04")
+    addresses: list[int] = []
+    for reg in regs:
+        addresses.extend(range(reg.address, reg.address + reg.length))
+    plans = group_reads(addresses, max_block_size=64)
+    assert plans[0] == (0, 5)
+    assert plans[1] == (14, 9)
+    assert plans[2] == (24, 6)
     plans = [p for p in plan_group_reads(max_block_size=64) if p.function == "04"]
     assert (plans[0].address, plans[0].length) == (0, 5)
     assert (plans[1].address, plans[1].length) == (14, 16)
@@ -61,9 +77,11 @@ def test_plan_group_reads_splits_large_block(monkeypatch):
         lambda: regs,
     )
 
+    addresses = [r.address for r in regs]
+    plans = group_reads(addresses, max_block_size=16)
     plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
 
-    assert [(p.address, p.length) for p in plans] == [
+    assert plans == [
         (0, 16),
         (16, 16),
         (32, 16),
@@ -90,9 +108,11 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
         lambda: regs,
     )
 
+    addresses = [r.address for r in regs]
+    plans = group_reads(addresses, max_block_size=16)
     plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
 
-    assert [(p.address, p.length) for p in plans] == [
+    assert plans == [
         (0, 16),
         (16, 16),
         (40, 16),

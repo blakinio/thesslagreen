@@ -29,6 +29,7 @@ from typing import Any, Literal, Sequence
 
 import pydantic
 
+from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
 from ..modbus_helpers import group_reads as _group_reads
@@ -557,7 +558,6 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
 __all__ = [
     "Register",
     "RegisterDefinition",
-    "ReadPlan",
     "get_all_registers",
     "get_registers_by_function",
     "get_registers_hash",
