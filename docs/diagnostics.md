@@ -13,4 +13,8 @@ The Thessla Green Modbus integration exposes several fields via the Home Assista
 - `failed_addresses`: Addresses skipped during scanning due to errors.
 - `active_errors`: Currently active error or status codes with translations when available.
 
+All IP addresses shown in diagnostics are masked to hide network details. When an IPv6
+address includes a zone index (for example `fe80::1%eth0`), the zone portion is removed
+before masking so interface names are not revealed.
+
 These diagnostics make it easier to troubleshoot setup issues and confirm device behavior.
