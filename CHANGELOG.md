@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ New Features
 
-#### Enhanced Climate Entity (HA 2025.7.1+ Compatible)
+#### Enhanced Climate Entity (HA 2025.7.0+ Compatible)
 - **Preset Modes**: Eco, Comfort, Boost, Sleep, Away
 - **Custom ThesslaGreen Presets**: OKAP, KOMINEK, WIETRZENIE, GOTOWANIE, PRANIE, ŁAZIENKA
 - **Advanced Temperature Control**: Manual/temporary/comfort temperature settings
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Comprehensive Device Scanner** - Intelligent capability detection with 60+ capabilities
 - **Enhanced Error Handling** - Smart retry logic and graceful error recovery
 
-#### Complete Entity Coverage (HA 2025.7.1+)
+#### Complete Entity Coverage (HA 2025.7.0+)
 - **Temperature Sensors** (11): All temperature measurement points
 - **Flow Sensors** (8): Complete air flow monitoring including Constant Flow
 - **Performance Sensors** (7): Efficiency and performance indicators
@@ -66,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Technical Improvements
 
-#### Optimized Coordinator (HA 2025.7.1+)
+#### Optimized Coordinator (HA 2025.7.0+)
 - **Pre-computed Register Groups** - Efficient batch reading with intelligent grouping
 - **Enhanced Error Handling** - Smart retry logic with exponential backoff
 - **Memory Optimization** - Reduced memory usage through efficient data structures
@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Numbers**: Smart validation with range checking and recommendations
 - **Select**: Enhanced mode selection with context information
 
-#### Services Integration (HA 2025.7.1+)
+#### Services Integration (HA 2025.7.0+)
 - **Basic Control**: Set mode, intensity, special functions
 - **Advanced Functions**: Boost mode, comfort temperature, quick ventilation
 - **System Management**: Emergency stop, alarm reset, device rescan
@@ -103,8 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Coil Registers | 25+ | Output controls and system switches |
 | Discrete Inputs | 35+ | Input status and sensor health |
 
-### 🏠 Home Assistant Compatibility (HA 2025.7.1+)
-- **HA 2025.7.1+** - Latest Home Assistant compatibility
+### 🏠 Home Assistant Compatibility (HA 2025.7.0+)
+- **HA 2025.7.0+** - Latest Home Assistant compatibility
 - **Modern Standards** - Follows latest HA development guidelines
 - **Device Registry** - Proper device registration with enhanced info
 - **Entity Categories** - Proper categorization for better UI organization
