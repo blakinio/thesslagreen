@@ -140,6 +140,28 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     assert hash_before != hash_after
 
 
+def test_registers_reload_on_file_change(tmp_path, monkeypatch) -> None:
+    """Changing the register JSON file triggers a reload."""
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    path = tmp_path / "regs.json"
+    path.write_text(loader._REGISTERS_PATH.read_text())
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
+
+    loader.clear_cache()
+
+    original = loader.get_all_registers()
+    assert not any(r.name == "cache_test_marker" for r in original)
+
+    data = json.loads(path.read_text())
+    data["registers"][0]["name"] = "cache_test_marker"
+    path.write_text(json.dumps(data))
+
+    updated = loader.get_all_registers()
+    assert any(r.name == "cache_test_marker" for r in updated)
+
+
 def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
     """clear_cache should reset the cached file hash."""
 
