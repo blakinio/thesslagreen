@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads as _group_reads
+from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -434,6 +434,7 @@ def load_registers() -> list[RegisterDef]:
     return _load_registers_from_file(
         _REGISTERS_PATH, mtime=mtime, file_hash=file_hash
     )
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime, file_hash=file_hash)
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -494,15 +495,15 @@ class ReadPlan:
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
-    plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}
-
     for reg in load_registers():
         addr_range = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
+    plans: list[ReadPlan] = []
     for fn, addresses in regs_by_fn.items():
         for start, length in _group_reads(addresses, max_block_size=max_block_size):
+        for start, length in group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans

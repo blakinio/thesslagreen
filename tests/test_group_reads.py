@@ -46,6 +46,18 @@ def test_plan_group_reads_respects_max_block_size(monkeypatch):
     ]
 
 
+@pytest.mark.parametrize("size", [1, 4, MAX_BATCH_REGISTERS, 32])
+def test_plan_group_reads_varied_block_sizes(monkeypatch, size):
+    regs = [Register("input", addr, f"r{addr}", "r") for addr in range(10)]
+    monkeypatch.setattr(loader, "load_registers", lambda: regs)
+    addresses = [r.address for r in regs]
+    expected = [
+        ReadPlan("input", start, length)
+        for start, length in group_reads(addresses, max_block_size=size)
+    ]
+    assert plan_group_reads(max_block_size=size) == expected
+
+
 @pytest.mark.skipif(ThesslaGreenDeviceScanner is None, reason="scanner unavailable")
 def test_scanner_respects_default_max_block_size():
     scanner = ThesslaGreenDeviceScanner("host", 502)

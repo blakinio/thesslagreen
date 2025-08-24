@@ -1772,14 +1772,10 @@ async def test_options_flow_max_registers_per_request_validated():
     flow = OptionsFlow(SimpleNamespace(options={}))
     result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 0})
     assert result["type"] == "form"
-    assert (
-        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "invalid_max_registers_per_request_low"
-    )
+    assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
 
     # Reject values above range
     flow = OptionsFlow(SimpleNamespace(options={}))
     result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 20})
     assert result["type"] == "form"
-    assert (
-        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "invalid_max_registers_per_request_high"
-    )
+    assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
