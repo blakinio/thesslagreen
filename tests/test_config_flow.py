@@ -55,24 +55,6 @@ sys.modules.setdefault(
 )
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.registers.loader", registers_loader
-registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
-registers_module.__path__ = []
-registers_module.loader = None
-registers_module.get_registers_by_function = lambda *args, **kwargs: []
-registers_module.get_all_registers = lambda *args, **kwargs: []
-registers_module.get_registers_hash = lambda *args, **kwargs: ""
-registers_module.plan_group_reads = lambda *args, **kwargs: []
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers", registers_module
-)
-loader_module = ModuleType(
-    "custom_components.thessla_green_modbus.registers.loader"
-)
-loader_module.get_registers_by_function = lambda *args, **kwargs: []
-loader_module.load_registers = lambda *args, **kwargs: []
-loader_module.get_all_registers = lambda *args, **kwargs: []
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers.loader", loader_module
 )
 
 from custom_components.thessla_green_modbus.const import (
@@ -1793,8 +1775,8 @@ def test_device_capabilities_serialization():
     assert list(caps.values()) == list(serialized.values())
 
 
-async def test_options_flow_max_registers_per_request_clamped():
-    """Options flow should clamp max registers per request to 16."""
+async def test_options_flow_max_registers_per_request_validated():
+    """Options flow should validate max registers per request range."""
     config_entry = SimpleNamespace(options={})
     flow = OptionsFlow(config_entry)
 
@@ -1812,8 +1794,20 @@ async def test_options_flow_max_registers_per_request_clamped():
         assert result["type"] == "create_entry"
         assert result["data"][CONF_MAX_REGISTERS_PER_REQUEST] == value
 
-    # Clamp values above range to 16
+    # Reject values below range
+    flow = OptionsFlow(SimpleNamespace(options={}))
+    result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 0})
+    assert result["type"] == "form"
+    assert (
+        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST]
+        == "invalid_max_registers_per_request_low"
+    )
+
+    # Reject values above range
     flow = OptionsFlow(SimpleNamespace(options={}))
     result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 20})
-    assert result["type"] == "create_entry"
-    assert result["data"][CONF_MAX_REGISTERS_PER_REQUEST] == 16
+    assert result["type"] == "form"
+    assert (
+        result["errors"][CONF_MAX_REGISTERS_PER_REQUEST]
+        == "invalid_max_registers_per_request_high"
+    )
