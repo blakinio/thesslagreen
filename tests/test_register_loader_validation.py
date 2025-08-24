@@ -1,15 +1,52 @@
 from __future__ import annotations
 
+import importlib.util
+import sys
+import types
 import json
 import re
-from importlib import resources
 from pathlib import Path
 
 from tools.validate_register_pdf import parse_pdf_registers
 
 import pydantic
 import pytest
-from custom_components.thessla_green_modbus.registers.loader import RegisterDefinition
+
+
+def _load_schema() -> type:
+    """Load RegisterDefinition without importing integration package."""
+
+    root = Path(__file__).resolve().parents[1]
+    pkg_root = root / "custom_components" / "thessla_green_modbus"
+
+    # Create placeholder packages to satisfy relative imports
+    sys.modules.setdefault("custom_components", types.ModuleType("custom_components"))
+    tg_pkg = types.ModuleType("custom_components.thessla_green_modbus")
+    tg_pkg.__path__ = [str(pkg_root)]
+    sys.modules["custom_components.thessla_green_modbus"] = tg_pkg
+
+    # Load utils module referenced by schema
+    utils_spec = importlib.util.spec_from_file_location(
+        "custom_components.thessla_green_modbus.utils", pkg_root / "utils.py"
+    )
+    utils_mod = importlib.util.module_from_spec(utils_spec)
+    assert utils_spec and utils_spec.loader
+    utils_spec.loader.exec_module(utils_mod)
+    sys.modules["custom_components.thessla_green_modbus.utils"] = utils_mod
+
+    module_name = "custom_components.thessla_green_modbus.registers.schema"
+    schema_spec = importlib.util.spec_from_file_location(
+        module_name, pkg_root / "registers" / "schema.py"
+    )
+    schema_mod = importlib.util.module_from_spec(schema_spec)
+    assert schema_spec and schema_spec.loader
+    sys.modules[module_name] = schema_mod
+    schema_spec.loader.exec_module(schema_mod)
+    schema_mod.RegisterDefinition.model_rebuild()
+    return schema_mod.RegisterDefinition
+
+
+RegisterDefinition = _load_schema()
 
 
 EXPECTED = {
@@ -90,8 +127,11 @@ def test_register_file_valid() -> None:
     """Validate register JSON structure and completeness."""
 
     json_file = (
-        resources.files("custom_components.thessla_green_modbus.registers")
-        .joinpath("thessla_green_registers_full.json")
+        Path(__file__).resolve().parents[1]
+        / "custom_components"
+        / "thessla_green_modbus"
+        / "registers"
+        / "thessla_green_registers_full.json"
     )
     data = json.loads(json_file.read_text(encoding="utf-8"))
     registers = data.get("registers", data)
@@ -113,8 +153,11 @@ def test_registers_match_pdf() -> None:
     """Ensure register JSON mirrors the vendor PDF documentation."""
 
     json_file = (
-        resources.files("custom_components.thessla_green_modbus.registers")
-        .joinpath("thessla_green_registers_full.json")
+        Path(__file__).resolve().parents[1]
+        / "custom_components"
+        / "thessla_green_modbus"
+        / "registers"
+        / "thessla_green_registers_full.json"
     )
     json_data = json.loads(json_file.read_text(encoding="utf-8"))["registers"]
 
@@ -143,6 +186,7 @@ def test_registers_match_pdf() -> None:
         if parsed.get("resolution") is not None and "resolution" not in overrides:
             assert expected.get("resolution") == parsed["resolution"]
 
+
 def test_schema_rejects_unknown_function() -> None:
     """Unknown function codes should be rejected."""
 
@@ -166,6 +210,23 @@ def test_schema_rejects_unknown_access() -> None:
         "address_dec": 0,
         "address_hex": "0x0",
         "access": "RW",
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
+
+
+@pytest.mark.parametrize("length", [0, -1])
+def test_schema_rejects_string_with_invalid_length(length: int) -> None:
+    """String registers must declare a positive length."""
+
+    bad = {
+        "name": "x",
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "access": "R",
+        "length": length,
+        "extra": {"type": "string"},
     }
     with pytest.raises(pydantic.ValidationError):
         RegisterDefinition.model_validate(bad)
