@@ -16,6 +16,8 @@
       "invalid_domain": "Nieprawidłowa nazwa hosta lub domena.",
       "invalid_ipv4": "Nieprawidłowy adres IPv4.",
       "invalid_ipv6": "Nieprawidłowy adres IPv6.",
+      "invalid_port": "Port musi być z zakresu 1–65535.",
+      "invalid_slave": "ID urządzenia musi być z zakresu 0–247.",
       "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi po szczegóły.",
       "modbus_error": "Błąd komunikacji Modbus. Sprawdź okablowanie i ustawienia.",
       "timeout": "Przekroczono czas połączenia. Sprawdź host i port.",
