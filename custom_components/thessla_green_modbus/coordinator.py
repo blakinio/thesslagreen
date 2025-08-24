@@ -464,7 +464,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 test_addresses = [reg.address for reg in get_registers_by_function("04")][:3]
 
                 for addr in test_addresses:
-                    response = await self.client.read_input_registers(addr, 1, unit=self.slave_id)
+                    response = await self.client.read_input_registers(
+                        addr, count=1, unit=self.slave_id
+                    )
                     if response.isError():
                         raise ConnectionException(f"Cannot read register {addr:#06x}")
 
