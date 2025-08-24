@@ -229,7 +229,7 @@ async def test_form_user_success():
                 "firmware": "1.0",
                 "serial_number": "123",
             },
-            "capabilities": {"fan": True},
+            "capabilities": {"expansion_module": True},
             "register_count": 5,
         },
     }
@@ -270,15 +270,15 @@ async def test_form_user_success():
         result2 = await flow.async_step_confirm({})
 
     assert result2["type"] == "create_entry"
-    assert result2["type"] == "create_entry"
     assert result2["title"] == "My Device"
-    assert result2["data"] == {
-        CONF_HOST: "192.168.1.100",
-        CONF_PORT: 502,
-        "slave_id": 10,
-        "unit": 10,
-        CONF_NAME: "My Device",
-    }
+    data = result2["data"]
+    assert data[CONF_HOST] == "192.168.1.100"
+    assert data[CONF_PORT] == 502
+    assert data["slave_id"] == 10
+    assert data["unit"] == 10
+    assert data[CONF_NAME] == "My Device"
+    assert isinstance(data["capabilities"], dict)
+    assert data["capabilities"]["expansion_module"] is True
     assert result2["options"][CONF_DEEP_SCAN] is True
 
 
@@ -1261,6 +1261,8 @@ async def test_validate_input_capabilities_missing_fields():
         close=AsyncMock(),
     )
 
+    from custom_components.thessla_green_modbus import scanner_core
+
     orig_asdict = dataclasses.asdict
 
     def _missing_basic_control(obj):
@@ -1272,7 +1274,7 @@ async def test_validate_input_capabilities_missing_fields():
         "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), patch(
-        "custom_components.thessla_green_modbus.config_flow.dataclasses.asdict",
+        "custom_components.thessla_green_modbus.scanner_core.asdict",
         side_effect=_missing_basic_control,
     ):
         with pytest.raises(CannotConnect) as err:

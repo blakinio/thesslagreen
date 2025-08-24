@@ -125,7 +125,7 @@ class DeviceInfo:  # pragma: no cover
 # which features the device exposes; static analysis may therefore mark them
 # as unused even though they are relied upon.
 @dataclass
-class DeviceCapabilities:
+class DeviceCapabilities:  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
 
     Although capabilities are typically determined once during the initial scan,
@@ -134,12 +134,17 @@ class DeviceCapabilities:
     new values.  The capability sets are mutable; modify them via assignment to
     trigger cache invalidation.
     """
-class DeviceCapabilities:  # pragma: no cover
-    """Feature flags and sensor availability detected on the device."""
+
     basic_control: bool = False
-    temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
-    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers  # pragma: no cover
-    special_functions: set[str] = field(default_factory=set)  # Optional feature flags  # pragma: no cover
+    temperature_sensors: set[str] = field(
+        default_factory=set
+    )  # Names of temperature sensors
+    flow_sensors: set[str] = field(
+        default_factory=set
+    )  # Airflow sensor identifiers  # pragma: no cover
+    special_functions: set[str] = field(
+        default_factory=set
+    )  # Optional feature flags  # pragma: no cover
     expansion_module: bool = False  # pragma: no cover
     constant_flow: bool = False  # pragma: no cover
     gwc_system: bool = False  # pragma: no cover
