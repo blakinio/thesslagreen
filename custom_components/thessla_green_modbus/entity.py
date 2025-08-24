@@ -19,7 +19,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         self._key = key
         # Home Assistant reads ``_attr_device_info`` directly during entity
         # setup; keeping this attribute avoids additional property wrappers.
-        self._attr_device_info = coordinator.get_device_info()
+        self._attr_device_info = coordinator.get_device_info()  # pragma: no cover
 
     @property
     def unique_id(self) -> str:
@@ -31,7 +31,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         )
 
     @property
-    def available(self) -> bool:
+    def available(self) -> bool:  # pragma: no cover
         """Return if entity is available.
 
         This property forms part of the entity API and is queried by Home

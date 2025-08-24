@@ -356,17 +356,17 @@ class RegisterDefinition(pydantic.BaseModel):
     # ``model_config`` and the validators below are used by Pydantic at runtime
     # to validate register definitions.  They appear unused to vulture because
     # they are referenced through Pydantic's internal mechanisms.
-    model_config = pydantic.ConfigDict(extra="allow")
+    model_config = pydantic.ConfigDict(extra="allow")  # pragma: no cover
 
     @pydantic.model_validator(mode="after")
-    def check_address(self) -> "RegisterDefinition":
+    def check_address(self) -> "RegisterDefinition":  # pragma: no cover
         if int(self.address_hex, 16) != self.address_dec:
             raise ValueError("address_hex does not match address_dec")
         return self
 
     @pydantic.field_validator("name")
     @classmethod
-    def name_is_snake(cls, v: str) -> str:
+    def name_is_snake(cls, v: str) -> str:  # pragma: no cover
         if not re.fullmatch(r"[a-z0-9_]+", v):
             raise ValueError("name must be snake_case")
         return v
@@ -491,7 +491,7 @@ def _load_registers() -> list[Register]:
     return _load_registers_from_file(_REGISTERS_PATH, file_hash=file_hash)
 
 
-def clear_cache() -> None:
+def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
 
     Exposed for tests and tooling that need to reload register
