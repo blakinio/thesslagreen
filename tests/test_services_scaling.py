@@ -10,20 +10,20 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_register_definition,
     get_registers_by_function,
 )
+from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-
 
 
 class DummyCoordinator:
     """Minimal coordinator stub capturing written values."""
 
-    def __init__(self, max_registers_per_request: int = 16) -> None:
+    def __init__(self, max_registers_per_request: int = MAX_BATCH_REGISTERS) -> None:
         self.slave_id = 1
         self.writes = []
         self.available_registers = {"holding_registers": set()}
         self.max_registers_per_request = max_registers_per_request
-        self.effective_batch = min(max_registers_per_request, 16)
+        self.effective_batch = min(max_registers_per_request, MAX_BATCH_REGISTERS)
 
     async def async_write_register(self, register_name, value, refresh=True) -> None:
         address = HOLDING_REGISTERS.get(register_name, 0)
@@ -84,19 +84,6 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
 
     writes = coordinator.writes
 
-    expected_start = get_register_definition(
-        "schedule_monday_period1_start"
-    ).encode("06:30")
-    expected_end = get_register_definition(
-        "schedule_monday_period1_end"
-    ).encode("08:00")
-    expected_flow = get_register_definition(
-        "schedule_monday_period1_flow"
-    ).encode(55)
-    expected_temp = get_register_definition(
-        "schedule_monday_period1_temp"
-    ).encode(21.5)
-
     assert writes[0] == (
         HOLDING_REGISTERS["schedule_monday_period1_start"],
         "06:30",
@@ -120,7 +107,9 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("batch,expected_chunks", [(1, 8), (8, 1), (16, 1), (32, 1)])
+@pytest.mark.parametrize(
+    "batch,expected_chunks", [(1, 8), (8, 1), (MAX_BATCH_REGISTERS, 1), (32, 1)]
+)
 async def test_set_device_name_chunking(monkeypatch, batch, expected_chunks):
     """set_device_name respects configured batch size."""
     hass = SimpleNamespace()
@@ -136,7 +125,9 @@ async def test_set_device_name_chunking(monkeypatch, batch, expected_chunks):
     await services.async_setup_services(hass)
     handler = hass.services.handlers["set_device_name"]
 
-    call = SimpleNamespace(data={"entity_id": ["climate.device"], "device_name": "ABCDEFGHIJKLMNOP"})
+    call = SimpleNamespace(
+        data={"entity_id": ["climate.device"], "device_name": "ABCDEFGHIJKLMNOP"}
+    )
 
     await handler(call)
 

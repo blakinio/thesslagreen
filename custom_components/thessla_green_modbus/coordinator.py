@@ -83,6 +83,7 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    MAX_BATCH_REGISTERS,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
@@ -127,7 +128,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Initialize the coordinator.
 
         ``max_registers_per_request`` is clamped to the safe Modbus range of
-        1-16 registers per request.
+        1–MAX_BATCH_REGISTERS registers per request.
         """
         if isinstance(scan_interval, timedelta):
             update_interval = scan_interval
@@ -154,8 +155,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.deep_scan = deep_scan
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
-        # Clamp user-specified batch size to the Modbus-safe range (1-16)
-        self.max_registers_per_request = max(1, min(max_registers_per_request, 16))
+        # Clamp user-specified batch size to the Modbus-safe range (1-MAX_BATCH_REGISTERS)
+        self.max_registers_per_request = max(1, min(max_registers_per_request, MAX_BATCH_REGISTERS))
         # ``effective_batch`` mirrors the sanitized value
         self.effective_batch = self.max_registers_per_request
 
@@ -432,9 +433,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     length = 1
                 addresses.extend(range(addr, addr + length))
 
-            self._register_groups[key] = group_reads(
-                addresses, max_block_size=self.effective_batch
-            )
+            self._register_groups[key] = group_reads(addresses, max_block_size=self.effective_batch)
 
         _LOGGER.debug(
             "Pre-computed register groups: %s",
@@ -661,27 +660,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if response is None or response.isError():
                         self._mark_registers_failed(register_names)
                         if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to read input registers at 0x%04X", start_addr
-                            )
+                            _LOGGER.error("Failed to read input registers at 0x%04X", start_addr)
                         else:
-                            _LOGGER.info(
-                                "Retrying input registers at 0x%04X", start_addr
-                            )
+                            _LOGGER.info("Retrying input registers at 0x%04X", start_addr)
                         continue
 
                     for i, value in enumerate(response.registers):
                         addr = start_addr + i
-                        register_name = self._find_register_name(
-                            "input_registers", addr
-                        )
+                        register_name = self._find_register_name("input_registers", addr)
                         if (
                             register_name
                             and register_name in self.available_registers["input_registers"]
                         ):
-                            processed_value = self._process_register_value(
-                                register_name, value
-                            )
+                            processed_value = self._process_register_value(register_name, value)
                             if processed_value is not None:
                                 data[register_name] = processed_value
                                 self.statistics["total_registers_read"] += 1
@@ -773,23 +764,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 start_addr,
                             )
                         else:
-                            _LOGGER.info(
-                                "Retrying holding registers at 0x%04X", start_addr
-                            )
+                            _LOGGER.info("Retrying holding registers at 0x%04X", start_addr)
                         continue
 
                     for i, value in enumerate(response.registers):
                         addr = start_addr + i
-                        register_name = self._find_register_name(
-                            "holding_registers", addr
-                        )
+                        register_name = self._find_register_name("holding_registers", addr)
                         if (
                             register_name
                             and register_name in self.available_registers["holding_registers"]
                         ):
-                            processed_value = self._process_register_value(
-                                register_name, value
-                            )
+                            processed_value = self._process_register_value(register_name, value)
                             if processed_value is not None:
                                 data[register_name] = processed_value
                                 self.statistics["total_registers_read"] += 1
@@ -875,13 +860,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if response is None or response.isError():
                         self._mark_registers_failed(register_names)
                         if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to read coil registers at 0x%04X", start_addr
-                            )
+                            _LOGGER.error("Failed to read coil registers at 0x%04X", start_addr)
                         else:
-                            _LOGGER.info(
-                                "Retrying coil registers at 0x%04X", start_addr
-                            )
+                            _LOGGER.info("Retrying coil registers at 0x%04X", start_addr)
                         continue
 
                     if not response.bits:
@@ -895,9 +876,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                     for i in range(min(count, len(response.bits))):
                         addr = start_addr + i
-                        register_name = self._find_register_name(
-                            "coil_registers", addr
-                        )
+                        register_name = self._find_register_name("coil_registers", addr)
                         if (
                             register_name
                             and register_name in self.available_registers["coil_registers"]
@@ -987,13 +966,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if response is None or response.isError():
                         self._mark_registers_failed(register_names)
                         if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to read discrete inputs at 0x%04X", start_addr
-                            )
+                            _LOGGER.error("Failed to read discrete inputs at 0x%04X", start_addr)
                         else:
-                            _LOGGER.info(
-                                "Retrying discrete inputs at 0x%04X", start_addr
-                            )
+                            _LOGGER.info("Retrying discrete inputs at 0x%04X", start_addr)
                         continue
 
                     if not response.bits:
@@ -1007,9 +982,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                     for i in range(min(count, len(response.bits))):
                         addr = start_addr + i
-                        register_name = self._find_register_name(
-                            "discrete_inputs", addr
-                        )
+                        register_name = self._find_register_name("discrete_inputs", addr)
                         if (
                             register_name
                             and register_name in self.available_registers["discrete_inputs"]
@@ -1222,9 +1195,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                             response,
                                         )
                                         return False
-                                    _LOGGER.info(
-                                        "Retrying write to register %s", register_name
-                                    )
+                                    _LOGGER.info("Retrying write to register %s", register_name)
                                     continue
                             else:
                                 response = await self._call_modbus(
@@ -1241,9 +1212,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 attempt=attempt,
                             )
                         else:
-                            _LOGGER.error(
-                                "Register %s is not writable", register_name
-                            )
+                            _LOGGER.error("Register %s is not writable", register_name)
                             return False
 
                         if response is None or response.isError():
@@ -1254,9 +1223,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     response,
                                 )
                                 return False
-                            _LOGGER.info(
-                                "Retrying write to register %s", register_name
-                            )
+                            _LOGGER.info("Retrying write to register %s", register_name)
                             continue
 
                         refresh_after_write = refresh
@@ -1269,7 +1236,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     except (ModbusException, ConnectionException) as exc:
                         if attempt == self.retry:
                             _LOGGER.error(
-                                "Failed to write register %s", register_name,
+                                "Failed to write register %s",
+                                register_name,
                                 exc_info=True,
                             )
                             return False
@@ -1295,9 +1263,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             return False
                         continue
                     except (OSError, ValueError):
-                        _LOGGER.exception(
-                            "Unexpected error writing register %s", register_name
-                        )
+                        _LOGGER.exception("Unexpected error writing register %s", register_name)
                         return False
 
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
@@ -1374,15 +1340,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
         total_registers = sum(len(v) for v in self.available_registers.values())
         total_registers_json = len(get_all_registers())
-        batch_sizes = [
-            count
-            for groups in self._register_groups.values()
-            for _, count in groups
-        ]
+        batch_sizes = [count for groups in self._register_groups.values() for _, count in groups]
         effective_batch = max(batch_sizes, default=0)
-        registers_discovered = {
-            key: len(value) for key, value in self.available_registers.items()
-        }
+        registers_discovered = {key: len(value) for key, value in self.available_registers.items()}
         error_stats = {
             "connection_errors": statistics.get("connection_errors", 0),
             "timeout_errors": statistics.get("timeout_errors", 0),

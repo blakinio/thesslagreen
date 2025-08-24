@@ -57,7 +57,6 @@ SENSOR_UNAVAILABLE_REGISTERS = {
 }
 
 
-
 # Configuration options
 CONF_SLAVE_ID = "slave_id"
 CONF_SCAN_INTERVAL = "scan_interval"
@@ -80,7 +79,8 @@ AIRFLOW_RATE_REGISTERS = {"supply_flow_rate", "exhaust_flow_rate"}
 DEFAULT_SCAN_UART_SETTINGS = False
 DEFAULT_SKIP_MISSING_REGISTERS = False
 DEFAULT_DEEP_SCAN = False
-DEFAULT_MAX_REGISTERS_PER_REQUEST = 16
+MAX_BATCH_REGISTERS = 16
+DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
 
 # Registers that are known to be unavailable on some devices
 KNOWN_MISSING_REGISTERS = {
@@ -164,9 +164,7 @@ def migrate_unique_id(
 
         if entity_key is not None:
             lookup = _build_entity_lookup()
-            register_name, register_type, bit = lookup.get(
-                entity_key, (entity_key, None, None)
-            )
+            register_name, register_type, bit = lookup.get(entity_key, (entity_key, None, None))
             address: int | None = None
             if register_type == "holding_registers":
                 address = HOLDING_REGISTERS.get(register_name)
@@ -178,9 +176,7 @@ def migrate_unique_id(
                 address = DISCRETE_INPUT_REGISTERS.get(register_name)
 
             if address is not None:
-                bit_suffix = (
-                    f"_bit{bit.bit_length() - 1}" if bit is not None else ""
-                )
+                bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
                 uid = f"{device_prefix}_{slave_id}_{address}{bit_suffix}"
             else:
                 uid = f"{device_prefix}_{entity_key}"

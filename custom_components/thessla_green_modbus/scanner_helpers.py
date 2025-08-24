@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, Optional
 
-from .const import SENSOR_UNAVAILABLE
+from .const import SENSOR_UNAVAILABLE, MAX_BATCH_REGISTERS
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
@@ -23,7 +23,6 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
-
 
 
 def _format_register_value(name: str, value: int) -> int | str | None:
@@ -74,9 +73,7 @@ SPECIAL_VALUE_DECODERS: Dict[str, Callable[[int], Optional[int]]] = {
     "season_mode": _decode_season_mode,
 }
 
-# Maximum registers per batch read
-# A smaller default improves stability on some devices.
-MAX_BATCH_REGISTERS = 16
+# Maximum registers per batch read (defined in ``const`` for reuse)
 
 # Optional UART configuration registers (Air-B and Air++ ports)
 # According to the Series 4 Modbus documentation, both the Air-B

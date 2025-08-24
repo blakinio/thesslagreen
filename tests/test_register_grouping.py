@@ -5,6 +5,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
     plan_group_reads,
 )
+from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
@@ -56,7 +57,7 @@ def test_plan_group_reads_from_json():
     assert plans[2] == (24, 6)
     plans = [p for p in plan_group_reads(max_block_size=64) if p.function == "04"]
     assert (plans[0].address, plans[0].length) == (0, 5)
-    assert (plans[1].address, plans[1].length) == (14, 16)
+    assert (plans[1].address, plans[1].length) == (14, MAX_BATCH_REGISTERS)
     assert (plans[2].address, plans[2].length) == (271, 7)
 
 
@@ -71,17 +72,17 @@ def test_plan_group_reads_splits_large_block(monkeypatch):
     )
 
     addresses = [r.address for r in regs]
-    plans = group_reads(addresses, max_block_size=16)
-    plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
+    plans = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == "04"]
 
     assert plans == [
-        (0, 16),
-        (16, 16),
-        (32, 16),
-        (48, 16),
-        (64, 16),
-        (80, 16),
-        (96, 4),
+        (0, MAX_BATCH_REGISTERS),
+        (MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS),
+        (MAX_BATCH_REGISTERS * 2, MAX_BATCH_REGISTERS),
+        (MAX_BATCH_REGISTERS * 3, MAX_BATCH_REGISTERS),
+        (MAX_BATCH_REGISTERS * 4, MAX_BATCH_REGISTERS),
+        (MAX_BATCH_REGISTERS * 5, MAX_BATCH_REGISTERS),
+        (MAX_BATCH_REGISTERS * 6, 100 - MAX_BATCH_REGISTERS * 6),
     ]
 
 
@@ -91,10 +92,7 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     # Two ranges of consecutive registers separated by a gap
     first = list(range(32))
     second = list(range(40, 80))
-    regs = [
-        Register(function="04", address=i, name=f"r{i}", access="ro")
-        for i in first + second
-    ]
+    regs = [Register(function="04", address=i, name=f"r{i}", access="ro") for i in first + second]
 
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader.load_registers",
@@ -102,13 +100,13 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     )
 
     addresses = [r.address for r in regs]
-    plans = group_reads(addresses, max_block_size=16)
-    plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
+    plans = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == "04"]
 
     assert plans == [
-        (0, 16),
-        (16, 16),
-        (40, 16),
-        (56, 16),
-        (72, 8),
+        (0, MAX_BATCH_REGISTERS),
+        (MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS),
+        (40, MAX_BATCH_REGISTERS),
+        (40 + MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS),
+        (40 + 2 * MAX_BATCH_REGISTERS, len(second) - 2 * MAX_BATCH_REGISTERS),
     ]

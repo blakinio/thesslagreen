@@ -11,9 +11,9 @@ def test_deep_scan_defaults():
 
 
 def test_max_registers_per_request_defaults():
-    """Ensure max register limit constant is defined and defaults to 16."""
+    """Ensure max register limit constant is defined and defaults to maximum."""
     assert const.CONF_MAX_REGISTERS_PER_REQUEST == "max_registers_per_request"
-    assert const.DEFAULT_MAX_REGISTERS_PER_REQUEST == 16
+    assert const.DEFAULT_MAX_REGISTERS_PER_REQUEST == const.MAX_BATCH_REGISTERS
 
 
 def test_missing_options_file(monkeypatch, caplog):
