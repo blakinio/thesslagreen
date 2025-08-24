@@ -6,6 +6,7 @@ import re
 
 __all__ = [
     "_to_snake_case",
+    "_normalise_name",
     "_decode_register_time",
     "_decode_bcd_time",
     "_decode_aatt",
@@ -27,6 +28,17 @@ def _to_snake_case(name: str) -> str:
     token_map = {"temp": "temperature"}
     tokens = [token_map.get(token, token) for token in name.split("_")]
     return "_".join(tokens)
+
+
+def _normalise_name(name: str) -> str:
+    """Convert register names to ``snake_case`` and fix known typos."""
+    fixes = {
+        "duct_warter_heater_pump": "duct_water_heater_pump",
+        "required_temp": "required_temperature",
+        "specialmode": "special_mode",
+    }
+    snake = _to_snake_case(name)
+    return fixes.get(snake, snake)
 
 
 def _decode_register_time(value: int) -> int | None:

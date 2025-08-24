@@ -11,8 +11,13 @@ from __future__ import annotations
 import json
 import pathlib
 import re
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from custom_components.thessla_green_modbus.utils import _normalise_name
 # Path to the canonical JSON register definition file bundled with the
 # integration.  ``registers.py`` is generated from this file and should never be
 # edited manually.
@@ -43,31 +48,6 @@ def sort_registers_json() -> None:
         json.dumps({"registers": registers}, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-
-
-def _to_snake_case(name: str) -> str:
-    """Convert register names to snake_case."""
-    replacements = {"flowrate": "flow_rate"}
-    for old, new in replacements.items():
-        name = name.replace(old, new)
-    name = re.sub(r"[\s\-/]", "_", name)
-    name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
-    name = re.sub(r"(?<=\D)(\d)", r"_\1", name)
-    name = re.sub(r"__+", "_", name)
-    name = name.lower()
-    token_map = {"temp": "temperature"}
-    tokens = [token_map.get(token, token) for token in name.split("_")]
-    return "_".join(tokens)
-
-
-def _normalise_name(name: str) -> str:
-    fixes = {
-        "duct_warter_heater_pump": "duct_water_heater_pump",
-        "required_temp": "required_temperature",
-        "specialmode": "special_mode",
-    }
-    snake = _to_snake_case(name)
-    return fixes.get(snake, snake)
 
 
 def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:

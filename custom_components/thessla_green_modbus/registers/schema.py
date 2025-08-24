@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 import pydantic
 
-from ..utils import _to_snake_case
+from ..utils import _normalise_name
 
 
 def _normalise_function(fn: str) -> str:
@@ -23,17 +23,6 @@ def _normalise_function(fn: str) -> str:
         "inputregisters": "04",
     }
     return mapping.get(fn.lower(), fn)
-
-
-def _normalise_name(name: str) -> str:
-    """Convert register names to ``snake_case`` and fix known typos."""
-    fixes = {
-        "duct_warter_heater_pump": "duct_water_heater_pump",
-        "required_temp": "required_temperature",
-        "specialmode": "special_mode",
-    }
-    snake = _to_snake_case(name)
-    return fixes.get(snake, snake)
 
 
 class RegisterDefinition(pydantic.BaseModel):
