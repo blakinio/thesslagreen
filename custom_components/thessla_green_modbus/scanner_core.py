@@ -23,7 +23,7 @@ from .modbus_exceptions import (
     ModbusIOException,
 )
 from .modbus_helpers import _call_modbus, group_reads as _group_reads
-from .registers.loader import get_all_registers
+from .registers.loader import get_all_registers, get_registers_hash
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
@@ -45,11 +45,14 @@ HOLDING_REGISTERS: dict[str, int] = {}
 COIL_REGISTERS: dict[str, int] = {}
 DISCRETE_INPUT_REGISTERS: dict[str, int] = {}
 MULTI_REGISTER_SIZES: dict[str, int] = {}
+REGISTER_HASH: str | None = None
 
 
 def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
+    global REGISTER_HASH
     regs = get_all_registers()
+    REGISTER_HASH = get_registers_hash()
 
     REGISTER_DEFINITIONS.clear()
     REGISTER_DEFINITIONS.update({r.name: r for r in regs})
@@ -87,7 +90,8 @@ def _build_register_maps() -> None:
 # Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    if not REGISTER_DEFINITIONS:
+    current_hash = get_registers_hash()
+    if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
         _build_register_maps()
 
 
