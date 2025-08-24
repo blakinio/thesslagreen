@@ -24,7 +24,6 @@
       "invalid_slave": "Device ID must be between 0 and 247.",
       "invalid_slave_low": "Device ID must be 0 or greater.",
       "invalid_slave_high": "Device ID must be 247 or less.",
-      "invalid_max_registers_per_request": "Max registers per request must be between 1 and 16.",
       "dns_failure": "Hostname could not be resolved.",
       "connection_refused": "Connection was refused by the host.",
       "missing_method": "Scanner is missing required method. See logs for details.",
@@ -1254,8 +1253,7 @@
   },
   "options": {
     "error": {
-      "invalid_max_registers_per_request_low": "Max registers per request must be at least 1.",
-      "invalid_max_registers_per_request_high": "Max registers per request must be 16 or less."
+      "invalid_max_registers_per_request": "Max registers per request must be at least 1."
     },
     "step": {
       "init": {

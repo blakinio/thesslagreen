@@ -24,7 +24,6 @@
       "invalid_slave": "ID urządzenia musi być z zakresu 0–247.",
       "invalid_slave_low": "ID urządzenia musi być większe lub równe 0.",
       "invalid_slave_high": "ID urządzenia musi być mniejsze lub równe 247.",
-      "invalid_max_registers_per_request": "Maksymalna liczba rejestrów na zapytanie musi mieścić się w zakresie 1–16.",
       "dns_failure": "Nie można rozwiązać nazwy hosta.",
       "connection_refused": "Połączenie zostało odrzucone przez hosta.",
       "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi po szczegóły.",
@@ -1254,8 +1253,7 @@
   },
   "options": {
     "error": {
-      "invalid_max_registers_per_request_low": "Maksymalna liczba rejestrów na żądanie musi być co najmniej 1.",
-      "invalid_max_registers_per_request_high": "Maksymalna liczba rejestrów na żądanie musi być nie większa niż 16."
+      "invalid_max_registers_per_request": "Maksymalna liczba rejestrów na żądanie musi być co najmniej 1."
     },
     "step": {
       "init": {
