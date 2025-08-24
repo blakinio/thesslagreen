@@ -113,7 +113,6 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         register_name: str,
         address: int,
         sensor_definition: dict[str, Any],
-        address: int,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, register_name, address)
@@ -123,11 +122,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
-        airflow_unit = getattr(getattr(coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
         self._attr_native_unit_of_measurement = sensor_definition.get("unit")  # pragma: no cover
-        if register_name in AIRFLOW_RATE_REGISTERS and airflow_unit == AIRFLOW_UNIT_PERCENTAGE:
+        if self._use_percentage():
             self._attr_native_unit_of_measurement = PERCENTAGE  # pragma: no cover
         self._attr_device_class = sensor_definition.get("device_class")  # pragma: no cover
         self._attr_state_class = sensor_definition.get("state_class")  # pragma: no cover
@@ -152,20 +148,9 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             if isinstance(value, int):
                 return f"{value // 60:02d}:{value % 60:02d}"
             return cast(str | float | int, value)
-        airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
-        if (
-            self._register_name in AIRFLOW_RATE_REGISTERS
-            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
-        ):
-            nominal_key = (
-                "nominal_supply_air_flow"
-                if self._register_name == "supply_flow_rate"
-                else "nominal_exhaust_air_flow"
-            )
-            nominal = self.coordinator.data.get(nominal_key)
-            if isinstance(nominal, (int, float)) and nominal:
+        if self._use_percentage():
+            nominal = self._get_nominal_flow()
+            if nominal is not None:
                 return round((cast(float, value) / float(nominal)) * 100)
             return STATE_UNAVAILABLE
         value_map = self._sensor_def.get("value_map")
@@ -179,21 +164,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         value = self.coordinator.data.get(self._register_name)
         if not (self.coordinator.last_update_success and value not in (None, SENSOR_UNAVAILABLE)):
             return False
-        airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
-        if (
-            self._register_name in AIRFLOW_RATE_REGISTERS
-            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
-        ):
-            nominal_key = (
-                "nominal_supply_air_flow"
-                if self._register_name == "supply_flow_rate"
-                else "nominal_exhaust_air_flow"
-            )
-            nominal = self.coordinator.data.get(nominal_key)
-            if not isinstance(nominal, (int, float)) or not nominal:
-                return False
+        if self._use_percentage() and self._get_nominal_flow() is None:
+            return False
         return True
 
     @property
@@ -212,6 +184,31 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             attrs["raw_value"] = raw_value
 
         return attrs
+
+    def _get_airflow_unit(self) -> str:
+        """Return airflow unit option."""
+        return getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
+            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
+        )
+
+    def _use_percentage(self) -> bool:
+        """Return True if airflow rates should be represented as percentage."""
+        return (
+            self._register_name in AIRFLOW_RATE_REGISTERS
+            and self._get_airflow_unit() == AIRFLOW_UNIT_PERCENTAGE
+        )
+
+    def _get_nominal_flow(self) -> float | int | None:
+        """Return nominal airflow rate for current sensor if available."""
+        nominal_key = (
+            "nominal_supply_air_flow"
+            if self._register_name == "supply_flow_rate"
+            else "nominal_exhaust_air_flow"
+        )
+        nominal = self.coordinator.data.get(nominal_key)
+        if isinstance(nominal, (int, float)) and nominal:
+            return nominal
+        return None
 
 
 class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
