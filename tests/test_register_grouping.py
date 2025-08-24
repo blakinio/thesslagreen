@@ -1,7 +1,7 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.registers import (
     get_registers_by_function,
-    group_reads,
+    plan_group_reads,
 )
 from custom_components.thessla_green_modbus.registers.loader import Register
 
@@ -9,16 +9,16 @@ INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
 
 def _expanded_addresses(fn: str) -> list[int]:
-    plans = [p for p in group_reads(max_block_size=32) if p.function == fn]
+    plans = [p for p in plan_group_reads(max_block_size=32) if p.function == fn]
     return [addr for plan in plans for addr in range(plan.address, plan.address + plan.length)]
 
 
-def test_group_reads_coalesces_per_function() -> None:
-    """group_reads covers all registers for each function code."""
+def test_plan_group_reads_coalesces_per_function() -> None:
+    """plan_group_reads covers all registers for each function code."""
 
     for fn in ("01", "02", "03", "04"):
         regs = get_registers_by_function(fn)
-        expected = sorted(r.address for r in regs)
+        expected = sorted({addr for r in regs for addr in range(r.address, r.address + r.length)})
         assert _expanded_addresses(fn) == expected
 
 
@@ -43,15 +43,15 @@ def test_group_registers_split_known_missing():
     ]  # nosec B101
 
 
-def test_group_reads_from_json():
+def test_plan_group_reads_from_json():
     """Group consecutive registers based on JSON definitions."""
-    plans = [p for p in group_reads(max_block_size=64) if p.function == "04"]
+    plans = [p for p in plan_group_reads(max_block_size=64) if p.function == "04"]
     assert (plans[0].address, plans[0].length) == (0, 5)
-    assert (plans[1].address, plans[1].length) == (14, 9)
-    assert (plans[2].address, plans[2].length) == (24, 6)
+    assert (plans[1].address, plans[1].length) == (14, 16)
+    assert (plans[2].address, plans[2].length) == (271, 7)
 
 
-def test_group_reads_splits_large_block(monkeypatch):
+def test_plan_group_reads_splits_large_block(monkeypatch):
     """A long list of consecutive addresses is split into multiple blocks."""
 
     regs = [Register(function="04", address=i, name=f"r{i}", access="ro") for i in range(100)]
@@ -61,7 +61,7 @@ def test_group_reads_splits_large_block(monkeypatch):
         lambda: regs,
     )
 
-    plans = [p for p in group_reads(max_block_size=16) if p.function == "04"]
+    plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
 
     assert [(p.address, p.length) for p in plans] == [
         (0, 16),
@@ -74,7 +74,7 @@ def test_group_reads_splits_large_block(monkeypatch):
     ]
 
 
-def test_group_reads_handles_gaps_and_block_size(monkeypatch):
+def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     """Gaps and block size limits both trigger new read plans."""
 
     # Two ranges of consecutive registers separated by a gap
@@ -90,7 +90,7 @@ def test_group_reads_handles_gaps_and_block_size(monkeypatch):
         lambda: regs,
     )
 
-    plans = [p for p in group_reads(max_block_size=16) if p.function == "04"]
+    plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
 
     assert [(p.address, p.length) for p in plans] == [
         (0, 16),
