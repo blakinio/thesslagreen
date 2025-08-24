@@ -14,22 +14,20 @@ from homeassistant.helpers.service import async_extract_entity_ids
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
+    from datetime import datetime, timezone
+
     class _DTUtil:
         """Fallback minimal dt util."""
 
         @staticmethod
-        def now():
-            from datetime import datetime
-
+        def now() -> datetime:
             return datetime.now()
 
         @staticmethod
-        def utcnow():
-            from datetime import datetime, timezone
-
+        def utcnow() -> datetime:
             return datetime.now(timezone.utc)
 
-    dt_util = _DTUtil()  # type: ignore
+    dt_util = _DTUtil()
 
 from .const import (
     BYPASS_MODES,
@@ -322,12 +320,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         # Prepare start/end values as tuples so Register.encode can
         # handle conversion to the device format.
-        start_value = (start_time.hour, start_time.minute)
-        end_value = (end_time.hour, end_time.minute)
+        start_tuple = (start_time.hour, start_time.minute)
+        end_tuple = (end_time.hour, end_time.minute)
 
         # Format times in a user-friendly way for encoding
-        start_value = f"{start_time.hour:02d}:{start_time.minute:02d}"
-        end_value = f"{end_time.hour:02d}:{end_time.minute:02d}"
+        start_value = f"{start_tuple[0]:02d}:{start_tuple[1]:02d}"
+        end_value = f"{end_tuple[0]:02d}:{end_tuple[1]:02d}"
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
