@@ -64,9 +64,6 @@ include = ["custom_components*"]
     "registers/*.json",
 ]
 
-[tool.setuptools.exclude-package-data]
-"*" = ["*.csv"]
-
 [tool.ruff]
 line-length = 79
 target-version = "py312"
