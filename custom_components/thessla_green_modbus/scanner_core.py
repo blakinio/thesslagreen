@@ -126,7 +126,14 @@ class DeviceInfo:
 # as unused even though they are relied upon.
 @dataclass
 class DeviceCapabilities:
-    """Feature flags and sensor availability detected on the device."""
+    """Feature flags and sensor availability detected on the device.
+
+    Although capabilities are typically determined once during the initial scan,
+    the dataclass caches the result of :meth:`as_dict` for efficiency.  Any
+    attribute assignment will clear this cache so subsequent calls reflect the
+    new values.  The capability sets are mutable; modify them via assignment to
+    trigger cache invalidation.
+    """
 
     basic_control: bool = False
     temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
@@ -149,6 +156,12 @@ class DeviceCapabilities:
     sensor_ambient_temperature: bool = False
     sensor_heating_temperature: bool = False
     temperature_sensors_count: int = 0
+
+    def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
+        """Set attribute and invalidate cached ``as_dict`` result."""
+        if name != "_as_dict_cache" and hasattr(self, "_as_dict_cache"):
+            object.__delattr__(self, "_as_dict_cache")
+        object.__setattr__(self, name, value)
 
     def as_dict(self) -> dict[str, Any]:
         """Return capabilities as a dictionary with set values sorted.
