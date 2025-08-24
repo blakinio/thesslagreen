@@ -317,6 +317,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 f"{unique_host}:{self._data[CONF_PORT]}:{self._data[CONF_SLAVE_ID]}"
             )
             self._abort_if_unique_id_configured()
+            # Prepare capabilities for persistence
+            caps_obj = self._scan_result.get("capabilities")
+            if isinstance(caps_obj, DeviceCapabilities):
+                caps_dict = caps_obj.as_dict()
+            elif isinstance(caps_obj, dict):
+                try:
+                    caps_dict = DeviceCapabilities(**caps_obj).as_dict()
+                except (TypeError, ValueError):
+                    caps_dict = DeviceCapabilities().as_dict()
+            else:
+                caps_dict = DeviceCapabilities().as_dict()
+
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility
             return self.async_create_entry(
@@ -327,6 +339,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],  # Standard key
                     "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
                     CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
+                    "capabilities": caps_dict,
                 },
                 options={CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)},
             )

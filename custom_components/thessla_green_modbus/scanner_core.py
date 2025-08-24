@@ -135,9 +135,15 @@ class DeviceCapabilities:  # pragma: no cover
     trigger cache invalidation.
     """
     basic_control: bool = False
-    temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
-    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers  # pragma: no cover
-    special_functions: set[str] = field(default_factory=set)  # Optional feature flags  # pragma: no cover
+    temperature_sensors: set[str] = field(
+        default_factory=set
+    )  # Names of temperature sensors
+    flow_sensors: set[str] = field(
+        default_factory=set
+    )  # Airflow sensor identifiers  # pragma: no cover
+    special_functions: set[str] = field(
+        default_factory=set
+    )  # Optional feature flags  # pragma: no cover
     expansion_module: bool = False  # pragma: no cover
     constant_flow: bool = False  # pragma: no cover
     gwc_system: bool = False  # pragma: no cover

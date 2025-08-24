@@ -24,6 +24,7 @@ from custom_components.thessla_green_modbus.registers import get_registers_by_fu
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
+ha.__path__ = []
 const = types.ModuleType("homeassistant.const")
 core = types.ModuleType("homeassistant.core")
 helpers_pkg = types.ModuleType("homeassistant.helpers")
@@ -38,6 +39,11 @@ config_entries = types.ModuleType("homeassistant.config_entries")
 pymodbus = types.ModuleType("pymodbus")
 pymodbus_client = types.ModuleType("pymodbus.client")
 pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
+util = types.ModuleType("homeassistant.util")
+util.__path__ = []
+network_module = types.ModuleType("homeassistant.util.network")
+network_module.is_host_valid = lambda host: True
+util.network = network_module
 
 const.CONF_HOST = "host"
 const.CONF_PORT = "port"
@@ -73,11 +79,22 @@ core.ServiceCall = ServiceCall
 
 
 class ConfigEntry:
-    def __init__(self, data):
+    def __init__(self, data, entry_id="1", options=None):
         self.data = data
+        self.entry_id = entry_id
+        self.options = options or {}
 
 
 config_entries.ConfigEntry = ConfigEntry
+
+
+class _ConfigFlow:
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__()
+
+
+config_entries.ConfigFlow = _ConfigFlow
+config_entries.OptionsFlow = type("OptionsFlow", (), {})
 
 
 class DataUpdateCoordinator:
@@ -141,6 +158,8 @@ modules = {
     "homeassistant.helpers.device_registry": helpers_dr,
     "homeassistant.exceptions": exceptions,
     "homeassistant.config_entries": config_entries,
+    "homeassistant.util": util,
+    "homeassistant.util.network": network_module,
     "pymodbus": pymodbus,
     "pymodbus.client": pymodbus_client,
     "pymodbus.exceptions": pymodbus_exceptions,
@@ -625,6 +644,39 @@ async def test_setup_and_refresh_no_cancelled_error(coordinator):
     data = await coordinator._async_update_data()
     assert data == {}
 
+
+@pytest.mark.asyncio
+async def test_capabilities_loaded_from_config_entry():
+    """Coordinator should hydrate capabilities from stored entry data."""
+    caps = {"expansion_module": True}
+    entry = config_entries.ConfigEntry(
+        {
+            const.CONF_HOST: "localhost",
+            const.CONF_PORT: 502,
+            "slave_id": 1,
+            const.CONF_NAME: "test",
+            "capabilities": caps,
+        }
+    )
+
+    coordinator = ThesslaGreenModbusCoordinator(
+        hass=MagicMock(),
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=10,
+        retry=3,
+        force_full_register_list=True,
+        entry=entry,
+    )
+
+    # async_setup will skip scanning due to force_full_register_list
+    coordinator._test_connection = AsyncMock()
+    await coordinator.async_setup()
+
+    assert coordinator.capabilities.expansion_module is True
 
 @pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):

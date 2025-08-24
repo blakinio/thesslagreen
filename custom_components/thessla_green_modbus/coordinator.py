@@ -162,6 +162,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Device info and capabilities
         self.device_info: dict[str, Any] = {}
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
+        if entry and isinstance(entry.data.get("capabilities"), dict):
+            try:
+                self.capabilities = DeviceCapabilities(**entry.data["capabilities"])
+            except (TypeError, ValueError):
+                _LOGGER.debug("Invalid capabilities in config entry", exc_info=True)
         self.available_registers: dict[str, set[str]] = {
             "input_registers": set(),
             "holding_registers": set(),
