@@ -436,7 +436,10 @@ class ThesslaGreenDeviceScanner:
                     raise ConnectionException(f"Timeout reading {name}") from exc
                 except ModbusException:
                     raise
-                except Exception as exc:  # pragma: no cover - forward unexpected
+                except (OSError, ValueError, TypeError) as exc:  # pragma: no cover - forward expected errors
+                    raise ModbusException(f"Error reading {name}: {exc}") from exc
+                except Exception as exc:  # pragma: no cover - unexpected
+                    _LOGGER.exception("Unexpected error reading %s: %s", name, exc)
                     raise ModbusException(f"Error reading {name}: {exc}") from exc
         finally:
             await client.close()
@@ -607,7 +610,11 @@ class ThesslaGreenDeviceScanner:
             if len(info_regs) > idx:
                 try:
                     value = info_regs[idx]
-                except Exception as exc:  # pragma: no cover - best effort
+                except (TypeError, ValueError, IndexError) as exc:  # pragma: no cover - best effort
+                    firmware_err = exc
+                    continue
+                except Exception as exc:  # pragma: no cover - unexpected
+                    _LOGGER.exception("Unexpected firmware value error for %s: %s", name, exc)
                     firmware_err = exc
                     continue
                 if name == "version_major":
@@ -655,8 +662,10 @@ class ThesslaGreenDeviceScanner:
             parts = info_regs[start : start + REGISTER_DEFINITIONS["serial_number"].length]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
-        except Exception:  # pragma: no cover
-            pass
+        except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
+            _LOGGER.debug("Failed to parse serial number: %s", err)
+        except Exception as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error parsing serial number: %s", err)
         try:
             start = HOLDING_REGISTERS["device_name"]
             name_regs = await self._read_holding(
@@ -668,8 +677,10 @@ class ThesslaGreenDeviceScanner:
                     name_bytes.append((reg >> 8) & 0xFF)
                     name_bytes.append(reg & 0xFF)
                 device.device_name = name_bytes.decode("ascii").rstrip("\x00")
-        except Exception:  # pragma: no cover
-            pass
+        except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
+            _LOGGER.debug("Failed to parse device name: %s", err)
+        except Exception as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error parsing device name: %s", err)
         unknown_registers: dict[str, dict[int, Any]] = {
             "input_registers": {},
             "holding_registers": {},

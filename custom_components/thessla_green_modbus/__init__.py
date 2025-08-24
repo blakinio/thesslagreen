@@ -89,6 +89,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     _LOGGER.info(REGISTER_FORMAT_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
+    await hass.async_add_executor_job(import_module, ".config_flow", __name__)
+
     # Get configuration - support both new and legacy keys
     host = entry.data[CONF_HOST]
     port = entry.data.get(
@@ -133,7 +135,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     )
 
     # Create coordinator for managing device communication
-    from .coordinator import ThesslaGreenModbusCoordinator
+    coordinator_mod = await hass.async_add_executor_job(
+        import_module, ".coordinator", __name__
+    )
+    ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
 
     coordinator = ThesslaGreenModbusCoordinator(
         hass=hass,
@@ -191,8 +196,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     for platform in PLATFORM_DOMAINS:
         try:
             await hass.async_add_executor_job(import_module, f".{platform}", __name__)
-        except Exception:  # pragma: no cover - environment-dependent
-            _LOGGER.debug("Could not preload platform %s", platform, exc_info=True)
+        except (ImportError, ModuleNotFoundError) as err:  # pragma: no cover - environment-dependent
+            _LOGGER.debug("Could not preload platform %s: %s", platform, err)
+        except Exception as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
 
     # Setup platforms
     _LOGGER.debug("Setting up platforms: %s", PLATFORMS)

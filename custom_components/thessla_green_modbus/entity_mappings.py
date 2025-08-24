@@ -19,7 +19,7 @@ from typing import Any, Dict
 try:  # pragma: no cover - handle absence of Home Assistant
     from homeassistant.components.binary_sensor import BinarySensorDeviceClass
     from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-except Exception:  # pragma: no cover - executed in tests without HA
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tests without HA
     class BinarySensorDeviceClass:  # type: ignore[no-redef]
         RUNNING = "running"
         OPENING = "opening"
@@ -48,7 +48,7 @@ try:  # pragma: no cover - use HA constants when available
         UnitOfTime,
         UnitOfVolumeFlowRate,
     )
-except Exception:  # pragma: no cover - executed only in tests
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
 
     class UnitOfElectricPotential:  # type: ignore[no-redef]
         VOLT = "V"
@@ -67,7 +67,7 @@ except Exception:  # pragma: no cover - executed only in tests
 
 try:  # pragma: no cover - fallback for tests without full HA constants
     from homeassistant.const import PERCENTAGE
-except Exception:  # pragma: no cover - executed only in tests
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
 from .const import SPECIAL_FUNCTION_MAP
@@ -286,7 +286,11 @@ def _load_translation_keys() -> dict[str, set[str]]:
             "switch": set(entity.get("switch", {}).keys()),
             "select": set(entity.get("select", {}).keys()),
         }
-    except Exception:  # pragma: no cover - fallback when translations missing
+    except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - fallback when translations missing
+        _LOGGER.debug("Failed to load translation keys: %s", err)
+        return {"binary_sensor": set(), "switch": set(), "select": set()}
+    except Exception as err:  # pragma: no cover - unexpected
+        _LOGGER.exception("Unexpected error loading translation keys: %s", err)
         return {"binary_sensor": set(), "switch": set(), "select": set()}
 
 
