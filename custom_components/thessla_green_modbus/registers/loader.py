@@ -87,10 +87,6 @@ class RegisterDef:
                 encoding = self.extra.get("encoding", "ascii")
                 data = b"".join(w.to_bytes(2, "big") for w in raw_list)
                 return data.rstrip(b"\x00").decode(encoding)
-                buffer = bytearray()
-                for word in raw_list:
-                    buffer.extend(word.to_bytes(2, "big"))
-                return buffer.rstrip(b"\x00").decode(encoding)
 
             endianness = self.extra.get("endianness", "big") if self.extra else "big"
             words = raw_list if endianness == "big" else list(reversed(raw_list))
@@ -101,9 +97,6 @@ class RegisterDef:
                 value = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
                 value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
-                result: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
-            elif typ == "float64":
-                result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
             elif typ == "int32":
                 value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
@@ -121,9 +114,6 @@ class RegisterDef:
                 steps = round(value / self.resolution)
                 value = steps * self.resolution
             return value
-                steps = round(result / self.resolution)
-                result = steps * self.resolution
-            return result
 
         # Defensive: handle unexpected sequence for single-register values
         if isinstance(raw, Sequence):
@@ -166,12 +156,6 @@ class RegisterDef:
             elif dtype == "uint64":
                 value = struct.unpack(">Q", raw_bytes)[0]
 
-        if self.multiplier is not None:
-            value = value * self.multiplier
-        if self.resolution is not None:
-            steps = round(value / self.resolution)
-            value = steps * self.resolution
-
         if self.extra and self.extra.get("aatt"):
             airflow = (raw >> 8) & 0xFF
             temp = (raw & 0xFF) / 2
@@ -186,7 +170,6 @@ class RegisterDef:
             else:
                 return f"{t.hour:02d}:{t.minute:02d}"
 
-        value: Any = raw
         if self.multiplier is not None:
             value *= self.multiplier
         if self.resolution is not None:
@@ -286,18 +269,6 @@ class RegisterDef:
         if self.resolution is not None:
             step = self.resolution
             raw = int(round(float(raw) / step) * step)
-        if self.length > 1 and self.extra and self.extra.get("type"):
-            dtype = self.extra["type"]
-            if dtype == "float32":
-                return int.from_bytes(struct.pack(">f", float(raw)), "big")
-            if dtype == "int32":
-                return int.from_bytes(struct.pack(">i", int(raw)), "big")
-            if dtype == "uint32":
-                return int.from_bytes(struct.pack(">I", int(raw)), "big")
-            if dtype == "int64":
-                return int.from_bytes(struct.pack(">q", int(raw)), "big")
-            if dtype == "uint64":
-                return int.from_bytes(struct.pack(">Q", int(raw)), "big")
         return int(raw)
 
 
@@ -453,7 +424,6 @@ def load_registers() -> list[RegisterDef]:
     return _load_registers_from_file(
         _REGISTERS_PATH, mtime=mtime, file_hash=file_hash
     )
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime, file_hash=file_hash)
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -521,7 +491,6 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
 
     plans: list[ReadPlan] = []
     for fn, addresses in regs_by_fn.items():
-        for start, length in _group_reads(addresses, max_block_size=max_block_size):
         for start, length in group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
