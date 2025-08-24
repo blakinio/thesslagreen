@@ -407,12 +407,12 @@ def _load_registers_from_file(
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:  # pragma: no cover - sanity check
-        _LOGGER.error("Register definition file missing: %s", path)
-        return []
-    except Exception:  # pragma: no cover - defensive
-        _LOGGER.exception("Failed to read register definitions from %s", path)
-        return []
+    except FileNotFoundError as err:  # pragma: no cover - sanity check
+        raise RuntimeError(f"Register definition file missing: {path}") from err
+    except Exception as err:  # pragma: no cover - defensive
+        raise RuntimeError(
+            f"Failed to read register definitions from {path}"
+        ) from err
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 

@@ -122,6 +122,29 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
         loader._load_registers_from_file(path, file_hash="")
 
 
+def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
+    """Missing register definition file should raise RuntimeError."""
+
+    from custom_components.thessla_green_modbus.registers import loader
+
+    path = tmp_path / "regs.json"
+    with pytest.raises(RuntimeError) as exc:
+        loader._load_registers_from_file(path, file_hash="")
+    assert str(path) in str(exc.value)
+
+
+def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
+    """Invalid register definition file should raise RuntimeError."""
+
+    from custom_components.thessla_green_modbus.registers import loader
+
+    path = tmp_path / "regs.json"
+    path.write_text("not json", encoding="utf-8")
+    with pytest.raises(RuntimeError) as exc:
+        loader._load_registers_from_file(path, file_hash="")
+    assert str(path) in str(exc.value)
+
+
 def test_register_file_sorted() -> None:
     """Ensure register JSON is sorted and loader preserves ordering."""
 
