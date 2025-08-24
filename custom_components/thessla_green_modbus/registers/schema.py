@@ -57,19 +57,20 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("address_hex does not match address_dec")
 
         typ = (self.extra or {}).get("type")
-        expected_len = {
-            "uint32": 2,
-            "int32": 2,
-            "float32": 2,
-            "uint64": 4,
-            "int64": 4,
-            "float64": 4,
-        }.get(typ)
-        if expected_len is not None and self.length != expected_len:
-            raise ValueError("length does not match type")
-
-        if typ == "string" and self.length < 1:
-            raise ValueError("string type requires length >= 1")
+        if typ == "string":
+            if self.length < 1:
+                raise ValueError("string type requires length >= 1")
+        else:
+            expected_len = {
+                "uint32": 2,
+                "int32": 2,
+                "float32": 2,
+                "uint64": 4,
+                "int64": 4,
+                "float64": 4,
+            }.get(typ)
+            if expected_len is not None and self.length != expected_len:
+                raise ValueError("length does not match type")
 
         if self.function in {"01", "02"} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
