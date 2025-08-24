@@ -162,7 +162,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
                 field.name for field in dataclasses.fields(DeviceCapabilities)
             }
             try:
-                caps_dict = dataclasses.asdict(caps_obj)
+                caps_dict = caps_obj.as_dict()
             except AttributeError as err:  # pragma: no cover - defensive
                 _LOGGER.error("Capabilities missing required fields: %s", err)
                 raise CannotConnect("invalid_capabilities") from err
