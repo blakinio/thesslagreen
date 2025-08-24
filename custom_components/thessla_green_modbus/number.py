@@ -17,12 +17,8 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .const import DOMAIN
 
-try:  # Newer versions expose metadata through ENTITY_MAPPINGS
-    from .const import ENTITY_MAPPINGS
-except ImportError:  # pragma: no cover - fall back when not available
-    ENTITY_MAPPINGS = {}
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
@@ -57,8 +53,9 @@ async def async_setup_entry(
     entities = []
 
     # Get number entity mappings
-    number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
-    if not number_mappings:
+    try:
+        number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS["number"]
+    except KeyError:  # pragma: no cover - should not happen
         _LOGGER.debug("No number entity mappings found; skipping setup")
         return
 
@@ -132,7 +129,9 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Unit of measurement
         if "unit" in self.entity_config:
             unit = self.entity_config["unit"]
-            self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(unit, unit)  # pragma: no cover
+            self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(
+                unit, unit
+            )  # pragma: no cover
 
         # Min/max values
         self._attr_native_min_value = self.entity_config.get("min", 0)
