@@ -13,11 +13,16 @@ import pathlib
 import re
 import sys
 
+from sort_registers_json import sort_registers_json
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from custom_components.thessla_green_modbus.utils import _normalise_name
+from custom_components.thessla_green_modbus.utils import (  # noqa: E402
+    _normalise_name,
+)
+
 # Path to the canonical JSON register definition file bundled with the
 # integration.  ``registers.py`` is generated from this file and should never be
 # edited manually.
@@ -29,25 +34,6 @@ JSON_PATH = (
     / "thessla_green_registers_full.json"
 )
 OUTPUT_PATH = ROOT / "custom_components" / "thessla_green_modbus" / "registers.py"
-
-
-def sort_registers_json() -> None:
-    """Sort the canonical JSON register file.
-
-    The file is ordered first by Modbus function code and then by the
-    decimal address to ensure deterministic diffs and easier manual
-    inspection.
-    """
-
-    data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
-    registers = data.get("registers", data)
-    registers.sort(
-        key=lambda r: (int(str(r["function"])), int(r["address_dec"]))
-    )
-    JSON_PATH.write_text(
-        json.dumps({"registers": registers}, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
 
 
 def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
@@ -72,9 +58,9 @@ def _build_register_map(rows: list[tuple[str, int]]) -> dict[str, int]:
 SNAKE_CASE = re.compile(r"^[a-z0-9_]+$")
 
 
-def load_registers() -> tuple[
-    dict[str, int], dict[str, int], dict[str, int], dict[str, int], dict[str, int]
-]:
+def load_registers() -> (
+    tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int], dict[str, int]]
+):
     """Load registers from the JSON file grouped by function."""
     data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
     registers = data.get("registers", data)
@@ -166,9 +152,7 @@ def write_file(
                 f.write(f'    "{key}": {addr},\n')
             f.write("}\n\n")
 
-        f.write(
-            "# Sizes of holding register blocks that span multiple consecutive registers.\n"
-        )
+        f.write("# Sizes of holding register blocks that span multiple consecutive registers.\n")
         f.write("# Each key is the starting register name and the value is the number of\n")
         f.write("# registers in that block.\n")
         f.write("MULTI_REGISTER_SIZES: dict[str, int] = {\n")
@@ -188,7 +172,7 @@ def write_file(
 
 
 def main() -> None:
-    sort_registers_json()
+    sort_registers_json(JSON_PATH)
     coils, discrete_inputs, input_regs, holding_regs, multi_sizes = load_registers()
     write_file(coils, discrete_inputs, input_regs, holding_regs, multi_sizes)
 
