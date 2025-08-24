@@ -101,7 +101,9 @@ class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
 
 
-async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(
+    _hass: HomeAssistant, data: dict[str, Any]
+) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     host = data[CONF_HOST]
     port = data[CONF_PORT]
@@ -111,18 +113,18 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
 
     # Validate port and slave id ranges
     if not 1 <= port <= 65535:
-        raise vol.Invalid("invalid_port")
+        raise vol.Invalid("invalid_port", path=[CONF_PORT])
     if slave_id < 1:
-        raise vol.Invalid("invalid_slave_low")
+        raise vol.Invalid("invalid_slave_low", path=[CONF_SLAVE_ID])
     if slave_id > 247:
-        raise vol.Invalid("invalid_slave_high")
+        raise vol.Invalid("invalid_slave_high", path=[CONF_SLAVE_ID])
 
     # Validate host is either an IP address or a valid hostname
     try:
         ipaddress.ip_address(host)
     except ValueError:
         if not is_host_valid(host):
-            raise vol.Invalid("invalid_host")
+            raise vol.Invalid("invalid_host", path=[CONF_HOST])
 
     scanner: ThesslaGreenDeviceScanner | None = None
     try:
@@ -142,7 +144,9 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
 
         # Verify connection by reading a few safe registers
         await _run_with_retry(
-            lambda: asyncio.wait_for(scanner.verify_connection(), timeout=timeout),
+            lambda: asyncio.wait_for(
+                scanner.verify_connection(), timeout=timeout
+            ),
             retries=DEFAULT_RETRY,
             backoff=CONFIG_FLOW_BACKOFF,
         )
@@ -169,7 +173,9 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
                 raise CannotConnect("invalid_capabilities") from err
             missing = [f for f in required_fields if f not in caps_dict]
             if missing:
-                _LOGGER.error("Capabilities missing required fields: %s", set(missing))
+                _LOGGER.error(
+                    "Capabilities missing required fields: %s", set(missing)
+                )
                 raise CannotConnect("invalid_capabilities")
         elif isinstance(caps_obj, dict):
             try:
@@ -189,7 +195,11 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         device_info = scan_result.get("device_info", {})
 
         # Return validated data with device info
-        return {"title": name, "device_info": device_info, "scan_result": scan_result}
+        return {
+            "title": name,
+            "device_info": device_info,
+            "scan_result": scan_result,
+        }
 
     except ConnectionException as exc:
         _LOGGER.error("Connection error: %s", exc)
@@ -240,7 +250,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._device_info: dict[str, Any] = {}
         self._scan_result: dict[str, Any] = {}
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:  # pragma: no cover
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:  # pragma: no cover
         """Handle the initial step.
 
         Part of the Home Assistant config flow interface; the framework
@@ -270,8 +282,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
             except vol.Invalid as err:
-                _LOGGER.error("Invalid host provided: %s", err)
-                errors[CONF_HOST] = err.error_message
+                _LOGGER.error(
+                    "Invalid input for %s: %s",
+                    err.path[0] if err.path else "unknown",
+                    err,
+                )
+                errors[err.path[0] if err.path else CONF_HOST] = (
+                    err.error_message
+                )
             except (ConnectionException, ModbusException):
                 _LOGGER.exception("Modbus communication error")
                 errors["base"] = "cannot_connect"
@@ -282,7 +300,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 _LOGGER.error("Missing required data: %s", err)
                 errors["base"] = "invalid_input"
             except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected error during configuration: %s", err)
+                _LOGGER.exception(
+                    "Unexpected error during configuration: %s", err
+                )
                 raise
             else:
                 self._abort_if_unique_id_configured()
@@ -314,7 +334,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             errors=errors,
         )
 
-    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Handle the confirm step."""
         if user_input is not None:
             # Ensure unique ID is set and not already configured
@@ -347,7 +369,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
                     "capabilities": caps_dict,
                 },
-                options={CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)},
+                options={
+                    CONF_DEEP_SCAN: self._data.get(
+                        CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
+                    )
+                },
             )
 
         # Prepare description with device info
@@ -381,7 +407,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         scan_success_rate = "100%" if register_count > 0 else "0%"
 
-        language = getattr(getattr(self.hass, "config", None), "language", "en")
+        language = getattr(
+            getattr(self.hass, "config", None), "language", "en"
+        )
         translations: dict[str, str] = {}
         try:
             translations = await translation.async_get_translations(
@@ -390,7 +418,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         except Exception as err:  # pragma: no cover - defensive
             _LOGGER.debug("Translation load failed: %s", err)
 
-        key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"
+        key = (
+            "auto_detected_note_success"
+            if register_count > 0
+            else "auto_detected_note_limited"
+        )
         auto_detected_note = translations.get(
             f"component.{DOMAIN}.{key}",
             (
@@ -410,7 +442,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             "register_count": str(register_count),
             "scan_success_rate": scan_success_rate,
             "capabilities_count": str(len(capabilities_list)),
-            "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
+            "capabilities_list": ", ".join(capabilities_list)
+            if capabilities_list
+            else "None",
             "auto_detected_note": auto_detected_note,
         }
 
@@ -420,7 +454,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
     @staticmethod
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:  # pragma: no cover
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlow:  # pragma: no cover
         """Return the options flow handler.
 
         Home Assistant looks up this function by name when launching the
@@ -436,7 +472,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:  # pragma: no cover
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:  # pragma: no cover
         """Handle options flow.
 
         This is the entry point for the options dialog and is invoked by
@@ -450,9 +488,15 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_scan_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
         )
-        current_timeout = self.config_entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-        current_retry = self.config_entry.options.get(CONF_RETRY, DEFAULT_RETRY)
-        force_full = self.config_entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+        current_timeout = self.config_entry.options.get(
+            CONF_TIMEOUT, DEFAULT_TIMEOUT
+        )
+        current_retry = self.config_entry.options.get(
+            CONF_RETRY, DEFAULT_RETRY
+        )
+        force_full = self.config_entry.options.get(
+            CONF_FORCE_FULL_REGISTER_LIST, False
+        )
         current_scan_uart = self.config_entry.options.get(
             CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS
         )
@@ -462,7 +506,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_airflow_unit = self.config_entry.options.get(
             CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
         )
-        current_deep_scan = self.config_entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
+        current_deep_scan = self.config_entry.options.get(
+            CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
+        )
         current_scan_max_block_size = self.config_entry.options.get(
             CONF_SCAN_MAX_BLOCK_SIZE, DEFAULT_SCAN_MAX_BLOCK_SIZE
         )
@@ -519,9 +565,13 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "current_retry": str(current_retry),
                 "force_full_enabled": "Yes" if force_full else "No",
                 "scan_uart_enabled": "Yes" if current_scan_uart else "No",
-                "skip_missing_enabled": "Yes" if current_skip_missing else "No",
+                "skip_missing_enabled": "Yes"
+                if current_skip_missing
+                else "No",
                 "current_airflow_unit": current_airflow_unit,
                 "deep_scan_enabled": "Yes" if current_deep_scan else "No",
-                "current_scan_max_block_size": str(current_scan_max_block_size),
+                "current_scan_max_block_size": str(
+                    current_scan_max_block_size
+                ),
             },
         )
