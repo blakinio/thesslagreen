@@ -510,8 +510,8 @@ _load_registers()
 
 
 def get_all_registers() -> list[Register]:
-    """Return a list of all known registers."""
-    return list(_load_registers())
+    """Return a list of all known registers ordered by function and address."""
+    return sorted(_load_registers(), key=lambda r: (r.function, r.address))
 
 
 def get_registers_by_function(fn: str) -> list[Register]:
