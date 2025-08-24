@@ -1796,6 +1796,8 @@ def test_device_capabilities_serialization():
 
 async def test_options_flow_max_registers_per_request_validation():
     """Options flow validates max registers per request within 1-16."""
+async def test_options_flow_max_registers_per_request_validated():
+    """Options flow should validate max registers per request range."""
     config_entry = SimpleNamespace(options={})
     flow = OptionsFlow(config_entry)
 

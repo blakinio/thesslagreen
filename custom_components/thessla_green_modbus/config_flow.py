@@ -518,8 +518,11 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_deep_scan = self.config_entry.options.get(
             CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN
         )
-        current_max_registers_per_request = self.config_entry.options.get(
-            CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+        current_max_registers_per_request = min(
+            self.config_entry.options.get(
+                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+            ),
+            DEFAULT_MAX_REGISTERS_PER_REQUEST,
         )
 
         data_schema = vol.Schema(
