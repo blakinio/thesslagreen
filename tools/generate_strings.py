@@ -1,4 +1,5 @@
-import json, pathlib
+import json
+import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REG = ROOT / 'custom_components' / 'thessla_green_modbus' / 'registers' / 'thessla_green_registers_full.json'
