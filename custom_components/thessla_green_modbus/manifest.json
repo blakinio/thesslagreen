@@ -15,7 +15,10 @@
   "files": [
     "registers/thessla_green_registers_full.json"
   ],
-  "requirements": ["pymodbus>=3.5.0", "pydantic>=2.0"],
+  "requirements": [
+    "pymodbus>=3.5.0",
+    "pydantic>=2.0"
+  ],
   "version": "2.1.2",
   "integration_type": "hub",
   "dhcp": [
