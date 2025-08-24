@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Self, cast
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
     DEFAULT_SLAVE_ID,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     KNOWN_MISSING_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
@@ -28,7 +29,6 @@ from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
 from .scanner_helpers import (
     REGISTER_ALLOWED_VALUES,
     _format_register_value,
-    MAX_BATCH_REGISTERS,
     UART_OPTIONAL_REGS,
     SAFE_REGISTERS,
 )
@@ -232,7 +232,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-        scan_max_block_size: int = MAX_BATCH_REGISTERS,
+        max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
     ) -> None:
         """Initialize device scanner with consistent parameter names."""
         _ensure_register_maps()
@@ -247,7 +247,7 @@ class ThesslaGreenDeviceScanner:
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
-        self.max_block_size = scan_max_block_size
+        self.max_block_size = max(1, min(max_registers_per_request, 16))
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -336,7 +336,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-        scan_max_block_size: int = MAX_BATCH_REGISTERS,
+        max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
     ) -> Self:
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -351,7 +351,7 @@ class ThesslaGreenDeviceScanner:
             skip_known_missing,
             deep_scan,
             full_register_scan,
-            scan_max_block_size,
+            max_registers_per_request,
         )
         await self._async_setup()
 
@@ -543,6 +543,8 @@ class ThesslaGreenDeviceScanner:
 
         if max_batch is None:
             max_batch = self.max_block_size
+        else:
+            max_batch = min(max_batch, self.max_block_size)
 
         # First, compute contiguous blocks using the generic ``group_reads``
         # helper.  ``max_gap`` is kept for API compatibility but is not

@@ -816,7 +816,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 scan_uart_settings=coordinator.scan_uart_settings,
                 skip_known_missing=False,
                 full_register_scan=True,
-                scan_max_block_size=coordinator.scan_max_block_size,
+                max_registers_per_request=coordinator.max_registers_per_request,
             )
             try:
                 scan_result = await scanner.scan_device()

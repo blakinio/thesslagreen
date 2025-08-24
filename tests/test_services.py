@@ -5,7 +5,9 @@ import importlib
 import os
 import sys
 import types
+from datetime import timedelta
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -273,3 +275,45 @@ def test_get_coordinator_from_entity_id_multiple_devices():
 
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev1") is coord1
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev2") is coord2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("limit, expected_calls", [(1, 20), (8, 3), (16, 2), (20, 2)])
+async def test_async_write_register_chunks(limit, expected_calls):
+    from custom_components.thessla_green_modbus.coordinator import (
+        ThesslaGreenModbusCoordinator,
+    )
+
+    hass = core.HomeAssistant()
+    coordinator = ThesslaGreenModbusCoordinator(
+        hass,
+        "host",
+        502,
+        1,
+        "dev",
+        timedelta(seconds=1),
+        max_registers_per_request=limit,
+    )
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+
+    fake_def = SimpleNamespace(
+        address=0, function="03", length=20, encode=lambda v: v
+    )
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        return_value=fake_def,
+    ):
+        assert await coordinator.async_write_register("test", list(range(20))) is True
+
+    step = min(limit, 16)
+    expected_calls_list = [
+        call(address=i, values=list(range(i, min(i + step, 20))), slave=1)
+        for i in range(0, 20, step)
+    ]
+    assert client.write_registers.await_count == expected_calls
+    client.write_registers.assert_has_awaits(expected_calls_list)

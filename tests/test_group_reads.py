@@ -1,5 +1,7 @@
 """Tests for ``plan_group_reads`` utility."""
 
+import pytest
+
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
 import custom_components.thessla_green_modbus.registers.loader as loader
 from custom_components.thessla_green_modbus.registers import (
@@ -8,7 +10,6 @@ from custom_components.thessla_green_modbus.registers import (
     plan_group_reads,
 )
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.scanner_helpers import MAX_BATCH_REGISTERS
 
 
 def test_group_reads_merges_consecutive_addresses():
@@ -37,12 +38,13 @@ def test_plan_group_reads_respects_max_block_size(monkeypatch):
     ]
 
 
-def test_scanner_respects_default_max_block_size():
-    scanner = ThesslaGreenDeviceScanner("host", 502)
-    addresses = list(range(MAX_BATCH_REGISTERS + 6))
-    assert scanner._group_registers_for_batch_read(addresses) == [
-        (0, 14),
-        (14, 1),
-        (15, MAX_BATCH_REGISTERS - 15),
-        (MAX_BATCH_REGISTERS, 6),
+@pytest.mark.parametrize("limit", [1, 8, 16, 20])
+def test_scanner_respects_max_registers_per_request(limit):
+    scanner = ThesslaGreenDeviceScanner("host", 502, max_registers_per_request=limit)
+    addresses = list(range(40))
+    step = min(limit, 16)
+    expected = [
+        (start, min(step, 40 - start))
+        for start in range(0, 40, step)
     ]
+    assert scanner._group_registers_for_batch_read(addresses) == expected
