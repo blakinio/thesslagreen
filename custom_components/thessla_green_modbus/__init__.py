@@ -6,14 +6,18 @@ import asyncio
 import logging
 from datetime import timedelta
 from importlib import import_module
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.update_coordinator import UpdateFailed
+try:  # Home Assistant may not be installed for external tooling
+    from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
+except ModuleNotFoundError:  # pragma: no cover - fallback for testing tools
+    CONF_HOST = "host"
+    CONF_NAME = "name"
+    CONF_PORT = "port"
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,
@@ -62,17 +66,39 @@ LEGACY_FAN_ENTITY_IDS = [
 
 _fan_migration_logged = False
 
-# Supported platforms
-# Build platform list compatible with both real Home Assistant enums and test stubs
-PLATFORMS: list[Platform] = []
-for domain in PLATFORM_DOMAINS:
-    if hasattr(Platform, domain.upper()):
-        PLATFORMS.append(getattr(Platform, domain.upper()))
-    else:
-        try:
-            PLATFORMS.append(Platform(domain))
-        except ValueError:
-            _LOGGER.warning("Skipping unsupported platform: %s", domain)
+
+_platform_cache: list[object] | None = None
+
+
+def _get_platforms() -> list[object]:
+    """Return supported platform enums or plain strings.
+
+    Importing Home Assistant is deferred so external tools can use this module
+    without the `homeassistant` package installed. If the import fails, simple
+    domain strings are returned instead of `Platform` enums.
+    """
+
+    global _platform_cache
+    if _platform_cache is not None:
+        return _platform_cache
+
+    try:  # Import only when running inside Home Assistant
+        from homeassistant.const import Platform  # type: ignore
+    except Exception:  # pragma: no cover - Home Assistant missing
+        _platform_cache = list(PLATFORM_DOMAINS)
+        return _platform_cache
+
+    platforms: list[Platform] = []
+    for domain in PLATFORM_DOMAINS:
+        if hasattr(Platform, domain.upper()):
+            platforms.append(getattr(Platform, domain.upper()))
+        else:
+            try:
+                platforms.append(Platform(domain))
+            except ValueError:  # pragma: no cover - unsupported domain
+                _LOGGER.warning("Skipping unsupported platform: %s", domain)
+    _platform_cache = platforms
+    return platforms
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -86,6 +112,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     This hook is invoked by Home Assistant during config entry setup even
     though it appears unused within the integration code itself.
     """
+    from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
+    from homeassistant.helpers.update_coordinator import UpdateFailed  # type: ignore
+
     _LOGGER.info(REGISTER_FORMAT_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
@@ -202,11 +231,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
             _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
 
     # Setup platforms
-    _LOGGER.debug("Setting up platforms: %s", PLATFORMS)
+    platforms = _get_platforms()
+    _LOGGER.debug("Setting up platforms: %s", platforms)
     try:
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        await hass.config_entries.async_forward_entry_setups(entry, platforms)
     except asyncio.CancelledError:
-        _LOGGER.info("Platform setup cancelled for %s", PLATFORMS)
+        _LOGGER.info("Platform setup cancelled for %s", platforms)
         raise
 
     # Setup services (only once for first entry)
@@ -233,7 +263,10 @@ async def async_unload_entry(
     _LOGGER.debug("Unloading ThesslaGreen Modbus integration")
 
     # Unload platforms
-    unload_ok = cast(bool, await hass.config_entries.async_unload_platforms(entry, PLATFORMS))
+    platforms = _get_platforms()
+    unload_ok = cast(
+        bool, await hass.config_entries.async_unload_platforms(entry, platforms)
+    )
 
     if unload_ok:
         # Shutdown coordinator
@@ -265,6 +298,8 @@ async def _async_cleanup_legacy_fan_entity(
     hass: HomeAssistant, coordinator
 ) -> None:
     """Remove or rename legacy fan-related entity IDs."""
+    from homeassistant.helpers import entity_registry as er  # type: ignore
+
     registry = er.async_get(hass)
     new_entity_id = "fan.rekuperator_fan"
     migrated = False
@@ -311,6 +346,8 @@ async def _async_cleanup_legacy_fan_entity(
 
 async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Migrate entity unique IDs stored in the entity registry."""
+    from homeassistant.helpers import entity_registry as er  # type: ignore
+
     registry = er.async_get(hass)
     coordinator = hass.data[DOMAIN][entry.entry_id]
     serial = coordinator.device_info.get("serial_number")

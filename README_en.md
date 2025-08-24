@@ -293,6 +293,10 @@ stores the complete register specification and is the single canonical source
 of truth (the former `registers/` copy was removed). All tools in `tools/`
 operate exclusively on this JSON format.
 
+> **New:** Utility modules can now be imported without the `homeassistant`
+> package installed. HA-specific imports are loaded only when the integration
+> runs inside Home Assistant.
+
 ### File format
 
 Each entry in the file is an object with fields:

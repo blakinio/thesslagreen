@@ -451,6 +451,10 @@ podłączenie i wersję firmware.
 Po aktualizacji integracji możesz usunąć nieużywane encje przy pomocy
 skryptu `tools/cleanup_old_entities.py`.
 
+> **Nowość:** Skrypty i moduły narzędziowe można importować bez
+> zainstalowanego pakietu Home Assistant – importy specyficzne dla HA są
+> ładowane tylko podczas działania integracji.
+
 ```bash
 python3 tools/cleanup_old_entities.py
 ```
