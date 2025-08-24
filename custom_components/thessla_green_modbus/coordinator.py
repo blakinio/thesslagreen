@@ -18,9 +18,9 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
         @staticmethod
         def now():
-            from datetime import datetime
+            from datetime import datetime, timezone
 
-            return datetime.now()
+            return datetime.now(timezone.utc)
 
         @staticmethod
         def utcnow():
@@ -124,7 +124,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entry: ConfigEntry | None = None,
         skip_missing_registers: bool = False,
     ) -> None:
-        """Initialize the coordinator."""
+        """Initialize the coordinator.
+
+        ``max_registers_per_request`` is clamped to the safe Modbus range of
+        1-16 registers per request.
+        """
         if isinstance(scan_interval, timedelta):
             update_interval = scan_interval
             self.scan_interval = int(scan_interval.total_seconds())
@@ -150,8 +154,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.deep_scan = deep_scan
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
-        self.max_registers_per_request = max_registers_per_request
-        self.effective_batch = min(max_registers_per_request, 16)
+        # Clamp user-specified batch size to the Modbus-safe range (1-16)
+        self.max_registers_per_request = max(1, min(max_registers_per_request, 16))
+        # ``effective_batch`` mirrors the sanitized value
+        self.effective_batch = self.max_registers_per_request
 
         # Connection management
         self.client: AsyncModbusTcpClient | None = None

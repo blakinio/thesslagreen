@@ -4,6 +4,8 @@
 import asyncio
 import sys
 import socket
+import types
+from types import SimpleNamespace
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -29,7 +31,30 @@ sys.modules.setdefault(
     "homeassistant.util", SimpleNamespace(network=network_module)
 )
 sys.modules.setdefault("homeassistant.util.network", network_module)
+
 # Stub registers module to avoid heavy imports during tests
+registers_module = types.ModuleType(
+    "custom_components.thessla_green_modbus.registers"
+)
+registers_module.__path__ = []  # type: ignore[attr-defined]
+registers_loader = types.ModuleType(
+    "custom_components.thessla_green_modbus.registers.loader"
+)
+registers_loader.get_registers_by_function = lambda *args, **kwargs: []
+registers_loader.get_all_registers = lambda *args, **kwargs: []
+registers_loader.get_registers_hash = lambda *args, **kwargs: ""
+registers_loader.plan_group_reads = lambda *args, **kwargs: []
+registers_loader.load_registers = lambda *args, **kwargs: []
+registers_module.loader = registers_loader
+registers_module.get_registers_by_function = registers_loader.get_registers_by_function
+registers_module.get_all_registers = registers_loader.get_all_registers
+registers_module.get_registers_hash = registers_loader.get_registers_hash
+registers_module.plan_group_reads = registers_loader.plan_group_reads
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.registers", registers_module
+)
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.registers.loader", registers_loader
 registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
 registers_module.__path__ = []
 registers_module.loader = None
@@ -53,11 +78,13 @@ sys.modules.setdefault(
 from custom_components.thessla_green_modbus.const import (
     CONF_DEEP_SCAN,
     CONF_SLAVE_ID,
+    CONF_MAX_REGISTERS_PER_REQUEST,
 )
 
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
     ConfigFlow,
+    OptionsFlow,
     InvalidAuth,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
@@ -1764,3 +1791,29 @@ def test_device_capabilities_serialization():
     assert list(caps.keys()) == list(serialized.keys())
     assert list(caps.items()) == list(serialized.items())
     assert list(caps.values()) == list(serialized.values())
+
+
+async def test_options_flow_max_registers_per_request_clamped():
+    """Options flow should clamp max registers per request to 16."""
+    config_entry = SimpleNamespace(options={})
+    flow = OptionsFlow(config_entry)
+
+    result = await flow.async_step_init()
+    schema_keys = {
+        key.schema if hasattr(key, "schema") else key
+        for key in result["data_schema"].schema
+    }
+    assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
+
+    # Accept values within range
+    for value in (1, 16):
+        flow = OptionsFlow(SimpleNamespace(options={}))
+        result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: value})
+        assert result["type"] == "create_entry"
+        assert result["data"][CONF_MAX_REGISTERS_PER_REQUEST] == value
+
+    # Clamp values above range to 16
+    flow = OptionsFlow(SimpleNamespace(options={}))
+    result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 20})
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_MAX_REGISTERS_PER_REQUEST] == 16
