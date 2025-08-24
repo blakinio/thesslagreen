@@ -1253,8 +1253,7 @@
   },
   "options": {
     "error": {
-      "invalid_max_registers_per_request_low": "Max registers per request must be at least 1.",
-      "invalid_max_registers_per_request_high": "Max registers per request cannot exceed 16."
+      "max_registers_range": "Max registers per request must be between 1 and 16."
     },
     "step": {
       "init": {
