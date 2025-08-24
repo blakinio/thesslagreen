@@ -77,8 +77,15 @@ class RegisterDef:
 # ------------------------------------------------------------------
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
-        if self.length > 1 and isinstance(raw, Sequence):
-            raw_list = list(raw)
+        if self.length > 1:
+            if isinstance(raw, Sequence):
+                raw_list = list(raw)
+            else:
+                raw_list = [
+                    (raw >> (16 * (self.length - 1 - i))) & 0xFFFF
+                    for i in range(self.length)
+                ]
+
             if all(v == 0x8000 for v in raw_list):
                 return None
 
@@ -139,23 +146,9 @@ class RegisterDef:
             if str(raw) in self.enum:
                 return self.enum[str(raw)]
 
-        # Combined airflow/temperature values use a custom decoding
         value: Any = raw
-        if self.length > 1 and self.extra and self.extra.get("type"):
-            dtype = self.extra["type"]
-            byte_len = self.length * 2
-            raw_bytes = raw.to_bytes(byte_len, "big", signed=False)
-            if dtype == "float32":
-                value = struct.unpack(">f", raw_bytes)[0]
-            elif dtype == "int32":
-                value = struct.unpack(">i", raw_bytes)[0]
-            elif dtype == "uint32":
-                value = struct.unpack(">I", raw_bytes)[0]
-            elif dtype == "int64":
-                value = struct.unpack(">q", raw_bytes)[0]
-            elif dtype == "uint64":
-                value = struct.unpack(">Q", raw_bytes)[0]
 
+        # Combined airflow/temperature values use a custom decoding
         if self.extra and self.extra.get("aatt"):
             airflow = (raw >> 8) & 0xFF
             temp = (raw & 0xFF) / 2
