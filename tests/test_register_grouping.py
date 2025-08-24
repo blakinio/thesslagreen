@@ -1,6 +1,5 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
 from custom_components.thessla_green_modbus.registers import (
     get_registers_by_function,
     plan_group_reads,
@@ -11,12 +10,6 @@ INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
 
 def _expanded_addresses(fn: str) -> list[int]:
-    regs = get_registers_by_function(fn)
-    addresses: list[int] = []
-    for reg in regs:
-        addresses.extend(range(reg.address, reg.address + reg.length))
-    plans = group_reads(addresses, max_block_size=32)
-    return [addr for start, length in plans for addr in range(start, start + length)]
     plans = [p for p in plan_group_reads(max_block_size=32) if p.function == fn]
     return [addr for plan in plans for addr in range(plan.address, plan.address + plan.length)]
 

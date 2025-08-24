@@ -1262,8 +1262,6 @@ async def test_validate_input_capabilities_missing_fields():
         close=AsyncMock(),
     )
 
-    from custom_components.thessla_green_modbus import scanner_core
-
     orig_asdict = dataclasses.asdict
 
     def _missing_basic_control(obj):

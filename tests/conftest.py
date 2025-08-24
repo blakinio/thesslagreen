@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 """Test configuration for ThesslaGreen Modbus integration."""
 
+import importlib
 import os
 import sys
 import types
@@ -10,8 +11,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 try:
-    import homeassistant.util  # ensure util submodule is loaded for plugins
-    import homeassistant.util.dt  # noqa: F401
+    from homeassistant.util import dt as _ha_dt  # noqa: F401
+    importlib.import_module("homeassistant.util")  # ensure util submodule is loaded for plugins
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.exceptions import ConfigEntryNotReady
@@ -249,7 +250,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     selector.SelectSelectorConfig = SelectSelectorConfig
     selector.SelectSelectorMode = SelectSelectorMode
 
-    async def async_extract_entity_ids(hass, service_call):
+    async def async_extract_entity_ids(hass, _service_call):
         return set()
 
     service_helper.async_extract_entity_ids = async_extract_entity_ids
@@ -342,7 +343,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     util = types.ModuleType("homeassistant.util")
     util_logging = types.ModuleType("homeassistant.util.logging")
 
-    def log_exception(format_err, *args):  # pragma: no cover - simple stub
+    def log_exception(_format_err, *args):  # pragma: no cover - simple stub
         return None
 
     util_logging.log_exception = log_exception
