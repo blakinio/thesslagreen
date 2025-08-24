@@ -3,7 +3,13 @@
   "auto_detected_note_success": "Auto-detection successful!",
   "diagnostics": {
     "registers_hash": "Register definitions hash",
-    "capabilities": "Device capabilities"
+    "capabilities": "Device capabilities",
+    "effective_batch": "Effective batch size",
+    "total_registers_json": "Total registers in JSON",
+    "total_available_registers": "Total available registers",
+    "deep_scan": "Deep scan enabled",
+    "force_full_register_list": "Force full register list",
+    "error_statistics": "Error statistics"
   },
   "config": {
     "abort": {

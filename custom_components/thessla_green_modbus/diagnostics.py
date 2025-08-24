@@ -17,7 +17,7 @@ from homeassistant.helpers import translation
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
-from .registers import get_registers_hash
+from .registers import get_all_registers, get_registers_hash
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +36,14 @@ async def async_get_config_entry_diagnostics(
     diagnostics = coordinator.get_diagnostic_data()
     diagnostics.setdefault("registers_hash", get_registers_hash())
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
+    diagnostics.setdefault("total_registers_json", len(get_all_registers()))
+    if "effective_batch" not in diagnostics:
+        batch_sizes = [
+            count
+            for groups in getattr(coordinator, "_register_groups", {}).values()
+            for _, count in groups
+        ]
+        diagnostics["effective_batch"] = max(batch_sizes, default=0)
 
     # Supplement diagnostics with coordinator statistics
     diagnostics.setdefault(
@@ -44,6 +52,10 @@ async def async_get_config_entry_diagnostics(
     diagnostics.setdefault(
         "total_available_registers",
         sum(len(regs) for regs in coordinator.available_registers.values()),
+    )
+    diagnostics.setdefault("deep_scan", coordinator.deep_scan)
+    diagnostics.setdefault(
+        "force_full_register_list", coordinator.force_full_register_list
     )
     diagnostics["last_scan"] = (
         coordinator.last_scan.isoformat() if coordinator.last_scan else None

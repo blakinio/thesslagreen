@@ -1193,6 +1193,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if statistics.get("last_successful_update"):
             statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
         total_registers = sum(len(v) for v in self.available_registers.values())
+        total_registers_json = len(get_all_registers())
+        batch_sizes = [
+            count
+            for groups in self._register_groups.values()
+            for _, count in groups
+        ]
+        effective_batch = max(batch_sizes, default=0)
         error_stats = {
             "connection_errors": statistics.get("connection_errors", 0),
             "timeout_errors": statistics.get("timeout_errors", 0),
@@ -1213,6 +1220,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "last_scan": self.last_scan.isoformat() if self.last_scan else None,
             "firmware_version": self.device_info.get("firmware"),
             "total_available_registers": total_registers,
+            "total_registers_json": total_registers_json,
+            "effective_batch": effective_batch,
+            "deep_scan": self.deep_scan,
+            "force_full_register_list": self.force_full_register_list,
             "error_statistics": error_stats,
         }
 
