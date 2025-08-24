@@ -80,14 +80,13 @@ from pymodbus.client import AsyncModbusTcpClient
 
 from .config_flow import CannotConnect
 from .const import (
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
-    MAX_BATCH_REGISTERS,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
-    MODEL,
+    MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     UNKNOWN_MODEL,
 )
@@ -368,43 +367,22 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _load_full_register_list(self) -> None:
         """Load full register list when forced."""
         self.available_registers = {
-            key: set(mapping.keys()) for key, mapping in self._register_maps.items()
+            "input_registers": set(self._register_maps["input_registers"].keys()),
+            "holding_registers": set(self._register_maps["holding_registers"].keys()),
+            "coil_registers": set(self._register_maps["coil_registers"].keys()),
+            "discrete_inputs": set(self._register_maps["discrete_inputs"].keys()),
         }
-
-        self.device_info = {
-            "device_name": f"ThesslaGreen {MODEL}",
-            "model": MODEL,
-            "firmware": "Unknown",
-            "serial_number": "Unknown",
-        }
-        for reg_type in self.available_registers:
-            self.available_registers[reg_type].clear()
-        self.available_registers["input_registers"].update(
-            self._register_maps["input_registers"].keys()
-        )
-        self.available_registers["holding_registers"].update(
-            self._register_maps["holding_registers"].keys()
-        )
-        self.available_registers["coil_registers"].update(
-            self._register_maps["coil_registers"].keys()
-        )
-        self.available_registers["discrete_inputs"].update(
-            self._register_maps["discrete_inputs"].keys()
-        )
 
         if self.skip_missing_registers:
             for reg_type, names in KNOWN_MISSING_REGISTERS.items():
                 self.available_registers[reg_type].difference_update(names)
 
-        self.device_info.clear()
-        self.device_info.update(
-            {
-                "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
-                "model": UNKNOWN_MODEL,
-                "firmware": "Unknown",
-                "serial_number": "Unknown",
-            }
-        )
+        self.device_info = {
+            "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
+            "model": UNKNOWN_MODEL,
+            "firmware": "Unknown",
+            "serial_number": "Unknown",
+        }
 
         _LOGGER.info(
             "Loaded full register list: %d total registers",
