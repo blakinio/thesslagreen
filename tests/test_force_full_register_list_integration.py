@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.thessla_green_modbus import async_setup_entry
