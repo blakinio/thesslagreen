@@ -49,7 +49,7 @@ obsługiwane przez integrację.
 
 Definicje rejestrów są okresowo porównywane z oficjalną dokumentacją
 producenta. Skrypt `tools/validate_register_pdf.py` parsuje plik
-`MODBUS_USER_AirPack_Home_08.2021.01 1.pdf` i zwraca listę rejestrów wraz z
+[MODBUS_USER_AirPack_Home_08.2021.01.pdf](https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf) i zwraca listę rejestrów wraz z
 informacjami o dostępie, jednostkach i skalowaniu. Dane te są używane w teście
 `tests/test_register_loader_validation.py::test_registers_match_pdf`, który
 sprawdza, czy każdy adres z PDF został odwzorowany w pliku JSON oraz czy

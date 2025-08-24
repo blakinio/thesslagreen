@@ -254,6 +254,7 @@ ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
 # added here in the future.
 # ============================================================================
 # Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
+# https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf
 # ============================================================================
 
 

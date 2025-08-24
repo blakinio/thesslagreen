@@ -25,3 +25,6 @@ htmlcov/
 
 # OS files
 .DS_Store
+
+# Vendor documentation
+/MODBUS_USER_AirPack_Home_*.pdf
