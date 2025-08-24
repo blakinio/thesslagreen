@@ -53,11 +53,7 @@ async def async_setup_entry(
     entities = []
 
     # Get number entity mappings
-    try:
-        number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS["number"]
-    except KeyError:  # pragma: no cover - should not happen
-        _LOGGER.debug("No number entity mappings found; skipping setup")
-        return
+    number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS["number"]
 
     # Create number entities only for registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()
