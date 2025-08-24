@@ -141,74 +141,52 @@ def migrate_unique_id(
             uid = uid[: -len(suffix)]
             break
 
-    if serial_number and serial_number != "Unknown":
-        prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_"
-        if new_unique_id.startswith(prefix):
-            new_unique_id = f"{DOMAIN}_{serial_number}_{new_unique_id[len(prefix):]}"
-
-    # Convert register name suffix to address-based format if needed
-    try:
-        if serial_number and serial_number != "Unknown":
-            device_prefix = f"{DOMAIN}_{serial_number}_"
-        else:
-            device_prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_"
-        if new_unique_id.startswith(device_prefix):
-            suffix = new_unique_id[len(device_prefix) :]
-            if not re.fullmatch(r"\d+_\d+(?:_bit\d+)?", suffix):
-                reg_name = suffix
-                address = None
-                for mapping in (
-                    COIL_REGISTERS,
-                    DISCRETE_INPUT_REGISTERS,
-                    HOLDING_REGISTERS,
-                    INPUT_REGISTERS,
-                ):
-                    if reg_name in mapping:
-                        address = mapping[reg_name]
-                        break
-                if address is not None:
-                    new_unique_id = f"{device_prefix}{slave_id}_{address}"
-    except Exception:  # pragma: no cover - defensive
-        pass
-
-    return new_unique_id
     serial_valid = serial_number and serial_number != "Unknown"
-    host_prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_"
-    serial_prefix = f"{DOMAIN}_{serial_number}_" if serial_valid else None
-
-    entity_key: str | None = None
-    if uid.startswith(host_prefix):
-        entity_key = uid[len(host_prefix) :]
-    elif serial_prefix and uid.startswith(serial_prefix):
-        entity_key = uid[len(serial_prefix) :]
-    else:
-        return uid
+    host_prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_"
+    if serial_valid and uid.startswith(host_prefix):
+        uid = f"{DOMAIN}_{serial_number}_{uid[len(host_prefix):]}"
 
     device_prefix = (
         f"{DOMAIN}_{serial_number}" if serial_valid else f"{DOMAIN}_{host.replace(':', '-')}_{port}"
     )
+    uid_prefix = f"{device_prefix}_"
+    entity_key: str | None = None
+    if uid.startswith(uid_prefix):
+        entity_key = uid[len(uid_prefix) :]
 
-    parts = entity_key.split("_")
-    if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
-        return f"{device_prefix}_{entity_key}"
+    if entity_key is not None:
+        parts = entity_key.split("_", 1)
+        if parts[0].isdigit():
+            if len(parts) > 1 and parts[1].isdigit():
+                uid = f"{device_prefix}_{entity_key}"
+                entity_key = None
+            elif len(parts) > 1:
+                entity_key = parts[1]
 
-    lookup = _build_entity_lookup()
-    register_name, register_type, bit = lookup.get(entity_key, (entity_key, None, None))
-    address: int | None = None
-    if register_type == "holding_registers":
-        address = HOLDING_REGISTERS.get(register_name)
-    elif register_type == "input_registers":
-        address = INPUT_REGISTERS.get(register_name)
-    elif register_type == "coil_registers":
-        address = COIL_REGISTERS.get(register_name)
-    elif register_type == "discrete_inputs":
-        address = DISCRETE_INPUT_REGISTERS.get(register_name)
+        if entity_key is not None:
+            lookup = _build_entity_lookup()
+            register_name, register_type, bit = lookup.get(
+                entity_key, (entity_key, None, None)
+            )
+            address: int | None = None
+            if register_type == "holding_registers":
+                address = HOLDING_REGISTERS.get(register_name)
+            elif register_type == "input_registers":
+                address = INPUT_REGISTERS.get(register_name)
+            elif register_type == "coil_registers":
+                address = COIL_REGISTERS.get(register_name)
+            elif register_type == "discrete_inputs":
+                address = DISCRETE_INPUT_REGISTERS.get(register_name)
 
-    if address is not None:
-        bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
-        return f"{device_prefix}_{slave_id}_{address}{bit_suffix}"
+            if address is not None:
+                bit_suffix = (
+                    f"_bit{bit.bit_length() - 1}" if bit is not None else ""
+                )
+                uid = f"{device_prefix}_{slave_id}_{address}{bit_suffix}"
+            else:
+                uid = f"{device_prefix}_{entity_key}"
 
-    return f"{device_prefix}_{entity_key}"
+    return uid
 
 
 # Mapping of writable register names to Home Assistant number entity metadata
