@@ -544,18 +544,10 @@ pytest tests/test_register_loader.py
 
 4. Dołącz zmieniony plik JSON do commitu.
 
-### Migracja z CSV na JSON
-
-Pliki CSV zostały oznaczone jako przestarzałe i ich obsługa będzie
-usunięta w przyszłych wersjach. Użycie pliku CSV zapisze ostrzeżenie w
-logach. Aby ręcznie przekonwertować dane:
-
-1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
-2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-   z polami `function`, `address_dec`, `address_hex`, `name`, `description`, `description_en` i `access`.
-3. Zachowaj sortowanie według `function` i `address_dec` oraz format liczbowy (`0x` dla wartości hex).
-4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych
-   rejestrów.
+> Obsługa plików CSV została całkowicie usunięta – definicje rejestrów muszą
+> znajdować się w pliku JSON i spełniać schemat
+> `custom_components/thessla_green_modbus/registers/schema.py`. Zweryfikuj
+> zmiany za pomocą `pytest tests/test_register_loader.py`.
 
 ## 📄 Licencja
 

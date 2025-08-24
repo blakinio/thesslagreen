@@ -13,6 +13,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 
 from .const import DOMAIN
@@ -98,8 +99,10 @@ async def async_get_config_entry_diagnostics(
         translations = await translation.async_get_translations(
             hass, hass.config.language, f"component.{DOMAIN}"
         )
-    except Exception as err:  # pragma: no cover - defensive
+    except (OSError, ValueError, HomeAssistantError) as err:  # pragma: no cover - defensive
         _LOGGER.debug("Translation load failed: %s", err)
+    except Exception as err:  # pragma: no cover - unexpected
+        _LOGGER.exception("Unexpected error loading translations: %s", err)
     active_errors: dict[str, str] = {}
     if coordinator.data:
         for key, value in coordinator.data.items():
