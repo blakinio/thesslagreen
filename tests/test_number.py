@@ -146,6 +146,7 @@ from custom_components.thessla_green_modbus.number import (  # noqa: E402
     ThesslaGreenNumber,
     async_setup_entry,
 )
+import custom_components.thessla_green_modbus.number as number_module
 
 
 def test_number_creation_and_state(mock_coordinator):
@@ -272,3 +273,32 @@ async def test_async_setup_skips_unknown_register(
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
     add_entities.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_force_full_register_list_adds_missing_number(
+    mock_coordinator, mock_config_entry
+):
+    """Number entities are created from register map when forcing full list."""
+
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    mock_coordinator.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "calculated": set(),
+    }
+    mock_coordinator.force_full_register_list = True
+
+    number_map = {"max_supply_air_flow_rate": {"translation_key": "max"}}
+
+    with patch.dict(ENTITY_MAPPINGS["number"], number_map, clear=True), patch.dict(
+        number_module.HOLDING_REGISTERS, {"max_supply_air_flow_rate": 1}, clear=True
+    ):
+        add_entities = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+        created = {entity.register_name for entity in add_entities.call_args[0][0]}
+        assert created == {"max_supply_air_flow_rate"}  # nosec B101

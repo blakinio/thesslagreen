@@ -294,7 +294,6 @@ class RegisterDefinition(pydantic.BaseModel):
             elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
                 mask_int = bitmask_val
 
-            if mask_int is not None and len(self.bits) > mask_int.bit_length():
             if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
                 raise ValueError("bits exceed bitmask width")
             if len(self.bits) > 16:
