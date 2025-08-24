@@ -122,11 +122,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
         ipaddress.ip_address(host)
     except ValueError:
         if not is_host_valid(host):
-            if ":" in host:
-                raise vol.Invalid("invalid_ipv6")
-            if host and all(c.isdigit() or c == "." for c in host):
-                raise vol.Invalid("invalid_ipv4")
-            raise vol.Invalid("invalid_domain")
+            raise vol.Invalid("invalid_host")
 
     scanner: ThesslaGreenDeviceScanner | None = None
     try:

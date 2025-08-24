@@ -136,6 +136,8 @@ class DeviceInfo(collections.abc.Mapping):  # pragma: no cover
 # as unused even though they are relied upon.
 @dataclass
 class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
+@dataclass(slots=True)
+class DeviceCapabilities:  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
 
     Although capabilities are typically determined once during the initial scan,
@@ -171,11 +173,12 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     sensor_ambient_temperature: bool = False  # pragma: no cover
     sensor_heating_temperature: bool = False  # pragma: no cover
     temperature_sensors_count: int = 0  # pragma: no cover
+    _as_dict_cache: dict[str, Any] | None = field(init=False, repr=False, default=None)
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
         """Set attribute and invalidate cached ``as_dict`` result."""
-        if name != "_as_dict_cache" and hasattr(self, "_as_dict_cache"):
-            object.__delattr__(self, "_as_dict_cache")
+        if name != "_as_dict_cache" and self._as_dict_cache is not None:
+            object.__setattr__(self, "_as_dict_cache", None)
         object.__setattr__(self, name, value)
 
     def as_dict(self) -> dict[str, Any]:
@@ -185,12 +188,12 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
         invocations when capabilities are accessed multiple times.
         """
 
-        if not hasattr(self, "_as_dict_cache"):
+        if self._as_dict_cache is None:
             data = asdict(self)
             for key, value in data.items():
                 if isinstance(value, set):
                     data[key] = sorted(value)
-            self._as_dict_cache = data
+            object.__setattr__(self, "_as_dict_cache", data)
         return self._as_dict_cache
 
     def items(self):
@@ -1022,18 +1025,15 @@ class ThesslaGreenDeviceScanner:
         Dict[str, Tuple[Optional[int], Optional[int]]],
     ]:
         """Load Modbus register definitions and value ranges."""
-        try:
-            register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-            register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-            for reg in get_all_registers():
-                if not reg.name:
-                    continue
-                register_map[reg.function][reg.address] = reg.name
-                if reg.min is not None or reg.max is not None:
-                    register_ranges[reg.name] = (reg.min, reg.max)
-            return register_map, register_ranges
-        except Exception as err:  # pragma: no cover - defensive
-            raise RuntimeError("Unable to load register definitions") from err
+        register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+        register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+        for reg in get_all_registers():
+            if not reg.name:
+                continue
+            register_map[reg.function][reg.address] = reg.name
+            if reg.min is not None or reg.max is not None:
+                register_ranges[reg.name] = (reg.min, reg.max)
+        return register_map, register_ranges
 
     def _sleep_time(self, attempt: int) -> float:
         """Return delay for a retry attempt based on backoff."""

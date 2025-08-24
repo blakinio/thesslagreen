@@ -360,7 +360,7 @@ class TestThesslaGreenConfigFlow:
             yield
 
     @pytest.mark.asyncio
-    async def test_config_flow_user_step(self, mock_scanner):
+    async def test_config_flow_user_step(self, _mock_scanner):
         """Test the user configuration step."""
         from custom_components.thessla_green_modbus.config_flow import (
             ConfigFlow,
@@ -375,7 +375,7 @@ class TestThesslaGreenConfigFlow:
         assert result["step_id"] == "user"
 
     @pytest.mark.asyncio
-    async def test_config_flow_user_input_success(self, mock_scanner):
+    async def test_config_flow_user_input_success(self, _mock_scanner):
         """Test successful user input processing."""
         from custom_components.thessla_green_modbus.config_flow import (
             ConfigFlow,

@@ -89,7 +89,7 @@ async def test_services_accept_legacy_entity_ids(monkeypatch, service, data):
         return call.data["entity_id"]
 
     monkeypatch.setattr(services, "async_extract_entity_ids", fake_extract)
-    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda h, e: None)
+    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: None)
 
     await services.async_setup_services(hass)
     handler = hass.services.handlers[service]
