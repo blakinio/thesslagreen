@@ -156,12 +156,6 @@ class RegisterDef:
             elif dtype == "uint64":
                 value = struct.unpack(">Q", raw_bytes)[0]
 
-        if self.multiplier is not None:
-            value = value * self.multiplier
-        if self.resolution is not None:
-            steps = round(value / self.resolution)
-            value = steps * self.resolution
-
         if self.extra and self.extra.get("aatt"):
             airflow = (raw >> 8) & 0xFF
             temp = (raw & 0xFF) / 2
@@ -176,6 +170,11 @@ class RegisterDef:
             else:
                 return f"{t.hour:02d}:{t.minute:02d}"
 
+        if self.multiplier is not None:
+            value *= self.multiplier
+        if self.resolution is not None:
+            steps = round(value / self.resolution)
+            value = steps * self.resolution
         return value
 
     def encode(self, value: Any) -> int | list[int]:
@@ -270,18 +269,6 @@ class RegisterDef:
         if self.resolution is not None:
             step = self.resolution
             raw = int(round(float(raw) / step) * step)
-        if self.length > 1 and self.extra and self.extra.get("type"):
-            dtype = self.extra["type"]
-            if dtype == "float32":
-                return int.from_bytes(struct.pack(">f", float(raw)), "big")
-            if dtype == "int32":
-                return int.from_bytes(struct.pack(">i", int(raw)), "big")
-            if dtype == "uint32":
-                return int.from_bytes(struct.pack(">I", int(raw)), "big")
-            if dtype == "int64":
-                return int.from_bytes(struct.pack(">q", int(raw)), "big")
-            if dtype == "uint64":
-                return int.from_bytes(struct.pack(">Q", int(raw)), "big")
         return int(raw)
 
 
