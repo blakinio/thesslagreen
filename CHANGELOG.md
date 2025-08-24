@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Regenerated Modbus register definitions from CSV and updated coverage test
 - Assigned new unique IDs for m³/h airflow sensors
 - Simplified runtime dependencies; only require `pymodbus>=3.5.0`
+- Deferred `homeassistant` imports in `custom_components/thessla_green_modbus` so
+  utility modules can be imported without Home Assistant installed
 
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient
