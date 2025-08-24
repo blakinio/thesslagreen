@@ -274,6 +274,26 @@ class RegisterDefinition(pydantic.BaseModel):
                 raise ValueError("default below min")
             if self.max is not None and self.default > self.max:
                 raise ValueError("default above max")
+            bitmask_val = self.extra.get("bitmask") if self.extra else None
+            mask_int: int | None = None
+            if isinstance(bitmask_val, str):
+                try:
+                    mask_int = int(bitmask_val, 0)
+                except ValueError:
+                    mask_int = None
+            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+                mask_int = bitmask_val
+
+            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
+                raise ValueError("bits exceed bitmask width")
+            if len(self.bits) > 16:
+                raise ValueError("bits exceed 16 entries")
+            for idx, bit in enumerate(self.bits):
+                if idx > 15:
+                    raise ValueError("bit index out of range")
+                name = bit.get("name") if isinstance(bit, dict) else str(bit)
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError("bit names must be snake_case")
 
         return self
 

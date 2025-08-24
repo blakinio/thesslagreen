@@ -17,7 +17,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         key: str,
-        address: int | None = None,
+        address: int,
         *,
         bit: int | None = None,
     ) -> None:
@@ -33,15 +33,8 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
-        host = self.coordinator.host.replace(":", "-")
-        port = self.coordinator.port
         bit_suffix = f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
-        key_part = (
-            f"{self.coordinator.slave_id}_{self._address}{bit_suffix}"
-            if self._address is not None
-            else self._key
-        )
-        return f"{DOMAIN}_{host}_{port}_{key_part}"
+        return f"{DOMAIN}_{self.coordinator.slave_id}_{self._address}{bit_suffix}"
 
     @property
     def available(self) -> bool:  # pragma: no cover

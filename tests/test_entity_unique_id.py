@@ -14,41 +14,32 @@ from custom_components.thessla_green_modbus.const import (
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
 
 
-def test_unique_id_serial_based():
-    """Entity unique_id should use device serial when available."""
+def test_unique_id_format():
+    """Unique ID should include slave ID and register address."""
     coordinator = MagicMock()
-    coordinator.host = "1.2.3.4"
-    coordinator.port = 502
     coordinator.slave_id = 10
-    coordinator.device_info = {"serial_number": "ABC123"}
     coordinator.get_device_info.return_value = {}
 
     entity = ThesslaGreenEntity(coordinator, "test", 1)
-    assert entity.unique_id == f"{DOMAIN}_ABC123_10_1"  # nosec
+    assert entity.unique_id == f"{DOMAIN}_10_1"  # nosec
 
 
-def test_unique_id_host_fallback():
-    """Entity unique_id should fall back to host when serial missing."""
+def test_unique_id_varies_with_address():
+    """Different addresses produce different unique IDs."""
     coordinator = MagicMock()
-    coordinator.host = "fd00:1:2::1"
-    coordinator.port = 502
     coordinator.slave_id = 10
-    coordinator.device_info = {}
     coordinator.get_device_info.return_value = {}
 
     entity = ThesslaGreenEntity(coordinator, "test", 1)
-    assert entity.unique_id == f"{DOMAIN}_fd00-1-2--1_502_10_1"  # nosec
+    assert entity.unique_id == f"{DOMAIN}_10_1"  # nosec
     entity = ThesslaGreenEntity(coordinator, "test", 2)
-    assert entity.unique_id == f"{DOMAIN}_fd00-1-2--1_502_10_2"  # nosec
+    assert entity.unique_id == f"{DOMAIN}_10_2"  # nosec
 
 
 def test_unique_id_not_changed_by_airflow_unit():
     """Changing airflow unit should not change unique_id."""
     coordinator = MagicMock()
-    coordinator.host = "1.2.3.4"
-    coordinator.port = 502
     coordinator.slave_id = 10
-    coordinator.device_info = {}
     coordinator.get_device_info.return_value = {}
     coordinator.entry = MagicMock()
     coordinator.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}
@@ -58,12 +49,6 @@ def test_unique_id_not_changed_by_airflow_unit():
 
     coordinator.entry.options[CONF_AIRFLOW_UNIT] = AIRFLOW_UNIT_M3H
     entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", 274)
-    address = 274
-    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", address)
-    uid_percentage = entity.unique_id
-
-    coordinator.entry.options[CONF_AIRFLOW_UNIT] = AIRFLOW_UNIT_M3H
-    entity = ThesslaGreenEntity(coordinator, "supply_flow_rate", address)
     uid_m3h = entity.unique_id
 
     assert uid_percentage == uid_m3h  # nosec
@@ -71,7 +56,7 @@ def test_unique_id_not_changed_by_airflow_unit():
 
 @pytest.mark.asyncio
 async def test_migrate_entity_unique_ids(hass):
-    """Existing registry entries should migrate to serial-based format."""
+    """Existing registry entries should migrate to new format."""
 
     @dataclass
     class DummyEntry:
@@ -160,7 +145,7 @@ async def test_migrate_entity_unique_ids(hass):
 
         assert await async_setup_entry(hass, entry)  # nosec
 
-    new_unique_id = f"{DOMAIN}_ABC123_{slave_id}_{address}"
+    new_unique_id = f"{DOMAIN}_{slave_id}_{address}"
     entity_id = registry.async_get_entity_id("sensor", DOMAIN, new_unique_id)
     assert entity_id is not None  # nosec
     assert registry.entities[entity_id].unique_id == new_unique_id  # nosec
@@ -169,11 +154,9 @@ async def test_migrate_entity_unique_ids(hass):
 def test_unique_id_bit_suffix():
     """Bit-based entities should include bit position in unique_id."""
     coordinator = MagicMock()
-    coordinator.host = "1.2.3.4"
-    coordinator.port = 502
     coordinator.slave_id = 10
-    coordinator.device_info = {"serial_number": "ABC123"}
     coordinator.get_device_info.return_value = {}
 
     entity = ThesslaGreenEntity(coordinator, "test", 5, bit=0x04)
-    assert entity.unique_id == f"{DOMAIN}_ABC123_10_5_bit2"  # nosec
+    assert entity.unique_id == f"{DOMAIN}_10_5_bit2"  # nosec
+

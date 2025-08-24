@@ -45,14 +45,18 @@ async def async_setup_entry(
 
     entities = []
 
-    # Create binary sensors only for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device()
+    # Create binary sensors for discovered registers, or all known registers
+    # when ``force_full_register_list`` is enabled.
     for key, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         register_name = sensor_def.get("register", key)
 
-        # Check if this register is available on the device
-        if register_name in coordinator.available_registers.get(register_type, set()):
+        available = coordinator.available_registers.get(register_type, set())
+        force_create = coordinator.force_full_register_list and register_name in coordinator._register_maps.get(register_type, {})
+
+        # Check if this register is available on the device or should be
+        # forcibly added from the full register list.
+        if register_name in available or force_create:
             address = coordinator._register_maps.get(register_type, {}).get(register_name)
             entities.append(
                 ThesslaGreenBinarySensor(

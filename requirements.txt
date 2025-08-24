@@ -5,4 +5,3 @@
 
 # Modbus communication library
 pymodbus>=3.5.0
-pydantic>=2.0

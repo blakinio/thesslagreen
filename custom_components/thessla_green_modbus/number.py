@@ -57,10 +57,13 @@ async def async_setup_entry(
     # Get number entity mappings
     number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS["number"]
 
-    # Create number entities only for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device()
+    # Create number entities for discovered registers, or all known registers
+    # when ``force_full_register_list`` is enabled.
     for register_name, entity_config in number_mappings.items():
-        if register_name in coordinator.available_registers.get("holding_registers", set()):
+        available = coordinator.available_registers.get("holding_registers", set())
+        force_create = coordinator.force_full_register_list and register_name in HOLDING_REGISTERS
+
+        if register_name in available or force_create:
             address = HOLDING_REGISTERS.get(register_name)
             if address is None:
                 _LOGGER.error(
