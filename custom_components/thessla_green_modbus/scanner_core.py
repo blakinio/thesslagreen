@@ -234,7 +234,11 @@ class ThesslaGreenDeviceScanner:
         full_register_scan: bool = False,
         max_registers_per_request: int = MAX_BATCH_REGISTERS,
     ) -> None:
-        """Initialize device scanner with consistent parameter names."""
+        """Initialize device scanner with consistent parameter names.
+
+        ``max_registers_per_request`` is clamped to the safe Modbus range of
+        1-16 registers per request.
+        """
         _ensure_register_maps()
         self.host = host
         self.port = port
@@ -247,8 +251,12 @@ class ThesslaGreenDeviceScanner:
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
-        self.max_registers_per_request = max_registers_per_request
-        self.effective_batch = min(max_registers_per_request, MAX_BATCH_REGISTERS)
+        # Sanitize user input to remain within the Modbus-safe range (1-16)
+        self.max_registers_per_request = max(
+            1, min(max_registers_per_request, MAX_BATCH_REGISTERS)
+        )
+        # Dependent attributes mirror the clamped value
+        self.effective_batch = self.max_registers_per_request
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
