@@ -1,9 +1,31 @@
 # mypy: ignore-errors
 """Tests for the Modbus helper utilities."""
 
+import sys
+import types
+
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus, group_reads
+loader_stub = types.SimpleNamespace(
+    _load_registers=lambda: ([], {}),
+    get_all_registers=lambda: [],
+    get_registers_by_function=lambda fn: [],
+)
+sys.modules[
+    "custom_components.thessla_green_modbus.registers.loader"
+] = loader_stub
+sys.modules[
+    "custom_components.thessla_green_modbus.registers"
+] = types.SimpleNamespace(
+    loader=loader_stub,
+    get_all_registers=loader_stub.get_all_registers,
+    get_registers_by_function=loader_stub.get_registers_by_function,
+)
+
+from custom_components.thessla_green_modbus.modbus_helpers import (  # noqa: E402
+    _call_modbus,
+    group_reads,
+)
 
 pytestmark = pytest.mark.asyncio
 

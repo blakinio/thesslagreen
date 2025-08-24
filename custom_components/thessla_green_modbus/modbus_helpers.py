@@ -15,10 +15,90 @@ _KWARG_CACHE: dict[Callable[..., Awaitable[Any]], str | None] = {}
 _SIG_CACHE: dict[Callable[..., Awaitable[Any]], inspect.Signature] = {}
 
 
+def _mask_frame(frame: bytes) -> str:
+    """Return a hex representation of ``frame`` with the slave ID masked."""
+
+    if not frame:
+        return ""
+
+    hex_str = frame.hex()
+    if len(hex_str) >= 2:
+        return f"**{hex_str[2:]}"
+    return hex_str
+
+
+def _build_request_frame(
+    func_name: str, slave_id: int, positional: list[Any], kwargs: dict[str, Any]
+) -> bytes:
+    """Best-effort Modbus request frame builder for logging."""
+
+    try:
+        if func_name == "read_input_registers":
+            addr = int(positional[0])
+            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
+            return bytes(
+                [slave_id, 0x04, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
+            )
+        if func_name == "read_holding_registers":
+            addr = int(positional[0])
+            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
+            return bytes(
+                [slave_id, 0x03, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
+            )
+        if func_name == "read_coils":
+            addr = int(positional[0])
+            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
+            return bytes(
+                [slave_id, 0x01, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
+            )
+        if func_name == "read_discrete_inputs":
+            addr = int(positional[0])
+            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
+            return bytes(
+                [slave_id, 0x02, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF]
+            )
+        if func_name == "write_register":
+            addr = int(kwargs.get("address", positional[0]))
+            value = int(kwargs.get("value", positional[1] if len(positional) > 1 else 0))
+            return bytes(
+                [slave_id, 0x06, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF]
+            )
+        if func_name == "write_registers":
+            addr = int(kwargs.get("address", positional[0]))
+            values = [int(v) for v in kwargs.get("values", positional[1] if len(positional) > 1 else [])]
+            qty = len(values)
+            frame = bytearray(
+                [
+                    slave_id,
+                    0x10,
+                    addr >> 8,
+                    addr & 0xFF,
+                    qty >> 8,
+                    qty & 0xFF,
+                    qty * 2,
+                ]
+            )
+            for v in values:
+                frame.extend([v >> 8, v & 0xFF])
+            return bytes(frame)
+        if func_name == "write_coil":
+            addr = int(kwargs.get("address", positional[0]))
+            value = 0xFF00 if kwargs.get("value", positional[1] if len(positional) > 1 else False) else 0x0000
+            return bytes(
+                [slave_id, 0x05, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF]
+            )
+    except Exception:  # pragma: no cover - best-effort logging only
+        return b""
+
+    return b""
+
+
 async def _call_modbus(
     func: Callable[..., Awaitable[Any]],
     slave_id: int,
     *args: Any,
+    attempt: int = 1,
+    max_attempts: int = 1,
     **kwargs: Any,
 ) -> Any:
     """Invoke a Modbus function handling ``slave``/``unit`` compatibility.
@@ -64,13 +144,23 @@ async def _call_modbus(
             kwarg = ""
         _KWARG_CACHE[func] = kwarg
 
-    _LOGGER.debug(
-        "Sending %s to slave %s: args=%s kwargs=%s",
-        getattr(func, "__name__", repr(func)),
+    func_name = getattr(func, "__name__", repr(func))
+    batch_size = kwargs.get("count") or len(kwargs.get("values", [])) or 1
+    _LOGGER.info(
+        "Calling %s on slave %s (batch=%s attempt %s/%s)",
+        func_name,
         slave_id,
-        positional,
-        kwargs,
+        batch_size,
+        attempt,
+        max_attempts,
     )
+
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        request_frame = _build_request_frame(func_name, slave_id, positional, kwargs)
+        if request_frame:
+            _LOGGER.debug("Modbus request: %s", _mask_frame(request_frame))
+        else:
+            _LOGGER.debug("Sending %s to slave %s: args=%s kwargs=%s", func_name, slave_id, positional, kwargs)
 
     if kwarg == "slave":
         response = await func(*positional, slave=slave_id, **kwargs)
@@ -79,7 +169,15 @@ async def _call_modbus(
     else:
         response = await func(*positional, **kwargs)
 
-    _LOGGER.debug("Received from %s: %s", getattr(func, "__name__", repr(func)), response)
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        try:
+            encoded = response.encode() if hasattr(response, "encode") else b""
+        except Exception:  # pragma: no cover - best effort logging
+            encoded = b""
+        if encoded:
+            _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
+        else:
+            _LOGGER.debug("Received from %s: %s", func_name, response)
     return response
 
 
