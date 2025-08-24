@@ -56,6 +56,25 @@ sys.modules.setdefault(
 sys.modules.setdefault(
     "custom_components.thessla_green_modbus.registers.loader", registers_loader
 )
+registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
+registers_module.__path__ = []
+registers_module.loader = None
+registers_module.get_registers_by_function = lambda *args, **kwargs: []
+registers_module.get_all_registers = lambda *args, **kwargs: []
+registers_module.get_registers_hash = lambda *args, **kwargs: ""
+registers_module.plan_group_reads = lambda *args, **kwargs: []
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.registers", registers_module
+)
+loader_module = ModuleType(
+    "custom_components.thessla_green_modbus.registers.loader"
+)
+loader_module.get_registers_by_function = lambda *args, **kwargs: []
+loader_module.load_registers = lambda *args, **kwargs: []
+loader_module.get_all_registers = lambda *args, **kwargs: []
+sys.modules.setdefault(
+    "custom_components.thessla_green_modbus.registers.loader", loader_module
+)
 
 from custom_components.thessla_green_modbus.const import (
     CONF_DEEP_SCAN,
@@ -1775,6 +1794,8 @@ def test_device_capabilities_serialization():
     assert list(caps.values()) == list(serialized.values())
 
 
+async def test_options_flow_max_registers_per_request_validation():
+    """Options flow validates max registers per request within 1-16."""
 async def test_options_flow_max_registers_per_request_validated():
     """Options flow should validate max registers per request range."""
     config_entry = SimpleNamespace(options={})
