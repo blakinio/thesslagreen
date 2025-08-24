@@ -23,6 +23,10 @@ from .modbus_exceptions import (
     ModbusIOException,
 )
 from .modbus_helpers import _call_modbus, group_reads as _group_reads
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_all_registers,
+    registers_sha256,
+)
 from .registers import loader as registers_loader
 from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
 from .scanner_helpers import (
