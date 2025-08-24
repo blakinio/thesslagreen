@@ -18,6 +18,13 @@
     "error": {
       "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
       "invalid_auth": "Authentication error. Check Device ID settings.",
+      "invalid_input": "Invalid configuration provided. Check values and try again.",
+      "invalid_host": "Invalid IP address or hostname.",
+      "missing_method": "Scanner is missing required method. See logs for details.",
+      "modbus_error": "Modbus communication error. Check wiring and settings.",
+      "timeout": "Connection timed out. Verify host and port.",
+      "unknown": "Unexpected error. Check logs for details."
+    },
         "invalid_input": "Invalid configuration provided. Check values and try again.",
         "invalid_host": "Invalid IP address or hostname.",
         "missing_method": "Scanner is missing required method. See logs for details.",
@@ -1425,8 +1432,7 @@
   },
   "options": {
     "error": {
-      "invalid_max_registers_per_request_low": "Max registers per request must be at least 1.",
-      "invalid_max_registers_per_request_high": "Max registers per request must be 16 or less."
+      "invalid_max_registers_per_request": "Max registers per request must be at least 1."
     },
     "step": {
       "init": {
@@ -1455,7 +1461,6 @@
         "title": "ThesslaGreen Modbus Options"
       }
     }
-  }
   },
   "services": {
     "reset_filters": {
