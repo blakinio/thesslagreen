@@ -125,9 +125,17 @@ class DeviceInfo:  # pragma: no cover
 # which features the device exposes; static analysis may therefore mark them
 # as unused even though they are relied upon.
 @dataclass
+class DeviceCapabilities:
+    """Feature flags and sensor availability detected on the device.
+
+    Although capabilities are typically determined once during the initial scan,
+    the dataclass caches the result of :meth:`as_dict` for efficiency.  Any
+    attribute assignment will clear this cache so subsequent calls reflect the
+    new values.  The capability sets are mutable; modify them via assignment to
+    trigger cache invalidation.
+    """
 class DeviceCapabilities:  # pragma: no cover
     """Feature flags and sensor availability detected on the device."""
-
     basic_control: bool = False
     temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
     flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers  # pragma: no cover
@@ -149,6 +157,12 @@ class DeviceCapabilities:  # pragma: no cover
     sensor_ambient_temperature: bool = False  # pragma: no cover
     sensor_heating_temperature: bool = False  # pragma: no cover
     temperature_sensors_count: int = 0  # pragma: no cover
+
+    def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
+        """Set attribute and invalidate cached ``as_dict`` result."""
+        if name != "_as_dict_cache" and hasattr(self, "_as_dict_cache"):
+            object.__delattr__(self, "_as_dict_cache")
+        object.__setattr__(self, name, value)
 
     def as_dict(self) -> dict[str, Any]:
         """Return capabilities as a dictionary with set values sorted.
