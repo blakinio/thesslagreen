@@ -1,4 +1,4 @@
-"""Base entity for ThesslaGreen Modbus Integration."""
+"""Base entity classes for ThesslaGreen Modbus integration."""
 
 from __future__ import annotations
 
