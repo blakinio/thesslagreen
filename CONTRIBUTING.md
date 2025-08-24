@@ -104,15 +104,7 @@ Register addresses are defined in
 and this file serves as the sole source of truth. The integration reads the JSON
 directly.
 
-If you need a static Python mapping for external tools, generate
-`custom_components/thessla_green_modbus/registers.py` using:
-
-```bash
-python tools/generate_registers.py
-```
-
-The generated file is ignored by Git and should not be committed. You can verify
-that it matches the JSON source with:
+You can validate the definitions with:
 
 ```bash
 python tools/validate_registers.py
@@ -182,19 +174,14 @@ custom_components/thessla_green_modbus/
     └── pl.json
 ```
 
-### Regenerating register definitions
+### Validating register definitions
 
 The canonical register specification lives in
 `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
-After editing this file, run the validation tests and, if needed, regenerate the
-helper Python module:
+After editing this file, run the validation tests to ensure everything remains
+consistent.
 
-```bash
-python tools/generate_registers.py  # optional helper
-```
-
-Commit the updated JSON file. The `generate-registers` pre-commit hook runs the
-generator when necessary.
+Commit the updated JSON file.
 
 ## Testing
 
