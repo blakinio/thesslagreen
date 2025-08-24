@@ -151,7 +151,7 @@ async def _call_modbus(
 
     func_name = getattr(func, "__name__", repr(func))
     batch_size = kwargs.get("count") or len(kwargs.get("values", [])) or 1
-    _LOGGER.info(
+    _LOGGER.debug(
         "Calling %s on slave %s (batch=%s attempt %s/%s)",
         func_name,
         slave_id,
