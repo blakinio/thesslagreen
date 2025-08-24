@@ -17,8 +17,8 @@ def test_group_reads_merges_consecutive_addresses():
 
 
 def test_group_reads_respects_max_block_size():
-    addresses = list(range(70))
-    assert group_reads(addresses, max_block_size=64) == [(0, 64), (64, 6)]
+    addresses = list(range(22))
+    assert group_reads(addresses, max_block_size=16) == [(0, 16), (16, 6)]
 def test_plan_group_reads_merges_consecutive_addresses(monkeypatch):
     regs = [
         Register("input", addr, f"r{addr}", "r")
@@ -29,11 +29,11 @@ def test_plan_group_reads_merges_consecutive_addresses(monkeypatch):
 
 
 def test_plan_group_reads_respects_max_block_size(monkeypatch):
-    regs = [Register("input", addr, f"r{addr}", "r") for addr in range(70)]
+    regs = [Register("input", addr, f"r{addr}", "r") for addr in range(22)]
     monkeypatch.setattr(loader, "_load_registers", lambda: regs)
-    assert plan_group_reads(max_block_size=64) == [
-        ReadPlan("input", 0, 64),
-        ReadPlan("input", 64, 6),
+    assert plan_group_reads(max_block_size=16) == [
+        ReadPlan("input", 0, 16),
+        ReadPlan("input", 16, 6),
     ]
 
 

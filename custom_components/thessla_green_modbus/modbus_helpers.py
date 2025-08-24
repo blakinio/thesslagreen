@@ -83,7 +83,7 @@ async def _call_modbus(
     return response
 
 
-def group_reads(addresses: Iterable[int], max_block_size: int = 64) -> List[Tuple[int, int]]:
+def group_reads(addresses: Iterable[int], max_block_size: int = 16) -> List[Tuple[int, int]]:
     """Group raw register addresses into contiguous read blocks.
 
     The addresses are sorted and sequential ranges are merged up to
