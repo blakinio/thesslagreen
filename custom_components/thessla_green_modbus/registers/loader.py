@@ -383,6 +383,19 @@ def _load_registers_from_file(
     return registers
 
 
+# Ensure clearing the LRU cache also resets the file hash cache
+_orig_load_cache_clear = _load_registers_from_file.cache_clear
+
+
+def _load_registers_cache_clear() -> None:
+    global _cached_file_info
+    _cached_file_info = None
+    _orig_load_cache_clear()
+
+
+_load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ignore[assignment]
+
+
 def _compute_file_hash() -> str:
     """Return the SHA256 hash of the registers file."""
 
@@ -417,10 +430,8 @@ def clear_cache() -> None:  # pragma: no cover
     definitions.
     """
 
-    global _cached_file_info
     _load_registers_from_file.cache_clear()
     _register_map.cache_clear()
-    _cached_file_info = None
 
 
 # ---------------------------------------------------------------------------
