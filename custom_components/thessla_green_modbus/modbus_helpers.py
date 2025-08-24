@@ -1,4 +1,4 @@
-"""Modbus utility helpers."""
+"""Utility helpers for Modbus communication and read grouping."""
 
 from __future__ import annotations
 
