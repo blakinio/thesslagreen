@@ -166,6 +166,11 @@ async def test_additional_diagnostic_fields():
     assert result["effective_batch"] == 0
     assert result["deep_scan"] is True
     assert result["force_full_register_list"] is False
+    assert result["autoscan"] is True
+    assert result["registers_discovered"] == {
+        "input_registers": 2,
+        "holding_registers": 1,
+    }
     assert result["last_scan"] == last_scan.isoformat()
 
 

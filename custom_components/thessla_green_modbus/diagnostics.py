@@ -57,6 +57,11 @@ async def async_get_config_entry_diagnostics(
     diagnostics.setdefault(
         "force_full_register_list", coordinator.force_full_register_list
     )
+    diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
+    diagnostics.setdefault(
+        "registers_discovered",
+        {key: len(val) for key, val in coordinator.available_registers.items()},
+    )
     diagnostics["last_scan"] = (
         coordinator.last_scan.isoformat() if coordinator.last_scan else None
     )
