@@ -372,39 +372,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
 
         self.device_info = {
-            "device_name": f"ThesslaGreen {MODEL}",
-            "model": MODEL,
+            "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
+            "model": UNKNOWN_MODEL,
             "firmware": "Unknown",
             "serial_number": "Unknown",
         }
-        for reg_type in self.available_registers:
-            self.available_registers[reg_type].clear()
-        self.available_registers["input_registers"].update(
-            self._register_maps["input_registers"].keys()
-        )
-        self.available_registers["holding_registers"].update(
-            self._register_maps["holding_registers"].keys()
-        )
-        self.available_registers["coil_registers"].update(
-            self._register_maps["coil_registers"].keys()
-        )
-        self.available_registers["discrete_inputs"].update(
-            self._register_maps["discrete_inputs"].keys()
-        )
 
         if self.skip_missing_registers:
             for reg_type, names in KNOWN_MISSING_REGISTERS.items():
                 self.available_registers[reg_type].difference_update(names)
-
-        self.device_info.clear()
-        self.device_info.update(
-            {
-                "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
-                "model": UNKNOWN_MODEL,
-                "firmware": "Unknown",
-                "serial_number": "Unknown",
-            }
-        )
 
         _LOGGER.info(
             "Loaded full register list: %d total registers",
