@@ -100,20 +100,14 @@ class RegisterDef:
             data = b"".join(w.to_bytes(2, "big") for w in words)
 
             typ = self.extra.get("type") if self.extra else None
-            if typ == "float32":
-                value = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
-            elif typ == "float64":
-                value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
-            elif typ == "int32":
-                value = int.from_bytes(data, "big", signed=True)
-            elif typ == "uint32":
-                value = int.from_bytes(data, "big", signed=False)
-            elif typ == "int64":
-                value = int.from_bytes(data, "big", signed=True)
-            elif typ == "uint64":
-                value = int.from_bytes(data, "big", signed=False)
+            if typ in {"float32", "float64"}:
+                fmt = ">" if endianness == "big" else "<"
+                fmt += "f" if typ == "float32" else "d"
+                value = struct.unpack(fmt, data)[0]
             else:
-                value = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(
+                    data, "big", signed=typ in {"int32", "int64"}
+                )
 
             if self.multiplier is not None:
                 value *= self.multiplier
@@ -414,9 +408,10 @@ def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
     mtime, file_hash = _get_file_info()
-    return _load_registers_from_file(
+    registers = _load_registers_from_file(
         _REGISTERS_PATH, mtime=mtime, file_hash=file_hash
     )
+    return registers
 
 
 def clear_cache() -> None:  # pragma: no cover
