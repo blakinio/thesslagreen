@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import Any, Dict, cast
-import re
 
 from .registers.loader import get_registers_by_function
 
