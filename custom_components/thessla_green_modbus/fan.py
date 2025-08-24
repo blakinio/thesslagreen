@@ -19,7 +19,7 @@ from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import get_registers_by_function
+from .registers.loader import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
-        super().__init__(coordinator, "fan")
+        super().__init__(coordinator, "fan", 0)
 
         # Entity configuration
         self._attr_translation_key = "thessla_green_fan"  # pragma: no cover

@@ -1253,6 +1253,10 @@
     }
   },
   "options": {
+    "error": {
+      "invalid_max_registers_per_request_low": "Max registers per request must be at least 1.",
+      "invalid_max_registers_per_request_high": "Max registers per request must be 125 or less."
+    },
     "step": {
       "init": {
         "data": {
@@ -1262,6 +1266,7 @@
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)",
           "deep_scan": "Deep Register Scan",
+          "scan_max_block_size": "Max Register Block Size",
           "max_registers_per_request": "Max Registers per Request"
         },
         "data_description": {
@@ -1274,6 +1279,10 @@
           "max_registers_per_request": "Maximum registers per request (1-16)"
         },
         "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max registers per request: {current_max_registers_per_request}.",
+          "scan_max_block_size": "Maximum registers per batch read (1-125)",
+          "max_registers_per_request": "Maximum registers per Modbus request (1-125)"
+        },
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max block size: {current_scan_max_block_size}. Max registers per request: {current_max_registers_per_request}.",
         "title": "ThesslaGreen Modbus Options"
       }
     }

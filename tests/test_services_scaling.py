@@ -6,8 +6,10 @@ from types import SimpleNamespace
 import pytest
 
 import custom_components.thessla_green_modbus.services as services
-from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_register_definition,
+    get_registers_by_function,
+)
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
@@ -31,6 +33,10 @@ class DummyCoordinator:
                 self.writes.append((address + offset, chunk, self.slave_id))
         else:
             self.writes.append((address, value, self.slave_id))
+        definition = get_register_definition(register_name)
+        encoded = definition.encode(value)
+        address = HOLDING_REGISTERS[register_name]
+        self.writes.append((address, encoded, self.slave_id))
 
     async def async_request_refresh(self) -> None:  # pragma: no cover - no behaviour
         pass
@@ -77,6 +83,19 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     await handler(call)
 
     writes = coordinator.writes
+
+    expected_start = get_register_definition(
+        "schedule_monday_period1_start"
+    ).encode("06:30")
+    expected_end = get_register_definition(
+        "schedule_monday_period1_end"
+    ).encode("08:00")
+    expected_flow = get_register_definition(
+        "schedule_monday_period1_flow"
+    ).encode(55)
+    expected_temp = get_register_definition(
+        "schedule_monday_period1_temp"
+    ).encode(21.5)
 
     assert writes[0] == (
         HOLDING_REGISTERS["schedule_monday_period1_start"],

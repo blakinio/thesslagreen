@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 
@@ -75,7 +75,7 @@ def test_function_aliases() -> None:
 def test_registers_loaded_only_once(monkeypatch) -> None:
     """Ensure register file is read only once thanks to caching."""
 
-    from custom_components.thessla_green_modbus.registers import loader
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     read_calls = 0
     real_read_text = Path.read_text
@@ -115,14 +115,14 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
 def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> None:
     """Duplicate names or addresses should raise an error."""
 
-    from custom_components.thessla_green_modbus.registers import loader
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": registers}))
     monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, file_hash="")
+        loader._load_registers_from_file(path, file_hash="", mtime=0)
 
 
 @pytest.mark.parametrize(
@@ -164,43 +164,43 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
 def test_invalid_registers_rejected(tmp_path, monkeypatch, register) -> None:
     """Registers violating schema constraints should raise an error."""
 
-    from custom_components.thessla_green_modbus.registers import loader
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": [register]}))
     monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, file_hash="")
+        loader._load_registers_from_file(path, file_hash="", mtime=0)
 
 
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
     """Missing register definition file should raise RuntimeError."""
 
-    from custom_components.thessla_green_modbus.registers import loader
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, file_hash="")
+        loader._load_registers_from_file(path, file_hash="", mtime=0)
     assert str(path) in str(exc.value)
 
 
 def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
     """Invalid register definition file should raise RuntimeError."""
 
-    from custom_components.thessla_green_modbus.registers import loader
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text("not json", encoding="utf-8")
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, file_hash="")
+        loader._load_registers_from_file(path, file_hash="", mtime=0)
     assert str(path) in str(exc.value)
 
 
 def test_register_file_sorted() -> None:
     """Ensure register JSON is sorted and loader preserves ordering."""
 
-    from custom_components.thessla_green_modbus.registers import loader
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     data = json.loads(loader._REGISTERS_PATH.read_text(encoding="utf-8"))
     regs = data["registers"]
@@ -214,7 +214,7 @@ def test_register_file_sorted() -> None:
 def test_get_all_registers_sorted(monkeypatch, tmp_path) -> None:
     """get_all_registers should order registers by function then address."""
 
-    from custom_components.thessla_green_modbus.registers import loader
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     regs = [
         {

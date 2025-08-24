@@ -42,7 +42,7 @@ from .const import (
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import loader
+from .registers.loader import load_registers
 
 # Informational message for start-up logs
 REGISTER_FORMAT_MESSAGE = (

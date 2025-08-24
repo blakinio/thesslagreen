@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .registers import get_registers_by_function
+from .registers.loader import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the climate entity."""
-        super().__init__(coordinator, "climate")
+        super().__init__(coordinator, "climate", 0)
         self._attr_translation_key = "thessla_green_climate"  # pragma: no cover
         self._attr_has_entity_name = True  # pragma: no cover
 

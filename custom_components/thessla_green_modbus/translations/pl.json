@@ -1253,6 +1253,10 @@
     }
   },
   "options": {
+    "error": {
+      "invalid_max_registers_per_request_low": "Maksymalna liczba rejestrów na żądanie musi być co najmniej 1.",
+      "invalid_max_registers_per_request_high": "Maksymalna liczba rejestrów na żądanie musi być nie większa niż 125."
+    },
     "step": {
       "init": {
         "data": {
@@ -1263,6 +1267,8 @@
           "timeout": "Limit czasu połączenia (s)",
           "deep_scan": "Głęboki skan rejestrów",
           "max_registers_per_request": "Maksymalna liczba rejestrów na zapytanie"
+          "scan_max_block_size": "Maksymalny rozmiar bloku rejestrów",
+          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
         },
         "data_description": {
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
@@ -1274,6 +1280,10 @@
           "max_registers_per_request": "Maksymalna liczba rejestrów w zapytaniu (1-16)"
         },
         "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na zapytanie: {current_max_registers_per_request}.",
+          "scan_max_block_size": "Maksymalna liczba rejestrów w jednym odczycie (1-125)",
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-125)"
+        },
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalny rozmiar bloku: {current_scan_max_block_size}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}.",
         "title": "Opcje ThesslaGreen Modbus"
       }
     }

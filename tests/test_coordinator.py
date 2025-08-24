@@ -20,8 +20,10 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function  # noqa: E402,F811,E501
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_register_definition,
+    get_registers_by_function,
+)  # noqa: E402,F811,E501
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -561,7 +563,7 @@ def test_process_register_value_extremes(coordinator, register_name, value, expe
 )
 def test_process_register_value_dac_boundaries(coordinator, register_name, value):
     """Process DAC registers across boundary and out-of-range values."""
-    expected = loader.get_register_definition(register_name).decode(value)
+    expected = get_register_definition(register_name).decode(value)
     result = coordinator._process_register_value(register_name, value)
     assert result == pytest.approx(expected)
 
