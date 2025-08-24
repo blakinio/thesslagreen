@@ -92,7 +92,6 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        address: int,
         sensor_definition: Dict[str, Any],
     ) -> None:
         """Initialize the binary sensor."""
@@ -142,10 +141,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
         elif register_type == "holding_registers":
             # Holding registers: depends on register
-            if self._register_name == "on_off_panel_mode":
-                return bool(value)
-            else:
-                return bool(value)
+            return bool(value)
 
         return False
 
