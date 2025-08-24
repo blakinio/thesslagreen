@@ -2,7 +2,6 @@ from unittest.mock import MagicMock
 
 import sys
 import types
-from unittest.mock import MagicMock
 
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
 setattr(const, "PERCENTAGE", "%")
