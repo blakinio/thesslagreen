@@ -15,9 +15,6 @@ COIL_REGISTERS = _build_map("coil")
 DISCRETE_INPUT_REGISTERS = _build_map("discrete")
 HOLDING_REGISTERS = _build_map("holding")
 INPUT_REGISTERS = _build_map("input")
-MULTI_REGISTER_SIZES = {
-    r.name: r.length for r in get_registers_by_function("holding") if r.name and r.length > 1
-}
 
 OPTIONS_PATH = Path(__file__).parent / "options"
 
