@@ -72,8 +72,10 @@ def validate(path: Path) -> list[RegisterDefinition]:
         if reg.function in {"01", "02"} and reg.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
-        if item.get("bits") is not None and not ((reg.extra or {}).get("bitmask")):
-            raise ValueError("bits provided without extra.bitmask")
+        if reg.bits is not None:
+            for idx, bit in enumerate(reg.bits):
+                if bit.get("index", idx) != idx:
+                    raise ValueError("bits must be in implicit index order")
 
         parsed.append(reg)
 
