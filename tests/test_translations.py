@@ -84,6 +84,10 @@ const.UnitOfTemperature = UnitOfTemperature
 const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
 const.UnitOfElectricPotential = UnitOfElectricPotential
 
+network_mod = types.ModuleType("homeassistant.util.network")
+network_mod.is_host_valid = lambda host: True
+sys.modules["homeassistant.util.network"] = network_mod
+
 sensor_mod = types.ModuleType("homeassistant.components.sensor")
 
 
@@ -133,20 +137,25 @@ SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") 
 )
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
-REGISTER_KEYS = [r.name for r in get_registers_by_function("03")]
-# Add dynamically generated binary sensor keys from holding registers
-BINARY_KEYS = sorted(
-    set(BINARY_KEYS)
-    | {
-        k
-        for k in REGISTER_KEYS
-        if k in {"alarm", "error"} or k.startswith("s_") or k.startswith("e_")
-    }
-)
 # Error/status code translations are not currently enforced
 CODE_KEYS: list[str] = []
 ISSUE_KEYS = ["modbus_write_failed"]
+
+OPTION_KEYS = [
+    "force_full_register_list",
+    "retry",
+    "scan_interval",
+    "skip_missing_registers",
+    "timeout",
+    "deep_scan",
+    "scan_max_block_size",
+    "max_registers_per_request",
+]
+
+OPTION_ERROR_KEYS = [
+    "invalid_max_registers_per_request_low",
+    "invalid_max_registers_per_request_high",
+]
 
 
 class Loader(yaml.SafeLoader):
@@ -208,6 +217,21 @@ def test_translation_keys_present():
         assert (
             not missing_services
         ), f"Missing service translations: {missing_services}"  # nosec B101
+        opts = trans["options"]["step"]["init"]
+        missing_opts = [k for k in OPTION_KEYS if k not in opts["data"]]
+        assert (
+            not missing_opts
+        ), f"Missing option translations: {missing_opts}"  # nosec B101
+        missing_desc = [k for k in OPTION_KEYS if k not in opts["data_description"]]
+        assert (
+            not missing_desc
+        ), f"Missing option descriptions: {missing_desc}"  # nosec B101
+        missing_err = [
+            k for k in OPTION_ERROR_KEYS if k not in trans["options"].get("error", {})
+        ]
+        assert (
+            not missing_err
+        ), f"Missing option error translations: {missing_err}"  # nosec B101
 
 
 def test_translation_structures_match():
