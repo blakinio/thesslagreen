@@ -1003,18 +1003,15 @@ class ThesslaGreenDeviceScanner:
         Dict[str, Tuple[Optional[int], Optional[int]]],
     ]:
         """Load Modbus register definitions and value ranges."""
-        try:
-            register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-            register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-            for reg in get_all_registers():
-                if not reg.name:
-                    continue
-                register_map[reg.function][reg.address] = reg.name
-                if reg.min is not None or reg.max is not None:
-                    register_ranges[reg.name] = (reg.min, reg.max)
-            return register_map, register_ranges
-        except Exception as err:  # pragma: no cover - defensive
-            raise RuntimeError("Unable to load register definitions") from err
+        register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
+        register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+        for reg in get_all_registers():
+            if not reg.name:
+                continue
+            register_map[reg.function][reg.address] = reg.name
+            if reg.min is not None or reg.max is not None:
+                register_ranges[reg.name] = (reg.min, reg.max)
+        return register_map, register_ranges
 
     def _sleep_time(self, attempt: int) -> float:
         """Return delay for a retry attempt based on backoff."""
