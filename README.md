@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/thesslagreen/thessla-green-modbus-ha.svg)](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.7.1%2B-blue.svg)](https://home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.7.0%2B-blue.svg)](https://home-assistant.io/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
 
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
@@ -35,7 +35,7 @@ Integracja działa jako **hub** w Home Assistant.
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
 
 ### Home Assistant
-- ✅ **Wymagany Home Assistant 2025.7.1+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
+- ✅ **Wymagany Home Assistant 2025.7.0+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
 - ✅ **pymodbus 3.5.0+** - najnowsza biblioteka Modbus
 - ✅ **Python 3.12+** - nowoczesne standardy
 - ✅ **Standardowy AsyncModbusTcpClient** – brak potrzeby własnego klienta Modbus
@@ -153,7 +153,8 @@ Każdy wpis w sekcji `registers` zawiera m.in. pola:
 - `function` – kod funkcji Modbus (`01`–`04`)
 - `address_dec` / `address_hex` – adres rejestru
 - `name` – unikalna nazwa w formacie snake_case
-- `description` – opis z dokumentacji
+- `description` – opis z dokumentacji (język polski)
+- `description_en` – opis w języku angielskim
 - `access` – tryb dostępu (`R`/`W`)
 
 Opcjonalnie można określić `unit`, `enum`, `multiplier`, `resolution` oraz inne
@@ -535,7 +536,8 @@ Każdy wpis w pliku to obiekt z polami:
   "address_dec": 4097,
   "access": "rw",
   "name": "mode",
-  "description": "Work mode"
+  "description": "Tryb pracy",
+  "description_en": "Work mode"
 }
 ```
 
@@ -568,7 +570,7 @@ logach. Aby ręcznie przekonwertować dane:
 
 1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
 2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-   z polami `function`, `address_dec`, `address_hex`, `name`, `description` i `access`.
+   z polami `function`, `address_dec`, `address_hex`, `name`, `description`, `description_en` i `access`.
 3. Zachowaj sortowanie według `function` i `address_dec` oraz format liczbowy (`0x` dla wartości hex).
 4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych
    rejestrów.

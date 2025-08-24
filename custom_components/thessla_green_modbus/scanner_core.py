@@ -151,20 +151,19 @@ class DeviceCapabilities:
     temperature_sensors_count: int = 0
 
     def as_dict(self) -> dict[str, Any]:
-        data = asdict(self)
-        for key, value in data.items():
-            if isinstance(value, set):
-                data[key] = sorted(value)
-        return data
+        """Return capabilities as a dictionary with set values sorted.
 
-    def items(self):
-        return asdict(self).items()
+        The result is cached on first call to avoid repeated ``dataclasses.asdict``
+        invocations when capabilities are accessed multiple times.
+        """
 
-    def keys(self):
-        return asdict(self).keys()
-
-    def __iter__(self):
-        return iter(self.items())
+        if not hasattr(self, "_as_dict_cache"):
+            data = asdict(self)
+            for key, value in data.items():
+                if isinstance(value, set):
+                    data[key] = sorted(value)
+            self._as_dict_cache = data
+        return self._as_dict_cache
 
 
 class ThesslaGreenDeviceScanner:

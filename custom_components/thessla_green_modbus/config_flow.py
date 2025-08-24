@@ -6,7 +6,6 @@ import asyncio
 import dataclasses
 import ipaddress
 import logging
-import re
 import traceback
 from typing import Any, Awaitable, Callable
 
@@ -16,6 +15,7 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import translation
+from homeassistant.util.network import is_host_valid
 
 from .const import (
     CONF_FORCE_FULL_REGISTER_LIST,
@@ -112,16 +112,12 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
     try:
         ipaddress.ip_address(host)
     except ValueError:
-        hostname_validator = getattr(vol, "Hostname", None)
-        if hostname_validator is not None:
-            try:
-                hostname_validator()(host)
-            except vol.Invalid as err:
-                raise vol.Invalid("invalid_host") from err
-        else:
-            # Basic hostname regex fallback
-            if not re.fullmatch(r"[A-Za-z0-9.-]+", host):
-                raise vol.Invalid("invalid_host")
+        if not is_host_valid(host):
+            if ":" in host:
+                raise vol.Invalid("invalid_ipv6")
+            if host and all(c.isdigit() or c == "." for c in host):
+                raise vol.Invalid("invalid_ipv4")
+            raise vol.Invalid("invalid_domain")
 
     scanner: ThesslaGreenDeviceScanner | None = None
     try:
@@ -162,7 +158,7 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
                 field.name for field in dataclasses.fields(DeviceCapabilities)
             }
             try:
-                caps_dict = dataclasses.asdict(caps_obj)
+                caps_dict = caps_obj.as_dict()
             except AttributeError as err:  # pragma: no cover - defensive
                 _LOGGER.error("Capabilities missing required fields: %s", err)
                 raise CannotConnect("invalid_capabilities") from err
@@ -263,7 +259,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 errors["base"] = "invalid_auth"
             except vol.Invalid as err:
                 _LOGGER.error("Invalid host provided: %s", err)
-                errors[CONF_HOST] = "invalid_host"
+                errors[CONF_HOST] = err.error_message
             except (ConnectionException, ModbusException):
                 _LOGGER.exception("Modbus communication error")
                 errors["base"] = "cannot_connect"

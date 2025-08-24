@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/thesslagreen/thessla-green-modbus-ha.svg)](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.7.1%2B-blue.svg)](https://home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.7.0%2B-blue.svg)](https://home-assistant.io/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
 
 ## ✨ Complete ThesslaGreen AirPack integration for Home Assistant
@@ -34,7 +34,7 @@ The integration works as a **hub** in Home Assistant.
 - ✅ **Firmware v3.x – v5.x** with automatic detection
 
 ### Home Assistant
-- ✅ **Requires Home Assistant 2025.7.1+** — minimum version declared in `manifest.json` (the `homeassistant` package is not part of `requirements.txt`)
+- ✅ **Requires Home Assistant 2025.7.0+** — minimum version declared in `manifest.json` (the `homeassistant` package is not part of `requirements.txt`)
 - ✅ **pymodbus 3.5.0+** – latest Modbus library
 - ✅ **Python 3.12+** – modern standards
 - ✅ **Standard AsyncModbusTcpClient** – no custom Modbus client required
@@ -315,7 +315,8 @@ Each entry in the file is an object with fields:
   "address_dec": 4097,
   "access": "rw",
   "name": "mode",
-  "description": "Work mode"
+  "description": "Tryb pracy",
+  "description_en": "Work mode"
 }
 ```
 
@@ -324,7 +325,7 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 ### Adding new registers
 
 1. Edit `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` and append a new object
-   with the required fields.
+   with the required fields (`function`, `address_dec`, `address_hex`, `name`, `description`, `description_en`, `access`).
 2. Ensure addresses are unique and remain sorted.
 3. Run the validation test:
 

@@ -7,7 +7,7 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha/blob/main/README_en.md",
-  "homeassistant": "2025.7.1",
+  "homeassistant": ">=2025.7.0",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
   "quality_scale": "silver",

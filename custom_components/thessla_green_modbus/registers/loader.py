@@ -32,6 +32,7 @@ import pydantic
 from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
+from ..modbus_helpers import group_reads as _group_reads
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ class Register:
     name: str
     access: str
     description: str | None = None
+    description_en: str | None = None
     unit: str | None = None
     multiplier: float | None = None
     resolution: float | None = None
@@ -341,6 +343,7 @@ class RegisterDefinition(pydantic.BaseModel):
     multiplier: float | None = None
     resolution: float | None = None
     description: str | None = None
+    description_en: str | None = None
     min: float | None = None
     max: float | None = None
     default: float | None = None
@@ -456,6 +459,7 @@ def _load_registers_from_file(
                 name=name,
                 access=str(parsed.access),
                 description=parsed.description,
+                description_en=parsed.description_en,
                 unit=parsed.unit,
                 multiplier=multiplier,
                 resolution=resolution,
@@ -507,8 +511,8 @@ _load_registers()
 
 
 def get_all_registers() -> list[Register]:
-    """Return a list of all known registers."""
-    return list(_load_registers())
+    """Return a list of all known registers ordered by function and address."""
+    return sorted(_load_registers(), key=lambda r: (r.function, r.address))
 
 
 def get_registers_by_function(fn: str) -> list[Register]:
@@ -525,11 +529,37 @@ def get_registers_hash() -> str:
         return ""
 
 
+@dataclass(slots=True)
+class ReadPlan:
+    """Plan describing a consecutive block of registers to read."""
+
+    function: str
+    address: int
+    length: int
+
+
+def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
+    """Group registers into contiguous blocks for efficient reading."""
+
+    plans: list[ReadPlan] = []
+    regs_by_fn: dict[str, list[int]] = {}
+
+    for reg in _load_registers():
+        addresses = range(reg.address, reg.address + reg.length)
+        regs_by_fn.setdefault(reg.function, []).extend(addresses)
+
+    for fn, addresses in regs_by_fn.items():
+        for start, length in _group_reads(addresses, max_block_size=max_block_size):
+            plans.append(ReadPlan(fn, start, length))
+
+    return plans
+
+
 __all__ = [
     "Register",
     "RegisterDefinition",
     "get_all_registers",
     "get_registers_by_function",
     "get_registers_hash",
-    "group_reads",
+    "plan_group_reads",
 ]
