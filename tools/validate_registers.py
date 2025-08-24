@@ -82,16 +82,36 @@ def validate(path: Path) -> list[RegisterDefinition]:
             bits = item["bits"]
             if len(bits) > 16:
                 raise ValueError("bits exceed 16 entries")
-            for idx, bit in enumerate(bits):
-                name = bit.get("name") if isinstance(bit, dict) else str(bit)
-                if name and not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("bit names must be snake_case")
-                if idx > 15:
-                    raise ValueError("bit index out of range")
-        if reg.bits is not None:
-            for idx, bit in enumerate(reg.bits):
-                if bit.get("index", idx) != idx:
-                    raise ValueError("bits must be in implicit index order")
+            seen_indices: set[int] = set()
+            for bit in bits:
+                if not isinstance(bit, dict):
+                    raise ValueError("bit entries must be objects")
+                if "index" not in bit or "name" not in bit:
+                    raise ValueError("bit entries must have index and name")
+
+                idx = bit["index"]
+                name = bit["name"]
+
+                if not isinstance(idx, int) or isinstance(idx, bool) or not 0 <= idx <= 15:
+                    raise ValueError("bit index must be 0-15")
+                if idx in seen_indices:
+                    raise ValueError("bit indices must be unique")
+                seen_indices.add(idx)
+
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError("bit name must be snake_case")
+
+            bitmask_val = (reg.extra or {}).get("bitmask")
+            mask_int: int | None = None
+            if isinstance(bitmask_val, str):
+                try:
+                    mask_int = int(bitmask_val, 0)
+                except ValueError:
+                    mask_int = None
+            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+                mask_int = bitmask_val
+            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
+                raise ValueError("bits exceed bitmask width")
 
         parsed.append(reg)
 
