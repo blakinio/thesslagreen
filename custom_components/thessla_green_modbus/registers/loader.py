@@ -43,9 +43,9 @@ _LOGGER = logging.getLogger(__name__)
 # supply temporary files, therefore it must be a module level variable instead
 # of being computed inside helper functions.
 _REGISTERS_PATH = resources.files(__package__).joinpath("thessla_green_registers_full.json")
-# Cache for the last (mtime, hash) pair of the registers file.  The hash is
-# only recomputed when ``mtime`` changes.
-_cached_file_info: tuple[float, str] | None = None
+# Cache for the last (path, mtime, hash) triple of the registers file.  The
+# hash is only recomputed when either the path or ``mtime`` changes.
+_cached_file_info: tuple[str, float, str] | None = None
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -310,17 +310,15 @@ except Exception:  # pragma: no cover - defensive
 
 
 @lru_cache(maxsize=1)
-def _load_registers_from_file(
-    path: Path, *, file_hash: str, mtime: float
-) -> list[RegisterDef]:
+def _load_registers_from_file(path: Path, *, mtime: float) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
-    ``file_hash`` is only used to invalidate the cache when the underlying file
-    content changes.  It is marked as a keyword-only argument to ensure callers
-    pass it explicitly which makes the intention clearer.
+    ``mtime`` is included in the cache key so that the expensive SHA256 hash is
+    only computed when the file's modification time changes.
     """
 
     try:
+        _compute_file_hash(path, mtime)
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
@@ -383,6 +381,8 @@ def _load_registers_from_file(
     return registers
 
 
+def _compute_file_hash(path: Path, mtime: float) -> str:
+    """Return the SHA256 hash of ``path``.
 # Ensure clearing the LRU cache also resets the file hash cache
 _orig_load_cache_clear = _load_registers_from_file.cache_clear
 
@@ -399,7 +399,18 @@ _load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ign
 def _compute_file_hash() -> str:
     """Return the SHA256 hash of the registers file."""
 
-    return hashlib.sha256(_REGISTERS_PATH.read_bytes()).hexdigest()
+    The hash is cached based on ``mtime`` so reading the file can be avoided
+    when its modification time has not changed.
+    """
+
+    global _cached_file_info
+    path_str = str(path)
+    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
+        return _cached_file_info[2]
+
+    file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    _cached_file_info = (path_str, mtime, file_hash)
+    return file_hash
 
 
 def _get_file_info() -> tuple[float, str]:
@@ -419,6 +430,8 @@ def _get_file_info() -> tuple[float, str]:
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
+    stat = _REGISTERS_PATH.stat()
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=stat.st_mtime)
     try:
         mtime, file_hash = _get_file_info()
     except Exception:
@@ -429,7 +442,6 @@ def load_registers() -> list[RegisterDef]:
     return _load_registers_from_file(
         _REGISTERS_PATH, file_hash=file_hash, mtime=mtime
     )
-
 
 def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
@@ -461,6 +473,8 @@ def get_registers_by_function(fn: str) -> list[RegisterDef]:
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
     try:
+        stat = _REGISTERS_PATH.stat()
+        return _compute_file_hash(_REGISTERS_PATH, stat.st_mtime)
         return _get_file_info()[1]
     except Exception:  # pragma: no cover - defensive
         return ""

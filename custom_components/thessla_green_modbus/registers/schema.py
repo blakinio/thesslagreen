@@ -13,6 +13,7 @@ def _normalise_function(fn: str) -> str:
     mapping = {
         "coil": "01",
         "coils": "01",
+        "coil_registers": "01",
         "discrete_input": "02",
         "discrete_inputs": "02",
         "holding_register": "03",
@@ -22,7 +23,8 @@ def _normalise_function(fn: str) -> str:
         "inputregister": "04",
         "inputregisters": "04",
     }
-    return mapping.get(fn.lower(), fn)
+    key = fn.lower().replace(" ", "_")
+    return mapping.get(key, fn)
 
 
 class RegisterDefinition(pydantic.BaseModel):
