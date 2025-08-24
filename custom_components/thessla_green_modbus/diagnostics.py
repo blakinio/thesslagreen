@@ -18,7 +18,10 @@ from homeassistant.helpers import translation
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
-from .registers.loader import get_all_registers, registers_sha256
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_all_registers,
+    registers_sha256,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
