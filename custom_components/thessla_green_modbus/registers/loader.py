@@ -388,6 +388,11 @@ def _load_registers_from_file(
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
+    """Return the SHA256 hash of ``path``.
+
+    The hash is cached using ``(path_str, mtime, hash)`` so the file is only
+    read when its modification time changes.
+    """
     """Return the SHA256 hash of ``path`` and cache the result."""
 
     global _cached_file_info
@@ -435,7 +440,6 @@ def clear_cache() -> None:  # pragma: no cover
     Exposed for tests and tooling that need to reload register
     definitions.
     """
-
     global _cached_file_info
     _cached_file_info = None
     _load_registers_from_file.cache_clear()
