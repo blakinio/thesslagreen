@@ -402,24 +402,32 @@ def _compute_file_hash() -> str:
     return hashlib.sha256(_REGISTERS_PATH.read_bytes()).hexdigest()
 
 
+def _get_file_info() -> tuple[float, str]:
+    """Return ``(mtime, hash)`` for the registers file using a cache."""
+
+    global _cached_file_info
+    stat = _REGISTERS_PATH.stat()
+    mtime = stat.st_mtime
+    if _cached_file_info and _cached_file_info[0] == mtime:
+        return _cached_file_info
+
+    file_hash = _compute_file_hash()
+    _cached_file_info = (mtime, file_hash)
+    return _cached_file_info
+
+
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    global _cached_file_info
     try:
-        stat = _REGISTERS_PATH.stat()
-        mtime = stat.st_mtime
-        if _cached_file_info and _cached_file_info[0] == mtime:
-            file_hash = _cached_file_info[1]
-        else:
-            file_hash = _compute_file_hash()
-            _cached_file_info = (mtime, file_hash)
+        mtime, file_hash = _get_file_info()
     except Exception:
         stat = _REGISTERS_PATH.stat()
+        mtime = stat.st_mtime
         file_hash = _compute_file_hash()
 
     return _load_registers_from_file(
-        _REGISTERS_PATH, file_hash=file_hash, mtime=stat.st_mtime
+        _REGISTERS_PATH, file_hash=file_hash, mtime=mtime
     )
 
 
@@ -453,7 +461,7 @@ def get_registers_by_function(fn: str) -> list[RegisterDef]:
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
     try:
-        return _compute_file_hash()
+        return _get_file_info()[1]
     except Exception:  # pragma: no cover - defensive
         return ""
 
