@@ -402,6 +402,11 @@ def _load_registers_from_file(
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
+    """Return the SHA256 hash of ``path`` and cache the result."""
+
+    global _cached_file_info
+    path_str = str(path)
+    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
     """Return the SHA256 hash of ``path``.
     The hash is cached using ``(path_str, mtime, hash)`` so the file is only
     read when its modification time changes.
@@ -421,6 +426,18 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     return file_hash
 
 
+def _get_file_info() -> tuple[float, str]:
+    """Return ``(mtime, hash)`` for the registers file using a cache."""
+
+    stat = _REGISTERS_PATH.stat()
+    mtime = stat.st_mtime
+    path_str = str(_REGISTERS_PATH)
+
+    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
+        return _cached_file_info[1], _cached_file_info[2]
+
+    file_hash = _compute_file_hash(_REGISTERS_PATH, mtime)
+    return mtime, file_hash
 # Ensure clearing the LRU cache also resets the file hash cache
 _orig_load_cache_clear = _load_registers_from_file.cache_clear
 
@@ -461,6 +478,9 @@ _load_registers_from_file.cache_clear = _load_registers_cache_clear  # type: ign
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
+
+    mtime, _ = _get_file_info()
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
     mtime, file_hash = _get_file_info()
     return _load_registers_from_file(
         _REGISTERS_PATH, file_hash=file_hash, mtime=mtime

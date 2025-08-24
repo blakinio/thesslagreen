@@ -1,9 +1,23 @@
 """Tests for JSON register loader."""
 
 import json
+import sys
+import types
 from pathlib import Path
 
 import pytest
+
+# Stub the integration package to avoid executing its heavy __init__
+pkg = types.ModuleType("custom_components.thessla_green_modbus")
+pkg.__path__ = [
+    str(Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus")
+]
+sys.modules.setdefault("custom_components.thessla_green_modbus", pkg)
+
+# Provide a minimal const module required by modbus_helpers
+const_module = types.ModuleType("custom_components.thessla_green_modbus.const")
+const_module.MAX_BATCH_REGISTERS = 64
+sys.modules.setdefault("custom_components.thessla_green_modbus.const", const_module)
 
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
@@ -72,10 +86,15 @@ def test_function_aliases() -> None:
         assert {r.address for r in alias_regs} == {r.address for r in code_regs}
 
 
-def test_registers_loaded_only_once(monkeypatch) -> None:
-    """Ensure register file is read only once thanks to caching."""
+def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
+    """Ensure register file caching and invalidation behave correctly."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
+
+    # Use a temporary copy of the register file so we can modify it
+    path = tmp_path / "regs.json"
+    path.write_text(loader._REGISTERS_PATH.read_text())
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     read_calls = 0
     hash_calls = 0
@@ -89,10 +108,10 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
         json.loads(text)
         return text
 
-    def spy_hash(path, mtime):
+    def spy_hash(file_path, mtime):
         nonlocal hash_calls
         hash_calls += 1
-        return real_compute_hash(path, mtime)
+        return real_compute_hash(file_path, mtime)
 
     # Spy on read_text and hash computation to count disk accesses
     monkeypatch.setattr(Path, "read_text", spy_read)
@@ -100,12 +119,57 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
 
     loader.clear_cache()
 
+    # Initial load populates cache
+    hash_before = loader.get_registers_hash()
     loader.get_all_registers()
     loader.get_all_registers()
 
     # The file and hash should only be computed once thanks to caching
     assert read_calls == 1
     assert hash_calls == 1
+
+    # Modify the file to invalidate caches
+    path.write_text(real_read_text(path) + "\n")
+
+    loader.get_all_registers()
+    hash_after = loader.get_registers_hash()
+
+    # After modification both read and hash are recomputed
+    assert read_calls == 2
+    assert hash_calls == 2
+    assert hash_before != hash_after
+
+
+def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
+    """clear_cache should reset the cached file hash."""
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    path = tmp_path / "regs.json"
+    path.write_text(loader._REGISTERS_PATH.read_text())
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
+
+    hash_calls = 0
+    real_compute_hash = loader._compute_file_hash
+
+    def spy_hash(file_path, mtime):
+        nonlocal hash_calls
+        hash_calls += 1
+        return real_compute_hash(file_path, mtime)
+
+    monkeypatch.setattr(loader, "_compute_file_hash", spy_hash)
+
+    loader.clear_cache()
+
+    # First load computes hash once
+    loader.get_all_registers()
+    loader.get_all_registers()
+    assert hash_calls == 1
+
+    # Clearing the cache forces a re-computation
+    loader.clear_cache()
+    loader.get_all_registers()
+    assert hash_calls == 2
 
 
 @pytest.mark.parametrize(
