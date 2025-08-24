@@ -17,7 +17,7 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import translation
+from homeassistant.helpers import selector, translation
 from homeassistant.util.network import is_host_valid
 
 from .const import (
@@ -549,7 +549,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
                     description={"advanced": True},
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=MAX_BATCH_REGISTERS)),
+                ): selector.NumberSelector(min=1, max=16, step=1),
             }
         )
 
