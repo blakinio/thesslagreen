@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads as _group_reads
+from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -102,13 +102,6 @@ class RegisterDef:
                 result = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
                 result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
-                value: Any = struct.unpack(
-                    ">f" if endianness == "big" else "<f", data
-                )[0]
-            elif typ == "float64":
-                value = struct.unpack(
-                    ">d" if endianness == "big" else "<d", data
-                )[0]
             elif typ == "int32":
                 result = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
@@ -126,9 +119,6 @@ class RegisterDef:
                 steps = round(result / self.resolution)
                 result = steps * self.resolution
             return result
-                steps = round(value / self.resolution)
-                value = steps * self.resolution
-            return value
 
         if isinstance(raw, Sequence):
             # Defensive: unexpected sequence for single register
@@ -438,8 +428,8 @@ def _get_file_info() -> tuple[float, str]:
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    mtime, _ = _get_file_info()
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
+    mtime, file_hash = _get_file_info()
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime, file_hash=file_hash)
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -511,16 +501,14 @@ class ReadPlan:
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
-    plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}
-
     for reg in load_registers():
         addr_range = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
+    plans: list[ReadPlan] = []
     for fn, addresses in regs_by_fn.items():
-        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
-        for start, length in _group_reads(addresses, max_block_size=max_block_size):
+        for start, length in group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans
