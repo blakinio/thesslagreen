@@ -38,6 +38,18 @@ primarily for debugging or development purposes.
    dodając nowe klucze i usuwając nieużywane. Uruchom `pytest tests/test_unused_translations.py`, aby
    upewnić się, że tłumaczenia są aktualne.
 6. Do commitu dodaj zmodyfikowany plik JSON.
+7. Jeżeli dany rejestr ma charakter stricte techniczny lub konfiguracyjny i nie powinien być
+   eksponowany jako encja, dopisz jego nazwę do stałej `INTENTIONAL_OMISSIONS` w pliku
+   `tests/test_register_coverage.py`.
+
+## Oznaczanie rejestrów technicznych
+
+Niektóre wpisy w dokumentacji Modbus opisują pola konfiguracyjne lub pomocnicze,
+które nie są potrzebne w Home Assistant. Aby zachować kompletność listy, ale
+unikać tworzenia zbędnych encji, ich nazwy należy umieścić w stałej
+`INTENTIONAL_OMISSIONS` w teście `tests/test_register_coverage.py`. Dzięki temu
+testy będą weryfikować, że wszystkie pozostałe rejestry są odpowiednio
+obsługiwane przez integrację.
 
 ## Walidacja rejestrów z dokumentacją PDF
 
