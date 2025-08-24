@@ -53,12 +53,10 @@ async def async_setup_entry(
 
         # Check if this register is available on the device
         if register_name in coordinator.available_registers.get(register_type, set()):
-            address = coordinator._register_maps[register_type][register_name]
             entities.append(
                 ThesslaGreenBinarySensor(
                     coordinator,
                     register_name,
-                    address,
                     sensor_def,
                 )
             )
@@ -95,6 +93,8 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         sensor_definition: Dict[str, Any],
     ) -> None:
         """Initialize the binary sensor."""
+        register_type = sensor_definition["register_type"]
+        address = coordinator._register_maps.get(register_type, {}).get(register_name)
         super().__init__(
             coordinator,
             register_name,
