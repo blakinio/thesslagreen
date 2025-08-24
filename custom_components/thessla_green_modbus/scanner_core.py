@@ -88,6 +88,8 @@ def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
     if not REGISTER_DEFINITIONS:
         _build_register_maps()
+
+
 @dataclass
 class DeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
