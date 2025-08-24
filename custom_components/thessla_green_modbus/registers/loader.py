@@ -77,18 +77,14 @@ class RegisterDef:
 # ------------------------------------------------------------------
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
-
         if self.length > 1 and isinstance(raw, Sequence):
             raw_list = list(raw)
             if all(v == 0x8000 for v in raw_list):
                 return None
 
+            # Multi-register strings are treated specially
             if self.extra and self.extra.get("type") == "string":
                 encoding = self.extra.get("encoding", "ascii")
-                buffer = bytearray()
-                for word in raw_list:
-                    buffer.extend(word.to_bytes(2, "big"))
-                return buffer.rstrip(b"\x00").decode(encoding)
                 data = b"".join(w.to_bytes(2, "big") for w in raw_list)
                 return data.rstrip(b"\x00").decode(encoding)
 
@@ -97,46 +93,36 @@ class RegisterDef:
             data = b"".join(w.to_bytes(2, "big") for w in words)
 
             typ = self.extra.get("type") if self.extra else None
-            result: Any
             if typ == "float32":
-                result = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+                value = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
-                result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
-                value: Any = struct.unpack(
-                    ">f" if endianness == "big" else "<f", data
-                )[0]
-            elif typ == "float64":
-                value = struct.unpack(
-                    ">d" if endianness == "big" else "<d", data
-                )[0]
+                value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
             elif typ == "int32":
-                result = int.from_bytes(data, "big", signed=True)
+                value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
             elif typ == "int64":
-                result = int.from_bytes(data, "big", signed=True)
+                value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint64":
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
             else:
-                result = int.from_bytes(data, "big", signed=False)
+                value = int.from_bytes(data, "big", signed=False)
 
             if self.multiplier is not None:
-                result = result * self.multiplier
+                value *= self.multiplier
             if self.resolution is not None:
-                steps = round(result / self.resolution)
-                result = steps * self.resolution
-            return result
                 steps = round(value / self.resolution)
                 value = steps * self.resolution
             return value
 
+        # Defensive: handle unexpected sequence for single-register values
         if isinstance(raw, Sequence):
-            # Defensive: unexpected sequence for single register
             raw = raw[0]
 
         if raw == 0x8000:
             return None
 
+        # Bitmask registers map set bits to enum labels
         if self.extra and self.extra.get("bitmask") and self.enum:
             flags: list[Any] = []
             for key, label in sorted(
@@ -146,45 +132,34 @@ class RegisterDef:
                     flags.append(label)
             return flags
 
+        # Regular enum registers return the mapped label
         if self.enum is not None:
             if raw in self.enum:
                 return self.enum[raw]
             if str(raw) in self.enum:
                 return self.enum[str(raw)]
 
-        value: Any = raw
-        if self.length > 1 and self.extra and self.extra.get("type"):
-            dtype = self.extra["type"]
-            byte_len = self.length * 2
-            raw_bytes = raw.to_bytes(byte_len, "big", signed=False)
-            if dtype == "float32":
-                value = struct.unpack(">f", raw_bytes)[0]
-            elif dtype == "int32":
-                value = struct.unpack(">i", raw_bytes)[0]
-            elif dtype == "uint32":
-                value = struct.unpack(">I", raw_bytes)[0]
-            elif dtype == "int64":
-                value = struct.unpack(">q", raw_bytes)[0]
-            elif dtype == "uint64":
-                value = struct.unpack(">Q", raw_bytes)[0]
-        if self.multiplier is not None:
-            value = value * self.multiplier
-        if self.resolution is not None:
-            steps = round(value / self.resolution)
-            value = steps * self.resolution
-
+        # Combined airflow/temperature values use a custom decoding
         if self.extra and self.extra.get("aatt"):
             airflow = (raw >> 8) & 0xFF
             temp = (raw & 0xFF) / 2
             return airflow, temp
 
+        # Schedule registers using BCD time encoding
         if self.bcd:
             try:
                 t = bcd_to_time(raw)
             except Exception:  # pragma: no cover - defensive
-                return value
-            return f"{t.hour:02d}:{t.minute:02d}"
+                pass
+            else:
+                return f"{t.hour:02d}:{t.minute:02d}"
 
+        value: Any = raw
+        if self.multiplier is not None:
+            value *= self.multiplier
+        if self.resolution is not None:
+            steps = round(value / self.resolution)
+            value = steps * self.resolution
         return value
 
     def encode(self, value: Any) -> int | list[int]:
@@ -438,8 +413,10 @@ def _get_file_info() -> tuple[float, str]:
 def load_registers() -> list[RegisterDef]:
     """Return cached register definitions, reloading if the file changed."""
 
-    mtime, _ = _get_file_info()
-    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime)
+    mtime, file_hash = _get_file_info()
+    return _load_registers_from_file(
+        _REGISTERS_PATH, mtime=mtime, file_hash=file_hash
+    )
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -519,7 +496,6 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
     for fn, addresses in regs_by_fn.items():
-        for start, length in _group_reads_fn(addresses, max_block_size=max_block_size):
         for start, length in _group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
