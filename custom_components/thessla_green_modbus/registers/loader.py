@@ -16,11 +16,11 @@ reads.
 from __future__ import annotations
 
 import hashlib
+import importlib.resources as resources
 import json
 import logging
 import re
 import struct
-import importlib.resources as resources
 from dataclasses import dataclass
 from datetime import time
 from functools import lru_cache
@@ -29,18 +29,18 @@ from typing import Any, Literal, Sequence
 
 import pydantic
 
+from ..modbus_helpers import (
+    group_reads as _group_reads,  # alias for plan_group_reads
+)
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from ..utils import _to_snake_case
-from ..modbus_helpers import group_reads as _group_reads  # alias for plan_group_reads
 
 _LOGGER = logging.getLogger(__name__)
 
 # Path to the bundled register definition file.  Tests patch this constant to
 # supply temporary files, therefore it must be a module level variable instead
 # of being computed inside helper functions.
-_REGISTERS_PATH = resources.files(__package__).joinpath(
-    "thessla_green_registers_full.json"
-)
+_REGISTERS_PATH = resources.files(__package__).joinpath("thessla_green_registers_full.json")
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -68,6 +68,7 @@ class Register:
     extra: dict[str, Any] | None = None
     length: int = 1
     bcd: bool = False
+    bits: list[Any] | None = None
 
     # ------------------------------------------------------------------
     # Value helpers
@@ -181,7 +182,9 @@ class Register:
                 encoding = self.extra.get("encoding", "ascii")
                 data = str(value).encode(encoding)
                 data = data.ljust(self.length * 2, b"\x00")
-                return [int.from_bytes(data[i:i+2], "big") for i in range(0, self.length * 2, 2)]
+                return [
+                    int.from_bytes(data[i : i + 2], "big") for i in range(0, self.length * 2, 2)
+                ]
 
             endianness = "big"
             if self.extra:
@@ -215,7 +218,7 @@ class Register:
             else:
                 data = int(raw_val).to_bytes(self.length * 2, "big", signed=False)
 
-            words = [int.from_bytes(data[i:i+2], "big") for i in range(0, len(data), 2)]
+            words = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
             if endianness == "little":
                 words = list(reversed(words))
             return words
@@ -359,6 +362,7 @@ class RegisterDefinition(pydantic.BaseModel):
     extra: dict[str, Any] | None = None
     length: int = 1
     bcd: bool = False
+    bits: list[Any] | None = None
 
     # ``model_config`` and the validators below are used by Pydantic at runtime
     # to validate register definitions.  They appear unused to vulture because
@@ -366,9 +370,28 @@ class RegisterDefinition(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(extra="allow")  # pragma: no cover
 
     @pydantic.model_validator(mode="after")
-    def check_address(self) -> "RegisterDefinition":  # pragma: no cover
+    def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
         if int(self.address_hex, 16) != self.address_dec:
             raise ValueError("address_hex does not match address_dec")
+
+        typ = (self.extra or {}).get("type")
+        expected_len = {
+            "uint32": 2,
+            "int32": 2,
+            "float32": 2,
+            "uint64": 4,
+            "int64": 4,
+            "float64": 4,
+        }.get(typ)
+        if expected_len is not None and self.length != expected_len:
+            raise ValueError("length does not match type")
+
+        if self.function in {"01", "02"} and self.access not in {"R", "R/-"}:
+            raise ValueError("read-only functions must have R access")
+
+        if self.bits is not None and not (self.extra and self.extra.get("bitmask")):
+            raise ValueError("bits provided without extra.bitmask")
+
         return self
 
     @pydantic.field_validator("name")
@@ -389,15 +412,35 @@ def _normalise_name(name: str) -> str:
     }
     snake = _to_snake_case(name)
     return fixes.get(snake, snake)
+
+
+class RegisterList(pydantic.RootModel[list[RegisterDefinition]]):
+    """Container model to validate a list of registers."""
+
+    @pydantic.model_validator(mode="after")
+    def unique(self) -> "RegisterList":  # pragma: no cover
+        seen_pairs: set[tuple[str, int]] = set()
+        seen_names: set[str] = set()
+        for reg in self.root:
+            fn = _normalise_function(reg.function)
+            name = _normalise_name(reg.name)
+            pair = (fn, reg.address_dec)
+            if pair in seen_pairs:
+                raise ValueError(f"duplicate register pair: {pair}")
+            if name in seen_names:
+                raise ValueError(f"duplicate register name: {name}")
+            seen_pairs.add(pair)
+            seen_names.add(name)
+        return self
+
+
 # ---------------------------------------------------------------------------
 # Register loading helpers
 # ---------------------------------------------------------------------------
 
 
 @lru_cache(maxsize=1)
-def _load_registers_from_file(
-    path: Path, *, file_hash: str
-) -> list[Register]:
+def _load_registers_from_file(path: Path, *, file_hash: str) -> list[Register]:
     """Load register definitions from ``path``.
 
     ``file_hash`` is only used to invalidate the cache when the underlying file
@@ -410,19 +453,14 @@ def _load_registers_from_file(
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
     except Exception as err:  # pragma: no cover - defensive
-        raise RuntimeError(
-            f"Failed to read register definitions from {path}"
-        ) from err
+        raise RuntimeError(f"Failed to read register definitions from {path}") from err
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
     registers: list[Register] = []
-    seen_pairs: set[tuple[str, int]] = set()
-    seen_names: set[str] = set()
+    parsed_items = RegisterList.model_validate(items).root
 
-    for item in items:
-        parsed = RegisterDefinition.model_validate(item)
-
+    for parsed in parsed_items:
         function = _normalise_function(parsed.function)
         raw_address = int(parsed.address_dec)
 
@@ -434,23 +472,13 @@ def _load_registers_from_file(
 
         name = _normalise_name(parsed.name)
 
-        pair = (function, raw_address)
-        if pair in seen_pairs:
-            raise ValueError(f"duplicate register pair: {pair}")
-        if name in seen_names:
-            raise ValueError(f"duplicate register name: {name}")
-        seen_pairs.add(pair)
-        seen_names.add(name)
-
         enum_map = parsed.enum
         if name == "special_mode":
             enum_map = _SPECIAL_MODES_ENUM
         elif enum_map:
             if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
                 enum_map = {int(k): v for k, v in enum_map.items()}
-            elif all(
-                isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()
-            ):
+            elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
                 enum_map = {int(v): k for k, v in enum_map.items()}
 
         multiplier = parsed.multiplier
@@ -476,6 +504,7 @@ def _load_registers_from_file(
                 extra=parsed.extra,
                 length=int(parsed.length),
                 bcd=bool(parsed.bcd),
+                bits=parsed.bits,
             )
         )
 

@@ -4,7 +4,10 @@ import json
 from pathlib import Path
 
 import pytest
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+
+from custom_components.thessla_green_modbus.registers import (
+    get_registers_by_function,
+)
 
 
 def test_example_register_mapping() -> None:
@@ -122,6 +125,55 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
         loader._load_registers_from_file(path, file_hash="")
 
 
+@pytest.mark.parametrize(
+    "register",
+    [
+        {
+            "function": "03",
+            "address_dec": 1,
+            "address_hex": "0x2",
+            "name": "bad_addr",
+            "access": "R",
+        },
+        {
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "name": "bad_len",
+            "access": "R",
+            "length": 1,
+            "extra": {"type": "uint32"},
+        },
+        {
+            "function": "01",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "name": "bad_access",
+            "access": "R/W",
+        },
+        {
+            "function": "03",
+            "address_dec": 0,
+            "address_hex": "0x0",
+            "name": "bad_bits",
+            "access": "R",
+            "bits": ["a"],
+        },
+    ],
+)
+def test_invalid_registers_rejected(tmp_path, monkeypatch, register) -> None:
+    """Registers violating schema constraints should raise an error."""
+
+    from custom_components.thessla_green_modbus.registers import loader
+
+    path = tmp_path / "regs.json"
+    path.write_text(json.dumps({"registers": [register]}))
+    monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
+
+    with pytest.raises(ValueError):
+        loader._load_registers_from_file(path, file_hash="")
+
+
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
     """Missing register definition file should raise RuntimeError."""
 
@@ -165,9 +217,27 @@ def test_get_all_registers_sorted(monkeypatch, tmp_path) -> None:
     from custom_components.thessla_green_modbus.registers import loader
 
     regs = [
-        {"function": "03", "address_dec": 2, "address_hex": "0x0002", "name": "reg_c", "access": "R"},
-        {"function": "01", "address_dec": 1, "address_hex": "0x0001", "name": "reg_a", "access": "R"},
-        {"function": "03", "address_dec": 1, "address_hex": "0x0001", "name": "reg_b", "access": "R"},
+        {
+            "function": "03",
+            "address_dec": 2,
+            "address_hex": "0x0002",
+            "name": "reg_c",
+            "access": "R",
+        },
+        {
+            "function": "01",
+            "address_dec": 1,
+            "address_hex": "0x0001",
+            "name": "reg_a",
+            "access": "R",
+        },
+        {
+            "function": "03",
+            "address_dec": 1,
+            "address_hex": "0x0001",
+            "name": "reg_b",
+            "access": "R",
+        },
     ]
 
     path = tmp_path / "regs.json"
