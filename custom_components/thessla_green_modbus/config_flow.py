@@ -171,18 +171,17 @@ async def validate_input(_hass: HomeAssistant, data: dict[str, Any]) -> dict[str
             if missing:
                 _LOGGER.error("Capabilities missing required fields: %s", set(missing))
                 raise CannotConnect("invalid_capabilities")
-            capabilities = caps_obj
         elif isinstance(caps_obj, dict):
             try:
-                capabilities = DeviceCapabilities(**caps_obj)
+                caps_dict = DeviceCapabilities(**caps_obj).as_dict()
             except (TypeError, ValueError) as exc:
                 _LOGGER.error("Error parsing capabilities: %s", exc)
                 raise CannotConnect("invalid_capabilities") from exc
         else:
             raise CannotConnect("invalid_capabilities")
 
-        # Store dataclass object so future reads operate on the dataclass
-        scan_result["capabilities"] = capabilities
+        # Store dictionary form of capabilities for serialization
+        scan_result["capabilities"] = caps_dict
 
         if not scan_result:
             raise CannotConnect("Device scan failed - no data received")
@@ -326,13 +325,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             self._abort_if_unique_id_configured()
             # Prepare capabilities for persistence
             caps_obj = self._scan_result.get("capabilities")
-            if isinstance(caps_obj, DeviceCapabilities):
-                caps_dict = caps_obj.as_dict()
-            elif isinstance(caps_obj, dict):
+            if isinstance(caps_obj, dict):
                 try:
                     caps_dict = DeviceCapabilities(**caps_obj).as_dict()
                 except (TypeError, ValueError):
                     caps_dict = DeviceCapabilities().as_dict()
+            elif isinstance(caps_obj, DeviceCapabilities):
+                caps_dict = caps_obj.as_dict()
             else:
                 caps_dict = DeviceCapabilities().as_dict()
 
@@ -359,13 +358,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         # Get scan statistics
         available_registers = self._scan_result.get("available_registers", {})
         caps_obj = self._scan_result.get("capabilities")
-        if isinstance(caps_obj, DeviceCapabilities):
-            caps_data = caps_obj
-        elif isinstance(caps_obj, dict):
+        if isinstance(caps_obj, dict):
             try:
                 caps_data = DeviceCapabilities(**caps_obj)
             except TypeError:
                 caps_data = DeviceCapabilities()
+        elif isinstance(caps_obj, DeviceCapabilities):
+            caps_data = caps_obj
         else:
             caps_data = DeviceCapabilities()
 

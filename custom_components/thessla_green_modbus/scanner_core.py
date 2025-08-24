@@ -134,10 +134,8 @@ class DeviceInfo(collections.abc.Mapping):  # pragma: no cover
 # Attributes of this dataclass are read dynamically at runtime to determine
 # which features the device exposes; static analysis may therefore mark them
 # as unused even though they are relied upon.
-@dataclass
-class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
 @dataclass(slots=True)
-class DeviceCapabilities:  # pragma: no cover
+class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
 
     Although capabilities are typically determined once during the initial scan,
@@ -177,7 +175,7 @@ class DeviceCapabilities:  # pragma: no cover
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
         """Set attribute and invalidate cached ``as_dict`` result."""
-        if name != "_as_dict_cache" and self._as_dict_cache is not None:
+        if name != "_as_dict_cache" and getattr(self, "_as_dict_cache", None) is not None:
             object.__setattr__(self, "_as_dict_cache", None)
         object.__setattr__(self, name, value)
 

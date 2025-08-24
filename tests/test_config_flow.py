@@ -1115,14 +1115,46 @@ async def test_validate_input_uses_scan_device_and_closes():
     ):
         result = await validate_input(None, data)
 
-    from custom_components.thessla_green_modbus.scanner_core import (
-        DeviceCapabilities,
-    )
-
     assert isinstance(result["scan_result"], dict)
-    assert isinstance(result["scan_result"].get("capabilities"), DeviceCapabilities)
+    assert isinstance(result["scan_result"].get("capabilities"), dict)
     scanner_instance.verify_connection.assert_awaited_once()
     scanner_instance.scan_device.assert_awaited_once()
+    scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_serializes_device_capabilities():
+    """DeviceCapabilities from scanner should be converted to a dict."""
+    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": DeviceCapabilities(expansion_module=True),
+    }
+
+    scanner_instance = SimpleNamespace(
+        scan_device=AsyncMock(return_value=scan_result),
+        close=AsyncMock(),
+        verify_connection=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        result = await validate_input(None, data)
+
+    caps = result["scan_result"]["capabilities"]
+    assert isinstance(caps, dict)
+    assert caps["expansion_module"] is True
     scanner_instance.close.assert_awaited_once()
 
 
