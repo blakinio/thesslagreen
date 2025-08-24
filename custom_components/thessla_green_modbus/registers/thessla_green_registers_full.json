@@ -3463,7 +3463,7 @@
       "description": "Klucz produktu użytkownika",
       "length": 2,
       "extra": {
-        "type": "uint32",
+        "type": "u32",
         "endianness": "little"
       },
       "description_en": "Klucz produktu użytkownika"

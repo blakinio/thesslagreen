@@ -1165,7 +1165,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 address = definition.address
                 for attempt in range(1, self.retry + 1):
                     try:
-                        if definition.function == "03":
+                        if definition.function == 3:
                             if encoded_values is not None:
                                 success = True
                                 for offset in range(0, len(encoded_values), self.effective_batch):
@@ -1196,7 +1196,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     value=int(value),
                                     attempt=attempt,
                                 )
-                        elif definition.function == "01":
+                        elif definition.function == 1:
                             response = await self._call_modbus(
                                 self.client.write_coil,
                                 address=address,

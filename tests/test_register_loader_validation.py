@@ -50,10 +50,10 @@ RegisterDefinition = _load_schema()
 
 
 EXPECTED = {
-    "01": {"min": 5, "max": 15, "count": 8},
-    "02": {"min": 0, "max": 21, "count": 16},
-    "03": {"min": 0, "max": 8444, "count": 270},
-    "04": {"min": 0, "max": 298, "count": 24},
+    1: {"min": 5, "max": 15, "count": 8},
+    2: {"min": 0, "max": 21, "count": 16},
+    3: {"min": 0, "max": 8444, "count": 270},
+    4: {"min": 0, "max": 298, "count": 24},
 }
 
 # Registers present in the vendor PDF but intentionally omitted in the JSON

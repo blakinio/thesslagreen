@@ -112,7 +112,7 @@ def test_validator_rejects_length_mismatch(tmp_path: Path) -> None:
                 "name": "bad_len",
                 "access": "R/W",
                 "length": 1,
-                "extra": {"type": "uint32"},
+                "extra": {"type": "u32"},
             }
         ],
     )
