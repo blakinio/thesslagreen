@@ -104,6 +104,24 @@ PLATFORMS = [
 
 
 # Migration helpers
+_ENTITY_LOOKUP: dict[str, tuple[str, str | None, int | None]] | None = None
+
+
+def _build_entity_lookup() -> dict[str, tuple[str, str | None, int | None]]:
+    """Build mapping of entity keys to register info."""
+    global _ENTITY_LOOKUP
+    if _ENTITY_LOOKUP is None:
+        from .entity_mappings import ENTITY_MAPPINGS as _MAP
+
+        lookup: dict[str, tuple[str, str | None, int | None]] = {}
+        for platform in ("sensor", "binary_sensor", "switch", "select", "number"):
+            for key, cfg in _MAP.get(platform, {}).items():
+                register = cfg.get("register", key)
+                lookup[key] = (register, cfg.get("register_type"), cfg.get("bit"))
+        _ENTITY_LOOKUP = lookup
+    return _ENTITY_LOOKUP
+
+
 def migrate_unique_id(
     unique_id: str,
     *,
@@ -112,27 +130,53 @@ def migrate_unique_id(
     port: int,
     slave_id: int,
 ) -> str:
-    """Migrate a legacy unique_id to the current format.
+    """Migrate a legacy unique_id to the current format."""
 
-    Legacy IDs were based on host, port and slave ID.  New IDs use the
-    device serial number when available.  This helper converts the old
-    IDs to the new format while preserving any entity key suffix.
-    """
-
-    new_unique_id = unique_id.replace(":", "-")
+    uid = unique_id.replace(":", "-")
 
     for unit in (AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE):
         suffix = f"_{unit}"
-        if new_unique_id.endswith(suffix):
-            new_unique_id = new_unique_id[: -len(suffix)]
+        if uid.endswith(suffix):
+            uid = uid[: -len(suffix)]
             break
 
-    if serial_number and serial_number != "Unknown":
-        prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_"
-        if new_unique_id.startswith(prefix):
-            new_unique_id = f"{DOMAIN}_{serial_number}_{new_unique_id[len(prefix):]}"
+    serial_valid = serial_number and serial_number != "Unknown"
+    host_prefix = f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_"
+    serial_prefix = f"{DOMAIN}_{serial_number}_" if serial_valid else None
 
-    return new_unique_id
+    entity_key: str | None = None
+    if uid.startswith(host_prefix):
+        entity_key = uid[len(host_prefix) :]
+    elif serial_prefix and uid.startswith(serial_prefix):
+        entity_key = uid[len(serial_prefix) :]
+    else:
+        return uid
+
+    device_prefix = (
+        f"{DOMAIN}_{serial_number}" if serial_valid else f"{DOMAIN}_{host.replace(':', '-')}_{port}"
+    )
+
+    parts = entity_key.split("_")
+    if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+        return f"{device_prefix}_{entity_key}"
+
+    lookup = _build_entity_lookup()
+    register_name, register_type, bit = lookup.get(entity_key, (entity_key, None, None))
+    address: int | None = None
+    if register_type == "holding_registers":
+        address = HOLDING_REGISTERS.get(register_name)
+    elif register_type == "input_registers":
+        address = INPUT_REGISTERS.get(register_name)
+    elif register_type == "coil_registers":
+        address = COIL_REGISTERS.get(register_name)
+    elif register_type == "discrete_inputs":
+        address = DISCRETE_INPUT_REGISTERS.get(register_name)
+
+    if address is not None:
+        bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
+        return f"{device_prefix}_{slave_id}_{address}{bit_suffix}"
+
+    return f"{device_prefix}_{entity_key}"
 
 
 # Mapping of writable register names to Home Assistant number entity metadata

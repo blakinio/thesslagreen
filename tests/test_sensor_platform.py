@@ -267,7 +267,8 @@ def test_time_sensor_formats_value(mock_coordinator):
         "value_map": None,
     }
     mock_coordinator.data[register] = 8 * 60 + 5
-    sensor = ThesslaGreenSensor(mock_coordinator, register, sensor_def)
+    address = 0x2000  # example address for schedule register
+    sensor = ThesslaGreenSensor(mock_coordinator, register, address, sensor_def)
     assert sensor.native_value == "08:05"
 
 
@@ -283,7 +284,8 @@ def test_sensor_reports_unavailable_when_no_data():
     coord.data = {"outside_temperature": SENSOR_UNAVAILABLE}
     coord.last_update_success = True
     sensor_def = SENSOR_DEFINITIONS["outside_temperature"]
-    sensor = ThesslaGreenSensor(coord, "outside_temperature", sensor_def)
+    address = 16
+    sensor = ThesslaGreenSensor(coord, "outside_temperature", address, sensor_def)
     assert sensor.native_value == STATE_UNAVAILABLE
     assert sensor.available is False
 

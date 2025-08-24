@@ -150,7 +150,8 @@ def test_number_creation_and_state(mock_coordinator):
     """Test creation and state changes of number entity."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+    address = 8190
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
     assert number.native_value == 20
     assert "scale_factor" not in number.extra_state_attributes
 
@@ -162,7 +163,8 @@ def test_number_set_value(mock_coordinator):
     """Test setting a new value on the number entity."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+    address = 8190
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
 
     asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_write_register.assert_awaited_with(
@@ -175,7 +177,8 @@ def test_number_set_value_modbus_failure(mock_coordinator):
     """Ensure Modbus errors are surfaced when setting the number."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+    address = 8190
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
 
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
@@ -187,7 +190,8 @@ def test_number_set_value_write_failure(mock_coordinator):
     """Ensure failures to write registers raise RuntimeError."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+    address = 8190
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
 
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
     with pytest.raises(RuntimeError):
@@ -200,7 +204,8 @@ def test_number_set_value_other_errors(mock_coordinator, exc_cls):
     """Ensure ValueError and OSError propagate when setting the number."""
     mock_coordinator.data["required_temperature"] = 20
     entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
-    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+    address = 8190
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", address, entity_config)
 
     mock_coordinator.async_write_register = AsyncMock(side_effect=exc_cls("fail"))
     with pytest.raises(exc_cls):
@@ -219,7 +224,8 @@ def test_new_number_entities(mock_coordinator, register, value):
     """Test number entities for newly added registers."""
     mock_coordinator.data[register] = value
     entity_config = ENTITY_MAPPINGS["number"][register]
-    number = ThesslaGreenNumber(mock_coordinator, register, entity_config)
+    address = 4117 if register == "max_supply_air_flow_rate" else 4320
+    number = ThesslaGreenNumber(mock_coordinator, register, address, entity_config)
     assert number.native_value == value
 
 
