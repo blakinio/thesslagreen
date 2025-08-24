@@ -65,28 +65,7 @@ pytest tests/test_register_loader_validation.py::test_registers_match_pdf
 Jeżeli test zgłasza brakujące rejestry lub rozbieżności w atrybutach,
 należy zaktualizować plik JSON przed wysłaniem zmian.
 
-## Migracja z CSV na JSON
-Rejestry są definiowane wyłącznie w pliku JSON
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
-który jest kanonicznym źródłem prawdy.
-Format CSV jest przestarzały i zostanie usunięty w przyszłych wersjach – jego
-użycie zapisuje ostrzeżenie w logach. Każdy obiekt w tablicy `registers` zawiera pola:
-
-- `function` – kod funkcji Modbus
-- `address_dec` / `address_hex` – adres rejestru
-- `name` – unikalna nazwa
-- `description` – opis po polsku
-- `description_en` – opis po angielsku
-- `access` – tryb dostępu (`R`/`W`)
-
-Opcjonalnie można zdefiniować `unit`, `enum`, `multiplier`, `resolution` i inne
-atrybuty.
-
-Aby ręcznie przekonwertować istniejący plik CSV:
-
-1. Otwórz plik CSV i odwzoruj kolumny na odpowiednie pola JSON.
-2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
-3. Przekonwertuj adresy na postać dziesiętną i heksadecymalną (`0x...`).
-4. Po konwersji uruchom test i narzędzia z sekcji powyżej, aby zweryfikować plik.
-
-Po migracji usuń lub zignoruj plik CSV – integracja korzysta wyłącznie z definicji JSON.
+> Obsługa plików CSV została całkowicie usunięta — rejestry muszą być zapisane w
+> `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
+> i spełniać schemat `registers/schema.py`. Zweryfikuj zmiany narzędziami i
+> testami opisanymi powyżej.
