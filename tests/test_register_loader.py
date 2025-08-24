@@ -78,25 +78,34 @@ def test_registers_loaded_only_once(monkeypatch) -> None:
     import custom_components.thessla_green_modbus.registers.loader as loader
 
     read_calls = 0
+    hash_calls = 0
     real_read_text = Path.read_text
+    real_compute_hash = loader._compute_file_hash
 
-    def spy(self, *args, **kwargs):
+    def spy_read(self, *args, **kwargs):
         nonlocal read_calls
         read_calls += 1
         text = real_read_text(self, *args, **kwargs)
         json.loads(text)
         return text
 
-    # Spy on read_text to count disk reads
-    monkeypatch.setattr(Path, "read_text", spy)
+    def spy_hash(path, mtime):
+        nonlocal hash_calls
+        hash_calls += 1
+        return real_compute_hash(path, mtime)
+
+    # Spy on read_text and hash computation to count disk accesses
+    monkeypatch.setattr(Path, "read_text", spy_read)
+    monkeypatch.setattr(loader, "_compute_file_hash", spy_hash)
 
     loader.clear_cache()
 
     loader.get_all_registers()
     loader.get_all_registers()
 
-    # The file should be read only once thanks to caching
+    # The file and hash should only be computed once thanks to caching
     assert read_calls == 1
+    assert hash_calls == 1
 
 
 @pytest.mark.parametrize(
@@ -122,7 +131,7 @@ def test_duplicate_registers_raise_error(tmp_path, monkeypatch, registers) -> No
     monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, file_hash="", mtime=0)
+        loader._load_registers_from_file(path, mtime=0)
 
 
 @pytest.mark.parametrize(
@@ -171,7 +180,7 @@ def test_invalid_registers_rejected(tmp_path, monkeypatch, register) -> None:
     monkeypatch.setattr(loader, "_REGISTERS_PATH", path)
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, file_hash="", mtime=0)
+        loader._load_registers_from_file(path, mtime=0)
 
 
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
@@ -181,7 +190,7 @@ def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
 
     path = tmp_path / "regs.json"
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, file_hash="", mtime=0)
+        loader._load_registers_from_file(path, mtime=0)
     assert str(path) in str(exc.value)
 
 
@@ -193,7 +202,7 @@ def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
     path = tmp_path / "regs.json"
     path.write_text("not json", encoding="utf-8")
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, file_hash="", mtime=0)
+        loader._load_registers_from_file(path, mtime=0)
     assert str(path) in str(exc.value)
 
 
