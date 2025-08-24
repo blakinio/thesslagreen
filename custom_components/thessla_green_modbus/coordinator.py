@@ -80,14 +80,13 @@ from pymodbus.client import AsyncModbusTcpClient
 
 from .config_flow import CannotConnect
 from .const import (
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
-    MAX_BATCH_REGISTERS,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
-    MODEL,
+    MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     UNKNOWN_MODEL,
 )
@@ -376,11 +375,22 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "model": UNKNOWN_MODEL,
             "firmware": "Unknown",
             "serial_number": "Unknown",
+            "input_registers": set(self._register_maps["input_registers"].keys()),
+            "holding_registers": set(self._register_maps["holding_registers"].keys()),
+            "coil_registers": set(self._register_maps["coil_registers"].keys()),
+            "discrete_inputs": set(self._register_maps["discrete_inputs"].keys()),
         }
 
         if self.skip_missing_registers:
             for reg_type, names in KNOWN_MISSING_REGISTERS.items():
                 self.available_registers[reg_type].difference_update(names)
+
+        self.device_info = {
+            "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
+            "model": UNKNOWN_MODEL,
+            "firmware": "Unknown",
+            "serial_number": "Unknown",
+        }
 
         _LOGGER.info(
             "Loaded full register list: %d total registers",
