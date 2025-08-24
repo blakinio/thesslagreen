@@ -235,3 +235,79 @@ def test_validator_rejects_non_snake_case(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         validate_registers.main(path)
 
+
+def test_accepts_numeric_function_code(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": 3,
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "numeric_fn",
+                "access": "R/W",
+            }
+        ],
+    )
+
+    validate_registers.main(path)
+
+
+def test_validator_rejects_type_alias(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_type",
+                "access": "R/W",
+                "extra": {"type": "uint"},
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_bad_bit_name(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_bit_name",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": ["BadBit"],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_min_max_mismatch(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "bad_range",
+                "access": "R/W",
+                "min": 5,
+                "max": 1,
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
