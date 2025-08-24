@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads as _group_reads
+from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -87,6 +87,10 @@ class RegisterDef:
                 encoding = self.extra.get("encoding", "ascii")
                 data = b"".join(w.to_bytes(2, "big") for w in raw_list)
                 return data.rstrip(b"\x00").decode(encoding)
+                buffer = bytearray()
+                for word in raw_list:
+                    buffer.extend(word.to_bytes(2, "big"))
+                return buffer.rstrip(b"\x00").decode(encoding)
 
             endianness = self.extra.get("endianness", "big") if self.extra else "big"
             words = raw_list if endianness == "big" else list(reversed(raw_list))
@@ -97,6 +101,9 @@ class RegisterDef:
                 value = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
                 value = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+                result: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+            elif typ == "float64":
+                result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
             elif typ == "int32":
                 value = int.from_bytes(data, "big", signed=True)
             elif typ == "uint32":
@@ -114,6 +121,9 @@ class RegisterDef:
                 steps = round(value / self.resolution)
                 value = steps * self.resolution
             return value
+                steps = round(result / self.resolution)
+                result = steps * self.resolution
+            return result
 
         # Defensive: handle unexpected sequence for single-register values
         if isinstance(raw, Sequence):
@@ -140,6 +150,28 @@ class RegisterDef:
                 return self.enum[str(raw)]
 
         # Combined airflow/temperature values use a custom decoding
+        value: Any = raw
+        if self.length > 1 and self.extra and self.extra.get("type"):
+            dtype = self.extra["type"]
+            byte_len = self.length * 2
+            raw_bytes = raw.to_bytes(byte_len, "big", signed=False)
+            if dtype == "float32":
+                value = struct.unpack(">f", raw_bytes)[0]
+            elif dtype == "int32":
+                value = struct.unpack(">i", raw_bytes)[0]
+            elif dtype == "uint32":
+                value = struct.unpack(">I", raw_bytes)[0]
+            elif dtype == "int64":
+                value = struct.unpack(">q", raw_bytes)[0]
+            elif dtype == "uint64":
+                value = struct.unpack(">Q", raw_bytes)[0]
+
+        if self.multiplier is not None:
+            value = value * self.multiplier
+        if self.resolution is not None:
+            steps = round(value / self.resolution)
+            value = steps * self.resolution
+
         if self.extra and self.extra.get("aatt"):
             airflow = (raw >> 8) & 0xFF
             temp = (raw & 0xFF) / 2
@@ -372,10 +404,10 @@ def _load_registers_from_file(
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
-    """Return the SHA256 hash of ``path`` and cache the result.
+    """Return the SHA256 hash of ``path``.
 
-    The hash is cached using ``(path_str, mtime, hash)`` so the file is only
-    read when its modification time changes.
+    Results are cached based on the file path and modification time so repeated
+    calls for an unchanged file avoid reading from disk.
     """
 
     global _cached_file_info
@@ -393,7 +425,11 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
 
 
 def _get_file_info() -> tuple[float, str]:
-    """Return ``(mtime, hash)`` for the registers file using a cache."""
+    """Return ``(mtime, hash)`` for the bundled registers file.
+
+    ``_compute_file_hash`` is only invoked when the modification time changes so
+    repeated calls avoid both hashing and disk access.
+    """
 
     stat = _REGISTERS_PATH.stat()
     mtime = stat.st_mtime
@@ -417,6 +453,7 @@ def load_registers() -> list[RegisterDef]:
     return _load_registers_from_file(
         _REGISTERS_PATH, mtime=mtime, file_hash=file_hash
     )
+    return _load_registers_from_file(_REGISTERS_PATH, mtime=mtime, file_hash=file_hash)
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -450,20 +487,9 @@ def get_registers_by_function(fn: str) -> list[RegisterDef]:
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
     try:
-        stat = _REGISTERS_PATH.stat()
-    except OSError:  # pragma: no cover - defensive
         return _get_file_info()[1]
     except Exception:  # pragma: no cover - defensive
         return ""
-    mtime = stat.st_mtime
-    path_str = str(_REGISTERS_PATH)
-    if (
-        _cached_file_info
-        and _cached_file_info[0] == path_str
-        and _cached_file_info[1] == mtime
-    ):
-        return _cached_file_info[2]
-    return _compute_file_hash(_REGISTERS_PATH, mtime)
 
 
 @lru_cache(maxsize=1)
@@ -488,15 +514,15 @@ class ReadPlan:
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
 
-    plans: list[ReadPlan] = []
     regs_by_fn: dict[str, list[int]] = {}
-
     for reg in load_registers():
         addr_range = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
+    plans: list[ReadPlan] = []
     for fn, addresses in regs_by_fn.items():
         for start, length in _group_reads(addresses, max_block_size=max_block_size):
+        for start, length in group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans

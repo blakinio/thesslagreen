@@ -188,6 +188,39 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     assert hash_before != hash_after
 
 
+def test_compute_file_hash_uses_cache(tmp_path, monkeypatch) -> None:
+    """_compute_file_hash should avoid re-reading unchanged files."""
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
+    import os
+
+    path = tmp_path / "regs.json"
+    path.write_text("data")
+    mtime = path.stat().st_mtime
+
+    read_calls = 0
+    real_read_bytes = Path.read_bytes
+
+    def spy_read_bytes(self):
+        nonlocal read_calls
+        read_calls += 1
+        return real_read_bytes(self)
+
+    monkeypatch.setattr(Path, "read_bytes", spy_read_bytes)
+
+    digest1 = loader._compute_file_hash(path, mtime)
+    digest2 = loader._compute_file_hash(path, mtime)
+
+    assert digest1 == digest2
+    assert read_calls == 1
+
+    path.write_text("data2")
+    os.utime(path, (mtime + 1, mtime + 1))
+    mtime2 = path.stat().st_mtime
+    loader._compute_file_hash(path, mtime2)
+
+    assert read_calls == 2
+
 def test_registers_reload_on_file_change(tmp_path, monkeypatch) -> None:
     """Changing the register JSON file triggers a reload."""
 
