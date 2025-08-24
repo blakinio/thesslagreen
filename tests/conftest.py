@@ -203,6 +203,12 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         def __init_subclass__(cls, **kwargs):
             return
 
+        def async_show_form(self, **kwargs):  # type: ignore[override]
+            return {"type": "form", **kwargs}
+
+        def async_create_entry(self, **kwargs):  # type: ignore[override]
+            return {"type": "create_entry", **kwargs}
+
     config_entries.OptionsFlow = OptionsFlow
     helpers.DataUpdateCoordinator = DataUpdateCoordinator
     helpers.UpdateFailed = UpdateFailed
