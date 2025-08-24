@@ -8,7 +8,7 @@ from .loader import (
     get_all_registers,
     get_registers_hash,
     get_registers_by_function,
-    group_reads,
+    plan_group_reads,
 )
 
 __all__ = [
@@ -17,5 +17,5 @@ __all__ = [
     "get_all_registers",
     "get_registers_hash",
     "get_registers_by_function",
-    "group_reads",
+    "plan_group_reads",
 ]
