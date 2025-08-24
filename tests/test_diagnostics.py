@@ -24,7 +24,7 @@ loader_module = ModuleType(
     "custom_components.thessla_green_modbus.registers.loader"
 )
 loader_module.get_all_registers = lambda: []
-loader_module.registers_sha256 = lambda: "hash"
+loader_module.registers_sha256 = lambda *args, **kwargs: "hash"
 loader_module.get_registers_by_function = lambda *args, **kwargs: []
 loader_module.plan_group_reads = lambda *args, **kwargs: []
 registers_module.loader = loader_module

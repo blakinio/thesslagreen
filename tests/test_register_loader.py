@@ -166,7 +166,7 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     loader.clear_cache()
 
     # Initial load populates cache
-    hash_before = loader.registers_sha256()
+    hash_before = loader.registers_sha256(loader._REGISTERS_PATH)
     loader.get_all_registers()
     loader.get_all_registers()
     hash_before = loader.registers_sha256(path)
@@ -181,7 +181,7 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     path.write_text(real_read_text(path) + "\n")
 
     loader.get_all_registers()
-    hash_after = loader.registers_sha256()
+    hash_after = loader.registers_sha256(loader._REGISTERS_PATH)
     loader.load_registers(path)
     hash_after = loader.registers_sha256(path)
 
