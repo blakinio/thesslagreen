@@ -133,7 +133,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     )
 
     # Create coordinator for managing device communication
-    from .coordinator import ThesslaGreenModbusCoordinator
+    coordinator_mod = await hass.async_add_executor_job(
+        import_module, ".coordinator", __name__
+    )
+    ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
 
     coordinator = ThesslaGreenModbusCoordinator(
         hass=hass,
