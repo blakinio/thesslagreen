@@ -1570,7 +1570,8 @@ def test_device_capabilities_serialization():
     assert serialized["temperature_sensors"] == ["t1", "t2"]
 
     # Iteration helpers should delegate to as_dict
-    # __iter__ should yield key/value pairs
-    assert list(caps) == list(serialized.items())
+    # __iter__ should yield keys
+    assert list(caps) == list(serialized.keys())
     assert list(caps.keys()) == list(serialized.keys())
     assert list(caps.items()) == list(serialized.items())
+    assert list(caps.values()) == list(serialized.values())
