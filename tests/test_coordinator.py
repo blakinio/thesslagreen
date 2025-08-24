@@ -172,6 +172,12 @@ modules = {
 for name, module in modules.items():
     sys.modules[name] = module
 
+# Remove any pre-existing stub of ``homeassistant.util.dt`` to trigger the
+# fallback ``_DTUtil`` implementation in the coordinator during import.
+if hasattr(util, "dt"):
+    delattr(util, "dt")
+sys.modules.pop("homeassistant.util.dt", None)
+
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -182,7 +188,16 @@ HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
+    dt_util as coordinator_dt_util,
 )
+
+
+def test_dt_util_timezone_awareness():
+    """Ensure fallback dt_util provides timezone-aware datetimes."""
+    now = coordinator_dt_util.now()
+    utcnow = coordinator_dt_util.utcnow()
+    assert now.tzinfo is not None and now.tzinfo.utcoffset(now) is not None
+    assert utcnow.tzinfo is not None and utcnow.tzinfo.utcoffset(utcnow) is not None
 
 
 @pytest.fixture
