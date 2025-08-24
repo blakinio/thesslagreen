@@ -874,7 +874,7 @@ async def test_validate_input_invalid_port(invalid_port: int):
 
 @pytest.mark.parametrize(
     ("invalid_slave", "err_code"),
-    [(-1, "invalid_slave_low"), (248, "invalid_slave_high")],
+    [(-1, "invalid_slave_low"), (0, "invalid_slave_low"), (248, "invalid_slave_high")],
 )
 async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
     """Test validate_input rejects Device IDs outside valid range."""
