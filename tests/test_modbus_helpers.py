@@ -3,11 +3,13 @@
 
 import sys
 import types
+import gc
+import weakref
 
 import pytest
 
 loader_stub = types.SimpleNamespace(
-    _load_registers=lambda: ([], {}),
+    load_registers=lambda: ([], {}),
     get_all_registers=lambda: [],
     get_registers_by_function=lambda fn: [],
 )
@@ -24,6 +26,8 @@ sys.modules[
 
 from custom_components.thessla_green_modbus.modbus_helpers import (  # noqa: E402
     _call_modbus,
+    _KWARG_CACHE,
+    _SIG_CACHE,
     group_reads,
 )
 
@@ -74,3 +78,25 @@ async def test_group_reads_honours_block_size():
         (4, 4),
         (8, 2),
     ]
+
+
+async def test_modbus_cache_entries_removed_on_gc():
+    """Cached entries should disappear when functions are garbage collected."""
+
+    _KWARG_CACHE.clear()
+    _SIG_CACHE.clear()
+
+    async def func(address, *, count, unit=None):
+        return address, count, unit
+
+    await _call_modbus(func, 1, 10, 2)
+    assert func in _KWARG_CACHE
+    assert func in _SIG_CACHE
+
+    func_ref = weakref.ref(func)
+    del func
+    gc.collect()
+
+    assert func_ref() is None
+    assert len(_KWARG_CACHE) == 0
+    assert len(_SIG_CACHE) == 0
