@@ -149,7 +149,7 @@ def test_validator_rejects_bits_without_bitmask(tmp_path: Path) -> None:
                 "address_hex": "0x0001",
                 "name": "bad_bits",
                 "access": "R/W",
-                "bits": [{"name": "a"}],
+                "bits": [{"name": "a", "index": 0}],
             }
         ],
     )
@@ -169,7 +169,7 @@ def test_validator_rejects_bit_name(tmp_path: Path) -> None:
                 "name": "bad_bit_name",
                 "access": "R/W",
                 "extra": {"bitmask": 0b1},
-                "bits": [{"name": "BadName"}],
+                "bits": [{"name": "BadName", "index": 0}],
             }
         ],
     )
@@ -189,7 +189,50 @@ def test_validator_rejects_bit_index(tmp_path: Path) -> None:
                 "name": "bad_bit_index",
                 "access": "R/W",
                 "extra": {"bitmask": 0b1},
-                "bits": [{"name": "a", "index": 1}],
+                "bits": [{"name": "a", "index": 16}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_missing_bit_index(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "missing_bit_index",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": [{"name": "a"}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_duplicate_bit_index(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "dup_bit_index",
+                "access": "R/W",
+                "extra": {"bitmask": 0b11},
+                "bits": [
+                    {"name": "a", "index": 0},
+                    {"name": "b", "index": 0},
+                ],
             }
         ],
     )
@@ -209,7 +252,7 @@ def test_validator_rejects_bit_index_out_of_range(tmp_path: Path) -> None:
                 "name": "bit_index_out_of_range",
                 "access": "R/W",
                 "extra": {"bitmask": 0xFFFF},
-                "bits": [{"name": f"b{i}"} for i in range(17)],
+                "bits": [{"name": f"b{i}", "index": i} for i in range(17)],
             }
         ],
     )
@@ -283,7 +326,7 @@ def test_validator_rejects_bad_bit_name(tmp_path: Path) -> None:
                 "name": "bad_bit_name",
                 "access": "R/W",
                 "extra": {"bitmask": 0b1},
-                "bits": ["BadBit"],
+                "bits": [{"name": "BadBit", "index": 0}],
             }
         ],
     )
