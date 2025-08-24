@@ -24,8 +24,10 @@ from dataclasses import dataclass
 from datetime import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
+# Shared grouping helper
+from ..modbus_helpers import group_reads as _group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -83,6 +85,10 @@ class RegisterDef:
 
             if self.extra and self.extra.get("type") == "string":
                 encoding = self.extra.get("encoding", "ascii")
+                buffer = bytearray()
+                for word in raw_list:
+                    buffer.extend(word.to_bytes(2, "big"))
+                return buffer.rstrip(b"\x00").decode(encoding)
                 buf = bytearray()
                 for word in raw_list:
                     buf.extend(word.to_bytes(2, "big"))
@@ -95,7 +101,28 @@ class RegisterDef:
             data = b"".join(w.to_bytes(2, "big") for w in words)
 
             typ = self.extra.get("type") if self.extra else None
+            result: Any
             if typ == "float32":
+                result = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
+            elif typ == "float64":
+                result = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
+            elif typ == "int32":
+                result = int.from_bytes(data, "big", signed=True)
+            elif typ == "uint32":
+                result = int.from_bytes(data, "big", signed=False)
+            elif typ == "int64":
+                result = int.from_bytes(data, "big", signed=True)
+            elif typ == "uint64":
+                result = int.from_bytes(data, "big", signed=False)
+            else:
+                result = int.from_bytes(data, "big", signed=False)
+
+            if self.multiplier is not None:
+                result = result * self.multiplier
+            if self.resolution is not None:
+                steps = round(result / self.resolution)
+                result = steps * self.resolution
+            return result
                 decoded: Any = struct.unpack(">f" if endianness == "big" else "<f", data)[0]
             elif typ == "float64":
                 decoded = struct.unpack(">d" if endianness == "big" else "<d", data)[0]
@@ -168,11 +195,7 @@ class RegisterDef:
         if self.bcd:
             try:
                 t = bcd_to_time(raw)
-            except (ValueError, TypeError) as err:  # pragma: no cover - defensive
-                _LOGGER.debug("Invalid BCD value %s: %s", raw, err)
-                return value
-            except Exception as err:  # pragma: no cover - unexpected
-                _LOGGER.exception("Unexpected error decoding BCD value %s: %s", raw, err)
+            except Exception:  # pragma: no cover - defensive
                 return value
             return f"{t.hour:02d}:{t.minute:02d}"
 
@@ -293,11 +316,13 @@ Register = RegisterDef
 # ---------------------------------------------------------------------------
 
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
+_SPECIAL_MODES_ENUM: dict[str, int]
 try:  # pragma: no cover - defensive
     _SPECIAL_MODES_ENUM = {
         key.split("_")[-1]: idx
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
+except Exception:  # pragma: no cover - defensive
 except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
     _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
@@ -326,10 +351,8 @@ def _load_registers_from_file(
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
-    except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
+    except Exception as err:  # pragma: no cover - defensive
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
-    except Exception as err:  # pragma: no cover - unexpected
-        raise RuntimeError(f"Unexpected error reading register definitions from {path}") from err
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
@@ -390,6 +413,11 @@ def _load_registers_from_file(
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
+    """Return the SHA256 hash of ``path`` and cache the result."""
+
+    global _cached_file_info
+    path_str = str(path)
+    if _cached_file_info and _cached_file_info[0] == path_str and _cached_file_info[1] == mtime:
     """Return the SHA256 hash of ``path``.
 
     The hash is cached using ``(path_str, mtime, hash)`` so the file is only
@@ -410,6 +438,18 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     return digest
 
 
+
+def load_registers() -> list[RegisterDef]:
+    """Return cached register definitions, reloading if the file changed."""
+    stat = _REGISTERS_PATH.stat()
+    mtime = stat.st_mtime
+    path_str = str(_REGISTERS_PATH)
+    if not (
+        _cached_file_info
+        and _cached_file_info[0] == path_str
+        and _cached_file_info[1] == mtime
+    ):
+        _compute_file_hash(_REGISTERS_PATH, mtime)
 def _get_file_info() -> tuple[float, str]:
     """Return ``(mtime, hash)`` for the registers file using a cache."""
 
@@ -438,7 +478,8 @@ def load_registers() -> list[RegisterDef]:
 def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
 
-    Exposed for tests and tooling that need to reload register definitions.
+    Exposed for tests and tooling that need to reload register
+    definitions.
     """
 
     global _cached_file_info
@@ -465,11 +506,21 @@ def get_registers_by_function(fn: str) -> list[RegisterDef]:
 
 def get_registers_hash() -> str:
     """Return the hash of the currently loaded register file."""
-
     try:
+        stat = _REGISTERS_PATH.stat()
+    except OSError:  # pragma: no cover - defensive
         return _get_file_info()[1]
     except Exception:  # pragma: no cover - defensive
         return ""
+    mtime = stat.st_mtime
+    path_str = str(_REGISTERS_PATH)
+    if (
+        _cached_file_info
+        and _cached_file_info[0] == path_str
+        and _cached_file_info[1] == mtime
+    ):
+        return _cached_file_info[2]
+    return _compute_file_hash(_REGISTERS_PATH, mtime)
 
 
 @lru_cache(maxsize=1)
@@ -491,34 +542,9 @@ class ReadPlan:
     length: int
 
 
-def _group_reads(addresses: Iterable[int], max_block_size: int) -> list[tuple[int, int]]:
-    """Group raw addresses into contiguous blocks up to ``max_block_size``."""
-
-    sorted_addrs = sorted(set(addresses))
-    if not sorted_addrs:
-        return []
-
-    blocks: list[tuple[int, int]] = []
-    start = prev = sorted_addrs[0]
-    for addr in sorted_addrs[1:]:
-        if addr != prev + 1 or addr - start + 1 > max_block_size:
-            blocks.append((start, prev - start + 1))
-            start = addr
-        prev = addr
-    blocks.append((start, prev - start + 1))
-
-    result: list[tuple[int, int]] = []
-    for s, length in blocks:
-        while length > max_block_size:
-            result.append((s, max_block_size))
-            s += max_block_size
-            length -= max_block_size
-        result.append((s, length))
-    return result
-
-
 def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
+
 
     from ..modbus_helpers import group_reads as _group_reads_fn
 
@@ -526,6 +552,11 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
     regs_by_fn: dict[str, list[int]] = {}
 
     for reg in load_registers():
+        addr_range = range(reg.address, reg.address + reg.length)
+        regs_by_fn.setdefault(reg.function, []).extend(addr_range)
+
+    for fn, addrs in regs_by_fn.items():
+        for start, length in _group_reads(addrs, max_block_size=max_block_size):
         regs_by_fn.setdefault(reg.function, []).extend(
             range(reg.address, reg.address + reg.length)
         )
