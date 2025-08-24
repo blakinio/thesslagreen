@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 # Shared grouping helper
-from ..modbus_helpers import group_reads as _group_reads
+from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -89,10 +89,6 @@ class RegisterDef:
                 for word in raw_list:
                     buffer.extend(word.to_bytes(2, "big"))
                 return buffer.rstrip(b"\x00").decode(encoding)
-                buf = bytearray()
-                for word in raw_list:
-                    buf.extend(word.to_bytes(2, "big"))
-                return bytes(buf).rstrip(b"\x00").decode(encoding)
 
             endianness = "big"
             if self.extra:
@@ -397,6 +393,7 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     The hash is cached using ``(path_str, mtime, hash)`` so the file is only
     read when its modification time changes.
     """
+    """Return the SHA256 hash of ``path`` and cache the result."""
 
     global _cached_file_info
     path_str = str(path)
@@ -514,7 +511,7 @@ def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
     for fn, addresses in regs_by_fn.items():
-        for start, length in _group_reads(addresses, max_block_size=max_block_size):
+        for start, length in group_reads(addresses, max_block_size=max_block_size):
             plans.append(ReadPlan(fn, start, length))
 
     return plans
