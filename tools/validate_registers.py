@@ -108,7 +108,7 @@ def validate(path: Path) -> list[RegisterDefinition]:
     for reg in parsed_list.root:
         # Function/access combinations
         if reg.function in {1, 2} and reg.access != "R":
-            raise ValueError(f"{reg.name}: read-only functions must have R access")
+            raise ValueError(f"{reg.name}: functions 1 and 2 must have R access")
 
         # Enforce type/length relationships
         if reg.type is not None:

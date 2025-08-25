@@ -23,6 +23,23 @@ def test_register_json_schema() -> None:
             assert reg["access"] == "R"
         if reg.get("enum") is not None:
             enum = reg["enum"]
+            assert enum is None or isinstance(enum, dict)
+            if enum:
+                for key, val in enum.items():
+                    assert isinstance(key, str)
+                    assert isinstance(val, (int, str))
+        if "multiplier" in reg:
+            mult = reg["multiplier"]
+            assert mult is None or isinstance(mult, (int, float))
+            if mult is not None:
+                assert mult > 0
+        if "resolution" in reg:
+            res = reg["resolution"]
+            assert res is None or isinstance(res, (int, float))
+            if res is not None:
+                assert res > 0
+        if "access" in reg:
+            assert reg["access"] in {"R", "RW", "W"}
             assert isinstance(enum, dict) and enum
             for key, val in enum.items():
                 assert isinstance(key, str)

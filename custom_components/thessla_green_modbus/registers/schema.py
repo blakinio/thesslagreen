@@ -144,6 +144,18 @@ class RegisterDefinition(pydantic.BaseModel):
             fn_int = _normalise_function(data["function"])
             data["function"] = fn_int
 
+        # Normalise access values to canonical form
+        access = data.get("access")
+        if access is not None:
+            if access in {"R/-", "R"}:
+                data["access"] = "R"
+            elif access in {"R/W", "RW"}:
+                data["access"] = "RW"
+            elif access == "W":
+                data["access"] = "W"
+            else:
+                raise ValueError("access must be one of 'R', 'RW', 'W'")
+
         # Normalise address_dec
         addr_dec = data.get("address_dec")
         if addr_dec is not None:
@@ -238,6 +250,9 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("string type requires length >= 1")
             elif self.length != expected:
                 raise ValueError("length does not match type")
+
+        if self.function in {1, 2} and self.access != "R":
+            raise ValueError("functions 1 and 2 must have R access")
 
         if self.enum is not None:
             if not isinstance(self.enum, dict):

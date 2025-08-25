@@ -321,7 +321,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
     # Minimal util.logging stub for pytest plugin compatibility
     util = types.ModuleType("homeassistant.util")
+    util.__path__ = []  # type: ignore[attr-defined]
     util_logging = types.ModuleType("homeassistant.util.logging")
+    util_network = types.ModuleType("homeassistant.util.network")
     util_dt = types.ModuleType("homeassistant.util.dt")
 
     def log_exception(*args, **kwargs):  # pragma: no cover - simple no-op
@@ -334,6 +336,8 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     util.dt = util_dt
     util_dt.utcnow = utcnow
     util_dt.now = utcnow
+    util.network = util_network
+    util_network.is_host_valid = lambda *_args, **_kwargs: True
     util.logging = util_logging
     util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
     ha.util = util
@@ -352,22 +356,28 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.util"] = util
     sys.modules["homeassistant.util.dt"] = util_dt
     sys.modules["homeassistant.util.logging"] = util_logging
+    sys.modules["homeassistant.util.network"] = util_network
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
     sys.modules["homeassistant.helpers.config_validation"] = cv
     sys.modules["homeassistant.helpers.selector"] = selector
     # Minimal util logging stub required by pytest_homeassistant_custom_component
     util = types.ModuleType("homeassistant.util")
+    util.__path__ = []  # type: ignore[attr-defined]
     util_logging = types.ModuleType("homeassistant.util.logging")
+    util_network = types.ModuleType("homeassistant.util.network")
 
     def log_exception(_format_err, *args):  # pragma: no cover - simple stub
         return None
 
     util_logging.log_exception = log_exception
+    util.network = util_network
+    util_network.is_host_valid = lambda *_args, **_kwargs: True
     util.logging = util_logging
     util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
     ha.util = util
     sys.modules["homeassistant.util"] = util
     sys.modules["homeassistant.util.logging"] = util_logging
+    sys.modules["homeassistant.util.network"] = util_network
     sys.modules["homeassistant.helpers.translation"] = translation
     sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
     helpers_pkg.translation = translation
