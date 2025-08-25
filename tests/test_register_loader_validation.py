@@ -52,7 +52,7 @@ RegisterDefinition = _load_schema()
 EXPECTED = {
     "01": {"min": 5, "max": 15, "count": 8},
     "02": {"min": 0, "max": 21, "count": 16},
-    "03": {"min": 0, "max": 8444, "count": 270},
+    "03": {"min": 0, "max": 8444, "count": 271},
     "04": {"min": 0, "max": 298, "count": 24},
 }
 
@@ -65,7 +65,6 @@ PDF_OMISSIONS: set[tuple[str, int]] = {
     ("04", 27),
     ("04", 28),
     ("04", 29),
-    ("03", 241),
     ("03", 8145),
     ("03", 8146),
     ("03", 8147),
