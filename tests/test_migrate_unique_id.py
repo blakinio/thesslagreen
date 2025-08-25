@@ -19,7 +19,7 @@ def test_migrate_unique_id_with_serial():
         port=PORT,
         slave_id=SLAVE,
     )
-    assert new_uid == f"{DOMAIN}_{SLAVE}_{REGISTER_ADDRESS}"
+    assert new_uid == f"{SLAVE}_{REGISTER_ADDRESS}"
 
 
 def test_migrate_unique_id_without_serial():
@@ -31,7 +31,7 @@ def test_migrate_unique_id_without_serial():
         port=PORT,
         slave_id=SLAVE,
     )
-    assert new_uid == f"{DOMAIN}_{SLAVE}_{REGISTER_ADDRESS}"
+    assert new_uid == f"{SLAVE}_{REGISTER_ADDRESS}"
 
 
 def test_migrate_unique_id_register_name_to_address():
@@ -43,4 +43,4 @@ def test_migrate_unique_id_register_name_to_address():
         port=PORT,
         slave_id=SLAVE,
     )
-    assert new_uid == f"{DOMAIN}_{SLAVE}_{REGISTER_ADDRESS}"
+    assert new_uid == f"{SLAVE}_{REGISTER_ADDRESS}"
