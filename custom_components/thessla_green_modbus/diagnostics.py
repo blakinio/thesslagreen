@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 
-from custom_components.thessla_green_modbus.registers.loader import (
+from .registers.loader import (
     _REGISTERS_PATH,
     get_all_registers,
     registers_sha256,

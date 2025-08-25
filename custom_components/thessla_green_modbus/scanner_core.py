@@ -9,7 +9,7 @@ import logging
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, Optional, Self, Tuple, cast
 
-from custom_components.thessla_green_modbus.registers.loader import (
+from .registers.loader import (
     _REGISTERS_PATH,
     get_all_registers,
     registers_sha256,

@@ -17,7 +17,7 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from custom_components.thessla_green_modbus.registers.loader import (
+from .registers.loader import (
     get_registers_by_function,
 )
 

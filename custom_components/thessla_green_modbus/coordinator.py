@@ -78,7 +78,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from pymodbus.client import AsyncModbusTcpClient
 
-from custom_components.thessla_green_modbus.registers.loader import (
+from .registers.loader import (
     get_all_registers,
     get_registers_by_function,
 )

@@ -137,7 +137,7 @@ urządzenie – używaj jej tylko do diagnostyki.
 Funkcja `group_reads` dzieli listę adresów na ciągłe bloki ograniczone parametrem `max_block_size` (domyślnie 16). Własne skrypty powinny z niej korzystać, aby minimalizować liczbę zapytań i nie przekraczać zalecanego rozmiaru bloku.
 
 ```python
-from custom_components.thessla_green_modbus.modbus_helpers import group_reads
+from .modbus_helpers import group_reads
 
 for start, size in group_reads(range(100), max_block_size=16):
     print(start, size)
