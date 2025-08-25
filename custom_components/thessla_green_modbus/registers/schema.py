@@ -198,6 +198,11 @@ class RegisterDefinition(pydantic.BaseModel):
                 else:
                     data["length"] = expected
 
+        if data.get("multiplier") is None:
+            data["multiplier"] = 1
+        if data.get("resolution") is None:
+            data["resolution"] = 1
+
         return data
 
     @pydantic.field_validator("function")
@@ -228,7 +233,7 @@ class RegisterDefinition(pydantic.BaseModel):
             elif self.length != expected:
                 raise ValueError("length does not match type")
 
-        if self.function in {1, 2} and self.access not in {"R", "R/-"}:
+        if self.function != 3 and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
         if self.enum is not None:
