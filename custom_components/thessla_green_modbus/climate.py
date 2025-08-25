@@ -73,19 +73,17 @@ async def async_setup_entry(
 
     # Create climate entity if basic control is available or if the full
     # register list is forced and required registers exist in the map.
-    has_basic = coordinator.capabilities.basic_control
-    if not has_basic and coordinator.force_full_register_list:
-        holding_map = coordinator._register_maps.get("holding_registers", {})
-        has_basic = "mode" in holding_map and "on_off_panel_mode" in holding_map
+    holding_map = coordinator._register_maps.get("holding_registers", {})
+    has_basic = coordinator.capabilities.basic_control or (
+        coordinator.force_full_register_list and {"mode", "on_off_panel_mode"} <= holding_map.keys()
+    )
 
     if has_basic:
         entities = [ThesslaGreenClimate(coordinator)]
         try:
             async_add_entities(entities, True)
         except asyncio.CancelledError:
-            _LOGGER.warning(
-                "Cancelled while adding climate entity, retrying without initial state"
-            )
+            _LOGGER.warning("Cancelled while adding climate entity, retrying without initial state")
             async_add_entities(entities, False)
             return
         _LOGGER.info("Climate entity created for %s", coordinator.device_name)
@@ -168,7 +166,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             value = data.get(key)
             if isinstance(value, (int, float)):
                 return float(value)
-
 
         value = data.get("comfort_temperature")
         if isinstance(value, (int, float)):
@@ -283,9 +280,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             )
         else:
 
-            await self.coordinator.async_write_register(
-                "on_off_panel_mode", 1, refresh=False
-            )
+            await self.coordinator.async_write_register("on_off_panel_mode", 1, refresh=False)
 
             # Turn on device first and capture result
             power_on_success = await self.coordinator.async_write_register(

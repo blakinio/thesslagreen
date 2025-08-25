@@ -51,13 +51,14 @@ async def async_setup_entry(
         register_type = sensor_def["register_type"]
         register_name = sensor_def.get("register", key)
 
+        register_map = coordinator._register_maps.get(register_type, {})
         available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in coordinator._register_maps.get(register_type, {})
+        force_create = coordinator.force_full_register_list and register_name in register_map
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
         if register_name in available or force_create:
-            address = coordinator._register_maps.get(register_type, {}).get(register_name)
+            address = register_map.get(register_name)
             entities.append(
                 ThesslaGreenBinarySensor(
                     coordinator,

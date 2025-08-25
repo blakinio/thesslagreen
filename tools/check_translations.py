@@ -118,9 +118,8 @@ def main() -> int:
         data = _load(lang)
         problems.extend(_check_options(data, lang))
         problems.extend(_check_strings(data, strings, lang))
-        if lang != BASE_LANG:
-            problems.extend(_check_diagnostics(data, ref, lang))
-            problems.extend(_check_errors(data, ref, lang))
+        problems.extend(_check_diagnostics(data, ref, lang))
+        problems.extend(_check_errors(data, ref, lang))
 
     if problems:
         for p in problems:

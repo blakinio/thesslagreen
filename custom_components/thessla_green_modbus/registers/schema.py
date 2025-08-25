@@ -9,8 +9,8 @@ new capabilities while keeping the validation logic focused and explicit.
 
 Key features implemented:
 
-* ``function`` accepts integers or strings and is normalised to a two digit
-  string (``"01"`` … ``"04"``).
+* ``function`` accepts integers or strings and is normalised to the canonical
+  integer form (``1`` … ``4``).
 * ``address_dec`` may be provided as either an integer or string.  A canonical
   ``0x`` prefixed form is stored in ``address_hex`` and the two representations
   are cross‑checked for consistency.
@@ -25,6 +25,7 @@ from enum import Enum
 from typing import Any, Literal
 
 import pydantic
+from pydantic import AliasChoices, Field
 
 from ..utils import _normalise_name
 
@@ -105,7 +106,7 @@ _TYPE_LENGTHS: dict[str, int | None] = {
 class RegisterDefinition(pydantic.BaseModel):
     """Schema describing a raw register definition from JSON."""
 
-    function: str
+    function: int
     address_dec: int
     address_hex: str
     name: str
@@ -122,7 +123,7 @@ class RegisterDefinition(pydantic.BaseModel):
     notes: str | None = None
     information: str | None = None
     extra: dict[str, Any] | None = None
-    length: int = 1
+    length: int = Field(1, validation_alias=AliasChoices("length", "count"))
     bcd: bool = False
     bits: list[Any] | None = None
     type: RegisterType | None = None
@@ -138,13 +139,10 @@ class RegisterDefinition(pydantic.BaseModel):
     def _normalise_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Normalise raw input from JSON."""
 
-        if "count" in data and "length" not in data:
-            data["length"] = data.pop("count")
-
-        # Normalise function code -> two digit string
+        # Normalise function code -> canonical integer
         if "function" in data:
             fn_int = _normalise_function(data["function"])
-            data["function"] = f"{fn_int:02d}"
+            data["function"] = fn_int
 
         # Normalise address_dec
         addr_dec = data.get("address_dec")
@@ -174,12 +172,11 @@ class RegisterDefinition(pydantic.BaseModel):
         typ = data.pop("type", None)
         extra = data.get("extra")
         if typ is None and isinstance(extra, dict):
-            typ = extra.pop("type", None)
-            if not extra:
-                data.pop("extra")
-        elif extra is None:
+            typ = extra.get("type")
+        if extra is None:
             extra = {}
         if typ is not None:
+            extra.setdefault("type", typ)
             data["type"] = typ
         if extra:
             data["extra"] = extra
@@ -205,9 +202,9 @@ class RegisterDefinition(pydantic.BaseModel):
 
     @pydantic.field_validator("function")
     @classmethod
-    def _check_function(cls, v: str) -> str:  # pragma: no cover - defensive
-        if v not in {"01", "02", "03", "04"}:
-            raise ValueError("function code must be between 01 and 04")
+    def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
+        if v not in {1, 2, 3, 4}:
+            raise ValueError("function code must be between 1 and 4")
         return v
 
     # ------------------------------------------------------------------
@@ -231,7 +228,7 @@ class RegisterDefinition(pydantic.BaseModel):
             elif self.length != expected:
                 raise ValueError("length does not match type")
 
-        if self.function in {"01", "02"} and self.access not in {"R", "R/-"}:
+        if self.function in {1, 2} and self.access not in {"R", "R/-"}:
             raise ValueError("read-only functions must have R access")
 
         if self.enum is not None:
@@ -248,7 +245,7 @@ class RegisterDefinition(pydantic.BaseModel):
         if self.bits is not None:
             if len(self.bits) > 16:
                 raise ValueError("bits exceed 16 entries")
-            seen: set[int] = set()
+            seen_indices: set[int] = set()
             for bit in self.bits:
                 if not isinstance(bit, dict):
                     raise ValueError("bits entries must be objects")
@@ -260,11 +257,11 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("bit index must be an integer")
                 if not 0 <= idx <= 15:
                     raise ValueError("bit index out of range")
-                if idx in seen:
+                if idx in seen_indices:
                     raise ValueError("bit indices must be unique")
-                seen.add(idx)
                 if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
                     raise ValueError("bit name must be snake_case")
+                seen_indices.add(idx)
 
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("min greater than max")
@@ -273,7 +270,26 @@ class RegisterDefinition(pydantic.BaseModel):
                 raise ValueError("default below min")
             if self.max is not None and self.default > self.max:
                 raise ValueError("default above max")
+            bitmask_val = self.extra.get("bitmask") if self.extra else None
+            mask_int: int | None = None
+            if isinstance(bitmask_val, str):
+                try:
+                    mask_int = int(bitmask_val, 0)
+                except ValueError:
+                    mask_int = None
+            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+                mask_int = bitmask_val
 
+            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
+                raise ValueError("bits exceed bitmask width")
+
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("min greater than max")
+        if self.default is not None:
+            if self.min is not None and self.default < self.min:
+                raise ValueError("default below min")
+            if self.max is not None and self.default > self.max:
+                raise ValueError("default above max")
         return self
 
     @pydantic.field_validator("name")

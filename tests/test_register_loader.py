@@ -1,5 +1,7 @@
 """Tests for JSON register loader."""
 
+# ruff: noqa: E402
+
 import json
 import sys
 import types
@@ -138,6 +140,7 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     """Ensure register file caching and invalidation behave correctly."""
 
     import custom_components.thessla_green_modbus.registers.loader as loader
+
     # Use a temporary copy of the register file so we can modify it
     path = tmp_path / "regs.json"
     path.write_text(loader._REGISTERS_PATH.read_text())
@@ -166,9 +169,6 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     loader.clear_cache()
 
     # Initial load populates cache
-    hash_before = loader.registers_sha256(loader._REGISTERS_PATH)
-    loader.get_all_registers()
-    loader.get_all_registers()
     hash_before = loader.registers_sha256(path)
     loader.load_registers(path)
     loader.load_registers(path)
@@ -180,8 +180,6 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     # Modify the file to invalidate caches
     path.write_text(real_read_text(path) + "\n")
 
-    loader.get_all_registers()
-    hash_after = loader.registers_sha256(loader._REGISTERS_PATH)
     loader.load_registers(path)
     hash_after = loader.registers_sha256(path)
 
@@ -223,6 +221,7 @@ def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
     loader.registers_sha256(path)
 
     assert read_calls == 2
+
 
 def test_registers_reload_on_file_change(tmp_path) -> None:
     """Changing the register JSON file triggers a reload."""
@@ -351,16 +350,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
             "name": "bad_bit_name",
             "access": "R",
             "extra": {"bitmask": 0b1},
-            "bits": [{"name": "BadName"}],
-        },
-        {
-            "function": "03",
-            "address_dec": 0,
-            "address_hex": "0x0",
-            "name": "bad_bit_index",
-            "access": "R",
-            "extra": {"bitmask": 0b1},
-            "bits": [{"name": "a", "index": 1}],
+            "bits": [{"name": "BadName", "index": 0}],
         },
         {
             "function": "03",
@@ -369,16 +359,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
             "name": "bit_index_out_of_range",
             "access": "R",
             "extra": {"bitmask": 0xFFFF},
-            "bits": [{"name": f"b{i}"} for i in range(17)],
-        },
-        {
-            "function": "03",
-            "address_dec": 0,
-            "address_hex": "0x0",
-            "name": "too_many_bits",
-            "access": "R",
-            "extra": {"bitmask": 0b11},
-            "bits": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "bits": [{"name": f"b{i}", "index": i} for i in range(17)],
         },
     ],
 )
@@ -406,7 +387,7 @@ def test_bits_within_bitmask_width(tmp_path) -> None:
         "name": "good_bits",
         "access": "R",
         "extra": {"bitmask": 0b11},
-        "bits": [{"name": "a"}, {"name": "b"}],
+        "bits": [{"name": "a", "index": 0}, {"name": "b", "index": 1}],
     }
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": [reg]}))

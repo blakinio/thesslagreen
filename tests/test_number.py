@@ -99,6 +99,7 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
         self.capabilities = SimpleNamespace(basic_control=False)
         self.client = None
         self.slave_id = args[3] if len(args) > 3 else kwargs.get("slave_id", 0)
+        self._register_maps = {"holding_registers": HOLDING_REGISTERS}
 
     async def _ensure_connection(self):
         return None
@@ -111,7 +112,7 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
 
     async def async_write_register(self, *args, **kwargs):
         register, value = args[0], args[1]
-        address = HOLDING_REGISTERS[register]
+        address = self._register_maps["holding_registers"][register]
         definition = get_register_definition(register)
         raw = definition.encode(value)
         await self.client.write_register(address, raw, slave=self.slave_id)
@@ -264,9 +265,7 @@ def test_number_invalid_register_raises(mock_coordinator):
 
 @pytest.mark.asyncio
 @patch.dict(ENTITY_MAPPINGS["number"], {"invalid_register": {}}, clear=False)
-async def test_async_setup_skips_unknown_register(
-    mock_coordinator, mock_config_entry
-):
+async def test_async_setup_skips_unknown_register(mock_coordinator, mock_config_entry):
     """Ensure setup skips registers missing from HOLDING_REGISTERS."""
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
@@ -278,9 +277,7 @@ async def test_async_setup_skips_unknown_register(
 
 
 @pytest.mark.asyncio
-async def test_force_full_register_list_adds_missing_number(
-    mock_coordinator, mock_config_entry
-):
+async def test_force_full_register_list_adds_missing_number(mock_coordinator, mock_config_entry):
     """Number entities are created from register map when forcing full list."""
 
     hass = MagicMock()
@@ -297,8 +294,13 @@ async def test_force_full_register_list_adds_missing_number(
 
     number_map = {"max_supply_air_flow_rate": {"translation_key": "max"}}
 
-    with patch.dict(ENTITY_MAPPINGS["number"], number_map, clear=True), patch.dict(
-        number_module.HOLDING_REGISTERS, {"max_supply_air_flow_rate": 1}, clear=True
+    with (
+        patch.dict(ENTITY_MAPPINGS["number"], number_map, clear=True),
+        patch.dict(
+            mock_coordinator._register_maps["holding_registers"],
+            {"max_supply_air_flow_rate": 1},
+            clear=True,
+        ),
     ):
         add_entities = MagicMock()
         await async_setup_entry(hass, mock_config_entry, add_entities)

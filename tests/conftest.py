@@ -12,6 +12,7 @@ import pytest
 
 try:
     from homeassistant.util import dt as _ha_dt  # noqa: F401
+
     importlib.import_module("homeassistant.util")  # ensure util submodule is loaded for plugins
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
@@ -29,8 +30,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     service_helper = types.ModuleType("homeassistant.helpers.service")
     entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
+
     def _async_entries_for_config_entry(*args, **kwargs):
         return []
+
     entity_registry.async_entries_for_config_entry = _async_entries_for_config_entry
     script_helper = types.ModuleType("homeassistant.helpers.script")
     script_helper._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
@@ -99,6 +102,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         @property
         def native_unit_of_measurement(self):
             return getattr(self, "_attr_native_unit_of_measurement", None)
+
     sensor_comp.SensorDeviceClass = SensorDeviceClass
     sensor_comp.SensorStateClass = SensorStateClass
     sensor_comp.SensorEntity = SensorEntity
@@ -133,7 +137,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             return None
 
         def add_update_listener(self, listener):
-             return listener
+            return listener
 
         def async_on_unload(self, func):
             return func
@@ -469,6 +473,7 @@ def mock_coordinator():
         "coil_registers": COIL_REGISTERS,
         "discrete_inputs": DISCRETE_INPUT_REGISTERS,
     }
+    coordinator.force_full_register_list = False
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     return coordinator
