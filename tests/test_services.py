@@ -6,8 +6,10 @@ import os
 import sys
 import types
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
+from unittest.mock import ANY, AsyncMock, call as call_obj
 
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -189,6 +191,7 @@ class AsyncModbusTcpClient:
 
 
 pymodbus_client_tcp.AsyncModbusTcpClient = AsyncModbusTcpClient
+pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
 pymodbus_client.tcp = pymodbus_client_tcp
 
 pymodbus_exceptions.ModbusException = ModbusException
@@ -268,4 +271,59 @@ def test_get_coordinator_from_entity_id_multiple_devices():
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev1") is coord1
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev2") is coord2
 
+class Services:
+    """Minimal service registry for tests."""
 
+    def __init__(self) -> None:
+        self.handlers: dict[str, Any] = {}
+
+    def async_register(self, _domain, service, handler, _schema):  # pragma: no cover
+        self.handlers[service] = handler
+
+
+class DummyCoordinator:
+    """Coordinator stub capturing offset writes."""
+
+    def __init__(self) -> None:
+        self.async_write_register = AsyncMock(return_value=True)
+        self.effective_batch = 2
+
+    async def async_request_refresh(self) -> None:  # pragma: no cover - stub
+        pass
+
+
+@pytest.mark.asyncio
+async def test_set_device_name_uses_offsets(monkeypatch):
+    """Service chunks multi-register writes with offsets."""
+
+    hass = SimpleNamespace()
+    hass.services = Services()
+    coordinator = DummyCoordinator()
+
+    monkeypatch.setattr(
+        services_module,
+        "_get_coordinator_from_entity_id",
+        lambda _h, _e: coordinator,
+    )
+    monkeypatch.setattr(
+        services_module,
+        "async_extract_entity_ids",
+        lambda _h, call: call.data["entity_id"],
+    )
+    monkeypatch.setattr(services_module, "ServiceCall", SimpleNamespace)
+
+    await services_module.async_setup_services(hass)
+    handler = hass.services.handlers["set_device_name"]
+
+    call = SimpleNamespace(
+        data={"entity_id": ["climate.dev"], "device_name": "ABCDEFGH"}
+    )
+
+    await handler(call)
+
+    coordinator.async_write_register.assert_has_calls(
+        [
+            call_obj("device_name", ANY, refresh=False, offset=0),
+            call_obj("device_name", ANY, refresh=False, offset=2),
+        ]
+    )
