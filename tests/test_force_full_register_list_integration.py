@@ -21,7 +21,7 @@ if not hasattr(binary_sensor_mod, "BinarySensorEntity"):
 
 ha_const.STATE_UNAVAILABLE = "unavailable"
 
-from custom_components.thessla_green_modbus import binary_sensor, sensor
+from custom_components.thessla_green_modbus import binary_sensor, sensor  # noqa: E402
 
 SENSOR_MAP = {
     "outside_temperature": {
@@ -145,7 +145,8 @@ def test_force_full_register_list_integration():
         ), patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True), patch.dict(
             binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True
         ), patch.dict(
-            sys.modules, {"custom_components.thessla_green_modbus.loader": MagicMock()}
+            sys.modules,
+            {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
         ), patch(
             "custom_components.thessla_green_modbus.services.async_setup_services",
             AsyncMock(),
@@ -188,7 +189,8 @@ def test_force_full_register_list_integration():
         ), patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True), patch.dict(
             binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True
         ), patch.dict(
-            sys.modules, {"custom_components.thessla_green_modbus.loader": MagicMock()}
+            sys.modules,
+            {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
         ), patch(
             "custom_components.thessla_green_modbus.services.async_setup_services",
             AsyncMock(),
