@@ -12,7 +12,18 @@ from custom_components.thessla_green_modbus.registers.loader import (
 )
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 
+# Build a register map similar to what the coordinator exposes.  The schedule
+# related registers used by the services are added manually as they are not
+# present in the extracted list.
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
+HOLDING_REGISTERS.update(
+    {
+        "schedule_monday_period1_start": 0,
+        "schedule_monday_period1_end": 1,
+        "schedule_monday_period1_flow": 2,
+        "schedule_monday_period1_temp": 3,
+    }
+)
 
 
 class DummyCoordinator:
@@ -20,7 +31,8 @@ class DummyCoordinator:
 
     def __init__(self, max_registers_per_request: int = MAX_BATCH_REGISTERS) -> None:
         self.slave_id = 1
-        self.writes = []
+        self.writes: list[tuple[int, object, int]] = []
+        self.encoded: list[tuple[int, object, int]] = []
         self.available_registers = {"holding_registers": set()}
         self.max_registers_per_request = max_registers_per_request
         self.effective_batch = min(max_registers_per_request, MAX_BATCH_REGISTERS)
@@ -33,10 +45,19 @@ class DummyCoordinator:
                 self.writes.append((address + offset, chunk, self.slave_id))
         else:
             self.writes.append((address, value, self.slave_id))
-        definition = get_register_definition(register_name)
-        encoded = definition.encode(value)
-        address = HOLDING_REGISTERS[register_name]
-        self.writes.append((address, encoded, self.slave_id))
+
+        # Capture the encoded value separately so tests can assert multiplier
+        # scaling and endianness behaviour.  Unknown registers are simply
+        # ignored which mirrors the coordinator's behaviour when a register is
+        # not defined in the JSON map.
+        try:
+            definition = get_register_definition(register_name)
+            encoded = definition.encode(value)
+            self.encoded.append((address, encoded, self.slave_id))
+        except Exception:  # pragma: no cover - defensive
+            pass
+
+        return True
 
     async def async_request_refresh(self) -> None:  # pragma: no cover - no behaviour
         pass
@@ -135,3 +156,24 @@ async def test_set_device_name_chunking(monkeypatch, batch, expected_chunks):
     for _addr, values, _ in coordinator.writes:
         if isinstance(values, list):
             assert len(values) <= coordinator.effective_batch
+
+
+@pytest.mark.asyncio
+async def test_write_register_scaling_and_endianness():
+    """Values passed to the coordinator are encoded correctly."""
+
+    coordinator = DummyCoordinator()
+
+    await coordinator.async_write_register("required_temperature", 22.5)
+    await coordinator.async_write_register("lock_pass", 0x01020304)
+
+    assert coordinator.encoded[0] == (
+        HOLDING_REGISTERS["required_temperature"],
+        45,
+        1,
+    )  # nosec: B101
+    assert coordinator.encoded[1] == (
+        HOLDING_REGISTERS["lock_pass"],
+        [0x0304, 0x0102],
+        1,
+    )  # nosec: B101

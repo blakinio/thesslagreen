@@ -1,15 +1,33 @@
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 
+import pytest
 
-def test_group_reads_respects_max_block_size() -> None:
-    """group_reads splits long address ranges based on ``max_block_size``."""
 
-    addresses = list(range(40))
-    scanner = ThesslaGreenDeviceScanner("host", 502)
+@pytest.mark.parametrize("limit", [1, 8, MAX_BATCH_REGISTERS, 32])
+def test_group_reads_respects_max_block_size(limit: int) -> None:
+    """group_reads splits long address ranges based on ``max_block_size``.
+
+    The scanner should respect the configured batch size while never
+    exceeding the Modbus safe limit of ``MAX_BATCH_REGISTERS`` even when a
+    higher value is requested by the user.
+    """
+
+    addresses = list(range(MAX_BATCH_REGISTERS + 8))
+    scanner = ThesslaGreenDeviceScanner(
+        "host", 502, max_registers_per_request=limit
+    )
     scanner._known_missing_addresses = set()
-    assert scanner._group_registers_for_batch_read(addresses) == [
-        (0, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS),
-        (MAX_BATCH_REGISTERS * 2, 40 - 2 * MAX_BATCH_REGISTERS),
-    ]
+
+    groups = scanner._group_registers_for_batch_read(addresses)
+
+    # No group should exceed the effective batch size which is clamped to the
+    # integration wide ``MAX_BATCH_REGISTERS`` constant.
+    assert max(length for _start, length in groups) <= min(limit, MAX_BATCH_REGISTERS)
+
+    # Requests larger than ``MAX_BATCH_REGISTERS`` are capped at the limit
+    # rather than using the oversized value directly.
+    if limit > MAX_BATCH_REGISTERS:
+        assert groups == scanner._group_registers_for_batch_read(
+            addresses, max_batch=MAX_BATCH_REGISTERS
+        )
