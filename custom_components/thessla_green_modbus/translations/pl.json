@@ -33,10 +33,10 @@
       "modbus_error": "Błąd komunikacji Modbus. Sprawdź okablowanie i ustawienia.",
       "timeout": "Przekroczono czas połączenia. Sprawdź host i port.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły.",
-      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16."
-      "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
-      "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
-    },
+        "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16.",
+        "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
+        "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
+      },
     "step": {
       "confirm": {
         "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia: {slave_id}. Wersja oprogramowania: {firmware_version}. Znalezione rejestry: {register_count}. Skuteczność skanowania: {scan_success_rate}. Możliwości ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Kontynuować z tą konfiguracją?",
@@ -53,10 +53,10 @@
           "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
         },
         "data_description": {
-          "host": "IP address of the AirPack device on your local network",
-          "name": "Device name in Home Assistant",
-          "port": "Modbus TCP port (default 502)",
-          "slave_id": "Modbus device ID (default 10)",
+          "host": "Adres IP urządzenia AirPack w lokalnej sieci",
+          "name": "Nazwa urządzenia w Home Assistant",
+          "port": "Port Modbus TCP (domyślnie 502)",
+          "slave_id": "ID urządzenia Modbus (domyślnie 10)",
           "deep_scan": "Odczytaj wszystkie rejestry do diagnostyki (może być wolne)",
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
         },

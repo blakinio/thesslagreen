@@ -224,6 +224,12 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("function code must be between 1 and 4")
         return v
 
+    @pydantic.model_validator(mode="after")
+    def _check_access(self) -> "RegisterDefinition":
+        if self.function in {1, 2} and self.access != "R":
+            raise ValueError("read-only functions must have R access")
+        return self
+
     # ------------------------------------------------------------------
     # Additional consistency checks
     # ------------------------------------------------------------------
