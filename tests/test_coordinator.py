@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.thessla_green_modbus.const import (
+    CONF_MAX_REGISTERS_PER_REQUEST,
     MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
@@ -227,6 +228,25 @@ def coordinator():
     )
     coordinator.available_registers = available_registers
     return coordinator
+
+
+def test_coordinator_clamps_effective_batch():
+    """Coordinator clamps batch size to ``MAX_BATCH_REGISTERS``."""
+    hass = MagicMock()
+    entry = ConfigEntry(
+        data={},
+        options={CONF_MAX_REGISTERS_PER_REQUEST: MAX_BATCH_REGISTERS + 8},
+    )
+    coord = ThesslaGreenModbusCoordinator(
+        hass=hass,
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        entry=entry,
+    )
+    assert coord.effective_batch == MAX_BATCH_REGISTERS
+    assert coord.max_registers_per_request == MAX_BATCH_REGISTERS
 
 
 @pytest.mark.asyncio
