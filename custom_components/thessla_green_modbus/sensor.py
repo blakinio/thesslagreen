@@ -55,7 +55,7 @@ async def async_setup_entry(
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
-        register_map = coordinator._register_maps.get(register_type, {})
+        register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
         force_create = coordinator.force_full_register_list and register_name in register_map
 

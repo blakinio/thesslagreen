@@ -241,6 +241,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_power_timestamp = dt_util.utcnow()
         self._total_energy = 0.0
 
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        """Return the register map for the given register type."""
+        return self._register_maps.get(register_type, {})
+
     async def _call_modbus(
         self, func: Callable[..., Any], *args: Any, attempt: int = 1, **kwargs: Any
     ) -> Any:
