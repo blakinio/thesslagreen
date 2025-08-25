@@ -12,22 +12,25 @@ def test_register_json_schema() -> None:
     data = json.loads(json_file.read_text(encoding="utf-8"))
     registers = data.get("registers", data) if isinstance(data, dict) else data
     assert isinstance(registers, list) and registers
-    required = {"function", "address_dec", "name"}
+    required = {"function", "address_dec", "name", "access"}
     for reg in registers:
         assert required <= reg.keys()
         assert isinstance(reg["function"], str)
         assert isinstance(reg["address_dec"], int)
         assert isinstance(reg["name"], str)
-        if "enum" in reg:
+        assert reg["access"] in {"R", "RW", "W"}
+        if reg["function"] in {"01", "02"}:
+            assert reg["access"] == "R"
+        if reg.get("enum") is not None:
             enum = reg["enum"]
             assert isinstance(enum, dict) and enum
             for key, val in enum.items():
                 assert isinstance(key, str)
                 assert isinstance(val, (int, str))
-        if "multiplier" in reg:
+        if reg.get("multiplier") is not None:
             assert isinstance(reg["multiplier"], (int, float))
             assert reg["multiplier"] > 0
-        if "resolution" in reg:
+        if reg.get("resolution") is not None:
             assert isinstance(reg["resolution"], (int, float))
             assert reg["resolution"] > 0
         if "notes" in reg:
