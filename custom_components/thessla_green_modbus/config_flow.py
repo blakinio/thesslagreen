@@ -108,12 +108,15 @@ class InvalidAuth(Exception):
 
 def _caps_to_dict(obj: Any) -> dict[str, Any]:
     """Return a JSON-serializable dict from a capabilities object."""
-
-    if hasattr(obj, "as_dict"):
-        data = obj.as_dict()
-    else:  # Fallback for older dataclass versions without as_dict()
+    if dataclasses.is_dataclass(obj):
         data = dataclasses.asdict(obj)
-    for key, value in data.items():
+    elif hasattr(obj, "as_dict"):
+        data = obj.as_dict()
+    elif isinstance(obj, dict):
+        data = dict(obj)
+    else:
+        data = {k: v for k, v in getattr(obj, "__dict__", {}).items()}
+    for key, value in list(data.items()):
         if isinstance(value, set):
             data[key] = sorted(value)
     return data
@@ -371,13 +374,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 caps_dict = _caps_to_dict(caps_obj)
             elif isinstance(caps_obj, dict):
                 try:
-                    caps_dict = cap_cls(**caps_obj).as_dict()
+                    caps_dict = _caps_to_dict(cap_cls(**caps_obj))
                 except (TypeError, ValueError):
-                    caps_dict = cap_cls().as_dict()
+                    caps_dict = _caps_to_dict(cap_cls())
             elif isinstance(caps_obj, cap_cls):
-                caps_dict = caps_obj.as_dict()
+                caps_dict = _caps_to_dict(caps_obj)
             else:
-                caps_dict = cap_cls().as_dict()
+                caps_dict = _caps_to_dict(cap_cls())
 
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility
