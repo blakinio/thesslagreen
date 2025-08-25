@@ -320,3 +320,50 @@ def test_type_defaults_length() -> None:
         }
     )
     assert reg.length == 2
+
+
+def test_address_dec_and_hex_formats() -> None:
+    """Decimal/hex address fields accept multiple input formats."""
+
+    reg = RegisterDefinition.model_validate(
+        {
+            "name": "x",
+            "function": 3,
+            "address_dec": "0x10",
+            "address_hex": "10",
+            "access": "R",
+        }
+    )
+    assert reg.address_dec == 16
+    assert reg.address_hex == "0x10"
+
+
+def test_address_hex_int() -> None:
+    """Hex addresses may be provided as integers."""
+
+    reg = RegisterDefinition.model_validate(
+        {
+            "name": "x",
+            "function": "03",
+            "address_dec": 16,
+            "address_hex": 16,
+            "access": "R",
+        }
+    )
+    assert reg.address_hex == "0x10"
+
+
+def test_type_length_mismatch() -> None:
+    """Providing an explicit length that disagrees with type fails."""
+
+    bad = {
+        "name": "x",
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "access": "R",
+        "type": "u16",
+        "length": 2,
+    }
+    with pytest.raises(pydantic.ValidationError):
+        RegisterDefinition.model_validate(bad)
