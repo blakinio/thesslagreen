@@ -391,7 +391,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
                     "capabilities": caps_dict,
                 },
-                options={CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)},
+                options={
+                    CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+                    CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
+                        CONF_MAX_REGISTERS_PER_REQUEST,
+                        DEFAULT_MAX_REGISTERS_PER_REQUEST,
+                    ),
+                },
             )
 
         # Prepare description with device info
@@ -569,14 +575,13 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
                     description={"advanced": True},
-                    selector={
-                        "number": {
-                            "min": 1,
-                            "max": MAX_BATCH_REGISTERS,
-                            "step": 1,
-                        }
-                    },
-                ): int,
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1,
+                        max=MAX_BATCH_REGISTERS,
+                        step=1,
+                    )
+                ),
             }
         )
 

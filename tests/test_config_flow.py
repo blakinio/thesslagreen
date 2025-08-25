@@ -64,6 +64,14 @@ loader_module.registers_sha256 = lambda *args, **kwargs: ""
 loader_module._REGISTERS_PATH = Path("dummy")
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_module)
 
+from custom_components.thessla_green_modbus.const import (
+    CONF_DEEP_SCAN,
+    CONF_SLAVE_ID,
+    CONF_MAX_REGISTERS_PER_REQUEST,
+    MAX_BATCH_REGISTERS,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
+)
+
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
     ConfigFlow,
@@ -371,6 +379,10 @@ async def test_form_user_success():
     assert isinstance(data["capabilities"], dict)
     assert data["capabilities"]["expansion_module"] is True
     assert result2["options"][CONF_DEEP_SCAN] is True
+    assert (
+        result2["options"][CONF_MAX_REGISTERS_PER_REQUEST]
+        == DEFAULT_MAX_REGISTERS_PER_REQUEST
+    )
 
 
 async def test_duplicate_entry_aborts():
