@@ -1,8 +1,8 @@
 """Test config entry migrations."""
 
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, Optional
 
-from .const import SENSOR_UNAVAILABLE, MAX_BATCH_REGISTERS
+from .const import MAX_BATCH_REGISTERS, SENSOR_UNAVAILABLE
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,

@@ -194,8 +194,9 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
 def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
     """registers_sha256 should avoid re-reading unchanged files."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
     import os
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text("data")

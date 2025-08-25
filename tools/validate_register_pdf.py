@@ -8,10 +8,10 @@ sync with the vendor documentation.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 import re
 from io import BytesIO
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 from urllib.request import urlopen
 
 import pdfplumber

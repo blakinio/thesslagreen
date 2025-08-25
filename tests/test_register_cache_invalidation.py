@@ -2,13 +2,13 @@ import json
 import os
 from pathlib import Path
 
+import custom_components.thessla_green_modbus.registers.loader as loader
 from custom_components.thessla_green_modbus.registers.loader import (
     _REGISTERS_PATH,
     clear_cache,
-    registers_sha256,
     load_registers,
+    registers_sha256,
 )
-import custom_components.thessla_green_modbus.registers.loader as loader
 
 
 def test_cache_invalidation_on_content_change(tmp_path: Path, monkeypatch) -> None:

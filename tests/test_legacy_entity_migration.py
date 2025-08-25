@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
 import logging
 import sys
 import types
+from dataclasses import dataclass, field
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

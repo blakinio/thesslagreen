@@ -6,9 +6,9 @@ import asyncio
 import dataclasses
 import ipaddress
 import logging
-from importlib import import_module
 import socket
 import traceback
+from importlib import import_module
 from typing import Any, Awaitable, Callable
 
 import voluptuous as vol
@@ -17,23 +17,25 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import selector, translation
+from homeassistant.helpers import translation
 from homeassistant.util.network import is_host_valid
 
 from .const import (
+    AIRFLOW_UNIT_M3H,
+    AIRFLOW_UNIT_PERCENTAGE,
+    CONF_AIRFLOW_UNIT,
+    CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
+    CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_RETRY,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
-    CONF_AIRFLOW_UNIT,
-    CONF_DEEP_SCAN,
-    CONF_MAX_REGISTERS_PER_REQUEST,
-    AIRFLOW_UNIT_M3H,
-    AIRFLOW_UNIT_PERCENTAGE,
     DEFAULT_AIRFLOW_UNIT,
+    DEFAULT_DEEP_SCAN,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
@@ -42,10 +44,8 @@ from .const import (
     DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
-    DEFAULT_DEEP_SCAN,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
-    MAX_BATCH_REGISTERS,
     DOMAIN,
+    MAX_BATCH_REGISTERS,
 )
 from .modbus_exceptions import (
     ConnectionException,

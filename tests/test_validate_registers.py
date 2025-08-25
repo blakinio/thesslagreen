@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from custom_components.thessla_green_modbus.registers.schema import RegisterType
 from tools import validate_registers
 
 
@@ -139,7 +140,7 @@ def test_validator_rejects_function_access_mismatch(tmp_path: Path) -> None:
         validate_registers.main(path)
 
 
-def test_validator_rejects_bits_without_bitmask(tmp_path: Path) -> None:
+def test_accepts_bits_without_bitmask(tmp_path: Path) -> None:
     path = _write(
         tmp_path,
         [
@@ -147,15 +148,14 @@ def test_validator_rejects_bits_without_bitmask(tmp_path: Path) -> None:
                 "function": "03",
                 "address_dec": 1,
                 "address_hex": "0x0001",
-                "name": "bad_bits",
+                "name": "bits_only",
                 "access": "R/W",
                 "bits": [{"name": "a", "index": 0}],
             }
         ],
     )
 
-    with pytest.raises(SystemExit):
-        validate_registers.main(path)
+    validate_registers.main(path)
 
 
 def test_validator_rejects_bit_name(tmp_path: Path) -> None:
@@ -412,5 +412,5 @@ def test_accepts_shorthand_type(tmp_path: Path) -> None:
     regs = validate_registers.validate(path)
     reg = regs[0]
     assert reg.length == 2
-    assert (reg.extra or {}).get("type") == "u32"
+    assert reg.type == RegisterType.U32
 

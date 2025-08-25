@@ -1,8 +1,11 @@
-import pytest
-from unittest.mock import AsyncMock, patch
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+import pytest
+
+from custom_components.thessla_green_modbus.scanner_core import (
+    ThesslaGreenDeviceScanner,
+)
 
 pytestmark = pytest.mark.asyncio
 
