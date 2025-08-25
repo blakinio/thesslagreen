@@ -47,11 +47,6 @@ from .const import PLATFORMS as PLATFORM_DOMAINS
 from .entity_mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 
-# Informational message for start-up logs
-REGISTER_FORMAT_MESSAGE = (
-    "Register definitions now use JSON format only; CSV support has been removed."
-)
-
 _LOGGER = logging.getLogger(__name__)
 
 # Legacy default port used before version 2 when explicit port was optional
@@ -114,7 +109,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
     from homeassistant.helpers.update_coordinator import UpdateFailed  # type: ignore
 
-    _LOGGER.info(REGISTER_FORMAT_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
     await hass.async_add_executor_job(import_module, ".config_flow", __name__)
