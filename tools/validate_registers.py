@@ -8,6 +8,8 @@ import sys
 import types
 from pathlib import Path
 
+import pydantic
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -144,6 +146,10 @@ def validate(path: Path) -> list[RegisterDefinition]:
         if int(reg.address_hex, 16) != reg.address_dec:
             raise ValueError(f"{reg.name}: address_hex does not match address_dec")
 
+    try:
+        parsed_list = RegisterList.model_validate(registers)
+    except pydantic.ValidationError as err:
+        raise ValueError(err) from err
     return parsed_list.root
 
 

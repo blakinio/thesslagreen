@@ -50,10 +50,10 @@ RegisterDefinition = _load_schema()
 
 
 EXPECTED = {
-    "01": {"min": 5, "max": 15, "count": 8},
-    "02": {"min": 0, "max": 21, "count": 16},
-    "03": {"min": 0, "max": 8444, "count": 271},
-    "04": {"min": 0, "max": 298, "count": 24},
+    1: {"min": 5, "max": 15, "count": 8},
+    2: {"min": 0, "max": 21, "count": 16},
+    3: {"min": 0, "max": 8444, "count": 271},
+    4: {"min": 0, "max": 298, "count": 24},
 }
 
 # Registers present in the vendor PDF but intentionally omitted in the JSON
@@ -137,7 +137,7 @@ def test_register_file_valid() -> None:
 
     parsed = [RegisterDefinition.model_validate(item) for item in registers]
 
-    by_fn: dict[str, list[int]] = {}
+    by_fn: dict[int, list[int]] = {}
     for reg in parsed:
         by_fn.setdefault(reg.function, []).append(reg.address_dec)
 
@@ -230,19 +230,19 @@ def test_schema_rejects_string_with_invalid_length(length: int) -> None:
         RegisterDefinition.model_validate(bad)
 
 
-def test_function_coerces_to_string() -> None:
-    """Integer function codes are normalised to two-digit strings."""
+def test_function_coerces_to_int() -> None:
+    """Function codes provided as strings become integers."""
 
     reg = RegisterDefinition.model_validate(
         {
             "name": "x",
-            "function": 3,
+            "function": "03",
             "address_dec": 0,
             "address_hex": "0x0",
             "access": "R",
         }
     )
-    assert reg.function == "03"
+    assert reg.function == 3
 
 
 def test_address_hex_mismatch() -> None:
