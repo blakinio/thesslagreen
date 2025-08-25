@@ -14,7 +14,9 @@ from typing import TYPE_CHECKING, cast
 import builtins
 from unittest.mock import patch as _patch
 
-builtins.patch = _patch
+# Only provide ``patch`` if it hasn't already been supplied by the test harness
+if not hasattr(builtins, "patch"):
+    builtins.patch = _patch
 
 try:  # Home Assistant may not be installed for external tooling
     from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
