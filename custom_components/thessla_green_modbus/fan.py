@@ -15,19 +15,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
-
-from .const import DOMAIN
+from .const import DOMAIN, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
-
-HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -59,9 +52,8 @@ async def async_setup_entry(
 
     # If force full register list, assume fan is available
     if not has_fan_registers and coordinator.force_full_register_list:
-        has_fan_registers = any(
-            register in HOLDING_REGISTERS for register in fan_registers[:2]
-        )  # Only check writable registers
+        h_regs = holding_registers()
+        has_fan_registers = any(register in h_regs for register in fan_registers[:2])
 
     if has_fan_registers:
         entities = [ThesslaGreenFan(coordinator)]
@@ -160,7 +152,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         try:
             # First ensure system is on
             holding_regs = self.coordinator.available_registers.get("holding_registers", set())
-            if "on_off_panel_mode" in HOLDING_REGISTERS and "on_off_panel_mode" in holding_regs:
+            if "on_off_panel_mode" in holding_registers() and "on_off_panel_mode" in holding_regs:
                 await self._write_register("on_off_panel_mode", 1)
 
             # Set flow rate
@@ -180,7 +172,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Turn off the fan."""
         try:
             holding_regs = self.coordinator.available_registers.get("holding_registers", set())
-            if "on_off_panel_mode" in HOLDING_REGISTERS and "on_off_panel_mode" in holding_regs:
+            if "on_off_panel_mode" in holding_registers() and "on_off_panel_mode" in holding_regs:
                 # If system power control is available, use it to turn off
                 await self._write_register("on_off_panel_mode", 0)
                 self.coordinator.data["on_off_panel_mode"] = 0
@@ -192,7 +184,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     if current_mode == "manual" or not current_mode
                     else "air_flow_rate_temporary_2"
                 )
-                if register in HOLDING_REGISTERS and register in holding_regs:
+                if register in holding_registers() and register in holding_regs:
                     await self._write_register(register, 0)
                     self.coordinator.data[register] = 0
 
@@ -223,17 +215,17 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
             if current_mode == "manual" or not current_mode:
                 # Set manual mode and flow rate
-                if "mode" in HOLDING_REGISTERS and "mode" in holding_regs:
+                if "mode" in holding_registers() and "mode" in holding_regs:
                     await self._write_register("mode", 1)  # Manual mode
                 if (
-                    "air_flow_rate_manual" in HOLDING_REGISTERS
+                    "air_flow_rate_manual" in holding_registers()
                     and "air_flow_rate_manual" in holding_regs
                 ):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
                 # Auto mode - set auto flow rate
                 if (
-                    "air_flow_rate_temporary_2" in HOLDING_REGISTERS
+                    "air_flow_rate_temporary_2" in holding_registers()
                     and "air_flow_rate_temporary_2" in holding_regs
                 ):
                     await self._write_register("air_flow_rate_temporary_2", actual_percentage)
@@ -258,7 +250,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     async def _write_register(self, register_name: str, value: int) -> None:
         """Write value to register."""
-        if register_name not in HOLDING_REGISTERS:
+        if register_name not in holding_registers():
             raise ValueError(f"Register {register_name} is not writable")
 
         holding_regs = self.coordinator.available_registers.get("holding_registers", set())

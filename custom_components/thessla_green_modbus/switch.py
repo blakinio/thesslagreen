@@ -11,22 +11,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
-
-from .const import DOMAIN
+from .const import DOMAIN, coil_registers, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
-
-# Register address lookups for modbus writes
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -43,6 +34,8 @@ async def async_setup_entry(
 
     # Create switch entities only for writable registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()
+    holding_map = holding_registers()
+    coil_map = coil_registers()
     for key, config in ENTITY_MAPPINGS["switch"].items():
         register_name = config["register"]
 
@@ -52,19 +45,20 @@ async def async_setup_entry(
         if config["register_type"] == "holding_registers":
             if register_name in coordinator.available_registers.get("holding_registers", set()):
                 is_available = True
-            elif coordinator.force_full_register_list and register_name in HOLDING_REGISTERS:
+            elif coordinator.force_full_register_list and register_name in holding_map:
                 is_available = True
         elif config["register_type"] == "coil_registers":
             if register_name in coordinator.available_registers.get("coil_registers", set()):
                 is_available = True
-            elif coordinator.force_full_register_list and register_name in COIL_REGISTERS:
+            elif coordinator.force_full_register_list and register_name in coil_map:
                 is_available = True
 
         if is_available:
-            if config["register_type"] == "holding_registers":
-                address = HOLDING_REGISTERS[register_name]
-            else:
-                address = COIL_REGISTERS[register_name]
+            address = (
+                holding_map[register_name]
+                if config["register_type"] == "holding_registers"
+                else coil_map[register_name]
+            )
             entities.append(
                 ThesslaGreenSwitch(
                     coordinator=coordinator,
@@ -107,11 +101,6 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     ) -> None:
         """Initialize the switch entity."""
         register_name = entity_config["register"]
-        register_type = entity_config["register_type"]
-        if register_type == "holding_registers":
-            address = HOLDING_REGISTERS.get(register_name, 0)
-        else:
-            address = COIL_REGISTERS.get(register_name, 0)
         super().__init__(coordinator, key, address, bit=entity_config.get("bit"))
 
         self.entity_config = entity_config
