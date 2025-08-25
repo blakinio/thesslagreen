@@ -574,14 +574,17 @@ class OptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
-                    description={"advanced": True},
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=1,
-                        max=MAX_BATCH_REGISTERS,
-                        step=1,
-                    )
-                ),
+                    description={
+                        "advanced": True,
+                        "selector": {
+                            "number": {
+                                "min": 1,
+                                "max": MAX_BATCH_REGISTERS,
+                                "step": 1,
+                            }
+                        },
+                    },
+                ): int,
             }
         )
 
