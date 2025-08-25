@@ -3,15 +3,15 @@
 # ruff: noqa: E402
 
 import asyncio
-import sys
+import logging
 import socket
+import sys
 import types
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-import logging
 import pytest
 import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -75,8 +75,14 @@ from custom_components.thessla_green_modbus.const import (
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
     ConfigFlow,
-    OptionsFlow,
     InvalidAuth,
+    OptionsFlow,
+)
+from custom_components.thessla_green_modbus.const import (
+    CONF_DEEP_SCAN,
+    CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_SLAVE_ID,
+    MAX_BATCH_REGISTERS,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -1178,8 +1184,8 @@ async def test_validate_input_scanner_closed_on_exception():
 async def test_validate_input_attribute_error():
     """AttributeError during validation should be reported as missing_method."""
     from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
         CannotConnect,
+        validate_input,
     )
 
     data = {
@@ -1349,6 +1355,77 @@ async def test_validate_input_invalid_capabilities():
             await validate_input(None, data)
 
     assert str(err.value) == "invalid_capabilities"
+    scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_invalid_scan_result_format():
+    """Non-dict scan result should raise invalid_format."""
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+        validate_input,
+    )
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(),
+        scan_device=AsyncMock(return_value=[]),
+        close=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert str(err.value) == "invalid_format"
+    scanner_instance.close.assert_awaited_once()
+
+
+async def test_validate_input_dataclass_capabilities_serialization():
+    """Dataclass capabilities without mapping should serialize correctly."""
+    from dataclasses import dataclass
+
+    from custom_components.thessla_green_modbus.config_flow import validate_input
+
+    @dataclass
+    class SimpleCaps:
+        expansion_module: bool = False
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": SimpleCaps(expansion_module=True),
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(),
+        scan_device=AsyncMock(return_value=scan_result),
+        close=AsyncMock(),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
+        result = await validate_input(None, data)
+
+    caps = result["scan_result"]["capabilities"]
+    assert caps["expansion_module"] is True
     scanner_instance.close.assert_awaited_once()
 
 
@@ -1643,9 +1720,11 @@ async def test_validate_input_retries_transient_failures():
     ]
 
 
-@pytest.mark.parametrize("exc", [asyncio.TimeoutError, ModbusIOException])
-async def test_validate_input_timeout_errors(exc):
-    """Timeout-related errors should map to timeout in UI."""
+@pytest.mark.parametrize(
+    "exc,err_key", [(asyncio.TimeoutError, "timeout"), (ModbusIOException, "io_error")]
+)
+async def test_validate_input_timeout_errors(exc, err_key):
+    """Timeout and IO errors should map to appropriate UI errors."""
     from custom_components.thessla_green_modbus.config_flow import (
         CannotConnect,
         validate_input,
@@ -1677,7 +1756,7 @@ async def test_validate_input_timeout_errors(exc):
         with pytest.raises(CannotConnect) as err:
             await validate_input(None, data)
 
-    assert err.value.args[0] == "timeout"
+    assert err.value.args[0] == err_key
     scanner_instance.close.assert_awaited_once()
 
 

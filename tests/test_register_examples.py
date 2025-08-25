@@ -1,4 +1,3 @@
-import pytest
 
 from custom_components.thessla_green_modbus.registers.loader import Register
 

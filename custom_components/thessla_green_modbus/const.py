@@ -156,18 +156,23 @@ def migrate_unique_id(
             uid = uid[: -len(suffix)]
             break
 
-    pattern_new = rf"{DOMAIN}_{slave_id}_\d+(?:_bit\d+)?$"
+    pattern_new = rf"{slave_id}_\d+(?:_bit\d+)?$"
     if re.fullmatch(pattern_new, uid):
         return uid
 
-    match = re.match(rf"{DOMAIN}_.+?_{slave_id}_(.+)", uid)
+    if uid.startswith(f"{DOMAIN}_"):
+        uid_no_domain = uid[len(DOMAIN) + 1 :]
+    else:
+        uid_no_domain = uid
+
+    match = re.match(rf".*_{slave_id}_(.+)", uid_no_domain)
     if not match:
-        return uid
+        return uid_no_domain
 
     remainder = match.group(1)
 
-    if re.match(r"^\d+", remainder):
-        return f"{DOMAIN}_{slave_id}_{remainder}"
+    if re.fullmatch(r"\d+(?:_bit\d+)?", remainder):
+        return f"{slave_id}_{remainder}"
 
     lookup = _build_entity_lookup()
     register_name, register_type, bit = lookup.get(remainder, (remainder, None, None))
@@ -183,12 +188,12 @@ def migrate_unique_id(
 
     if address is not None:
         bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
-        return f"{DOMAIN}_{slave_id}_{address}{bit_suffix}"
+        return f"{slave_id}_{address}{bit_suffix}"
 
     if remainder == "fan":
-        return f"{DOMAIN}_{slave_id}_0"
+        return f"{slave_id}_0"
 
-    return uid
+    return uid_no_domain
 
 
 # Mapping of writable register names to Home Assistant number entity metadata

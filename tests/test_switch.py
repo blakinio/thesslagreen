@@ -128,13 +128,13 @@ sys.modules["homeassistant.components.sensor"] = sensor_mod
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus import switch  # noqa: E402
+from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
     ENTITY_MAPPINGS,
 )
 from custom_components.thessla_green_modbus.switch import (  # noqa: E402
     ThesslaGreenSwitch,
 )
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 
 # Ensure required test mapping is present when dynamic generation is unavailable
 ENTITY_MAPPINGS.setdefault("switch", {})
@@ -169,14 +169,18 @@ def test_switch_turn_on_off(mock_coordinator):
         mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
     )
     asyncio.run(switch_entity.async_turn_on())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with(
+        "bypass", 1, refresh=False, offset=0
+    )
     mock_coordinator.async_request_refresh.assert_awaited_once()
     mock_coordinator.async_write_register.reset_mock()
     mock_coordinator.async_request_refresh.reset_mock()
 
     mock_coordinator.data["bypass"] = 1
     asyncio.run(switch_entity.async_turn_off())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 0, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with(
+        "bypass", 0, refresh=False, offset=0
+    )
     mock_coordinator.async_request_refresh.assert_awaited_once()
 
 

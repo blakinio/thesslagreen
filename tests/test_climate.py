@@ -111,8 +111,6 @@ from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
 )
 from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
     get_register_definition,
-)
-from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )  # noqa: E402
 

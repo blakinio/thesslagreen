@@ -194,8 +194,9 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
 def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
     """registers_sha256 should avoid re-reading unchanged files."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
     import os
+
+    import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text("data")
@@ -445,6 +446,17 @@ def test_register_file_sorted() -> None:
     regs = data["registers"]
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
+
+
+def test_address_hex_matches_dec() -> None:
+    """Each register's hex and decimal addresses should align."""
+
+    import json
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    data = json.loads(loader._REGISTERS_PATH.read_text())
+    for reg in data["registers"]:
+        assert int(reg["address_hex"], 16) == reg["address_dec"]
 
 
 def test_special_modes_invalid_json(monkeypatch) -> None:

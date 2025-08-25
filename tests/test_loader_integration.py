@@ -3,7 +3,9 @@
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner_core import (
+    ThesslaGreenDeviceScanner,
+)
 
 
 def test_scanner_with_loader_addresses():

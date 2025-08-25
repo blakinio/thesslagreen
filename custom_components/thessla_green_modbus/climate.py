@@ -17,12 +17,13 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
-from .coordinator import ThesslaGreenModbusCoordinator
-from .entity import ThesslaGreenEntity
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
+
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
 

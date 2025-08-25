@@ -13,8 +13,8 @@ If CONFIG_DIR is not provided the script will attempt common locations such as
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 import sys
+from pathlib import Path
 
 LEGACY_SENSORS = [
     "sensor.supply_flow_rate",

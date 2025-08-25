@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import importlib.util
-import sys
-import types
 import json
 import re
+import sys
+import types
 from pathlib import Path
-
-from tools.validate_register_pdf import parse_pdf_registers
 
 import pydantic
 import pytest
+
+from tools.validate_register_pdf import parse_pdf_registers
 
 
 def _load_schema() -> type:

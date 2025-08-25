@@ -1,11 +1,11 @@
 import copy
 import json
 import logging
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace, ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, patch
-import sys
 
 import pytest
 
@@ -58,7 +58,9 @@ from custom_components.thessla_green_modbus.diagnostics import (  # noqa: E402
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
-from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities  # noqa: E402
+from custom_components.thessla_green_modbus.scanner_core import (
+    DeviceCapabilities,  # noqa: E402
+)
 
 # Restore real registers module for subsequent tests
 if original_registers is not None:

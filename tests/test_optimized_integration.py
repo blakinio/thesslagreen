@@ -12,11 +12,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from custom_components.thessla_green_modbus.const import (
-    SENSOR_UNAVAILABLE,
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
     HOLDING_REGISTERS,
     INPUT_REGISTERS,
+    SENSOR_UNAVAILABLE,
 )
 
 # Setup logging for tests
@@ -632,8 +632,8 @@ class TestThesslaGreenClimate:
         # First enable call then mode change
         mock_climate_coordinator.async_write_register.assert_has_calls(
             [
-                call("on_off_panel_mode", 1, refresh=False),
-                call("mode", 1, refresh=False),
+                call("on_off_panel_mode", 1, refresh=False, offset=0),
+                call("mode", 1, refresh=False, offset=0),
             ]
         )
         assert mock_climate_coordinator.async_write_register.call_count == 2
@@ -657,8 +657,8 @@ class TestThesslaGreenClimate:
         # Should attempt to enable twice and then abort
         mock_climate_coordinator.async_write_register.assert_has_calls(
             [
-                call("on_off_panel_mode", 1, refresh=False),
-                call("on_off_panel_mode", 1, refresh=False),
+                call("on_off_panel_mode", 1, refresh=False, offset=0),
+                call("on_off_panel_mode", 1, refresh=False, offset=0),
             ]
         )
         assert mock_climate_coordinator.async_write_register.call_count == 2
