@@ -110,7 +110,7 @@ class RegisterDefinition(pydantic.BaseModel):
     address_dec: int
     address_hex: str
     name: str
-    access: Literal["R/-", "R/W", "R", "W"]
+    access: Literal["R", "RW", "W"]
     unit: str | None = None
     enum: dict[str, Any] | None = None
     multiplier: float | None = None
@@ -212,6 +212,12 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("function code must be between 1 and 4")
         return v
 
+    @pydantic.model_validator(mode="after")
+    def _check_access(self) -> "RegisterDefinition":
+        if self.function in {1, 2} and self.access != "R":
+            raise ValueError("read-only functions must have R access")
+        return self
+
     # ------------------------------------------------------------------
     # Additional consistency checks
     # ------------------------------------------------------------------
@@ -232,9 +238,6 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("string type requires length >= 1")
             elif self.length != expected:
                 raise ValueError("length does not match type")
-
-        if self.function != 3 and self.access not in {"R", "R/-"}:
-            raise ValueError("read-only functions must have R access")
 
         if self.enum is not None:
             if not isinstance(self.enum, dict):
