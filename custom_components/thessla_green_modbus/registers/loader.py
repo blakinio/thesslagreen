@@ -25,6 +25,7 @@ from datetime import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Sequence
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 
 # Shared grouping helper
 from ..modbus_helpers import group_reads
@@ -209,30 +210,38 @@ class RegisterDef:
                     raise ValueError(f"Invalid enum value {value!r} for {self.name}")
 
             try:
-                num_val = float(value)
-            except (TypeError, ValueError):
+                num_val = Decimal(str(value))
+            except (InvalidOperation, TypeError, ValueError):
                 num_val = None
             if num_val is not None:
-                if self.min is not None and num_val < self.min:
+                if self.min is not None and num_val < Decimal(str(self.min)):
                     raise ValueError(
                         f"{value} is below minimum {self.min} for {self.name}"
                     )
-                if self.max is not None and num_val > self.max:
+                if self.max is not None and num_val > Decimal(str(self.max)):
                     raise ValueError(
                         f"{value} is above maximum {self.max} for {self.name}"
                     )
-
-            if self.multiplier not in (None, 1):
-                raw_val = int(round(float(raw_val) / self.multiplier))
-            if self.resolution not in (None, 1):
-                step = self.resolution
-                raw_val = int(round(float(raw_val) / step) * step)
+                scaled = Decimal(str(raw_val))
+                if self.resolution not in (None, 1):
+                    step = Decimal(str(self.resolution))
+                    scaled = (
+                        (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
+                    )
+                if self.multiplier not in (None, 1):
+                    mult = Decimal(str(self.multiplier))
+                    scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                raw_val = scaled
 
             typ = self.extra.get("type") if self.extra else None
             if typ == "f32":
-                data = struct.pack(">f" if endianness == "big" else "<f", float(raw_val))
+                data = struct.pack(
+                    ">f" if endianness == "big" else "<f", float(raw_val)
+                )
             elif typ == "f64":
-                data = struct.pack(">d" if endianness == "big" else "<d", float(raw_val))
+                data = struct.pack(
+                    ">d" if endianness == "big" else "<d", float(raw_val)
+                )
             elif typ in {"i32", "u32", "i64", "u64"}:
                 size = 4 if typ in {"i32", "u32"} else 8
                 data = int(raw_val).to_bytes(size, "big", signed=typ.startswith("i"))
@@ -291,19 +300,28 @@ class RegisterDef:
                 raise ValueError(f"Invalid enum value {value!r} for {self.name}")
 
         try:
-            num_val = float(value)
-        except (TypeError, ValueError):
+            num_val = Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
             num_val = None
         if num_val is not None:
-            if self.min is not None and num_val < self.min:
-                raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
-            if self.max is not None and num_val > self.max:
-                raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
-        if self.multiplier not in (None, 1):
-            raw = int(round(float(raw) / self.multiplier))
-        if self.resolution not in (None, 1):
-            step = self.resolution
-            raw = int(round(float(raw) / step) * step)
+            if self.min is not None and num_val < Decimal(str(self.min)):
+                raise ValueError(
+                    f"{value} is below minimum {self.min} for {self.name}"
+                )
+            if self.max is not None and num_val > Decimal(str(self.max)):
+                raise ValueError(
+                    f"{value} is above maximum {self.max} for {self.name}"
+                )
+            scaled = Decimal(str(raw))
+            if self.resolution not in (None, 1):
+                step = Decimal(str(self.resolution))
+                scaled = (
+                    (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
+                )
+            if self.multiplier not in (None, 1):
+                mult = Decimal(str(self.multiplier))
+                scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            raw = scaled
         typ = self.extra.get("type") if self.extra else None
         if typ == "i16":
             return int(raw) & 0xFFFF

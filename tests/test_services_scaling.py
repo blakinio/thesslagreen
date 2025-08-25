@@ -9,6 +9,7 @@ import custom_components.thessla_green_modbus.services as services
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
+    get_register_definition,
 )
 
 # Build a register map similar to what the coordinator exposes.  The schedule
@@ -167,3 +168,21 @@ async def test_write_register_scaling_and_endianness():
         [0x0304, 0x0102],
         1,
     )  # nosec: B101
+
+
+@pytest.mark.asyncio
+async def test_write_register_fractional_resolution():
+    """Non-integer resolutions are scaled exactly."""
+
+    coordinator = DummyCoordinator()
+
+    await coordinator.async_write_register("dac_supply", 2.44)
+
+    assert coordinator.encoded[0] == (
+        HOLDING_REGISTERS["dac_supply"],
+        1000,
+        1,
+    )  # nosec: B101
+
+    reg = get_register_definition("dac_supply")
+    assert reg.decode(1000) == pytest.approx(2.44)
