@@ -7,7 +7,6 @@ voluptuous>=0.13.1
 pytest-homeassistant-custom-component>=0.13.0
 PyYAML>=6.0
 pydantic>=2.0
-pdfplumber>=0.11
 
 # Code quality tools
 black>=22.0.0

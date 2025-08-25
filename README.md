@@ -548,11 +548,6 @@ pytest tests/test_register_loader.py
 
 4. Dołącz zmieniony plik JSON do commitu.
 
-> Obsługa plików CSV została całkowicie usunięta – definicje rejestrów muszą
-> znajdować się w pliku JSON i spełniać schemat
-> `custom_components/thessla_green_modbus/registers/schema.py`. Zweryfikuj
-> zmiany za pomocą `pytest tests/test_register_loader.py`.
-
 ## 📄 Licencja
 
 MIT License - Zobacz [LICENSE](LICENSE) dla szczegółów.
