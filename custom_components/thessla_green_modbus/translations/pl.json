@@ -27,11 +27,11 @@
       "dns_failure": "Nie można rozwiązać nazwy hosta.",
       "connection_refused": "Połączenie zostało odrzucone przez hosta.",
       "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi po szczegóły.",
-      "io_error": "Błąd wejścia/wyjścia podczas komunikacji z urządzeniem.",
+      "io_error": "Błąd wejścia/wyjścia podczas komunikacji z urządzeniem. Sprawdź okablowanie i połączenie sieciowe.",
       "invalid_capabilities": "Nieprawidłowe dane możliwości urządzenia.",
-      "invalid_format": "Odebrano nieprawidłową odpowiedź z urządzenia.",
+      "invalid_format": "Odebrano dane w nieoczekiwanym formacie z urządzenia.",
       "modbus_error": "Błąd komunikacji Modbus. Sprawdź okablowanie i ustawienia.",
-      "timeout": "Przekroczono czas połączenia. Sprawdź host i port.",
+      "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
     },
     "step": {
