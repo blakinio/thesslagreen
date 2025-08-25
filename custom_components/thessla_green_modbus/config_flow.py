@@ -288,6 +288,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         if user_input is not None:
             try:
+                max_regs = user_input.get(
+                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+                )
+                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
+                    raise vol.Invalid(
+                        "max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST]
+                    )
+
                 # Validate input and get device info
                 info = await validate_input(self.hass, user_input)
 
@@ -344,6 +352,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     default=DEFAULT_DEEP_SCAN,
                     description={"advanced": True},
                 ): bool,
+                vol.Optional(
+                    CONF_MAX_REGISTERS_PER_REQUEST,
+                    default=DEFAULT_MAX_REGISTERS_PER_REQUEST,
+                    description={
+                        "selector": {
+                            "number": {
+                                "min": 1,
+                                "max": MAX_BATCH_REGISTERS,
+                                "step": 1,
+                            }
+                        }
+                    },
+                ): int,
             }
         )
 

@@ -32,7 +32,8 @@
       "invalid_format": "Received malformed response from device.",
       "modbus_error": "Modbus communication error. Check wiring and settings.",
       "timeout": "Connection timed out. Verify host and port.",
-      "unknown": "Unexpected error. Check logs for details."
+      "unknown": "Unexpected error. Check logs for details.",
+      "max_registers_range": "Max registers per request must be between 1 and 16."
     },
     "step": {
       "confirm": {
@@ -45,14 +46,16 @@
           "name": "Name",
           "port": "Port",
           "slave_id": "Device ID",
-          "deep_scan": "Deep Register Scan"
+          "deep_scan": "Deep Register Scan",
+          "max_registers_per_request": "Max Registers per Request"
         },
         "data_description": {
           "host": "IP address of the AirPack device on your local network",
           "name": "Device name in Home Assistant",
           "port": "Modbus TCP port (default 502)",
           "slave_id": "Modbus device ID (default 10)",
-          "deep_scan": "Read all registers for diagnostics (may be slow)"
+          "deep_scan": "Read all registers for diagnostics (may be slow)",
+          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
