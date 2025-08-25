@@ -33,3 +33,6 @@ def test_group_reads_respects_max_block_size(limit: int) -> None:
         assert groups == scanner._group_registers_for_batch_read(
             addresses, max_batch=MAX_BATCH_REGISTERS
         )
+
+    # The scanner itself clamps the requested batch size to ``MAX_BATCH_REGISTERS``.
+    assert scanner.effective_batch == min(limit, MAX_BATCH_REGISTERS)
