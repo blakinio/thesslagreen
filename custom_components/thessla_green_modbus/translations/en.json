@@ -31,6 +31,10 @@
       "invalid_capabilities": "Device capabilities data invalid or missing.",
       "invalid_format": "Received data in an unexpected format from device.",
       "modbus_error": "Modbus communication error. Check wiring and settings.",
+      "max_registers_range": "Max registers per request must be between 1 and 16.",
+      "timeout": "Device did not respond in time. Verify network connectivity and address.",
+      "unknown": "Unexpected error. Check logs for details."
+    },
       "timeout": "Connection timed out. Verify host and port.",
       "unknown": "Unexpected error. Check logs for details.",
         "max_registers_range": "Max registers per request must be between 1 and 16.",
