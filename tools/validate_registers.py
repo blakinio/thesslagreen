@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Validate register definitions in the bundled JSON file."""
-
 from __future__ import annotations
 
 import json
+import re
 import sys
 import types
 from pathlib import Path
@@ -41,6 +41,44 @@ def _prepare_environment() -> None:
     )
 
 
+def _coerce_registers(registers: list[dict]) -> list[dict]:
+    """Normalise function and address fields in raw definitions.
+
+    The schema accepts a wide range of function/address representations.  To
+    mirror this behaviour when validating standalone JSON files we perform the
+    same coercion here before handing off to the pydantic models.
+    """
+
+    from custom_components.thessla_green_modbus.registers.schema import (
+        _normalise_function,
+    )
+
+    coerced: list[dict] = []
+    for item in registers:
+        data = dict(item)
+
+        if "function" in data:
+            data["function"] = f"{_normalise_function(data['function']):02d}"
+
+        if "address_dec" in data:
+            addr_dec = data["address_dec"]
+            if isinstance(addr_dec, str):
+                addr_dec = int(addr_dec, 0)
+            data["address_dec"] = addr_dec
+
+        if "address_hex" in data:
+            addr_hex = data["address_hex"]
+            if isinstance(addr_hex, str):
+                addr_hex = int(addr_hex, 0)
+            data["address_hex"] = hex(addr_hex)
+        elif "address_dec" in data:
+            data["address_hex"] = hex(data["address_dec"])
+
+        coerced.append(data)
+
+    return coerced
+
+
 def validate(path: Path) -> list[RegisterDefinition]:
     """Validate ``path`` and return the parsed register definitions."""
 
@@ -48,12 +86,64 @@ def validate(path: Path) -> list[RegisterDefinition]:
     from custom_components.thessla_green_modbus.registers.schema import (
         RegisterDefinition,
         RegisterList,
+        RegisterType,
+        _TYPE_LENGTHS,
     )
 
     data = json.loads(path.read_text(encoding="utf-8"))
     registers = data.get("registers", data)
 
+    if not isinstance(registers, list):
+        raise TypeError("registers JSON must contain a list of register definitions")
+
+    registers = _coerce_registers(registers)
     parsed_list = RegisterList.model_validate(registers)
+
+    for reg in parsed_list.root:
+        # Enforce type/length relationships
+        if reg.type is not None:
+            typ = reg.type.value if isinstance(reg.type, RegisterType) else reg.type
+            expected = _TYPE_LENGTHS.get(typ)
+            if expected is None:
+                if reg.length < 1:
+                    raise ValueError(f"{reg.name}: string type requires length >= 1")
+            elif reg.length != expected:
+                raise ValueError(
+                    f"{reg.name}: length {reg.length} != expected {expected} for {typ}"
+                )
+
+        # Enum map validation
+        if reg.enum is not None:
+            if not isinstance(reg.enum, dict):
+                raise ValueError(f"{reg.name}: enum must be a mapping")
+            for key, val in reg.enum.items():
+                try:
+                    int(key)
+                except Exception:  # pragma: no cover - defensive
+                    raise ValueError(f"{reg.name}: enum keys must be numeric") from None
+                if not isinstance(val, str):
+                    raise ValueError(f"{reg.name}: enum values must be strings")
+
+        # Bit definition validation
+        if reg.bits is not None:
+            seen: set[int] = set()
+            for bit in reg.bits:
+                if not isinstance(bit, dict):
+                    raise ValueError(f"{reg.name}: bits entries must be objects")
+                idx = bit.get("index")
+                name = bit.get("name")
+                if not isinstance(idx, int) or isinstance(idx, bool):
+                    raise ValueError(f"{reg.name}: bit index must be integer")
+                if idx < 0 or idx > 15 or idx in seen:
+                    raise ValueError(f"{reg.name}: invalid or duplicate bit index {idx}")
+                seen.add(idx)
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                    raise ValueError(f"{reg.name}: bit name must be snake_case")
+
+        # address consistency check
+        if int(reg.address_hex, 16) != reg.address_dec:
+            raise ValueError(f"{reg.name}: address_hex does not match address_dec")
+
     return parsed_list.root
 
 
