@@ -86,7 +86,7 @@ async def async_setup_entry(
             _LOGGER.warning("Cancelled while adding climate entity, retrying without initial state")
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Climate entity created for %s", coordinator.device_name)
+        _LOGGER.debug("Climate entity created for %s", coordinator.device_name)
     else:
         _LOGGER.warning("Basic control not available, climate entity not created")
 
