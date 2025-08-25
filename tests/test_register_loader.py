@@ -22,8 +22,15 @@ const_module.MAX_BATCH_REGISTERS = 64
 sys.modules.setdefault("custom_components.thessla_green_modbus.const", const_module)
 
 from custom_components.thessla_green_modbus.registers.loader import (
+    _REGISTERS_PATH,
+    _SPECIAL_MODES_PATH,
+    _load_registers_from_file,
     RegisterDef,
+    clear_cache,
+    get_all_registers,
     get_registers_by_function,
+    load_registers,
+    registers_sha256,
 )
 
 
@@ -139,11 +146,9 @@ def test_function_aliases() -> None:
 def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     """Ensure register file caching and invalidation behave correctly."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
     # Use a temporary copy of the register file so we can modify it
     path = tmp_path / "regs.json"
-    path.write_text(loader._REGISTERS_PATH.read_text())
+    path.write_text(_REGISTERS_PATH.read_text())
 
     read_calls = 0
     hash_calls = 0
@@ -162,28 +167,23 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
         hash_calls += 1
         return real_read_bytes(self)
 
-    # Spy on disk access for both JSON parsing and hashing
     monkeypatch.setattr(Path, "read_text", spy_read)
     monkeypatch.setattr(Path, "read_bytes", spy_read_bytes)
 
-    loader.clear_cache()
+    clear_cache()
 
-    # Initial load populates cache
-    hash_before = loader.registers_sha256(path)
-    loader.load_registers(path)
-    loader.load_registers(path)
+    hash_before = registers_sha256(path)
+    load_registers(path)
+    load_registers(path)
 
-    # The file and hash should only be computed once thanks to caching
     assert read_calls == 1
     assert hash_calls == 1
 
-    # Modify the file to invalidate caches
     path.write_text(real_read_text(path) + "\n")
 
-    loader.load_registers(path)
-    hash_after = loader.registers_sha256(path)
+    load_registers(path)
+    hash_after = registers_sha256(path)
 
-    # After modification both read and hash are recomputed
     assert read_calls == 2
     assert hash_calls == 2
     assert hash_before != hash_after
@@ -193,8 +193,6 @@ def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
     """registers_sha256 should avoid re-reading unchanged files."""
 
     import os
-
-    import custom_components.thessla_green_modbus.registers.loader as loader
 
     path = tmp_path / "regs.json"
     path.write_text("data")
@@ -210,15 +208,15 @@ def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr(Path, "read_bytes", spy_read_bytes)
 
-    digest1 = loader.registers_sha256(path)
-    digest2 = loader.registers_sha256(path)
+    digest1 = registers_sha256(path)
+    digest2 = registers_sha256(path)
 
     assert digest1 == digest2
     assert read_calls == 1
 
     path.write_text("data2")
     os.utime(path, (mtime + 1, mtime + 1))
-    loader.registers_sha256(path)
+    registers_sha256(path)
 
     assert read_calls == 2
 
@@ -226,31 +224,27 @@ def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
 def test_registers_reload_on_file_change(tmp_path) -> None:
     """Changing the register JSON file triggers a reload."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
     path = tmp_path / "regs.json"
-    path.write_text(loader._REGISTERS_PATH.read_text())
+    path.write_text(_REGISTERS_PATH.read_text())
 
-    loader.clear_cache()
+    clear_cache()
 
-    original = loader.load_registers(path)
+    original = load_registers(path)
     assert not any(r.name == "cache_test_marker" for r in original)
 
     data = json.loads(path.read_text())
     data["registers"][0]["name"] = "cache_test_marker"
     path.write_text(json.dumps(data))
 
-    updated = loader.load_registers(path)
+    updated = load_registers(path)
     assert any(r.name == "cache_test_marker" for r in updated)
 
 
 def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
     """clear_cache should reset the cached file hash."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
     path = tmp_path / "regs.json"
-    path.write_text(loader._REGISTERS_PATH.read_text())
+    path.write_text(_REGISTERS_PATH.read_text())
 
     hash_calls = 0
     real_read_bytes = Path.read_bytes
@@ -262,16 +256,16 @@ def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr(Path, "read_bytes", spy_read_bytes)
 
-    loader.clear_cache()
+    clear_cache()
 
     # First load computes hash once
-    loader.load_registers(path)
-    loader.load_registers(path)
+    load_registers(path)
+    load_registers(path)
     assert hash_calls == 1
 
     # Clearing the cache forces a re-computation
-    loader.clear_cache()
-    loader.load_registers(path)
+    clear_cache()
+    load_registers(path)
     assert hash_calls == 2
 
 
@@ -291,13 +285,11 @@ def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
 def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
     """Duplicate names or addresses should raise an error."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": registers}))
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, mtime=0, file_hash="")
+        _load_registers_from_file(path, mtime=0, file_hash="")
 
 
 @pytest.mark.parametrize(
@@ -366,19 +358,15 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
 def test_invalid_registers_rejected(tmp_path, register) -> None:
     """Registers violating schema constraints should raise an error."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": [register]}))
 
     with pytest.raises(ValueError):
-        loader._load_registers_from_file(path, mtime=0, file_hash="")
+        _load_registers_from_file(path, mtime=0, file_hash="")
 
 
 def test_bits_within_bitmask_width(tmp_path) -> None:
     """Registers with bits not exceeding bitmask width should load."""
-
-    import custom_components.thessla_green_modbus.registers.loader as loader
 
     reg = {
         "function": "03",
@@ -392,38 +380,32 @@ def test_bits_within_bitmask_width(tmp_path) -> None:
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": [reg]}))
 
-    loader._load_registers_from_file(path, file_hash="", mtime=0)
+    _load_registers_from_file(path, file_hash="", mtime=0)
 
 
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
     """Missing register definition file should raise RuntimeError."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
     path = tmp_path / "regs.json"
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, mtime=0, file_hash="")
+        _load_registers_from_file(path, mtime=0, file_hash="")
     assert str(path) in str(exc.value)
 
 
 def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
     """Invalid register definition file should raise RuntimeError."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
     path = tmp_path / "regs.json"
     path.write_text("not json", encoding="utf-8")
     with pytest.raises(RuntimeError) as exc:
-        loader._load_registers_from_file(path, mtime=0, file_hash="")
+        _load_registers_from_file(path, mtime=0, file_hash="")
     assert str(path) in str(exc.value)
 
 
 def test_register_file_sorted() -> None:
     """Ensure register JSON is sorted and loader preserves ordering."""
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
-    data = json.loads(loader._REGISTERS_PATH.read_text(encoding="utf-8"))
+    data = json.loads(_REGISTERS_PATH.read_text(encoding="utf-8"))
     regs = data["registers"]
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
@@ -433,9 +415,8 @@ def test_address_hex_matches_dec() -> None:
     """Each register's hex and decimal addresses should align."""
 
     import json
-    import custom_components.thessla_green_modbus.registers.loader as loader
 
-    data = json.loads(loader._REGISTERS_PATH.read_text())
+    data = json.loads(_REGISTERS_PATH.read_text())
     for reg in data["registers"]:
         assert int(reg["address_hex"], 16) == reg["address_dec"]
 
@@ -446,9 +427,7 @@ def test_special_modes_invalid_json(monkeypatch) -> None:
     import importlib
     from pathlib import Path
 
-    import custom_components.thessla_green_modbus.registers.loader as loader
-
-    special_path = loader._SPECIAL_MODES_PATH
+    special_path = _SPECIAL_MODES_PATH
     real_read_text = Path.read_text
 
     def bad_read(self, *args, **kwargs):  # pragma: no cover - simple stub
@@ -458,17 +437,18 @@ def test_special_modes_invalid_json(monkeypatch) -> None:
 
     monkeypatch.setattr(Path, "read_text", bad_read)
 
-    loader = importlib.reload(loader)
-    assert loader._SPECIAL_MODES_ENUM == {}  # nosec B101
+    loader_module = importlib.import_module(
+        "custom_components.thessla_green_modbus.registers.loader"
+    )
+    loader_module = importlib.reload(loader_module)
+    assert loader_module._SPECIAL_MODES_ENUM == {}  # nosec B101
 
     monkeypatch.setattr(Path, "read_text", real_read_text)
-    importlib.reload(loader)
+    importlib.reload(loader_module)
 
 
 def test_get_all_registers_sorted(tmp_path) -> None:
     """get_all_registers should order registers by function then address."""
-
-    import custom_components.thessla_green_modbus.registers.loader as loader
 
     regs = [
         {
@@ -497,7 +477,7 @@ def test_get_all_registers_sorted(tmp_path) -> None:
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": regs}))
 
-    loader.clear_cache()
-    ordered = loader.get_all_registers(path)
+    clear_cache()
+    ordered = get_all_registers(path)
     keys = [(r.function, r.address) for r in ordered]
     assert keys == sorted(keys)
