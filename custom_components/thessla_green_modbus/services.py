@@ -233,6 +233,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         Returns ``True`` if the register write succeeds, ``False`` otherwise.
         """
         try:
+            if isinstance(value, (list, tuple)):
+                values = list(value)
+                for offset in range(0, len(values), coordinator.effective_batch):
+                    chunk = values[offset : offset + coordinator.effective_batch]
+                    if not await coordinator.async_write_register(
+                        register, chunk, refresh=False, offset=offset
+                    ):
+                        return False
+                return True
             return bool(
                 await coordinator.async_write_register(
                     register, value, refresh=False
@@ -813,7 +822,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 scan_uart_settings=coordinator.scan_uart_settings,
                 skip_known_missing=False,
                 full_register_scan=True,
-                max_registers_per_request=coordinator.max_registers_per_request,
+                max_registers_per_request=coordinator.effective_batch,
             )
             try:
                 scan_result = await scanner.scan_device()

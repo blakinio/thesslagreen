@@ -169,7 +169,7 @@ def test_number_set_value(mock_coordinator):
 
     asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_write_register.assert_awaited_with(
-        "required_temperature", 22, refresh=False
+        "required_temperature", 22, refresh=False, offset=0
     )
     mock_coordinator.async_request_refresh.assert_awaited_once()
 

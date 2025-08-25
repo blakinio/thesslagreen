@@ -169,14 +169,18 @@ def test_switch_turn_on_off(mock_coordinator):
         mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
     )
     asyncio.run(switch_entity.async_turn_on())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with(
+        "bypass", 1, refresh=False, offset=0
+    )
     mock_coordinator.async_request_refresh.assert_awaited_once()
     mock_coordinator.async_write_register.reset_mock()
     mock_coordinator.async_request_refresh.reset_mock()
 
     mock_coordinator.data["bypass"] = 1
     asyncio.run(switch_entity.async_turn_off())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 0, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with(
+        "bypass", 0, refresh=False, offset=0
+    )
     mock_coordinator.async_request_refresh.assert_awaited_once()
 
 
