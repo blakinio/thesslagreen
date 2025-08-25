@@ -41,26 +41,12 @@ class DummyCoordinator:
     ) -> bool:
         address = HOLDING_REGISTERS.get(register_name, 0) + offset
         self.writes.append((address, value, self.slave_id))
-    async def async_write_register(self, register_name, value, refresh=True) -> None:
-        address = HOLDING_REGISTERS.get(register_name, 0)
-        if isinstance(value, (list, tuple)):
-            for offset in range(0, len(value), self.effective_batch):
-                chunk = list(value)[offset : offset + self.effective_batch]
-                self.writes.append((address + offset, chunk, self.slave_id))
-        else:
-            self.writes.append((address, value, self.slave_id))
-
-        # Capture the encoded value separately so tests can assert multiplier
-        # scaling and endianness behaviour.  Unknown registers are simply
-        # ignored which mirrors the coordinator's behaviour when a register is
-        # not defined in the JSON map.
         try:
-            definition = get_register_definition(register_name)
+            definition = services.get_register_definition(register_name)
             encoded = definition.encode(value)
             self.encoded.append((address, encoded, self.slave_id))
         except Exception:  # pragma: no cover - defensive
             pass
-
         return True
 
     async def async_request_refresh(self) -> None:  # pragma: no cover - no behaviour

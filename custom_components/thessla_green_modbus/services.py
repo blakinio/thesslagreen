@@ -47,6 +47,7 @@ from .const import (
 from .entity_mappings import map_legacy_entity_id
 from .modbus_exceptions import ConnectionException, ModbusException
 from .scanner_core import ThesslaGreenDeviceScanner
+from .coordinator import get_register_definition
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -233,8 +234,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         Returns ``True`` if the register write succeeds, ``False`` otherwise.
         """
         try:
-            if isinstance(value, (list, tuple)):
+            values: list[int] | None = None
+            if isinstance(value, str):
+                definition = get_register_definition(register)
+                values = cast(list[int], definition.encode(value))
+            elif isinstance(value, (list, tuple)):
                 values = list(value)
+
+            if values is not None:
                 for offset in range(0, len(values), coordinator.effective_batch):
                     chunk = values[offset : offset + coordinator.effective_batch]
                     if not await coordinator.async_write_register(
@@ -242,6 +249,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     ):
                         return False
                 return True
+
             return bool(
                 await coordinator.async_write_register(
                     register, value, refresh=False
@@ -758,17 +766,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                # Convert string to 16-bit register values (ASCII)
-                name_bytes = device_name.encode("ascii")[:16].ljust(16, b"\x00")
-
-                regs = [
-                    (name_bytes[i] << 8) | name_bytes[i + 1]
-                    for i in range(0, 16, 2)
-                ]
                 if not await _write_register(
                     coordinator,
                     "device_name",
-                    regs,
+                    device_name,
                     entity_id,
                     "set device name",
                 ):

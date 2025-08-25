@@ -261,12 +261,13 @@ class ThesslaGreenDeviceScanner:
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
-        # Sanitize user input to remain within the Modbus-safe range (1-16)
-        self.max_registers_per_request = max(
-            1, min(max_registers_per_request, MAX_BATCH_REGISTERS)
-        )
-        # Dependent attributes mirror the clamped value
-        self.effective_batch = self.max_registers_per_request
+        try:
+            self.effective_batch = min(int(max_registers_per_request), MAX_BATCH_REGISTERS)
+        except (TypeError, ValueError):
+            self.effective_batch = MAX_BATCH_REGISTERS
+        if self.effective_batch < 1:
+            self.effective_batch = 1
+        self.max_registers_per_request = self.effective_batch
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
