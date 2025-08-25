@@ -17,17 +17,11 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
-
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
-
-HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
 
 # HVAC mode mappings (from device mode register)
 HVAC_MODE_MAP = {
@@ -319,7 +313,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         _LOGGER.debug("Setting target temperature to %s°C", temperature)
 
         success = True
-        if "comfort_temperature" in HOLDING_REGISTERS:
+        if "comfort_temperature" in holding_registers():
             success = await self.coordinator.async_write_register(
                 "comfort_temperature", temperature, refresh=False
             )
