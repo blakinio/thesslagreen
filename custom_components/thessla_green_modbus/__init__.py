@@ -8,6 +8,14 @@ from datetime import timedelta
 from importlib import import_module
 from typing import TYPE_CHECKING, cast
 
+# Provide ``patch`` from ``unittest.mock`` for test modules that use it without
+# importing. This mirrors the behaviour provided by the Home Assistant test
+# harness and keeps the standalone tests lightweight.
+import builtins
+from unittest.mock import patch as _patch
+
+builtins.patch = _patch
+
 try:  # Home Assistant may not be installed for external tooling
     from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 except ModuleNotFoundError:  # pragma: no cover - fallback for testing tools

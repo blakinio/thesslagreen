@@ -405,21 +405,34 @@ def _load_discrete_mappings() -> tuple[
             continue
         bits = reg.bits or []
         if bits:
+            unnamed_bit = False
             for idx, bit_def in enumerate(bits):
                 if isinstance(bit_def, dict):
-                    bit_name = bit_def.get("name", f"bit_{idx}")
+                    bit_name = bit_def.get("name")
                 else:
-                    bit_name = str(bit_def)
-                key = f"{reg.name}_{_to_snake_case(bit_name)}"
-                if key not in binary_keys:
-                    continue
-                binary_configs[key] = {
-                    "translation_key": key,
-                    "register_type": register_type,
-                    "register": reg.name,
-                    "bit": 1 << idx,
-                }
-        elif reg.name in binary_keys:
+                    bit_name = str(bit_def) if bit_def is not None else None
+
+                if bit_name:
+                    key = f"{reg.name}_{_to_snake_case(bit_name)}"
+                    binary_configs[key] = {
+                        "translation_key": key,
+                        "register_type": register_type,
+                        "register": reg.name,
+                        "bit": 1 << idx,
+                    }
+                else:
+                    unnamed_bit = True
+
+            if unnamed_bit:
+                binary_configs.setdefault(
+                    reg.name,
+                    {
+                        "translation_key": reg.name,
+                        "register_type": register_type,
+                        "bitmask": True,
+                    },
+                )
+        else:
             binary_configs.setdefault(
                 reg.name,
                 {
@@ -1202,6 +1215,7 @@ def _build_entity_mappings() -> None:
 
     _gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
     for key in BINARY_SENSOR_ENTITY_MAPPINGS:
+        _gen_binary.pop(key, None)
         _gen_switch.pop(key, None)
         _gen_select.pop(key, None)
     for key in SWITCH_ENTITY_MAPPINGS:
