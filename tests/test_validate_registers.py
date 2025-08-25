@@ -218,6 +218,46 @@ def test_validator_rejects_missing_bit_index(tmp_path: Path) -> None:
         validate_registers.main(path)
 
 
+def test_validator_rejects_non_mapping_bit(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "non_mapping_bit",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": ["a"],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
+def test_validator_rejects_missing_bit_name(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        [
+            {
+                "function": "03",
+                "address_dec": 1,
+                "address_hex": "0x0001",
+                "name": "missing_bit_name",
+                "access": "R/W",
+                "extra": {"bitmask": 0b1},
+                "bits": [{"index": 0}],
+            }
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
+
+
 def test_validator_rejects_duplicate_bit_index(tmp_path: Path) -> None:
     path = _write(
         tmp_path,

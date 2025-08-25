@@ -8,6 +8,8 @@ import sys
 import types
 from pathlib import Path
 
+import pydantic
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -53,7 +55,10 @@ def validate(path: Path) -> list[RegisterDefinition]:
     data = json.loads(path.read_text(encoding="utf-8"))
     registers = data.get("registers", data)
 
-    parsed_list = RegisterList.model_validate(registers)
+    try:
+        parsed_list = RegisterList.model_validate(registers)
+    except pydantic.ValidationError as err:
+        raise ValueError(err) from err
     return parsed_list.root
 
 
