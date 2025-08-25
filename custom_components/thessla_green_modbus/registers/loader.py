@@ -88,6 +88,7 @@ class RegisterDef:
 # ------------------------------------------------------------------
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
+        value: Any
         if self.length > 1:
             if isinstance(raw, Sequence):
                 raw_list = list(raw)
@@ -155,7 +156,7 @@ class RegisterDef:
         if typ == "i16":
             raw = raw if raw < 0x8000 else raw - 0x10000
 
-        value: Any = raw
+        value = raw
 
         # Combined airflow/temperature values use a custom decoding
         if self.extra and self.extra.get("aatt"):
@@ -381,8 +382,13 @@ def _load_registers_from_file(
             ):
                 enum_map = {int(v): k for k, v in enum_map.items()}
 
-        multiplier = parsed.multiplier
-        resolution = parsed.resolution
+        # ``multiplier`` and ``resolution`` are optional in the JSON.  The
+        # dataclass defaults to ``1`` for both fields but passing ``None`` would
+        # override that default and propagate ``None`` through the rest of the
+        # code.  Coercing ``None`` to ``1`` here keeps the values consistent and
+        # avoids ``Optional`` types downstream.
+        multiplier = 1 if parsed.multiplier is None else float(parsed.multiplier)
+        resolution = 1 if parsed.resolution is None else float(parsed.resolution)
 
         registers.append(
             RegisterDef(
