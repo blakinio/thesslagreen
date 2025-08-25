@@ -6,10 +6,10 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.thessla_green_modbus import async_setup_entry
 from custom_components.thessla_green_modbus.const import (
-    DOMAIN,
-    CONF_AIRFLOW_UNIT,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
+    CONF_AIRFLOW_UNIT,
+    DOMAIN,
 )
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
 

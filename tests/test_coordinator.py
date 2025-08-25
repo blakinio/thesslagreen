@@ -1,7 +1,6 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
 import asyncio
-
 import logging
 import os
 import sys
@@ -13,9 +12,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.thessla_green_modbus.const import (
+    MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
-    MAX_BATCH_REGISTERS,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -192,6 +191,8 @@ HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
+)
+from custom_components.thessla_green_modbus.coordinator import (
     dt_util as coordinator_dt_util,
 )
 
@@ -800,7 +801,9 @@ async def test_capabilities_loaded_from_config_entry():
 @pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):
     """Invalid capabilities format should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import CannotConnect
+    from custom_components.thessla_green_modbus.config_flow import (
+        CannotConnect,
+    )
 
     scan_result = {
         "device_info": {},

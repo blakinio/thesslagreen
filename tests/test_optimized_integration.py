@@ -12,11 +12,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from custom_components.thessla_green_modbus.const import (
-    SENSOR_UNAVAILABLE,
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
     HOLDING_REGISTERS,
     INPUT_REGISTERS,
+    SENSOR_UNAVAILABLE,
 )
 
 # Setup logging for tests

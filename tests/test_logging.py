@@ -3,9 +3,9 @@ import asyncio
 import logging
 
 import pytest
+from homeassistant import core
 
 from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus
-from homeassistant import core
 
 pytestmark = pytest.mark.asyncio
 

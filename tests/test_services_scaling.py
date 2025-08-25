@@ -6,11 +6,11 @@ from types import SimpleNamespace
 import pytest
 
 import custom_components.thessla_green_modbus.services as services
+from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.registers.loader import (
     get_register_definition,
     get_registers_by_function,
 )
-from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 

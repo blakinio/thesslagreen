@@ -1,13 +1,16 @@
 """Test integration setup for ThesslaGreen Modbus integration."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from homeassistant.exceptions import ConfigEntryNotReady
+import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.exceptions import ConfigEntryNotReady
 
-from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
+from custom_components.thessla_green_modbus import (
+    async_setup_entry,
+    async_unload_entry,
+)
 from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
@@ -154,10 +157,10 @@ async def test_default_values():
     from custom_components.thessla_green_modbus.const import (
         DEFAULT_NAME,
         DEFAULT_PORT,
-        DEFAULT_SLAVE_ID,
-        DEFAULT_SCAN_INTERVAL,
-        DEFAULT_TIMEOUT,
         DEFAULT_RETRY,
+        DEFAULT_SCAN_INTERVAL,
+        DEFAULT_SLAVE_ID,
+        DEFAULT_TIMEOUT,
     )
 
     assert DEFAULT_NAME == "ThesslaGreen"

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections import Counter
-from pathlib import Path
 import json
 import re
-
+from collections import Counter
+from pathlib import Path
 
 REGISTERS_PATH = (
     Path(__file__).resolve().parent.parent
