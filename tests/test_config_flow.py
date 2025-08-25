@@ -69,6 +69,7 @@ from custom_components.thessla_green_modbus.const import (
     CONF_SLAVE_ID,
     CONF_MAX_REGISTERS_PER_REQUEST,
     MAX_BATCH_REGISTERS,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
 )
 
 from custom_components.thessla_green_modbus.config_flow import (
@@ -372,6 +373,10 @@ async def test_form_user_success():
     assert isinstance(data["capabilities"], dict)
     assert data["capabilities"]["expansion_module"] is True
     assert result2["options"][CONF_DEEP_SCAN] is True
+    assert (
+        result2["options"][CONF_MAX_REGISTERS_PER_REQUEST]
+        == DEFAULT_MAX_REGISTERS_PER_REQUEST
+    )
 
 
 async def test_duplicate_entry_aborts():
