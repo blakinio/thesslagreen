@@ -265,10 +265,10 @@ class RegisterDefinition(pydantic.BaseModel):
                 if not isinstance(v, str):
                     raise ValueError("enum values must be strings")
 
+        seen_indices: set[int] = set()
         if self.bits is not None:
             if len(self.bits) > 16:
                 raise ValueError("bits exceed 16 entries")
-            seen_indices: set[int] = set()
             for bit in self.bits:
                 if not isinstance(bit, dict):
                     raise ValueError("bits entries must be objects")
@@ -286,25 +286,18 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("bit name must be snake_case")
                 seen_indices.add(idx)
 
-        if self.min is not None and self.max is not None and self.min > self.max:
-            raise ValueError("min greater than max")
-        if self.default is not None:
-            if self.min is not None and self.default < self.min:
-                raise ValueError("default below min")
-            if self.max is not None and self.default > self.max:
-                raise ValueError("default above max")
-            bitmask_val = self.extra.get("bitmask") if self.extra else None
-            mask_int: int | None = None
-            if isinstance(bitmask_val, str):
-                try:
-                    mask_int = int(bitmask_val, 0)
-                except ValueError:
-                    mask_int = None
-            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
-                mask_int = bitmask_val
+        bitmask_val = self.extra.get("bitmask") if self.extra else None
+        mask_int: int | None = None
+        if isinstance(bitmask_val, str):
+            try:
+                mask_int = int(bitmask_val, 0)
+            except ValueError:
+                mask_int = None
+        elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+            mask_int = bitmask_val
 
-            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
-                raise ValueError("bits exceed bitmask width")
+        if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
+            raise ValueError("bits exceed bitmask width")
 
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("min greater than max")
