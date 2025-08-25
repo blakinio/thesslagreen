@@ -35,12 +35,6 @@
       "timeout": "Device did not respond in time. Verify network connectivity and address.",
       "unknown": "Unexpected error. Check logs for details."
     },
-      "timeout": "Connection timed out. Verify host and port.",
-      "unknown": "Unexpected error. Check logs for details.",
-        "max_registers_range": "Max registers per request must be between 1 and 16.",
-        "timeout": "Device did not respond in time. Verify network connectivity and address.",
-        "unknown": "Unexpected error. Check logs for details."
-      },
     "step": {
       "confirm": {
         "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) at {host}:{port}. Device ID: {slave_id}. Firmware version: {firmware_version}. Registers found: {register_count}. Scan success rate: {scan_success_rate}. Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Continue with this configuration?",
