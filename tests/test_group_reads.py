@@ -49,7 +49,7 @@ def test_plan_group_reads_respects_max_block_size(monkeypatch):
         "custom_components.thessla_green_modbus.registers.loader.load_registers",
         lambda: regs,
     )
-    assert plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) == [
+    assert plan_group_reads() == [
         ReadPlan("input", 0, MAX_BATCH_REGISTERS),
         ReadPlan("input", MAX_BATCH_REGISTERS, 6),
     ]

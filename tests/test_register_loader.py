@@ -18,7 +18,7 @@ sys.modules.setdefault("custom_components.thessla_green_modbus", pkg)
 
 # Provide a minimal const module required by modbus_helpers
 const_module = types.ModuleType("custom_components.thessla_green_modbus.const")
-const_module.MAX_BATCH_REGISTERS = 64
+const_module.MAX_BATCH_REGISTERS = 16
 sys.modules.setdefault("custom_components.thessla_green_modbus.const", const_module)
 
 from custom_components.thessla_green_modbus.registers.loader import (

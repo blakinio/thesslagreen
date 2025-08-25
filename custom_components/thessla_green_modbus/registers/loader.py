@@ -508,8 +508,13 @@ class ReadPlan:
     length: int
 
 
-def plan_group_reads(max_block_size: int = 64) -> list[ReadPlan]:
+def plan_group_reads(max_block_size: int | None = None) -> list[ReadPlan]:
     """Group registers into contiguous blocks for efficient reading."""
+
+    if max_block_size is None:
+        from ..const import MAX_BATCH_REGISTERS
+
+        max_block_size = MAX_BATCH_REGISTERS
 
     regs_by_fn: dict[int, list[int]] = {}
     for reg in load_registers():

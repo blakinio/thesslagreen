@@ -53,8 +53,8 @@ def test_plan_group_reads_from_json():
     addresses: list[int] = []
     for reg in regs:
         addresses.extend(range(reg.address, reg.address + reg.length))
-    expected = group_reads(addresses, max_block_size=64)
-    plans = [p for p in plan_group_reads(max_block_size=64) if p.function == 4]
+    expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [p for p in plan_group_reads() if p.function == 4]
     assert [(p.address, p.length) for p in plans] == expected
 
 
