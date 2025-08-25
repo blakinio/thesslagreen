@@ -88,7 +88,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Added %d number entities", len(entities))
+        _LOGGER.debug("Added %d number entities", len(entities))
     else:
         _LOGGER.debug("No number entities were created")
 
@@ -199,7 +199,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             )
             if success:
                 await self.coordinator.async_request_refresh()
-                _LOGGER.info("Set %s to %.2f", self.register_name, value)
+                _LOGGER.debug("Set %s to %.2f", self.register_name, value)
             else:
                 _LOGGER.error("Failed to set %s to %.2f", self.register_name, value)
                 raise RuntimeError(f"Failed to write register {self.register_name}")

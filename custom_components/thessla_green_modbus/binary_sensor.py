@@ -78,7 +78,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info(
+        _LOGGER.debug(
             "Created %d binary sensor entities for %s", len(entities), coordinator.device_name
         )
     else:

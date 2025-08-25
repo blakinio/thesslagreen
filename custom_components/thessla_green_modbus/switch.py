@@ -86,7 +86,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Added %d switch entities", len(entities))
+        _LOGGER.debug("Added %d switch entities", len(entities))
     else:
         _LOGGER.debug("No switch entities were created")
 
@@ -155,7 +155,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             else:
                 value = 1
             await self._write_register(self.register_name, value)
-            _LOGGER.info("Turned on %s", self.register_name)
+            _LOGGER.debug("Turned on %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn on %s: %s", self.register_name, exc)
@@ -170,7 +170,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             else:
                 value = 0
             await self._write_register(self.register_name, value)
-            _LOGGER.info("Turned off %s", self.register_name)
+            _LOGGER.debug("Turned off %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn off %s: %s", self.register_name, exc)

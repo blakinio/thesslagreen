@@ -88,7 +88,7 @@ async def async_setup_entry(
         except asyncio.CancelledError:
             _LOGGER.warning("Entity addition cancelled, adding without initial update")
             async_add_entities(entities, False)
-        _LOGGER.info(
+        _LOGGER.debug(
             "Created %d sensor entities for %s",
             len(entities),
             coordinator.device_name,
@@ -96,7 +96,7 @@ async def async_setup_entry(
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
 
-    _LOGGER.info(
+    _LOGGER.debug(
         "Temperature sensors: %d instantiated, %d skipped",
         temp_created,
         temp_skipped,

@@ -57,7 +57,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Created %d select entities", len(entities))
+        _LOGGER.debug("Created %d select entities", len(entities))
 
 
 class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):

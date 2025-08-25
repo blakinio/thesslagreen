@@ -71,7 +71,7 @@ async def async_setup_entry(
             _LOGGER.warning("Cancelled while adding fan entity, retrying without initial state")
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Added fan entity")
+        _LOGGER.debug("Added fan entity")
     else:
         _LOGGER.debug("No fan control registers available - skipping fan entity")
 
@@ -170,7 +170,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 # Default to 50% if no percentage specified
                 await self.async_set_percentage(50)
 
-            _LOGGER.info("Turned on fan")
+            _LOGGER.debug("Turned on fan")
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn on fan: %s", exc)
@@ -196,7 +196,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     await self._write_register(register, 0)
                     self.coordinator.data[register] = 0
 
-            _LOGGER.info("Turned off fan")
+            _LOGGER.debug("Turned off fan")
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn off fan: %s", exc)
@@ -211,7 +211,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         try:
             if percentage == 0:
                 await self.async_turn_off()
-                _LOGGER.info("Set fan speed to 0%")
+                _LOGGER.debug("Set fan speed to 0%")
                 return
 
             # Ensure minimum flow rate (ThesslaGreen typically requires 10% minimum)
@@ -238,7 +238,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 ):
                     await self._write_register("air_flow_rate_temporary_2", actual_percentage)
 
-            _LOGGER.info("Set fan speed to %d%%", actual_percentage)
+            _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to set fan speed to %d%%: %s", percentage, exc)
