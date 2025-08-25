@@ -35,12 +35,6 @@
       "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
     },
-      "timeout": "Przekroczono czas połączenia. Sprawdź host i port.",
-      "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły.",
-        "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16.",
-        "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
-        "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
-      },
     "step": {
       "confirm": {
         "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) pod adresem {host}:{port}. ID urządzenia: {slave_id}. Wersja oprogramowania: {firmware_version}. Znalezione rejestry: {register_count}. Skuteczność skanowania: {scan_success_rate}. Możliwości ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Kontynuować z tą konfiguracją?",
