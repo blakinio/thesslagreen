@@ -396,6 +396,10 @@ DOMAIN = "thessla_green_modbus"
 class CoordinatorMock(MagicMock):
     """MagicMock subclass with device_scan_result property."""
 
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        """Return register map for the given type."""
+        return self._register_maps.get(register_type, {})
+
     @property
     def device_scan_result(self):  # type: ignore[override]
         return {
