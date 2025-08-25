@@ -55,16 +55,15 @@ async def async_setup_entry(
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
+        register_map = coordinator._register_maps.get(register_type, {})
         available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in coordinator._register_maps.get(register_type, {})
+        force_create = coordinator.force_full_register_list and register_name in register_map
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
         if register_name in available or force_create:
-            address = coordinator._register_maps[register_type][register_name]
-            entities.append(
-                ThesslaGreenSensor(coordinator, register_name, address, sensor_def)
-            )
+            address = register_map[register_name]
+            entities.append(ThesslaGreenSensor(coordinator, register_name, address, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
             if is_temp:
                 temp_created += 1
@@ -166,10 +165,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
     def available(self) -> bool:  # pragma: no cover
         """Return if entity has valid data."""
         value = self.coordinator.data.get(self._register_name)
-        if not (
-            self.coordinator.last_update_success
-            and value not in (None, SENSOR_UNAVAILABLE)
-        ):
+        if not (self.coordinator.last_update_success and value not in (None, SENSOR_UNAVAILABLE)):
             return False
         if self._use_percentage() and self._get_nominal_flow() is None:
             return False
