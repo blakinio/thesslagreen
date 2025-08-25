@@ -1356,8 +1356,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
         total_registers = sum(len(v) for v in self.available_registers.values())
         total_registers_json = len(get_all_registers())
-        batch_sizes = [count for groups in self._register_groups.values() for _, count in groups]
-        effective_batch = max(batch_sizes, default=0)
+        effective_batch = self.effective_batch
         registers_discovered = {key: len(value) for key, value in self.available_registers.items()}
         error_stats = {
             "connection_errors": statistics.get("connection_errors", 0),

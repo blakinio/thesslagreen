@@ -179,9 +179,10 @@ async def test_additional_diagnostic_fields():
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
             self.deep_scan = True
             self.force_full_register_list = False
+            self.effective_batch = 7
 
         def get_diagnostic_data(self):
-            return {}
+            return {"effective_batch": self.effective_batch}
 
     coord = DummyCoordinator()
     entry = SimpleNamespace(entry_id="test")
@@ -203,7 +204,7 @@ async def test_additional_diagnostic_fields():
         "timeout_errors": 1,
     }
     assert result["total_registers_json"] == 0
-    assert result["effective_batch"] == 0
+    assert result["effective_batch"] == coord.effective_batch
     assert result["deep_scan"] is True
     assert result["force_full_register_list"] is False
     assert result["force_full"] is False

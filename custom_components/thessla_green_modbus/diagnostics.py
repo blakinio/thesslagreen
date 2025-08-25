@@ -53,12 +53,6 @@ async def async_get_config_entry_diagnostics(
         {key: len(val) for key, val in coordinator.available_registers.items()},
     )
 
-    batch_sizes = [
-        count
-        for groups in getattr(coordinator, "_register_groups", {}).values()
-        for _, count in groups
-    ]
-    diagnostics.setdefault("effective_batch", max(batch_sizes, default=0))
 
     diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
     diagnostics.setdefault("force_full", coordinator.force_full_register_list)
