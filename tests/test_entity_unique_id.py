@@ -21,7 +21,7 @@ def test_unique_id_format():
     coordinator.get_device_info.return_value = {}
 
     entity = ThesslaGreenEntity(coordinator, "test", 1)
-    assert entity.unique_id == f"{DOMAIN}_10_1"  # nosec
+    assert entity.unique_id == "10_1"  # nosec
 
 
 def test_unique_id_varies_with_address():
@@ -31,9 +31,9 @@ def test_unique_id_varies_with_address():
     coordinator.get_device_info.return_value = {}
 
     entity = ThesslaGreenEntity(coordinator, "test", 1)
-    assert entity.unique_id == f"{DOMAIN}_10_1"  # nosec
+    assert entity.unique_id == "10_1"  # nosec
     entity = ThesslaGreenEntity(coordinator, "test", 2)
-    assert entity.unique_id == f"{DOMAIN}_10_2"  # nosec
+    assert entity.unique_id == "10_2"  # nosec
 
 
 def test_unique_id_not_changed_by_airflow_unit():
@@ -145,7 +145,7 @@ async def test_migrate_entity_unique_ids(hass):
 
         assert await async_setup_entry(hass, entry)  # nosec
 
-    new_unique_id = f"{DOMAIN}_{slave_id}_{address}"
+    new_unique_id = f"{slave_id}_{address}"
     entity_id = registry.async_get_entity_id("sensor", DOMAIN, new_unique_id)
     assert entity_id is not None  # nosec
     assert registry.entities[entity_id].unique_id == new_unique_id  # nosec
@@ -158,5 +158,5 @@ def test_unique_id_bit_suffix():
     coordinator.get_device_info.return_value = {}
 
     entity = ThesslaGreenEntity(coordinator, "test", 5, bit=0x04)
-    assert entity.unique_id == f"{DOMAIN}_10_5_bit2"  # nosec
+    assert entity.unique_id == "10_5_bit2"  # nosec
 
