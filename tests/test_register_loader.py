@@ -316,7 +316,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
             "address_dec": 0,
             "address_hex": "0x0",
             "name": "bad_access",
-            "access": "R/W",
+            "access": "RW",
         },
         {
             "function": "03",
