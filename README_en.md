@@ -326,11 +326,6 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 pytest tests/test_register_loader.py
 ```
 
-> CSV register files are no longer supported – register definitions must be
-> provided as JSON and conform to
-> `custom_components/thessla_green_modbus/registers/schema.py`. Validate changes
-> using `pytest tests/test_register_loader.py`.
-
 ## 📄 License
 
 MIT License – see [LICENSE](LICENSE) for details.

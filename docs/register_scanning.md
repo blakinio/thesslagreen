@@ -64,8 +64,3 @@ pytest tests/test_register_loader_validation.py::test_registers_match_pdf
 
 Jeżeli test zgłasza brakujące rejestry lub rozbieżności w atrybutach,
 należy zaktualizować plik JSON przed wysłaniem zmian.
-
-> Obsługa plików CSV została całkowicie usunięta — rejestry muszą być zapisane w
-> `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-> i spełniać schemat `registers/schema.py`. Zweryfikuj zmiany narzędziami i
-> testami opisanymi powyżej.
