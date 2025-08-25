@@ -110,7 +110,7 @@ class RegisterDefinition(pydantic.BaseModel):
     address_dec: int
     address_hex: str
     name: str
-    access: Literal["R/-", "R/W", "R", "W"]
+    access: Literal["R", "RW", "W"]
     unit: str | None = None
     enum: dict[str, Any] | None = None
     multiplier: float | None = None
@@ -143,6 +143,18 @@ class RegisterDefinition(pydantic.BaseModel):
         if "function" in data:
             fn_int = _normalise_function(data["function"])
             data["function"] = fn_int
+
+        # Normalise access values to canonical form
+        access = data.get("access")
+        if access is not None:
+            if access in {"R/-", "R"}:
+                data["access"] = "R"
+            elif access in {"R/W", "RW"}:
+                data["access"] = "RW"
+            elif access == "W":
+                data["access"] = "W"
+            else:
+                raise ValueError("access must be one of 'R', 'RW', 'W'")
 
         # Normalise address_dec
         addr_dec = data.get("address_dec")
@@ -212,6 +224,12 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("function code must be between 1 and 4")
         return v
 
+    @pydantic.model_validator(mode="after")
+    def _check_access(self) -> "RegisterDefinition":
+        if self.function in {1, 2} and self.access != "R":
+            raise ValueError("read-only functions must have R access")
+        return self
+
     # ------------------------------------------------------------------
     # Additional consistency checks
     # ------------------------------------------------------------------
@@ -233,8 +251,8 @@ class RegisterDefinition(pydantic.BaseModel):
             elif self.length != expected:
                 raise ValueError("length does not match type")
 
-        if self.function != 3 and self.access not in {"R", "R/-"}:
-            raise ValueError("read-only functions must have R access")
+        if self.function in {1, 2} and self.access != "R":
+            raise ValueError("functions 1 and 2 must have R access")
 
         if self.enum is not None:
             if not isinstance(self.enum, dict):

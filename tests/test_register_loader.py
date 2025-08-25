@@ -62,6 +62,25 @@ def test_enum_multiplier_resolution_handling() -> None:
     assert required.decode(45) == 22.5
 
 
+def test_default_multiplier_resolution(tmp_path) -> None:
+    """Omitted multiplier/resolution fields default to 1."""
+
+    reg = {
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0000",
+        "name": "noscale",
+        "access": "R",
+    }
+
+    path = tmp_path / "regs.json"
+    path.write_text(json.dumps({"registers": [reg]}))
+
+    loaded = _load_registers_from_file(path, mtime=0, file_hash="")[0]
+    assert loaded.multiplier == 1
+    assert loaded.resolution == 1
+
+
 def test_multi_register_metadata() -> None:
     """Registers spanning multiple words expose length and type info."""
 
@@ -316,7 +335,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
             "address_dec": 0,
             "address_hex": "0x0",
             "name": "bad_access",
-            "access": "R/W",
+            "access": "RW",
         },
         {
             "function": "03",
