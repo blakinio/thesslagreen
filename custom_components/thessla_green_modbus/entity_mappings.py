@@ -12,12 +12,11 @@ were renamed in newer versions of the integration.
 
 from __future__ import annotations
 
-import asyncio
 import importlib.util
-import sys
 import json
 import logging
 import re
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict
 
@@ -26,7 +25,10 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 try:  # pragma: no cover - handle absence of Home Assistant
     from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+    from homeassistant.components.sensor import (
+        SensorDeviceClass,
+        SensorStateClass,
+    )
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tests without HA
     class BinarySensorDeviceClass:  # type: ignore[no-redef]
         RUNNING = "running"
@@ -78,10 +80,15 @@ try:  # pragma: no cover - fallback for tests without full HA constants
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
-from .const import SPECIAL_FUNCTION_MAP
-from .const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, HOLDING_REGISTERS
 from custom_components.thessla_green_modbus.registers.loader import (
     get_all_registers,
+)
+
+from .const import (
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+    SPECIAL_FUNCTION_MAP,
 )
 from .utils import _to_snake_case
 

@@ -45,8 +45,8 @@ from .const import (
     SPECIAL_MODE_OPTIONS,
 )
 from .entity_mappings import map_legacy_entity_id
-from .scanner_core import ThesslaGreenDeviceScanner
 from .modbus_exceptions import ConnectionException, ModbusException
+from .scanner_core import ThesslaGreenDeviceScanner
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator

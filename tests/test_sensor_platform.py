@@ -4,6 +4,7 @@ import asyncio
 import sys
 import types
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -122,23 +123,23 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
+import custom_components.thessla_green_modbus.select as select_module
 from custom_components.thessla_green_modbus.const import (  # noqa: E402
+    AIRFLOW_UNIT_PERCENTAGE,
+    CONF_AIRFLOW_UNIT,
     DOMAIN,
     SENSOR_UNAVAILABLE,
-    CONF_AIRFLOW_UNIT,
-    AIRFLOW_UNIT_PERCENTAGE,
 )
 from custom_components.thessla_green_modbus.select import (  # noqa: E402
     async_setup_entry as select_async_setup_entry,
 )
 from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
-    ThesslaGreenErrorCodesSensor,
     ThesslaGreenActiveErrorsSensor,
+    ThesslaGreenErrorCodesSensor,
     ThesslaGreenSensor,
     async_setup_entry,
 )
-import custom_components.thessla_green_modbus.select as select_module
 
 
 def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):

@@ -33,8 +33,10 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
-        bit_suffix = f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
-        return f"{DOMAIN}_{self.coordinator.slave_id}_{self._address}{bit_suffix}"
+        bit_suffix = (
+            f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
+        )
+        return f"{self.coordinator.slave_id}_{self._address}{bit_suffix}"
 
     @property
     def available(self) -> bool:  # pragma: no cover

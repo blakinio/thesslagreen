@@ -1,13 +1,14 @@
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import homeassistant.const as ha_const
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.thessla_green_modbus import async_setup_entry
 from custom_components.thessla_green_modbus.const import (
     CONF_FORCE_FULL_REGISTER_LIST,
     DOMAIN,
 )
-from homeassistant.const import CONF_HOST, CONF_PORT
-import homeassistant.const as ha_const
-import sys
 
 binary_sensor_mod = sys.modules.setdefault(
     "homeassistant.components.binary_sensor", type(ha_const)("binary_sensor")
@@ -20,8 +21,7 @@ if not hasattr(binary_sensor_mod, "BinarySensorEntity"):
 
 ha_const.STATE_UNAVAILABLE = "unavailable"
 
-from custom_components.thessla_green_modbus import sensor, binary_sensor
-
+from custom_components.thessla_green_modbus import binary_sensor, sensor
 
 SENSOR_MAP = {
     "outside_temperature": {

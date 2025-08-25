@@ -4,6 +4,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
     plan_group_reads,
 )
 
+
 def test_loader_smoke():
     regs = get_all_registers()
     assert regs

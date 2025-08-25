@@ -1,9 +1,9 @@
 # mypy: ignore-errors
 """Tests for the Modbus helper utilities."""
 
+import gc
 import sys
 import types
-import gc
 import weakref
 
 import pytest
@@ -25,9 +25,9 @@ sys.modules[
 )
 
 from custom_components.thessla_green_modbus.modbus_helpers import (  # noqa: E402
-    _call_modbus,
     _KWARG_CACHE,
     _SIG_CACHE,
+    _call_modbus,
     group_reads,
 )
 

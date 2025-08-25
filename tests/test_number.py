@@ -8,7 +8,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+)
 from custom_components.thessla_green_modbus.registers.loader import (
     get_register_definition,
     get_registers_by_function,
@@ -140,13 +142,13 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
+import custom_components.thessla_green_modbus.number as number_module
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 from custom_components.thessla_green_modbus.number import (  # noqa: E402
     ENTITY_MAPPINGS,
     ThesslaGreenNumber,
     async_setup_entry,
 )
-import custom_components.thessla_green_modbus.number as number_module
 
 
 def test_number_creation_and_state(mock_coordinator):

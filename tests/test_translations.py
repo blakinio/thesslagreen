@@ -3,8 +3,8 @@ import json
 import re
 import sys
 import types
-from pathlib import Path
 from importlib import resources
+from pathlib import Path
 
 import yaml
 

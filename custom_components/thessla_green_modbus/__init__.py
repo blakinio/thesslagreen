@@ -20,15 +20,17 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
+    CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_RETRY,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
-    CONF_DEEP_SCAN,
-    CONF_MAX_REGISTERS_PER_REQUEST,
+    DEFAULT_DEEP_SCAN,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
@@ -37,8 +39,6 @@ from .const import (
     DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
     DEFAULT_TIMEOUT,
-    DEFAULT_DEEP_SCAN,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DOMAIN,
     async_setup_options,
     migrate_unique_id,
@@ -46,11 +46,6 @@ from .const import (
 from .const import PLATFORMS as PLATFORM_DOMAINS
 from .entity_mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
-
-# Informational message for start-up logs
-REGISTER_FORMAT_MESSAGE = (
-    "Register definitions now use JSON format only; CSV support has been removed."
-)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -112,9 +107,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     though it appears unused within the integration code itself.
     """
     from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
-    from homeassistant.helpers.update_coordinator import UpdateFailed  # type: ignore
+    from homeassistant.helpers.update_coordinator import (
+        UpdateFailed,  # type: ignore
+    )
 
-    _LOGGER.info(REGISTER_FORMAT_MESSAGE)
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
     await hass.async_add_executor_job(import_module, ".config_flow", __name__)

@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TRANS = ROOT / "custom_components" / "thessla_green_modbus" / "translations"
+STRINGS = ROOT / "custom_components" / "thessla_green_modbus" / "strings.json"
 
 BASE_LANG = "en"
 LANGS = (BASE_LANG, "pl")
@@ -29,6 +30,34 @@ OPTION_ERROR_KEYS = [
 
 def _load(lang: str) -> dict:
     return json.loads((TRANS / f"{lang}.json").read_text(encoding="utf-8"))
+
+
+def _collect_keys(data: dict | list, prefix: str = "") -> set[str]:
+    keys: set[str] = set()
+    if isinstance(data, dict):
+        for key, val in data.items():
+            path = f"{prefix}.{key}" if prefix else key
+            keys.add(path)
+            keys |= _collect_keys(val, path)
+    elif isinstance(data, list):
+        for item in data:
+            keys |= _collect_keys(item, prefix)
+    return keys
+
+
+def _check_strings(data: dict, strings: dict, lang: str) -> list[str]:
+    msg: list[str] = []
+    data_keys = _collect_keys(data)
+    str_keys = _collect_keys(strings)
+    if missing := str_keys - data_keys:
+        msg.append(
+            f"{lang}: missing keys compared to strings.json: {sorted(missing)}"
+        )
+    if extra := data_keys - str_keys:
+        msg.append(
+            f"{lang}: extra keys compared to strings.json: {sorted(extra)}"
+        )
+    return msg
 
 
 def _check_section(
@@ -84,9 +113,11 @@ def _check_errors(data: dict, ref: dict, lang: str) -> list[str]:
 def main() -> int:
     problems: list[str] = []
     ref = _load(BASE_LANG)
+    strings = json.loads(STRINGS.read_text(encoding="utf-8"))
     for lang in LANGS:
         data = _load(lang)
         problems.extend(_check_options(data, lang))
+        problems.extend(_check_strings(data, strings, lang))
         if lang != BASE_LANG:
             problems.extend(_check_diagnostics(data, ref, lang))
             problems.extend(_check_errors(data, ref, lang))

@@ -3,9 +3,9 @@ import asyncio
 import logging
 
 import pytest
+from homeassistant import core
 
 from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus
-from homeassistant import core
 
 pytestmark = pytest.mark.asyncio
 
@@ -38,7 +38,7 @@ async def test_call_modbus_logs(caplog):
     assert any(
         "batch=2" in r.message and "attempt 1/2" in r.message
         for r in caplog.records
-        if r.levelno == logging.DEBUG
+        if r.levelno == logging.INFO
     )
     assert any("Modbus request" in r.message and "**" in r.message for r in caplog.records)
     assert any("Modbus response" in r.message and "**" in r.message for r in caplog.records)
@@ -53,6 +53,8 @@ async def test_read_retries_logged(monkeypatch, caplog):
         _load_registers=lambda: ([], {}),
         get_all_registers=lambda: [],
         get_registers_by_function=lambda fn: [],
+        registers_sha256=lambda path: "",
+        _REGISTERS_PATH="",
     )
     sys.modules[
         "custom_components.thessla_green_modbus.registers.loader"
@@ -111,7 +113,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
         if r.levelno == logging.WARNING
     )
     assert any("attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING)
-    assert sum(1 for r in caplog.records if r.levelno == logging.DEBUG and "batch=2" in r.message) == 2
+    assert sum(1 for r in caplog.records if r.levelno == logging.INFO and "batch=2" in r.message) == 2
 
 
 async def test_write_retries_logged(monkeypatch, caplog):
@@ -123,6 +125,8 @@ async def test_write_retries_logged(monkeypatch, caplog):
         _load_registers=lambda: ([], {}),
         get_all_registers=lambda: [],
         get_registers_by_function=lambda fn: [],
+        registers_sha256=lambda path: "",
+        _REGISTERS_PATH="",
     )
     sys.modules[
         "custom_components.thessla_green_modbus.registers.loader"

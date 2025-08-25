@@ -3,17 +3,21 @@
 from custom_components.thessla_green_modbus.const import SPECIAL_FUNCTION_MAP
 from tests.test_translations import (
     BINARY_KEYS,
-    EN,
     CODE_KEYS,
+    EN,
     ISSUE_KEYS,
     NUMBER_KEYS,
+    OPTION_ERROR_KEYS,
+    OPTION_KEYS,
     PL,
     SELECT_KEYS,
-    SENSOR_KEYS as SENSOR_ENTITY_KEYS,
     SERVICES,
+)
+from tests.test_translations import (
+    SENSOR_KEYS as SENSOR_ENTITY_KEYS,
+)
+from tests.test_translations import (
     SWITCH_KEYS as SWITCH_ENTITY_KEYS,
-    OPTION_KEYS,
-    OPTION_ERROR_KEYS,
 )
 
 SENSOR_KEYS = SENSOR_ENTITY_KEYS + ["air_flow_rate_manual", "air_flow_rate_temporary_2"]

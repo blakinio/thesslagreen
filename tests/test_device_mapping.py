@@ -1,8 +1,8 @@
 from collections.abc import Mapping
 
 from custom_components.thessla_green_modbus.scanner_core import (
-    ScannerDeviceInfo,
     DeviceCapabilities,
+    ScannerDeviceInfo,
 )
 
 

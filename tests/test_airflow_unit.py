@@ -1,7 +1,6 @@
-from unittest.mock import MagicMock
-
 import sys
 import types
+from unittest.mock import MagicMock
 
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
 setattr(const, "PERCENTAGE", "%")
@@ -14,15 +13,22 @@ class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
 
 const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
 
+from homeassistant.const import PERCENTAGE, UnitOfVolumeFlowRate  # noqa: E402
+
 from custom_components.thessla_green_modbus.const import (  # noqa: E402
-    CONF_AIRFLOW_UNIT,
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
+    CONF_AIRFLOW_UNIT,
 )
-from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity  # noqa: E402
-from custom_components.thessla_green_modbus.entity_mappings import SENSOR_ENTITY_MAPPINGS  # noqa: E402
-from custom_components.thessla_green_modbus.sensor import ThesslaGreenSensor  # noqa: E402
-from homeassistant.const import PERCENTAGE, UnitOfVolumeFlowRate  # noqa: E402
+from custom_components.thessla_green_modbus.entity import (
+    ThesslaGreenEntity,  # noqa: E402
+)
+from custom_components.thessla_green_modbus.entity_mappings import (
+    SENSOR_ENTITY_MAPPINGS,  # noqa: E402
+)
+from custom_components.thessla_green_modbus.sensor import (
+    ThesslaGreenSensor,  # noqa: E402
+)
 
 
 def _make_coordinator(unit):

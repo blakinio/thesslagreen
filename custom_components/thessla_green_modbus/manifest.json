@@ -32,8 +32,8 @@
     "translations/en.json",
     "translations/pl.json"
   ],
-  "version": "2.1.3",
-  "integration_type": "hub",
+  "version": "2.1.4",
+  "integration_type": "device",
   "dhcp": [
     {
       "hostname": "airpack*",
