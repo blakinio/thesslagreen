@@ -38,77 +38,52 @@ async def async_get_config_entry_diagnostics(
     """
     coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
-    diagnostics.setdefault(
-        "registers_hash",
-        registers_sha256(_REGISTERS_PATH),
-    )
+    diagnostics.setdefault("registers_hash", registers_sha256(_REGISTERS_PATH))
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
 
-    # Explicitly include key diagnostic metrics
-    diagnostics["total_registers_json"] = len(registers_loader.get_all_registers())
+    diagnostics.setdefault("firmware_version", coordinator.device_info.get("firmware"))
+    diagnostics.setdefault("total_registers_json", len(get_all_registers()))
+    diagnostics.setdefault(
+        "total_available_registers",
+        sum(len(regs) for regs in coordinator.available_registers.values()),
+    )
+    diagnostics.setdefault(
+        "registers_discovered",
+        {key: len(val) for key, val in coordinator.available_registers.items()},
+    )
+
     batch_sizes = [
         count
         for groups in getattr(coordinator, "_register_groups", {}).values()
         for _, count in groups
     ]
-    diagnostics["effective_batch"] = max(batch_sizes, default=0)
+    diagnostics.setdefault("effective_batch", max(batch_sizes, default=0))
 
-    diagnostics["firmware_version"] = coordinator.device_info.get("firmware")
-    diagnostics["total_available_registers"] = sum(
-        len(regs) for regs in coordinator.available_registers.values()
-    diagnostics.setdefault(
-        "total_registers_json", len(get_all_registers())
-    )
-    if "effective_batch" not in diagnostics:
-        batch_sizes = [
-            count
-            for groups in getattr(coordinator, "_register_groups", {}).values()
-            for _, count in groups
-        ]
-        diagnostics["effective_batch"] = max(batch_sizes, default=0)
-
-    # Supplement diagnostics with coordinator statistics
-    diagnostics.setdefault(
-        "firmware_version", coordinator.device_info.get("firmware")
-    )
-    diagnostics.setdefault(
-        "total_available_registers",
-        sum(len(regs) for regs in coordinator.available_registers.values()),
-    )
-    diagnostics.setdefault("deep_scan", coordinator.deep_scan)
+    diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
+    diagnostics.setdefault("force_full", coordinator.force_full_register_list)
     diagnostics.setdefault(
         "force_full_register_list", coordinator.force_full_register_list
     )
-    diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
+    diagnostics.setdefault("deep_scan", coordinator.deep_scan)
+
     diagnostics.setdefault(
-        "registers_discovered",
-        {key: len(val) for key, val in coordinator.available_registers.items()},
+        "error_statistics",
+        {
+            "connection_errors": coordinator.statistics.get("connection_errors", 0),
+            "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
+        },
     )
-    diagnostics["deep_scan"] = coordinator.deep_scan
-    diagnostics["force_full_register_list"] = coordinator.force_full_register_list
-    diagnostics["autoscan"] = not coordinator.force_full_register_list
-    diagnostics["registers_discovered"] = {
-        key: len(val) for key, val in coordinator.available_registers.items()
-    }
-    diagnostics["last_scan"] = (
-        coordinator.last_scan.isoformat() if coordinator.last_scan else None
+    diagnostics.setdefault(
+        "last_scan",
+        coordinator.last_scan.isoformat() if coordinator.last_scan else None,
     )
-    diagnostics["error_statistics"] = {
-        "connection_errors": coordinator.statistics.get("connection_errors", 0),
-        "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
-    }
 
     if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
-        diagnostics.setdefault(
-            "raw_registers", coordinator.device_scan_result["raw_registers"]
-        )
+        diagnostics.setdefault("raw_registers", coordinator.device_scan_result["raw_registers"])
 
-    # Always expose registers that were skipped due to errors and any
-    # unknown addresses discovered during the scan. Prefer data from the
-    # most recent device scan, but fall back to any cached coordinator
-    # values so the information is always present in diagnostics.
+    # Always expose registers that were skipped due to errors and any unknown
+    # addresses discovered during the scan.
     unknown_regs: dict[str, dict[int, Any]] = {}
     failed_addrs: dict[str, dict[str, list[int]]] = {}
     if coordinator.device_scan_result:
@@ -137,11 +112,8 @@ async def async_get_config_entry_diagnostics(
     if active_errors:
         diagnostics["active_errors"] = active_errors
 
-    # Redact sensitive information
     diagnostics_safe = _redact_sensitive_data(diagnostics)
-
     _LOGGER.debug("Generated diagnostics for ThesslaGreen device")
-
     return diagnostics_safe
 
 
