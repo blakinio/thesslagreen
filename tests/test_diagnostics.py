@@ -142,6 +142,7 @@ async def test_last_scan_in_diagnostics():
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
             self.deep_scan = False
             self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
@@ -182,7 +183,7 @@ async def test_additional_diagnostic_fields():
             self.effective_batch = 7
 
         def get_diagnostic_data(self):
-            return {"effective_batch": self.effective_batch}
+            return {}
 
     coord = DummyCoordinator()
     entry = SimpleNamespace(entry_id="test")
@@ -242,6 +243,7 @@ async def test_unknown_registers_in_diagnostics():
             self.unknown_registers = scan_result["unknown_registers"]
             self.deep_scan = False
             self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
@@ -288,6 +290,7 @@ async def test_raw_registers_in_diagnostics():
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
             self.deep_scan = False
             self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
@@ -330,6 +333,7 @@ async def test_diagnostics_json_serializable():
             )
             self.deep_scan = False
             self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
@@ -368,6 +372,7 @@ async def test_translation_failure_handled(caplog):
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
             self.deep_scan = False
             self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
