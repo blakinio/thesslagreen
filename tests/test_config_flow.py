@@ -351,6 +351,7 @@ async def test_form_user_success():
                 "slave_id": 10,
                 CONF_NAME: "My Device",
                 CONF_DEEP_SCAN: True,
+                CONF_MAX_REGISTERS_PER_REQUEST: 5,
             }
         )
         assert result["type"] == "form"
@@ -373,10 +374,7 @@ async def test_form_user_success():
     assert isinstance(data["capabilities"], dict)
     assert data["capabilities"]["expansion_module"] is True
     assert result2["options"][CONF_DEEP_SCAN] is True
-    assert (
-        result2["options"][CONF_MAX_REGISTERS_PER_REQUEST]
-        == DEFAULT_MAX_REGISTERS_PER_REQUEST
-    )
+    assert result2["options"][CONF_MAX_REGISTERS_PER_REQUEST] == 5
 
 
 async def test_duplicate_entry_aborts():
@@ -1826,6 +1824,74 @@ def test_device_capabilities_serialization():
     assert list(caps.keys()) == list(serialized.keys())
     assert list(caps.items()) == list(serialized.items())
     assert list(caps.values()) == list(serialized.values())
+
+
+async def test_config_flow_max_registers_per_request_validated():
+    """Config flow validates max registers per request."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace()
+    result = await flow.async_step_user()
+    schema_keys = {
+        key.schema if hasattr(key, "schema") else key for key in result["data_schema"].schema
+    }
+    assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
+
+    validation_result = {"device_info": {}, "scan_result": {}}
+    for value in (1, MAX_BATCH_REGISTERS):
+        flow = ConfigFlow()
+        flow.hass = SimpleNamespace()
+        with patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ), patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+        ), patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured"
+        ):
+            result = await flow.async_step_user(
+                {
+                    CONF_HOST: "192.168.1.100",
+                    CONF_PORT: 502,
+                    CONF_SLAVE_ID: 10,
+                    CONF_MAX_REGISTERS_PER_REQUEST: value,
+                }
+            )
+            assert result["type"] == "form"
+            assert result["step_id"] == "confirm"
+
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace()
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.validate_input"
+    ) as mock_validate:
+        result = await flow.async_step_user(
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_PORT: 502,
+                CONF_SLAVE_ID: 10,
+                CONF_MAX_REGISTERS_PER_REQUEST: 0,
+            }
+        )
+        assert result["type"] == "form"
+        assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
+        mock_validate.assert_not_called()
+
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace()
+    with patch(
+        "custom_components.thessla_green_modbus.config_flow.validate_input"
+    ) as mock_validate:
+        result = await flow.async_step_user(
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_PORT: 502,
+                CONF_SLAVE_ID: 10,
+                CONF_MAX_REGISTERS_PER_REQUEST: 20,
+            }
+        )
+        assert result["type"] == "form"
+        assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
+        mock_validate.assert_not_called()
 
 
 async def test_options_flow_max_registers_per_request_validation():

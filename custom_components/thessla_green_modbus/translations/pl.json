@@ -31,6 +31,9 @@
       "invalid_capabilities": "Nieprawidłowe dane możliwości urządzenia.",
       "invalid_format": "Odebrano dane w nieoczekiwanym formacie z urządzenia.",
       "modbus_error": "Błąd komunikacji Modbus. Sprawdź okablowanie i ustawienia.",
+      "timeout": "Przekroczono czas połączenia. Sprawdź host i port.",
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły.",
+      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16."
       "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
     },
@@ -46,14 +49,16 @@
           "port": "Port",
           "slave_id": "ID Urządzenia",
           "name": "Nazwa",
-          "deep_scan": "Głęboki skan rejestrów"
+          "deep_scan": "Głęboki skan rejestrów",
+          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
         },
         "data_description": {
           "host": "IP address of the AirPack device on your local network",
           "name": "Device name in Home Assistant",
           "port": "Modbus TCP port (default 502)",
           "slave_id": "Modbus device ID (default 10)",
-          "deep_scan": "Odczytaj wszystkie rejestry do diagnostyki (może być wolne)"
+          "deep_scan": "Odczytaj wszystkie rejestry do diagnostyki (może być wolne)",
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects device functions and registers."
       }
