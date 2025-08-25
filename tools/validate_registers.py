@@ -7,8 +7,14 @@ import re
 import sys
 import types
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pydantic
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from custom_components.thessla_green_modbus.registers.schema import (
+        RegisterDefinition,
+    )
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,17 +31,11 @@ def _prepare_environment() -> None:
     # Stub modules required for importing the registers loader without pulling
     # in the rest of the integration (which would otherwise create circular
     # imports during testing).
-    modbus_helpers = types.ModuleType(
-        "custom_components.thessla_green_modbus.modbus_helpers"
-    )
+    modbus_helpers = types.ModuleType("custom_components.thessla_green_modbus.modbus_helpers")
     modbus_helpers.group_reads = lambda *_, **__: None  # type: ignore
-    sys.modules.setdefault(
-        "custom_components.thessla_green_modbus.modbus_helpers", modbus_helpers
-    )
+    sys.modules.setdefault("custom_components.thessla_green_modbus.modbus_helpers", modbus_helpers)
 
-    schedule_helpers = types.ModuleType(
-        "custom_components.thessla_green_modbus.schedule_helpers"
-    )
+    schedule_helpers = types.ModuleType("custom_components.thessla_green_modbus.schedule_helpers")
     schedule_helpers.bcd_to_time = lambda *_, **__: None  # type: ignore
     schedule_helpers.time_to_bcd = lambda *_, **__: None  # type: ignore
     sys.modules.setdefault(
@@ -86,10 +86,9 @@ def validate(path: Path) -> list[RegisterDefinition]:
 
     _prepare_environment()
     from custom_components.thessla_green_modbus.registers.schema import (
-        RegisterDefinition,
+        _TYPE_LENGTHS,
         RegisterList,
         RegisterType,
-        _TYPE_LENGTHS,
     )
 
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -99,9 +98,18 @@ def validate(path: Path) -> list[RegisterDefinition]:
         raise TypeError("registers JSON must contain a list of register definitions")
 
     registers = _coerce_registers(registers)
-    parsed_list = RegisterList.model_validate(registers)
+    try:
+        parsed_list = RegisterList.model_validate(registers)
+    except pydantic.ValidationError as err:
+        raise ValueError(err) from err
 
+    seen_pairs: set[tuple[int, int]] = set()
+    seen_names: set[str] = set()
     for reg in parsed_list.root:
+        # Function/access combinations
+        if reg.function in {1, 2} and reg.access not in {"R", "R/-"}:
+            raise ValueError(f"{reg.name}: read-only functions must have R access")
+
         # Enforce type/length relationships
         if reg.type is not None:
             typ = reg.type.value if isinstance(reg.type, RegisterType) else reg.type
@@ -142,14 +150,19 @@ def validate(path: Path) -> list[RegisterDefinition]:
                 if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
                     raise ValueError(f"{reg.name}: bit name must be snake_case")
 
-        # address consistency check
+        # Hex/dec address consistency
         if int(reg.address_hex, 16) != reg.address_dec:
             raise ValueError(f"{reg.name}: address_hex does not match address_dec")
 
-    try:
-        parsed_list = RegisterList.model_validate(registers)
-    except pydantic.ValidationError as err:
-        raise ValueError(err) from err
+        # Uniqueness checks
+        pair = (reg.function, reg.address_dec)
+        if pair in seen_pairs:
+            raise ValueError(f"{reg.name}: duplicate function/address pair {pair}")
+        if reg.name in seen_names:
+            raise ValueError(f"{reg.name}: duplicate register name {reg.name}")
+        seen_pairs.add(pair)
+        seen_names.add(reg.name)
+
     return parsed_list.root
 
 
@@ -157,7 +170,9 @@ def main(path: Path | None = None) -> int:
     """Validate registers file, exiting with ``1`` on error."""
 
     _prepare_environment()
-    from custom_components.thessla_green_modbus.registers.loader import _REGISTERS_PATH
+    from custom_components.thessla_green_modbus.registers.loader import (
+        _REGISTERS_PATH,
+    )
 
     target = Path(path) if path is not None else _REGISTERS_PATH
 
@@ -171,4 +186,3 @@ def main(path: Path | None = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
     raise SystemExit(main())
-
