@@ -43,7 +43,7 @@ class DummyCoordinator:
         address = HOLDING_REGISTERS.get(register_name, 0) + offset
         self.writes.append((address, value, self.slave_id))
         try:
-            definition = services.get_register_definition(register_name)
+            definition = get_register_definition(register_name)
             encoded = definition.encode(value)
             self.encoded.append((address, encoded, self.slave_id))
         except Exception:  # pragma: no cover - defensive
@@ -76,6 +76,7 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     monkeypatch.setattr(
         services, "async_extract_entity_ids", lambda _h, call: call.data["entity_id"]
     )
+    monkeypatch.setattr(services, "ServiceCall", SimpleNamespace)
 
     await services.async_setup_services(hass)
     handler = hass.services.handlers["set_airflow_schedule"]
@@ -119,11 +120,9 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "batch,expected_chunks", [(1, 8), (8, 1), (MAX_BATCH_REGISTERS, 1), (32, 1)]
-)
-async def test_set_device_name_chunking(monkeypatch, batch, expected_chunks):
-    """set_device_name respects configured batch size."""
+@pytest.mark.parametrize("batch", [1, 8, MAX_BATCH_REGISTERS, 32])
+async def test_set_device_name_passes_full_value(monkeypatch, batch):
+    """set_device_name delegates encoding and chunking to coordinator."""
     hass = SimpleNamespace()
     hass.services = Services()
     coordinator = DummyCoordinator(batch)
@@ -143,10 +142,8 @@ async def test_set_device_name_chunking(monkeypatch, batch, expected_chunks):
 
     await handler(call)
 
-    assert len(coordinator.writes) == expected_chunks
-    for _addr, values, _ in coordinator.writes:
-        if isinstance(values, list):
-            assert len(values) <= coordinator.effective_batch
+    assert len(coordinator.writes) == 1
+    assert coordinator.writes[0][1] == "ABCDEFGHIJKLMNOP"
 
 
 @pytest.mark.asyncio

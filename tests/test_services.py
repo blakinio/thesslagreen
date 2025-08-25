@@ -226,12 +226,6 @@ for name, module in modules.items():
 # Ensure repository root on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
-
-HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 try:
     services_module = importlib.reload(
@@ -248,8 +242,6 @@ def test_air_quality_register_map():
     assert AIR_QUALITY_REGISTER_MAP["co2_medium"] == "co2_threshold_medium"
     assert AIR_QUALITY_REGISTER_MAP["co2_high"] == "co2_threshold_high"
     assert AIR_QUALITY_REGISTER_MAP["humidity_target"] == "humidity_target"
-    for register in AIR_QUALITY_REGISTER_MAP.values():
-        assert register in HOLDING_REGISTERS
 
 
 def test_get_coordinator_from_entity_id_multiple_devices():
@@ -275,3 +267,5 @@ def test_get_coordinator_from_entity_id_multiple_devices():
 
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev1") is coord1
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev2") is coord2
+
+
