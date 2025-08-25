@@ -3462,7 +3462,7 @@
         "type": "string",
         "encoding": "ascii"
       },
-      "description_en": "Nazwa urządzenia"
+      "description_en": "Device name"
     },
     {
       "function": "03",
@@ -3481,7 +3481,7 @@
         "type": "u32",
         "endianness": "little"
       },
-      "description_en": "Klucz produktu użytkownika"
+      "description_en": "User product key"
     },
     {
       "function": "03",
@@ -3497,7 +3497,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Aktywacja blokady urządzenia",
-      "description_en": "Aktywacja blokady urządzenia"
+      "description_en": "Device lock activation"
     },
     {
       "function": "03",
@@ -4421,7 +4421,7 @@
         "type": "string",
         "encoding": "ascii"
       },
-      "description_en": "Numer seryjny sterownika"
+      "description_en": "Controller serial number"
     },
     {
       "function": "04",

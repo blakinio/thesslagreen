@@ -162,20 +162,16 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if entry is not None:
             try:
-                max_regs = int(
-                    entry.options.get(
-                        CONF_MAX_REGISTERS_PER_REQUEST, MAX_BATCH_REGISTERS
-                    )
+                self.effective_batch = min(
+                    int(entry.options.get(CONF_MAX_REGISTERS_PER_REQUEST, 16)), 16
                 )
             except (TypeError, ValueError):
-                max_regs = MAX_BATCH_REGISTERS
+                self.effective_batch = 16
         else:
-            max_regs = max_registers_per_request
-
-        self.max_registers_per_request = max_regs
-        self.effective_batch = min(self.max_registers_per_request, MAX_BATCH_REGISTERS)
+            self.effective_batch = min(int(max_registers_per_request), 16)
         if self.effective_batch < 1:
             self.effective_batch = 1
+        self.max_registers_per_request = self.effective_batch
 
         # Connection management
         self.client: AsyncModbusTcpClient | None = None

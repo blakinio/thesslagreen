@@ -2,7 +2,6 @@
 
 import pytest
 
-import custom_components.thessla_green_modbus.registers.loader as loader
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
 from custom_components.thessla_green_modbus.registers.loader import (
     ReadPlan,
@@ -37,13 +36,19 @@ def test_group_reads_respects_max_block_size(size):
 
 def test_plan_group_reads_merges_consecutive_addresses(monkeypatch):
     regs = [Register("input", addr, f"r{addr}", "r") for addr in [0, 1, 2, 3, 10, 11, 12]]
-    monkeypatch.setattr(loader, "load_registers", lambda: regs)
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.registers.loader.load_registers",
+        lambda: regs,
+    )
     assert plan_group_reads() == [ReadPlan("input", 0, 4), ReadPlan("input", 10, 3)]
 
 
 def test_plan_group_reads_respects_max_block_size(monkeypatch):
     regs = [Register("input", addr, f"r{addr}", "r") for addr in range(22)]
-    monkeypatch.setattr(loader, "load_registers", lambda: regs)
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.registers.loader.load_registers",
+        lambda: regs,
+    )
     assert plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) == [
         ReadPlan("input", 0, MAX_BATCH_REGISTERS),
         ReadPlan("input", MAX_BATCH_REGISTERS, 6),
@@ -53,7 +58,10 @@ def test_plan_group_reads_respects_max_block_size(monkeypatch):
 @pytest.mark.parametrize("size", [1, 4, MAX_BATCH_REGISTERS, 32])
 def test_plan_group_reads_varied_block_sizes(monkeypatch, size):
     regs = [Register("input", addr, f"r{addr}", "r") for addr in range(10)]
-    monkeypatch.setattr(loader, "load_registers", lambda: regs)
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.registers.loader.load_registers",
+        lambda: regs,
+    )
     addresses = [r.address for r in regs]
     expected = [
         ReadPlan("input", start, length)

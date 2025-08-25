@@ -437,6 +437,54 @@ async def test_async_write_register_truncates_over_limit(coordinator, monkeypatc
     coordinator.async_request_refresh.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_read_holding_registers_chunking_and_retries(coordinator):
+    """Read path retries on errors and honours chunk sizes."""
+
+    coordinator.client = MagicMock()
+    coordinator.client.connected = True
+    coordinator.retry = 2
+
+    coordinator._register_groups = {
+        "holding_registers": [
+            (0, MAX_BATCH_REGISTERS),
+            (MAX_BATCH_REGISTERS, 4),
+            (MAX_BATCH_REGISTERS + 4, 1),
+        ]
+    }
+    names = {f"reg{i}" for i in range(MAX_BATCH_REGISTERS + 5)}
+    coordinator.available_registers["holding_registers"] = names
+    coordinator._find_register_name = lambda _kind, addr: f"reg{addr}"
+    coordinator._process_register_value = lambda _name, value: value
+    coordinator._clear_register_failure = lambda _name: None
+    coordinator._mark_registers_failed = lambda _names: None
+
+    response1 = SimpleNamespace(
+        registers=[1] * MAX_BATCH_REGISTERS, isError=lambda: False
+    )
+    response2 = SimpleNamespace(registers=[2] * 4, isError=lambda: False)
+    response3 = SimpleNamespace(registers=[3], isError=lambda: False)
+
+    coordinator.client.read_holding_registers = AsyncMock(
+        side_effect=[
+            asyncio.TimeoutError(),
+            response1,
+            ModbusException("boom"),
+            response2,
+            response3,
+        ]
+    )
+
+    data = await coordinator._read_holding_registers_optimized()
+
+    assert coordinator.client.read_holding_registers.await_count == 5
+    counts = [c.kwargs["count"] for c in coordinator.client.read_holding_registers.await_args_list]
+    assert counts == [MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS, 4, 4, 1]
+    assert data["reg0"] == 1
+    assert data[f"reg{MAX_BATCH_REGISTERS}"] == 2
+    assert data[f"reg{MAX_BATCH_REGISTERS + 4}"] == 3
+
+
 def test_performance_stats(coordinator):
     """Test performance statistics."""
     stats = coordinator.performance_stats

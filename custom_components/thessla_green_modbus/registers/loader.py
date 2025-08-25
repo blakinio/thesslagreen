@@ -40,8 +40,11 @@ _REGISTERS_PATH = Path(
     str(resources.files(__package__).joinpath("thessla_green_registers_full.json"))
 )
 # Cache for file metadata keyed by path. Each entry stores ``(mtime, sha256)``
-# for the most recently seen state of that file.
+# for the most recently seen state of that file.  A second cache keyed by
+# ``(sha256, mtime)`` stores the parsed register definitions so repeated loads of
+# unchanged files avoid both hashing and JSON parsing.
 _cached_file_info: dict[str, tuple[float, str]] = {}
+_register_cache: dict[tuple[str, float], list["RegisterDef"]] = {}
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
@@ -66,8 +69,8 @@ class RegisterDef:
     description: str | None = None
     description_en: str | None = None
     unit: str | None = None
-    multiplier: float | None = None
-    resolution: float | None = None
+    multiplier: float = 1
+    resolution: float = 1
     min: float | None = None
     max: float | None = None
     default: float | None = None
@@ -117,9 +120,9 @@ class RegisterDef:
             else:
                 value = int.from_bytes(data, "big", signed=False)
 
-            if self.multiplier is not None:
+            if self.multiplier not in (None, 1):
                 value *= self.multiplier
-            if self.resolution is not None:
+            if self.resolution not in (None, 1):
                 steps = round(value / self.resolution)
                 value = steps * self.resolution
             return value
@@ -169,9 +172,9 @@ class RegisterDef:
             else:
                 return f"{t.hour:02d}:{t.minute:02d}"
 
-        if self.multiplier is not None:
+        if self.multiplier not in (None, 1):
             value *= self.multiplier
-        if self.resolution is not None:
+        if self.resolution not in (None, 1):
             steps = round(value / self.resolution)
             value = steps * self.resolution
         return value
@@ -218,9 +221,9 @@ class RegisterDef:
                         f"{value} is above maximum {self.max} for {self.name}"
                     )
 
-            if self.multiplier is not None:
+            if self.multiplier not in (None, 1):
                 raw_val = int(round(float(raw_val) / self.multiplier))
-            if self.resolution is not None:
+            if self.resolution not in (None, 1):
                 step = self.resolution
                 raw_val = int(round(float(raw_val) / step) * step)
 
@@ -295,9 +298,9 @@ class RegisterDef:
                 raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
             if self.max is not None and num_val > self.max:
                 raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
-        if self.multiplier is not None:
+        if self.multiplier not in (None, 1):
             raw = int(round(float(raw) / self.multiplier))
-        if self.resolution is not None:
+        if self.resolution not in (None, 1):
             step = self.resolution
             raw = int(round(float(raw) / step) * step)
         typ = self.extra.get("type") if self.extra else None
@@ -333,14 +336,14 @@ except Exception as err:  # pragma: no cover - unexpected
 # ---------------------------------------------------------------------------
 
 
-@lru_cache(maxsize=None)
 def _load_registers_from_file(
     path: Path, *, mtime: float, file_hash: str
 ) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
-    ``mtime`` and ``file_hash`` participate in the cache key so the file is
-    reloaded only when its timestamp or contents change.
+    ``mtime`` and ``file_hash`` are accepted for backwards compatibility with
+    tests that spy on cache behaviour.  They do not influence the parsing
+    directly; caching is handled in ``load_registers`` using these values.
     """
 
     try:
@@ -408,7 +411,7 @@ def _load_registers_from_file(
     return registers
 
 
-def registers_sha256(json_path: Path) -> str:
+def registers_sha256(json_path: Path | str) -> str:
     """Return the SHA256 hash of ``json_path``.
 
     The result is cached using the file's modification time so repeated calls
@@ -431,14 +434,20 @@ def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     ``json_path`` may be provided to load register definitions from an
     alternate file. When omitted, the bundled definitions are used.
 
-    The cache key is derived from the tuple ``(path, mtime, sha256)`` so
-    changes to either timestamp or content trigger a reload.
+    The cache key derives from the tuple ``(sha256(content), mtime)`` so
+    changes to either timestamp or content trigger a reload regardless of the
+    path used.
     """
 
     path = Path(json_path) if json_path is not None else _REGISTERS_PATH
     file_hash = registers_sha256(path)
     mtime = _cached_file_info[str(path)][0]
-    return _load_registers_from_file(path, mtime=mtime, file_hash=file_hash)
+    key = (file_hash, mtime)
+    regs = _register_cache.get(key)
+    if regs is None:
+        regs = _load_registers_from_file(path, mtime=mtime, file_hash=file_hash)
+        _register_cache[key] = regs
+    return regs
 
 
 def clear_cache() -> None:  # pragma: no cover
@@ -448,7 +457,7 @@ def clear_cache() -> None:  # pragma: no cover
     definitions.
     """
     _cached_file_info.clear()
-    _load_registers_from_file.cache_clear()
+    _register_cache.clear()
     _register_map.cache_clear()
 
 

@@ -12,7 +12,7 @@ from custom_components.thessla_green_modbus.const import (
 
 ha_const.STATE_UNAVAILABLE = "unavailable"
 
-from custom_components.thessla_green_modbus import async_setup_entry, sensor
+from custom_components.thessla_green_modbus import async_setup_entry, sensor  # noqa: E402
 
 # Minimal sensor definitions for testing
 SENSOR_MAP = {
@@ -119,7 +119,8 @@ async def _setup_entities(force: bool) -> set[str]:
         "custom_components.thessla_green_modbus._async_migrate_unique_ids",
         AsyncMock(),
     ), patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True), patch.dict(
-        sys.modules, {"custom_components.thessla_green_modbus.loader": MagicMock()}
+        sys.modules,
+        {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
     ), patch(
         "custom_components.thessla_green_modbus.services.async_setup_services",
         AsyncMock(),

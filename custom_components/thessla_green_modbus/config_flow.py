@@ -92,7 +92,7 @@ async def _run_with_retry(
                 try:
                     await asyncio.sleep(delay)
                 except asyncio.CancelledError:
-                    _LOGGER.debug("Retry sleep cancelled")
+                    _LOGGER.info("Retry sleep cancelled")
                     raise
     # Should never reach here
     raise RuntimeError("Retry wrapper failed without raising")
@@ -108,12 +108,15 @@ class InvalidAuth(Exception):
 
 def _caps_to_dict(obj: Any) -> dict[str, Any]:
     """Return a JSON-serializable dict from a capabilities object."""
-
-    if hasattr(obj, "as_dict"):
-        data = obj.as_dict()
-    else:  # Fallback for older dataclass versions without as_dict()
+    if dataclasses.is_dataclass(obj):
         data = dataclasses.asdict(obj)
-    for key, value in data.items():
+    elif hasattr(obj, "as_dict"):
+        data = obj.as_dict()
+    elif isinstance(obj, dict):
+        data = dict(obj)
+    else:
+        data = {k: v for k, v in getattr(obj, "__dict__", {}).items()}
+    for key, value in list(data.items()):
         if isinstance(value, set):
             data[key] = sorted(value)
     return data
@@ -236,7 +239,7 @@ async def validate_input(
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
     except asyncio.TimeoutError as exc:
-        _LOGGER.error("Timeout during device validation: %s", exc)
+        _LOGGER.warning("Timeout during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("timeout") from exc
     except ModbusException as exc:
@@ -392,13 +395,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 caps_dict = _caps_to_dict(caps_obj)
             elif isinstance(caps_obj, dict):
                 try:
-                    caps_dict = cap_cls(**caps_obj).as_dict()
+                    caps_dict = _caps_to_dict(cap_cls(**caps_obj))
                 except (TypeError, ValueError):
-                    caps_dict = cap_cls().as_dict()
+                    caps_dict = _caps_to_dict(cap_cls())
             elif isinstance(caps_obj, cap_cls):
-                caps_dict = caps_obj.as_dict()
+                caps_dict = _caps_to_dict(caps_obj)
             else:
-                caps_dict = cap_cls().as_dict()
+                caps_dict = _caps_to_dict(cap_cls())
 
             # Create entry with all data
             # Use both 'slave_id' and 'unit' for compatibility

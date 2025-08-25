@@ -18,7 +18,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 # Stub loader module to avoid heavy imports during tests
 sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.loader",
+    "custom_components.thessla_green_modbus.registers.loader",
     SimpleNamespace(plan_group_reads=lambda *args, **kwargs: []),
 )
 # Stub network validation to avoid homeassistant dependency
@@ -77,12 +77,6 @@ from custom_components.thessla_green_modbus.config_flow import (
     ConfigFlow,
     InvalidAuth,
     OptionsFlow,
-)
-from custom_components.thessla_green_modbus.const import (
-    CONF_DEEP_SCAN,
-    CONF_MAX_REGISTERS_PER_REQUEST,
-    CONF_SLAVE_ID,
-    MAX_BATCH_REGISTERS,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
