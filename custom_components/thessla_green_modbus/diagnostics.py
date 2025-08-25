@@ -44,44 +44,33 @@ async def async_get_config_entry_diagnostics(
         registers_loader.registers_sha256(registers_loader._REGISTERS_PATH),
     )
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
-    diagnostics.setdefault(
-        "total_registers_json", len(registers_loader.get_all_registers())
-    )
-    if "effective_batch" not in diagnostics:
-        batch_sizes = [
-            count
-            for groups in getattr(coordinator, "_register_groups", {}).values()
-            for _, count in groups
-        ]
-        diagnostics["effective_batch"] = max(batch_sizes, default=0)
 
-    # Supplement diagnostics with coordinator statistics
-    diagnostics.setdefault(
-        "firmware_version", coordinator.device_info.get("firmware")
+    # Explicitly include key diagnostic metrics
+    diagnostics["total_registers_json"] = len(registers_loader.get_all_registers())
+    batch_sizes = [
+        count
+        for groups in getattr(coordinator, "_register_groups", {}).values()
+        for _, count in groups
+    ]
+    diagnostics["effective_batch"] = max(batch_sizes, default=0)
+
+    diagnostics["firmware_version"] = coordinator.device_info.get("firmware")
+    diagnostics["total_available_registers"] = sum(
+        len(regs) for regs in coordinator.available_registers.values()
     )
-    diagnostics.setdefault(
-        "total_available_registers",
-        sum(len(regs) for regs in coordinator.available_registers.values()),
-    )
-    diagnostics.setdefault("deep_scan", coordinator.deep_scan)
-    diagnostics.setdefault(
-        "force_full_register_list", coordinator.force_full_register_list
-    )
-    diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
-    diagnostics.setdefault(
-        "registers_discovered",
-        {key: len(val) for key, val in coordinator.available_registers.items()},
-    )
+    diagnostics["deep_scan"] = coordinator.deep_scan
+    diagnostics["force_full_register_list"] = coordinator.force_full_register_list
+    diagnostics["autoscan"] = not coordinator.force_full_register_list
+    diagnostics["registers_discovered"] = {
+        key: len(val) for key, val in coordinator.available_registers.items()
+    }
     diagnostics["last_scan"] = (
         coordinator.last_scan.isoformat() if coordinator.last_scan else None
     )
-    diagnostics.setdefault(
-        "error_statistics",
-        {
-            "connection_errors": coordinator.statistics.get("connection_errors", 0),
-            "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
-        },
-    )
+    diagnostics["error_statistics"] = {
+        "connection_errors": coordinator.statistics.get("connection_errors", 0),
+        "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
+    }
 
     if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
         diagnostics.setdefault(
