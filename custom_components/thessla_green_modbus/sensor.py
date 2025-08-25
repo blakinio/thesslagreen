@@ -55,7 +55,7 @@ async def async_setup_entry(
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
-        register_map = coordinator._register_maps.get(register_type, {})
+        register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
         force_create = coordinator.force_full_register_list and register_name in register_map
 
@@ -88,7 +88,7 @@ async def async_setup_entry(
         except asyncio.CancelledError:
             _LOGGER.warning("Entity addition cancelled, adding without initial update")
             async_add_entities(entities, False)
-        _LOGGER.info(
+        _LOGGER.debug(
             "Created %d sensor entities for %s",
             len(entities),
             coordinator.device_name,
@@ -96,7 +96,7 @@ async def async_setup_entry(
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
 
-    _LOGGER.info(
+    _LOGGER.debug(
         "Temperature sensors: %d instantiated, %d skipped",
         temp_created,
         temp_skipped,

@@ -51,7 +51,7 @@ async def async_setup_entry(
         register_type = sensor_def["register_type"]
         register_name = sensor_def.get("register", key)
 
-        register_map = coordinator._register_maps.get(register_type, {})
+        register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
         force_create = coordinator.force_full_register_list and register_name in register_map
 
@@ -78,7 +78,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info(
+        _LOGGER.debug(
             "Created %d binary sensor entities for %s", len(entities), coordinator.device_name
         )
     else:

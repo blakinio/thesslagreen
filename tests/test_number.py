@@ -101,6 +101,9 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
         self.slave_id = args[3] if len(args) > 3 else kwargs.get("slave_id", 0)
         self._register_maps = {"holding_registers": HOLDING_REGISTERS}
 
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        return self._register_maps.get(register_type, {})
+
     async def _ensure_connection(self):
         return None
 

@@ -55,7 +55,7 @@ async def async_setup_entry(
 
     # Create number entities for discovered registers, or all known registers
     # when ``force_full_register_list`` is enabled.
-    holding_map = coordinator._register_maps.get("holding_registers", {})
+    holding_map = coordinator.get_register_map("holding_registers")
     available = coordinator.available_registers.get("holding_registers", set())
 
     for register_name, entity_config in number_mappings.items():
@@ -88,7 +88,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Added %d number entities", len(entities))
+        _LOGGER.debug("Added %d number entities", len(entities))
     else:
         _LOGGER.debug("No number entities were created")
 
@@ -108,7 +108,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
-        register_map = coordinator._register_maps.get("holding_registers", {})
+        register_map = coordinator.get_register_map("holding_registers")
         if register_name not in register_map:
             raise KeyError(f"Register {register_name} not found in holding registers")
         address = register_map[register_name]
@@ -199,7 +199,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             )
             if success:
                 await self.coordinator.async_request_refresh()
-                _LOGGER.info("Set %s to %.2f", self.register_name, value)
+                _LOGGER.debug("Set %s to %.2f", self.register_name, value)
             else:
                 _LOGGER.error("Failed to set %s to %.2f", self.register_name, value)
                 raise RuntimeError(f"Failed to write register {self.register_name}")
