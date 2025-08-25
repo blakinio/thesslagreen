@@ -40,6 +40,12 @@ _LOGGER = logging.getLogger(__name__)
 _REGISTERS_PATH = Path(
     str(resources.files(__package__).joinpath("thessla_green_registers_full.json"))
 )
+
+
+def get_registers_path() -> Path:
+    """Return resolved path to the bundled register definitions JSON file."""
+    return _REGISTERS_PATH.resolve()
+
 # Cache for file metadata keyed by path. Each entry stores ``(mtime, sha256)``
 # for the most recently seen state of that file.  A second cache keyed by
 # ``(sha256, mtime)`` stores the parsed register definitions so repeated loads of

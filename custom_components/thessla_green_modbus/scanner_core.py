@@ -10,8 +10,8 @@ from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, Optional, Self, Tuple, cast
 
 from custom_components.thessla_green_modbus.registers.loader import (
-    _REGISTERS_PATH,
     get_all_registers,
+    get_registers_path,
     registers_sha256,
 )
 
@@ -58,7 +58,7 @@ def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
     global REGISTER_HASH
     regs = get_all_registers()
-    REGISTER_HASH = registers_sha256(_REGISTERS_PATH)
+    REGISTER_HASH = registers_sha256(get_registers_path())
 
     REGISTER_DEFINITIONS.clear()
     REGISTER_DEFINITIONS.update({r.name: r for r in regs})
@@ -96,7 +96,7 @@ def _build_register_maps() -> None:
 # Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    current_hash = registers_sha256(_REGISTERS_PATH)
+    current_hash = registers_sha256(get_registers_path())
     if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
         _build_register_maps()
 
