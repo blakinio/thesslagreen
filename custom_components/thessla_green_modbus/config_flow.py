@@ -92,7 +92,7 @@ async def _run_with_retry(
                 try:
                     await asyncio.sleep(delay)
                 except asyncio.CancelledError:
-                    _LOGGER.debug("Retry sleep cancelled")
+                    _LOGGER.info("Retry sleep cancelled")
                     raise
     # Should never reach here
     raise RuntimeError("Retry wrapper failed without raising")
@@ -239,7 +239,7 @@ async def validate_input(
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
     except asyncio.TimeoutError as exc:
-        _LOGGER.error("Timeout during device validation: %s", exc)
+        _LOGGER.warning("Timeout during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("timeout") from exc
     except ModbusException as exc:
