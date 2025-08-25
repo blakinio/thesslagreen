@@ -1162,31 +1162,53 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 original_value = value
                 definition = get_register_definition(register_name)
 
+                encoded_values: list[int] | None = None
+                address = definition.address + offset
+
                 if definition.length > 1:
-                    if not isinstance(value, (list, tuple)):
-                        _LOGGER.error(
-                            "Register %s expects %d values",
-                            register_name,
-                            definition.length,
-                        )
-                        return False
-                    if len(value) + offset > definition.length:
-                        _LOGGER.error(
-                            "Register %s expects at most %d values starting at offset %d",
-                            register_name,
-                            definition.length - offset,
-                            offset,
-                        )
-                        return False
-                    encoded_values = [definition.encode(v) for v in value]
+                    if isinstance(value, (list, tuple)) and not isinstance(
+                        value, (bytes, bytearray, str)
+                    ):
+                        if len(value) + offset > definition.length:
+                            _LOGGER.error(
+                                "Register %s expects at most %d values starting at offset %d",
+                                register_name,
+                                definition.length - offset,
+                                offset,
+                            )
+                            return False
+                        try:
+                            encoded_values = [int(v) for v in value]
+                        except (TypeError, ValueError):
+                            _LOGGER.error(
+                                "Register %s expects integer values", register_name
+                            )
+                            return False
+                    else:
+                        encoded = definition.encode(value)
+                        if isinstance(encoded, list):
+                            encoded_values = [int(v) for v in encoded]
+                        else:
+                            encoded_values = [int(encoded)]
+
+                        if offset >= definition.length:
+                            _LOGGER.error(
+                                "Register %s expects at most %d values starting at offset %d",
+                                register_name,
+                                definition.length - offset,
+                                offset,
+                            )
+                            return False
+
+                        encoded_values = encoded_values[offset:]
                 else:
-                    if isinstance(value, (list, tuple)):
+                    if isinstance(value, (list, tuple)) and not isinstance(
+                        value, (bytes, bytearray, str)
+                    ):
                         _LOGGER.error("Register %s expects a single value", register_name)
                         return False
-                    encoded_values = None
-                    value = definition.encode(value)
+                    value = int(definition.encode(value))
 
-                address = definition.address + offset
                 for attempt in range(1, self.retry + 1):
                     try:
                         if definition.function == 3:

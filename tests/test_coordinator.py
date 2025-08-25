@@ -319,7 +319,7 @@ async def test_read_holding_registers_cancelled_error(coordinator, caplog):
 
 
 @pytest.mark.asyncio
-async def test_async_write_multi_register_start(coordinator):
+async def test_async_write_multi_register_start(coordinator, monkeypatch):
     """Writing multi-register from start address succeeds."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
@@ -329,17 +329,52 @@ async def test_async_write_multi_register_start(coordinator):
     client.write_registers = AsyncMock(return_value=response)
     coordinator.client = client
 
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_1"] = 0
+
     result = await coordinator.async_write_register("date_time_1", [1, 2, 3, 4])
 
     assert result is True
     client.write_registers.assert_awaited_once_with(
-        address=HOLDING_REGISTERS["date_time_1"], values=[1, 2, 3, 4], slave=1
+        address=HOLDING_REGISTERS["date_time_1"], values=[1, 2, 3, 4]
     )
     coordinator.async_request_refresh.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_async_write_multi_register_non_start(coordinator):
+async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
+    """Writing a subset of a multi-register with an offset succeeds."""
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_1"] = 0
+
+    result = await coordinator.async_write_register(
+        "date_time_1", [3, 4], offset=2
+    )
+
+    assert result is True
+    client.write_registers.assert_awaited_once_with(
+        address=HOLDING_REGISTERS["date_time_1"] + 2,
+        values=[3, 4],
+    )
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_write_multi_register_non_start(coordinator, monkeypatch):
     """Multi-register writes from non-start addresses are rejected."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
@@ -347,6 +382,12 @@ async def test_async_write_multi_register_non_start(coordinator):
     client.write_registers = AsyncMock()
     client.write_register = AsyncMock()
     coordinator.client = client
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=1, name="date_time_2", access="rw", length=1)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_2"] = 1
 
     result = await coordinator.async_write_register("date_time_2", [1, 2, 3])
 
@@ -357,13 +398,19 @@ async def test_async_write_multi_register_non_start(coordinator):
 
 
 @pytest.mark.asyncio
-async def test_async_write_multi_register_wrong_length(coordinator):
+async def test_async_write_multi_register_wrong_length(coordinator, monkeypatch):
     """Reject writes with incorrect number of values."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     client.write_registers = AsyncMock()
     coordinator.client = client
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_1"] = 0
 
     result = await coordinator.async_write_register("date_time_1", [1, 2, 3])
 
