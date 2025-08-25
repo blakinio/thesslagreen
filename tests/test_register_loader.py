@@ -448,6 +448,17 @@ def test_register_file_sorted() -> None:
     assert keys == sorted(keys)
 
 
+def test_address_hex_matches_dec() -> None:
+    """Each register's hex and decimal addresses should align."""
+
+    import json
+    import custom_components.thessla_green_modbus.registers.loader as loader
+
+    data = json.loads(loader._REGISTERS_PATH.read_text())
+    for reg in data["registers"]:
+        assert int(reg["address_hex"], 16) == reg["address_dec"]
+
+
 def test_special_modes_invalid_json(monkeypatch) -> None:
     """Loader falls back to empty special mode enum on invalid file."""
 
