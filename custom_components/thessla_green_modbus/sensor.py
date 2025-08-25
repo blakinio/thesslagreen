@@ -225,7 +225,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         translations: dict[str, str],
     ) -> None:
         """Initialize the aggregated error/status sensor."""
-        super().__init__(coordinator, self._register_name)
+        super().__init__(coordinator, self._register_name, -2)
         self._translations = translations
         self._attr_translation_key = self._register_name  # pragma: no cover
 
@@ -263,7 +263,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the active errors sensor."""
-        super().__init__(coordinator, "active_errors")
+        super().__init__(coordinator, "active_errors", -3)
         self._translations: dict[str, str] = {}
 
     async def async_added_to_hass(self) -> None:  # pragma: no cover
