@@ -18,10 +18,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
-
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -30,7 +26,6 @@ from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
 
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # Unit mappings
 UNIT_MAPPINGS = {
@@ -60,12 +55,14 @@ async def async_setup_entry(
 
     # Create number entities for discovered registers, or all known registers
     # when ``force_full_register_list`` is enabled.
+    holding_map = coordinator._register_maps.get("holding_registers", {})
+    available = coordinator.available_registers.get("holding_registers", set())
+
     for register_name, entity_config in number_mappings.items():
-        available = coordinator.available_registers.get("holding_registers", set())
-        force_create = coordinator.force_full_register_list and register_name in HOLDING_REGISTERS
+        force_create = coordinator.force_full_register_list and register_name in holding_map
 
         if register_name in available or force_create:
-            address = HOLDING_REGISTERS.get(register_name)
+            address = holding_map.get(register_name)
             if address is None:
                 _LOGGER.error(
                     "Register %s not defined in holding registers, skipping",
@@ -111,11 +108,10 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
-        if register_name not in HOLDING_REGISTERS:
-            raise KeyError(
-                f"Register {register_name} not found in holding registers"
-            )
-        address = HOLDING_REGISTERS[register_name]
+        register_map = coordinator._register_maps.get("holding_registers", {})
+        if register_name not in register_map:
+            raise KeyError(f"Register {register_name} not found in holding registers")
+        address = register_map[register_name]
 
         super().__init__(coordinator, register_name, address)
 
@@ -199,7 +195,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         """Set new value."""
         try:
             success = await self.coordinator.async_write_register(
-                self.register_name, value, refresh=False
+                self.register_name, value, refresh=False, offset=0
             )
             if success:
                 await self.coordinator.async_request_refresh()
