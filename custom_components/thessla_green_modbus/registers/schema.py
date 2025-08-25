@@ -248,7 +248,7 @@ class RegisterDefinition(pydantic.BaseModel):
         if self.bits is not None:
             if len(self.bits) > 16:
                 raise ValueError("bits exceed 16 entries")
-            seen: set[int] = set()
+            seen_indices: set[int] = set()
             for bit in self.bits:
                 if not isinstance(bit, dict):
                     raise ValueError("bits entries must be objects")
@@ -260,19 +260,12 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("bit index must be an integer")
                 if not 0 <= idx <= 15:
                     raise ValueError("bit index out of range")
-                if idx in seen:
+                if idx in seen_indices:
                     raise ValueError("bit indices must be unique")
-                seen.add(idx)
                 if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
                     raise ValueError("bit name must be snake_case")
+                seen_indices.add(idx)
 
-        if self.min is not None and self.max is not None and self.min > self.max:
-            raise ValueError("min greater than max")
-        if self.default is not None:
-            if self.min is not None and self.default < self.min:
-                raise ValueError("default below min")
-            if self.max is not None and self.default > self.max:
-                raise ValueError("default above max")
             bitmask_val = self.extra.get("bitmask") if self.extra else None
             mask_int: int | None = None
             if isinstance(bitmask_val, str):
@@ -285,15 +278,14 @@ class RegisterDefinition(pydantic.BaseModel):
 
             if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
                 raise ValueError("bits exceed bitmask width")
-            if len(self.bits) > 16:
-                raise ValueError("bits exceed 16 entries")
-            for idx, bit in enumerate(self.bits):
-                if idx > 15:
-                    raise ValueError("bit index out of range")
-                name = bit.get("name") if isinstance(bit, dict) else str(bit)
-                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("bit names must be snake_case")
 
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("min greater than max")
+        if self.default is not None:
+            if self.min is not None and self.default < self.min:
+                raise ValueError("default below min")
+            if self.max is not None and self.default > self.max:
+                raise ValueError("default above max")
         return self
 
     @pydantic.field_validator("name")
