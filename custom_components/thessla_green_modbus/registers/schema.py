@@ -263,6 +263,13 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("bit name must be snake_case")
                 seen_indices.add(idx)
 
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("min greater than max")
+        if self.default is not None:
+            if self.min is not None and self.default < self.min:
+                raise ValueError("default below min")
+            if self.max is not None and self.default > self.max:
+                raise ValueError("default above max")
             bitmask_val = self.extra.get("bitmask") if self.extra else None
             mask_int: int | None = None
             if isinstance(bitmask_val, str):
