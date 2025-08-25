@@ -34,6 +34,18 @@ from custom_components.thessla_green_modbus.registers.loader import (
 )
 
 
+def _add_desc(reg: dict) -> dict:
+    return {
+        **reg,
+        "description": reg.get("description", "desc"),
+        "description_en": reg.get("description_en", "desc"),
+    }
+
+
+def _write(path: Path, regs: list[dict]) -> None:
+    path.write_text(json.dumps({"registers": [_add_desc(r) for r in regs]}))
+
+
 def test_example_register_mapping() -> None:
     """Verify example registers map to expected addresses."""
 
@@ -74,7 +86,7 @@ def test_default_multiplier_resolution(tmp_path) -> None:
     }
 
     path = tmp_path / "regs.json"
-    path.write_text(json.dumps({"registers": [reg]}))
+    _write(path, [reg])
 
     loaded = _load_registers_from_file(path, mtime=0, file_hash="")[0]
     assert loaded.multiplier == 1
@@ -305,7 +317,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
     """Duplicate names or addresses should raise an error."""
 
     path = tmp_path / "regs.json"
-    path.write_text(json.dumps({"registers": registers}))
+    _write(path, registers)
 
     with pytest.raises(ValueError):
         _load_registers_from_file(path, mtime=0, file_hash="")
@@ -378,7 +390,7 @@ def test_invalid_registers_rejected(tmp_path, register) -> None:
     """Registers violating schema constraints should raise an error."""
 
     path = tmp_path / "regs.json"
-    path.write_text(json.dumps({"registers": [register]}))
+    _write(path, [register])
 
     with pytest.raises(ValueError):
         _load_registers_from_file(path, mtime=0, file_hash="")
@@ -397,9 +409,34 @@ def test_bits_within_bitmask_width(tmp_path) -> None:
         "bits": [{"name": "a", "index": 0}, {"name": "b", "index": 1}],
     }
     path = tmp_path / "regs.json"
-    path.write_text(json.dumps({"registers": [reg]}))
+    _write(path, [reg])
 
     _load_registers_from_file(path, file_hash="", mtime=0)
+
+
+@pytest.mark.parametrize(
+    "reg",
+    [
+        {"description_en": "en"},
+        {"description": "pl"},
+        {"description": "", "description_en": "en"},
+        {"description": "pl", "description_en": ""},
+    ],
+)
+def test_missing_descriptions_rejected(tmp_path, reg) -> None:
+    base = {
+        "function": "03",
+        "address_dec": 0,
+        "address_hex": "0x0",
+        "name": "no_desc",
+        "access": "R",
+    }
+    base.update(reg)
+    path = tmp_path / "regs.json"
+    path.write_text(json.dumps({"registers": [base]}))
+
+    with pytest.raises(ValueError):
+        _load_registers_from_file(path, mtime=0, file_hash="")
 
 
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
@@ -494,7 +531,7 @@ def test_get_all_registers_sorted(tmp_path) -> None:
     ]
 
     path = tmp_path / "regs.json"
-    path.write_text(json.dumps({"registers": regs}))
+    _write(path, regs)
 
     clear_cache()
     ordered = get_all_registers(path)

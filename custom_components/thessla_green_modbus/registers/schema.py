@@ -115,8 +115,8 @@ class RegisterDefinition(pydantic.BaseModel):
     enum: dict[str, Any] | None = None
     multiplier: float | None = None
     resolution: float | None = None
-    description: str | None = None
-    description_en: str | None = None
+    description: str = Field(min_length=1)
+    description_en: str = Field(min_length=1)
     min: float | None = None
     max: float | None = None
     default: float | None = None

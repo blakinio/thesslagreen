@@ -106,6 +106,9 @@ def validate(path: Path) -> list[RegisterDefinition]:
     seen_pairs: set[tuple[int, int]] = set()
     seen_names: set[str] = set()
     for reg in parsed_list.root:
+        if not reg.description.strip() or not reg.description_en.strip():
+            raise ValueError(f"{reg.name}: missing description fields")
+
         # Function/access combinations
         if reg.function in {1, 2} and reg.access != "R":
             raise ValueError(f"{reg.name}: functions 1 and 2 must have R access")

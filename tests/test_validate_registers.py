@@ -11,7 +11,16 @@ from custom_components.thessla_green_modbus.registers.schema import RegisterType
 from tools import validate_registers
 
 
-def _write(tmp_path: Path, regs: list[dict]) -> Path:
+def _write(tmp_path: Path, regs: list[dict], *, add_desc: bool = True) -> Path:
+    if add_desc:
+        regs = [
+            {
+                **r,
+                "description": r.get("description", "desc"),
+                "description_en": r.get("description_en", "desc"),
+            }
+            for r in regs
+        ]
     path = tmp_path / "regs.json"
     path.write_text(json.dumps({"registers": regs}))
     return path
@@ -32,6 +41,30 @@ def test_validator_accepts_valid(tmp_path: Path) -> None:
     )
 
     validate_registers.main(path)
+
+
+@pytest.mark.parametrize(
+    "reg",
+    [
+        {"description_en": "en"},
+        {"description": "pl"},
+        {"description": "", "description_en": "en"},
+        {"description": "pl", "description_en": ""},
+    ],
+)
+def test_validator_rejects_missing_descriptions(tmp_path: Path, reg) -> None:
+    base = {
+        "function": "03",
+        "address_dec": 1,
+        "address_hex": "0x0001",
+        "name": "no_desc",
+        "access": "RW",
+    }
+    base.update(reg)
+
+    path = _write(tmp_path, [base], add_desc=False)
+    with pytest.raises(SystemExit):
+        validate_registers.main(path)
 
 
 def test_validator_rejects_duplicate_name(tmp_path: Path) -> None:
