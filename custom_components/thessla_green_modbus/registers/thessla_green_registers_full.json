@@ -2175,6 +2175,19 @@
     },
     {
       "function": "03",
+      "address_dec": 241,
+      "address_hex": "0xf1",
+      "name": "exp_version",
+      "access": "R/-",
+      "unit": null,
+      "enum": null,
+      "multiplier": null,
+      "resolution": null,
+      "description": "Wersja oprogramowania modułu Expansion",
+      "description_en": "Expansion module firmware version"
+    },
+    {
+      "function": "03",
       "address_dec": 256,
       "address_hex": "0x100",
       "name": "supply_air_flow",
@@ -3443,6 +3456,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nazwa urządzenia",
+      "type": "string",
       "length": 8,
       "extra": {
         "type": "string",
@@ -3461,6 +3475,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Klucz produktu użytkownika",
+      "type": "u32",
       "length": 2,
       "extra": {
         "type": "u32",
@@ -4088,7 +4103,7 @@
     {
       "function": "03",
       "address_dec": 8394,
-      "address_hex": "0x20CA",
+      "address_hex": "0x20ca",
       "name": "e200",
       "access": "R/W",
       "unit": null,
@@ -4099,12 +4114,12 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali",
-      "description_en": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali"
+      "description_en": "Central electric heater thermal protection activated"
     },
     {
       "function": "03",
       "address_dec": 8395,
-      "address_hex": "0x20CB",
+      "address_hex": "0x20cb",
       "name": "e201",
       "access": "R/W",
       "unit": null,
@@ -4115,7 +4130,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w kanale",
-      "description_en": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w kanale"
+      "description_en": "Duct electric heater thermal protection activated"
     },
     {
       "function": "03",
@@ -4400,6 +4415,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Numer seryjny sterownika",
+      "type": "string",
       "length": 6,
       "extra": {
         "type": "string",

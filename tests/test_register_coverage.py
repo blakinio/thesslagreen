@@ -9,6 +9,9 @@ from pathlib import Path
 
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
+
+INTENTIONAL_OMISSIONS = {"exp_version"}
+
 # Minimal Home Assistant stubs required to import entity mappings
 ha_const = types.ModuleType("homeassistant.const")
 ha_const.PERCENTAGE = "%"
@@ -72,5 +75,5 @@ def test_all_registers_covered() -> None:
         or re.match(r"[es](?:_|\d)", n)
     }
 
-    missing = registers - exposed - diagnostic_regs
+    missing = registers - exposed - diagnostic_regs - INTENTIONAL_OMISSIONS
     assert not missing, f"Unmapped registers: {sorted(missing)}"
