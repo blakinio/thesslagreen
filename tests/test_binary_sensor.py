@@ -3,7 +3,7 @@
 import sys
 import types
 from typing import Any, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
