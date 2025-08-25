@@ -39,6 +39,7 @@ async def async_get_config_entry_diagnostics(
     coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     diagnostics = coordinator.get_diagnostic_data()
+    diagnostics.setdefault("effective_batch", coordinator.effective_batch)
     diagnostics.setdefault("registers_hash", registers_sha256(_REGISTERS_PATH))
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
 
