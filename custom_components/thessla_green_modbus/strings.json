@@ -27,6 +27,9 @@
       "dns_failure": "Hostname could not be resolved.",
       "connection_refused": "Connection was refused by the host.",
       "missing_method": "Scanner is missing required method. See logs for details.",
+      "io_error": "I/O error during device communication. Check wiring and connection.",
+      "invalid_capabilities": "Device capabilities data invalid or missing.",
+      "invalid_format": "Received malformed response from device.",
       "modbus_error": "Modbus communication error. Check wiring and settings.",
       "timeout": "Connection timed out. Verify host and port.",
       "unknown": "Unexpected error. Check logs for details."

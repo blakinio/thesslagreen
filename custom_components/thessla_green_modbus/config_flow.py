@@ -106,6 +106,19 @@ class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
 
 
+def _caps_to_dict(obj: Any) -> dict[str, Any]:
+    """Return a JSON-serializable dict from a capabilities object."""
+
+    if hasattr(obj, "as_dict"):
+        data = obj.as_dict()
+    else:  # Fallback for older dataclass versions without as_dict()
+        data = dataclasses.asdict(obj)
+    for key, value in data.items():
+        if isinstance(value, set):
+            data[key] = sorted(value)
+    return data
+
+
 async def validate_input(
     hass: HomeAssistant | None, data: dict[str, Any]
 ) -> dict[str, Any]:
@@ -173,26 +186,29 @@ async def validate_input(
             backoff=CONFIG_FLOW_BACKOFF,
         )
 
+        if not isinstance(scan_result, dict) or not scan_result:
+            raise CannotConnect("invalid_format")
+
         caps_obj = scan_result.get("capabilities")
         if caps_obj is None:
             raise CannotConnect("invalid_capabilities")
 
-        if isinstance(caps_obj, capabilities_cls):
+        if dataclasses.is_dataclass(caps_obj):
+            try:
+                caps_dict = _caps_to_dict(caps_obj)
+            except (TypeError, ValueError, AttributeError) as err:
+                _LOGGER.error("Capabilities missing required fields: %s", err)
+                raise CannotConnect("invalid_capabilities") from err
             required_fields = {
                 field.name for field in dataclasses.fields(capabilities_cls)
             }
-            try:
-                caps_dict = caps_obj.as_dict()
-            except AttributeError as err:  # pragma: no cover - defensive
-                _LOGGER.error("Capabilities missing required fields: %s", err)
-                raise CannotConnect("invalid_capabilities") from err
             missing = [f for f in required_fields if f not in caps_dict]
             if missing:
                 _LOGGER.error("Capabilities missing required fields: %s", set(missing))
                 raise CannotConnect("invalid_capabilities")
         elif isinstance(caps_obj, dict):
             try:
-                caps_dict = capabilities_cls(**caps_obj).as_dict()
+                caps_dict = _caps_to_dict(capabilities_cls(**caps_obj))
             except (TypeError, ValueError) as exc:
                 _LOGGER.error("Error parsing capabilities: %s", exc)
                 raise CannotConnect("invalid_capabilities") from exc
@@ -201,9 +217,6 @@ async def validate_input(
 
         # Store dictionary form of capabilities for serialization
         scan_result["capabilities"] = caps_dict
-
-        if not scan_result:
-            raise CannotConnect("Device scan failed - no data received")
 
         device_info = scan_result.get("device_info", {})
 
@@ -221,7 +234,7 @@ async def validate_input(
     except ModbusIOException as exc:
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect("timeout") from exc
+        raise CannotConnect("io_error") from exc
     except asyncio.TimeoutError as exc:
         _LOGGER.error("Timeout during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
@@ -354,7 +367,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             self._abort_if_unique_id_configured()
             # Prepare capabilities for persistence
             caps_obj = self._scan_result.get("capabilities")
-            if isinstance(caps_obj, dict):
+            if dataclasses.is_dataclass(caps_obj):
+                caps_dict = _caps_to_dict(caps_obj)
+            elif isinstance(caps_obj, dict):
                 try:
                     caps_dict = cap_cls(**caps_obj).as_dict()
                 except (TypeError, ValueError):
@@ -387,7 +402,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         # Get scan statistics
         available_registers = self._scan_result.get("available_registers", {})
         caps_obj = self._scan_result.get("capabilities")
-        if isinstance(caps_obj, dict):
+        if dataclasses.is_dataclass(caps_obj):
+            try:
+                caps_data = cap_cls(**_caps_to_dict(caps_obj))
+            except (TypeError, ValueError):
+                caps_data = cap_cls()
+        elif isinstance(caps_obj, dict):
             try:
                 caps_data = cap_cls(**caps_obj)
             except TypeError:
