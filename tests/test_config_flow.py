@@ -3,15 +3,15 @@
 # ruff: noqa: E402
 
 import asyncio
-import sys
+import logging
 import socket
+import sys
 import types
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-import logging
 import pytest
 import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -64,18 +64,17 @@ loader_module.registers_sha256 = lambda *args, **kwargs: ""
 loader_module._REGISTERS_PATH = Path("dummy")
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_module)
 
-from custom_components.thessla_green_modbus.const import (
-    CONF_DEEP_SCAN,
-    CONF_SLAVE_ID,
-    CONF_MAX_REGISTERS_PER_REQUEST,
-    MAX_BATCH_REGISTERS,
-)
-
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
     ConfigFlow,
-    OptionsFlow,
     InvalidAuth,
+    OptionsFlow,
+)
+from custom_components.thessla_green_modbus.const import (
+    CONF_DEEP_SCAN,
+    CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_SLAVE_ID,
+    MAX_BATCH_REGISTERS,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -1173,8 +1172,8 @@ async def test_validate_input_scanner_closed_on_exception():
 async def test_validate_input_attribute_error():
     """AttributeError during validation should be reported as missing_method."""
     from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
         CannotConnect,
+        validate_input,
     )
 
     data = {

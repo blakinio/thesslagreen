@@ -1,8 +1,15 @@
 import asyncio
 import struct
+
 import pytest
 
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.registers.loader import (
+    Register,
+    get_registers_by_function,
+)
+from custom_components.thessla_green_modbus.scanner_core import (
+    ThesslaGreenDeviceScanner,
+)
 from custom_components.thessla_green_modbus.scanner_helpers import (
     _decode_season_mode,
     _format_register_value,
@@ -11,10 +18,6 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_aatt,
     _decode_bcd_time,
     _decode_register_time,
-)
-from custom_components.thessla_green_modbus.registers.loader import Register
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
 )
 
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
-import types
-import sys
-import re
-from pathlib import Path
 import importlib
+import json
+import re
+import sys
+import types
+from pathlib import Path
 
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 

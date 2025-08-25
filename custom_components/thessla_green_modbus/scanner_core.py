@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import collections.abc
 import inspect
 import logging
-import collections.abc
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Self, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, Self, Tuple, cast
+
+from custom_components.thessla_green_modbus.registers.loader import (
+    _REGISTERS_PATH,
+    get_all_registers,
+    registers_sha256,
+)
 
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
@@ -22,20 +28,16 @@ from .modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from .modbus_helpers import _call_modbus, group_reads as _group_reads
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_all_registers,
-    registers_sha256,
-)
-from .registers import loader as registers_loader
-from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
+from .modbus_helpers import _call_modbus
+from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
-    REGISTER_ALLOWED_VALUES,
-    _format_register_value,
     MAX_BATCH_REGISTERS,
-    UART_OPTIONAL_REGS,
+    REGISTER_ALLOWED_VALUES,
     SAFE_REGISTERS,
+    UART_OPTIONAL_REGS,
+    _format_register_value,
 )
+from .utils import BCD_TIME_PREFIXES, _decode_bcd_time
 
 if TYPE_CHECKING:  # pragma: no cover
     from pymodbus.client import AsyncModbusTcpClient
@@ -55,10 +57,8 @@ REGISTER_HASH: str | None = None
 def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
     global REGISTER_HASH
-    regs = registers_loader.get_all_registers()
-    REGISTER_HASH = registers_loader.registers_sha256(
-        registers_loader._REGISTERS_PATH
-    )
+    regs = get_all_registers()
+    REGISTER_HASH = registers_sha256(_REGISTERS_PATH)
 
     REGISTER_DEFINITIONS.clear()
     REGISTER_DEFINITIONS.update({r.name: r for r in regs})
@@ -96,9 +96,7 @@ def _build_register_maps() -> None:
 # Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    current_hash = registers_loader.registers_sha256(
-        registers_loader._REGISTERS_PATH
-    )
+    current_hash = registers_sha256(_REGISTERS_PATH)
     if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
         _build_register_maps()
 
@@ -1150,7 +1148,7 @@ class ThesslaGreenDeviceScanner:
         """Load Modbus register definitions and value ranges."""
         register_map: Dict[int, Dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
         register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-        for reg in registers_loader.get_all_registers():
+        for reg in get_all_registers():
             if not reg.name:
                 continue
             register_map[reg.function][reg.address] = reg.name
