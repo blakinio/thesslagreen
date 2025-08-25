@@ -86,6 +86,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
 from .config_flow import CannotConnect
 from .const import (
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    CONF_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -158,10 +159,23 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.deep_scan = deep_scan
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
-        # Clamp user-specified batch size to the Modbus-safe range (1-MAX_BATCH_REGISTERS)
-        self.max_registers_per_request = max(1, min(max_registers_per_request, MAX_BATCH_REGISTERS))
-        # ``effective_batch`` mirrors the sanitized value
-        self.effective_batch = self.max_registers_per_request
+
+        if entry is not None:
+            try:
+                max_regs = int(
+                    entry.options.get(
+                        CONF_MAX_REGISTERS_PER_REQUEST, MAX_BATCH_REGISTERS
+                    )
+                )
+            except (TypeError, ValueError):
+                max_regs = MAX_BATCH_REGISTERS
+        else:
+            max_regs = max_registers_per_request
+
+        self.max_registers_per_request = max_regs
+        self.effective_batch = min(self.max_registers_per_request, MAX_BATCH_REGISTERS)
+        if self.effective_batch < 1:
+            self.effective_batch = 1
 
         # Connection management
         self.client: AsyncModbusTcpClient | None = None
@@ -257,7 +271,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     scan_uart_settings=self.scan_uart_settings,
                     skip_known_missing=self.skip_missing_registers,
                     deep_scan=self.deep_scan,
-                    max_registers_per_request=self.max_registers_per_request,
+                    max_registers_per_request=self.effective_batch,
                 )
 
                 self.device_scan_result = await scanner.scan_device()
@@ -1132,6 +1146,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         register_name: str,
         value: float | list[int] | tuple[int, ...],
         refresh: bool = True,
+        *,
+        offset: int = 0,
     ) -> bool:
         """Write to a holding or coil register.
 
@@ -1151,11 +1167,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 definition = get_register_definition(register_name)
 
                 if definition.length > 1:
-                    if not isinstance(value, (list, tuple)) or len(value) != definition.length:
+                    if not isinstance(value, (list, tuple)):
                         _LOGGER.error(
                             "Register %s expects %d values",
                             register_name,
                             definition.length,
+                        )
+                        return False
+                    if len(value) + offset > definition.length:
+                        _LOGGER.error(
+                            "Register %s expects at most %d values starting at offset %d",
+                            register_name,
+                            definition.length - offset,
+                            offset,
                         )
                         return False
                     encoded_values = [definition.encode(v) for v in value]
@@ -1166,17 +1190,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     encoded_values = None
                     value = definition.encode(value)
 
-                address = definition.address
+                address = definition.address + offset
                 for attempt in range(1, self.retry + 1):
                     try:
                         if definition.function == 3:
                             if encoded_values is not None:
                                 success = True
-                                for offset in range(0, len(encoded_values), self.effective_batch):
-                                    chunk = encoded_values[offset : offset + self.effective_batch]
+                                for idx in range(0, len(encoded_values), self.effective_batch):
+                                    chunk = encoded_values[idx : idx + self.effective_batch]
                                     response = await self._call_modbus(
                                         self.client.write_registers,
-                                        address=address + offset,
+                                        address=address + idx,
                                         values=[int(v) for v in chunk],
                                         attempt=attempt,
                                     )
