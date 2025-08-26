@@ -17,6 +17,10 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .registers.loader import (
+    get_registers_by_function,
+)
+
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity

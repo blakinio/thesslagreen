@@ -80,7 +80,7 @@ try:  # pragma: no cover - fallback for tests without full HA constants
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
-from custom_components.thessla_green_modbus.registers.loader import (
+from .registers.loader import (
     get_all_registers,
 )
 

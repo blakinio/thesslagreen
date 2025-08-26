@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, cast
 
-from custom_components.thessla_green_modbus.registers.loader import (
+from .registers.loader import (
     get_registers_by_function,
 )
 

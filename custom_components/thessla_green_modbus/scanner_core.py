@@ -9,6 +9,8 @@ import logging
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, Optional, Self, Tuple, cast
 
+from .registers.loader import (
+    _REGISTERS_PATH,
 from custom_components.thessla_green_modbus.registers.loader import (
     get_all_registers,
     get_registers_path,
