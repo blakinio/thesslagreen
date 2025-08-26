@@ -12,10 +12,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from custom_components.thessla_green_modbus.const import (
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
+    coil_registers,
+    discrete_input_registers,
+    holding_registers,
+    input_registers,
     SENSOR_UNAVAILABLE,
 )
 
@@ -131,10 +131,10 @@ class TestThesslaGreenIntegration:
             "discrete_inputs": {"expansion", "contamination_sensor"},
         }
         coordinator._register_maps = {
-            "input_registers": INPUT_REGISTERS,
-            "holding_registers": HOLDING_REGISTERS,
-            "coil_registers": COIL_REGISTERS,
-            "discrete_inputs": DISCRETE_INPUT_REGISTERS,
+            "input_registers": input_registers(),
+            "holding_registers": holding_registers(),
+            "coil_registers": coil_registers(),
+            "discrete_inputs": discrete_input_registers(),
         }
 
         return coordinator
@@ -591,10 +591,10 @@ class TestThesslaGreenClimate:
         }
         coordinator.async_write_register = AsyncMock(return_value=True)
         coordinator._register_maps = {
-            "input_registers": INPUT_REGISTERS,
-            "holding_registers": HOLDING_REGISTERS,
-            "coil_registers": COIL_REGISTERS,
-            "discrete_inputs": DISCRETE_INPUT_REGISTERS,
+            "input_registers": input_registers(),
+            "holding_registers": holding_registers(),
+            "coil_registers": coil_registers(),
+            "discrete_inputs": discrete_input_registers(),
         }
         coordinator.async_request_refresh = AsyncMock()
         return coordinator

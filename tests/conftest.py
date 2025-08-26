@@ -396,6 +396,10 @@ DOMAIN = "thessla_green_modbus"
 class CoordinatorMock(MagicMock):
     """MagicMock subclass with device_scan_result property."""
 
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        """Return register map for the given type."""
+        return self._register_maps.get(register_type, {})
+
     @property
     def device_scan_result(self):  # type: ignore[override]
         return {
@@ -439,10 +443,10 @@ def mock_config_entry():
 def mock_coordinator():
     """Return a mock coordinator."""
     from custom_components.thessla_green_modbus.const import (
-        COIL_REGISTERS,
-        DISCRETE_INPUT_REGISTERS,
-        HOLDING_REGISTERS,
-        INPUT_REGISTERS,
+        coil_registers,
+        discrete_input_registers,
+        holding_registers,
+        input_registers,
     )
 
     coordinator = CoordinatorMock()
@@ -478,10 +482,10 @@ def mock_coordinator():
         "calculated": {"estimated_power", "total_energy"},
     }
     coordinator._register_maps = {
-        "input_registers": INPUT_REGISTERS,
-        "holding_registers": HOLDING_REGISTERS,
-        "coil_registers": COIL_REGISTERS,
-        "discrete_inputs": DISCRETE_INPUT_REGISTERS,
+        "input_registers": input_registers(),
+        "holding_registers": holding_registers(),
+        "coil_registers": coil_registers(),
+        "discrete_inputs": discrete_input_registers(),
     }
     coordinator.force_full_register_list = False
     coordinator.async_write_register = AsyncMock(return_value=True)

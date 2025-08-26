@@ -80,7 +80,6 @@ from pymodbus.client import AsyncModbusTcpClient
 
 from .registers.loader import (
     get_all_registers,
-    get_registers_by_function,
 )
 
 from .config_flow import CannotConnect
@@ -95,6 +94,10 @@ from .const import (
     MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     UNKNOWN_MODEL,
+    coil_registers,
+    discrete_input_registers,
+    holding_registers,
+    input_registers,
 )
 from .modbus_helpers import _call_modbus, group_reads
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
@@ -204,10 +207,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
         # Register maps and reverse lookup maps
         self._register_maps = {
-            "input_registers": {r.name: r.address for r in get_registers_by_function("04")},
-            "holding_registers": {r.name: r.address for r in get_registers_by_function("03")},
-            "coil_registers": {r.name: r.address for r in get_registers_by_function("01")},
-            "discrete_inputs": {r.name: r.address for r in get_registers_by_function("02")},
+            "input_registers": input_registers().copy(),
+            "holding_registers": holding_registers().copy(),
+            "coil_registers": coil_registers().copy(),
+            "discrete_inputs": discrete_input_registers().copy(),
         }
         self._reverse_maps = {
             key: {addr: name for name, addr in mapping.items()}
@@ -240,6 +243,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._last_power_timestamp = dt_util.utcnow()
         self._total_energy = 0.0
+
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        """Return the register map for the given register type."""
+        return self._register_maps.get(register_type, {})
 
     async def _call_modbus(
         self, func: Callable[..., Any], *args: Any, attempt: int = 1, **kwargs: Any
@@ -468,7 +475,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 await self._ensure_connection()
 
-                test_addresses = [reg.address for reg in get_registers_by_function("04")][:3]
+                test_addresses = list(input_registers().values())[:3]
 
                 for addr in test_addresses:
                     response = await self.client.read_input_registers(

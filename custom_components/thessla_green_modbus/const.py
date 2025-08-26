@@ -6,6 +6,7 @@ import asyncio
 import importlib.util
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, cast
 
@@ -23,17 +24,34 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 MAX_BATCH_REGISTERS = 16
 
 
+@lru_cache(maxsize=None)
 def _build_map(fn: str) -> dict[str, int]:
     return {r.name: r.address for r in get_registers_by_function(fn) if r.name}
 
 
-COIL_REGISTERS = _build_map("coil")
-DISCRETE_INPUT_REGISTERS = _build_map("discrete")
-HOLDING_REGISTERS = _build_map("holding")
-INPUT_REGISTERS = _build_map("input")
-MULTI_REGISTER_SIZES = {
-    r.name: r.length for r in get_registers_by_function("holding") if r.name and r.length > 1
-}
+def coil_registers() -> dict[str, int]:
+    return _build_map("coil")
+
+
+def discrete_input_registers() -> dict[str, int]:
+    return _build_map("discrete")
+
+
+def holding_registers() -> dict[str, int]:
+    return _build_map("holding")
+
+
+def input_registers() -> dict[str, int]:
+    return _build_map("input")
+
+
+@lru_cache(maxsize=1)
+def multi_register_sizes() -> dict[str, int]:
+    return {
+        r.name: r.length
+        for r in get_registers_by_function("holding")
+        if r.name and r.length > 1
+    }
 
 OPTIONS_PATH = Path(__file__).parent / "options"
 
@@ -178,13 +196,13 @@ def migrate_unique_id(
     register_name, register_type, bit = lookup.get(remainder, (remainder, None, None))
     address: int | None = None
     if register_type == "holding_registers":
-        address = HOLDING_REGISTERS.get(register_name)
+        address = holding_registers().get(register_name)
     elif register_type == "input_registers":
-        address = INPUT_REGISTERS.get(register_name)
+        address = input_registers().get(register_name)
     elif register_type == "coil_registers":
-        address = COIL_REGISTERS.get(register_name)
+        address = coil_registers().get(register_name)
     elif register_type == "discrete_inputs":
-        address = DISCRETE_INPUT_REGISTERS.get(register_name)
+        address = discrete_input_registers().get(register_name)
 
     if address is not None:
         bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""

@@ -85,9 +85,9 @@ from .registers.loader import (
 )
 
 from .const import (
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-    HOLDING_REGISTERS,
+    coil_registers,
+    discrete_input_registers,
+    holding_registers,
     SPECIAL_FUNCTION_MAP,
 )
 from .utils import _to_snake_case
@@ -328,14 +328,14 @@ def _load_discrete_mappings() -> tuple[
     select_keys = translations["select"]
 
     # Coil and discrete input registers are always binary sensors
-    for reg in COIL_REGISTERS:
+    for reg in coil_registers():
         if reg not in binary_keys:
             continue
         binary_configs[reg] = {
             "translation_key": reg,
             "register_type": "coil_registers",
         }
-    for reg in DISCRETE_INPUT_REGISTERS:
+    for reg in discrete_input_registers():
         if reg not in binary_keys:
             continue
         binary_configs[reg] = {
@@ -344,7 +344,7 @@ def _load_discrete_mappings() -> tuple[
         }
 
     # Holding registers with enumerated states
-    for reg in HOLDING_REGISTERS:
+    for reg in holding_registers():
         info = _get_register_info(reg)
         if not info:
             continue
@@ -373,10 +373,10 @@ def _load_discrete_mappings() -> tuple[
     # any previously generated switch/select configurations.
     diag_registers = {"alarm", "error"}
     diag_registers.update(
-        reg for reg in HOLDING_REGISTERS if re.match(r"[se](?:_|\d)", reg)
+        reg for reg in holding_registers() if re.match(r"[se](?:_|\d)", reg)
     )
     for reg in diag_registers:
-        if reg not in HOLDING_REGISTERS and reg not in {"alarm", "error"}:
+        if reg not in holding_registers() and reg not in {"alarm", "error"}:
             continue
         if reg not in binary_keys:
             continue

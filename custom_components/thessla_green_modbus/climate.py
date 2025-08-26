@@ -21,13 +21,11 @@ from .registers.loader import (
     get_registers_by_function,
 )
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
+from .const import DOMAIN, SPECIAL_FUNCTION_MAP, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
 _LOGGER = logging.getLogger(__name__)
-
-HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
 
 # HVAC mode mappings (from device mode register)
 HVAC_MODE_MAP = {
@@ -73,7 +71,7 @@ async def async_setup_entry(
 
     # Create climate entity if basic control is available or if the full
     # register list is forced and required registers exist in the map.
-    holding_map = coordinator._register_maps.get("holding_registers", {})
+    holding_map = coordinator.get_register_map("holding_registers")
     has_basic = coordinator.capabilities.basic_control or (
         coordinator.force_full_register_list and {"mode", "on_off_panel_mode"} <= holding_map.keys()
     )
@@ -86,7 +84,7 @@ async def async_setup_entry(
             _LOGGER.warning("Cancelled while adding climate entity, retrying without initial state")
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Climate entity created for %s", coordinator.device_name)
+        _LOGGER.debug("Climate entity created for %s", coordinator.device_name)
     else:
         _LOGGER.warning("Basic control not available, climate entity not created")
 
@@ -319,7 +317,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         _LOGGER.debug("Setting target temperature to %s°C", temperature)
 
         success = True
-        if "comfort_temperature" in HOLDING_REGISTERS:
+        if "comfort_temperature" in holding_registers():
             success = await self.coordinator.async_write_register(
                 "comfort_temperature", temperature, refresh=False
             )
