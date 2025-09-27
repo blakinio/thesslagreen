@@ -14,9 +14,6 @@ from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .registers.loader import (
-    get_registers_by_function,
-)
 
 from .const import DOMAIN, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
