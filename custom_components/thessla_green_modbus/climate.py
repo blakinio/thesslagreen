@@ -277,9 +277,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 "on_off_panel_mode", 0, refresh=False
             )
         else:
-
-            await self.coordinator.async_write_register("on_off_panel_mode", 1, refresh=False)
-
             # Turn on device first and capture result
             power_on_success = await self.coordinator.async_write_register(
                 "on_off_panel_mode", 1, refresh=False
