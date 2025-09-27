@@ -164,15 +164,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             value = data.get(key)
             if isinstance(value, (int, float)):
                 return float(value)
-
-        value = data.get("comfort_temperature")
-        if isinstance(value, (int, float)):
-            return float(value)
-
-        value = data.get("required_temperature")
-        if isinstance(value, (int, float)):
-            return float(value)
-
         return None
 
     @property
