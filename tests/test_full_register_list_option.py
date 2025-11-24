@@ -5,10 +5,7 @@ import homeassistant.const as ha_const
 import pytest
 from homeassistant.const import CONF_HOST, CONF_PORT
 
-from custom_components.thessla_green_modbus.const import (
-    CONF_FORCE_FULL_REGISTER_LIST,
-    DOMAIN,
-)
+from custom_components.thessla_green_modbus.const import CONF_FORCE_FULL_REGISTER_LIST, DOMAIN
 
 ha_const.STATE_UNAVAILABLE = "unavailable"
 

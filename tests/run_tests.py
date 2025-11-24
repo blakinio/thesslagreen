@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Test runner for ThesslaGreen Modbus integration."""
+
 import subprocess  # nosec B404
 import sys
 

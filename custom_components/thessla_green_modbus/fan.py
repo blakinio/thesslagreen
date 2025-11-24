@@ -138,7 +138,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         for register in flow_registers:
             if register in self.coordinator.data:
                 value = self.coordinator.data[register]
-                if value is not None and isinstance(value, (int, float)):
+                if value is not None and isinstance(value, int | float):
                     return float(value)
 
         return None

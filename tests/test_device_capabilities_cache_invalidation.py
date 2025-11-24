@@ -1,6 +1,4 @@
-from custom_components.thessla_green_modbus.scanner_core import (
-    DeviceCapabilities,
-)
+from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
 
 def test_capabilities_cache_invalidation() -> None:

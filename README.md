@@ -400,7 +400,7 @@ Są to wpisy informacyjne i zazwyczaj oznaczają, że urządzenie po prostu nie 
 tych rejestrów. Można je bezpiecznie zignorować.
 =======
 ### Komunikaty „Skipping unsupported … registers”
-Podczas skanowania integracja próbuje odczytać grupy rejestrów.  
+Podczas skanowania integracja próbuje odczytać grupy rejestrów.
 Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
 
 ```
@@ -414,7 +414,7 @@ Kody wyjątków Modbus informują, dlaczego odczyt się nie powiódł:
 - **4 – Slave Device Failure** – urządzenie nie potrafiło obsłużyć żądania
 
 Jednorazowe ostrzeżenia pojawiające się przy początkowym skanowaniu lub
-dotyczące opcjonalnych funkcji można zwykle zignorować.  
+dotyczące opcjonalnych funkcji można zwykle zignorować.
 Jeśli jednak powtarzają się dla kluczowych rejestrów, sprawdź konfigurację,
 podłączenie i wersję firmware.
 

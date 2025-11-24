@@ -4,10 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 import custom_components.thessla_green_modbus.scanner_core as sc
-from custom_components.thessla_green_modbus.registers.loader import (
-    _REGISTERS_PATH,
-    clear_cache,
-)
+from custom_components.thessla_green_modbus.registers.loader import _REGISTERS_PATH, clear_cache
 
 
 def test_scanner_register_cache_invalidation(tmp_path: Path, monkeypatch) -> None:

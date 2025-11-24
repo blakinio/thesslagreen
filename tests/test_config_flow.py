@@ -1141,9 +1141,7 @@ async def test_form_user_unexpected_exception():
 
 async def test_validate_input_success():
     """Test validate_input with successful connection."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     hass = None
     data = {
@@ -1177,9 +1175,7 @@ async def test_validate_input_success():
 
 async def test_validate_input_invalid_domain():
     """Test validate_input rejects invalid domain values."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {
         CONF_HOST: "bad host",
@@ -1199,9 +1195,7 @@ async def test_validate_input_invalid_domain():
 
 async def test_validate_input_invalid_ipv4():
     """Test validate_input rejects invalid IPv4 addresses."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {
         CONF_HOST: "256.256.256.256",
@@ -1221,9 +1215,7 @@ async def test_validate_input_invalid_ipv4():
 
 async def test_validate_input_invalid_ipv6():
     """Test validate_input rejects invalid IPv6 addresses."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {
         CONF_HOST: "fe80::1::",
@@ -1244,9 +1236,7 @@ async def test_validate_input_invalid_ipv6():
 @pytest.mark.parametrize("invalid_port", [0, 65536])
 async def test_validate_input_invalid_port(invalid_port: int):
     """Test validate_input rejects ports outside valid range."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1275,9 +1265,7 @@ async def test_validate_input_invalid_port(invalid_port: int):
 )
 async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
     """Test validate_input rejects Device IDs outside valid range."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1298,9 +1286,7 @@ async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
 
 async def test_validate_input_valid_ipv6():
     """Test validate_input accepts IPv6 addresses."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     hass = None
     data = {
@@ -1331,9 +1317,7 @@ async def test_validate_input_valid_ipv6():
 
 async def test_validate_input_valid_domain():
     """Test validate_input accepts domain names."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     hass = None
     data = {
@@ -1364,9 +1348,7 @@ async def test_validate_input_valid_domain():
 
 async def test_validate_input_no_data():
     """Test validate_input with no device data."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     hass = None
     data = {
@@ -1393,9 +1375,7 @@ async def test_validate_input_no_data():
 
 async def test_validate_input_modbus_exception():
     """Test validate_input with Modbus exception."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     hass = None
     data = {
@@ -1422,9 +1402,7 @@ async def test_validate_input_modbus_exception():
 
 async def test_validate_input_scanner_closed_on_exception():
     """Ensure scanner is closed when scan_device raises an exception."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1452,10 +1430,7 @@ async def test_validate_input_scanner_closed_on_exception():
 
 async def test_validate_input_attribute_error():
     """AttributeError during validation should be reported as missing_method."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1483,9 +1458,7 @@ async def test_validate_input_attribute_error():
 
 async def test_validate_input_uses_scan_device_and_closes():
     """Test validate_input uses scan_device when available and closes scanner."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1521,12 +1494,8 @@ async def test_validate_input_uses_scan_device_and_closes():
 
 async def test_validate_input_serializes_device_capabilities():
     """DeviceCapabilities from scanner should be converted to a dict."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
-    from custom_components.thessla_green_modbus.scanner_core import (
-        DeviceCapabilities,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1561,10 +1530,7 @@ async def test_validate_input_serializes_device_capabilities():
 
 async def test_validate_input_verify_connection_failure():
     """Connection errors during verify_connection should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1592,10 +1558,7 @@ async def test_validate_input_verify_connection_failure():
 
 async def test_validate_input_invalid_capabilities():
     """Non-dict capabilities should abort the flow."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1629,10 +1592,7 @@ async def test_validate_input_invalid_capabilities():
 
 async def test_validate_input_invalid_scan_result_format():
     """Non-dict scan result should raise invalid_format."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1700,10 +1660,7 @@ async def test_validate_input_dataclass_capabilities_serialization():
 
 async def test_validate_input_missing_capabilities():
     """Missing capabilities should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1739,13 +1696,8 @@ async def test_validate_input_capabilities_missing_fields():
     """Missing dataclass fields should raise CannotConnect."""
     import dataclasses
 
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
-    from custom_components.thessla_green_modbus.scanner_core import (
-        DeviceCapabilities,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1796,10 +1748,7 @@ async def test_validate_input_slotted_capabilities_missing_fields():
     """Slotted DeviceCapabilities object missing fields should raise CannotConnect."""
     from dataclasses import dataclass
 
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     @dataclass(slots=True)
     class SlotCaps:
@@ -1847,10 +1796,7 @@ async def test_validate_input_slotted_capabilities_missing_fields():
 
 async def test_validate_input_scan_device_connection_exception():
     """ConnectionException during scan_device should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1878,10 +1824,7 @@ async def test_validate_input_scan_device_connection_exception():
 
 async def test_validate_input_scan_device_modbus_exception():
     """ModbusException during scan_device should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1909,10 +1852,7 @@ async def test_validate_input_scan_device_modbus_exception():
 
 async def test_validate_input_scan_device_attribute_error():
     """AttributeError during scan_device should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1940,12 +1880,8 @@ async def test_validate_input_scan_device_attribute_error():
 
 async def test_validate_input_retries_transient_failures():
     """Transient failures during setup should be retried with backoff."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        validate_input,
-    )
-    from custom_components.thessla_green_modbus.scanner_core import (
-        DeviceCapabilities,
-    )
+    from custom_components.thessla_green_modbus.config_flow import validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1994,13 +1930,8 @@ async def test_validate_input_retries_transient_failures():
 )
 async def test_validate_input_timeout_errors(exc, err_key):
     """Timeout and IO errors should map to appropriate UI errors."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
-    from custom_components.thessla_green_modbus.scanner_core import (
-        DeviceCapabilities,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -2031,10 +1962,7 @@ async def test_validate_input_timeout_errors(exc, err_key):
 
 async def test_validate_input_dns_failure():
     """DNS resolution failures should raise a specific error."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "example.com",
@@ -2055,10 +1983,7 @@ async def test_validate_input_dns_failure():
 
 async def test_validate_input_connection_refused():
     """Connection refused errors should raise a specific error."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-        validate_input,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -2079,9 +2004,7 @@ async def test_validate_input_connection_refused():
 
 def test_device_capabilities_serialization():
     """DeviceCapabilities.as_dict returns a JSON-serializable dict."""
-    from custom_components.thessla_green_modbus.scanner_core import (
-        DeviceCapabilities,
-    )
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
     caps = DeviceCapabilities(
         basic_control=True,

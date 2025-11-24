@@ -111,12 +111,8 @@ sys.modules["homeassistant.components.sensor"] = sensor_mod
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus import select  # noqa: E402
-from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
-    ENTITY_MAPPINGS,
-)
-from custom_components.thessla_green_modbus.select import (  # noqa: E402
-    ThesslaGreenSelect,
-)
+from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS  # noqa: E402
+from custom_components.thessla_green_modbus.select import ThesslaGreenSelect  # noqa: E402
 
 
 def test_select_creation_and_state(mock_coordinator):

@@ -68,24 +68,22 @@ include = ["custom_components*"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+src = ["custom_components", "tests", "tools"]
 
 [tool.ruff.lint]
 select = [
     "E",
     "F",
     "W",
-    "I",
     "UP",
     "B",
 ]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = [
-    "D",
-    "ANN",
-]
 ignore = ["ANN401"]
 extend-safe-fixes = ["ANN"]
+per-file-ignores = {"tests/**/*.py" = ["D", "ANN"]}
+
+[tool.ruff.format]
+line-ending = "lf"
 
 
 [tool.black]
@@ -118,6 +116,7 @@ ensure_newline_before_comments = true
 
 [tool.mypy]
 python_version = "3.12"
+files = ["custom_components/thessla_green_modbus/registers"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -127,6 +126,8 @@ warn_unused_ignores = true
 show_error_codes = true
 namespace_packages = true
 explicit_package_bases = true
+mypy_path = ["."]
+follow_imports = "skip"
 
 [[tool.mypy.overrides]]
 module = [
@@ -136,6 +137,10 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = [".git", "testing_config"]
@@ -144,7 +149,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
     "--strict-markers",
-    "--disable-warnings", 
+    "--disable-warnings",
     "--tb=short",
     "-ra",
     "-q",

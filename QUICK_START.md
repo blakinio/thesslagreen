@@ -24,7 +24,7 @@ Before starting, make sure you have:
 #### Option A: HACS (Recommended)
 ```
 1. Open HACS → Integrations
-2. Click ⋮ → Custom repositories  
+2. Click ⋮ → Custom repositories
 3. Add: https://github.com/thesslagreen/thessla-green-modbus-ha
 4. Category: Integration
 5. Click ADD → Install "ThesslaGreen Modbus"
@@ -41,7 +41,7 @@ Before starting, make sure you have:
 ### Step 4: Add Integration ➕
 
 1. **Go to:** Settings → Devices & Services
-2. **Click:** + ADD INTEGRATION  
+2. **Click:** + ADD INTEGRATION
 3. **Search:** "ThesslaGreen Modbus"
 4. **Enter:**
    - **IP Address:** 192.168.1.100 (your AirPack IP)
@@ -64,7 +64,7 @@ After successful setup, you'll see these entities in Home Assistant:
 
 ### 🌡️ **Temperature Sensors**
 - Outside temperature
-- Supply air temperature  
+- Supply air temperature
 - Exhaust air temperature
 - FPX temperature (if available)
 
@@ -80,7 +80,7 @@ After successful setup, you'll see these entities in Home Assistant:
 
 ### 🔧 **Advanced Features** (if available)
 - GWC system controls
-- Bypass controls  
+- Bypass controls
 - Special functions (OKAP, KOMINEK, WIETRZENIE)
 
 ---
@@ -97,7 +97,7 @@ data:
   preset_mode: "eco"
 
 # Set to boost mode
-service: climate.set_preset_mode  
+service: climate.set_preset_mode
 target:
   entity_id: climate.thessla_rekuperator
 data:
@@ -230,6 +230,6 @@ automation:
 
 ---
 
-**🎉 Congratulations!** Your ThesslaGreen AirPack is now smart home ready! 
+**🎉 Congratulations!** Your ThesslaGreen AirPack is now smart home ready!
 
 Enjoy better air quality with intelligent automation! 🏠💨

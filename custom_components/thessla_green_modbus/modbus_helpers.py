@@ -114,7 +114,7 @@ def _calculate_backoff_delay(
         delay = float(base) * (2 ** (attempt - 2))
 
     if jitter:
-        if isinstance(jitter, (int, float)):
+        if isinstance(jitter, int | float):
             jitter_min = 0.0
             jitter_max = float(jitter)
         else:

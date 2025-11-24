@@ -140,10 +140,10 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def current_temperature(self) -> float | None:  # pragma: no cover
         """Return current temperature from supply sensor."""
         value = self.coordinator.data.get("supply_temperature")
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             return float(value)
         value = self.coordinator.data.get("ambient_temperature")
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             return float(value)
         return None
 
@@ -158,7 +158,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             "required_temp",
         ):
             value = data.get(key)
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 return float(value)
         return None
 

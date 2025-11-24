@@ -775,7 +775,7 @@ def test_post_process_data(coordinator):
     # Check calculated efficiency
     assert "calculated_efficiency" in processed_data
     efficiency = processed_data["calculated_efficiency"]
-    assert isinstance(efficiency, (int, float))
+    assert isinstance(efficiency, int | float)
     assert 0 <= efficiency <= 100
 
     # Check flow balance
@@ -913,9 +913,7 @@ async def test_capabilities_loaded_from_config_entry():
 @pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):
     """Invalid capabilities format should raise CannotConnect."""
-    from custom_components.thessla_green_modbus.config_flow import (
-        CannotConnect,
-    )
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect
 
     scan_result = {
         "device_info": {},

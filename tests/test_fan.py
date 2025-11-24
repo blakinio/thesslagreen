@@ -7,9 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-)
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs

@@ -8,12 +8,7 @@ from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfTemperature,
-    UnitOfTime,
-    UnitOfVolumeFlowRate,
-)
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime, UnitOfVolumeFlowRate
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -189,7 +184,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         if raw_value is None:
             return None
 
-        return float(raw_value) if isinstance(raw_value, (int, float)) else None
+        return float(raw_value) if isinstance(raw_value, int | float) else None
 
     async def async_set_native_value(self, value: float) -> None:  # pragma: no cover
         """Set new value."""

@@ -3,9 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
+from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 

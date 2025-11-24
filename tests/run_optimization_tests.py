@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Optimization validation test runner for ThesslaGreen Modbus integration."""
+
 import asyncio
 import subprocess
 import sys
@@ -41,9 +42,7 @@ async def validate_optimization_metrics():
         print("🔍 Testing register grouping optimization...")
         from unittest.mock import MagicMock
 
-        from custom_components.thessla_green_modbus.coordinator import (
-            ThesslaGreenModbusCoordinator,
-        )
+        from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
         hass = MagicMock()
         coordinator = ThesslaGreenModbusCoordinator(
@@ -69,9 +68,7 @@ async def validate_optimization_metrics():
 
         # Test 2: Device Scanner Efficiency
         print("🔍 Testing device scanner optimization...")
-        from custom_components.thessla_green_modbus.scanner_core import (
-            ThesslaGreenDeviceScanner,
-        )
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
@@ -226,11 +223,7 @@ async def validate_entity_creation():
         print("✅ All platform entity files are present")
 
         # Check if entities have proper base classes
-        from custom_components.thessla_green_modbus import (
-            binary_sensor,
-            climate,
-            sensor,
-        )
+        from custom_components.thessla_green_modbus import binary_sensor, climate, sensor
 
         # Verify that entities inherit from proper base classes
         checks = [

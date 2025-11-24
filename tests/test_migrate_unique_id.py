@@ -1,7 +1,4 @@
-from custom_components.thessla_green_modbus.const import (
-    DOMAIN,
-    migrate_unique_id,
-)
+from custom_components.thessla_green_modbus.const import DOMAIN, migrate_unique_id
 
 HOST = "fd00:1:2::1"
 PORT = 502

@@ -215,9 +215,7 @@ class TestThesslaGreenModbusCoordinator:
     @pytest.fixture
     def coordinator_data(self):
         """Create coordinator with test data."""
-        from custom_components.thessla_green_modbus.coordinator import (
-            ThesslaGreenModbusCoordinator,
-        )
+        from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
         hass = MagicMock()
         coordinator = ThesslaGreenModbusCoordinator(
@@ -368,9 +366,7 @@ class TestThesslaGreenConfigFlow:
     @pytest.mark.asyncio
     async def test_config_flow_user_step(self, _mock_scanner):
         """Test the user configuration step."""
-        from custom_components.thessla_green_modbus.config_flow import (
-            ConfigFlow,
-        )
+        from custom_components.thessla_green_modbus.config_flow import ConfigFlow
 
         flow = ConfigFlow()
         flow.hass = MagicMock()
@@ -383,9 +379,7 @@ class TestThesslaGreenConfigFlow:
     @pytest.mark.asyncio
     async def test_config_flow_user_input_success(self, _mock_scanner):
         """Test successful user input processing."""
-        from custom_components.thessla_green_modbus.config_flow import (
-            ConfigFlow,
-        )
+        from custom_components.thessla_green_modbus.config_flow import ConfigFlow
 
         flow = ConfigFlow()
         flow.hass = MagicMock()
@@ -394,7 +388,6 @@ class TestThesslaGreenConfigFlow:
             patch.object(flow, "async_set_unique_id"),
             patch.object(flow, "_abort_if_unique_id_configured"),
         ):
-
             result = await flow.async_step_user(
                 {
                     CONF_HOST: "192.168.1.100",
@@ -409,10 +402,7 @@ class TestThesslaGreenConfigFlow:
     @pytest.mark.asyncio
     async def test_config_flow_cannot_connect(self):
         """Test connection failure handling."""
-        from custom_components.thessla_green_modbus.config_flow import (
-            CannotConnect,
-            ConfigFlow,
-        )
+        from custom_components.thessla_green_modbus.config_flow import CannotConnect, ConfigFlow
 
         flow = ConfigFlow()
         flow.hass = MagicMock()
@@ -459,9 +449,7 @@ class TestThesslaGreenDeviceScanner:
     @pytest.mark.asyncio
     async def test_scanner_core_success(self, mock_modbus_client):
         """Test successful device scanning."""
-        from custom_components.thessla_green_modbus.scanner_core import (
-            ThesslaGreenDeviceScanner,
-        )
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
@@ -476,9 +464,7 @@ class TestThesslaGreenDeviceScanner:
     @pytest.mark.asyncio
     async def test_scanner_core_connection_failure(self):
         """Test scanner behavior on connection failure."""
-        from custom_components.thessla_green_modbus.scanner_core import (
-            ThesslaGreenDeviceScanner,
-        )
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
@@ -491,9 +477,7 @@ class TestThesslaGreenDeviceScanner:
 
     def test_register_value_validation(self):
         """Test register value validation logic."""
-        from custom_components.thessla_green_modbus.scanner_core import (
-            ThesslaGreenDeviceScanner,
-        )
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = asyncio.run(ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10))
 
@@ -530,9 +514,7 @@ class TestThesslaGreenDeviceScanner:
 
     def test_capability_analysis(self):
         """Test capability analysis logic."""
-        from custom_components.thessla_green_modbus.scanner_core import (
-            ThesslaGreenDeviceScanner,
-        )
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = asyncio.run(ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10))
         scanner.available_registers = {
@@ -598,9 +580,7 @@ class TestThesslaGreenClimate:
         """Test climate entity creation and basic properties."""
         from homeassistant.components.climate import HVACMode
 
-        from custom_components.thessla_green_modbus.climate import (
-            ThesslaGreenClimate,
-        )
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
 
@@ -615,9 +595,7 @@ class TestThesslaGreenClimate:
         """Test setting HVAC mode."""
         from homeassistant.components.climate import HVACMode
 
-        from custom_components.thessla_green_modbus.climate import (
-            ThesslaGreenClimate,
-        )
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
 
@@ -638,9 +616,7 @@ class TestThesslaGreenClimate:
         """Abort mode change if enabling fails."""
         from homeassistant.components.climate import HVACMode
 
-        from custom_components.thessla_green_modbus.climate import (
-            ThesslaGreenClimate,
-        )
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
         mock_climate_coordinator.async_write_register = AsyncMock(side_effect=[False, False])
@@ -664,9 +640,7 @@ class TestThesslaGreenClimate:
         """Test setting preset mode."""
         from homeassistant.components.climate import PRESET_ECO
 
-        from custom_components.thessla_green_modbus.climate import (
-            ThesslaGreenClimate,
-        )
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
 
@@ -677,9 +651,7 @@ class TestThesslaGreenClimate:
 
     def test_climate_fan_mode_calculation(self, mock_climate_coordinator):
         """Test fan mode calculation."""
-        from custom_components.thessla_green_modbus.climate import (
-            ThesslaGreenClimate,
-        )
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
 
@@ -692,9 +664,7 @@ class TestThesslaGreenClimate:
 
     def test_climate_fan_mode_no_data(self, mock_climate_coordinator):
         """Return None when no airflow registers are available."""
-        from custom_components.thessla_green_modbus.climate import (
-            ThesslaGreenClimate,
-        )
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
         mock_climate_coordinator.data.pop("air_flow_rate_manual", None)
@@ -704,9 +674,7 @@ class TestThesslaGreenClimate:
 
     def test_climate_fan_mode_zero_airflow(self, mock_climate_coordinator):
         """Return None when airflow value is zero."""
-        from custom_components.thessla_green_modbus.climate import (
-            ThesslaGreenClimate,
-        )
+        from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
         mock_climate_coordinator.data["air_flow_rate_manual"] = 0
@@ -720,9 +688,7 @@ class TestPerformanceOptimizations:
     @pytest.mark.asyncio
     async def test_register_grouping_performance(self):
         """Test that register grouping reduces Modbus calls."""
-        from custom_components.thessla_green_modbus.coordinator import (
-            ThesslaGreenModbusCoordinator,
-        )
+        from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
         # Create coordinator with many registers
         hass = MagicMock()
@@ -751,9 +717,7 @@ class TestPerformanceOptimizations:
     @pytest.mark.asyncio
     async def test_scan_optimization_stats(self):
         """Test that device scanner provides optimization statistics."""
-        from custom_components.thessla_green_modbus.scanner_core import (
-            ThesslaGreenDeviceScanner,
-        )
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 

@@ -11,11 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self, cast
 
 try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import (
-        get_all_registers,
-        get_registers_path,
-        registers_sha256,
-    )
+    from .registers.loader import get_all_registers, get_registers_path, registers_sha256
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
 
     def get_all_registers(*_args, **_kwargs):
@@ -45,11 +41,7 @@ from .const import (
     SERIAL_STOP_BITS_MAP,
     UNKNOWN_MODEL,
 )
-from .modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-    ModbusIOException,
-)
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import _call_modbus
 from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
@@ -301,14 +293,14 @@ class ThesslaGreenDeviceScanner:
             self.backoff = float(backoff)
         except (TypeError, ValueError):
             self.backoff = 0.0
-        if isinstance(backoff_jitter, (int, float)):
+        if isinstance(backoff_jitter, int | float):
             jitter: float | tuple[float, float] | None = float(backoff_jitter)
         elif isinstance(backoff_jitter, str):
             try:
                 jitter = float(backoff_jitter)
             except ValueError:
                 jitter = None
-        elif isinstance(backoff_jitter, (list, tuple)) and len(backoff_jitter) >= 2:
+        elif isinstance(backoff_jitter, list | tuple) and len(backoff_jitter) >= 2:
             try:
                 jitter = (float(backoff_jitter[0]), float(backoff_jitter[1]))
             except (TypeError, ValueError):

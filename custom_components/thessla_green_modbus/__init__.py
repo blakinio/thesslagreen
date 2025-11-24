@@ -66,10 +66,9 @@ from .const import (
     DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
     DOMAIN,
-    async_setup_options,
-    migrate_unique_id,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
+from .const import async_setup_options, migrate_unique_id
 from .entity_mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 

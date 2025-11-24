@@ -7,9 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-)
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -129,12 +127,8 @@ sys.modules["homeassistant.components.sensor"] = sensor_mod
 
 from custom_components.thessla_green_modbus import switch  # noqa: E402
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
-    ENTITY_MAPPINGS,
-)
-from custom_components.thessla_green_modbus.switch import (  # noqa: E402
-    ThesslaGreenSwitch,
-)
+from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS  # noqa: E402
+from custom_components.thessla_green_modbus.switch import ThesslaGreenSwitch  # noqa: E402
 
 # Ensure required test mapping is present when dynamic generation is unavailable
 ENTITY_MAPPINGS.setdefault("switch", {})

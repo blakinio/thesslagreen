@@ -279,9 +279,7 @@ async def test_force_full_register_list_adds_missing_entities(mock_coordinator, 
 def test_sensor_registers_match_definition():
     """Cross-check register_type against registers module."""
 
-    from custom_components.thessla_green_modbus.registers.loader import (
-        get_registers_by_function,
-    )
+    from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 
     mapping = {
         "input_registers": {r.name for r in get_registers_by_function("04")},

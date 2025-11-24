@@ -8,15 +8,10 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.thessla_green_modbus import (
-    async_setup_entry,
-    async_unload_entry,
-)
+from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
 from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
+from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 
 
 async def test_async_setup_entry_success():

@@ -339,4 +339,3 @@ MIT License – see [LICENSE](LICENSE) for details.
 ---
 
 **🎉 Enjoy smart ventilation with Home Assistant!** 🏠💨
-

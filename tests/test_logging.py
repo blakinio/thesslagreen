@@ -67,9 +67,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
     )
     sys.modules["homeassistant.util"] = ha_util
     sys.modules["homeassistant.util.network"] = ha_util.network
-    from custom_components.thessla_green_modbus.coordinator import (
-        ThesslaGreenModbusCoordinator,
-    )
+    from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
     class DummyClient:
         def __init__(self):
@@ -137,9 +135,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
     )
     sys.modules["homeassistant.util"] = ha_util
     sys.modules["homeassistant.util.network"] = ha_util.network
-    from custom_components.thessla_green_modbus.coordinator import (
-        ThesslaGreenModbusCoordinator,
-    )
+    from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
     class DummyClient:
         def __init__(self):
