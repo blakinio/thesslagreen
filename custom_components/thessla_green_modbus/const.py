@@ -180,6 +180,39 @@ PLATFORMS = [
 _ENTITY_LOOKUP: dict[str, tuple[str, str | None, int | None]] | None = None
 
 
+def _sanitize_identifier(value: str) -> str:
+    """Sanitize identifier components used inside unique IDs."""
+
+    sanitized = re.sub(r"[^0-9A-Za-z_-]", "-", value)
+    sanitized = re.sub(r"-{2,}", "-", sanitized)
+    sanitized = re.sub(r"_{2,}", "_", sanitized)
+    return sanitized.strip("-_")
+
+
+def device_unique_id_prefix(
+    serial_number: str | None,
+    host: str,
+    port: int,
+) -> str:
+    """Return the device specific prefix used in entity unique IDs."""
+
+    if serial_number:
+        serial_token = _sanitize_identifier(serial_number)
+        if serial_token:
+            return serial_token
+
+    host_part = _sanitize_identifier(host.replace(":", "-")) if host else ""
+    port_part = _sanitize_identifier(str(port)) if port is not None else ""
+
+    if host_part and port_part:
+        return f"{host_part}-{port_part}"
+    if host_part:
+        return host_part
+    if port_part:
+        return f"device-{port_part}"
+    return "device"
+
+
 def _build_entity_lookup() -> dict[str, tuple[str, str | None, int | None]]:
     """Build mapping of entity keys to register info."""
     global _ENTITY_LOOKUP
@@ -206,6 +239,7 @@ def migrate_unique_id(
     """Migrate a legacy unique_id to the current format."""
 
     uid = unique_id.replace(":", "-")
+    prefix = device_unique_id_prefix(serial_number, host, port)
 
     for unit in (AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE):
         suffix = f"_{unit}"
@@ -213,7 +247,7 @@ def migrate_unique_id(
             uid = uid[: -len(suffix)]
             break
 
-    pattern_new = rf"{slave_id}_\d+(?:_bit\d+)?$"
+    pattern_new = rf"{re.escape(prefix)}_{slave_id}_\d+(?:_bit\d+)?$"
     if re.fullmatch(pattern_new, uid):
         return uid
 
@@ -223,34 +257,40 @@ def migrate_unique_id(
         uid_no_domain = uid
 
     match = re.match(rf".*_{slave_id}_(.+)", uid_no_domain)
-    if not match:
-        return uid_no_domain
+    remainder = match.group(1) if match else None
 
-    remainder = match.group(1)
+    base_uid: str | None = None
 
-    if re.fullmatch(r"\d+(?:_bit\d+)?", remainder):
-        return f"{slave_id}_{remainder}"
+    if remainder and re.fullmatch(r"\d+(?:_bit\d+)?", remainder):
+        base_uid = f"{slave_id}_{remainder}"
+    elif remainder:
+        lookup = _build_entity_lookup()
+        register_name, register_type, bit = lookup.get(
+            remainder, (remainder, None, None)
+        )
+        address: int | None = None
+        if register_type == "holding_registers":
+            address = holding_registers().get(register_name)
+        elif register_type == "input_registers":
+            address = input_registers().get(register_name)
+        elif register_type == "coil_registers":
+            address = coil_registers().get(register_name)
+        elif register_type == "discrete_inputs":
+            address = discrete_input_registers().get(register_name)
 
-    lookup = _build_entity_lookup()
-    register_name, register_type, bit = lookup.get(remainder, (remainder, None, None))
-    address: int | None = None
-    if register_type == "holding_registers":
-        address = holding_registers().get(register_name)
-    elif register_type == "input_registers":
-        address = input_registers().get(register_name)
-    elif register_type == "coil_registers":
-        address = coil_registers().get(register_name)
-    elif register_type == "discrete_inputs":
-        address = discrete_input_registers().get(register_name)
+        if address is not None:
+            bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
+            base_uid = f"{slave_id}_{address}{bit_suffix}"
+        elif remainder == "fan":
+            base_uid = f"{slave_id}_0"
 
-    if address is not None:
-        bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
-        return f"{slave_id}_{address}{bit_suffix}"
+    if base_uid is None:
+        fallback = uid_no_domain
+        if not fallback.startswith(f"{prefix}_"):
+            fallback = f"{prefix}_{fallback}"
+        return fallback
 
-    if remainder == "fan":
-        return f"{slave_id}_0"
-
-    return uid_no_domain
+    return f"{prefix}_{base_uid}"
 
 
 # Mapping of writable register names to Home Assistant number entity metadata
