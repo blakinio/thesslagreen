@@ -38,9 +38,7 @@ def test_register_uniqueness() -> None:
 
     # (function, address_dec) pairs must be unique
     pair_counts = Counter((reg["function"], address(reg)) for reg in registers)
-    duplicate_pairs = {
-        pair: count for pair, count in pair_counts.items() if count > 1
-    }
+    duplicate_pairs = {pair: count for pair, count in pair_counts.items() if count > 1}
     assert not duplicate_pairs, (
         "Duplicate (function, address_dec) pairs found: " f"{duplicate_pairs}"
     )

@@ -70,11 +70,7 @@ def test_plan_group_reads_splits_large_block(monkeypatch):
 
     addresses = [r.address for r in regs]
     expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
-    plans = [
-        p
-        for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS)
-        if p.function == 4
-    ]
+    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == 4]
 
     assert [(p.address, p.length) for p in plans] == expected
 
@@ -85,10 +81,7 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     # Two ranges of consecutive registers separated by a gap
     first = list(range(32))
     second = list(range(40, 80))
-    regs = [
-        Register(function=4, address=i, name=f"r{i}", access="ro")
-        for i in first + second
-    ]
+    regs = [Register(function=4, address=i, name=f"r{i}", access="ro") for i in first + second]
 
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader.load_registers",
@@ -97,10 +90,6 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
 
     addresses = [r.address for r in regs]
     expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
-    plans = [
-        p
-        for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS)
-        if p.function == 4
-    ]
+    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == 4]
 
     assert [(p.address, p.length) for p in plans] == expected

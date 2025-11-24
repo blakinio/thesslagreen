@@ -123,7 +123,9 @@ def test_select_creation_and_state(mock_coordinator):
     """Test creation and state changes of select entity."""
     mock_coordinator.data["mode"] = 0
     address = 4208
-    select_entity = ThesslaGreenSelect(mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"])
+    select_entity = ThesslaGreenSelect(
+        mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
+    )
     assert select_entity.current_option == "auto"
 
     mock_coordinator.data["mode"] = 1
@@ -133,7 +135,9 @@ def test_select_creation_and_state(mock_coordinator):
 def test_select_option_change(mock_coordinator):
     mock_coordinator.data["mode"] = 0
     address = 4208
-    select_entity = ThesslaGreenSelect(mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"])
+    select_entity = ThesslaGreenSelect(
+        mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
+    )
     asyncio.run(select_entity.async_select_option("manual"))
     mock_coordinator.async_write_register.assert_awaited_with("mode", 1, offset=0)
     mock_coordinator.async_request_refresh.assert_awaited_once()

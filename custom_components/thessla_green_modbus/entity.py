@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import ThesslaGreenModbusCoordinator
 from .const import device_unique_id_prefix
+from .coordinator import ThesslaGreenModbusCoordinator
 
 
 class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
@@ -33,9 +33,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
-        bit_suffix = (
-            f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
-        )
+        bit_suffix = f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
         device_info = getattr(self.coordinator, "device_info", {}) or {}
         serial_number = device_info.get("serial_number")
         prefix = device_unique_id_prefix(

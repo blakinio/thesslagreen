@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 
 from .const import MAX_BATCH_REGISTERS, SENSOR_UNAVAILABLE
 from .utils import (
@@ -58,7 +58,7 @@ def _format_register_value(name: str, value: int) -> int | str | None:
     return None if value == SENSOR_UNAVAILABLE else value
 
 
-def _decode_season_mode(value: int) -> Optional[int]:
+def _decode_season_mode(value: int) -> int | None:
     """Decode season mode register which may place value in high byte."""
     if value in (0xFF00, 0xFFFF, SENSOR_UNAVAILABLE):
         return None
@@ -69,7 +69,7 @@ def _decode_season_mode(value: int) -> Optional[int]:
     return high or low
 
 
-SPECIAL_VALUE_DECODERS: Dict[str, Callable[[int], Optional[int]]] = {
+SPECIAL_VALUE_DECODERS: dict[str, Callable[[int], int | None]] = {
     "season_mode": _decode_season_mode,
 }
 

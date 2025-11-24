@@ -146,7 +146,6 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-import custom_components.thessla_green_modbus.number as number_module
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 from custom_components.thessla_green_modbus.number import (  # noqa: E402
     ENTITY_MAPPINGS,

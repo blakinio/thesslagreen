@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-import logging
-from datetime import timedelta
-from importlib import import_module
-from typing import TYPE_CHECKING, cast
 
 # Provide ``patch`` from ``unittest.mock`` for test modules that use it without
 # importing. This mirrors the behaviour provided by the Home Assistant test
 # harness and keeps the standalone tests lightweight.
 import builtins
+import logging
+from datetime import timedelta
+from importlib import import_module
+from typing import TYPE_CHECKING, cast
 from unittest.mock import patch as _patch
 
 # Only provide ``patch`` if it hasn't already been supplied by the test harness
@@ -32,38 +32,38 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 from .const import (
     CONF_BACKOFF,
     CONF_BACKOFF_JITTER,
+    CONF_BAUD_RATE,
+    CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
-    CONF_CONNECTION_TYPE,
     CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_PARITY,
     CONF_RETRY,
-    CONF_SERIAL_PORT,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
+    CONF_SERIAL_PORT,
     CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
-    CONF_BAUD_RATE,
-    CONF_PARITY,
     CONF_STOP_BITS,
     CONF_TIMEOUT,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    DEFAULT_DEEP_SCAN,
-    DEFAULT_CONNECTION_TYPE,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
-    DEFAULT_NAME,
-    DEFAULT_PORT,
-    DEFAULT_SERIAL_PORT,
     DEFAULT_BAUD_RATE,
+    DEFAULT_CONNECTION_TYPE,
+    DEFAULT_DEEP_SCAN,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    DEFAULT_NAME,
     DEFAULT_PARITY,
-    DEFAULT_STOP_BITS,
+    DEFAULT_PORT,
     DEFAULT_RETRY,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
+    DEFAULT_SERIAL_PORT,
     DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
+    DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
     DOMAIN,
     async_setup_options,
@@ -140,9 +140,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     though it appears unused within the integration code itself.
     """
     from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
-    from homeassistant.helpers.update_coordinator import (
-        UpdateFailed,  # type: ignore
-    )
+    from homeassistant.helpers.update_coordinator import UpdateFailed  # type: ignore
 
     _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", entry.title)
 
@@ -219,9 +217,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     )
 
     # Create coordinator for managing device communication
-    coordinator_mod = await hass.async_add_executor_job(
-        import_module, ".coordinator", __name__
-    )
+    coordinator_mod = await hass.async_add_executor_job(import_module, ".coordinator", __name__)
     ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
 
     coordinator = ThesslaGreenModbusCoordinator(
@@ -251,12 +247,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     # Setup coordinator (this includes device scanning)
     try:
         await coordinator.async_setup()
-    except (
-        ConnectionException,
-        ModbusException,
-        asyncio.TimeoutError,
-        OSError,
-    ) as exc:
+    except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
         if _is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during setup: %s", exc)
             await entry.async_start_reauth(hass)
@@ -267,13 +258,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     # Perform first data update
     try:
         await coordinator.async_config_entry_first_refresh()
-    except (
-        ConnectionException,
-        ModbusException,
-        UpdateFailed,
-        asyncio.TimeoutError,
-        OSError,
-    ) as exc:
+    except (TimeoutError, ConnectionException, ModbusException, UpdateFailed, OSError) as exc:
         if _is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during initial refresh: %s", exc)
             await entry.async_start_reauth(hass)
@@ -299,7 +284,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     for platform in PLATFORM_DOMAINS:
         try:
             await hass.async_add_executor_job(import_module, f".{platform}", __name__)
-        except (ImportError, ModuleNotFoundError) as err:  # pragma: no cover - environment-dependent
+        except (
+            ImportError,
+            ModuleNotFoundError,
+        ) as err:  # pragma: no cover - environment-dependent
             _LOGGER.debug("Could not preload platform %s: %s", platform, err)
         except Exception as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
@@ -326,9 +314,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     return True
 
 
-async def async_unload_entry(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> bool:  # pragma: no cover
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
     """Unload a config entry.
 
     Called by Home Assistant when a config entry is removed.  Kept for the
@@ -338,9 +324,7 @@ async def async_unload_entry(
 
     # Unload platforms
     platforms = _get_platforms()
-    unload_ok = cast(
-        bool, await hass.config_entries.async_unload_platforms(entry, platforms)
-    )
+    unload_ok = cast(bool, await hass.config_entries.async_unload_platforms(entry, platforms))
 
     if unload_ok:
         # Shutdown coordinator
@@ -368,9 +352,7 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def _async_cleanup_legacy_fan_entity(
-    hass: HomeAssistant, coordinator
-) -> None:
+async def _async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator) -> None:
     """Remove or rename legacy fan-related entity IDs."""
     from homeassistant.helpers import entity_registry as er  # type: ignore
 
