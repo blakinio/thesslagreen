@@ -258,6 +258,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.effective_batch = 1
         self.max_registers_per_request = self.effective_batch
 
+        # Offline state shared with transports
+        self.offline_state = False
+
         if self.connection_type == CONNECTION_TYPE_TCP:
             self.transport = TcpModbusTransport(
                 host=self.host,
@@ -279,8 +282,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Connection management
         self.client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
-        self.transport: BaseModbusTransport | None = None
-        self.offline_state = False
         self._connection_lock = asyncio.Lock()
         self._update_in_progress = False
 
