@@ -30,8 +30,17 @@ The integration works as a **hub** in Home Assistant.
 ### Devices
 - ✅ **ThesslaGreen AirPack Home Series 4** – all models
 - ✅ **AirPack Home 300v‑850h** (Energy+, Energy, Enthalpy)
-- ✅ **Modbus TCP/RTU protocol** with auto detection
+- ✅ **Modbus TCP protocol** – native connection, fully supported
+- 🧪 **Modbus RTU (RS485) / USB** – in preparation (planned once stable testing is complete)
 - ✅ **Firmware v3.x – v5.x** with automatic detection
+
+### Modbus modes and requirements
+- **Update schedule:** 30 s by default, configurable 10–300 s; avoid going below 15 s to prevent device overload.
+- **Register coverage:** full support for Holding/Input/Coils/Discrete Input registers per vendor documentation.
+- **Request batching:** reads are grouped into blocks (16 by default) to minimize network traffic.
+- **Limitations:** multiple simultaneous Modbus TCP connections to one controller may cause timeouts; keep only one active connection (Home Assistant).
+- **TCP prerequisites:** port 502 open, static IP, device ID 10 (auto fallback to 1 and 247), no firewall/IPS between HA and the unit.
+- **RTU/USB plan:** connect via `/dev/ttyUSBx` with 19200 8N1; use TCP until stable RTU support is released.
 
 ### Home Assistant
 - ✅ **Requires Home Assistant 2024.12.0+** — minimum version declared in `manifest.json` (the `homeassistant` package is not part of `requirements.txt`)
@@ -62,25 +71,33 @@ git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
 cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_components/
 ```
 
-## ⚙️ Configuration
+## ⚙️ Step-by-step configuration
 
-### 1. Enable Modbus TCP in the unit
-- Menu → Communication → Modbus TCP
-- Enable: **YES**
-- Port: **502** (default)
-- Device ID: **10** (default)
+### 0. Preparation
+1. Verify Home Assistant can reach the unit (ping the IP address) and connect to port 502.
+2. Assign a static IP to the unit (DHCP reservation or manual) to avoid connection drops.
+3. If you plan RTU/USB, note the port (`/dev/ttyUSB0`), speed (e.g. 19200) and 8N1 parameters.
+
+### 1. Enable Modbus on the unit
+- **Modbus TCP**: Menu → Communication → Modbus TCP → Enable **YES**, Port **502**, Device ID **10**
+- **Modbus RTU** (planned support): Menu → Communication → Modbus RTU → Select RS485 port, set baud rate (e.g. 19200), parity and stop bits
 
 ### 2. Add the integration in Home Assistant
 1. **Settings** → **Devices & Services** → **+ ADD INTEGRATION**
 2. Search for **"ThesslaGreen Modbus"**
-3. Enter the data:
-   - **IP Address**: unit IP (e.g. 192.168.1.100)
-   - **Port**: 502
-   - **Device ID**: 10
-4. The integration will automatically scan the device
-5. Click **ADD**
+3. Provide connection details:
+   - Select **Connection type**: `Modbus TCP` or `Modbus RTU` (when available)
+   - **Modbus TCP**: IP address (e.g. 192.168.1.100), port 502, Device ID 10 (the integration will also try 1 and 247)
+   - **Modbus RTU/USB**: serial port (e.g. `/dev/ttyUSB0`), baud (e.g. 19200), parity and stop bits
+4. Submit the form – the integration will auto-scan registers
+5. After the scan completes click **ADD** and open the created device
 
-### 3. Advanced options
+### 3. Verify entities and status
+1. In **Settings → Devices & Services** open **ThesslaGreen Modbus**.
+2. Check entities (Climate, Fan, sensors and diagnostics).
+3. In entity attributes (**Developer Tools → States**) you will see `last_updated` and `operating_mode` confirming the last successful read.
+
+### 4. Advanced options
 - **Scan interval**: 10‑300s (default 30s)
 - **Timeout**: 5‑60s (default 10s)
 - **Retry**: 1‑5 attempts (default 3)
@@ -176,28 +193,40 @@ automation:
           flash: "long"
 ```
 
-## 🔧 Diagnostics and troubleshooting
+## 🔧 Diagnostics and logging
 
-### Diagnostic information
-Use the `get_diagnostic_info` service to receive:
-- Device information (firmware, serial, model)
-- Integration performance stats
-- Available registers and functions
-- Communication error history
+### Enable extended logs
+Add to `configuration.yaml` and restart Home Assistant:
 
-### Common problems
+```yaml
+logger:
+  logs:
+    custom_components.thessla_green_modbus: debug
+    homeassistant.components.modbus: debug  # optional raw Modbus communication
+```
 
-#### ❌ "Cannot connect"
-1. Check IP and ping the device: `ping 192.168.1.100`
-2. Ensure Modbus TCP is enabled (port 502)
-3. Try different Device IDs (integration auto detects 1, 10, 247)
-4. Check network firewall
+Logs are visible in **Settings → System → Logs** and the `home-assistant.log` file. Debug level shows raw and processed register values, unavailable sensors, out-of-range values and connection errors.
 
-#### ❌ "No entities"
-1. Wait 30‑60 seconds for initial scanning
-2. Check logs in **Settings** → **System** → **Logs**
-3. Use the `rescan_device` service
-4. If needed enable "Full register list"
+### View last read and error counters
+- **Entity attributes:** in **Developer Tools → States** open any integration entity; the `last_updated` attribute marks the last successful poll.
+- **Device diagnostics:** **Settings → Devices & Services → ThesslaGreen Modbus → ⋮ → Download diagnostics** to see `last_successful_update`, `successful_reads`/`failed_reads`, `last_error` and response-time statistics.
+- **`get_diagnostic_info` service:** call `thessla_green_modbus.get_diagnostic_info` from **Developer Tools → Services** to retrieve full diagnostics (device identity, available registers, error history).
+
+## ❔ FAQ
+
+**Connection lost (timeout/connection errors)**
+- Confirm port 502 is reachable (firewall/router) and the unit keeps the same IP address.
+- Increase the scan interval to 45–60 s in integration options to reduce load (avoid going below 15 s).
+- Ensure no other tools keep a parallel Modbus session.
+
+**Re‑auth / IP change**
+- Go to **Settings → Devices & Services → ThesslaGreen Modbus → Configure** and replace IP/port/ID (no dedicated login).
+- If switching TCP ↔ RTU, remove the integration and add it again after changing the transport on the unit panel.
+
+**Changing the refresh interval**
+- Open **Settings → Devices & Services → ThesslaGreen Modbus → Configure → Advanced options**.
+- Set **Scan interval** (10–300 s); recommended 30 s, minimum 15 s for stability.
+- After saving wait for the next scan cycle to apply.
 
 #### ❌ "Entities unavailable"
 1. Check network connection

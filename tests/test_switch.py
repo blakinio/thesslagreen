@@ -185,6 +185,21 @@ def test_switch_turn_on_modbus_failure(mock_coordinator):
         asyncio.run(switch_entity.async_turn_on())
 
 
+def test_switch_turn_on_write_failure(mock_coordinator):
+    """A failed write should raise and avoid refresh."""
+
+    address = 9
+    switch_entity = ThesslaGreenSwitch(
+        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
+    )
+    mock_coordinator.async_write_register = AsyncMock(return_value=False)
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(switch_entity.async_turn_on())
+
+    mock_coordinator.async_request_refresh.assert_not_awaited()
+
+
 def test_switch_definitions_single_source():
     """Ensure switch definitions come from central ENTITY_MAPPINGS."""
     assert not hasattr(switch, "SWITCH_ENTITIES")

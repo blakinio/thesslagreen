@@ -74,6 +74,8 @@ DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
 DEFAULT_BACKOFF = 0.0
 DEFAULT_BACKOFF_JITTER = 0.0
+DEFAULT_MAX_BACKOFF = 30.0
+MIN_SCAN_INTERVAL = 5
 
 # Connection / transport configuration
 CONF_CONNECTION_TYPE = "connection_type"
@@ -140,6 +142,7 @@ CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
 CONF_AIRFLOW_UNIT = "airflow_unit"
 CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnostics
 CONF_MAX_REGISTERS_PER_REQUEST = "max_registers_per_request"
+CONF_LOG_LEVEL = "log_level"
 
 AIRFLOW_UNIT_M3H = "m3h"
 AIRFLOW_UNIT_PERCENTAGE = "percentage"
@@ -152,6 +155,8 @@ DEFAULT_SCAN_UART_SETTINGS = False
 DEFAULT_SKIP_MISSING_REGISTERS = False
 DEFAULT_DEEP_SCAN = False
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
+DEFAULT_LOG_LEVEL = "info"
+LOG_LEVEL_OPTIONS = ["debug", "info", "warning", "error"]
 
 # Registers that are known to be unavailable on some devices
 KNOWN_MISSING_REGISTERS = {
@@ -245,7 +250,7 @@ def migrate_unique_id(
             uid = uid[: -len(suffix)]
             break
 
-    pattern_new = rf"{re.escape(prefix)}_{slave_id}_\d+(?:_bit\d+)?$"
+    pattern_new = rf"{re.escape(prefix)}_{slave_id}_[^_]+_\d+(?:_bit\d+)?$"
     if re.fullmatch(pattern_new, uid):
         return uid
 
@@ -254,37 +259,78 @@ def migrate_unique_id(
     else:
         uid_no_domain = uid
 
+    lookup = _build_entity_lookup()
+
+    def _bit_index(bit: int | None) -> int | None:
+        return bit.bit_length() - 1 if bit is not None else None
+
+    def _register_address(register: str, register_type: str | None) -> int | None:
+        if register_type == "holding_registers":
+            return holding_registers().get(register)
+        if register_type == "input_registers":
+            return input_registers().get(register)
+        if register_type == "coil_registers":
+            return coil_registers().get(register)
+        if register_type == "discrete_inputs":
+            return discrete_input_registers().get(register)
+        return None
+
+    reverse_by_address: dict[tuple[int, int | None], str] = {}
+    register_to_key: dict[str, str] = {}
+
+    for key, (register_name, register_type, bit) in lookup.items():
+        register_to_key.setdefault(register_name, key)
+        address = _register_address(register_name, register_type)
+        if address is None:
+            continue
+        reverse_by_address.setdefault((address, _bit_index(bit)), key)
+
     match = re.match(rf".*_{slave_id}_(.+)", uid_no_domain)
     remainder = match.group(1) if match else None
 
     base_uid: str | None = None
 
-    if remainder and re.fullmatch(r"\d+(?:_bit\d+)?", remainder):
-        base_uid = f"{slave_id}_{remainder}"
-    elif remainder:
-        lookup = _build_entity_lookup()
-        register_name, register_type, bit = lookup.get(remainder, (remainder, None, None))
-        address: int | None = None
-        if register_type == "holding_registers":
-            address = holding_registers().get(register_name)
-        elif register_type == "input_registers":
-            address = input_registers().get(register_name)
-        elif register_type == "coil_registers":
-            address = coil_registers().get(register_name)
-        elif register_type == "discrete_inputs":
-            address = discrete_input_registers().get(register_name)
+    if remainder:
+        match_address = re.fullmatch(r"(\d+)(?:_bit(\d+))?", remainder)
+        if match_address:
+            address = int(match_address.group(1))
+            bit_index = int(match_address.group(2)) if match_address.group(2) else None
+            key = reverse_by_address.get((address, bit_index)) or reverse_by_address.get(
+                (address, None)
+            )
+            if key:
+                bit_suffix = f"_bit{bit_index}" if bit_index is not None else ""
+                base_uid = f"{slave_id}_{key}_{address}{bit_suffix}"
+        else:
+            key = None
+            register_name: str | None = None
+            bit_index: int | None = None
 
-        if address is not None:
-            bit_suffix = f"_bit{bit.bit_length() - 1}" if bit is not None else ""
-            base_uid = f"{slave_id}_{address}{bit_suffix}"
-        elif remainder == "fan":
-            base_uid = f"{slave_id}_0"
+            if remainder in lookup:
+                key = remainder
+                register_name, register_type, bit = lookup[key]
+                bit_index = _bit_index(bit)
+            elif remainder in register_to_key:
+                key = register_to_key[remainder]
+                register_name, register_type, bit = lookup[key]
+                bit_index = _bit_index(bit)
+
+            if register_name:
+                address = _register_address(register_name, register_type)
+                if address is not None:
+                    bit_suffix = f"_bit{bit_index}" if bit_index is not None else ""
+                    base_uid = f"{slave_id}_{key}_{address}{bit_suffix}"
+            elif remainder == "fan":
+                base_uid = f"{slave_id}_fan_0"
 
     if base_uid is None:
         fallback = uid_no_domain
         if not fallback.startswith(f"{prefix}_"):
             fallback = f"{prefix}_{fallback}"
         return fallback
+
+    if base_uid.startswith(prefix):
+        return base_uid
 
     return f"{prefix}_{base_uid}"
 
