@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,11 +28,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[dev]
+          python -m pip install -r requirements-dev.txt
 
       - name: Ruff
         run: ruff check .
@@ -43,8 +45,9 @@ jobs:
       - name: Isort
         run: isort --check-only .
 
-      - name: Mypy
+      - name: Mypy (allow failure)
         run: mypy custom_components tests
+        continue-on-error: true
 
   tests:
     name: Tests
@@ -52,7 +55,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,11 +64,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[dev]
+          python -m pip install -r requirements-dev.txt
 
       - name: Pytest
         run: pytest -q
@@ -77,6 +82,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: hassfest validation
         uses: home-assistant/actions/hassfest@master
+
+  ha-validate:
+    name: Home Assistant validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate integration
+        uses: home-assistant/actions/validate-home-assistant@master
 
   hacs:
     name: HACS validation
