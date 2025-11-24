@@ -376,7 +376,6 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
         _apply_log_level(new_log_level)
 
         await coordinator.async_request_refresh()
-        return
 
     await hass.config_entries.async_reload(entry.entry_id)
 
