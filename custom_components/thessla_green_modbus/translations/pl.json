@@ -5,6 +5,10 @@
   "connection_type_rtu": "Modbus RTU",
   "connection_type_tcp_label": "Modbus TCP",
   "connection_type_rtu_label": "Modbus RTU",
+  "log_level_debug": "Debug",
+  "log_level_info": "Info",
+  "log_level_warning": "Ostrzeżenia",
+  "log_level_error": "Błędy",
   "diagnostics": {
     "registers_hash": "Suma kontrolna rejestrów",
     "capabilities": "Możliwości urządzenia",
@@ -1287,6 +1291,7 @@
           "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)",
           "retry": "Liczba prób",
           "scan_interval": "Interwał skanowania (s)",
+          "log_level": "Poziom logowania",
           "skip_missing_registers": "Pomijaj znane brakujące rejestry",
           "timeout": "Limit czasu połączenia (s)",
           "deep_scan": "Głęboki skan rejestrów",
@@ -1296,6 +1301,7 @@
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
           "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
+          "log_level": "Dostosuj poziom logów integracji bez restartu Home Assistanta",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
           "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
           "deep_scan": "Odczyt surowych rejestrów 0x0000-0x012C do diagnostyki",
@@ -1304,7 +1310,7 @@
         "error": {
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
         },
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Transport: {transport_label}{transport_details}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "Opcje ThesslaGreen Modbus"
       }
     }

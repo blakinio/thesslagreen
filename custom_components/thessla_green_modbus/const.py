@@ -144,6 +144,7 @@ CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
 CONF_AIRFLOW_UNIT = "airflow_unit"
 CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnostics
 CONF_MAX_REGISTERS_PER_REQUEST = "max_registers_per_request"
+CONF_LOG_LEVEL = "log_level"
 
 AIRFLOW_UNIT_M3H = "m3h"
 AIRFLOW_UNIT_PERCENTAGE = "percentage"
@@ -156,6 +157,8 @@ DEFAULT_SCAN_UART_SETTINGS = False
 DEFAULT_SKIP_MISSING_REGISTERS = False
 DEFAULT_DEEP_SCAN = False
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
+DEFAULT_LOG_LEVEL = "info"
+LOG_LEVEL_OPTIONS = ["debug", "info", "warning", "error"]
 
 # Registers that are known to be unavailable on some devices
 KNOWN_MISSING_REGISTERS = {

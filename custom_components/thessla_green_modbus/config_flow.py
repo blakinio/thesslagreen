@@ -25,6 +25,7 @@ from .const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
+    CONF_LOG_LEVEL,
     CONF_BAUD_RATE,
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
@@ -42,6 +43,7 @@ from .const import (
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     DEFAULT_AIRFLOW_UNIT,
+    DEFAULT_LOG_LEVEL,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
@@ -204,6 +206,13 @@ class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
 
 
+def _is_invalid_auth_error(exc: Exception) -> bool:
+    """Check if exception message hints invalid authentication."""
+
+    message = str(exc).lower()
+    return any(token in message for token in ("auth", "credential", "password", "login"))
+
+
 def _caps_to_dict(obj: Any) -> dict[str, Any]:
     """Return a JSON-serializable dict from a capabilities object."""
     if dataclasses.is_dataclass(obj):
@@ -234,7 +243,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     try:
         slave_id = int(data[CONF_SLAVE_ID])
     except (KeyError, TypeError, ValueError) as exc:
-        raise vol.Invalid("invalid_slave_low", path=[CONF_SLAVE_ID]) from exc
+        raise vol.Invalid("invalid_slave", path=[CONF_SLAVE_ID]) from exc
     if slave_id < 1:
         raise vol.Invalid("invalid_slave_low", path=[CONF_SLAVE_ID])
     if slave_id > 247:
@@ -248,8 +257,8 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     port_raw = data.get(CONF_PORT, DEFAULT_PORT)
     try:
         port = int(port_raw)
-    except (TypeError, ValueError):
-        port = DEFAULT_PORT
+    except (TypeError, ValueError) as exc:
+        raise vol.Invalid("invalid_port", path=[CONF_PORT]) from exc
 
     if connection_type == CONNECTION_TYPE_TCP:
         if not host:
@@ -326,9 +335,11 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
             backoff=CONFIG_FLOW_BACKOFF,
         )
 
+        short_timeout = max(2, min(timeout, 5))
+
         # Verify connection by reading a few safe registers
         await _run_with_retry(
-            lambda: asyncio.wait_for(scanner.verify_connection(), timeout=timeout),
+            lambda: asyncio.wait_for(scanner.verify_connection(), timeout=short_timeout),
             retries=DEFAULT_RETRY,
             backoff=CONFIG_FLOW_BACKOFF,
         )
@@ -395,6 +406,8 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     except ModbusException as exc:
         _LOGGER.error("Modbus error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        if _is_invalid_auth_error(exc):
+            raise InvalidAuth from exc
         raise CannotConnect("modbus_error") from exc
     except AttributeError as exc:
         _LOGGER.error("Attribute error during device validation: %s", exc)
@@ -641,6 +654,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 CONF_MAX_REGISTERS_PER_REQUEST,
                 DEFAULT_MAX_REGISTERS_PER_REQUEST,
             ),
+            CONF_LOG_LEVEL: DEFAULT_LOG_LEVEL,
         }
 
         return entry_data, options
@@ -956,6 +970,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_max_registers_per_request = entry_options.get(
             CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
         )
+        current_log_level = entry_options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
 
         transport = entry_data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
         if transport == CONNECTION_TYPE_RTU:
@@ -991,6 +1006,20 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_FORCE_FULL_REGISTER_LIST,
                     default=force_full,
                 ): bool,
+                vol.Optional(
+                    CONF_LOG_LEVEL,
+                    default=current_log_level,
+                    description={
+                        "selector": {
+                            "select": {
+                                "options": [
+                                    {"value": level, "label": f"{DOMAIN}.log_level_{level}"}
+                                    for level in ("debug", "info", "warning", "error")
+                                ]
+                            }
+                        }
+                    },
+                ): vol.In({"debug", "info", "warning", "error"}),
                 vol.Optional(
                     CONF_SCAN_UART_SETTINGS,
                     default=current_scan_uart,
@@ -1039,6 +1068,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "current_airflow_unit": current_airflow_unit,
                 "deep_scan_enabled": "Yes" if current_deep_scan else "No",
                 "current_max_registers_per_request": str(current_max_registers_per_request),
+                "current_log_level": current_log_level,
                 "transport_label": transport_label,
                 "transport_details": transport_details,
             },

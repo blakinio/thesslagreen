@@ -36,6 +36,7 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
+    CONF_LOG_LEVEL,
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
     CONF_RETRY,
@@ -53,6 +54,7 @@ from .const import (
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
+    DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
@@ -133,6 +135,15 @@ def _is_invalid_auth_error(exc: Exception) -> bool:
     return any(keyword in message for keyword in ("auth", "credential", "password", "login"))
 
 
+def _apply_log_level(log_level: str) -> None:
+    """Adjust the integration logger level dynamically."""
+
+    level = getattr(logging, log_level.upper(), logging.INFO)
+    base_logger = logging.getLogger(__package__ or DOMAIN)
+    base_logger.setLevel(level)
+    _LOGGER.debug("Log level set to %s", log_level)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
     """Set up ThesslaGreen Modbus from a config entry.
 
@@ -199,6 +210,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     max_registers_per_request = entry.options.get(
         CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
     )
+    log_level = entry.options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
+    _apply_log_level(str(log_level))
 
     if connection_type == CONNECTION_TYPE_RTU:
         endpoint = serial_port or "serial"
@@ -349,6 +362,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update options."""
     _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
+
+    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if coordinator:
+        new_interval = int(entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
+        coordinator.scan_interval = new_interval
+        try:
+            coordinator.async_set_update_interval(timedelta(seconds=new_interval))
+        except AttributeError:
+            coordinator.update_interval = timedelta(seconds=new_interval)
+
+        new_log_level = str(entry.options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL))
+        _apply_log_level(new_log_level)
+
+        await coordinator.async_request_refresh()
+
     await hass.config_entries.async_reload(entry.entry_id)
 
 
