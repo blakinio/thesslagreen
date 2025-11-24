@@ -31,8 +31,17 @@ Integracja działa jako **hub** w Home Assistant.
 ### Urządzenia
 - ✅ **ThesslaGreen AirPack Home Series 4** - wszystkie modele
 - ✅ **AirPack Home 300v-850h** (Energy+, Energy, Enthalpy)
-- ✅ **Protokół Modbus TCP/RTU** z auto-detekcją
+- ✅ **Protokół Modbus TCP** – połączenie natywne, w pełni wspierane
+- 🧪 **Modbus RTU (RS485) / USB** – w fazie przygotowań (planowane wsparcie po stabilnych testach)
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
+
+### Tryby i funkcje Modbus
+- **Harmonogram odczytów:** domyślnie co 30 s, konfigurowalne 10–300 s; nie zaleca się schodzenia poniżej 15 s ze względu na obciążenie urządzenia.
+- **Zakres rejestrów:** pełne wsparcie rejestrów Holding/Input/Coils/Discrete Input zgodnie z dokumentacją producenta.
+- **Kolejkowanie zapytań:** odczyty grupowane w bloki (domyślnie 16) dla minimalizacji ruchu.
+- **Ograniczenia:** jednoczesne połączenia Modbus TCP do jednego sterownika mogą powodować błędy czasowe; zalecane jedno aktywne połączenie (Home Assistant).
+- **Wymagania TCP:** otwarty port 502, stały adres IP, ID urządzenia 10 (auto-fallback na 1 i 247), brak filtrów/firewalla między HA a rekuperatorem.
+- **Plany RTU/USB:** konfiguracja przez `/dev/ttyUSBx` z parametrami 19200 8N1; do czasu wydania stabilnego wsparcia używaj trybu TCP.
 
 ### Home Assistant
 - ✅ **Wymagany Home Assistant 2024.12.0+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
@@ -64,23 +73,33 @@ git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
 cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_components/
 ```
 
-## ⚙️ Konfiguracja
+## ⚙️ Konfiguracja krok po kroku
+
+### 0. Przygotowanie
+1. Sprawdź, czy Home Assistant widzi urządzenie w sieci (ping IP rekuperatora) i ma dostęp do portu 502.
+2. Ustaw statyczny adres IP dla rekuperatora (DHCP reservation lub ręcznie), aby uniknąć utraty połączenia.
+3. Jeśli planujesz RTU/USB, zanotuj port (`/dev/ttyUSB0`), prędkość (np. 19200) i parametry 8N1.
 
 ### 1. Włącz Modbus w rekuperatorze
 - **Modbus TCP**: Menu → Komunikacja → Modbus TCP → Włącz **TAK**, Port **502**, ID urządzenia **10**
-- **Modbus RTU**: Menu → Komunikacja → Modbus RTU → Wybierz port fizyczny, ustaw prędkość (np. 19200), parzystość i bity stopu zgodnie z instalacją
+- **Modbus RTU** (planowane wsparcie): Menu → Komunikacja → Modbus RTU → Wybierz port RS485, ustaw prędkość (np. 19200), parzystość i bity stopu zgodnie z instalacją
 
 ### 2. Dodaj integrację w Home Assistant
 1. **Ustawienia** → **Integracje** → **+ DODAJ INTEGRACJĘ**
 2. Wyszukaj **"ThesslaGreen Modbus"**
-3. Wprowadź dane:
-   - Wybierz **Typ połączenia**: `Modbus TCP` lub `Modbus RTU`
-   - Dla **Modbus TCP** podaj: IP rekuperatora (np. 192.168.1.100), port (domyślnie 502) i ID urządzenia (domyślnie 10)
-   - Dla **Modbus RTU** podaj: ścieżkę portu szeregowego (np. `/dev/ttyUSB0`), prędkość (np. 19200), parzystość oraz liczbę bitów stopu
-4. Integracja automatycznie przeskanuje urządzenie
-5. Kliknij **DODAJ**
+3. Wprowadź dane połączenia:
+   - Wybierz **Typ połączenia**: `Modbus TCP` lub `Modbus RTU` (gdy będzie dostępne)
+   - **Modbus TCP**: adres IP (np. 192.168.1.100), port 502, ID urządzenia 10 (integracja spróbuje także 1 i 247)
+   - **Modbus RTU/USB**: ścieżka portu (np. `/dev/ttyUSB0`), prędkość (np. 19200), parzystość i bity stopu
+4. Zatwierdź formularz – integracja uruchomi autoskan rejestrów
+5. Po zakończeniu skanowania kliknij **DODAJ** i przejdź do encji
 
-### 3. Opcje zaawansowane
+### 3. Zweryfikuj encje i status
+1. W **Ustawienia → Urządzenia i usługi** wybierz integrację **ThesslaGreen Modbus**.
+2. Otwórz urządzenie i sprawdź encje: Climate, Fan, czujniki i encje diagnostyczne.
+3. W atrybutach encji (Karty → **Stan**) znajdziesz m.in. `last_updated` oraz `operating_mode` potwierdzające ostatni udany odczyt.
+
+### 4. Opcje zaawansowane
 - **Interwał skanowania**: 10-300s (domyślnie 30s)
 - **Timeout**: 5-60s (domyślnie 10s)
 - **Retry**: 1-5 prób (domyślnie 3)
@@ -160,16 +179,40 @@ metadane. Aby dodać nowy rejestr, dopisz obiekt do listy `registers` zachowują
 sortowanie według `function` i `address_dec`, po czym uruchom
 `pytest tests/test_register_loader.py`, aby zweryfikować poprawność pliku.
 
-### Włączanie logów debug
+## 🔧 Diagnostyka i logowanie
+
+### Włączanie rozszerzonych logów
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
 
 ```yaml
 logger:
   logs:
     custom_components.thessla_green_modbus: debug
+    homeassistant.components.modbus: debug  # opcjonalnie surowa komunikacja Modbus
 ```
 
-Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów oraz ostrzeżenia o niedostępnych czujnikach lub wartościach poza zakresem.
+Logi pojawią się w **Ustawienia → System → Dziennik** oraz w pliku `home-assistant.log`. Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów, ostrzeżenia o niedostępnych czujnikach lub wartościach poza zakresem oraz komunikaty błędów połączenia.
+
+### Podgląd ostatniego odczytu i błędów
+- **Atrybuty encji:** w **Narzędzia deweloperskie → Stany** sprawdź dowolną encję integracji; atrybut `last_updated` wskazuje czas ostatniego udanego odczytu.
+- **Diagnostyka urządzenia:** w **Ustawienia → Urządzenia i usługi → ThesslaGreen Modbus → ⋮ → Pobierz diagnostykę** znajdziesz `last_successful_update`, licznik `successful_reads`/`failed_reads`, ostatni błąd (`last_error`) oraz statystyki czasu odpowiedzi.
+- **Serwis `get_diagnostic_info`:** wywołaj `thessla_green_modbus.get_diagnostic_info` z **Narzędzi deweloperskich → Usługi**, aby pobrać pełne dane diagnostyczne (identyfikacja urządzenia, dostępne rejestry, historia błędów).
+
+## ❔ FAQ
+
+**Utrata połączenia (błędy timeout/connection)**
+- Zweryfikuj, czy port 502 jest dostępny (firewall/router) i czy urządzenie ma niezmienny adres IP.
+- Zwiększ interwał skanowania do 45–60 s w opcjach integracji, aby zmniejszyć obciążenie (nie schodź poniżej 15 s).
+- Upewnij się, że żadne inne narzędzia nie utrzymują równoległego połączenia Modbus.
+
+**Ponowna autoryzacja / zmiana adresu IP**
+- W **Ustawienia → Urządzenia i usługi → ThesslaGreen Modbus → Konfiguruj** podmień IP/port/ID (nie ma osobnego loginu).
+- Jeśli zmieniłeś transport TCP ↔ RTU, usuń integrację i dodaj ją ponownie po zmianie trybu w panelu rekuperatora.
+
+**Zmiana interwału odświeżania**
+- Wejdź w **Ustawienia → Urządzenia i usługi → ThesslaGreen Modbus → Konfiguruj → Opcje zaawansowane**.
+- Ustaw **Interwał skanowania** (10–300 s); rekomendowane 30 s, minimum 15 s dla stabilności.
+- Po zapisaniu nowych wartości poczekaj na zakończenie kolejnego cyklu skanowania, aby zobaczyć efekt.
 
 ## 📊 Dostępne encje
 
