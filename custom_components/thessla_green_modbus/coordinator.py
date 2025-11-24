@@ -78,6 +78,19 @@ from homeassistant.helpers.update_coordinator import (
 )
 from pymodbus.client import AsyncModbusTcpClient
 
+try:  # pragma: no cover - serial extras optional at runtime
+    from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
+except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
+    _AsyncModbusSerialClient = None
+    SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
+else:  # pragma: no cover - executed when serial client available
+    SERIAL_IMPORT_ERROR = None
+
+if TYPE_CHECKING:  # pragma: no cover - typing helper only
+    from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
+else:
+    AsyncModbusSerialClientType = Any
+
 from .registers.loader import (
     get_all_registers,
 )
@@ -85,10 +98,22 @@ from .registers.loader import (
 from .config_flow import CannotConnect
 from .const import (
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    DEFAULT_CONNECTION_TYPE,
+    DEFAULT_SERIAL_PORT,
+    DEFAULT_BAUD_RATE,
+    DEFAULT_PARITY,
+    DEFAULT_STOP_BITS,
     CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_CONNECTION_TYPE,
+    CONF_SERIAL_PORT,
+    CONF_BAUD_RATE,
+    CONF_PARITY,
+    CONF_STOP_BITS,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_RTU,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
     MAX_BATCH_REGISTERS,
@@ -98,6 +123,8 @@ from .const import (
     discrete_input_registers,
     holding_registers,
     input_registers,
+    SERIAL_PARITY_MAP,
+    SERIAL_STOP_BITS_MAP,
 )
 from .modbus_helpers import _call_modbus, group_reads
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
@@ -131,6 +158,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
         entry: ConfigEntry | None = None,
         skip_missing_registers: bool = False,
+        connection_type: str = DEFAULT_CONNECTION_TYPE,
+        serial_port: str = DEFAULT_SERIAL_PORT,
+        baud_rate: int = DEFAULT_BAUD_RATE,
+        parity: str = DEFAULT_PARITY,
+        stop_bits: int = DEFAULT_STOP_BITS,
     ) -> None:
         """Initialize the coordinator.
 
@@ -163,6 +195,26 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
 
+        conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
+        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+            conn_type = DEFAULT_CONNECTION_TYPE
+        self.connection_type = conn_type
+        self.serial_port = serial_port or DEFAULT_SERIAL_PORT
+        try:
+            self.baud_rate = int(baud_rate)
+        except (TypeError, ValueError):
+            self.baud_rate = DEFAULT_BAUD_RATE
+        parity_norm = str(parity or DEFAULT_PARITY).lower()
+        if parity_norm not in SERIAL_PARITY_MAP:
+            parity_norm = DEFAULT_PARITY
+        self.parity = parity_norm
+        self.stop_bits = SERIAL_STOP_BITS_MAP.get(
+            stop_bits,
+            SERIAL_STOP_BITS_MAP.get(str(stop_bits), DEFAULT_STOP_BITS),
+        )
+        if self.stop_bits not in (1, 2):
+            self.stop_bits = DEFAULT_STOP_BITS
+
         if entry is not None:
             try:
                 self.effective_batch = min(
@@ -184,7 +236,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.max_registers_per_request = self.effective_batch
 
         # Connection management
-        self.client: AsyncModbusTcpClient | None = None
+        self.client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
         self._connection_lock = asyncio.Lock()
 
         # Stop listener for Home Assistant shutdown
@@ -265,7 +317,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
-        _LOGGER.info("Setting up ThesslaGreen coordinator for %s:%s", self.host, self.port)
+        if self.connection_type == CONNECTION_TYPE_RTU:
+            endpoint = self.serial_port or "serial"
+        else:
+            endpoint = f"{self.host}:{self.port}"
+        _LOGGER.info(
+            "Setting up ThesslaGreen coordinator for %s via %s",
+            endpoint,
+            self.connection_type.upper(),
+        )
 
         # Scan device to discover available registers and capabilities
         if not self.force_full_register_list:
@@ -282,6 +342,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     skip_known_missing=self.skip_missing_registers,
                     deep_scan=self.deep_scan,
                     max_registers_per_request=self.effective_batch,
+                    connection_type=self.connection_type,
+                    serial_port=self.serial_port,
+                    baud_rate=self.baud_rate,
+                    parity=self.parity,
+                    stop_bits=self.stop_bits,
                 )
 
                 self.device_scan_result = await scanner.scan_device()
@@ -528,13 +593,42 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _ensure_connection(self) -> None:
         """Ensure Modbus connection is established."""
-        if self.client and self.client.connected:
+        if self.client and getattr(self.client, "connected", False):
             return
         if self.client is not None:
             await self._disconnect()
         try:
-            self.client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+            if self.connection_type == CONNECTION_TYPE_RTU:
+                if not self.serial_port:
+                    raise ConnectionException("Serial port not configured for RTU transport")
+                if _AsyncModbusSerialClient is None:
+                    message = (
+                        "Modbus serial client is unavailable. Install pymodbus with serial support."
+                    )
+                    if SERIAL_IMPORT_ERROR is not None:
+                        message = f"{message} ({SERIAL_IMPORT_ERROR})"
+                    raise ConnectionException(message)
+                parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+                stop_bits = SERIAL_STOP_BITS_MAP.get(
+                    self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+                )
+                self.client = _AsyncModbusSerialClient(
+                    method="rtu",
+                    port=self.serial_port,
+                    baudrate=self.baud_rate,
+                    parity=parity,
+                    stopbits=stop_bits,
+                    timeout=self.timeout,
+                )
+            else:
+                self.client = AsyncModbusTcpClient(
+                    self.host, port=self.port, timeout=self.timeout
+                )
             if not await self.client.connect():
+                if self.connection_type == CONNECTION_TYPE_RTU:
+                    raise ConnectionException(
+                        f"Could not connect to serial port {self.serial_port}"
+                    )
                 raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
             _LOGGER.debug("Modbus connection established")
         except (ModbusException, ConnectionException) as exc:
@@ -1385,6 +1479,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "slave_id": self.slave_id,
             "connected": bool(self.client and getattr(self.client, "connected", False)),
             "last_successful_update": last_update.isoformat() if last_update else None,
+            "transport": self.connection_type,
+            "serial_port": self.serial_port,
+            "baud_rate": self.baud_rate,
+            "parity": self.parity,
+            "stop_bits": self.stop_bits,
         }
 
         statistics = self.statistics.copy()

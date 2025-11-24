@@ -10,9 +10,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, cast
 
-from .registers.loader import (
-    get_registers_by_function,
-)
+try:  # pragma: no cover - optional during isolated tests
+    from .registers.loader import (
+        get_registers_by_function,
+    )
+except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+
+    def get_registers_by_function(fn: str):
+        return []
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
@@ -69,6 +74,36 @@ DEFAULT_SLAVE_ID = 10
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
+
+# Connection / transport configuration
+CONF_CONNECTION_TYPE = "connection_type"
+CONF_SERIAL_PORT = "serial_port"
+CONF_BAUD_RATE = "baud_rate"
+CONF_PARITY = "parity"
+CONF_STOP_BITS = "stop_bits"
+
+CONNECTION_TYPE_TCP = "tcp"
+CONNECTION_TYPE_RTU = "rtu"
+DEFAULT_CONNECTION_TYPE = CONNECTION_TYPE_TCP
+
+# Default serial settings mirror the values used by Thessla Green controllers
+DEFAULT_SERIAL_PORT = ""
+DEFAULT_BAUD_RATE = 19200
+DEFAULT_PARITY = "even"
+DEFAULT_STOP_BITS = 1
+
+SERIAL_PARITY_MAP = {
+    "none": "N",
+    "even": "E",
+    "odd": "O",
+}
+
+SERIAL_STOP_BITS_MAP = {
+    "1": 1,
+    "2": 2,
+    1: 1,
+    2: 2,
+}
 
 # Sensor constants
 SENSOR_UNAVAILABLE = 0x8000  # Indicates missing/invalid sensor reading
