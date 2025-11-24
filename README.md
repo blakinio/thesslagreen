@@ -546,6 +546,14 @@ pytest tests/test_register_loader.py
 
 4. Dołącz zmieniony plik JSON do commitu.
 
+## 🧰 Narzędzia jakości
+
+- Pre-commit obsługuje formatowanie (`ruff format`, `black`, `isort`) i linting (`ruff check`,
+  `mypy`). Zainstaluj hooki lokalnie komendą `pre-commit install`, a następnie uruchom
+  pełny zestaw na istniejącym kodzie przez `pre-commit run --all-files`.
+- Pipeline GitHub Actions (`.github/workflows/ci.yaml`) sprawdza ruff, black, isort, mypy,
+  pytest oraz walidacje Home Assistant (`hassfest`) i HACS.
+
 ## 📄 Licencja
 
 MIT License - Zobacz [LICENSE](LICENSE) dla szczegółów.
