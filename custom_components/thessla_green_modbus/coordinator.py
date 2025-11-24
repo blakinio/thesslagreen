@@ -119,6 +119,7 @@ from .const import (
     holding_registers,
     input_registers,
 )
+from .register_map import REGISTER_MAP_VERSION, validate_register_value
 from .modbus_helpers import _call_modbus, group_reads
 from .registers.loader import (
     get_all_registers,
@@ -1199,7 +1200,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if decoded == SENSOR_UNAVAILABLE:
             return SENSOR_UNAVAILABLE
 
-        return decoded
+        return validate_register_value(register_name, decoded)
 
     def calculate_power_consumption(self, data: dict[str, Any]) -> float | None:
         """Estimate power usage from DAC output voltages."""
@@ -1538,6 +1539,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "autoscan": not self.force_full_register_list,
             "registers_discovered": registers_discovered,
             "error_statistics": error_stats,
+            "register_map_version": REGISTER_MAP_VERSION,
         }
 
         if self.device_scan_result and "raw_registers" in self.device_scan_result:
