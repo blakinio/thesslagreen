@@ -1,6 +1,12 @@
 import asyncio
+import struct
+
 import pytest
 
+from custom_components.thessla_green_modbus.registers.loader import (
+    Register,
+    get_registers_by_function,
+)
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.scanner_helpers import (
     _decode_season_mode,
@@ -11,8 +17,6 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_bcd_time,
     _decode_register_time,
 )
-from custom_components.thessla_green_modbus.registers.loader import Register
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 
 def test_decode_register_time_valid():
@@ -72,14 +76,14 @@ def test_schedule_and_setting_defaults_valid():
 
 
 def test_register_decode_encode_bcd():
-    reg = Register(function="holding", address=0, name="schedule_test_start", access="rw", bcd=True)
+    reg = Register(function=3, address=0, name="schedule_test_start", access="rw", bcd=True)
     assert reg.decode(0x0815) == "08:15"
     assert reg.encode("08:15") == 0x0815
 
 
 def test_register_decode_encode_aatt():
     reg = Register(
-        function="holding",
+        function=3,
         address=0,
         name="setting_test",
         access="rw",
@@ -91,7 +95,7 @@ def test_register_decode_encode_aatt():
 
 def test_register_decode_unavailable_value():
     """Sentinel value 0x8000 should decode to None."""
-    reg = Register(function="input", address=0, name="temp", access="ro")
+    reg = Register(function=4, address=0, name="temp", access="ro")
     assert reg.decode(0x8000) is None
 
 
@@ -108,7 +112,7 @@ def test_format_register_value_special_values():
 
 def test_register_bitmask_decode_encode():
     reg = Register(
-        function="holding",
+        function=3,
         address=0,
         name="errors",
         access="rw",
@@ -117,6 +121,27 @@ def test_register_bitmask_decode_encode():
     )
     assert reg.decode(5) == ["A", "C"]
     assert reg.encode(["A", "C"]) == 5
+
+
+def test_register_encode_numeric_bounds():
+    """Numeric registers enforce configured min/max limits."""
+    reg = Register(function="holding", address=0, name="num", access="rw", min=0, max=10)
+    assert reg.encode(0) == 0
+    assert reg.encode(10) == 10
+    with pytest.raises(ValueError):
+        reg.encode(-1)
+    with pytest.raises(ValueError):
+        reg.encode(11)
+
+
+def test_register_encode_enum_invalid():
+    """Enum registers raise when provided invalid values."""
+    reg = Register(
+        function="holding", address=0, name="mode", access="rw", enum={0: "off", 1: "on"}
+    )
+    with pytest.raises(ValueError):
+        reg.encode("invalid")
+
 
 def test_register_decode_encode_string_multi():
     reg = next(r for r in get_registers_by_function("03") if r.name == "device_name")
@@ -135,26 +160,85 @@ def test_register_decode_encode_uint32():
 
 def test_register_decode_encode_float32():
     reg = Register(
-        function="holding",
+        function=3,
         address=0,
         name="float_reg",
         access="rw",
         length=2,
-        extra={"type": "float32"},
+        extra={"type": "f32"},
     )
     raw = reg.encode(12.34)
     assert isinstance(raw, list)
     assert reg.decode(raw) == pytest.approx(12.34, rel=1e-6)
+
+
+def test_multi_register_decode_string() -> None:
+    """Multi-register string values decode correctly."""
+    reg = Register(
+        function=3,
+        address=0,
+        name="string_reg",
+        access="ro",
+        length=3,
+        extra={"type": "string"},
+    )
+    raw = [0x4142, 0x4344, 0x4500]  # "ABCDE"
+    assert reg.decode(raw) == "ABCDE"
+
+
+def test_multi_register_decode_float32() -> None:
+    """Multi-register float values decode correctly."""
+    reg = Register(
+        function=3,
+        address=0,
+        name="float_multi",
+        access="ro",
+        length=2,
+        extra={"type": "f32"},
+    )
+    value = 12.34
+    raw_bytes = struct.pack(">f", value)
+    raw = [int.from_bytes(raw_bytes[i : i + 2], "big") for i in (0, 2)]
+    assert reg.decode(raw) == pytest.approx(value, rel=1e-6)
+
+
+def test_multi_register_decode_int32() -> None:
+    """Multi-register integer values decode correctly."""
+    reg = Register(
+        function=3,
+        address=0,
+        name="int_multi",
+        access="ro",
+        length=2,
+        extra={"type": "i32"},
+    )
+    raw = [0x1234, 0x5678]
+    assert reg.decode(raw) == 0x12345678
+
+
 @pytest.fixture
 def float32_register() -> Register:
     """Register representing a 32-bit floating point value."""
     return Register(
-        function="holding",
+        function=3,
         address=0,
         name="float32_test",
         access="rw",
         length=2,
-        extra={"type": "float32"},
+        extra={"type": "f32"},
+    )
+
+
+@pytest.fixture
+def float64_register() -> Register:
+    """Register representing a 64-bit floating point value."""
+    return Register(
+        function=3,
+        address=0,
+        name="float64_test",
+        access="rw",
+        length=4,
+        extra={"type": "f64"},
     )
 
 
@@ -162,12 +246,12 @@ def float32_register() -> Register:
 def int32_register() -> Register:
     """Register representing a signed 32-bit integer."""
     return Register(
-        function="holding",
+        function=3,
         address=0,
         name="int32_test",
         access="rw",
         length=2,
-        extra={"type": "int32"},
+        extra={"type": "i32"},
     )
 
 
@@ -175,12 +259,12 @@ def int32_register() -> Register:
 def uint32_register() -> Register:
     """Register representing an unsigned 32-bit integer."""
     return Register(
-        function="holding",
+        function=3,
         address=0,
         name="uint32_test",
         access="rw",
         length=2,
-        extra={"type": "uint32"},
+        extra={"type": "u32"},
     )
 
 
@@ -188,12 +272,12 @@ def uint32_register() -> Register:
 def int64_register() -> Register:
     """Register representing a signed 64-bit integer."""
     return Register(
-        function="holding",
+        function=3,
         address=0,
         name="int64_test",
         access="rw",
         length=4,
-        extra={"type": "int64"},
+        extra={"type": "i64"},
     )
 
 
@@ -201,13 +285,33 @@ def int64_register() -> Register:
 def uint64_register() -> Register:
     """Register representing an unsigned 64-bit integer."""
     return Register(
-        function="holding",
+        function=3,
         address=0,
         name="uint64_test",
         access="rw",
         length=4,
-        extra={"type": "uint64"},
+        extra={"type": "u64"},
     )
+
+
+@pytest.mark.parametrize("value", [0.0, 12.5, -7.25, 1e20])
+def test_register_float64_encode_decode(float64_register: Register, value: float) -> None:
+    raw = float64_register.encode(value)
+    assert float64_register.decode(raw) == pytest.approx(value)
+
+
+@pytest.mark.parametrize("value", [0.0, 12.5, -7.25, 1e20])
+def test_register_float64_little_endian(float64_register: Register, value: float) -> None:
+    reg_le = Register(
+        function=3,
+        address=0,
+        name="float64_le_test",
+        access="rw",
+        length=4,
+        extra={"type": "f64", "endianness": "little"},
+    )
+    raw = reg_le.encode(value)
+    assert reg_le.decode(raw) == pytest.approx(value)
 
 
 @pytest.mark.parametrize("value", [12.5, -7.25])

@@ -4,7 +4,4 @@
 # (minimum version declared in manifest.json)
 
 # Modbus communication library
-pymodbus>=3.5.0,<4.0.0
-
-# Data validation and schemas
-voluptuous>=0.13.1
+pymodbus>=3.5.0

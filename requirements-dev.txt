@@ -6,15 +6,18 @@ pytest-asyncio>=0.21.0
 voluptuous>=0.13.1
 pytest-homeassistant-custom-component>=0.13.0
 PyYAML>=6.0
-pydantic>=2.0
-pdfplumber>=0.11
+types-PyYAML>=6.0.12
+pydantic>=1.10,<2
 
 # Code quality tools
-black>=22.0.0
-isort>=5.10.0
-flake8>=4.0.0
-mypy>=0.990
-pre-commit>=3.0.0
+black>=24.4.0
+isort>=5.13.0
+ruff>=0.6.0
+mypy>=1.10.0
+pre-commit>=3.7.0
+
+# hassfest and HACS validations are executed via dedicated GitHub Actions
+# and are not distributed as installable PyPI packages.
 
 # Documentation
 sphinx>=4.0.0

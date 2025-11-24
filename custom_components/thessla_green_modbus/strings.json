@@ -1,9 +1,23 @@
 {
   "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
   "auto_detected_note_success": "Auto-detection successful!",
+  "connection_type_tcp": "Modbus TCP",
+  "connection_type_rtu": "Modbus RTU",
+  "connection_type_tcp_label": "Modbus TCP",
+  "connection_type_rtu_label": "Modbus RTU",
+  "log_level_debug": "Debug",
+  "log_level_info": "Info",
+  "log_level_warning": "Warning",
+  "log_level_error": "Error",
   "diagnostics": {
     "registers_hash": "Register definitions hash",
-    "capabilities": "Device capabilities"
+    "capabilities": "Device capabilities",
+    "effective_batch": "Effective batch size",
+    "total_registers_json": "Total registers in JSON",
+    "total_available_registers": "Total available registers",
+    "deep_scan": "Deep scan enabled",
+    "force_full_register_list": "Force full register list",
+    "error_statistics": "Error statistics"
   },
   "config": {
     "abort": {
@@ -13,35 +27,61 @@
       "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
       "invalid_auth": "Authentication error. Check Device ID settings.",
       "invalid_input": "Invalid configuration provided. Check values and try again.",
-      "invalid_domain": "Invalid hostname or domain.",
-      "invalid_ipv4": "Invalid IPv4 address.",
-      "invalid_ipv6": "Invalid IPv6 address.",
+      "invalid_host": "Invalid IP address or hostname.",
+      "invalid_port": "Port must be between 1 and 65535.",
+      "invalid_slave": "Device ID must be between 0 and 247.",
+      "invalid_slave_low": "Device ID must be 0 or greater.",
+      "invalid_slave_high": "Device ID must be 247 or less.",
+      "invalid_transport": "Unsupported transport type selected.",
+      "missing_host": "Host is required for Modbus TCP connections.",
+      "invalid_serial_port": "Serial port path is required for Modbus RTU.",
+      "invalid_baud_rate": "Invalid baud rate selected.",
+      "invalid_parity": "Invalid parity option selected.",
+      "invalid_stop_bits": "Invalid stop bits option selected.",
+      "dns_failure": "Hostname could not be resolved.",
+      "connection_refused": "Connection was refused by the host.",
       "missing_method": "Scanner is missing required method. See logs for details.",
+      "io_error": "Input/output error during device communication. Check cabling and network connection.",
+      "invalid_capabilities": "Device capabilities data invalid or missing.",
+      "invalid_format": "Received data in an unexpected format from device.",
       "modbus_error": "Modbus communication error. Check wiring and settings.",
-      "timeout": "Connection timed out. Verify host and port.",
+      "max_registers_range": "Max registers per request must be between 1 and 16.",
+      "timeout": "Device did not respond in time. Verify network connectivity and address.",
       "unknown": "Unexpected error. Check logs for details."
     },
     "step": {
       "confirm": {
-        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) at {host}:{port}. Device ID: {slave_id}. Firmware version: {firmware_version}. Registers found: {register_count}. Scan success rate: {scan_success_rate}. Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Continue with this configuration?",
+        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) via {transport_label} {endpoint}. Device ID: {slave_id}. Firmware version: {firmware_version}. Registers found: {register_count}. Scan success rate: {scan_success_rate}. Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Continue with this configuration?",
         "title": "Confirm Configuration"
       },
       "user": {
         "data": {
+          "connection_type": "Connection Type",
           "host": "IP Address",
           "name": "Name",
           "port": "Port",
           "slave_id": "Device ID",
-          "deep_scan": "Deep Register Scan"
+          "serial_port": "Serial Port",
+          "baud_rate": "Baud Rate",
+          "parity": "Parity",
+          "stop_bits": "Stop Bits",
+          "deep_scan": "Deep Register Scan",
+          "max_registers_per_request": "Max Registers per Request"
         },
         "data_description": {
+          "connection_type": "Choose between Modbus TCP (network) or Modbus RTU (serial)",
           "host": "IP address of the AirPack device on your local network",
           "name": "Device name in Home Assistant",
           "port": "Modbus TCP port (default 502)",
           "slave_id": "Modbus device ID (default 10)",
-          "deep_scan": "Read all registers for diagnostics (may be slow)"
+          "serial_port": "Serial device path for Modbus RTU (for example /dev/ttyUSB0)",
+          "baud_rate": "Baud rate for Modbus RTU communication",
+          "parity": "Parity setting for Modbus RTU communication",
+          "stop_bits": "Stop bits for Modbus RTU communication",
+          "deep_scan": "Read all registers for diagnostics (may be slow)",
+          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
         },
-        "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects device functions and registers.",
+        "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
       }
     }
@@ -62,9 +102,6 @@
       },
       "bypass": {
         "name": "Bypass"
-      },
-      "constant_flow_active": {
-        "name": "Constant Flow Active"
       },
       "contamination_sensor": {
         "name": "Contamination Sensor"
@@ -128,141 +165,6 @@
       },
       "work_permit": {
         "name": "Work Permit"
-      },
-      "alarm": {
-        "name": "Warning Active"
-      },
-      "error": {
-        "name": "Error Active"
-      },
-      "s_2": {
-        "name": "I2C Communication Error"
-      },
-      "s_6": {
-        "name": "FPX Heater Thermal Protection"
-      },
-      "s_7": {
-        "name": "Calibration Not Possible - Low Outdoor Temp"
-      },
-      "s_8": {
-        "name": "Product Key Required"
-      },
-      "s_9": {
-        "name": "Unit Stopped From AirS Panel"
-      },
-      "s_10": {
-        "name": "Fire Sensor Triggered"
-      },
-      "s_13": {
-        "name": "Unit Stopped From Remote Panel"
-      },
-      "s_14": {
-        "name": "Water Heater Antifreeze Limit Reached"
-      },
-      "s_15": {
-        "name": "Water Heater Antifreeze Ineffective"
-      },
-      "s_16": {
-        "name": "Electric Heater Thermal Protection"
-      },
-      "s_17": {
-        "name": "Filters Not Replaced (With Pressure Sensor)"
-      },
-      "s_19": {
-        "name": "Filters Not Replaced (No Pressure Sensor)"
-      },
-      "s_20": {
-        "name": "Duct Filter Not Replaced"
-      },
-      "s_22": {
-        "name": "Heat Exchanger Antifreeze Failure"
-      },
-      "s_23": {
-        "name": "Heat Exchanger Inlet Sensor Fault"
-      },
-      "s_24": {
-        "name": "Supply Duct Sensor Fault After Water Heater"
-      },
-      "s_25": {
-        "name": "Outdoor Temperature Sensor Fault"
-      },
-      "s_26": {
-        "name": "Outdoor and GWC Sensor Fault"
-      },
-      "s_29": {
-        "name": "Too High Temperature Before Exchanger"
-      },
-      "s_30": {
-        "name": "Supply Fan Failure"
-      },
-      "s_31": {
-        "name": "Exhaust Fan Failure"
-      },
-      "s_32": {
-        "name": "No Communication With TG-02 Module"
-      },
-      "e_99": {
-        "name": "Product Key Required (AirPack)"
-      },
-      "e_100": {
-        "name": "No Reading From Outdoor Temp Sensor (TZ1)"
-      },
-      "e_101": {
-        "name": "No Reading From Supply Temp Sensor (TN1)"
-      },
-      "e_102": {
-        "name": "No Reading From Exhaust Temp Sensor (TP)"
-      },
-      "e_103": {
-        "name": "No Reading From Inlet Temp Sensor (TZ2)"
-      },
-      "e_104": {
-        "name": "No Reading From Room Temp Sensor (TO)"
-      },
-      "e_105": {
-        "name": "No Reading From Supply Temp Sensor After Exchanger (TN2)"
-      },
-      "e_106": {
-        "name": "No Reading From GWC Outdoor Temp Sensor (TZ3)"
-      },
-      "e_138": {
-        "name": "Supply Fan CF Sensor Failure"
-      },
-      "e_139": {
-        "name": "Exhaust Fan CF Sensor Failure"
-      },
-      "e_152": {
-        "name": "Exhaust Air Temp Above Maximum"
-      },
-      "e_196": {
-        "name": "Installation Balancing Not Performed"
-      },
-      "e_197": {
-        "name": "Installation Balancing Interrupted"
-      },
-      "e_198": {
-        "name": "No Communication With CF2 Module"
-      },
-      "e_199": {
-        "name": "No Communication With CF Module"
-      },
-      "e_200": {
-        "name": "Electrical Heater Thermal Protection (Unit)"
-      },
-      "e_201": {
-        "name": "Electrical Heater Thermal Protection (Duct)"
-      },
-      "e_249": {
-        "name": "No Communication With Expansion Module"
-      },
-      "e_250": {
-        "name": "Filter Replacement Required (No Pressure Sensor)"
-      },
-      "e_251": {
-        "name": "Duct Filter Replacement Required"
-      },
-      "e_252": {
-        "name": "Filter Replacement Required (With Pressure Sensor)"
       }
     },
     "climate": {
@@ -1044,30 +946,6 @@
       }
     },
     "select": {
-      "bypass_off": {
-        "name": "Bypass Off"
-      },
-      "delta_t_gwc": {
-        "name": "Delta T GWC"
-      },
-      "gwc_regen_period": {
-        "name": "GWC Regeneration Period"
-      },
-      "max_exhaust_air_flow_rate": {
-        "name": "Maximum Exhaust Air Flow Rate"
-      },
-      "max_exhaust_air_flow_rate_gwc": {
-        "name": "Maximum Exhaust Air Flow Rate GWC"
-      },
-      "max_gwc_air_temperature": {
-        "name": "Maximum GWC Air Temperature"
-      },
-      "max_supply_air_flow_rate_gwc": {
-        "name": "Maximum Supply Air Flow Rate GWC"
-      },
-      "min_gwc_air_temperature": {
-        "name": "Minimum GWC Air Temperature"
-      },
       "mode": {
         "name": "Mode",
         "state": {
@@ -1076,25 +954,45 @@
           "temporary": "Temporary"
         }
       },
-      "nominal_exhaust_air_flow": {
-        "name": "Nominal Exhaust Air Flow"
+      "bypass_mode": {
+        "name": "Bypass Mode",
+        "state": {
+          "auto": "Automatic",
+          "open": "Open",
+          "closed": "Closed"
+        }
       },
-      "nominal_exhaust_air_flow_gwc": {
-        "name": "Nominal Exhaust Air Flow GWC"
+      "gwc_mode": {
+        "name": "GWC Mode",
+        "state": {
+          "auto": "Automatic",
+          "forced": "Forced",
+          "off": "Off"
+        }
       },
-      "nominal_supply_air_flow": {
-        "name": "Nominal Supply Air Flow"
+      "season_mode": {
+        "name": "Season Mode",
+        "state": {
+          "winter": "Winter",
+          "summer": "Summer"
+        }
       },
-      "nominal_supply_air_flow_gwc": {
-        "name": "Nominal Supply Air Flow GWC"
+      "filter_change": {
+        "name": "Filter Type",
+        "state": {
+          "presostat": "Pressure switch",
+          "flat_filters": "Flat Filters",
+          "cleanpad": "CleanPad",
+          "cleanpad_pure": "CleanPad Pure"
+        }
       }
     },
     "sensor": {
       "air_flow_rate_manual": {
-        "name": "Manual Airflow Rate"
+        "name": "Air Flow Rate Manual"
       },
       "air_flow_rate_temporary_2": {
-        "name": "Temporary Airflow Rate 2"
+        "name": "Air Flow Rate Temporary 2"
       },
       "air_temperature_summer_free_cooling": {
         "name": "Air Temperature Summer Free Cooling"
@@ -1104,12 +1002,6 @@
       },
       "ambient_temperature": {
         "name": "Ambient Temperature"
-      },
-      "antifreez_mode": {
-        "name": "Antifreeze Mode"
-      },
-      "antifreez_stage": {
-        "name": "Antifreeze Stage"
       },
       "antifreeze_mode": {
         "name": "Antifreeze Mode"
@@ -1174,7 +1066,7 @@
         "name": "Exhaust Air Flow"
       },
       "exhaust_flow_rate_m3h": {
-        "name": "Exhaust Flow Rate"
+        "name": "Exhaust Flow Rate (m³/h)"
       },
       "exhaust_percentage": {
         "name": "Exhaust Percentage"
@@ -1191,15 +1083,6 @@
       "fan_speed_3_coef": {
         "name": "Fan Speed 3 Coefficient"
       },
-      "filter_change": {
-        "name": "Filter Type",
-        "state": {
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure",
-          "flat_filters": "Flat Filters",
-          "presostat": "Pressure switch"
-        }
-      },
       "fpx_temperature": {
         "name": "FPX Temperature"
       },
@@ -1210,9 +1093,6 @@
           "forced": "Forced",
           "off": "Off"
         }
-      },
-      "gwc_regen_flag": {
-        "name": "GWC Regeneration Active"
       },
       "gwc_temperature": {
         "name": "GWC Temperature"
@@ -1293,7 +1173,7 @@
         "name": "Supply Air Temperature Temporary 2"
       },
       "supply_flow_rate_m3h": {
-        "name": "Supply Flow Rate"
+        "name": "Supply Flow Rate (m³/h)"
       },
       "supply_percentage": {
         "name": "Supply Percentage"
@@ -1324,25 +1204,8 @@
       "eco": {
         "name": "Eco"
       },
-      "filter_change": {
-        "name": "Filter Type",
-        "state": {
-          "cleanpad": "CleanPad",
-          "cleanpad_pure": "CleanPad Pure",
-          "flat_filters": "Flat Filters",
-          "presostat": "Pressure switch"
-        }
-      },
       "fireplace": {
         "name": "Fireplace"
-      },
-      "gwc_mode": {
-        "name": "GWC Mode",
-        "state": {
-          "auto": "Automatic",
-          "forced": "Forced",
-          "off": "Off"
-        }
       },
       "hood": {
         "name": "Hood"
@@ -1355,13 +1218,6 @@
       },
       "party": {
         "name": "Party"
-      },
-      "season_mode": {
-        "name": "Season Mode",
-        "state": {
-          "summer": "Summer",
-          "winter": "Winter"
-        }
       },
       "sleep": {
         "name": "Sleep"
@@ -1419,28 +1275,42 @@
     "s_8": "Device status S 8",
     "s_9": "Device status S 9"
   },
+  "issues": {
+    "modbus_write_failed": {
+      "title": "Modbus write failed",
+      "description": "Unable to write value via Modbus. Check connection and permissions."
+    }
+  },
   "options": {
+    "error": {
+      "max_registers_range": "Max registers per request must be between 1 and 16."
+    },
     "step": {
       "init": {
         "data": {
           "force_full_register_list": "Force Full Register List (skip scanning)",
           "retry": "Retry Attempts",
           "scan_interval": "Scan Interval (seconds)",
+          "log_level": "Log Level",
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)",
           "deep_scan": "Deep Register Scan",
-          "scan_max_block_size": "Max Register Block Size"
+          "max_registers_per_request": "Max Registers per Request"
         },
         "data_description": {
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
           "scan_interval": "How often to read data from device (10-300 seconds)",
+          "log_level": "Adjust integration logging verbosity without restarting Home Assistant",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics",
-          "scan_max_block_size": "Maximum registers per batch read (1-125)"
+          "max_registers_per_request": "Select maximum registers per request (1-16)"
         },
-        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max block size: {current_scan_max_block_size}.",
+        "error": {
+          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
+        },
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
       }
     }
@@ -1741,6 +1611,34 @@
     "start_pressure_test": {
       "description": "Starts automatic filter/pressure control test",
       "name": "Start Pressure Test"
+    },
+    "scan_all_registers": {
+      "description": "Perform full Modbus register scan for diagnostics",
+      "name": "Scan All Registers"
+    },
+    "set_debug_logging": {
+      "description": "Temporarily increase integration log level for debugging and restore automatically.",
+      "fields": {
+        "duration": {
+          "description": "Duration in seconds to keep elevated logging (0 = keep until changed).",
+          "name": "Duration (seconds)"
+        },
+        "level": {
+          "description": "Log level to apply during debugging.",
+          "name": "Log Level",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.debug": "Debug",
+                "thessla_green_modbus.info": "Info",
+                "thessla_green_modbus.warning": "Warning",
+                "thessla_green_modbus.error": "Error"
+              }
+            }
+          }
+        }
+      },
+      "name": "Set Debug Logging"
     }
   },
   "title": "ThesslaGreen Modbus"

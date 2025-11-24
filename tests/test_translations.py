@@ -3,16 +3,16 @@ import json
 import re
 import sys
 import types
-from pathlib import Path
 from importlib import resources
+from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent / "custom_components" / "thessla_green_modbus"
 
-with open(ROOT / "translations" / "en.json", "r", encoding="utf-8") as f:
+with open(ROOT / "translations" / "en.json", encoding="utf-8") as f:
     EN = json.load(f)
-with open(ROOT / "translations" / "pl.json", "r", encoding="utf-8") as f:
+with open(ROOT / "translations" / "pl.json", encoding="utf-8") as f:
     PL = json.load(f)
 
 
@@ -33,7 +33,7 @@ def _load_translation_keys(file: Path, var_name: str):
             keys = []
             for val in node.value.values:
                 if isinstance(val, ast.Dict):
-                    for k, v in zip(val.keys, val.values):
+                    for k, v in zip(val.keys, val.values, strict=False):
                         if (
                             isinstance(k, ast.Constant)
                             and k.value == "translation_key"
@@ -84,6 +84,10 @@ const.UnitOfTemperature = UnitOfTemperature
 const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
 const.UnitOfElectricPotential = UnitOfElectricPotential
 
+network_mod = types.ModuleType("homeassistant.util.network")
+network_mod.is_host_valid = lambda host: True
+sys.modules["homeassistant.util.network"] = network_mod
+
 sensor_mod = types.ModuleType("homeassistant.components.sensor")
 
 
@@ -118,35 +122,32 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
-    SENSOR_DEFINITIONS,
-)
-
-SENSOR_KEYS = [v["translation_key"] for v in SENSOR_DEFINITIONS.values()] + [
+SENSOR_KEYS = _load_translation_keys(ROOT / "entity_mappings.py", "SENSOR_ENTITY_MAPPINGS") + [
     "error_codes"
 ]
-BINARY_KEYS = _load_translation_keys(
-    ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS"
-)
+BINARY_KEYS = _load_translation_keys(ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS")
 SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") + _load_keys(
     ROOT / "const.py", "SPECIAL_FUNCTION_MAP"
 )
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
-REGISTER_KEYS = [r.name for r in get_registers_by_function("03")]
-# Add dynamically generated binary sensor keys from holding registers
-BINARY_KEYS = sorted(
-    set(BINARY_KEYS)
-    | {
-        k
-        for k in REGISTER_KEYS
-        if k in {"alarm", "error"} or k.startswith("s_") or k.startswith("e_")
-    }
-)
 # Error/status code translations are not currently enforced
 CODE_KEYS: list[str] = []
 ISSUE_KEYS = ["modbus_write_failed"]
+
+OPTION_KEYS = [
+    "force_full_register_list",
+    "retry",
+    "scan_interval",
+    "skip_missing_registers",
+    "timeout",
+    "deep_scan",
+    "max_registers_per_request",
+]
+
+OPTION_ERROR_KEYS = [
+    "max_registers_range",
+]
 
 
 class Loader(yaml.SafeLoader):
@@ -155,13 +156,13 @@ class Loader(yaml.SafeLoader):
 
 def _include(loader, node):
     file_path = ROOT / loader.construct_scalar(node)
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         return yaml.load(f, Loader)  # nosec B506
 
 
 Loader.add_constructor("!include", _include)
 
-with open(ROOT / "services.yaml", "r", encoding="utf-8") as f:
+with open(ROOT / "services.yaml", encoding="utf-8") as f:
     SERVICES = yaml.load(f, Loader=Loader).keys()  # nosec B506
 
 
@@ -208,6 +209,13 @@ def test_translation_keys_present():
         assert (
             not missing_services
         ), f"Missing service translations: {missing_services}"  # nosec B101
+        opts = trans["options"]["step"]["init"]
+        missing_opts = [k for k in OPTION_KEYS if k not in opts["data"]]
+        assert not missing_opts, f"Missing option translations: {missing_opts}"  # nosec B101
+        missing_desc = [k for k in OPTION_KEYS if k not in opts["data_description"]]
+        assert not missing_desc, f"Missing option descriptions: {missing_desc}"  # nosec B101
+        missing_err = [k for k in OPTION_ERROR_KEYS if k not in trans["options"].get("error", {})]
+        assert not missing_err, f"Missing option error translations: {missing_err}"  # nosec B101
 
 
 def test_translation_structures_match():
@@ -255,9 +263,8 @@ def _to_snake(name: str) -> str:
 def test_register_names_match_translations() -> None:
     """Ensure register names used in mappings exist and have translations."""
 
-    reg_path = (
-        resources.files("custom_components.thessla_green_modbus.registers")
-        .joinpath("thessla_green_registers_full.json")
+    reg_path = resources.files("custom_components.thessla_green_modbus.registers").joinpath(
+        "thessla_green_registers_full.json"
     )
     data = json.loads(reg_path.read_text(encoding="utf-8"))
     registers = data["registers"]
@@ -287,28 +294,32 @@ def test_register_names_match_translations() -> None:
     ignore = {"hood_output"}
     for var, entity_type in vars_to_entity.items():
         for node in tree.body:
-            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            if isinstance(node, ast.Assign | ast.AnnAssign):
                 target = node.targets[0] if isinstance(node, ast.Assign) else node.target
                 if (
                     isinstance(target, ast.Name)
                     and target.id == var
                     and isinstance(node.value, ast.Dict)
                 ):
-                    for key_node, val_node in zip(node.value.keys, node.value.values):
+                    for key_node, val_node in zip(node.value.keys, node.value.values, strict=False):
                         if isinstance(key_node, ast.Constant) and isinstance(val_node, ast.Dict):
                             name = key_node.value
                             reg_type = None
                             trans_key = name
-                            for k2, v2 in zip(val_node.keys, val_node.values):
+                            for k2, v2 in zip(val_node.keys, val_node.values, strict=False):
                                 if isinstance(k2, ast.Constant):
                                     if k2.value == "register_type" and isinstance(v2, ast.Constant):
                                         reg_type = v2.value
-                                    elif k2.value == "translation_key" and isinstance(v2, ast.Constant):
+                                    elif k2.value == "translation_key" and isinstance(
+                                        v2, ast.Constant
+                                    ):
                                         trans_key = v2.value
+
                             if reg_type in reg_names and name not in ignore:
                                 assert (
                                     _to_snake(name) in reg_names[reg_type]
                                 ), f"Missing register definition for {name}"
                             assert trans_key in EN["entity"][entity_type]
                             assert trans_key in PL["entity"][entity_type]
+                            break
                     break

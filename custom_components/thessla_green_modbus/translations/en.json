@@ -1,9 +1,23 @@
 {
   "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
   "auto_detected_note_success": "Auto-detection successful!",
+  "connection_type_tcp": "Modbus TCP",
+  "connection_type_rtu": "Modbus RTU",
+  "connection_type_tcp_label": "Modbus TCP",
+  "connection_type_rtu_label": "Modbus RTU",
+  "log_level_debug": "Debug",
+  "log_level_info": "Info",
+  "log_level_warning": "Warning",
+  "log_level_error": "Error",
   "diagnostics": {
     "registers_hash": "Register definitions hash",
-    "capabilities": "Device capabilities"
+    "capabilities": "Device capabilities",
+    "effective_batch": "Effective batch size",
+    "total_registers_json": "Total registers in JSON",
+    "total_available_registers": "Total available registers",
+    "deep_scan": "Deep scan enabled",
+    "force_full_register_list": "Force full register list",
+    "error_statistics": "Error statistics"
   },
   "config": {
     "abort": {
@@ -13,35 +27,61 @@
       "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",
       "invalid_auth": "Authentication error. Check Device ID settings.",
       "invalid_input": "Invalid configuration provided. Check values and try again.",
-      "invalid_domain": "Invalid hostname or domain.",
-      "invalid_ipv4": "Invalid IPv4 address.",
-      "invalid_ipv6": "Invalid IPv6 address.",
+      "invalid_host": "Invalid IP address or hostname.",
+      "invalid_port": "Port must be between 1 and 65535.",
+      "invalid_slave": "Device ID must be between 0 and 247.",
+      "invalid_slave_low": "Device ID must be 0 or greater.",
+      "invalid_slave_high": "Device ID must be 247 or less.",
+      "invalid_transport": "Unsupported transport type selected.",
+      "missing_host": "Host is required for Modbus TCP connections.",
+      "invalid_serial_port": "Serial port path is required for Modbus RTU.",
+      "invalid_baud_rate": "Invalid baud rate selected.",
+      "invalid_parity": "Invalid parity option selected.",
+      "invalid_stop_bits": "Invalid stop bits option selected.",
+      "dns_failure": "Hostname could not be resolved.",
+      "connection_refused": "Connection was refused by the host.",
       "missing_method": "Scanner is missing required method. See logs for details.",
+      "io_error": "Input/output error during device communication. Check cabling and network connection.",
+      "invalid_capabilities": "Device capabilities data invalid or missing.",
+      "invalid_format": "Received data in an unexpected format from device.",
       "modbus_error": "Modbus communication error. Check wiring and settings.",
-      "timeout": "Connection timed out. Verify host and port.",
+      "max_registers_range": "Max registers per request must be between 1 and 16.",
+      "timeout": "Device did not respond in time. Verify network connectivity and address.",
       "unknown": "Unexpected error. Check logs for details."
     },
     "step": {
       "confirm": {
-        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) at {host}:{port}. Device ID: {slave_id}. Firmware version: {firmware_version}. Registers found: {register_count}. Scan success rate: {scan_success_rate}. Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Continue with this configuration?",
+        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) via {transport_label} {endpoint}. Device ID: {slave_id}. Firmware version: {firmware_version}. Registers found: {register_count}. Scan success rate: {scan_success_rate}. Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Continue with this configuration?",
         "title": "Confirm Configuration"
       },
       "user": {
         "data": {
+          "connection_type": "Connection Type",
           "host": "IP Address",
           "name": "Name",
           "port": "Port",
           "slave_id": "Device ID",
-          "deep_scan": "Deep Register Scan"
+          "serial_port": "Serial Port",
+          "baud_rate": "Baud Rate",
+          "parity": "Parity",
+          "stop_bits": "Stop Bits",
+          "deep_scan": "Deep Register Scan",
+          "max_registers_per_request": "Max Registers per Request"
         },
         "data_description": {
+          "connection_type": "Choose between Modbus TCP (network) or Modbus RTU (serial)",
           "host": "IP address of the AirPack device on your local network",
           "name": "Device name in Home Assistant",
           "port": "Modbus TCP port (default 502)",
           "slave_id": "Modbus device ID (default 10)",
-          "deep_scan": "Read all registers for diagnostics (may be slow)"
+          "serial_port": "Serial device path for Modbus RTU (for example /dev/ttyUSB0)",
+          "baud_rate": "Baud rate for Modbus RTU communication",
+          "parity": "Parity setting for Modbus RTU communication",
+          "stop_bits": "Stop bits for Modbus RTU communication",
+          "deep_scan": "Read all registers for diagnostics (may be slow)",
+          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
         },
-        "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP. The integration automatically detects device functions and registers.",
+        "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
       }
     }
@@ -1242,27 +1282,35 @@
     }
   },
   "options": {
+    "error": {
+      "max_registers_range": "Max registers per request must be between 1 and 16."
+    },
     "step": {
       "init": {
         "data": {
           "force_full_register_list": "Force Full Register List (skip scanning)",
           "retry": "Retry Attempts",
           "scan_interval": "Scan Interval (seconds)",
+          "log_level": "Log Level",
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)",
           "deep_scan": "Deep Register Scan",
-          "scan_max_block_size": "Max Register Block Size"
+          "max_registers_per_request": "Max Registers per Request"
         },
         "data_description": {
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
           "scan_interval": "How often to read data from device (10-300 seconds)",
+          "log_level": "Adjust integration logging verbosity without restarting Home Assistant",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics",
-          "scan_max_block_size": "Maximum registers per batch read (1-125)"
+          "max_registers_per_request": "Select maximum registers per request (1-16)"
         },
-        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max block size: {current_scan_max_block_size}.",
+        "error": {
+          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
+        },
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
       }
     }
@@ -1567,6 +1615,30 @@
     "scan_all_registers": {
       "description": "Perform full Modbus register scan for diagnostics",
       "name": "Scan All Registers"
+    },
+    "set_debug_logging": {
+      "description": "Temporarily increase integration log level for debugging and restore automatically.",
+      "fields": {
+        "duration": {
+          "description": "Duration in seconds to keep elevated logging (0 = keep until changed).",
+          "name": "Duration (seconds)"
+        },
+        "level": {
+          "description": "Log level to apply during debugging.",
+          "name": "Log Level",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.debug": "Debug",
+                "thessla_green_modbus.info": "Info",
+                "thessla_green_modbus.warning": "Warning",
+                "thessla_green_modbus.error": "Error"
+              }
+            }
+          }
+        }
+      },
+      "name": "Set Debug Logging"
     }
   },
   "title": "ThesslaGreen Modbus"

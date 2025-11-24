@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections import Counter
-from pathlib import Path
 import json
 import re
-
+from collections import Counter
+from pathlib import Path
 
 REGISTERS_PATH = (
     Path(__file__).resolve().parent.parent
@@ -39,9 +38,7 @@ def test_register_uniqueness() -> None:
 
     # (function, address_dec) pairs must be unique
     pair_counts = Counter((reg["function"], address(reg)) for reg in registers)
-    duplicate_pairs = {
-        pair: count for pair, count in pair_counts.items() if count > 1
-    }
+    duplicate_pairs = {pair: count for pair, count in pair_counts.items() if count > 1}
     assert not duplicate_pairs, (
         "Duplicate (function, address_dec) pairs found: " f"{duplicate_pairs}"
     )

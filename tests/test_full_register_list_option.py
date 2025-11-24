@@ -1,18 +1,15 @@
 import sys
-
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.thessla_green_modbus.const import (
-    CONF_FORCE_FULL_REGISTER_LIST,
-    DOMAIN,
-)
-from homeassistant.const import CONF_HOST, CONF_PORT
 import homeassistant.const as ha_const
+import pytest
+from homeassistant.const import CONF_HOST, CONF_PORT
+
+from custom_components.thessla_green_modbus.const import CONF_FORCE_FULL_REGISTER_LIST, DOMAIN
 
 ha_const.STATE_UNAVAILABLE = "unavailable"
 
-from custom_components.thessla_green_modbus import async_setup_entry, sensor
+from custom_components.thessla_green_modbus import async_setup_entry, sensor  # noqa: E402
 
 # Minimal sensor definitions for testing
 SENSOR_MAP = {
@@ -60,7 +57,7 @@ class FakeCoordinator:
         force_full_register_list=False,
         scan_uart_settings=False,
         deep_scan=False,
-        scan_max_block_size=0,
+        max_registers_per_request=0,
         entry=None,
         skip_missing_registers=False,
     ) -> None:
@@ -109,20 +106,28 @@ async def _setup_entities(force: bool) -> set[str]:
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
 
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-        FakeCoordinator,
-    ), patch(
-        "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
-        AsyncMock(),
-    ), patch(
-        "custom_components.thessla_green_modbus._async_migrate_unique_ids",
-        AsyncMock(),
-    ), patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True), patch.dict(
-        sys.modules, {"custom_components.thessla_green_modbus.loader": MagicMock()}
-    ), patch(
-        "custom_components.thessla_green_modbus.services.async_setup_services",
-        AsyncMock(),
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+            FakeCoordinator,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
+            AsyncMock(),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus._async_migrate_unique_ids",
+            AsyncMock(),
+        ),
+        patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True),
+        patch.dict(
+            sys.modules,
+            {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.services.async_setup_services",
+            AsyncMock(),
+        ),
     ):
         await async_setup_entry(hass, entry)
         added: list = []

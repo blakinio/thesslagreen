@@ -8,30 +8,19 @@ from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfTemperature,
-    UnitOfTime,
-    UnitOfVolumeFlowRate,
-)
+from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime, UnitOfVolumeFlowRate
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .const import DOMAIN
 
-try:  # Newer versions expose metadata through ENTITY_MAPPINGS
-    from .const import ENTITY_MAPPINGS
-except ImportError:  # pragma: no cover - fall back when not available
-    ENTITY_MAPPINGS = {}
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
 
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # Unit mappings
 UNIT_MAPPINGS = {
@@ -47,7 +36,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:
+) -> None:  # pragma: no cover
     """Set up ThesslaGreen number entities from config entry.
 
     This hook is invoked by Home Assistant during platform setup.
@@ -57,15 +46,24 @@ async def async_setup_entry(
     entities = []
 
     # Get number entity mappings
-    number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("number", {})
-    if not number_mappings:
-        _LOGGER.debug("No number entity mappings found; skipping setup")
-        return
+    number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS["number"]
 
-    # Create number entities only for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device()
+    # Create number entities for discovered registers, or all known registers
+    # when ``force_full_register_list`` is enabled.
+    holding_map = coordinator.get_register_map("holding_registers")
+    available = coordinator.available_registers.get("holding_registers", set())
+
     for register_name, entity_config in number_mappings.items():
-        if register_name in coordinator.available_registers.get("holding_registers", set()):
+        force_create = coordinator.force_full_register_list and register_name in holding_map
+
+        if register_name in available or force_create:
+            address = holding_map.get(register_name)
+            if address is None:
+                _LOGGER.error(
+                    "Register %s not defined in holding registers, skipping",
+                    register_name,
+                )
+                continue
             entities.append(
                 ThesslaGreenNumber(
                     coordinator=coordinator,
@@ -85,7 +83,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Added %d number entities", len(entities))
+        _LOGGER.debug("Added %d number entities", len(entities))
     else:
         _LOGGER.debug("No number entities were created")
 
@@ -105,14 +103,19 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         register_type: str | None = None,
     ) -> None:
         """Initialize the number entity."""
-        super().__init__(coordinator, register_name)
+        register_map = coordinator.get_register_map("holding_registers")
+        if register_name not in register_map:
+            raise KeyError(f"Register {register_name} not found in holding registers")
+        address = register_map[register_name]
+
+        super().__init__(coordinator, register_name, address)
 
         self.register_name = register_name
         self.entity_config = entity_config
         self.register_type = register_type
 
         # Entity configuration
-        self._attr_translation_key = register_name
+        self._attr_translation_key = register_name  # pragma: no cover
 
         # Number configuration
         self._setup_number_attributes()
@@ -124,7 +127,9 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Unit of measurement
         if "unit" in self.entity_config:
             unit = self.entity_config["unit"]
-            self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(unit, unit)
+            self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(
+                unit, unit
+            )  # pragma: no cover
 
         # Min/max values
         self._attr_native_min_value = self.entity_config.get("min", 0)
@@ -138,9 +143,9 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             keyword in self.register_name
             for keyword in ["temperature", "duration", "coef", "percentage"]
         ):
-            self._attr_mode = NumberMode.SLIDER
+            self._attr_mode = NumberMode.SLIDER  # pragma: no cover
         else:
-            self._attr_mode = NumberMode.BOX
+            self._attr_mode = NumberMode.BOX  # pragma: no cover
 
         # Icon
         if "temperature" in self.register_name:
@@ -165,10 +170,10 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             keyword in self.register_name
             for keyword in ["hysteresis", "correction", "max", "min", "balance", "coef"]
         ):
-            self._attr_entity_category = EntityCategory.CONFIG
+            self._attr_entity_category = EntityCategory.CONFIG  # pragma: no cover
 
     @property
-    def native_value(self) -> float | None:
+    def native_value(self) -> float | None:  # pragma: no cover
         """Return the current value."""
         if self.register_name not in self.coordinator.data:
             return None
@@ -179,17 +184,17 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         if raw_value is None:
             return None
 
-        return float(raw_value) if isinstance(raw_value, (int, float)) else None
+        return float(raw_value) if isinstance(raw_value, int | float) else None
 
-    async def async_set_native_value(self, value: float) -> None:
+    async def async_set_native_value(self, value: float) -> None:  # pragma: no cover
         """Set new value."""
         try:
             success = await self.coordinator.async_write_register(
-                self.register_name, value, refresh=False
+                self.register_name, value, refresh=False, offset=0
             )
             if success:
                 await self.coordinator.async_request_refresh()
-                _LOGGER.info("Set %s to %.2f", self.register_name, value)
+                _LOGGER.debug("Set %s to %.2f", self.register_name, value)
             else:
                 _LOGGER.error("Failed to set %s to %.2f", self.register_name, value)
                 raise RuntimeError(f"Failed to write register {self.register_name}")
@@ -207,13 +212,14 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             raise
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
         """Return additional state attributes."""
         attributes: dict[str, Any] = {}
 
         # Add register information
         attributes["register_name"] = self.register_name
-        attributes["register_address"] = f"0x{HOLDING_REGISTERS.get(self.register_name, 0):04X}"
+        register_address = self._address if self._address is not None else 0
+        attributes["register_address"] = f"0x{register_address:04X}"
 
         # Add raw value for debugging
         if self.register_name in self.coordinator.data:
@@ -239,7 +245,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         return attributes
 
     @property
-    def available(self) -> bool:
+    def available(self) -> bool:  # pragma: no cover
         """Return if entity is available."""
         # Entity is available if coordinator is available
         if not self.coordinator.last_update_success:

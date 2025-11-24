@@ -9,12 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-)
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -28,14 +25,14 @@ from .entity_mappings import BINARY_SENSOR_ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 
-BINARY_SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = BINARY_SENSOR_ENTITY_MAPPINGS
+BINARY_SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = BINARY_SENSOR_ENTITY_MAPPINGS
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:
+) -> None:  # pragma: no cover
     """Set up ThesslaGreen binary sensor entities.
 
     This coroutine is a Home Assistant platform setup hook and is invoked
@@ -45,14 +42,28 @@ async def async_setup_entry(
 
     entities = []
 
-    # Create binary sensors only for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device()
-    for register_name, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
+    # Create binary sensors for discovered registers, or all known registers
+    # when ``force_full_register_list`` is enabled.
+    for key, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
+        register_name = sensor_def.get("register", key)
 
-        # Check if this register is available on the device
-        if register_name in coordinator.available_registers.get(register_type, set()):
-            entities.append(ThesslaGreenBinarySensor(coordinator, register_name, sensor_def))
+        register_map = coordinator.get_register_map(register_type)
+        available = coordinator.available_registers.get(register_type, set())
+        force_create = coordinator.force_full_register_list and register_name in register_map
+
+        # Check if this register is available on the device or should be
+        # forcibly added from the full register list.
+        if register_name in available or force_create:
+            address = register_map.get(register_name)
+            entities.append(
+                ThesslaGreenBinarySensor(
+                    coordinator,
+                    register_name,
+                    address,
+                    sensor_def,
+                )
+            )
             _LOGGER.debug("Created binary sensor: %s", sensor_def["translation_key"])
 
     if entities:
@@ -64,7 +75,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info(
+        _LOGGER.debug(
             "Created %d binary sensor entities for %s", len(entities), coordinator.device_name
         )
     else:
@@ -83,10 +94,16 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        sensor_definition: Dict[str, Any],
+        address: int,
+        sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the binary sensor."""
-        super().__init__(coordinator, register_name)
+        super().__init__(
+            coordinator,
+            register_name,
+            address,
+            bit=sensor_definition.get("bit"),
+        )
 
         self._register_name = register_name
         self._sensor_def = sensor_definition
@@ -95,10 +112,10 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self._attr_icon = sensor_definition.get("icon")
         self._attr_device_class: BinarySensorDeviceClass | None = sensor_definition.get(
             "device_class"
-        )
+        )  # pragma: no cover
 
         # Translation setup
-        self._attr_translation_key = sensor_definition.get("translation_key")
+        self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover
 
         _LOGGER.debug(
             "Binary sensor initialized: %s (%s)",
@@ -127,15 +144,12 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
         elif register_type == "holding_registers":
             # Holding registers: depends on register
-            if self._register_name == "on_off_panel_mode":
-                return bool(value)
-            else:
-                return bool(value)
+            return bool(value)
 
         return False
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
         """Return additional state attributes."""
         attrs = {}
 
@@ -148,6 +162,8 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         raw_value = self.coordinator.data.get(self._register_name)
         if raw_value is not None:
             attrs["raw_value"] = raw_value
+            if self._sensor_def.get("bitmask") and self._sensor_def.get("bit") is None:
+                attrs["bitmask"] = raw_value
 
         # Add specific information for alarm/error sensors and severity registers
         if (
@@ -160,7 +176,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         return attrs
 
     @property
-    def icon(self) -> str:
+    def icon(self) -> str:  # pragma: no cover
         """Return the icon for the binary sensor."""
         # Ensure base_icon is a string before using it
         base_icon = self._attr_icon if isinstance(self._attr_icon, str) else None

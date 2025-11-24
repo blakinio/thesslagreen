@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 
-from .const import SENSOR_UNAVAILABLE
+from .const import MAX_BATCH_REGISTERS, SENSOR_UNAVAILABLE
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
@@ -23,9 +23,6 @@ REGISTER_ALLOWED_VALUES: dict[str, set[int]] = {
 
 # Registers storing combined airflow and temperature settings
 SETTING_PREFIX = "setting_"
-
-# Backwards compatibility: old name used in tests/utilities
-_decode_setting_value = _decode_aatt
 
 
 def _format_register_value(name: str, value: int) -> int | str | None:
@@ -61,7 +58,7 @@ def _format_register_value(name: str, value: int) -> int | str | None:
     return None if value == SENSOR_UNAVAILABLE else value
 
 
-def _decode_season_mode(value: int) -> Optional[int]:
+def _decode_season_mode(value: int) -> int | None:
     """Decode season mode register which may place value in high byte."""
     if value in (0xFF00, 0xFFFF, SENSOR_UNAVAILABLE):
         return None
@@ -72,12 +69,11 @@ def _decode_season_mode(value: int) -> Optional[int]:
     return high or low
 
 
-SPECIAL_VALUE_DECODERS: Dict[str, Callable[[int], Optional[int]]] = {
+SPECIAL_VALUE_DECODERS: dict[str, Callable[[int], int | None]] = {
     "season_mode": _decode_season_mode,
 }
 
-# Maximum registers per batch read (Modbus limit)
-MAX_BATCH_REGISTERS = 64
+# Maximum registers per batch read (defined in ``const`` for reuse)
 
 # Optional UART configuration registers (Air-B and Air++ ports)
 # According to the Series 4 Modbus documentation, both the Air-B
@@ -91,17 +87,16 @@ UART_OPTIONAL_REGS = range(0x1164, 0x116C)
 # Each entry is a tuple of Modbus function code and register name. The
 # corresponding addresses are resolved from the JSON register definitions at
 # runtime, ensuring we do not hardcode register addresses here.
-SAFE_REGISTERS: list[tuple[str, str]] = [
-    ("04", "version_major"),
-    ("04", "version_minor"),
-    ("03", "date_time_rrmm"),
+SAFE_REGISTERS: list[tuple[int, str]] = [
+    (4, "version_major"),
+    (4, "version_minor"),
+    (3, "date_time_rrmm"),
 ]
 
 __all__ = [
     "REGISTER_ALLOWED_VALUES",
     "SETTING_PREFIX",
     "_decode_aatt",
-    "_decode_setting_value",
     "_format_register_value",
     "_decode_season_mode",
     "SPECIAL_VALUE_DECODERS",

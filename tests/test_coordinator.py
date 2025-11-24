@@ -1,17 +1,19 @@
 """Tests for ThesslaGreenModbusCoordinator - HA 2025.7.1+ & pymodbus 3.5+ Compatible."""
 
 import asyncio
-
 import logging
 import os
 import sys
 import types
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from custom_components.thessla_green_modbus.const import (
+    CONF_MAX_REGISTERS_PER_REQUEST,
+    MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
 )
@@ -19,11 +21,15 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402,F811,E501
+    RegisterDef,
+    get_register_definition,
+    get_registers_by_function,
+)
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
+ha.__path__ = []
 const = types.ModuleType("homeassistant.const")
 core = types.ModuleType("homeassistant.core")
 helpers_pkg = types.ModuleType("homeassistant.helpers")
@@ -38,6 +44,11 @@ config_entries = types.ModuleType("homeassistant.config_entries")
 pymodbus = types.ModuleType("pymodbus")
 pymodbus_client = types.ModuleType("pymodbus.client")
 pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
+util = types.ModuleType("homeassistant.util")
+util.__path__ = []
+network_module = types.ModuleType("homeassistant.util.network")
+network_module.is_host_valid = lambda host: True
+util.network = network_module
 
 const.CONF_HOST = "host"
 const.CONF_PORT = "port"
@@ -73,11 +84,22 @@ core.ServiceCall = ServiceCall
 
 
 class ConfigEntry:
-    def __init__(self, data):
+    def __init__(self, data, entry_id="1", options=None):
         self.data = data
+        self.entry_id = entry_id
+        self.options = options or {}
 
 
 config_entries.ConfigEntry = ConfigEntry
+
+
+class _ConfigFlow:
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__()
+
+
+config_entries.ConfigFlow = _ConfigFlow
+config_entries.OptionsFlow = type("OptionsFlow", (), {})
 
 
 class DataUpdateCoordinator:
@@ -112,6 +134,11 @@ class ConfigEntryNotReady(Exception):
     pass
 
 
+class HomeAssistantError(Exception):
+    pass
+
+
+exceptions.HomeAssistantError = HomeAssistantError
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
 
 
@@ -141,6 +168,8 @@ modules = {
     "homeassistant.helpers.device_registry": helpers_dr,
     "homeassistant.exceptions": exceptions,
     "homeassistant.config_entries": config_entries,
+    "homeassistant.util": util,
+    "homeassistant.util.network": network_module,
     "pymodbus": pymodbus,
     "pymodbus.client": pymodbus_client,
     "pymodbus.exceptions": pymodbus_exceptions,
@@ -148,11 +177,15 @@ modules = {
 for name, module in modules.items():
     sys.modules[name] = module
 
+# Remove any pre-existing stub of ``homeassistant.util.dt`` to trigger the
+# fallback ``_DTUtil`` implementation in the coordinator during import.
+if hasattr(util, "dt"):
+    delattr(util, "dt")
+sys.modules.pop("homeassistant.util.dt", None)
+
 # Ensure repository root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
@@ -161,6 +194,17 @@ HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+    dt_util as coordinator_dt_util,
+)
+
+
+def test_dt_util_timezone_awareness():
+    """Ensure fallback dt_util provides timezone-aware datetimes."""
+    now = coordinator_dt_util.now()
+    utcnow = coordinator_dt_util.utcnow()
+    assert now.tzinfo is not None and now.tzinfo.utcoffset(now) is not None
+    assert utcnow.tzinfo is not None and utcnow.tzinfo.utcoffset(utcnow) is not None
 
 
 @pytest.fixture
@@ -185,6 +229,25 @@ def coordinator():
     )
     coordinator.available_registers = available_registers
     return coordinator
+
+
+def test_coordinator_clamps_effective_batch():
+    """Coordinator clamps batch size to ``MAX_BATCH_REGISTERS``."""
+    hass = MagicMock()
+    entry = ConfigEntry(
+        data={},
+        options={CONF_MAX_REGISTERS_PER_REQUEST: MAX_BATCH_REGISTERS + 8},
+    )
+    coord = ThesslaGreenModbusCoordinator(
+        hass=hass,
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        entry=entry,
+    )
+    assert coord.effective_batch == MAX_BATCH_REGISTERS
+    assert coord.max_registers_per_request == MAX_BATCH_REGISTERS
 
 
 @pytest.mark.asyncio
@@ -221,6 +284,36 @@ async def test_async_write_valid_register(coordinator):
 
 
 @pytest.mark.asyncio
+async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatch):
+    """Numeric values outside defined range should raise."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.client = MagicMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    reg = RegisterDef(function="03", address=0, name="num", access="rw", min=0, max=10)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
+
+    with pytest.raises(ValueError):
+        await coordinator.async_write_register("num", 11)
+
+
+@pytest.mark.asyncio
+async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
+    """Invalid enum values should raise and be propagated."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.client = MagicMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    reg = RegisterDef(function="03", address=0, name="mode", access="rw", enum={0: "off", 1: "on"})
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
+
+    with pytest.raises(ValueError):
+        await coordinator.async_write_register("mode", "invalid")
+
+
+@pytest.mark.asyncio
 async def test_read_holding_registers_none_client(coordinator, caplog):
     """Return empty data when no Modbus client is present."""
     coordinator.client = None
@@ -247,7 +340,7 @@ async def test_read_holding_registers_cancelled_error(coordinator, caplog):
 
 
 @pytest.mark.asyncio
-async def test_async_write_multi_register_start(coordinator):
+async def test_async_write_multi_register_start(coordinator, monkeypatch):
     """Writing multi-register from start address succeeds."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
@@ -257,17 +350,50 @@ async def test_async_write_multi_register_start(coordinator):
     client.write_registers = AsyncMock(return_value=response)
     coordinator.client = client
 
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_1"] = 0
+
     result = await coordinator.async_write_register("date_time_1", [1, 2, 3, 4])
 
     assert result is True
     client.write_registers.assert_awaited_once_with(
-        address=HOLDING_REGISTERS["date_time_1"], values=[1, 2, 3, 4], slave=1
+        address=HOLDING_REGISTERS["date_time_1"], values=[1, 2, 3, 4]
     )
     coordinator.async_request_refresh.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_async_write_multi_register_non_start(coordinator):
+async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
+    """Writing a subset of a multi-register with an offset succeeds."""
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_1"] = 0
+
+    result = await coordinator.async_write_register("date_time_1", [3, 4], offset=2)
+
+    assert result is True
+    client.write_registers.assert_awaited_once_with(
+        address=HOLDING_REGISTERS["date_time_1"] + 2,
+        values=[3, 4],
+    )
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_write_multi_register_non_start(coordinator, monkeypatch):
     """Multi-register writes from non-start addresses are rejected."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
@@ -275,6 +401,12 @@ async def test_async_write_multi_register_non_start(coordinator):
     client.write_registers = AsyncMock()
     client.write_register = AsyncMock()
     coordinator.client = client
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=1, name="date_time_2", access="rw", length=1)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_2"] = 1
 
     result = await coordinator.async_write_register("date_time_2", [1, 2, 3])
 
@@ -285,7 +417,7 @@ async def test_async_write_multi_register_non_start(coordinator):
 
 
 @pytest.mark.asyncio
-async def test_async_write_multi_register_wrong_length(coordinator):
+async def test_async_write_multi_register_wrong_length(coordinator, monkeypatch):
     """Reject writes with incorrect number of values."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
@@ -293,11 +425,128 @@ async def test_async_write_multi_register_wrong_length(coordinator):
     client.write_registers = AsyncMock()
     coordinator.client = client
 
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+    HOLDING_REGISTERS["date_time_1"] = 0
+
     result = await coordinator.async_write_register("date_time_1", [1, 2, 3])
 
     assert result is False
     client.write_registers.assert_not_awaited()
     coordinator.async_request_refresh.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "batch,expected_calls",
+    [
+        (1, 4),
+        (8, 1),
+        (MAX_BATCH_REGISTERS, 1),
+        (32, 1),
+    ],
+)
+async def test_async_write_register_chunks(coordinator, batch, expected_calls, monkeypatch):
+    """Writes are chunked according to configured batch size."""
+    coordinator.max_registers_per_request = batch
+    coordinator.effective_batch = min(batch, MAX_BATCH_REGISTERS)
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+    coordinator.async_request_refresh = AsyncMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = SimpleNamespace(length=4, address=0, function=3, encode=lambda v: v)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+
+    result = await coordinator.async_write_register("date_time_1", [1, 2, 3, 4])
+
+    assert result is True
+    assert client.write_registers.await_count == expected_calls
+    for call in client.write_registers.await_args_list:
+        assert len(call.kwargs["values"]) <= coordinator.effective_batch
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_write_register_truncates_over_limit(coordinator, monkeypatch):
+    """Batch sizes over the limit are truncated to the maximum when writing."""
+    coordinator.max_registers_per_request = 100
+    coordinator.effective_batch = MAX_BATCH_REGISTERS
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+    coordinator.async_request_refresh = AsyncMock()
+
+    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+
+    fake_def = SimpleNamespace(length=20, address=0, function=3, encode=lambda v: v)
+    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
+
+    result = await coordinator.async_write_register("large", list(range(20)))
+
+    assert result is True
+    assert client.write_registers.await_count == 2
+    assert [len(call.kwargs["values"]) for call in client.write_registers.await_args_list] == [
+        MAX_BATCH_REGISTERS,
+        4,
+    ]
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_read_holding_registers_chunking_and_retries(coordinator):
+    """Read path retries on errors and honours chunk sizes."""
+
+    coordinator.client = MagicMock()
+    coordinator.client.connected = True
+    coordinator.retry = 2
+
+    coordinator._register_groups = {
+        "holding_registers": [
+            (0, MAX_BATCH_REGISTERS),
+            (MAX_BATCH_REGISTERS, 4),
+            (MAX_BATCH_REGISTERS + 4, 1),
+        ]
+    }
+    names = {f"reg{i}" for i in range(MAX_BATCH_REGISTERS + 5)}
+    coordinator.available_registers["holding_registers"] = names
+    coordinator._find_register_name = lambda _kind, addr: f"reg{addr}"
+    coordinator._process_register_value = lambda _name, value: value
+    coordinator._clear_register_failure = lambda _name: None
+    coordinator._mark_registers_failed = lambda _names: None
+
+    response1 = SimpleNamespace(registers=[1] * MAX_BATCH_REGISTERS, isError=lambda: False)
+    response2 = SimpleNamespace(registers=[2] * 4, isError=lambda: False)
+    response3 = SimpleNamespace(registers=[3], isError=lambda: False)
+
+    coordinator.client.read_holding_registers = AsyncMock(
+        side_effect=[
+            TimeoutError(),
+            response1,
+            ModbusException("boom"),
+            response2,
+            response3,
+        ]
+    )
+
+    data = await coordinator._read_holding_registers_optimized()
+
+    assert coordinator.client.read_holding_registers.await_count == 5
+    counts = [c.kwargs["count"] for c in coordinator.client.read_holding_registers.await_args_list]
+    assert counts == [MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS, 4, 4, 1]
+    assert data["reg0"] == 1
+    assert data[f"reg{MAX_BATCH_REGISTERS}"] == 2
+    assert data[f"reg{MAX_BATCH_REGISTERS + 4}"] == 3
 
 
 def test_performance_stats(coordinator):
@@ -449,8 +698,7 @@ def test_dac_value_processing(coordinator, caplog):
 def test_process_register_value_sensor_unavailable(coordinator, register_name):
     """Return sentinel when sensors report unavailable for known sensor registers."""
     assert (
-        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE)
-        == SENSOR_UNAVAILABLE
+        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) == SENSOR_UNAVAILABLE
     )
 
 
@@ -479,7 +727,7 @@ def test_process_register_value_extremes(coordinator, register_name, value, expe
 )
 def test_process_register_value_dac_boundaries(coordinator, register_name, value):
     """Process DAC registers across boundary and out-of-range values."""
-    expected = loader.get_register_definition(register_name).decode(value)
+    expected = get_register_definition(register_name).decode(value)
     result = coordinator._process_register_value(register_name, value)
     assert result == pytest.approx(expected)
 
@@ -527,7 +775,7 @@ def test_post_process_data(coordinator):
     # Check calculated efficiency
     assert "calculated_efficiency" in processed_data
     efficiency = processed_data["calculated_efficiency"]
-    assert isinstance(efficiency, (int, float))
+    assert isinstance(efficiency, int | float)
     assert 0 <= efficiency <= 100
 
     # Check flow balance
@@ -567,7 +815,7 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
             self.connected = False
 
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusClient",
+        "custom_components.thessla_green_modbus.coordinator.AsyncModbusTcpClient",
         FakeClient,
     ):
         for _ in range(3):
@@ -629,6 +877,40 @@ async def test_setup_and_refresh_no_cancelled_error(coordinator):
 
 
 @pytest.mark.asyncio
+async def test_capabilities_loaded_from_config_entry():
+    """Coordinator should hydrate capabilities from stored entry data."""
+    caps = {"expansion_module": True}
+    entry = config_entries.ConfigEntry(
+        {
+            const.CONF_HOST: "localhost",
+            const.CONF_PORT: 502,
+            "slave_id": 1,
+            const.CONF_NAME: "test",
+            "capabilities": caps,
+        }
+    )
+
+    coordinator = ThesslaGreenModbusCoordinator(
+        hass=MagicMock(),
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=10,
+        retry=3,
+        force_full_register_list=True,
+        entry=entry,
+    )
+
+    # async_setup will skip scanning due to force_full_register_list
+    coordinator._test_connection = AsyncMock()
+    await coordinator.async_setup()
+
+    assert coordinator.capabilities.expansion_module is True
+
+
+@pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):
     """Invalid capabilities format should raise CannotConnect."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect
@@ -653,6 +935,73 @@ async def test_async_setup_invalid_capabilities(coordinator):
 
     assert str(err.value) == "invalid_capabilities"
     scanner_instance.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
+    """Transient failures increment counters and successful reads reset them."""
+
+    coordinator = ThesslaGreenModbusCoordinator(
+        MagicMock(),
+        "host",
+        502,
+        1,
+        "name",
+        scan_interval=5,
+        retry=1,
+    )
+    coordinator.client = MagicMock(connected=True)
+    coordinator._disconnect = AsyncMock()
+    coordinator._ensure_connection = AsyncMock()
+    coordinator._read_input_registers_optimized = AsyncMock(
+        side_effect=[ConnectionException("fail"), {"reg": 1}]
+    )
+    coordinator._read_holding_registers_optimized = AsyncMock(return_value={})
+    coordinator._read_coil_registers_optimized = AsyncMock(return_value={})
+    coordinator._read_discrete_inputs_optimized = AsyncMock(return_value={})
+
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+
+    assert coordinator._consecutive_failures == 1  # nosec: explicit state check
+    coordinator._read_input_registers_optimized.reset_mock(side_effect=True)
+    coordinator._read_input_registers_optimized.side_effect = None
+    coordinator._read_input_registers_optimized.return_value = {"reg": 1}
+
+    data = await coordinator._async_update_data()
+
+    assert data["reg"] == 1  # nosec: explicit state check
+    assert coordinator._consecutive_failures == 0  # nosec: explicit state check
+    assert coordinator.statistics["last_successful_update"] is not None  # nosec
+
+
+@pytest.mark.asyncio
+async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
+    """Persistent failures force a disconnect and surface an error."""
+
+    coordinator = ThesslaGreenModbusCoordinator(
+        MagicMock(),
+        "host",
+        502,
+        1,
+        "name",
+        scan_interval=5,
+        retry=1,
+    )
+    coordinator._max_failures = 1
+    coordinator.client = MagicMock(connected=True)
+    coordinator._disconnect = AsyncMock()
+    coordinator._ensure_connection = AsyncMock()
+    coordinator._read_input_registers_optimized = AsyncMock(side_effect=TimeoutError("boom"))
+    coordinator._read_holding_registers_optimized = AsyncMock(return_value={})
+    coordinator._read_coil_registers_optimized = AsyncMock(return_value={})
+    coordinator._read_discrete_inputs_optimized = AsyncMock(return_value={})
+
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+
+    coordinator._disconnect.assert_awaited_once()
+    assert coordinator.client.connected  # nosec: explicit state check
 
 
 def cleanup_modules():

@@ -4,13 +4,15 @@ import asyncio
 import sys
 import types
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_register_definition,
+    get_registers_by_function,
+)
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
@@ -95,6 +97,10 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
         self.capabilities = SimpleNamespace(basic_control=False)
         self.client = None
         self.slave_id = args[3] if len(args) > 3 else kwargs.get("slave_id", 0)
+        self._register_maps = {"holding_registers": HOLDING_REGISTERS}
+
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        return self._register_maps.get(register_type, {})
 
     async def _ensure_connection(self):
         return None
@@ -107,8 +113,8 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
 
     async def async_write_register(self, *args, **kwargs):
         register, value = args[0], args[1]
-        address = HOLDING_REGISTERS[register]
-        definition = loader.get_register_definition(register)
+        address = self._register_maps["holding_registers"][register]
+        definition = get_register_definition(register)
         raw = definition.encode(value)
         await self.client.write_register(address, raw, slave=self.slave_id)
         return True
@@ -158,6 +164,22 @@ def test_number_creation_and_state(mock_coordinator):
     assert number.native_value == 21.5
 
 
+def test_number_handles_missing_or_invalid_values(mock_coordinator):
+    """Native value should be None when data is missing or non-numeric."""
+
+    entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+
+    mock_coordinator.data.pop("required_temperature", None)
+    assert number.native_value is None
+
+    mock_coordinator.data["required_temperature"] = None
+    assert number.native_value is None
+
+    mock_coordinator.data["required_temperature"] = "invalid"
+    assert number.native_value is None
+
+
 def test_number_set_value(mock_coordinator):
     """Test setting a new value on the number entity."""
     mock_coordinator.data["required_temperature"] = 20
@@ -166,7 +188,7 @@ def test_number_set_value(mock_coordinator):
 
     asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_write_register.assert_awaited_with(
-        "required_temperature", 22, refresh=False
+        "required_temperature", 22, refresh=False, offset=0
     )
     mock_coordinator.async_request_refresh.assert_awaited_once()
 
@@ -249,3 +271,54 @@ async def test_async_setup_skips_missing_numbers(mock_coordinator, mock_config_e
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
     add_entities.assert_not_called()
+
+
+def test_number_invalid_register_raises(mock_coordinator):
+    """Ensure unknown registers raise KeyError."""
+    with pytest.raises(KeyError):
+        ThesslaGreenNumber(mock_coordinator, "invalid_register", {})
+
+
+@pytest.mark.asyncio
+@patch.dict(ENTITY_MAPPINGS["number"], {"invalid_register": {}}, clear=False)
+async def test_async_setup_skips_unknown_register(mock_coordinator, mock_config_entry):
+    """Ensure setup skips registers missing from HOLDING_REGISTERS."""
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_coordinator.available_registers["holding_registers"] = {"invalid_register"}
+
+    add_entities = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+    add_entities.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_force_full_register_list_adds_missing_number(mock_coordinator, mock_config_entry):
+    """Number entities are created from register map when forcing full list."""
+
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    mock_coordinator.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "calculated": set(),
+    }
+    mock_coordinator.force_full_register_list = True
+
+    number_map = {"max_supply_air_flow_rate": {"translation_key": "max"}}
+
+    with (
+        patch.dict(ENTITY_MAPPINGS["number"], number_map, clear=True),
+        patch.dict(
+            mock_coordinator._register_maps["holding_registers"],
+            {"max_supply_air_flow_rate": 1},
+            clear=True,
+        ),
+    ):
+        add_entities = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+        created = {entity.register_name for entity in add_entities.call_args[0][0]}
+        assert created == {"max_supply_air_flow_rate"}  # nosec B101

@@ -5,13 +5,26 @@ import sys
 import types
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
 # ---------------------------------------------------------------------------
 
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-setattr(const, "PERCENTAGE", "%")
-setattr(const, "STATE_UNAVAILABLE", "unavailable")
+const.PERCENTAGE = "%"
+const.STATE_UNAVAILABLE = "unavailable"
+
+# Stub network utilities used by config_flow when select module is imported
+network_mod = types.ModuleType("homeassistant.util.network")
+
+
+def is_host_valid(host: str) -> bool:  # pragma: no cover - simple stub
+    return True
+
+
+network_mod.is_host_valid = is_host_valid
+sys.modules["homeassistant.util.network"] = network_mod
 
 
 class UnitOfTemperature:  # pragma: no cover - enum stub
@@ -114,8 +127,10 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from homeassistant.const import STATE_UNAVAILABLE  # noqa: E402
+import custom_components.thessla_green_modbus.select as select_module  # noqa: E402
 from custom_components.thessla_green_modbus.const import (  # noqa: E402
+    AIRFLOW_UNIT_PERCENTAGE,
+    CONF_AIRFLOW_UNIT,
     DOMAIN,
     SENSOR_UNAVAILABLE,
 )
@@ -124,8 +139,8 @@ from custom_components.thessla_green_modbus.select import (  # noqa: E402
 )
 from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
     SENSOR_DEFINITIONS,
-    ThesslaGreenErrorCodesSensor,
     ThesslaGreenActiveErrorsSensor,
+    ThesslaGreenErrorCodesSensor,
     ThesslaGreenSensor,
     async_setup_entry,
 )
@@ -213,10 +228,58 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
     asyncio.run(run_test())
 
 
+@pytest.mark.asyncio
+async def test_force_full_register_list_adds_missing_entities(mock_coordinator, mock_config_entry):
+    """Sensors and selects are created from register map when forcing full list."""
+
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    # Simulate no registers discovered
+    mock_coordinator.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "calculated": set(),
+    }
+    mock_coordinator.force_full_register_list = True
+
+    sensor_map = {
+        "supply_temperature": {
+            "register_type": "input_registers",
+            "translation_key": "supply_temperature",
+        }
+    }
+    select_map = {
+        "mode": {
+            "register_type": "holding_registers",
+            "translation_key": "mode",
+            "states": {"auto": 0, "manual": 1},
+        }
+    }
+
+    with patch.dict(SENSOR_DEFINITIONS, sensor_map, clear=True):
+        add_sensors = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_sensors)
+        sensors = [
+            e._register_name
+            for e in add_sensors.call_args[0][0]
+            if isinstance(e, ThesslaGreenSensor)
+        ]
+        assert sensors == ["supply_temperature"]  # nosec B101
+
+    with patch.dict(select_module.ENTITY_MAPPINGS["select"], select_map, clear=True):
+        add_selects = MagicMock()
+        await select_async_setup_entry(hass, mock_config_entry, add_selects)
+        selects = [e._register_name for e in add_selects.call_args[0][0]]
+        assert selects == ["mode"]  # nosec B101
+
+
 def test_sensor_registers_match_definition():
     """Cross-check register_type against registers module."""
 
-    from custom_components.thessla_green_modbus.registers import get_registers_by_function
+    from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 
     mapping = {
         "input_registers": {r.name for r in get_registers_by_function("04")},
@@ -267,12 +330,13 @@ def test_time_sensor_formats_value(mock_coordinator):
         "value_map": None,
     }
     mock_coordinator.data[register] = 8 * 60 + 5
-    sensor = ThesslaGreenSensor(mock_coordinator, register, sensor_def)
+    address = 0x2000  # example address for schedule register
+    sensor = ThesslaGreenSensor(mock_coordinator, register, address, sensor_def)
     assert sensor.native_value == "08:05"
 
 
 def test_sensor_reports_unavailable_when_no_data():
-    """Sensors return STATE_UNAVAILABLE and are marked unavailable when data missing."""
+    """Sensors return None and are marked unavailable when data missing."""
     coord = MagicMock()
     coord.host = "1.2.3.4"
     coord.port = 502
@@ -283,8 +347,27 @@ def test_sensor_reports_unavailable_when_no_data():
     coord.data = {"outside_temperature": SENSOR_UNAVAILABLE}
     coord.last_update_success = True
     sensor_def = SENSOR_DEFINITIONS["outside_temperature"]
-    sensor = ThesslaGreenSensor(coord, "outside_temperature", sensor_def)
-    assert sensor.native_value == STATE_UNAVAILABLE
+    address = 16
+    sensor = ThesslaGreenSensor(coord, "outside_temperature", address, sensor_def)
+    assert sensor.native_value is None
+    assert sensor.available is False
+
+
+def test_percentage_sensor_unavailable_without_nominal():
+    """Percentage sensors become unavailable when nominal flow is missing."""
+    coord = MagicMock()
+    coord.host = "1.2.3.4"
+    coord.port = 502
+    coord.slave_id = 10
+    coord.get_device_info.return_value = {}
+    coord.entry = MagicMock()
+    coord.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}
+    coord.data = {"supply_flow_rate": 150}
+    coord.last_update_success = True
+    sensor_def = SENSOR_DEFINITIONS["supply_flow_rate"]
+    address = 274
+    sensor = ThesslaGreenSensor(coord, "supply_flow_rate", address, sensor_def)
+    assert sensor.native_value is None
     assert sensor.available is False
 
 

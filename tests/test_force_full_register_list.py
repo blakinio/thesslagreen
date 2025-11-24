@@ -1,11 +1,11 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
-from custom_components.thessla_green_modbus.registers import get_all_registers
-from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS
 from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS
+from custom_components.thessla_green_modbus.registers.loader import get_all_registers
+from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
 
 async def _setup_coordinator():
@@ -24,13 +24,13 @@ async def _setup_coordinator():
         "discrete_inputs": [],
     }
     for reg in get_all_registers():
-        if reg.function == "04":
+        if reg.function == 4:
             scan_regs["input_registers"].append(reg.name)
-        elif reg.function == "03":
+        elif reg.function == 3:
             scan_regs["holding_registers"].append(reg.name)
-        elif reg.function == "01":
+        elif reg.function == 1:
             scan_regs["coil_registers"].append(reg.name)
-        elif reg.function == "02":
+        elif reg.function == 2:
             scan_regs["discrete_inputs"].append(reg.name)
 
     scanner = AsyncMock()
@@ -40,11 +40,12 @@ async def _setup_coordinator():
     }
     scanner.close = AsyncMock()
 
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
-        AsyncMock(return_value=scanner),
-    ), patch.object(
-        ThesslaGreenModbusCoordinator, "_test_connection", AsyncMock()
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner),
+        ),
+        patch.object(ThesslaGreenModbusCoordinator, "_test_connection", AsyncMock()),
     ):
         coordinator = ThesslaGreenModbusCoordinator(
             hass,

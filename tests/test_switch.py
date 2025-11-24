@@ -7,9 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-)
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -128,13 +126,9 @@ sys.modules["homeassistant.components.sensor"] = sensor_mod
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus import switch  # noqa: E402
-from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
-    ENTITY_MAPPINGS,
-)
-from custom_components.thessla_green_modbus.switch import (  # noqa: E402
-    ThesslaGreenSwitch,
-)
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS  # noqa: E402
+from custom_components.thessla_green_modbus.switch import ThesslaGreenSwitch  # noqa: E402
 
 # Ensure required test mapping is present when dynamic generation is unavailable
 ENTITY_MAPPINGS.setdefault("switch", {})
@@ -152,8 +146,9 @@ ENTITY_MAPPINGS["switch"].setdefault(
 def test_switch_creation_and_state(mock_coordinator):
     """Test creation and state changes of coil switch."""
     mock_coordinator.data["bypass"] = 1
+    address = 9
     switch_entity = ThesslaGreenSwitch(
-        mock_coordinator, "bypass", ENTITY_MAPPINGS["switch"]["bypass"]
+        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
     )
     assert switch_entity.is_on is True  # nosec B101
 
@@ -163,29 +158,46 @@ def test_switch_creation_and_state(mock_coordinator):
 
 def test_switch_turn_on_off(mock_coordinator):
     mock_coordinator.data["bypass"] = 0
+    address = 9
     switch_entity = ThesslaGreenSwitch(
-        mock_coordinator, "bypass", ENTITY_MAPPINGS["switch"]["bypass"]
+        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
     )
     asyncio.run(switch_entity.async_turn_on())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=False, offset=0)
     mock_coordinator.async_request_refresh.assert_awaited_once()
     mock_coordinator.async_write_register.reset_mock()
     mock_coordinator.async_request_refresh.reset_mock()
 
     mock_coordinator.data["bypass"] = 1
     asyncio.run(switch_entity.async_turn_off())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 0, refresh=False)
+    mock_coordinator.async_write_register.assert_awaited_with("bypass", 0, refresh=False, offset=0)
     mock_coordinator.async_request_refresh.assert_awaited_once()
 
 
 def test_switch_turn_on_modbus_failure(mock_coordinator):
     """Ensure Modbus errors are surfaced when turning on the switch."""
+    address = 9
     switch_entity = ThesslaGreenSwitch(
-        mock_coordinator, "bypass", ENTITY_MAPPINGS["switch"]["bypass"]
+        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
     )
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
         asyncio.run(switch_entity.async_turn_on())
+
+
+def test_switch_turn_on_write_failure(mock_coordinator):
+    """A failed write should raise and avoid refresh."""
+
+    address = 9
+    switch_entity = ThesslaGreenSwitch(
+        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
+    )
+    mock_coordinator.async_write_register = AsyncMock(return_value=False)
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(switch_entity.async_turn_on())
+
+    mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_switch_definitions_single_source():

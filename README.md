@@ -2,12 +2,12 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/thesslagreen/thessla-green-modbus-ha.svg)](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.7.0%2B-blue.svg)](https://home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.12.0%2B-blue.svg)](https://home-assistant.io/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
 
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
 
-Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokołem Modbus TCP/RTU. Obsługuje **wszystkie 200+ rejestrów** z dokumentacji MODBUS_USER_AirPack_Home_08.2021.01 bez wyjątku.
+Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokołem Modbus TCP/RTU. Obsługuje **wszystkie 200+ rejestrów** z dokumentacji [MODBUS_USER_AirPack_Home_08.2021.01](https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf) bez wyjątku.
 Integracja działa jako **hub** w Home Assistant.
 
 ### 🚀 Kluczowe funkcje v2.1+
@@ -31,11 +31,20 @@ Integracja działa jako **hub** w Home Assistant.
 ### Urządzenia
 - ✅ **ThesslaGreen AirPack Home Series 4** - wszystkie modele
 - ✅ **AirPack Home 300v-850h** (Energy+, Energy, Enthalpy)
-- ✅ **Protokół Modbus TCP/RTU** z auto-detekcją
+- ✅ **Protokół Modbus TCP** – połączenie natywne, w pełni wspierane
+- 🧪 **Modbus RTU (RS485) / USB** – w fazie przygotowań (planowane wsparcie po stabilnych testach)
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
 
+### Tryby i funkcje Modbus
+- **Harmonogram odczytów:** domyślnie co 30 s, konfigurowalne 10–300 s; nie zaleca się schodzenia poniżej 15 s ze względu na obciążenie urządzenia.
+- **Zakres rejestrów:** pełne wsparcie rejestrów Holding/Input/Coils/Discrete Input zgodnie z dokumentacją producenta.
+- **Kolejkowanie zapytań:** odczyty grupowane w bloki (domyślnie 16) dla minimalizacji ruchu.
+- **Ograniczenia:** jednoczesne połączenia Modbus TCP do jednego sterownika mogą powodować błędy czasowe; zalecane jedno aktywne połączenie (Home Assistant).
+- **Wymagania TCP:** otwarty port 502, stały adres IP, ID urządzenia 10 (auto-fallback na 1 i 247), brak filtrów/firewalla między HA a rekuperatorem.
+- **Plany RTU/USB:** konfiguracja przez `/dev/ttyUSBx` z parametrami 19200 8N1; do czasu wydania stabilnego wsparcia używaj trybu TCP.
+
 ### Home Assistant
-- ✅ **Wymagany Home Assistant 2025.7.0+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
+- ✅ **Wymagany Home Assistant 2024.12.0+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
 - ✅ **pymodbus 3.5.0+** - najnowsza biblioteka Modbus
 - ✅ **Python 3.12+** - nowoczesne standardy
 - ✅ **Standardowy AsyncModbusTcpClient** – brak potrzeby własnego klienta Modbus
@@ -64,25 +73,33 @@ git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
 cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_components/
 ```
 
-## ⚙️ Konfiguracja
+## ⚙️ Konfiguracja krok po kroku
 
-### 1. Włącz Modbus TCP w rekuperatorze
-- Menu → Komunikacja → Modbus TCP
-- Włącz: **TAK**
-- Port: **502** (domyślny)
-- ID urządzenia: **10** (domyślny)
+### 0. Przygotowanie
+1. Sprawdź, czy Home Assistant widzi urządzenie w sieci (ping IP rekuperatora) i ma dostęp do portu 502.
+2. Ustaw statyczny adres IP dla rekuperatora (DHCP reservation lub ręcznie), aby uniknąć utraty połączenia.
+3. Jeśli planujesz RTU/USB, zanotuj port (`/dev/ttyUSB0`), prędkość (np. 19200) i parametry 8N1.
+
+### 1. Włącz Modbus w rekuperatorze
+- **Modbus TCP**: Menu → Komunikacja → Modbus TCP → Włącz **TAK**, Port **502**, ID urządzenia **10**
+- **Modbus RTU** (planowane wsparcie): Menu → Komunikacja → Modbus RTU → Wybierz port RS485, ustaw prędkość (np. 19200), parzystość i bity stopu zgodnie z instalacją
 
 ### 2. Dodaj integrację w Home Assistant
 1. **Ustawienia** → **Integracje** → **+ DODAJ INTEGRACJĘ**
 2. Wyszukaj **"ThesslaGreen Modbus"**
-3. Wprowadź dane:
-   - **IP Address**: IP rekuperatora (np. 192.168.1.100)
-   - **Port**: 502
-   - **ID urządzenia**: 10
-4. Integracja automatycznie przeskanuje urządzenie
-5. Kliknij **DODAJ**
+3. Wprowadź dane połączenia:
+   - Wybierz **Typ połączenia**: `Modbus TCP` lub `Modbus RTU` (gdy będzie dostępne)
+   - **Modbus TCP**: adres IP (np. 192.168.1.100), port 502, ID urządzenia 10 (integracja spróbuje także 1 i 247)
+   - **Modbus RTU/USB**: ścieżka portu (np. `/dev/ttyUSB0`), prędkość (np. 19200), parzystość i bity stopu
+4. Zatwierdź formularz – integracja uruchomi autoskan rejestrów
+5. Po zakończeniu skanowania kliknij **DODAJ** i przejdź do encji
 
-### 3. Opcje zaawansowane
+### 3. Zweryfikuj encje i status
+1. W **Ustawienia → Urządzenia i usługi** wybierz integrację **ThesslaGreen Modbus**.
+2. Otwórz urządzenie i sprawdź encje: Climate, Fan, czujniki i encje diagnostyczne.
+3. W atrybutach encji (Karty → **Stan**) znajdziesz m.in. `last_updated` oraz `operating_mode` potwierdzające ostatni udany odczyt.
+
+### 4. Opcje zaawansowane
 - **Interwał skanowania**: 10-300s (domyślnie 30s)
 - **Timeout**: 5-60s (domyślnie 10s)
 - **Retry**: 1-5 prób (domyślnie 3)
@@ -134,10 +151,10 @@ pełne skanowanie wszystkich rejestrów (`full_register_scan=True`) i zwraca
 listę nieznanych adresów. Operacja może trwać kilka minut i znacząco obciąża
 urządzenie – używaj jej tylko do diagnostyki.
 ### Użycie `group_reads`
-Funkcja `group_reads` dzieli listę adresów na ciągłe bloki ograniczone parametrem `max_block_size` (domyślnie 64). Własne skrypty powinny z niej korzystać, aby minimalizować liczbę zapytań i nie przekraczać zalecanego rozmiaru bloku. W razie problemów z komunikacją można zmniejszyć `max_block_size`, np. do 16, co zapewnia stabilniejszy odczyt.
+Funkcja `group_reads` dzieli listę adresów na ciągłe bloki ograniczone parametrem `max_block_size` (domyślnie 16). Własne skrypty powinny z niej korzystać, aby minimalizować liczbę zapytań i nie przekraczać zalecanego rozmiaru bloku.
 
 ```python
-from custom_components.thessla_green_modbus.modbus_helpers import group_reads
+from .modbus_helpers import group_reads
 
 for start, size in group_reads(range(100), max_block_size=16):
     print(start, size)
@@ -162,16 +179,40 @@ metadane. Aby dodać nowy rejestr, dopisz obiekt do listy `registers` zachowują
 sortowanie według `function` i `address_dec`, po czym uruchom
 `pytest tests/test_register_loader.py`, aby zweryfikować poprawność pliku.
 
-### Włączanie logów debug
+## 🔧 Diagnostyka i logowanie
+
+### Włączanie rozszerzonych logów
 W razie problemów możesz włączyć szczegółowe logi tej integracji. Dodaj poniższą konfigurację do `configuration.yaml` i zrestartuj Home Assistant:
 
 ```yaml
 logger:
   logs:
     custom_components.thessla_green_modbus: debug
+    homeassistant.components.modbus: debug  # opcjonalnie surowa komunikacja Modbus
 ```
 
-Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów oraz ostrzeżenia o niedostępnych czujnikach lub wartościach poza zakresem.
+Logi pojawią się w **Ustawienia → System → Dziennik** oraz w pliku `home-assistant.log`. Poziom `debug` pokaże m.in. surowe i przetworzone wartości rejestrów, ostrzeżenia o niedostępnych czujnikach lub wartościach poza zakresem oraz komunikaty błędów połączenia.
+
+### Podgląd ostatniego odczytu i błędów
+- **Atrybuty encji:** w **Narzędzia deweloperskie → Stany** sprawdź dowolną encję integracji; atrybut `last_updated` wskazuje czas ostatniego udanego odczytu.
+- **Diagnostyka urządzenia:** w **Ustawienia → Urządzenia i usługi → ThesslaGreen Modbus → ⋮ → Pobierz diagnostykę** znajdziesz `last_successful_update`, licznik `successful_reads`/`failed_reads`, ostatni błąd (`last_error`) oraz statystyki czasu odpowiedzi.
+- **Serwis `get_diagnostic_info`:** wywołaj `thessla_green_modbus.get_diagnostic_info` z **Narzędzi deweloperskich → Usługi**, aby pobrać pełne dane diagnostyczne (identyfikacja urządzenia, dostępne rejestry, historia błędów).
+
+## ❔ FAQ
+
+**Utrata połączenia (błędy timeout/connection)**
+- Zweryfikuj, czy port 502 jest dostępny (firewall/router) i czy urządzenie ma niezmienny adres IP.
+- Zwiększ interwał skanowania do 45–60 s w opcjach integracji, aby zmniejszyć obciążenie (nie schodź poniżej 15 s).
+- Upewnij się, że żadne inne narzędzia nie utrzymują równoległego połączenia Modbus.
+
+**Ponowna autoryzacja / zmiana adresu IP**
+- W **Ustawienia → Urządzenia i usługi → ThesslaGreen Modbus → Konfiguruj** podmień IP/port/ID (nie ma osobnego loginu).
+- Jeśli zmieniłeś transport TCP ↔ RTU, usuń integrację i dodaj ją ponownie po zmianie trybu w panelu rekuperatora.
+
+**Zmiana interwału odświeżania**
+- Wejdź w **Ustawienia → Urządzenia i usługi → ThesslaGreen Modbus → Konfiguruj → Opcje zaawansowane**.
+- Ustaw **Interwał skanowania** (10–300 s); rekomendowane 30 s, minimum 15 s dla stabilności.
+- Po zapisaniu nowych wartości poczekaj na zakończenie kolejnego cyklu skanowania, aby zobaczyć efekt.
 
 ## 📊 Dostępne encje
 
@@ -402,7 +443,7 @@ Są to wpisy informacyjne i zazwyczaj oznaczają, że urządzenie po prostu nie 
 tych rejestrów. Można je bezpiecznie zignorować.
 =======
 ### Komunikaty „Skipping unsupported … registers”
-Podczas skanowania integracja próbuje odczytać grupy rejestrów.  
+Podczas skanowania integracja próbuje odczytać grupy rejestrów.
 Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
 
 ```
@@ -416,7 +457,7 @@ Kody wyjątków Modbus informują, dlaczego odczyt się nie powiódł:
 - **4 – Slave Device Failure** – urządzenie nie potrafiło obsłużyć żądania
 
 Jednorazowe ostrzeżenia pojawiające się przy początkowym skanowaniu lub
-dotyczące opcjonalnych funkcji można zwykle zignorować.  
+dotyczące opcjonalnych funkcji można zwykle zignorować.
 Jeśli jednak powtarzają się dla kluczowych rejestrów, sprawdź konfigurację,
 podłączenie i wersję firmware.
 
@@ -450,6 +491,10 @@ podłączenie i wersję firmware.
 
 Po aktualizacji integracji możesz usunąć nieużywane encje przy pomocy
 skryptu `tools/cleanup_old_entities.py`.
+
+> **Nowość:** Skrypty i moduły narzędziowe można importować bez
+> zainstalowanego pakietu Home Assistant – importy specyficzne dla HA są
+> ładowane tylko podczas działania integracji.
 
 ```bash
 python3 tools/cleanup_old_entities.py
@@ -497,18 +542,6 @@ python3 tools/cleanup_old_entities.py \
 - 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
-### Generowanie `registers.py` (opcjonalne)
-Integracja korzysta bezpośrednio z pliku
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
-który stanowi jedyne źródło prawdy o rejestrach. Skrypt
-`tools/generate_registers.py` może wygenerować pomocniczy moduł
-`registers.py` dla zewnętrznych narzędzi, lecz plik ten nie jest
-przechowywany w repozytorium.
-
-```bash
-python tools/generate_registers.py  # jeśli potrzebujesz statycznej mapy
-```
-
 ### Validate translations
 Ensure translation files are valid JSON:
 
@@ -554,26 +587,15 @@ Opcjonalnie można dodać `enum`, `multiplier`, `resolution`, `min`, `max`.
 pytest tests/test_register_loader.py
 ```
 
-4. (Opcjonalnie) wygeneruj moduł `registers.py` dla dodatkowych narzędzi:
+4. Dołącz zmieniony plik JSON do commitu.
 
-```bash
-python tools/generate_registers.py
-```
+## 🧰 Narzędzia jakości
 
-5. Dołącz zmieniony plik JSON do commitu.
-
-### Migracja z CSV na JSON
-
-Pliki CSV zostały oznaczone jako przestarzałe i ich obsługa będzie
-usunięta w przyszłych wersjach. Użycie pliku CSV zapisze ostrzeżenie w
-logach. Aby ręcznie przekonwertować dane:
-
-1. Otwórz dotychczasowy plik CSV z definicjami rejestrów.
-2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-   z polami `function`, `address_dec`, `address_hex`, `name`, `description`, `description_en` i `access`.
-3. Zachowaj sortowanie według `function` i `address_dec` oraz format liczbowy (`0x` dla wartości hex).
-4. Usuń lub zignoruj plik CSV i uruchom walidację jak przy dodawaniu nowych
-   rejestrów.
+- Pre-commit obsługuje formatowanie (`ruff format`, `black`, `isort`) i linting (`ruff check`,
+  `mypy`). Zainstaluj hooki lokalnie komendą `pre-commit install`, a następnie uruchom
+  pełny zestaw na istniejącym kodzie przez `pre-commit run --all-files`.
+- Pipeline GitHub Actions (`.github/workflows/ci.yaml`) sprawdza ruff, black, isort, mypy,
+  pytest oraz walidacje Home Assistant (`hassfest`) i HACS.
 
 ## 📄 Licencja
 

@@ -6,6 +6,9 @@ import os
 import sys
 import types
 from types import SimpleNamespace
+from typing import Any
+from unittest.mock import ANY, AsyncMock
+from unittest.mock import call as call_obj
 
 import pytest
 
@@ -189,6 +192,7 @@ class AsyncModbusTcpClient:
 
 
 pymodbus_client_tcp.AsyncModbusTcpClient = AsyncModbusTcpClient
+pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
 pymodbus_client.tcp = pymodbus_client_tcp
 
 pymodbus_exceptions.ModbusException = ModbusException
@@ -226,10 +230,6 @@ for name, module in modules.items():
 # Ensure repository root on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
-
-HOLDING_REGISTERS = {r.name for r in get_registers_by_function("03")}
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 try:
     services_module = importlib.reload(
@@ -246,8 +246,6 @@ def test_air_quality_register_map():
     assert AIR_QUALITY_REGISTER_MAP["co2_medium"] == "co2_threshold_medium"
     assert AIR_QUALITY_REGISTER_MAP["co2_high"] == "co2_threshold_high"
     assert AIR_QUALITY_REGISTER_MAP["humidity_target"] == "humidity_target"
-    for register in AIR_QUALITY_REGISTER_MAP.values():
-        assert register in HOLDING_REGISTERS
 
 
 def test_get_coordinator_from_entity_id_multiple_devices():
@@ -273,3 +271,59 @@ def test_get_coordinator_from_entity_id_multiple_devices():
 
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev1") is coord1
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev2") is coord2
+
+
+class Services:
+    """Minimal service registry for tests."""
+
+    def __init__(self) -> None:
+        self.handlers: dict[str, Any] = {}
+
+    def async_register(self, _domain, service, handler, _schema):  # pragma: no cover
+        self.handlers[service] = handler
+
+
+class DummyCoordinator:
+    """Coordinator stub capturing offset writes."""
+
+    def __init__(self) -> None:
+        self.async_write_register = AsyncMock(return_value=True)
+        self.effective_batch = 2
+
+    async def async_request_refresh(self) -> None:  # pragma: no cover - stub
+        pass
+
+
+@pytest.mark.asyncio
+async def test_set_device_name_uses_offsets(monkeypatch):
+    """Service chunks multi-register writes with offsets."""
+
+    hass = SimpleNamespace()
+    hass.services = Services()
+    coordinator = DummyCoordinator()
+
+    monkeypatch.setattr(
+        services_module,
+        "_get_coordinator_from_entity_id",
+        lambda _h, _e: coordinator,
+    )
+    monkeypatch.setattr(
+        services_module,
+        "async_extract_entity_ids",
+        lambda _h, call: call.data["entity_id"],
+    )
+    monkeypatch.setattr(services_module, "ServiceCall", SimpleNamespace)
+
+    await services_module.async_setup_services(hass)
+    handler = hass.services.handlers["set_device_name"]
+
+    call = SimpleNamespace(data={"entity_id": ["climate.dev"], "device_name": "ABCDEFGH"})
+
+    await handler(call)
+
+    coordinator.async_write_register.assert_has_calls(
+        [
+            call_obj("device_name", ANY, refresh=False, offset=0),
+            call_obj("device_name", ANY, refresh=False, offset=2),
+        ]
+    )

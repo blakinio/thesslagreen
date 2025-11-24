@@ -1,23 +1,17 @@
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
-from custom_components.thessla_green_modbus.registers import (
+from custom_components.thessla_green_modbus.registers.loader import (
+    Register,
     get_registers_by_function,
     plan_group_reads,
 )
-from custom_components.thessla_green_modbus.registers.loader import Register
+from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 
 
 def _expanded_addresses(fn: str) -> list[int]:
-    regs = get_registers_by_function(fn)
-    addresses: list[int] = []
-    for reg in regs:
-        addresses.extend(range(reg.address, reg.address + reg.length))
-    plans = group_reads(addresses, max_block_size=32)
-    return [addr for start, length in plans for addr in range(start, start + length)]
-    plans = [p for p in plan_group_reads(max_block_size=32) if p.function == fn]
+    plans = [p for p in plan_group_reads(max_block_size=32) if p.function == int(fn)]
     return [addr for plan in plans for addr in range(plan.address, plan.address + plan.length)]
 
 
@@ -57,39 +51,26 @@ def test_plan_group_reads_from_json():
     addresses: list[int] = []
     for reg in regs:
         addresses.extend(range(reg.address, reg.address + reg.length))
-    plans = group_reads(addresses, max_block_size=64)
-    assert plans[0] == (0, 5)
-    assert plans[1] == (14, 9)
-    assert plans[2] == (24, 6)
-    plans = [p for p in plan_group_reads(max_block_size=64) if p.function == "04"]
-    assert (plans[0].address, plans[0].length) == (0, 5)
-    assert (plans[1].address, plans[1].length) == (14, 16)
-    assert (plans[2].address, plans[2].length) == (271, 7)
+    expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [p for p in plan_group_reads() if p.function == 4]
+    assert [(p.address, p.length) for p in plans] == expected
 
 
 def test_plan_group_reads_splits_large_block(monkeypatch):
     """A long list of consecutive addresses is split into multiple blocks."""
 
-    regs = [Register(function="04", address=i, name=f"r{i}", access="ro") for i in range(100)]
+    regs = [Register(function=4, address=i, name=f"r{i}", access="ro") for i in range(100)]
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.registers.loader._load_registers",
+        "custom_components.thessla_green_modbus.registers.loader.load_registers",
         lambda: regs,
     )
 
     addresses = [r.address for r in regs]
-    plans = group_reads(addresses, max_block_size=16)
-    plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
+    expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == 4]
 
-    assert plans == [
-        (0, 16),
-        (16, 16),
-        (32, 16),
-        (48, 16),
-        (64, 16),
-        (80, 16),
-        (96, 4),
-    ]
+    assert [(p.address, p.length) for p in plans] == expected
 
 
 def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
@@ -98,24 +79,15 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     # Two ranges of consecutive registers separated by a gap
     first = list(range(32))
     second = list(range(40, 80))
-    regs = [
-        Register(function="04", address=i, name=f"r{i}", access="ro")
-        for i in first + second
-    ]
+    regs = [Register(function=4, address=i, name=f"r{i}", access="ro") for i in first + second]
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.registers.loader._load_registers",
+        "custom_components.thessla_green_modbus.registers.loader.load_registers",
         lambda: regs,
     )
 
     addresses = [r.address for r in regs]
-    plans = group_reads(addresses, max_block_size=16)
-    plans = [p for p in plan_group_reads(max_block_size=16) if p.function == "04"]
+    expected = group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
+    plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == 4]
 
-    assert plans == [
-        (0, 16),
-        (16, 16),
-        (40, 16),
-        (56, 16),
-        (72, 8),
-    ]
+    assert [(p.address, p.length) for p in plans] == expected

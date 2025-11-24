@@ -6,26 +6,47 @@ from types import SimpleNamespace
 import pytest
 
 import custom_components.thessla_green_modbus.services as services
-from custom_components.thessla_green_modbus import loader
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_register_definition,
+    get_registers_by_function,
+)
 
+# Build a register map similar to what the coordinator exposes.  The schedule
+# related registers used by the services are added manually as they are not
+# present in the extracted list.
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-
+HOLDING_REGISTERS.update(
+    {
+        "schedule_monday_period1_start": 0,
+        "schedule_monday_period1_end": 1,
+        "schedule_monday_period1_flow": 2,
+        "schedule_monday_period1_temp": 3,
+    }
+)
 
 
 class DummyCoordinator:
     """Minimal coordinator stub capturing written values."""
 
-    def __init__(self) -> None:
+    def __init__(self, max_registers_per_request: int = MAX_BATCH_REGISTERS) -> None:
         self.slave_id = 1
-        self.writes = []
+        self.writes: list[tuple[int, object, int]] = []
+        self.encoded: list[tuple[int, object, int]] = []
         self.available_registers = {"holding_registers": set()}
+        self.max_registers_per_request = max_registers_per_request
+        self.effective_batch = min(max_registers_per_request, MAX_BATCH_REGISTERS)
 
-    async def async_write_register(self, register_name, value, refresh=True) -> None:
-        definition = loader.get_register_definition(register_name)
-        encoded = definition.encode(value)
-        address = HOLDING_REGISTERS[register_name]
-        self.writes.append((address, encoded, self.slave_id))
+    async def async_write_register(self, register_name, value, refresh=True, *, offset=0) -> bool:
+        address = HOLDING_REGISTERS.get(register_name, 0) + offset
+        self.writes.append((address, value, self.slave_id))
+        try:
+            definition = get_register_definition(register_name)
+            encoded = definition.encode(value)
+            self.encoded.append((address, encoded, self.slave_id))
+        except Exception:  # pragma: no cover - defensive
+            pass
+        return True
 
     async def async_request_refresh(self) -> None:  # pragma: no cover - no behaviour
         pass
@@ -49,10 +70,11 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     hass.services = Services()
     coordinator = DummyCoordinator()
 
-    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda h, e: coordinator)
+    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: coordinator)
     monkeypatch.setattr(
-        services, "async_extract_entity_ids", lambda h, call: call.data["entity_id"]
+        services, "async_extract_entity_ids", lambda _h, call: call.data["entity_id"]
     )
+    monkeypatch.setattr(services, "ServiceCall", SimpleNamespace)
 
     await services.async_setup_services(hass)
     handler = hass.services.handlers["set_airflow_schedule"]
@@ -73,36 +95,89 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
 
     writes = coordinator.writes
 
-    expected_start = loader.get_register_definition(
-        "schedule_monday_period1_start"
-    ).encode("06:30")
-    expected_end = loader.get_register_definition(
-        "schedule_monday_period1_end"
-    ).encode("08:00")
-    expected_flow = loader.get_register_definition(
-        "schedule_monday_period1_flow"
-    ).encode(55)
-    expected_temp = loader.get_register_definition(
-        "schedule_monday_period1_temp"
-    ).encode(21.5)
-
     assert writes[0] == (
         HOLDING_REGISTERS["schedule_monday_period1_start"],
-        expected_start,
+        "06:30",
         1,
     )  # nosec: B101
     assert writes[1] == (
         HOLDING_REGISTERS["schedule_monday_period1_end"],
-        expected_end,
+        "08:00",
         1,
     )  # nosec: B101
     assert writes[2] == (
         HOLDING_REGISTERS["schedule_monday_period1_flow"],
-        expected_flow,
+        55,
         1,
     )  # nosec: B101
     assert writes[3] == (
         HOLDING_REGISTERS["schedule_monday_period1_temp"],
-        expected_temp,
+        21.5,
         1,
     )  # nosec: B101
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("batch", [1, 8, MAX_BATCH_REGISTERS, 32])
+async def test_set_device_name_passes_full_value(monkeypatch, batch):
+    """set_device_name delegates encoding and chunking to coordinator."""
+    hass = SimpleNamespace()
+    hass.services = Services()
+    coordinator = DummyCoordinator(batch)
+
+    monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: coordinator)
+    monkeypatch.setattr(
+        services, "async_extract_entity_ids", lambda _h, call: call.data["entity_id"]
+    )
+    monkeypatch.setattr(services, "ServiceCall", SimpleNamespace)
+
+    await services.async_setup_services(hass)
+    handler = hass.services.handlers["set_device_name"]
+
+    call = SimpleNamespace(
+        data={"entity_id": ["climate.device"], "device_name": "ABCDEFGHIJKLMNOP"}
+    )
+
+    await handler(call)
+
+    assert len(coordinator.writes) == 1
+    assert coordinator.writes[0][1] == "ABCDEFGHIJKLMNOP"
+
+
+@pytest.mark.asyncio
+async def test_write_register_scaling_and_endianness():
+    """Values passed to the coordinator are encoded correctly."""
+
+    coordinator = DummyCoordinator()
+
+    await coordinator.async_write_register("required_temperature", 22.5)
+    await coordinator.async_write_register("lock_pass", 0x01020304)
+
+    assert coordinator.encoded[0] == (
+        HOLDING_REGISTERS["required_temperature"],
+        45,
+        1,
+    )  # nosec: B101
+    assert coordinator.encoded[1] == (
+        HOLDING_REGISTERS["lock_pass"],
+        [0x0304, 0x0102],
+        1,
+    )  # nosec: B101
+
+
+@pytest.mark.asyncio
+async def test_write_register_fractional_resolution():
+    """Non-integer resolutions are scaled exactly."""
+
+    coordinator = DummyCoordinator()
+
+    await coordinator.async_write_register("dac_supply", 2.44)
+
+    assert coordinator.encoded[0] == (
+        HOLDING_REGISTERS["dac_supply"],
+        1000,
+        1,
+    )  # nosec: B101
+
+    reg = get_register_definition("dac_supply")
+    assert reg.decode(1000) == pytest.approx(2.44)

@@ -4,7 +4,7 @@ import sys
 import types
 from datetime import timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -104,14 +104,18 @@ from custom_components.thessla_green_modbus.climate import (  # noqa: E402
     HVAC_MODE_MAP,
     HVAC_MODE_REVERSE_MAP,
     ThesslaGreenClimate,
+    async_setup_entry,
 )
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus import loader  # noqa: E402
-from custom_components.thessla_green_modbus.registers import get_registers_by_function  # noqa: E402
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+    get_register_definition,
+    get_registers_by_function,
+)
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
+from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
 
 
 class DummyClient:
@@ -156,7 +160,7 @@ async def test_set_temperature_scaling():
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
 
     addr_required = HOLDING_REGISTERS["required_temperature"]
-    expected = loader.get_register_definition("required_temperature").encode(21.5)
+    expected = get_register_definition("required_temperature").encode(21.5)
 
     assert coordinator.client.writes == [(addr_required, expected, coordinator.slave_id)]
 
@@ -185,3 +189,26 @@ def test_hvac_mode_mappings():
     assert HVAC_MODE_REVERSE_MAP[HVACMode.AUTO] == 0
     assert HVAC_MODE_REVERSE_MAP[HVACMode.FAN_ONLY] == 1
     assert HVAC_MODE_REVERSE_MAP[HVACMode.OFF] == 0
+
+
+@pytest.mark.asyncio
+async def test_force_full_register_list_creates_climate(mock_coordinator, mock_config_entry):
+    """Climate entity created when forcing full register list."""
+
+    hass = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    mock_coordinator.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "calculated": set(),
+    }
+    mock_coordinator.force_full_register_list = True
+    mock_coordinator.capabilities.basic_control = False
+
+    add_entities = MagicMock()
+    await async_setup_entry(hass, mock_config_entry, add_entities)
+    entities = add_entities.call_args[0][0]
+    assert any(isinstance(e, ThesslaGreenClimate) for e in entities)  # nosec B101

@@ -3,7 +3,7 @@
 import sys
 import types
 from typing import Any, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -46,6 +46,16 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
+network_mod = cast(Any, types.ModuleType("homeassistant.util.network"))
+
+
+def is_host_valid(host: str) -> bool:  # pragma: no cover - simple stub
+    return True
+
+
+network_mod.is_host_valid = is_host_valid
+sys.modules["homeassistant.util.network"] = network_mod
+
 # ---------------------------------------------------------------------------
 # Actual tests
 # ---------------------------------------------------------------------------
@@ -56,7 +66,9 @@ from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
     async_setup_entry,
 )
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+    get_registers_by_function,
+)
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
@@ -65,9 +77,10 @@ def test_binary_sensor_creation_and_state(mock_coordinator: MagicMock) -> None:
     """Test creation and state changes of binary sensor."""
     # Prepare coordinator data
     mock_coordinator.data["bypass"] = 0
-
+    reg_type = BINARY_SENSOR_DEFINITIONS["bypass"]["register_type"]
+    address = mock_coordinator._register_maps[reg_type]["bypass"]
     sensor = ThesslaGreenBinarySensor(
-        mock_coordinator, "bypass", BINARY_SENSOR_DEFINITIONS["bypass"]
+        mock_coordinator, "bypass", address, BINARY_SENSOR_DEFINITIONS["bypass"]
     )
     assert sensor.is_on is False  # nosec B101
 
@@ -81,9 +94,12 @@ def test_binary_sensor_icons(mock_coordinator: MagicMock) -> None:
 
     # Heating cable uses a heating icon when on
     mock_coordinator.data["heating_cable"] = 1
+    reg_type = BINARY_SENSOR_DEFINITIONS["heating_cable"]["register_type"]
+    address = mock_coordinator._register_maps[reg_type]["heating_cable"]
     heating = ThesslaGreenBinarySensor(
         mock_coordinator,
         "heating_cable",
+        address,
         BINARY_SENSOR_DEFINITIONS["heating_cable"],
     )
     assert heating.icon == "mdi:heating-coil"  # nosec B101
@@ -94,8 +110,10 @@ def test_binary_sensor_icons(mock_coordinator: MagicMock) -> None:
 
     # Bypass uses pipe leak icon when active
     mock_coordinator.data["bypass"] = 1
+    reg_type = BINARY_SENSOR_DEFINITIONS["bypass"]["register_type"]
+    address = mock_coordinator._register_maps[reg_type]["bypass"]
     bypass_sensor = ThesslaGreenBinarySensor(
-        mock_coordinator, "bypass", BINARY_SENSOR_DEFINITIONS["bypass"]
+        mock_coordinator, "bypass", address, BINARY_SENSOR_DEFINITIONS["bypass"]
     )
     assert bypass_sensor.icon == "mdi:pipe-leak"  # nosec B101
 
@@ -109,7 +127,9 @@ def test_binary_sensor_icon_fallback(mock_coordinator: MagicMock) -> None:
     mock_coordinator.data["bypass"] = 1
     sensor_def = BINARY_SENSOR_DEFINITIONS["bypass"].copy()
     sensor_def.pop("icon", None)
-    sensor_without_icon = ThesslaGreenBinarySensor(mock_coordinator, "bypass", sensor_def)
+    reg_type = BINARY_SENSOR_DEFINITIONS["bypass"]["register_type"]
+    address = mock_coordinator._register_maps[reg_type]["bypass"]
+    sensor_without_icon = ThesslaGreenBinarySensor(mock_coordinator, "bypass", address, sensor_def)
     assert sensor_without_icon.icon == "mdi:fan-off"  # nosec B101
 
 
@@ -124,11 +144,7 @@ def test_dynamic_problem_registers_present() -> None:
 
 def test_problem_registers_range_mapped() -> None:
     """Registers 0x2000-0x20FB should map to binary sensors."""
-    expected = {
-        name
-        for name, addr in HOLDING_REGISTERS.items()
-        if 0x2000 <= addr <= 0x20FB
-    }
+    expected = {name for name, addr in HOLDING_REGISTERS.items() if 0x2000 <= addr <= 0x20FB}
     for key in expected:
         assert key in BINARY_SENSOR_DEFINITIONS  # nosec B101
 
@@ -177,3 +193,35 @@ async def test_dynamic_register_entity_creation(
     await async_setup_entry(hass, mock_config_entry, add_entities)
     created = {entity._register_name for entity in add_entities.call_args[0][0]}
     assert {"alarm", "e_99"} <= created  # nosec B101
+
+
+@pytest.mark.asyncio
+async def test_force_full_register_list_adds_missing_binary_sensor(
+    mock_coordinator: MagicMock, mock_config_entry: MagicMock
+) -> None:
+    """Binary sensors are created from register map when forcing full list."""
+
+    hass: MagicMock = MagicMock()
+    hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+
+    mock_coordinator.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+        "calculated": set(),
+    }
+    mock_coordinator.force_full_register_list = True
+
+    sensor_map = {
+        "contamination_sensor": {
+            "register_type": "discrete_inputs",
+            "translation_key": "contamination_sensor",
+        }
+    }
+
+    with patch.dict(BINARY_SENSOR_DEFINITIONS, sensor_map, clear=True):
+        add_entities: MagicMock = MagicMock()
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+        created = {entity._register_name for entity in add_entities.call_args[0][0]}
+        assert created == {"contamination_sensor"}  # nosec B101

@@ -1,0 +1,30 @@
+
+# Byte-compiled / optimized files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Unit test / coverage reports
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# Vendor documentation
+/MODBUS_USER_AirPack_Home_*.pdf

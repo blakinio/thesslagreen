@@ -3,37 +3,73 @@
 from __future__ import annotations
 
 import asyncio
+import collections.abc
 import inspect
 import logging
 from dataclasses import asdict, dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Self
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Self, cast
+
+try:  # pragma: no cover - optional during isolated tests
+    from .registers.loader import get_all_registers, get_registers_path, registers_sha256
+except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+
+    def get_all_registers(*_args, **_kwargs):
+        return []
+
+    def get_registers_path(*_args, **_kwargs) -> Path:
+        return Path(".")
+
+    def registers_sha256(*_args, **_kwargs) -> str:
+        return ""
+
 
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
+    CONNECTION_TYPE_RTU,
+    CONNECTION_TYPE_TCP,
+    DEFAULT_BAUD_RATE,
+    DEFAULT_CONNECTION_TYPE,
+    DEFAULT_PARITY,
+    DEFAULT_SERIAL_PORT,
     DEFAULT_SLAVE_ID,
+    DEFAULT_STOP_BITS,
     KNOWN_MISSING_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
+    SERIAL_PARITY_MAP,
+    SERIAL_STOP_BITS_MAP,
     UNKNOWN_MODEL,
 )
-from .modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-    ModbusIOException,
-)
-from .modbus_helpers import _call_modbus, group_reads as _group_reads
-from .registers import get_all_registers
-from .utils import _decode_bcd_time, BCD_TIME_PREFIXES
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from .modbus_helpers import _call_modbus
+from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
-    REGISTER_ALLOWED_VALUES,
-    _format_register_value,
     MAX_BATCH_REGISTERS,
-    UART_OPTIONAL_REGS,
+    REGISTER_ALLOWED_VALUES,
     SAFE_REGISTERS,
+    UART_OPTIONAL_REGS,
+    _format_register_value,
 )
+from .utils import BCD_TIME_PREFIXES, _decode_bcd_time
 
-if TYPE_CHECKING:  # pragma: no cover
+try:  # pragma: no cover - network transport always required
     from pymodbus.client import AsyncModbusTcpClient
+except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - fatal
+    raise ImportError("pymodbus AsyncModbusTcpClient is required") from exc
+
+try:  # pragma: no cover - serial extras optional
+    from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
+except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
+    _AsyncModbusSerialClient = None
+    SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
+else:  # pragma: no cover - serial client available
+    SERIAL_IMPORT_ERROR = None
+
+if TYPE_CHECKING:  # pragma: no cover - typing helper only
+    from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
+else:
+    AsyncModbusSerialClientType = Any
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,33 +80,36 @@ HOLDING_REGISTERS: dict[str, int] = {}
 COIL_REGISTERS: dict[str, int] = {}
 DISCRETE_INPUT_REGISTERS: dict[str, int] = {}
 MULTI_REGISTER_SIZES: dict[str, int] = {}
+REGISTER_HASH: str | None = None
 
 
 def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
+    global REGISTER_HASH
     regs = get_all_registers()
+    REGISTER_HASH = registers_sha256(get_registers_path())
 
     REGISTER_DEFINITIONS.clear()
     REGISTER_DEFINITIONS.update({r.name: r for r in regs})
 
     INPUT_REGISTERS.clear()
     INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "04"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 4}
     )
 
     HOLDING_REGISTERS.clear()
     HOLDING_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "03"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 3}
     )
 
     COIL_REGISTERS.clear()
     COIL_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "01"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 1}
     )
 
     DISCRETE_INPUT_REGISTERS.clear()
     DISCRETE_INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == "02"}
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 2}
     )
 
     MULTI_REGISTER_SIZES.clear()
@@ -78,17 +117,21 @@ def _build_register_maps() -> None:
         {
             name: reg.length
             for name, reg in REGISTER_DEFINITIONS.items()
-            if reg.function == "03" and reg.length > 1
+            if reg.function == 3 and reg.length > 1
         }
     )
 
 
+# Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    if not REGISTER_DEFINITIONS:
+    current_hash = registers_sha256(get_registers_path())
+    if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
         _build_register_maps()
-@dataclass
-class DeviceInfo:
+
+
+@dataclass(slots=True)
+class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
 
     The attributes are populated dynamically and accessed via ``as_dict`` in
@@ -105,50 +148,77 @@ class DeviceInfo:
     model: str = UNKNOWN_MODEL
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
-    firmware_available: bool = True
+    firmware_available: bool = True  # pragma: no cover
     capabilities: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     def items(self):
-        return asdict(self).items()
+        return self.as_dict().items()
 
     def keys(self):
-        return asdict(self).keys()
+        return self.as_dict().keys()
+
+    def values(self):
+        return self.as_dict().values()
+
+    def __getitem__(self, key: str) -> Any:
+        return self.as_dict()[key]
 
     def __iter__(self):
-        return iter(self.items())
+        return iter(self.as_dict())
+
+    def __len__(self) -> int:
+        return len(self.as_dict())
 
 
 # Attributes of this dataclass are read dynamically at runtime to determine
 # which features the device exposes; static analysis may therefore mark them
 # as unused even though they are relied upon.
-@dataclass
-class DeviceCapabilities:
-    """Feature flags and sensor availability detected on the device."""
+@dataclass(slots=True)
+class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
+    """Feature flags and sensor availability detected on the device.
+
+    Although capabilities are typically determined once during the initial scan,
+    the dataclass caches the result of :meth:`as_dict` for efficiency. Any
+    attribute assignment will clear this cache so subsequent calls reflect the
+    new values. The capability sets are mutable; modify them via assignment to
+    trigger cache invalidation.
+    """
 
     basic_control: bool = False
     temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
-    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers
-    special_functions: set[str] = field(default_factory=set)  # Optional feature flags
-    expansion_module: bool = False
-    constant_flow: bool = False
-    gwc_system: bool = False
-    bypass_system: bool = False
-    heating_system: bool = False
-    cooling_system: bool = False
-    air_quality: bool = False
-    weekly_schedule: bool = False
-    sensor_outside_temperature: bool = False
-    sensor_supply_temperature: bool = False
-    sensor_exhaust_temperature: bool = False
-    sensor_fpx_temperature: bool = False
-    sensor_duct_supply_temperature: bool = False
-    sensor_gwc_temperature: bool = False
-    sensor_ambient_temperature: bool = False
-    sensor_heating_temperature: bool = False
-    temperature_sensors_count: int = 0
+    flow_sensors: set[str] = field(
+        default_factory=set
+    )  # Airflow sensor identifiers  # pragma: no cover
+    special_functions: set[str] = field(
+        default_factory=set
+    )  # Optional feature flags  # pragma: no cover
+    expansion_module: bool = False  # pragma: no cover
+    constant_flow: bool = False  # pragma: no cover
+    gwc_system: bool = False  # pragma: no cover
+    bypass_system: bool = False  # pragma: no cover
+    heating_system: bool = False  # pragma: no cover
+    cooling_system: bool = False  # pragma: no cover
+    air_quality: bool = False  # pragma: no cover
+    weekly_schedule: bool = False  # pragma: no cover
+    sensor_outside_temperature: bool = False  # pragma: no cover
+    sensor_supply_temperature: bool = False  # pragma: no cover
+    sensor_exhaust_temperature: bool = False  # pragma: no cover
+    sensor_fpx_temperature: bool = False  # pragma: no cover
+    sensor_duct_supply_temperature: bool = False  # pragma: no cover
+    sensor_gwc_temperature: bool = False  # pragma: no cover
+    sensor_ambient_temperature: bool = False  # pragma: no cover
+    sensor_heating_temperature: bool = False  # pragma: no cover
+    temperature_sensors_count: int = 0  # pragma: no cover
+    _as_dict_cache: dict[str, Any] | None = field(init=False, repr=False, default=None)
+
+    def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
+        """Set attribute and invalidate cached ``as_dict`` result."""
+        if name != "_as_dict_cache" and getattr(self, "_as_dict_cache", None) is not None:
+            object.__setattr__(self, "_as_dict_cache", None)
+        object.__setattr__(self, name, value)
 
     def as_dict(self) -> dict[str, Any]:
         """Return capabilities as a dictionary with set values sorted.
@@ -157,13 +227,31 @@ class DeviceCapabilities:
         invocations when capabilities are accessed multiple times.
         """
 
-        if not hasattr(self, "_as_dict_cache"):
+        if self._as_dict_cache is None:
             data = asdict(self)
             for key, value in data.items():
                 if isinstance(value, set):
                     data[key] = sorted(value)
-            self._as_dict_cache = data
+            object.__setattr__(self, "_as_dict_cache", data)
         return self._as_dict_cache
+
+    def items(self):
+        return self.as_dict().items()
+
+    def keys(self):
+        return self.as_dict().keys()
+
+    def values(self):
+        return self.as_dict().values()
+
+    def __getitem__(self, key: str) -> Any:
+        return self.as_dict()[key]
+
+    def __iter__(self):
+        return iter(self.as_dict())
+
+    def __len__(self) -> int:
+        return len(self.as_dict())
 
 
 class ThesslaGreenDeviceScanner:
@@ -177,27 +265,83 @@ class ThesslaGreenDeviceScanner:
         timeout: int = 10,
         retry: int = 3,
         backoff: float = 0,
+        backoff_jitter: float | tuple[float, float] | None = None,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-        scan_max_block_size: int = MAX_BATCH_REGISTERS,
+        max_registers_per_request: int = MAX_BATCH_REGISTERS,
+        connection_type: str = DEFAULT_CONNECTION_TYPE,
+        serial_port: str = DEFAULT_SERIAL_PORT,
+        baud_rate: int = DEFAULT_BAUD_RATE,
+        parity: str = DEFAULT_PARITY,
+        stop_bits: int = DEFAULT_STOP_BITS,
     ) -> None:
-        """Initialize device scanner with consistent parameter names."""
+        """Initialize device scanner with consistent parameter names.
+
+        ``max_registers_per_request`` is clamped to the safe Modbus range of
+        1-16 registers per request.
+        """
         _ensure_register_maps()
         self.host = host
         self.port = port
         self.slave_id = slave_id
         self.timeout = timeout
         self.retry = retry
-        self.backoff = backoff
+        try:
+            self.backoff = float(backoff)
+        except (TypeError, ValueError):
+            self.backoff = 0.0
+        if isinstance(backoff_jitter, int | float):
+            jitter: float | tuple[float, float] | None = float(backoff_jitter)
+        elif isinstance(backoff_jitter, str):
+            try:
+                jitter = float(backoff_jitter)
+            except ValueError:
+                jitter = None
+        elif isinstance(backoff_jitter, list | tuple) and len(backoff_jitter) >= 2:
+            try:
+                jitter = (float(backoff_jitter[0]), float(backoff_jitter[1]))
+            except (TypeError, ValueError):
+                jitter = None
+        else:
+            jitter = None
+        if jitter in (0, 0.0):
+            jitter = 0.0
+        self.backoff_jitter = jitter
         self.verbose_invalid_values = verbose_invalid_values
         self.scan_uart_settings = scan_uart_settings
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
-        self.max_block_size = scan_max_block_size
+        try:
+            self.effective_batch = min(int(max_registers_per_request), MAX_BATCH_REGISTERS)
+        except (TypeError, ValueError):
+            self.effective_batch = MAX_BATCH_REGISTERS
+        if self.effective_batch < 1:
+            self.effective_batch = 1
+        self.max_registers_per_request = self.effective_batch
+
+        conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
+        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+            conn_type = DEFAULT_CONNECTION_TYPE
+        self.connection_type = conn_type
+        self.serial_port = serial_port or DEFAULT_SERIAL_PORT
+        try:
+            self.baud_rate = int(baud_rate)
+        except (TypeError, ValueError):
+            self.baud_rate = DEFAULT_BAUD_RATE
+        parity_norm = str(parity or DEFAULT_PARITY).lower()
+        if parity_norm not in SERIAL_PARITY_MAP:
+            parity_norm = DEFAULT_PARITY
+        self.parity = parity_norm
+        self.stop_bits = SERIAL_STOP_BITS_MAP.get(
+            stop_bits,
+            SERIAL_STOP_BITS_MAP.get(str(stop_bits), DEFAULT_STOP_BITS),
+        )
+        if self.stop_bits not in (1, 2):
+            self.stop_bits = DEFAULT_STOP_BITS
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -211,8 +355,8 @@ class ThesslaGreenDeviceScanner:
         self.capabilities: DeviceCapabilities = DeviceCapabilities()
 
         # Placeholder for register map and value ranges loaded asynchronously
-        self._registers: Dict[str, Dict[int, str]] = {}
-        self._register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
+        self._registers: dict[int, dict[int, str]] = {}
+        self._register_ranges: dict[str, tuple[int | None, int | None]] = {}
 
         # Track holding registers that consistently fail to respond so we
         # can avoid retrying them repeatedly during scanning. The value is
@@ -234,7 +378,7 @@ class ThesslaGreenDeviceScanner:
         self._unsupported_holding_ranges: dict[tuple[int, int], int] = {}
 
         # Keep track of the Modbus client so it can be closed later
-        self._client: "AsyncModbusTcpClient" | None = None
+        self._client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
 
         # Track registers for which invalid values have been reported
         self._reported_invalid: set[str] = set()
@@ -281,12 +425,18 @@ class ThesslaGreenDeviceScanner:
         timeout: int = 10,
         retry: int = 3,
         backoff: float = 0,
+        backoff_jitter: float | tuple[float, float] | None = None,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
-        scan_max_block_size: int = MAX_BATCH_REGISTERS,
+        max_registers_per_request: int = MAX_BATCH_REGISTERS,
+        connection_type: str = DEFAULT_CONNECTION_TYPE,
+        serial_port: str = DEFAULT_SERIAL_PORT,
+        baud_rate: int = DEFAULT_BAUD_RATE,
+        parity: str = DEFAULT_PARITY,
+        stop_bits: int = DEFAULT_STOP_BITS,
     ) -> Self:
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -296,12 +446,18 @@ class ThesslaGreenDeviceScanner:
             timeout,
             retry,
             backoff,
+            backoff_jitter,
             verbose_invalid_values,
             scan_uart_settings,
             skip_known_missing,
             deep_scan,
             full_register_scan,
-            scan_max_block_size,
+            max_registers_per_request,
+            connection_type,
+            serial_port,
+            baud_rate,
+            parity,
+            stop_bits,
         )
         await self._async_setup()
 
@@ -338,9 +494,30 @@ class ThesslaGreenDeviceScanner:
         callers can surface an appropriate error to the user.
         """
 
-        from pymodbus.client import AsyncModbusTcpClient
-
-        client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+        if self.connection_type == CONNECTION_TYPE_RTU:
+            if not self.serial_port:
+                raise ConnectionException("Serial port not configured")
+            if _AsyncModbusSerialClient is None:
+                message = (
+                    "Modbus serial client is unavailable. Install pymodbus with serial support."
+                )
+                if SERIAL_IMPORT_ERROR is not None:
+                    message = f"{message} ({SERIAL_IMPORT_ERROR})"
+                raise ConnectionException(message)
+            parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+            stop_bits = SERIAL_STOP_BITS_MAP.get(
+                self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+            )
+            client: AsyncModbusSerialClientType | AsyncModbusTcpClient = _AsyncModbusSerialClient(
+                method="rtu",
+                port=self.serial_port,
+                baudrate=self.baud_rate,
+                parity=parity,
+                stopbits=stop_bits,
+                timeout=self.timeout,
+            )
+        else:
+            client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
         try:
             connected = await asyncio.wait_for(client.connect(), timeout=self.timeout)
             if not connected:
@@ -352,32 +529,41 @@ class ThesslaGreenDeviceScanner:
                     continue
                 addr = reg.address
                 try:
-                    if func == "04":
-                        await asyncio.wait_for(
-                            _call_modbus(
-                                client.read_input_registers,
-                                self.slave_id,
-                                addr,
-                                count=1,
-                            ),
+                    if func == 4:
+                        await _call_modbus(
+                            client.read_input_registers,
+                            self.slave_id,
+                            addr,
+                            count=1,
                             timeout=self.timeout,
+                            backoff=self.backoff,
+                            backoff_jitter=self.backoff_jitter,
+                            apply_backoff=False,
                         )
-                    else:  # "03"
-                        await asyncio.wait_for(
-                            _call_modbus(
-                                client.read_holding_registers,
-                                self.slave_id,
-                                addr,
-                                count=1,
-                            ),
+                    else:  # holding register
+                        await _call_modbus(
+                            client.read_holding_registers,
+                            self.slave_id,
+                            addr,
+                            count=1,
                             timeout=self.timeout,
+                            backoff=self.backoff,
+                            backoff_jitter=self.backoff_jitter,
+                            apply_backoff=False,
                         )
-                except asyncio.TimeoutError as exc:  # pragma: no cover - network issues
+                except TimeoutError as exc:  # pragma: no cover - network issues
                     _LOGGER.warning("Timeout reading %s", name)
                     raise ConnectionException(f"Timeout reading {name}") from exc
                 except ModbusException:
                     raise
-                except Exception as exc:  # pragma: no cover - forward unexpected
+                except (
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as exc:  # pragma: no cover - forward expected errors
+                    raise ModbusException(f"Error reading {name}: {exc}") from exc
+                except Exception as exc:  # pragma: no cover - unexpected
+                    _LOGGER.exception("Unexpected error reading %s: %s", name, exc)
                     raise ModbusException(f"Error reading {name}: {exc}") from exc
         finally:
             await client.close()
@@ -437,18 +623,18 @@ class ThesslaGreenDeviceScanner:
                 setattr(caps, attr, True)
                 caps.temperature_sensors.add(reg)
 
-        caps.temperature_sensors_count = len(caps.temperature_sensors)
+        caps.temperature_sensors_count = len(caps.temperature_sensors)  # pragma: no cover
 
         # Expansion module and GWC detection via discrete inputs/coils
         if "expansion" in discretes:
-            caps.expansion_module = True
+            caps.expansion_module = True  # pragma: no cover
         if "gwc" in coils or "gwc_temperature" in inputs:
-            caps.gwc_system = True
+            caps.gwc_system = True  # pragma: no cover
 
         if "bypass" in coils:
-            caps.bypass_system = True
+            caps.bypass_system = True  # pragma: no cover
         if any(reg.startswith("schedule_") for reg in holdings):
-            caps.weekly_schedule = True
+            caps.weekly_schedule = True  # pragma: no cover
 
         if any(
             reg in inputs
@@ -459,7 +645,7 @@ class ThesslaGreenDeviceScanner:
                 "cf_version",
             ]
         ):
-            caps.constant_flow = True
+            caps.constant_flow = True  # pragma: no cover
 
         # Generic capability detection based on register name patterns
         all_registers = inputs | holdings | coils | discretes
@@ -488,8 +674,11 @@ class ThesslaGreenDeviceScanner:
         if not addresses:
             return []
 
+        # ``max_gap`` is unused but kept for API compatibility
+        _ = max_gap
+
         if max_batch is None:
-            max_batch = self.max_block_size
+            max_batch = self.effective_batch
 
         # First, compute contiguous blocks using the generic ``group_reads``
         # helper.  ``max_gap`` is kept for API compatibility but is not
@@ -531,11 +720,13 @@ class ThesslaGreenDeviceScanner:
         if client is None:
             raise ConnectionException("Client not connected")
 
-        device = DeviceInfo()
+        device = ScannerDeviceInfo()
 
         # Basic firmware/serial information
         info_regs = await self._read_input(client, 0, 30) or []
-        major = minor = patch = None
+        major: int | None = None
+        minor: int | None = None
+        patch: int | None = None
         firmware_err: Exception | None = None
 
         for name in ("version_major", "version_minor", "version_patch"):
@@ -543,7 +734,11 @@ class ThesslaGreenDeviceScanner:
             if len(info_regs) > idx:
                 try:
                     value = info_regs[idx]
-                except Exception as exc:  # pragma: no cover - best effort
+                except (TypeError, ValueError, IndexError) as exc:  # pragma: no cover - best effort
+                    firmware_err = exc
+                    continue
+                except Exception as exc:  # pragma: no cover - unexpected
+                    _LOGGER.exception("Unexpected firmware value error for %s: %s", name, exc)
                     firmware_err = exc
                     continue
                 if name == "version_major":
@@ -585,27 +780,34 @@ class ThesslaGreenDeviceScanner:
             if details:
                 msg += ": " + "; ".join(details)
             _LOGGER.warning(msg)
-            device.firmware_available = False
+            device.firmware_available = False  # pragma: no cover
         try:
             start = INPUT_REGISTERS["serial_number"]
-            parts = info_regs[start : start + REGISTER_DEFINITIONS["serial_number"].length]  # noqa: E203
+            parts = info_regs[
+                start : start + REGISTER_DEFINITIONS["serial_number"].length
+            ]  # noqa: E203
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
-        except Exception:  # pragma: no cover
-            pass
+        except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
+            _LOGGER.debug("Failed to parse serial number: %s", err)
+        except Exception as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error parsing serial number: %s", err)
         try:
             start = HOLDING_REGISTERS["device_name"]
-            name_regs = await self._read_holding(
-                client, start, REGISTER_DEFINITIONS["device_name"].length
-            ) or []
+            name_regs = (
+                await self._read_holding(client, start, REGISTER_DEFINITIONS["device_name"].length)
+                or []
+            )
             if name_regs:
                 name_bytes = bytearray()
                 for reg in name_regs:
                     name_bytes.append((reg >> 8) & 0xFF)
                     name_bytes.append(reg & 0xFF)
                 device.device_name = name_bytes.decode("ascii").rstrip("\x00")
-        except Exception:  # pragma: no cover
-            pass
+        except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
+            _LOGGER.debug("Failed to parse device name: %s", err)
+        except Exception as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error parsing device name: %s", err)
         unknown_registers: dict[str, dict[int, Any]] = {
             "input_registers": {},
             "holding_registers": {},
@@ -619,59 +821,121 @@ class ThesslaGreenDeviceScanner:
             "discrete_inputs": 0,
         }
 
-        input_max = max(self._registers.get("04", {}).keys(), default=-1)
-        holding_max = max(self._registers.get("03", {}).keys(), default=-1)
-        coil_max = max(self._registers.get("01", {}).keys(), default=-1)
-        discrete_max = max(self._registers.get("02", {}).keys(), default=-1)
+        input_max = max(self._registers.get(4, {}).keys(), default=-1)
+        holding_max = max(self._registers.get(3, {}).keys(), default=-1)
+        coil_max = max(self._registers.get(1, {}).keys(), default=-1)
+        discrete_max = max(self._registers.get(2, {}).keys(), default=-1)
 
         if self.full_register_scan:
-            for addr in range(0, input_max + 1):
-                scanned_registers["input_registers"] += 1
-                input_data = await self._read_input(client, addr, 1, skip_cache=True)
-                if not input_data:
+            for start, count in _group_reads(
+                range(input_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["input_registers"] += count
+                input_data = await self._read_input(client, start, count, skip_cache=True)
+                if input_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single = await self._read_input(client, addr, 1, skip_cache=True)
+                        if not single:
+                            continue
+                        reg_name = self._registers.get(4, {}).get(addr)
+                        if reg_name and self._is_valid_register_value(reg_name, single[0]):
+                            self.available_registers["input_registers"].add(reg_name)
+                        else:
+                            unknown_registers["input_registers"][addr] = single[0]
+                            if reg_name:
+                                self.failed_addresses["invalid_values"]["input_registers"].add(addr)
+                                self._log_invalid_value(reg_name, single[0])
                     continue
-                reg_name = self._registers.get("04", {}).get(addr)
-                if reg_name and self._is_valid_register_value(reg_name, input_data[0]):
-                    self.available_registers["input_registers"].add(reg_name)
-                else:
-                    unknown_registers["input_registers"][addr] = input_data[0]
-                    if reg_name:
-                        self.failed_addresses["invalid_values"]["input_registers"].add(addr)
-                        self._log_invalid_value(reg_name, input_data[0])
+                for offset, value in enumerate(input_data):
+                    addr = start + offset
+                    reg_name = self._registers.get(4, {}).get(addr)
+                    if reg_name and self._is_valid_register_value(reg_name, value):
+                        self.available_registers["input_registers"].add(reg_name)
+                    else:
+                        unknown_registers["input_registers"][addr] = value
+                        if reg_name:
+                            self.failed_addresses["invalid_values"]["input_registers"].add(addr)
+                            self._log_invalid_value(reg_name, value)
 
-            for addr in range(0, holding_max + 1):
-                scanned_registers["holding_registers"] += 1
-                holding_data = await self._read_holding(client, addr, 1, skip_cache=True)
-                if not holding_data:
+            for start, count in _group_reads(
+                range(holding_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["holding_registers"] += count
+                holding_data = await self._read_holding(client, start, count, skip_cache=True)
+                if holding_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single = await self._read_holding(client, addr, 1, skip_cache=True)
+                        if not single:
+                            continue
+                        reg_name = self._registers.get(3, {}).get(addr)
+                        if reg_name and self._is_valid_register_value(reg_name, single[0]):
+                            self.available_registers["holding_registers"].add(reg_name)
+                        else:
+                            unknown_registers["holding_registers"][addr] = single[0]
+                            if reg_name:
+                                self.failed_addresses["invalid_values"]["holding_registers"].add(
+                                    addr
+                                )
+                                self._log_invalid_value(reg_name, single[0])
                     continue
-                reg_name = self._registers.get("03", {}).get(addr)
-                if reg_name and self._is_valid_register_value(reg_name, holding_data[0]):
-                    self.available_registers["holding_registers"].add(reg_name)
-                else:
-                    unknown_registers["holding_registers"][addr] = holding_data[0]
-                    if reg_name:
-                        self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
-                        self._log_invalid_value(reg_name, holding_data[0])
+                for offset, value in enumerate(holding_data):
+                    addr = start + offset
+                    reg_name = self._registers.get(3, {}).get(addr)
+                    if reg_name and self._is_valid_register_value(reg_name, value):
+                        self.available_registers["holding_registers"].add(reg_name)
+                    else:
+                        unknown_registers["holding_registers"][addr] = value
+                        if reg_name:
+                            self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
+                            self._log_invalid_value(reg_name, value)
 
-            for addr in range(0, coil_max + 1):
-                scanned_registers["coil_registers"] += 1
-                coil_data = await self._read_coil(client, addr, 1)
-                if not coil_data:
+            for start, count in _group_reads(
+                range(coil_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["coil_registers"] += count
+                coil_data = await self._read_coil(client, start, count)
+                if coil_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single_coil = await self._read_coil(client, addr, 1)
+                        if not single_coil:
+                            continue
+                        if (reg_name := self._registers.get(1, {}).get(addr)) is not None:
+                            self.available_registers["coil_registers"].add(reg_name)
+                        else:
+                            unknown_registers["coil_registers"][addr] = single_coil[0]
                     continue
-                if (reg_name := self._registers.get("01", {}).get(addr)) is not None:
-                    self.available_registers["coil_registers"].add(reg_name)
-                else:
-                    unknown_registers["coil_registers"][addr] = coil_data[0]
+                for offset, value in enumerate(coil_data):
+                    addr = start + offset
+                    if (reg_name := self._registers.get(1, {}).get(addr)) is not None:
+                        self.available_registers["coil_registers"].add(reg_name)
+                    else:
+                        unknown_registers["coil_registers"][addr] = value
 
-            for addr in range(0, discrete_max + 1):
-                scanned_registers["discrete_inputs"] += 1
-                discrete_data = await self._read_discrete(client, addr, 1)
-                if not discrete_data:
+            for start, count in _group_reads(
+                range(discrete_max + 1), max_block_size=self.effective_batch
+            ):
+                scanned_registers["discrete_inputs"] += count
+                discrete_data = await self._read_discrete(client, start, count)
+                if discrete_data is None:
+                    for offset in range(count):
+                        addr = start + offset
+                        single_discrete = await self._read_discrete(client, addr, 1)
+                        if not single_discrete:
+                            continue
+                        if (reg_name := self._registers.get(2, {}).get(addr)) is not None:
+                            self.available_registers["discrete_inputs"].add(reg_name)
+                        else:
+                            unknown_registers["discrete_inputs"][addr] = single_discrete[0]
                     continue
-                if (reg_name := self._registers.get("02", {}).get(addr)) is not None:
-                    self.available_registers["discrete_inputs"].add(reg_name)
-                else:
-                    unknown_registers["discrete_inputs"][addr] = discrete_data[0]
+                for offset, value in enumerate(discrete_data):
+                    addr = start + offset
+                    if (reg_name := self._registers.get(2, {}).get(addr)) is not None:
+                        self.available_registers["discrete_inputs"].add(reg_name)
+                    else:
+                        unknown_registers["discrete_inputs"][addr] = value
         else:
             # Scan Input Registers in batches
             input_addr_to_name: dict[int, str] = {}
@@ -697,12 +961,8 @@ class ThesslaGreenDeviceScanner:
                                 input_addr_to_name[addr]
                             )
                         elif single is not None:
-                            self.failed_addresses["invalid_values"]["input_registers"].add(
-                                addr
-                            )
-                            self._log_invalid_value(
-                                input_addr_to_name[addr], single[0]
-                            )
+                            self.failed_addresses["invalid_values"]["input_registers"].add(addr)
+                            self._log_invalid_value(input_addr_to_name[addr], single[0])
                     continue
 
                 for offset, value in enumerate(input_data):
@@ -711,9 +971,7 @@ class ThesslaGreenDeviceScanner:
                         if self._is_valid_register_value(reg_name, value):
                             self.available_registers["input_registers"].add(reg_name)
                         else:
-                            self.failed_addresses["invalid_values"]["input_registers"].add(
-                                addr
-                            )
+                            self.failed_addresses["invalid_values"]["input_registers"].add(addr)
                             self._log_invalid_value(reg_name, value)
 
             # Scan Holding Registers in batches
@@ -740,9 +998,7 @@ class ThesslaGreenDeviceScanner:
                         if single and self._is_valid_register_value(name, single[0]):
                             self.available_registers["holding_registers"].add(name)
                         elif single is not None:
-                            self.failed_addresses["invalid_values"]["holding_registers"].add(
-                                addr
-                            )
+                            self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
                             self._log_invalid_value(name, single[0])
                     continue
 
@@ -753,9 +1009,7 @@ class ThesslaGreenDeviceScanner:
                         if self._is_valid_register_value(name, value):
                             self.available_registers["holding_registers"].add(name)
                         else:
-                            self.failed_addresses["invalid_values"]["holding_registers"].add(
-                                addr
-                            )
+                            self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
                             self._log_invalid_value(name, value)
 
             # Always expose diagnostic registers so error entities exist even
@@ -928,14 +1182,10 @@ class ThesslaGreenDeviceScanner:
             "missing_registers": missing_registers,
             "failed_addresses": {
                 "modbus_exceptions": {
-                    k: sorted(v)
-                    for k, v in self.failed_addresses["modbus_exceptions"].items()
-                    if v
+                    k: sorted(v) for k, v in self.failed_addresses["modbus_exceptions"].items() if v
                 },
                 "invalid_values": {
-                    k: sorted(v)
-                    for k, v in self.failed_addresses["invalid_values"].items()
-                    if v
+                    k: sorted(v) for k, v in self.failed_addresses["invalid_values"].items() if v
                 },
             },
         }
@@ -947,14 +1197,33 @@ class ThesslaGreenDeviceScanner:
 
     async def scan_device(self) -> dict[str, Any]:
         """Open the Modbus connection, perform a scan and close the client."""
-        from pymodbus.client import AsyncModbusTcpClient
-
-        self._client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+        if self.connection_type == CONNECTION_TYPE_RTU:
+            if not self.serial_port:
+                raise ConnectionException("Serial port not configured")
+            if _AsyncModbusSerialClient is None:
+                message = (
+                    "Modbus serial client is unavailable. Install pymodbus with serial support."
+                )
+                if SERIAL_IMPORT_ERROR is not None:
+                    message = f"{message} ({SERIAL_IMPORT_ERROR})"
+                raise ConnectionException(message)
+            parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+            stop_bits = SERIAL_STOP_BITS_MAP.get(
+                self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+            )
+            self._client = _AsyncModbusSerialClient(
+                method="rtu",
+                port=self.serial_port,
+                baudrate=self.baud_rate,
+                parity=parity,
+                stopbits=stop_bits,
+                timeout=self.timeout,
+            )
+        else:
+            self._client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
 
         try:
-            connected = await asyncio.wait_for(
-                self._client.connect(), timeout=self.timeout
-            )
+            connected = await asyncio.wait_for(self._client.connect(), timeout=self.timeout)
             if not connected:
                 raise ConnectionException("Failed to connect")
             result = await self.scan()
@@ -966,29 +1235,20 @@ class ThesslaGreenDeviceScanner:
 
     async def _load_registers(
         self,
-    ) -> Tuple[
-        Dict[str, Dict[int, str]],
-        Dict[str, Tuple[Optional[int], Optional[int]]],
+    ) -> tuple[
+        dict[int, dict[int, str]],
+        dict[str, tuple[int | None, int | None]],
     ]:
         """Load Modbus register definitions and value ranges."""
-        try:
-            register_map: Dict[str, Dict[int, str]] = {"03": {}, "04": {}, "01": {}, "02": {}}
-            register_ranges: Dict[str, Tuple[Optional[int], Optional[int]]] = {}
-            for reg in get_all_registers():
-                if not reg.name:
-                    continue
-                register_map[reg.function][reg.address] = reg.name
-                if reg.min is not None or reg.max is not None:
-                    register_ranges[reg.name] = (reg.min, reg.max)
-            return register_map, register_ranges
-        except Exception as err:  # pragma: no cover - defensive
-            raise RuntimeError("Unable to load register definitions") from err
-
-    def _sleep_time(self, attempt: int) -> float:
-        """Return delay for a retry attempt based on backoff."""
-        if self.backoff:
-            return float(self.backoff * 2 ** (attempt - 1))
-        return 0.0
+        register_map: dict[int, dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
+        register_ranges: dict[str, tuple[int | None, int | None]] = {}
+        for reg in get_all_registers():
+            if not reg.name:
+                continue
+            register_map[reg.function][reg.address] = reg.name
+            if reg.min is not None or reg.max is not None:
+                register_ranges[reg.name] = (reg.min, reg.max)
+        return register_map, register_ranges
 
     def _log_skipped_ranges(self) -> None:
         """Log summary of ranges skipped due to Modbus exceptions."""
@@ -1073,7 +1333,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_input(
         self,
-        client: "AsyncModbusTcpClient",
+        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
         address: int,
         count: int,
         *,
@@ -1117,11 +1377,16 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_input_registers, self.slave_id, address, count=count
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_input_registers,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None:
                     if response.isError():
@@ -1156,7 +1421,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading input 0x%04X on attempt %d: %s",
                     address,
@@ -1188,11 +1453,9 @@ class ThesslaGreenDeviceScanner:
                     self._input_failures[address] = failures
                     if failures >= self.retry and address not in self._failed_input:
                         self._failed_input.add(address)
-                        self.failed_addresses["modbus_exceptions"]["input_registers"].add(
-                            address
-                        )
+                        self.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
                         _LOGGER.warning("Device does not expose register 0x%04X", address)
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:  # noqa: B025
                 _LOGGER.warning(
                     "Timeout reading input registers 0x%04X-0x%04X on attempt %d: %s",
                     start,
@@ -1202,7 +1465,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-            except (ModbusException, ConnectionException) as exc:
+            except (ModbusException, ConnectionException) as exc:  # noqa: B025
                 _LOGGER.debug(
                     "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
                     start,
@@ -1219,11 +1482,17 @@ class ThesslaGreenDeviceScanner:
                 attempt,
             )
             try:
-                response = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_holding_registers, self.slave_id, address, count=count
-                    ),
+                response = await _call_modbus(
+                    client.read_holding_registers,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
+                    apply_backoff=False,
                 )
                 if response is not None:
                     if response.isError():
@@ -1258,7 +1527,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading holding 0x%04X on attempt %d: %s",
                     address,
@@ -1277,16 +1546,7 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying input 0x%04X", address)
-                    raise
-
-        self.failed_addresses["modbus_exceptions"]["input_registers"].update(
-            range(start, end + 1)
-        )
+        self.failed_addresses["modbus_exceptions"]["input_registers"].update(range(start, end + 1))
         _LOGGER.error(
             "Failed to read input registers 0x%04X-0x%04X after %d retries",
             start,
@@ -1297,7 +1557,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_holding(
         self,
-        client: "AsyncModbusTcpClient",
+        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
         address: int,
         count: int,
         *,
@@ -1334,11 +1594,16 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_holding_registers, self.slave_id, address, count=count
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_holding_registers,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None:
                     if response.isError():
@@ -1361,7 +1626,7 @@ class ThesslaGreenDeviceScanner:
                         registers,
                     )
                     return registers
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading holding 0x%04X (attempt %d/%d): %s",
                     address,
@@ -1375,9 +1640,7 @@ class ThesslaGreenDeviceScanner:
                     self._holding_failures[address] = failures
                     if failures >= self.retry and address not in self._failed_holding:
                         self._failed_holding.add(address)
-                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(
-                            address
-                        )
+                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
                         _LOGGER.warning("Device does not expose register 0x%04X", address)
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
@@ -1393,9 +1656,7 @@ class ThesslaGreenDeviceScanner:
                     self._holding_failures[address] = failures
                     if failures >= self.retry and address not in self._failed_holding:
                         self._failed_holding.add(address)
-                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(
-                            address
-                        )
+                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
                         _LOGGER.warning("Device does not expose register 0x%04X", address)
             except asyncio.CancelledError:
                 _LOGGER.debug(
@@ -1415,13 +1676,6 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying holding 0x%04X", address)
-                    raise
-
         _LOGGER.error(
             "Failed to read holding registers 0x%04X-0x%04X after %d retries",
             start,
@@ -1435,18 +1689,23 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_coil(
         self,
-        client: "AsyncModbusTcpClient",
+        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
         address: int,
         count: int,
     ) -> list[bool] | None:
         """Read coil registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_coils, self.slave_id, address, count=count
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_coils,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None and not response.isError():
                     bits = cast(list[bool], response.bits[:count])
@@ -1457,7 +1716,7 @@ class ThesslaGreenDeviceScanner:
                         bits,
                     )
                     return bits
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading coil 0x%04X on attempt %d: %s",
                     address,
@@ -1489,12 +1748,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying coil 0x%04X", address)
-                    raise
+
         self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
             range(address, address + count)
         )
@@ -1508,21 +1762,23 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_discrete(
         self,
-        client: "AsyncModbusTcpClient",
+        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
         address: int,
         count: int,
     ) -> list[bool] | None:
         """Read discrete input registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_discrete_inputs,
-                        self.slave_id,
-                        address,
-                        count=count,
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_discrete_inputs,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None and not response.isError():
                     bits = cast(list[bool], response.bits[:count])
@@ -1533,7 +1789,7 @@ class ThesslaGreenDeviceScanner:
                         bits,
                     )
                     return bits
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading discrete 0x%04X on attempt %d: %s",
                     address,
@@ -1565,12 +1821,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Sleep cancelled while retrying discrete 0x%04X", address)
-                    raise
+
         self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
             range(address, address + count)
         )

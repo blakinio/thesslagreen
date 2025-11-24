@@ -13,18 +13,19 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
-from .registers import get_registers_hash
+from .registers.loader import _REGISTERS_PATH, get_all_registers, registers_sha256
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
-) -> dict[str, Any]:
+) -> dict[str, Any]:  # pragma: no cover
     """Return diagnostics for a config entry.
 
     Home Assistant calls this coroutine when the diagnostics panel is
@@ -32,22 +33,28 @@ async def async_get_config_entry_diagnostics(
     """
     coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Gather comprehensive diagnostic data from the coordinator
     diagnostics = coordinator.get_diagnostic_data()
-    diagnostics.setdefault("registers_hash", get_registers_hash())
+    diagnostics.setdefault("effective_batch", coordinator.effective_batch)
+    diagnostics.setdefault("registers_hash", registers_sha256(_REGISTERS_PATH))
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
 
-    # Supplement diagnostics with coordinator statistics
-    diagnostics.setdefault(
-        "firmware_version", coordinator.device_info.get("firmware")
-    )
+    diagnostics.setdefault("firmware_version", coordinator.device_info.get("firmware"))
+    diagnostics.setdefault("total_registers_json", len(get_all_registers()))
     diagnostics.setdefault(
         "total_available_registers",
         sum(len(regs) for regs in coordinator.available_registers.values()),
     )
-    diagnostics["last_scan"] = (
-        coordinator.last_scan.isoformat() if coordinator.last_scan else None
+    diagnostics.setdefault(
+        "registers_discovered",
+        {key: len(val) for key, val in coordinator.available_registers.items()},
     )
+    diagnostics.setdefault("status_overview", coordinator.status_overview)
+
+    diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
+    diagnostics.setdefault("force_full", coordinator.force_full_register_list)
+    diagnostics.setdefault("force_full_register_list", coordinator.force_full_register_list)
+    diagnostics.setdefault("deep_scan", coordinator.deep_scan)
+
     diagnostics.setdefault(
         "error_statistics",
         {
@@ -55,16 +62,16 @@ async def async_get_config_entry_diagnostics(
             "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
         },
     )
+    diagnostics.setdefault(
+        "last_scan",
+        coordinator.last_scan.isoformat() if coordinator.last_scan else None,
+    )
 
     if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
-        diagnostics.setdefault(
-            "raw_registers", coordinator.device_scan_result["raw_registers"]
-        )
+        diagnostics.setdefault("raw_registers", coordinator.device_scan_result["raw_registers"])
 
-    # Always expose registers that were skipped due to errors and any
-    # unknown addresses discovered during the scan. Prefer data from the
-    # most recent device scan, but fall back to any cached coordinator
-    # values so the information is always present in diagnostics.
+    # Always expose registers that were skipped due to errors and any unknown
+    # addresses discovered during the scan.
     unknown_regs: dict[str, dict[int, Any]] = {}
     failed_addrs: dict[str, dict[str, list[int]]] = {}
     if coordinator.device_scan_result:
@@ -81,8 +88,10 @@ async def async_get_config_entry_diagnostics(
         translations = await translation.async_get_translations(
             hass, hass.config.language, f"component.{DOMAIN}"
         )
-    except Exception as err:  # pragma: no cover - defensive
+    except (OSError, ValueError, HomeAssistantError) as err:  # pragma: no cover - defensive
         _LOGGER.debug("Translation load failed: %s", err)
+    except Exception as err:  # pragma: no cover - unexpected
+        _LOGGER.exception("Unexpected error loading translations: %s", err)
     active_errors: dict[str, str] = {}
     if coordinator.data:
         for key, value in coordinator.data.items():
@@ -91,11 +100,8 @@ async def async_get_config_entry_diagnostics(
     if active_errors:
         diagnostics["active_errors"] = active_errors
 
-    # Redact sensitive information
     diagnostics_safe = _redact_sensitive_data(diagnostics)
-
     _LOGGER.debug("Generated diagnostics for ThesslaGreen device")
-
     return diagnostics_safe
 
 
@@ -107,11 +113,12 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
     def mask_ip(ip_str: str) -> str:
         """Return a redacted representation of an IP address."""
         try:
-            ip = ipaddress.ip_address(ip_str)
+            ip_str_clean = ip_str.split("%", 1)[0]
+            ip = ipaddress.ip_address(ip_str_clean)
         except ValueError:
             return ip_str
         if isinstance(ip, ipaddress.IPv4Address):
-            parts = ip_str.split(".")
+            parts = ip_str_clean.split(".")
             return f"{parts[0]}.xxx.xxx.{parts[3]}"
         segments = ip.exploded.split(":")
         return ":".join([segments[0]] + ["xxxx"] * 6 + [segments[-1]])

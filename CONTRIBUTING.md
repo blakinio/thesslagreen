@@ -1,6 +1,6 @@
 # Contributing to ThesslaGreen Modbus Integration
 
-🎉 Thank you for your interest in contributing to the ThesslaGreen Modbus Integration! 
+🎉 Thank you for your interest in contributing to the ThesslaGreen Modbus Integration!
 
 ## 📋 Table of Contents
 
@@ -101,11 +101,13 @@ pre-commit run --all-files
 
 Register addresses are defined in
 `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-and this file serves as the sole source of truth.  The integration reads the
-JSON directly; if you require a static Python mapping for other tools, run:
+and this file serves as the sole source of truth. The integration reads the JSON
+directly.
+
+You can validate the definitions with:
 
 ```bash
-python tools/generate_registers.py
+python tools/validate_registers.py
 ```
 
 The test suite ensures the JSON definitions remain valid.
@@ -172,19 +174,14 @@ custom_components/thessla_green_modbus/
     └── pl.json
 ```
 
-### Regenerating register definitions
+### Validating register definitions
 
 The canonical register specification lives in
 `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
-After editing this file, run the validation tests and, if needed, regenerate the
-helper Python module:
+After editing this file, run the validation tests to ensure everything remains
+consistent.
 
-```bash
-python tools/generate_registers.py  # optional helper
-```
-
-Commit the updated JSON file. The `generate-registers` pre-commit hook runs the
-generator when necessary.
+Commit the updated JSON file.
 
 ## Testing
 
@@ -224,10 +221,10 @@ async def test_your_feature():
     """Test your new feature."""
     # Arrange
     coordinator = create_mock_coordinator()
-    
+
     # Act
     result = await coordinator.your_method()
-    
+
     # Assert
     assert result == expected_value
 ```

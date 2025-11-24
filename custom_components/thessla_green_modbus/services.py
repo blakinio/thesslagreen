@@ -3,35 +3,34 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from datetime import UTC
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
+from homeassistant.helpers.event import async_call_later
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
+    from datetime import datetime
+
     class _DTUtil:
         """Fallback minimal dt util."""
 
         @staticmethod
-        def now():
-            from datetime import datetime
-
+        def now() -> datetime:
             return datetime.now()
 
         @staticmethod
-        def utcnow():
-            from datetime import datetime, timezone
+        def utcnow() -> datetime:
+            return datetime.now(UTC)
 
-            return datetime.now(timezone.utc)
+    dt_util = _DTUtil()
 
-    dt_util = _DTUtil()  # type: ignore
-
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
@@ -48,13 +47,56 @@ from .const import (
     SPECIAL_MODE_OPTIONS,
 )
 from .entity_mappings import map_legacy_entity_id
-from .scanner_core import ThesslaGreenDeviceScanner
 from .modbus_exceptions import ConnectionException, ModbusException
+from .scanner_core import ThesslaGreenDeviceScanner
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class _LogLevelManager:
+    """Manage temporary log level changes for the integration."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+        self._restore_level: int | None = None
+        self._undo_callback: Callable[[], None] | None = None
+
+    @staticmethod
+    def _target_logger() -> logging.Logger:
+        return logging.getLogger("custom_components.thessla_green_modbus")
+
+    def set_level(self, level: int, duration: int) -> None:
+        """Apply a new log level and schedule automatic restoration."""
+
+        logger = self._target_logger()
+        previous_level = logger.level
+        logger.setLevel(level)
+        _LOGGER.info(
+            "Set %s log level to %s", logger.name, logging.getLevelName(level)
+        )
+
+        if self._undo_callback:
+            self._undo_callback()
+            self._undo_callback = None
+
+        self._restore_level = previous_level
+        if duration > 0:
+            self._undo_callback = async_call_later(
+                self.hass, duration, self._restore_level_callback
+            )
+
+    def _restore_level_callback(self, _now: Any) -> None:
+        logger = self._target_logger()
+        logger.setLevel(self._restore_level or logging.NOTSET)
+        _LOGGER.info(
+            "Restored %s log level to %s",
+            logger.name,
+            logging.getLevelName(self._restore_level or logging.NOTSET),
+        )
+        self._undo_callback = None
 
 # Map service parameters to corresponding register names
 AIR_QUALITY_REGISTER_MAP = {
@@ -63,6 +105,8 @@ AIR_QUALITY_REGISTER_MAP = {
     "co2_high": "co2_threshold_high",
     "humidity_target": "humidity_target",
 }
+
+
 def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call handling legacy aliases."""
 
@@ -198,6 +242,17 @@ SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
     }
 )
 
+SET_LOG_LEVEL_SCHEMA = vol.Schema(
+    {
+        vol.Optional("level", default="debug"): vol.In(
+            ["debug", "info", "warning", "error"]
+        ),
+        vol.Optional("duration", default=900): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=86400)
+        ),
+    }
+)
+
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for ThesslaGreen Modbus integration."""
@@ -236,15 +291,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         Returns ``True`` if the register write succeeds, ``False`` otherwise.
         """
         try:
-            return bool(
-                await coordinator.async_write_register(
-                    register, value, refresh=False
-                )
-            )
+            return bool(await coordinator.async_write_register(register, value, refresh=False))
         except (ModbusException, ConnectionException) as err:
-            _LOGGER.error(
-                "Failed to %s for %s: %s", action, entity_id, err
-            )
+            _LOGGER.error("Failed to %s for %s: %s", action, entity_id, err)
             return False
 
     async def set_special_mode(call: ServiceCall) -> None:
@@ -265,9 +314,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     entity_id,
                     "set special mode",
                 ):
-                    _LOGGER.error(
-                        "Failed to set special mode %s for %s", mode, entity_id
-                    )
+                    _LOGGER.error("Failed to set special mode %s for %s", mode, entity_id)
                     continue
 
                 # Set duration if specified and supported
@@ -320,15 +367,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             "sunday": 6,
         }
         day_index = day_map[day]
-        
+
         # Prepare start/end values as tuples so Register.encode can
         # handle conversion to the device format.
-        start_value = (start_time.hour, start_time.minute)
-        end_value = (end_time.hour, end_time.minute)
+        start_tuple = (start_time.hour, start_time.minute)
+        end_tuple = (end_time.hour, end_time.minute)
 
         # Format times in a user-friendly way for encoding
-        start_value = f"{start_time.hour:02d}:{start_time.minute:02d}"
-        end_value = f"{end_time.hour:02d}:{end_time.minute:02d}"
+        start_value = f"{start_tuple[0]:02d}:{start_tuple[1]:02d}"
+        end_value = f"{end_tuple[0]:02d}:{end_tuple[1]:02d}"
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
@@ -386,9 +433,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set airflow schedule",
                     ):
-                        _LOGGER.error(
-                            "Failed to set schedule temperature for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to set schedule temperature for %s", entity_id)
                         continue
 
                 await coordinator.async_request_refresh()
@@ -424,9 +469,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set bypass parameters",
                     ):
-                        _LOGGER.error(
-                            "Failed to set bypass min temperature for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to set bypass min temperature for %s", entity_id)
                         continue
 
                 await coordinator.async_request_refresh()
@@ -463,9 +506,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set GWC parameters",
                     ):
-                        _LOGGER.error(
-                            "Failed to set GWC min air temperature for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to set GWC min air temperature for %s", entity_id)
                         continue
 
                 if max_air_temperature is not None:
@@ -476,9 +517,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set GWC parameters",
                     ):
-                        _LOGGER.error(
-                            "Failed to set GWC max air temperature for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to set GWC max air temperature for %s", entity_id)
                         continue
 
                 await coordinator.async_request_refresh()
@@ -507,9 +546,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                             entity_id,
                             "set air quality thresholds",
                         ):
-                            _LOGGER.error(
-                                "Failed to set %s for %s", param, entity_id
-                            )
+                            _LOGGER.error("Failed to set %s for %s", param, entity_id)
                             success = False
                             break
 
@@ -537,9 +574,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     entity_id,
                     "set temperature curve",
                 ):
-                    _LOGGER.error(
-                        "Failed to set heating curve slope for %s", entity_id
-                    )
+                    _LOGGER.error("Failed to set heating curve slope for %s", entity_id)
                     continue
                 if not await _write_register(
                     coordinator,
@@ -548,9 +583,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     entity_id,
                     "set temperature curve",
                 ):
-                    _LOGGER.error(
-                        "Failed to set heating curve offset for %s", entity_id
-                    )
+                    _LOGGER.error("Failed to set heating curve offset for %s", entity_id)
                     continue
 
                 if max_supply_temp is not None:
@@ -561,9 +594,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set temperature curve",
                     ):
-                        _LOGGER.error(
-                            "Failed to set max supply temperature for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to set max supply temperature for %s", entity_id)
                         continue
 
                 if min_supply_temp is not None:
@@ -574,9 +605,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "set temperature curve",
                     ):
-                        _LOGGER.error(
-                            "Failed to set min supply temperature for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to set min supply temperature for %s", entity_id)
                         continue
 
                 await coordinator.async_request_refresh()
@@ -621,9 +650,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "reset settings",
                     ):
-                        _LOGGER.error(
-                            "Failed to reset user settings for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to reset user settings for %s", entity_id)
                         continue
 
                 if reset_type in ["schedule_settings", "all_settings"]:
@@ -634,9 +661,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         entity_id,
                         "reset settings",
                     ):
-                        _LOGGER.error(
-                            "Failed to reset schedule settings for %s", entity_id
-                        )
+                        _LOGGER.error("Failed to reset schedule settings for %s", entity_id)
                         continue
 
                 await coordinator.async_request_refresh()
@@ -752,23 +777,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                # Convert string to 16-bit register values (ASCII)
-                name_bytes = device_name.encode("ascii")[:16].ljust(16, b"\x00")
-
-                regs = [
-                    (name_bytes[i] << 8) | name_bytes[i + 1]
-                    for i in range(0, 16, 2)
-                ]
                 if not await _write_register(
                     coordinator,
                     "device_name",
-                    regs,
+                    device_name,
                     entity_id,
                     "set device name",
                 ):
-                    _LOGGER.error(
-                        "Failed to set device name for %s", entity_id
-                    )
+                    _LOGGER.error("Failed to set device name for %s", entity_id)
                     continue
 
                 await coordinator.async_request_refresh()
@@ -783,6 +799,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if coordinator:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Refreshed device data for %s", entity_id)
+
     async def get_unknown_registers(call: ServiceCall) -> None:
         """Service to emit unknown registers via an event."""
         entity_ids = _extract_legacy_entity_ids(hass, call)
@@ -797,6 +814,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         "scanned_registers": coordinator.scanned_registers,
                     },
                 )
+
     async def scan_all_registers(call: ServiceCall) -> dict[str, Any] | None:
         """Service to perform a full register scan."""
         entity_ids = _extract_legacy_entity_ids(hass, call)
@@ -816,7 +834,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 scan_uart_settings=coordinator.scan_uart_settings,
                 skip_known_missing=False,
                 full_register_scan=True,
-                scan_max_block_size=coordinator.scan_max_block_size,
+                max_registers_per_request=coordinator.effective_batch,
             )
             try:
                 scan_result = await scanner.scan_device()
@@ -843,6 +861,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             )
 
         return results or None
+
+    async def set_debug_logging(call: ServiceCall) -> None:
+        """Temporarily increase integration log level for debugging."""
+
+        level_name = str(call.data.get("level", "debug")).upper()
+        duration = int(call.data.get("duration", 900))
+        level_value = getattr(logging, level_name, logging.DEBUG)
+
+        manager: _LogLevelManager = hass.data.setdefault(DOMAIN, {}).setdefault(
+            "_log_level_manager", _LogLevelManager(hass)
+        )
+        manager.set_level(level_value, duration)
 
     # Register all services
     hass.services.async_register(
@@ -884,6 +914,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
     )
+    hass.services.async_register(
+        DOMAIN, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA
+    )
 
     _LOGGER.info("ThesslaGreen Modbus services registered successfully")
 
@@ -905,6 +938,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         "refresh_device_data",
         "get_unknown_registers",
         "scan_all_registers",
+        "set_debug_logging",
     ]
 
     for service in services:

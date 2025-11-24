@@ -3,6 +3,7 @@
 import asyncio
 import sys
 import types
+from unittest.mock import AsyncMock, MagicMock
 
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
@@ -111,6 +112,11 @@ sys.modules["homeassistant.components.sensor"] = sensor_mod
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus import select  # noqa: E402
+from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS  # noqa: E402
+from custom_components.thessla_green_modbus.select import ThesslaGreenSelect  # noqa: E402
+from custom_components.thessla_green_modbus.modbus_exceptions import (  # noqa: E402
+    ConnectionException,
+)
 from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
     ENTITY_MAPPINGS,
 )
@@ -122,7 +128,10 @@ from custom_components.thessla_green_modbus.select import (  # noqa: E402
 def test_select_creation_and_state(mock_coordinator):
     """Test creation and state changes of select entity."""
     mock_coordinator.data["mode"] = 0
-    select_entity = ThesslaGreenSelect(mock_coordinator, "mode", ENTITY_MAPPINGS["select"]["mode"])
+    address = 4208
+    select_entity = ThesslaGreenSelect(
+        mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
+    )
     assert select_entity.current_option == "auto"
 
     mock_coordinator.data["mode"] = 1
@@ -131,10 +140,52 @@ def test_select_creation_and_state(mock_coordinator):
 
 def test_select_option_change(mock_coordinator):
     mock_coordinator.data["mode"] = 0
-    select_entity = ThesslaGreenSelect(mock_coordinator, "mode", ENTITY_MAPPINGS["select"]["mode"])
+    address = 4208
+    select_entity = ThesslaGreenSelect(
+        mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
+    )
     asyncio.run(select_entity.async_select_option("manual"))
-    mock_coordinator.async_write_register.assert_awaited_with("mode", 1)
+    mock_coordinator.async_write_register.assert_awaited_with("mode", 1, offset=0)
     mock_coordinator.async_request_refresh.assert_awaited_once()
+
+
+def test_select_invalid_option(mock_coordinator):
+    """Invalid options should not trigger Modbus writes."""
+
+    mock_coordinator.data["mode"] = 0
+    address = 4208
+    select_entity = ThesslaGreenSelect(
+        mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
+    )
+    mock_coordinator.async_write_register = AsyncMock()
+
+    asyncio.run(select_entity.async_select_option("unsupported"))
+
+    mock_coordinator.async_write_register.assert_not_awaited()
+    mock_coordinator.async_request_refresh.assert_not_awaited()
+
+
+def test_select_modbus_error_creates_issue(mock_coordinator):
+    """Modbus failures should be surfaced through issues helper."""
+
+    mock_coordinator.data["mode"] = 0
+    address = 4208
+    select_entity = ThesslaGreenSelect(
+        mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
+    )
+    mock_coordinator.async_write_register = AsyncMock(
+        side_effect=ConnectionException("write failed")
+    )
+    select_entity.hass = MagicMock(
+        helpers=types.SimpleNamespace(
+            issue=types.SimpleNamespace(async_create_issue=AsyncMock())
+        )
+    )
+
+    asyncio.run(select_entity.async_select_option("manual"))
+
+    select_entity.hass.helpers.issue.async_create_issue.assert_called_once()
+    mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_select_definitions_single_source():

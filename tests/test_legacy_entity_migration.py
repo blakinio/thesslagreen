@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
 import logging
 import sys
 import types
+from dataclasses import dataclass, field
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -78,6 +78,10 @@ async def test_legacy_fan_entity_migrated(hass, caplog):
     coordinator = MagicMock()
     coordinator.async_config_entry_first_refresh = AsyncMock()
     coordinator.async_setup = AsyncMock(return_value=True)
+    coordinator.host = host
+    coordinator.port = port
+    coordinator.slave_id = slave_id
+    coordinator.device_info = {"serial_number": "ABC123"}
     dummy_module.ThesslaGreenModbusCoordinator = MagicMock(return_value=coordinator)
 
     with (
@@ -98,7 +102,7 @@ async def test_legacy_fan_entity_migrated(hass, caplog):
         assert await async_setup_entry(hass, entry)  # nosec
 
     new_entity_id = "fan.rekuperator_fan"
-    new_unique_id = f"{DOMAIN}_{unique_host}_{port}_{slave_id}_fan"
+    new_unique_id = f"{slave_id}_0"
     assert registry.async_get(new_entity_id)  # nosec
     assert registry.entities[new_entity_id].unique_id == new_unique_id  # nosec
     assert old_entity_id not in registry.entities  # nosec

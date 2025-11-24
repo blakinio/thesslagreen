@@ -17,11 +17,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install pytest
+        run: pip install pytest vulture
       - name: Validate Python syntax
         run: python tools/py_compile_all.py
       - name: Validate translations
         run: |
           find custom_components -path '*/translations/*.json' -exec python -m json.tool {} \;
+          python tools/check_translations.py
+      - name: Check for unused code
+        run: vulture custom_components/thessla_green_modbus tests --min-confidence=80
       - name: Run tests
         run: pytest -ra

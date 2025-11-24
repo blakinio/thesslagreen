@@ -1,8 +1,6 @@
 import logging
 
-from custom_components.thessla_green_modbus.scanner_core import (
-    ThesslaGreenDeviceScanner,
-)
+from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
 
 def test_mark_input_unsupported_merges_overlaps():

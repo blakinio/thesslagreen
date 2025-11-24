@@ -18,13 +18,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Airflow unit option allowing `%` or `m³/h` reporting
 - Migration script for clearing legacy airflow statistics
 
+- Documented developer tooling (ruff/black/isort/mypy) and added pre-commit snippet.
+- CI matrix now publishes dedicated hassfest and HACS validation steps.
+- Linting, formatting, and typing tooling alignment for HA compliance
+
 ### Changed
 - Bumped minimum Home Assistant version to 2025.1.0
 - Regenerated Modbus register definitions from CSV and updated coverage test
 - Assigned new unique IDs for m³/h airflow sensors
-
+- Simplified runtime dependencies; only require `pymodbus>=3.5.0`
+- Deferred `homeassistant` imports in `custom_components/thessla_green_modbus` so
+  utility modules can be imported without Home Assistant installed
+- Removed non-existent hassfest/hacs PyPI packages from `requirements-dev.txt` in favor of
+  GitHub Actions validation.
+- Aligned linting configuration (ruff/black/isort) and reformatted the codebase
+  for consistent quality checks
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient
+
+## [2.2.0] - 2025-02-15
+
+### Added
+- Pre-commit configuration with ruff, black, isort, and mypy for consistent checks.
+- GitHub Actions workflow covering linting, typing, pytest, hassfest, and HACS validation.
+
+### Changed
+- Bumped integration version metadata and aligned minimum Home Assistant requirement to 2024.12.0.
 
 ## [2.0.0] - 2025-01-XX - MAJOR OPTIMIZATION RELEASE ⚡
 

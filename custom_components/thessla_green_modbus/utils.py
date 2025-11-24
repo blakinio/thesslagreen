@@ -6,10 +6,10 @@ import re
 
 __all__ = [
     "_to_snake_case",
+    "_normalise_name",
     "_decode_register_time",
     "_decode_bcd_time",
     "_decode_aatt",
-    "parse_schedule_bcd",
     "BCD_TIME_PREFIXES",
     "TIME_REGISTER_PREFIXES",
 ]
@@ -28,6 +28,17 @@ def _to_snake_case(name: str) -> str:
     token_map = {"temp": "temperature"}
     tokens = [token_map.get(token, token) for token in name.split("_")]
     return "_".join(tokens)
+
+
+def _normalise_name(name: str) -> str:
+    """Convert register names to ``snake_case`` and fix known typos."""
+    fixes = {
+        "duct_warter_heater_pump": "duct_water_heater_pump",
+        "required_temp": "required_temperature",
+        "specialmode": "special_mode",
+    }
+    snake = _to_snake_case(name)
+    return fixes.get(snake, snake)
 
 
 def _decode_register_time(value: int) -> int | None:
@@ -67,20 +78,6 @@ def _decode_bcd_time(value: int) -> int | None:
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
         return hours_dec * 60 + minutes_dec
     return None
-
-
-def parse_schedule_bcd(value: int) -> int | None:
-    """Parse schedule register values encoded as BCD HHMM.
-
-    The schedule registers use the BCD time representation but also employ
-    ``0x8000`` as a sentinel indicating that the entry is not configured.  This
-    helper wraps :func:`_decode_bcd_time` and converts the sentinel to
-    ``None`` while still validating the decoded time.
-    """
-
-    if value == 0x8000:
-        return None
-    return _decode_bcd_time(value)
 
 
 def _decode_aatt(value: int) -> tuple[int, float] | None:

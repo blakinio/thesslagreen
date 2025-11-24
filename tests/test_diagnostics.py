@@ -1,34 +1,56 @@
 import copy
 import json
 import logging
-from datetime import datetime, timezone
-from types import SimpleNamespace, ModuleType
-from unittest.mock import AsyncMock, patch
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 # Stub registers module to avoid heavy imports during diagnostics import
 original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
-registers_stub = ModuleType("custom_components.thessla_green_modbus.registers")
-registers_stub.get_all_registers = lambda: []
-registers_stub.get_registers_hash = lambda: "hash"
-registers_stub.get_registers_by_function = lambda *args, **kwargs: []
-registers_stub.plan_group_reads = lambda *args, **kwargs: []
-sys.modules["custom_components.thessla_green_modbus.registers"] = registers_stub
+root_pkg = ModuleType("custom_components.thessla_green_modbus")
+root_pkg.__path__ = []  # type: ignore[attr-defined]
+registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
+registers_module.__path__ = []  # type: ignore[attr-defined]
+loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
+loader_module.get_all_registers = lambda: []
+loader_module.registers_sha256 = lambda *args, **kwargs: "hash"
+loader_module.get_registers_by_function = lambda *args, **kwargs: []
+loader_module.plan_group_reads = lambda *args, **kwargs: []
+loader_module._REGISTERS_PATH = Path("dummy")
+registers_module.loader = loader_module
+registers_module.get_all_registers = loader_module.get_all_registers
+registers_module.registers_sha256 = loader_module.registers_sha256
+registers_module.get_registers_by_function = loader_module.get_registers_by_function
+registers_module.plan_group_reads = loader_module.plan_group_reads
+registers_module._REGISTERS_PATH = loader_module._REGISTERS_PATH
+root_pkg.registers = registers_module
+sys.modules["custom_components.thessla_green_modbus",] = root_pkg
+sys.modules["custom_components.thessla_green_modbus.registers",] = registers_module
+sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_module
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
+sys.modules.setdefault("homeassistant.util", ModuleType("homeassistant.util"))
+sys.modules.setdefault("homeassistant.util.network", ModuleType("homeassistant.util.network"))
+config_flow_stub = ModuleType("custom_components.thessla_green_modbus.config_flow")
+config_flow_stub.CannotConnect = type("CannotConnect", (), {})
+sys.modules["custom_components.thessla_green_modbus.config_flow"] = config_flow_stub
 
-from custom_components.thessla_green_modbus.diagnostics import (
+from custom_components.thessla_green_modbus.diagnostics import (  # noqa: E402
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
-from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities  # noqa: E402
 
 # Restore real registers module for subsequent tests
 if original_registers is not None:
     sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
 else:  # pragma: no cover - defensive
-    del sys.modules["custom_components.thessla_green_modbus.registers"]
+    sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
+sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
+sys.modules.pop("custom_components.thessla_green_modbus", None)
 
 DOMAIN = "thessla_green_modbus"
 
@@ -55,6 +77,14 @@ def test_redact_ipv6_connection():
     assert redacted["connection"]["host"] == ("2001:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:7334")
 
 
+def test_redact_ipv6_zone():
+    data = {"connection": {"host": "fe80::1%eth0"}}
+
+    redacted = _redact_sensitive_data(data)
+
+    assert redacted["connection"]["host"] == ("fe80:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:0001")
+
+
 def test_original_diagnostics_unchanged():
     """Ensure the input diagnostics dict is not modified by redaction."""
     data = {
@@ -73,7 +103,7 @@ def test_original_diagnostics_unchanged():
 async def test_last_scan_in_diagnostics():
     """Ensure diagnostics include last_scan timestamp."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:
@@ -84,13 +114,18 @@ async def test_last_scan_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
+            self.deep_scan = False
+            self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
 
     coord = DummyCoordinator()
     entry = SimpleNamespace(entry_id="test")
-    hass = SimpleNamespace(data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en"))
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en")
+    )
 
     with patch(
         "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
@@ -105,7 +140,7 @@ async def test_last_scan_in_diagnostics():
 async def test_additional_diagnostic_fields():
     """Verify new diagnostic fields are included."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:
@@ -119,6 +154,9 @@ async def test_additional_diagnostic_fields():
             }
             self.statistics = {"connection_errors": 2, "timeout_errors": 1}
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
+            self.deep_scan = True
+            self.force_full_register_list = False
+            self.effective_batch = 7
 
         def get_diagnostic_data(self):
             return {}
@@ -142,6 +180,16 @@ async def test_additional_diagnostic_fields():
         "connection_errors": 2,
         "timeout_errors": 1,
     }
+    assert result["total_registers_json"] == 0
+    assert result["effective_batch"] == coord.effective_batch
+    assert result["deep_scan"] is True
+    assert result["force_full_register_list"] is False
+    assert result["force_full"] is False
+    assert result["autoscan"] is True
+    assert result["registers_discovered"] == {
+        "input_registers": 2,
+        "holding_registers": 1,
+    }
     assert result["last_scan"] == last_scan.isoformat()
 
 
@@ -149,7 +197,7 @@ async def test_additional_diagnostic_fields():
 async def test_unknown_registers_in_diagnostics():
     """Ensure diagnostics include skipped and unknown registers from scan."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     scan_result = {
         "unknown_registers": {"input_registers": {1: 99}},
@@ -169,6 +217,9 @@ async def test_unknown_registers_in_diagnostics():
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
             self.unknown_registers = scan_result["unknown_registers"]
+            self.deep_scan = False
+            self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
@@ -193,10 +244,56 @@ async def test_unknown_registers_in_diagnostics():
 
 
 @pytest.mark.asyncio
+async def test_raw_registers_in_diagnostics():
+    """Ensure diagnostics include raw register dumps when available."""
+
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
+    scan_result = {
+        "raw_registers": {
+            "input_registers": {1: 10},
+            "holding_registers": {2: 20},
+        }
+    }
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = last_scan
+            self.device_scan_result = scan_result
+            self.data = {}
+            self.device_info = {}
+            self.available_registers = {}
+            self.statistics = {}
+            self.capabilities = SimpleNamespace(as_dict=lambda: {})
+            self.deep_scan = False
+            self.force_full_register_list = False
+            self.effective_batch = 0
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}},
+        config=SimpleNamespace(language="en"),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(return_value={}),
+    ):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["raw_registers"] == scan_result["raw_registers"]
+    assert result["last_scan"] == last_scan.isoformat()
+    assert result["error_statistics"] == {"connection_errors": 0, "timeout_errors": 0}
+
+
+@pytest.mark.asyncio
 async def test_diagnostics_json_serializable():
     """Ensure diagnostics data is JSON serializable."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:
@@ -210,6 +307,9 @@ async def test_diagnostics_json_serializable():
                 temperature_sensors={"t1", "t2"},
                 flow_sensors={"f1"},
             )
+            self.deep_scan = False
+            self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}
@@ -235,7 +335,7 @@ async def test_diagnostics_json_serializable():
 async def test_translation_failure_handled(caplog):
     """Ensure translation errors do not break diagnostics."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:
@@ -246,6 +346,9 @@ async def test_translation_failure_handled(caplog):
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
+            self.deep_scan = False
+            self.force_full_register_list = False
+            self.effective_batch = 0
 
         def get_diagnostic_data(self):
             return {}

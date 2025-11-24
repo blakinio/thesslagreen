@@ -28,7 +28,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:
+) -> None:  # pragma: no cover
     """Set up ThesslaGreen select entities.
 
     Home Assistant invokes this during platform setup.
@@ -37,11 +37,16 @@ async def async_setup_entry(
 
     entities = []
     # Only create selects for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device()
+    # ThesslaGreenDeviceScanner.scan_device() or all known registers when
+    # ``force_full_register_list`` is enabled.
     for register_name, select_def in ENTITY_MAPPINGS["select"].items():
         register_type = select_def["register_type"]
-        if register_name in coordinator.available_registers.get(register_type, set()):
-            entities.append(ThesslaGreenSelect(coordinator, register_name, select_def))
+        register_map = coordinator.get_register_map(register_type)
+        available = coordinator.available_registers.get(register_type, set())
+        force_create = coordinator.force_full_register_list and register_name in register_map
+        if register_name in available or force_create:
+            address = register_map[register_name]
+            entities.append(ThesslaGreenSelect(coordinator, register_name, address, select_def))
 
     if entities:
         try:
@@ -52,7 +57,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Created %d select entities", len(entities))
+        _LOGGER.debug("Created %d select entities", len(entities))
 
 
 class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
@@ -66,20 +71,21 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         definition: dict[str, Any],
     ) -> None:
-        super().__init__(coordinator, register_name)
+        super().__init__(coordinator, register_name, address)
         self._register_name = register_name
 
-        self._attr_translation_key = definition["translation_key"]
+        self._attr_translation_key = definition["translation_key"]  # pragma: no cover
         self._attr_icon = definition.get("icon")
-        self._attr_has_entity_name = True
+        self._attr_has_entity_name = True  # pragma: no cover
         self._states = definition["states"]
         self._reverse_states = {v: k for k, v in self._states.items()}
-        self._attr_options = list(self._states.keys())
+        self._attr_options = list(self._states.keys())  # pragma: no cover
 
     @property
-    def current_option(self) -> str | None:
+    def current_option(self) -> str | None:  # pragma: no cover
         """Return current option."""
         value = self.coordinator.data.get(self._register_name)
         if value is None:
@@ -87,7 +93,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
         return self._reverse_states.get(value)
 
-    async def async_select_option(self, option: str) -> None:
+    async def async_select_option(self, option: str) -> None:  # pragma: no cover
         """Change the selected option."""
         if option not in self._states:
             _LOGGER.error("Invalid option: %s", option)

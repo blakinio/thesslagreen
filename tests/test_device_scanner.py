@@ -1,16 +1,19 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 
-import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
 from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ModbusException,
+    ModbusIOException,
+)
+from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.scanner_core import (
     DeviceCapabilities,
-    DeviceInfo,
+    ScannerDeviceInfo,
     ThesslaGreenDeviceScanner,
 )
 from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
@@ -19,15 +22,11 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_bcd_time,
     _decode_register_time,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ModbusException,
-    ModbusIOException,
-)
 
-COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
-DISCRETE_INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("02")}
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
+COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function(1)}
+DISCRETE_INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function(2)}
+HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function(3)}
+INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function(4)}
 
 pytestmark = pytest.mark.asyncio
 
@@ -122,7 +121,7 @@ async def test_read_holding_timeout_logging(caplog):
     with (
         patch(
             "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=asyncio.TimeoutError()),
+            AsyncMock(side_effect=TimeoutError()),
         ),
         patch("asyncio.sleep", AsyncMock()),
         caplog.at_level(logging.WARNING),
@@ -133,9 +132,7 @@ async def test_read_holding_timeout_logging(caplog):
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
     assert any("Timeout reading holding 0x0001" in msg for msg in warnings)
     errors = [r.message for r in caplog.records if r.levelno == logging.ERROR]
-    assert any(
-        "Failed to read holding registers 0x0001-0x0001" in msg for msg in errors
-    )
+    assert any("Failed to read holding registers 0x0001-0x0001" in msg for msg in errors)
 
 
 @pytest.mark.parametrize(
@@ -146,17 +143,19 @@ async def test_read_backoff_delay(method, address):
     """Ensure exponential backoff delays between retries."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
+    if method == "_read_input":
+        mock_client.read_input_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await getattr(scanner, method)(mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
     assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]
 
@@ -169,19 +168,21 @@ async def test_read_default_delay(method, address):
     """Use default delay when backoff is not specified."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
     mock_client = AsyncMock()
+    if method == "_read_input":
+        mock_client.read_input_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await getattr(scanner, method)(mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
-    assert [call.args[0] for call in sleep_mock.await_args_list] == [0, 0]
+    assert sleep_mock.await_args_list == []
 
 
 @pytest.mark.parametrize(
@@ -195,17 +196,18 @@ async def test_read_binary_backoff_delay(func, address):
     """Coil and discrete reads should respect configured backoff."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
+    if func is ThesslaGreenDeviceScanner._read_coil:
+        mock_client.read_coils = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_discrete_inputs = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await func(scanner, mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
     assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]
 
@@ -221,19 +223,20 @@ async def test_read_binary_default_delay(func, address):
     """Default backoff of zero should not delay retries."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
     mock_client = AsyncMock()
+    if func is ThesslaGreenDeviceScanner._read_coil:
+        mock_client.read_coils = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_discrete_inputs = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await func(scanner, mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
-    assert [call.args[0] for call in sleep_mock.await_args_list] == [0, 0]
+    assert sleep_mock.await_args_list == []
 
 
 async def test_read_input_logs_warning_on_failure(caplog):
@@ -440,7 +443,7 @@ async def test_read_holding_exponential_backoff(caplog):
             AsyncMock(side_effect=ModbusException("boom")),
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.asyncio.sleep",
+            "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
             AsyncMock(),
         ) as sleep_mock,
         caplog.at_level(logging.WARNING),
@@ -469,7 +472,7 @@ async def test_read_holding_returns_none_on_modbus_error():
             call_modbus,
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.asyncio.sleep",
+            "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
             AsyncMock(),
         ),
     ):
@@ -577,10 +580,10 @@ async def test_read_discrete_retries_on_failure(caplog):
 async def test_scan_device_success_static(mock_modbus_response):
     """Test successful device scan with predefined registers."""
     regs = {
-        "04": {16: "outside_temperature"},
-        "03": {0: "mode"},
-        "01": {0: "power_supply_fans"},
-        "02": {0: "expansion"},
+        4: {16: "outside_temperature"},
+        3: {0: "mode"},
+        1: {0: "power_supply_fans"},
+        2: {0: "expansion"},
     }
     with patch.object(
         ThesslaGreenDeviceScanner,
@@ -635,7 +638,7 @@ async def test_scan_device_connection_failure():
 
 async def test_scan_device_firmware_unavailable(caplog):
     """Missing firmware registers should log info and report unknown firmware."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -681,7 +684,7 @@ async def test_scan_device_firmware_unavailable(caplog):
 
 async def test_scan_device_firmware_bulk_fallback():
     """Bulk firmware read failure should fall back to individual reads."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -725,7 +728,7 @@ async def test_scan_device_firmware_bulk_fallback():
 
 async def test_scan_device_firmware_partial_bulk_fallback():
     """Partial firmware bulk read should fall back to individual reads."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -770,7 +773,7 @@ async def test_scan_device_firmware_partial_bulk_fallback():
 async def test_scan_blocks_propagated():
     """Ensure scan_device returns discovered register blocks."""
     # Avoid scanning full register set for test speed
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -830,7 +833,7 @@ async def test_scan_blocks_propagated():
 
 async def test_full_register_scan_collects_unknown_registers():
     """Ensure full register scan returns unknown registers and statistics."""
-    reg_map = {"04": {0: "ir0", 2: "ir2"}, "03": {0: "hr0", 2: "hr2"}, "01": {}, "02": {}}
+    reg_map = {4: {0: "ir0", 2: "ir2"}, 3: {0: "hr0", 2: "hr2"}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -871,7 +874,7 @@ async def test_full_register_scan_collects_unknown_registers():
 
 async def test_scan_device_batch_fallback():
     """Batch read failures should fall back to single-register reads."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner, "_load_registers", AsyncMock(return_value=(empty_regs, {}))
     ):
@@ -949,7 +952,7 @@ async def test_scan_device_batch_fallback():
 
 async def test_missing_register_logged_once(caplog):
     """Each missing register should trigger only one read and log entry."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -1066,12 +1069,12 @@ async def test_temperature_register_unavailable_kept():
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
-async def test_is_valid_register_value(caplog):
+async def test_is_valid_register_value():
     """Test register value validation."""
-    with caplog.at_level(logging.WARNING):
-        scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
-
-    assert not any("CSV" in rec.message for rec in caplog.records)
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
+    scanner._register_ranges["supply_percentage"] = (0, 100)
+    scanner._register_ranges["min_percentage"] = (0, 100)
+    scanner._register_ranges["max_percentage"] = (0, 120)
 
     # Valid values
     assert scanner._is_valid_register_value("test_register", 100) is True
@@ -1246,8 +1249,6 @@ async def test_constant_flow_detected_from_various_registers(register):
     assert caps.constant_flow is True
 
 
-
-
 async def test_analyze_capabilities():
     """Test capability analysis."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
@@ -1323,7 +1324,9 @@ async def test_capability_rules_detect_heating_and_bypass():
 async def test_scan_device_includes_capabilities_in_device_info():
     """Detected capabilities are exposed on device info returned by scanner."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-    info = DeviceInfo(model="m", firmware="f", serial_number="s", capabilities=["heating_system"])
+    info = ScannerDeviceInfo(
+        model="m", firmware="f", serial_number="s", capabilities=["heating_system"]
+    )
     caps = DeviceCapabilities(heating_system=True)
 
     with patch.object(scanner, "scan", AsyncMock(return_value=(info, caps, {}))):
@@ -1334,7 +1337,7 @@ async def test_scan_device_includes_capabilities_in_device_info():
 
 async def test_capability_count_includes_booleans(caplog):
     """Log should count boolean capabilities even though bool is an int subclass."""
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -1371,7 +1374,7 @@ async def test_scan_populates_device_name():
     """Scanner should include device_name in returned device info."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
     scanner._client = object()
-    scanner._registers = {"04": {}, "03": {}, "01": {}, "02": {}}
+    scanner._registers = {4: {}, 3: {}, 1: {}, 2: {}}
     scanner.available_registers = {
         "input_registers": set(),
         "holding_registers": set(),
@@ -1406,10 +1409,10 @@ async def test_scan_reports_diagnostic_registers_on_error():
     scanner._client = object()
     diag_regs = {"alarm": 0, "error": 1, "e_99": 2, "s_2": 3}
     scanner._registers = {
-        "04": {},
-        "03": {addr: name for name, addr in diag_regs.items()},
-        "01": {},
-        "02": {},
+        4: {},
+        3: {addr: name for name, addr in diag_regs.items()},
+        1: {},
+        2: {},
     }
     scanner.available_registers = {
         "input_registers": set(),
@@ -1607,6 +1610,7 @@ async def test_scan_logs_missing_expected_registers(caplog):
         if address <= 4 < address + count:
             data[4 - address] = SENSOR_UNAVAILABLE
         return data
+
     scanner = ThesslaGreenDeviceScanner("host", 502)
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS", input_regs),

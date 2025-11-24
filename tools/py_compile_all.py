@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Compile all modules to detect syntax errors."""
+
 from __future__ import annotations
 
 import pathlib
@@ -8,7 +9,9 @@ import sys
 
 
 def main() -> int:
-    base_dir = pathlib.Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus"
+    base_dir = (
+        pathlib.Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus"
+    )
     errors: list[str] = []
     for module in base_dir.rglob("*.py"):
         try:

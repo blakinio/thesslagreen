@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import AsyncMock, patch
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
@@ -8,7 +9,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_input_range_read_after_block_failure():
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with (
         patch.object(
             ThesslaGreenDeviceScanner,
@@ -76,7 +77,7 @@ async def test_input_range_read_after_block_failure():
 
 
 async def test_block_exception_allows_single_register_reads():
-    empty_regs = {"04": {}, "03": {}, "01": {}, "02": {}}
+    empty_regs = {4: {}, 3: {}, 1: {}, 2: {}}
     with patch.object(
         ThesslaGreenDeviceScanner,
         "_load_registers",
@@ -87,16 +88,12 @@ async def test_block_exception_allows_single_register_reads():
     regs = {f"reg_{addr:04X}": addr for addr in range(0x0010, 0x0014)}
     call_log: list[tuple[int, int]] = []
 
-    error_response = SimpleNamespace(
-        isError=lambda: True, exception_code=4
-    )
+    error_response = SimpleNamespace(isError=lambda: True, exception_code=4)
 
     async def fake_call_modbus(func, slave_id, address, *, count):
         call_log.append((address, count))
         if address == 0x0000 and count == 5:
-            return SimpleNamespace(
-                registers=[4, 85, 0, 0, 0], isError=lambda: False
-            )
+            return SimpleNamespace(registers=[4, 85, 0, 0, 0], isError=lambda: False)
         if address == 0x0018 and count == 6:
             return SimpleNamespace(registers=[0] * 6, isError=lambda: False)
         if address == 0x0010 and count == 4:

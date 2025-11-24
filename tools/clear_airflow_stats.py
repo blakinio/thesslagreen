@@ -13,8 +13,8 @@ If CONFIG_DIR is not provided the script will attempt common locations such as
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 import sys
+from pathlib import Path
 
 LEGACY_SENSORS = [
     "sensor.supply_flow_rate",
@@ -44,11 +44,17 @@ def clear_stats(db_path: Path) -> None:
     cur = conn.cursor()
     for sensor in LEGACY_SENSORS:
         cur.execute(
-            "DELETE FROM statistics WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)",
+            (
+                "DELETE FROM statistics "
+                "WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)"
+            ),
             (sensor,),
         )
         cur.execute(
-            "DELETE FROM statistics_short_term WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)",
+            (
+                "DELETE FROM statistics_short_term "
+                "WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)"
+            ),
             (sensor,),
         )
         cur.execute(

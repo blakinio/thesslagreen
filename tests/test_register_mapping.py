@@ -1,9 +1,10 @@
-import pytest
-from custom_components.thessla_green_modbus.registers import get_registers_by_function
-from custom_components.thessla_green_modbus.utils import _to_snake_case
-
-from pathlib import Path
 import json
+from pathlib import Path
+
+import pytest
+
+from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
+from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 
 def _reg(fn: str, name: str):
@@ -63,7 +64,6 @@ def test_register_mapping_and_scaling() -> None:
     assert inp.multiplier == 0.1
     assert inp.decode(215) == pytest.approx(21.5)
     assert inp.encode(21.5) == 215
-
 
 
 def test_registers_match_json() -> None:

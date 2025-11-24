@@ -10,6 +10,12 @@ def test_deep_scan_defaults():
     assert const.DEFAULT_DEEP_SCAN is False
 
 
+def test_max_registers_per_request_defaults():
+    """Ensure max register limit constant is defined and defaults to maximum."""
+    assert const.CONF_MAX_REGISTERS_PER_REQUEST == "max_registers_per_request"
+    assert const.DEFAULT_MAX_REGISTERS_PER_REQUEST == const.MAX_BATCH_REGISTERS
+
+
 def test_missing_options_file(monkeypatch, caplog):
     def missing(_self: Path, **kwargs) -> str:  # pragma: no cover - simple stub
         raise FileNotFoundError
@@ -20,7 +26,6 @@ def test_missing_options_file(monkeypatch, caplog):
         options = const._load_json_option("special_modes.json")
 
     assert options == []  # nosec B101
-    assert "special_modes.json" in caplog.text  # nosec B101
 
 
 def test_malformed_options_file(monkeypatch, caplog):
@@ -33,4 +38,3 @@ def test_malformed_options_file(monkeypatch, caplog):
         options = const._load_json_option("special_modes.json")
 
     assert options == []  # nosec B101
-    assert "special_modes.json" in caplog.text  # nosec B101

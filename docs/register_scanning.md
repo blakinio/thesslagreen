@@ -28,22 +28,28 @@ primarily for debugging or development purposes.
    pytest tests/test_register_loader.py
    ```
 
-4. (Opcjonalnie) wygeneruj moduł `registers.py` na potrzeby zewnętrznych narzędzi:
-
-   ```bash
-   python tools/generate_registers.py
-   ```
-
-5. Zaktualizuj tłumaczenia w `custom_components/thessla_green_modbus/translations/en.json` i `pl.json`,
+4. Zaktualizuj tłumaczenia w `custom_components/thessla_green_modbus/translations/en.json` i `pl.json`,
    dodając nowe klucze i usuwając nieużywane. Uruchom `pytest tests/test_unused_translations.py`, aby
    upewnić się, że tłumaczenia są aktualne.
-6. Do commitu dodaj zmodyfikowany plik JSON.
+5. Do commitu dodaj zmodyfikowany plik JSON.
+6. Jeżeli dany rejestr ma charakter stricte techniczny lub konfiguracyjny i nie powinien być
+   eksponowany jako encja, dopisz jego nazwę do stałej `INTENTIONAL_OMISSIONS` w pliku
+   `tests/test_register_coverage.py`.
+
+## Oznaczanie rejestrów technicznych
+
+Niektóre wpisy w dokumentacji Modbus opisują pola konfiguracyjne lub pomocnicze,
+które nie są potrzebne w Home Assistant. Aby zachować kompletność listy, ale
+unikać tworzenia zbędnych encji, ich nazwy należy umieścić w stałej
+`INTENTIONAL_OMISSIONS` w teście `tests/test_register_coverage.py`. Dzięki temu
+testy będą weryfikować, że wszystkie pozostałe rejestry są odpowiednio
+obsługiwane przez integrację.
 
 ## Walidacja rejestrów z dokumentacją PDF
 
 Definicje rejestrów są okresowo porównywane z oficjalną dokumentacją
 producenta. Skrypt `tools/validate_register_pdf.py` parsuje plik
-`MODBUS_USER_AirPack_Home_08.2021.01 1.pdf` i zwraca listę rejestrów wraz z
+[MODBUS_USER_AirPack_Home_08.2021.01.pdf](https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf) i zwraca listę rejestrów wraz z
 informacjami o dostępie, jednostkach i skalowaniu. Dane te są używane w teście
 `tests/test_register_loader_validation.py::test_registers_match_pdf`, który
 sprawdza, czy każdy adres z PDF został odwzorowany w pliku JSON oraz czy
@@ -58,29 +64,3 @@ pytest tests/test_register_loader_validation.py::test_registers_match_pdf
 
 Jeżeli test zgłasza brakujące rejestry lub rozbieżności w atrybutach,
 należy zaktualizować plik JSON przed wysłaniem zmian.
-
-## Migracja z CSV na JSON
-Rejestry są definiowane wyłącznie w pliku JSON
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
-który jest kanonicznym źródłem prawdy.
-Format CSV jest przestarzały i zostanie usunięty w przyszłych wersjach – jego
-użycie zapisuje ostrzeżenie w logach. Każdy obiekt w tablicy `registers` zawiera pola:
-
-- `function` – kod funkcji Modbus
-- `address_dec` / `address_hex` – adres rejestru
-- `name` – unikalna nazwa
-- `description` – opis po polsku
-- `description_en` – opis po angielsku
-- `access` – tryb dostępu (`R`/`W`)
-
-Opcjonalnie można zdefiniować `unit`, `enum`, `multiplier`, `resolution` i inne
-atrybuty.
-
-Aby ręcznie przekonwertować istniejący plik CSV:
-
-1. Otwórz plik CSV i odwzoruj kolumny na odpowiednie pola JSON.
-2. Dla każdego wiersza utwórz obiekt w `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
-3. Przekonwertuj adresy na postać dziesiętną i heksadecymalną (`0x...`).
-4. Po konwersji uruchom test i narzędzia z sekcji powyżej, aby zweryfikować plik.
-
-Po migracji usuń lub zignoruj plik CSV – integracja korzysta wyłącznie z definicji JSON.

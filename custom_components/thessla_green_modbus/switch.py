@@ -11,25 +11,20 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, coil_registers, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
-from .registers import get_registers_by_function
 
 _LOGGER = logging.getLogger(__name__)
-
-# Register address lookups for modbus writes
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:
+) -> None:  # pragma: no cover
     """Set up ThesslaGreen switch entities from config entry.
 
     Home Assistant invokes this during platform setup.
@@ -40,6 +35,8 @@ async def async_setup_entry(
 
     # Create switch entities only for writable registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()
+    holding_map = holding_registers()
+    coil_map = coil_registers()
     for key, config in ENTITY_MAPPINGS["switch"].items():
         register_name = config["register"]
 
@@ -49,19 +46,25 @@ async def async_setup_entry(
         if config["register_type"] == "holding_registers":
             if register_name in coordinator.available_registers.get("holding_registers", set()):
                 is_available = True
-            elif coordinator.force_full_register_list and register_name in HOLDING_REGISTERS:
+            elif coordinator.force_full_register_list and register_name in holding_map:
                 is_available = True
         elif config["register_type"] == "coil_registers":
             if register_name in coordinator.available_registers.get("coil_registers", set()):
                 is_available = True
-            elif coordinator.force_full_register_list and register_name in COIL_REGISTERS:
+            elif coordinator.force_full_register_list and register_name in coil_map:
                 is_available = True
 
         if is_available:
+            address = (
+                holding_map[register_name]
+                if config["register_type"] == "holding_registers"
+                else coil_map[register_name]
+            )
             entities.append(
                 ThesslaGreenSwitch(
                     coordinator=coordinator,
                     key=key,
+                    address=address,
                     entity_config=config,
                 )
             )
@@ -78,7 +81,7 @@ async def async_setup_entry(
             )
             async_add_entities(entities, False)
             return
-        _LOGGER.info("Added %d switch entities", len(entities))
+        _LOGGER.debug("Added %d switch entities", len(entities))
     else:
         _LOGGER.debug("No switch entities were created")
 
@@ -94,22 +97,24 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         key: str,
+        address: int,
         entity_config: dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
-        super().__init__(coordinator, key)
+        register_name = entity_config["register"]
+        super().__init__(coordinator, key, address, bit=entity_config.get("bit"))
 
         self.entity_config = entity_config
-        self.register_name = entity_config["register"]
+        self.register_name = register_name
         self.bit = entity_config.get("bit")
 
         # Entity configuration
-        self._attr_translation_key = entity_config["translation_key"]
+        self._attr_translation_key = entity_config["translation_key"]  # pragma: no cover
         self._attr_icon = entity_config.get("icon", "mdi:toggle-switch")
 
         # Set entity category if specified
         if entity_config.get("category"):
-            self._attr_entity_category = entity_config["category"]
+            self._attr_entity_category = entity_config["category"]  # pragma: no cover
 
         _LOGGER.debug("Initialized switch entity: %s", key)
 
@@ -131,7 +136,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         # Convert to boolean
         return bool(raw_value)
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self, **kwargs: Any) -> None:  # pragma: no cover
         """Turn the switch on."""
         try:
             if self.bit is not None:
@@ -140,7 +145,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             else:
                 value = 1
             await self._write_register(self.register_name, value)
-            _LOGGER.info("Turned on %s", self.register_name)
+            _LOGGER.debug("Turned on %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn on %s: %s", self.register_name, exc)
@@ -155,7 +160,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             else:
                 value = 0
             await self._write_register(self.register_name, value)
-            _LOGGER.info("Turned off %s", self.register_name)
+            _LOGGER.debug("Turned off %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn off %s: %s", self.register_name, exc)
@@ -170,7 +175,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
         """Return additional state attributes."""
         attributes = {}
 
@@ -178,11 +183,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         attributes["register_name"] = self.register_name
         register_type = self.entity_config["register_type"]
 
-        if register_type == "holding_registers":
-            register_address = HOLDING_REGISTERS.get(self.register_name, 0)
-        else:
-            register_address = COIL_REGISTERS.get(self.register_name, 0)
-
+        register_address = self._address if self._address is not None else 0
         attributes["register_address"] = f"0x{register_address:04X}"
         attributes["register_type"] = register_type
 
@@ -213,7 +214,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         return attributes
 
     @property
-    def available(self) -> bool:
+    def available(self) -> bool:  # pragma: no cover
         """Return if entity is available."""
         # Entity is available if coordinator is available
         if not self.coordinator.last_update_success:

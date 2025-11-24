@@ -10,15 +10,24 @@ The module also provides helpers for handling legacy entity IDs that
 were renamed in newer versions of the integration.
 """
 
+from __future__ import annotations
+
+import importlib.util
 import json
 import logging
+import re
+import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from homeassistant.core import HomeAssistant
 
 try:  # pragma: no cover - handle absence of Home Assistant
     from homeassistant.components.binary_sensor import BinarySensorDeviceClass
     from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-except Exception:  # pragma: no cover - executed in tests without HA
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tests without HA
+
     class BinarySensorDeviceClass:  # type: ignore[no-redef]
         RUNNING = "running"
         OPENING = "opening"
@@ -40,6 +49,7 @@ except Exception:  # pragma: no cover - executed in tests without HA
         MEASUREMENT = "measurement"
         TOTAL_INCREASING = "total_increasing"
 
+
 try:  # pragma: no cover - use HA constants when available
     from homeassistant.const import (
         UnitOfElectricPotential,
@@ -47,7 +57,7 @@ try:  # pragma: no cover - use HA constants when available
         UnitOfTime,
         UnitOfVolumeFlowRate,
     )
-except Exception:  # pragma: no cover - executed only in tests
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
 
     class UnitOfElectricPotential:  # type: ignore[no-redef]
         VOLT = "V"
@@ -66,12 +76,18 @@ except Exception:  # pragma: no cover - executed only in tests
 
 try:  # pragma: no cover - fallback for tests without full HA constants
     from homeassistant.const import PERCENTAGE
-except Exception:  # pragma: no cover - executed only in tests
+except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
-from .const import SPECIAL_FUNCTION_MAP
-from .const import COIL_REGISTERS, DISCRETE_INPUT_REGISTERS, HOLDING_REGISTERS
-from .registers import get_all_registers
+try:  # pragma: no cover - optional during isolated tests
+    from .registers.loader import get_all_registers
+except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+
+    def get_all_registers(*_args, **_kwargs):
+        return []
+
+
+from .const import SPECIAL_FUNCTION_MAP, coil_registers, discrete_input_registers, holding_registers
 from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,7 +101,7 @@ _REGISTER_INFO_CACHE: dict[str, dict[str, Any]] | None = None
 # subset of legacy names existed in early versions of the integration. These
 # mappings allow services to transparently use the new entity IDs while warning
 # users to update their automations.
-LEGACY_ENTITY_ID_ALIASES: Dict[str, tuple[str, str]] = {
+LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {
     # Keys are suffixes of legacy entity_ids.
     # "number.rekuperator_predkosc" / "number.rekuperator_speed" → fan entity
     "predkosc": ("fan", "fan"),
@@ -115,15 +131,12 @@ def map_legacy_entity_id(entity_id: str) -> str:
 
     new_domain, new_suffix = LEGACY_ENTITY_ID_ALIASES[suffix]
     parts = object_id.split("_")
-    new_object_id = (
-        "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
-    )
+    new_object_id = "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
     new_entity_id = f"{new_domain}.{new_object_id}"
 
     if not _alias_warning_logged:
         _LOGGER.warning(
-            "Legacy entity ID '%s' detected. Please update automations "
-            "to use '%s'.",
+            "Legacy entity ID '%s' detected. Please update automations " "to use '%s'.",
             entity_id,
             new_entity_id,
         )
@@ -167,12 +180,7 @@ def _get_register_info(name: str) -> dict[str, Any] | None:
                 "step": step,
             }
     info = _REGISTER_INFO_CACHE.get(name)
-    if (
-        info is None
-        and (suffix := name.rsplit("_", 1))
-        and len(suffix) > 1
-        and suffix[1].isdigit()
-    ):
+    if info is None and (suffix := name.rsplit("_", 1)) and len(suffix) > 1 and suffix[1].isdigit():
         info = _REGISTER_INFO_CACHE.get(suffix[0])
     return info
 
@@ -197,27 +205,42 @@ def _parse_states(value: str | None) -> dict[str, int] | None:
 
 def _load_number_mappings() -> dict[str, dict[str, Any]]:
     """Build number entity configurations from register metadata."""
+
     number_configs: dict[str, dict[str, Any]] = {}
-    for register in HOLDING_REGISTERS:
+
+    for reg in get_all_registers():
+        if reg.function != 3 or not reg.name:
+            continue
+        register = reg.name
         info = _get_register_info(register)
         if not info:
             continue
-        if register.startswith(("s_", "e_", "alarm", "error")):
+
+        # Skip diagnostic/error registers (E/S codes and alarm/error flags)
+        if re.match(r"[se](?:_|\d)", register) or register in {"alarm", "error"}:
             continue
+
+        # Skip registers with enumerated states – handled as binary/select
         if _parse_states(info.get("unit")):
             continue
-        if info.get("min") is None and info.get("max") is None:
-            continue
-        number_configs[register] = {
+
+        cfg: dict[str, Any] = {
             "unit": info.get("unit"),
-            "min": info.get("min", 0),
-            "max": info.get("max", 0),
             "step": info.get("step", 1),
             "scale": info.get("scale", 1),
         }
+        if info.get("min") is not None:
+            cfg["min"] = info["min"]
+        if info.get("max") is not None:
+            cfg["max"] = info["max"]
+
+        number_configs[register] = cfg
+
     for register, override in NUMBER_OVERRIDES.items():
         number_configs.setdefault(register, {}).update(override)
+
     return number_configs
+
 
 # Manual overrides for number entities (icons, custom units, etc.)
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
@@ -261,9 +284,7 @@ def _load_translation_keys() -> dict[str, set[str]]:
     """Return available translation keys for supported entity types."""
 
     try:
-        with (Path(__file__).with_name("translations") / "en.json").open(
-            encoding="utf-8"
-        ) as f:
+        with (Path(__file__).with_name("translations") / "en.json").open(encoding="utf-8") as f:
             data = json.load(f)
         entity = data.get("entity", {})
         return {
@@ -271,7 +292,15 @@ def _load_translation_keys() -> dict[str, set[str]]:
             "switch": set(entity.get("switch", {}).keys()),
             "select": set(entity.get("select", {}).keys()),
         }
-    except Exception:  # pragma: no cover - fallback when translations missing
+    except (
+        OSError,
+        json.JSONDecodeError,
+        ValueError,
+    ) as err:  # pragma: no cover - fallback when translations missing
+        _LOGGER.debug("Failed to load translation keys: %s", err)
+        return {"binary_sensor": set(), "switch": set(), "select": set()}
+    except Exception as err:  # pragma: no cover - unexpected
+        _LOGGER.exception("Unexpected error loading translation keys: %s", err)
         return {"binary_sensor": set(), "switch": set(), "select": set()}
 
 
@@ -292,14 +321,14 @@ def _load_discrete_mappings() -> tuple[
     select_keys = translations["select"]
 
     # Coil and discrete input registers are always binary sensors
-    for reg in COIL_REGISTERS:
+    for reg in coil_registers():
         if reg not in binary_keys:
             continue
         binary_configs[reg] = {
             "translation_key": reg,
             "register_type": "coil_registers",
         }
-    for reg in DISCRETE_INPUT_REGISTERS:
+    for reg in discrete_input_registers():
         if reg not in binary_keys:
             continue
         binary_configs[reg] = {
@@ -308,7 +337,7 @@ def _load_discrete_mappings() -> tuple[
         }
 
     # Holding registers with enumerated states
-    for reg in HOLDING_REGISTERS:
+    for reg in holding_registers():
         info = _get_register_info(reg)
         if not info:
             continue
@@ -336,11 +365,9 @@ def _load_discrete_mappings() -> tuple[
     # metadata marks them as writable or enumerated. We therefore override
     # any previously generated switch/select configurations.
     diag_registers = {"alarm", "error"}
-    diag_registers.update(
-        reg for reg in HOLDING_REGISTERS if reg.startswith("s_") or reg.startswith("e_")
-    )
+    diag_registers.update(reg for reg in holding_registers() if re.match(r"[se](?:_|\d)", reg))
     for reg in diag_registers:
-        if reg not in HOLDING_REGISTERS and reg not in {"alarm", "error"}:
+        if reg not in holding_registers() and reg not in {"alarm", "error"}:
             continue
         if reg not in binary_keys:
             continue
@@ -352,6 +379,60 @@ def _load_discrete_mappings() -> tuple[
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)
 
+    # Registers exposing bitmask flags
+    func_map = {
+        1: "coil_registers",
+        2: "discrete_inputs",
+        3: "holding_registers",
+        4: "input_registers",
+    }
+    for reg in get_all_registers():
+        if not reg.name:
+            continue
+        if not reg.extra or not reg.extra.get("bitmask"):
+            continue
+        register_type = func_map.get(reg.function)
+        if not register_type:
+            continue
+        bits = reg.bits or []
+        if bits:
+            unnamed_bit = False
+            for idx, bit_def in enumerate(bits):
+                if isinstance(bit_def, dict):
+                    bit_name = bit_def.get("name")
+                else:
+                    bit_name = str(bit_def) if bit_def is not None else None
+
+                if bit_name:
+                    key = f"{reg.name}_{_to_snake_case(bit_name)}"
+                    binary_configs[key] = {
+                        "translation_key": key,
+                        "register_type": register_type,
+                        "register": reg.name,
+                        "bit": 1 << idx,
+                    }
+                else:
+                    unnamed_bit = True
+
+            if unnamed_bit:
+                binary_configs.setdefault(
+                    reg.name,
+                    {
+                        "translation_key": reg.name,
+                        "register_type": register_type,
+                        "bitmask": True,
+                    },
+                )
+        else:
+            binary_configs.setdefault(
+                reg.name,
+                {
+                    "translation_key": reg.name,
+                    "register_type": register_type,
+                    "bitmask": True,
+                },
+            )
+
     return binary_configs, switch_configs, select_configs
 
 
@@ -359,9 +440,9 @@ def _load_discrete_mappings() -> tuple[
 # Entity configurations
 # ---------------------------------------------------------------------------
 
-# Number entity mappings loaded from register metadata
-NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = _load_number_mappings()
-SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+# Number entity mappings loaded from register metadata during setup
+NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
+SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # Temperature sensors (Input Registers)
     "outside_temperature": {
         "translation_key": "outside_temperature",
@@ -775,7 +856,7 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "mode": {
         "icon": "mdi:cog",
         "translation_key": "mode",
@@ -813,7 +894,7 @@ SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # System status (from coil registers)
     "duct_water_heater_pump": {
         "translation_key": "duct_water_heater_pump",
@@ -990,7 +1071,7 @@ SPECIAL_MODE_ICONS = {
     "winter": "mdi:snowflake",
 }
 
-SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # System control switches from holding registers
     "on_off_panel_mode": {
         "icon": "mdi:power",
@@ -1001,47 +1082,17 @@ SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Generate discrete entity mappings from register metadata and allow
-# manual overrides
-_gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
-for key in BINARY_SENSOR_ENTITY_MAPPINGS:
-    _gen_switch.pop(key, None)
-    _gen_select.pop(key, None)
-for key in SWITCH_ENTITY_MAPPINGS:
-    _gen_binary.pop(key, None)
-    _gen_select.pop(key, None)
-for key in SELECT_ENTITY_MAPPINGS:
-    _gen_binary.pop(key, None)
-    _gen_switch.pop(key, None)
-BINARY_SENSOR_ENTITY_MAPPINGS = {
-    **_gen_binary,
-    **BINARY_SENSOR_ENTITY_MAPPINGS,
-}
-SWITCH_ENTITY_MAPPINGS = {
-    **_gen_switch,
-    **SWITCH_ENTITY_MAPPINGS,
-}
-SELECT_ENTITY_MAPPINGS = {
-    **_gen_select,
-    **SELECT_ENTITY_MAPPINGS,
-}
+# Discrete entity mappings and special modes are populated during setup
 
-for mode, bit in SPECIAL_FUNCTION_MAP.items():
-    SWITCH_ENTITY_MAPPINGS[mode] = {
-        "icon": SPECIAL_MODE_ICONS.get(mode, "mdi:toggle-switch"),
-        "register": "special_mode",
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": mode,
-        "bit": bit,
-    }
+# Aggregated entity mappings for all platforms
+ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {}
 
 
 def _extend_entity_mappings_from_registers() -> None:
     """Populate entity mappings for registers not explicitly defined."""
 
     for reg in get_all_registers():
-        if reg.function != "03" or not reg.name:
+        if reg.function != 3 or not reg.name:
             continue
         register = reg.name
         if register in NUMBER_ENTITY_MAPPINGS:
@@ -1055,11 +1106,7 @@ def _extend_entity_mappings_from_registers() -> None:
         if register in SELECT_ENTITY_MAPPINGS:
             continue
 
-        if (
-            register in {"alarm", "error"}
-            or register.startswith("s_")
-            or register.startswith("e_")
-        ):
+        if register in {"alarm", "error"} or register.startswith("s_") or register.startswith("e_"):
             BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
                 register,
                 {
@@ -1103,12 +1150,7 @@ def _extend_entity_mappings_from_registers() -> None:
                     )
                 continue
 
-            if (
-                "W" in access
-                and info_text
-                and ";" in info_text
-                and max_val <= 10
-            ):
+            if "W" in access and info_text and ";" in info_text and max_val <= 10:
                 states: dict[str, int] = {}
                 for part in info_text.split(";"):
                     part = part.strip()
@@ -1145,12 +1187,63 @@ def _extend_entity_mappings_from_registers() -> None:
                 )
 
 
-_extend_entity_mappings_from_registers()
+def _build_entity_mappings() -> None:
+    """Populate entity mapping dictionaries."""
 
-ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {
-    "number": NUMBER_ENTITY_MAPPINGS,
-    "sensor": SENSOR_ENTITY_MAPPINGS,
-    "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
-    "switch": SWITCH_ENTITY_MAPPINGS,
-    "select": SELECT_ENTITY_MAPPINGS,
-}
+    global NUMBER_ENTITY_MAPPINGS, BINARY_SENSOR_ENTITY_MAPPINGS
+    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, ENTITY_MAPPINGS
+
+    NUMBER_ENTITY_MAPPINGS = _load_number_mappings()
+
+    _gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
+    for key in BINARY_SENSOR_ENTITY_MAPPINGS:
+        _gen_binary.pop(key, None)
+        _gen_switch.pop(key, None)
+        _gen_select.pop(key, None)
+    for key in SWITCH_ENTITY_MAPPINGS:
+        _gen_binary.pop(key, None)
+        _gen_select.pop(key, None)
+    for key in SELECT_ENTITY_MAPPINGS:
+        _gen_binary.pop(key, None)
+        _gen_switch.pop(key, None)
+    BINARY_SENSOR_ENTITY_MAPPINGS.update(_gen_binary)
+    SWITCH_ENTITY_MAPPINGS.update(_gen_switch)
+    SELECT_ENTITY_MAPPINGS.update(_gen_select)
+
+    for mode, bit in SPECIAL_FUNCTION_MAP.items():
+        SWITCH_ENTITY_MAPPINGS[mode] = {
+            "icon": SPECIAL_MODE_ICONS.get(mode, "mdi:toggle-switch"),
+            "register": "special_mode",
+            "register_type": "holding_registers",
+            "category": None,
+            "translation_key": mode,
+            "bit": bit,
+        }
+
+    _extend_entity_mappings_from_registers()
+
+    ENTITY_MAPPINGS = {
+        "number": NUMBER_ENTITY_MAPPINGS,
+        "sensor": SENSOR_ENTITY_MAPPINGS,
+        "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
+        "switch": SWITCH_ENTITY_MAPPINGS,
+        "select": SELECT_ENTITY_MAPPINGS,
+    }
+
+
+async def async_setup_entity_mappings(hass: HomeAssistant | None = None) -> None:
+    """Asynchronously build entity mappings."""
+
+    if hass is not None:
+        await hass.async_add_executor_job(_build_entity_mappings)
+    else:
+        _build_entity_mappings()
+
+
+try:  # pragma: no cover - handle partially initialized module
+    _HAS_HA = importlib.util.find_spec("homeassistant") is not None
+except (ImportError, ValueError):
+    _HAS_HA = False
+
+if not _HAS_HA or "pytest" in sys.modules:  # pragma: no cover - test env
+    _build_entity_mappings()

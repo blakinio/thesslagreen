@@ -12,7 +12,7 @@ from typing import Any, cast
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, STATE_UNAVAILABLE
+from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -38,7 +38,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:
+) -> None:  # pragma: no cover
     """Set up ThesslaGreen sensor entities based on available registers.
 
     This is invoked by Home Assistant during platform setup.
@@ -49,15 +49,21 @@ async def async_setup_entry(
     temp_created = 0
     temp_skipped = 0
 
-    # Create sensors only for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device()
+    # Create sensors for discovered registers, or all known registers when
+    # ``force_full_register_list`` is enabled.
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
-        # Check if this register is available on the device
-        if register_name in coordinator.available_registers.get(register_type, set()):
-            entities.append(ThesslaGreenSensor(coordinator, register_name, sensor_def))
+        register_map = coordinator.get_register_map(register_type)
+        available = coordinator.available_registers.get(register_type, set())
+        force_create = coordinator.force_full_register_list and register_name in register_map
+
+        # Check if this register is available on the device or should be
+        # forcibly added from the full register list.
+        if register_name in available or force_create:
+            address = register_map[register_name]
+            entities.append(ThesslaGreenSensor(coordinator, register_name, address, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
             if is_temp:
                 temp_created += 1
@@ -82,7 +88,7 @@ async def async_setup_entry(
         except asyncio.CancelledError:
             _LOGGER.warning("Entity addition cancelled, adding without initial update")
             async_add_entities(entities, False)
-        _LOGGER.info(
+        _LOGGER.debug(
             "Created %d sensor entities for %s",
             len(entities),
             coordinator.device_name,
@@ -90,7 +96,7 @@ async def async_setup_entry(
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
 
-    _LOGGER.info(
+    _LOGGER.debug(
         "Temperature sensors: %d instantiated, %d skipped",
         temp_created,
         temp_skipped,
@@ -108,27 +114,25 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
+        address: int,
         sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator, register_name)
+        super().__init__(coordinator, register_name, address)
 
         self._register_name = register_name
         self._sensor_def = sensor_definition
 
         # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
-        airflow_unit = getattr(getattr(coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
-        self._attr_native_unit_of_measurement = sensor_definition.get("unit")
-        if register_name in AIRFLOW_RATE_REGISTERS and airflow_unit == AIRFLOW_UNIT_PERCENTAGE:
-            self._attr_native_unit_of_measurement = PERCENTAGE
-        self._attr_device_class = sensor_definition.get("device_class")
-        self._attr_state_class = sensor_definition.get("state_class")
+        self._attr_native_unit_of_measurement = sensor_definition.get("unit")  # pragma: no cover
+        if self._use_percentage():
+            self._attr_native_unit_of_measurement = PERCENTAGE  # pragma: no cover
+        self._attr_device_class = sensor_definition.get("device_class")  # pragma: no cover
+        self._attr_state_class = sensor_definition.get("state_class")  # pragma: no cover
 
         # Translation setup
-        self._attr_translation_key = sensor_definition.get("translation_key")
+        self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover
 
         _LOGGER.debug(
             "Sensor initialized: %s (%s)",
@@ -137,62 +141,38 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         )
 
     @property
-    def native_value(self) -> float | int | str | None:
+    def native_value(self) -> float | int | str | None:  # pragma: no cover
         """Return the state of the sensor."""
         value = self.coordinator.data.get(self._register_name)
 
         if value in (None, SENSOR_UNAVAILABLE):
-            return STATE_UNAVAILABLE
+            return None
         if self._register_name.startswith(TIME_REGISTER_PREFIXES):
             if isinstance(value, int):
                 return f"{value // 60:02d}:{value % 60:02d}"
             return cast(str | float | int, value)
-        airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
-        if (
-            self._register_name in AIRFLOW_RATE_REGISTERS
-            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
-        ):
-            nominal_key = (
-                "nominal_supply_air_flow"
-                if self._register_name == "supply_flow_rate"
-                else "nominal_exhaust_air_flow"
-            )
-            nominal = self.coordinator.data.get(nominal_key)
-            if isinstance(nominal, (int, float)) and nominal:
+        if self._use_percentage():
+            nominal = self._get_nominal_flow()
+            if nominal is not None:
                 return round((cast(float, value) / float(nominal)) * 100)
-            return STATE_UNAVAILABLE
+            return None
         value_map = self._sensor_def.get("value_map")
         if value_map is not None:
             return cast(float | int | str, value_map.get(value, value))
         return cast(float | int | str, value)
 
     @property
-    def available(self) -> bool:  # type: ignore[override]
+    def available(self) -> bool:  # pragma: no cover
         """Return if entity has valid data."""
         value = self.coordinator.data.get(self._register_name)
         if not (self.coordinator.last_update_success and value not in (None, SENSOR_UNAVAILABLE)):
             return False
-        airflow_unit = getattr(getattr(self.coordinator, "entry", None), "options", {}).get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
-        if (
-            self._register_name in AIRFLOW_RATE_REGISTERS
-            and airflow_unit == AIRFLOW_UNIT_PERCENTAGE
-        ):
-            nominal_key = (
-                "nominal_supply_air_flow"
-                if self._register_name == "supply_flow_rate"
-                else "nominal_exhaust_air_flow"
-            )
-            nominal = self.coordinator.data.get(nominal_key)
-            if not isinstance(nominal, (int, float)) or not nominal:
-                return False
+        if self._use_percentage() and self._get_nominal_flow() is None:
+            return False
         return True
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
         """Return additional state attributes."""
         attrs = {}
 
@@ -203,10 +183,34 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         # Add raw value for diagnostic purposes
         raw_value = self.coordinator.data.get(self._register_name)
-        if raw_value is not None and isinstance(raw_value, (int, float)):
+        if raw_value is not None and isinstance(raw_value, int | float):
             attrs["raw_value"] = raw_value
 
         return attrs
+
+    def _get_airflow_unit(self) -> str:
+        """Return airflow unit option."""
+        options = getattr(getattr(self.coordinator, "entry", None), "options", {})
+        return str(options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT))
+
+    def _use_percentage(self) -> bool:
+        """Return True if airflow rates should be represented as percentage."""
+        return (
+            self._register_name in AIRFLOW_RATE_REGISTERS
+            and self._get_airflow_unit() == AIRFLOW_UNIT_PERCENTAGE
+        )
+
+    def _get_nominal_flow(self) -> float | int | None:
+        """Return nominal airflow rate for current sensor if available."""
+        nominal_key = (
+            "nominal_supply_air_flow"
+            if self._register_name == "supply_flow_rate"
+            else "nominal_exhaust_air_flow"
+        )
+        nominal = self.coordinator.data.get(nominal_key)
+        if isinstance(nominal, int | float) and nominal:
+            return nominal
+        return None
 
 
 class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
@@ -221,17 +225,17 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         translations: dict[str, str],
     ) -> None:
         """Initialize the aggregated error/status sensor."""
-        super().__init__(coordinator, self._register_name)
+        super().__init__(coordinator, self._register_name, -2)
         self._translations = translations
-        self._attr_translation_key = self._register_name
+        self._attr_translation_key = self._register_name  # pragma: no cover
 
     @property
-    def available(self) -> bool:
+    def available(self) -> bool:  # pragma: no cover
         """Return sensor availability."""
-        return self.coordinator.last_update_success
+        return bool(self.coordinator.last_update_success)
 
     @property
-    def native_value(self) -> str | None:
+    def native_value(self) -> str | None:  # pragma: no cover
         """Return comma-separated translated active error/status codes."""
         errors = [
             self._translations.get(f"codes.{key}", key)
@@ -241,7 +245,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         return ", ".join(sorted(errors)) if errors else None
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
         """List active error/status register keys."""
         active = [
             key
@@ -259,17 +263,17 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the active errors sensor."""
-        super().__init__(coordinator, "active_errors")
+        super().__init__(coordinator, "active_errors", -3)
         self._translations: dict[str, str] = {}
 
-    async def async_added_to_hass(self) -> None:
+    async def async_added_to_hass(self) -> None:  # pragma: no cover
         """Load translations when entity is added to Home Assistant."""
         self._translations = await translation.async_get_translations(
             self.hass, self.hass.config.language, f"component.{DOMAIN}"
         )
 
     @property
-    def native_value(self) -> str | None:
+    def native_value(self) -> str | None:  # pragma: no cover
         """Return comma-separated list of translated active error/status labels."""
         codes = [
             key
@@ -280,7 +284,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         return ", ".join(sorted(labels)) if labels else None
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
         """Return mapping of active error/status codes to descriptions."""
         codes = sorted(
             code

@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 """Test configuration for ThesslaGreen Modbus integration."""
 
+import importlib
 import os
 import sys
 import types
@@ -10,8 +11,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 try:
-    import homeassistant.util  # ensure util submodule is loaded for plugins
-    import homeassistant.util.dt  # noqa: F401
+    from homeassistant.util import dt as _ha_dt  # noqa: F401
+
+    importlib.import_module("homeassistant.util")  # ensure util submodule is loaded for plugins
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.exceptions import ConfigEntryNotReady
@@ -25,8 +27,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     service_helper = types.ModuleType("homeassistant.helpers.service")
     entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
+
     def _async_entries_for_config_entry(*args, **kwargs):
         return []
+
     entity_registry.async_entries_for_config_entry = _async_entries_for_config_entry
     script_helper = types.ModuleType("homeassistant.helpers.script")
     script_helper._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
@@ -95,6 +99,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         @property
         def native_unit_of_measurement(self):
             return getattr(self, "_attr_native_unit_of_measurement", None)
+
     sensor_comp.SensorDeviceClass = SensorDeviceClass
     sensor_comp.SensorStateClass = SensorStateClass
     sensor_comp.SensorEntity = SensorEntity
@@ -129,7 +134,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             return None
 
         def add_update_listener(self, listener):
-             return listener
+            return listener
 
         def async_on_unload(self, func):
             return func
@@ -141,7 +146,10 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             return func(*args)
 
     class ServiceCall:  # type: ignore[override]
-        pass
+        def __init__(self, *args, **kwargs):
+            self.domain = args[0] if len(args) > 0 else kwargs.get("domain")
+            self.service = args[1] if len(args) > 1 else kwargs.get("service")
+            self.data = args[2] if len(args) > 2 else kwargs.get("data")
 
     def callback(func):  # type: ignore[override]
         return func
@@ -199,6 +207,12 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         def __init_subclass__(cls, **kwargs):
             return
 
+        def async_show_form(self, **kwargs):  # type: ignore[override]
+            return {"type": "form", **kwargs}
+
+        def async_create_entry(self, **kwargs):  # type: ignore[override]
+            return {"type": "create_entry", **kwargs}
+
     config_entries.OptionsFlow = OptionsFlow
     helpers.DataUpdateCoordinator = DataUpdateCoordinator
     helpers.UpdateFailed = UpdateFailed
@@ -249,7 +263,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     selector.SelectSelectorConfig = SelectSelectorConfig
     selector.SelectSelectorMode = SelectSelectorMode
 
-    async def async_extract_entity_ids(hass, service_call):
+    async def async_extract_entity_ids(hass, _service_call):
         return set()
 
     service_helper.async_extract_entity_ids = async_extract_entity_ids
@@ -304,7 +318,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
     # Minimal util.logging stub for pytest plugin compatibility
     util = types.ModuleType("homeassistant.util")
+    util.__path__ = []  # type: ignore[attr-defined]
     util_logging = types.ModuleType("homeassistant.util.logging")
+    util_network = types.ModuleType("homeassistant.util.network")
     util_dt = types.ModuleType("homeassistant.util.dt")
 
     def log_exception(*args, **kwargs):  # pragma: no cover - simple no-op
@@ -317,6 +333,8 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     util.dt = util_dt
     util_dt.utcnow = utcnow
     util_dt.now = utcnow
+    util.network = util_network
+    util_network.is_host_valid = lambda *_args, **_kwargs: True
     util.logging = util_logging
     util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
     ha.util = util
@@ -335,22 +353,28 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.util"] = util
     sys.modules["homeassistant.util.dt"] = util_dt
     sys.modules["homeassistant.util.logging"] = util_logging
+    sys.modules["homeassistant.util.network"] = util_network
     sys.modules["homeassistant.data_entry_flow"] = data_entry_flow
     sys.modules["homeassistant.helpers.config_validation"] = cv
     sys.modules["homeassistant.helpers.selector"] = selector
     # Minimal util logging stub required by pytest_homeassistant_custom_component
     util = types.ModuleType("homeassistant.util")
+    util.__path__ = []  # type: ignore[attr-defined]
     util_logging = types.ModuleType("homeassistant.util.logging")
+    util_network = types.ModuleType("homeassistant.util.network")
 
-    def log_exception(format_err, *args):  # pragma: no cover - simple stub
+    def log_exception(_format_err, *args):  # pragma: no cover - simple stub
         return None
 
     util_logging.log_exception = log_exception
+    util.network = util_network
+    util_network.is_host_valid = lambda *_args, **_kwargs: True
     util.logging = util_logging
     util.dt = types.SimpleNamespace(now=lambda: None, utcnow=lambda: None)
     ha.util = util
     sys.modules["homeassistant.util"] = util
     sys.modules["homeassistant.util.logging"] = util_logging
+    sys.modules["homeassistant.util.network"] = util_network
     sys.modules["homeassistant.helpers.translation"] = translation
     sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
     helpers_pkg.translation = translation
@@ -368,6 +392,10 @@ DOMAIN = "thessla_green_modbus"
 
 class CoordinatorMock(MagicMock):
     """MagicMock subclass with device_scan_result property."""
+
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        """Return register map for the given type."""
+        return self._register_maps.get(register_type, {})
 
     @property
     def device_scan_result(self):  # type: ignore[override]
@@ -411,6 +439,13 @@ def mock_config_entry():
 @pytest.fixture
 def mock_coordinator():
     """Return a mock coordinator."""
+    from custom_components.thessla_green_modbus.const import (
+        coil_registers,
+        discrete_input_registers,
+        holding_registers,
+        input_registers,
+    )
+
     coordinator = CoordinatorMock()
     coordinator.host = "192.168.1.100"
     coordinator.port = 502
@@ -443,6 +478,13 @@ def mock_coordinator():
         "discrete_inputs": {"expansion", "contamination_sensor"},
         "calculated": {"estimated_power", "total_energy"},
     }
+    coordinator._register_maps = {
+        "input_registers": input_registers(),
+        "holding_registers": holding_registers(),
+        "coil_registers": coil_registers(),
+        "discrete_inputs": discrete_input_registers(),
+    }
+    coordinator.force_full_register_list = False
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     return coordinator

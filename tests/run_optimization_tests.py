@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Optimization validation test runner for ThesslaGreen Modbus integration."""
+
 import asyncio
 import subprocess
 import sys
@@ -135,7 +136,9 @@ async def validate_register_coverage():
     print_section("MODBUS REGISTER COVERAGE VALIDATION")
 
     try:
-        from custom_components.thessla_green_modbus.registers import get_registers_by_function
+        from custom_components.thessla_green_modbus.registers.loader import (
+            get_registers_by_function,
+        )
 
         COIL_REGISTERS = {r.name: r.address for r in get_registers_by_function("01")}
         HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
