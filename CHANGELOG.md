@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Capability detection for Constant Flow and HEWR water removal
 - Airflow unit option allowing `%` or `m³/h` reporting
 - Migration script for clearing legacy airflow statistics
+- Linting, formatting, and typing tooling alignment for HA compliance
 
 ### Changed
 - Bumped minimum Home Assistant version to 2025.1.0
