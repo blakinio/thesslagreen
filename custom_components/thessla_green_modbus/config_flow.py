@@ -572,11 +572,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             }
         )
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=data_schema,
-            errors=errors,
-        )
+        return data_schema
 
     @staticmethod
     def _build_unique_id(data: dict[str, Any]) -> str:
