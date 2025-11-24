@@ -166,6 +166,22 @@ def test_number_creation_and_state(mock_coordinator):
     assert number.native_value == 21.5
 
 
+def test_number_handles_missing_or_invalid_values(mock_coordinator):
+    """Native value should be None when data is missing or non-numeric."""
+
+    entity_config = ENTITY_MAPPINGS["number"]["required_temperature"]
+    number = ThesslaGreenNumber(mock_coordinator, "required_temperature", entity_config)
+
+    mock_coordinator.data.pop("required_temperature", None)
+    assert number.native_value is None
+
+    mock_coordinator.data["required_temperature"] = None
+    assert number.native_value is None
+
+    mock_coordinator.data["required_temperature"] = "invalid"
+    assert number.native_value is None
+
+
 def test_number_set_value(mock_coordinator):
     """Test setting a new value on the number entity."""
     mock_coordinator.data["required_temperature"] = 20
