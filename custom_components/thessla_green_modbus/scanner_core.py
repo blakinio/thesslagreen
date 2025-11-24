@@ -237,6 +237,7 @@ class ThesslaGreenDeviceScanner:
         timeout: int = 10,
         retry: int = 3,
         backoff: float = 0,
+        backoff_jitter: float | tuple[float, float] | None = None,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
@@ -255,7 +256,27 @@ class ThesslaGreenDeviceScanner:
         self.slave_id = slave_id
         self.timeout = timeout
         self.retry = retry
-        self.backoff = backoff
+        try:
+            self.backoff = float(backoff)
+        except (TypeError, ValueError):
+            self.backoff = 0.0
+        if isinstance(backoff_jitter, (int, float)):
+            jitter: float | tuple[float, float] | None = float(backoff_jitter)
+        elif isinstance(backoff_jitter, str):
+            try:
+                jitter = float(backoff_jitter)
+            except ValueError:
+                jitter = None
+        elif isinstance(backoff_jitter, (list, tuple)) and len(backoff_jitter) >= 2:
+            try:
+                jitter = (float(backoff_jitter[0]), float(backoff_jitter[1]))
+            except (TypeError, ValueError):
+                jitter = None
+        else:
+            jitter = None
+        if jitter in (0, 0.0):
+            jitter = 0.0
+        self.backoff_jitter = jitter
         self.verbose_invalid_values = verbose_invalid_values
         self.scan_uart_settings = scan_uart_settings
         self.skip_known_missing = skip_known_missing
@@ -351,6 +372,7 @@ class ThesslaGreenDeviceScanner:
         timeout: int = 10,
         retry: int = 3,
         backoff: float = 0,
+        backoff_jitter: float | tuple[float, float] | None = None,
         verbose_invalid_values: bool = False,
         scan_uart_settings: bool = False,
         skip_known_missing: bool = False,
@@ -366,6 +388,7 @@ class ThesslaGreenDeviceScanner:
             timeout,
             retry,
             backoff,
+            backoff_jitter,
             verbose_invalid_values,
             scan_uart_settings,
             skip_known_missing,
@@ -423,24 +446,26 @@ class ThesslaGreenDeviceScanner:
                 addr = reg.address
                 try:
                     if func == 4:
-                        await asyncio.wait_for(
-                            _call_modbus(
-                                client.read_input_registers,
-                                self.slave_id,
-                                addr,
-                                count=1,
-                            ),
+                        await _call_modbus(
+                            client.read_input_registers,
+                            self.slave_id,
+                            addr,
+                            count=1,
                             timeout=self.timeout,
+                            backoff=self.backoff,
+                            backoff_jitter=self.backoff_jitter,
+                            apply_backoff=False,
                         )
                     else:  # holding register
-                        await asyncio.wait_for(
-                            _call_modbus(
-                                client.read_holding_registers,
-                                self.slave_id,
-                                addr,
-                                count=1,
-                            ),
+                        await _call_modbus(
+                            client.read_holding_registers,
+                            self.slave_id,
+                            addr,
+                            count=1,
                             timeout=self.timeout,
+                            backoff=self.backoff,
+                            backoff_jitter=self.backoff_jitter,
+                            apply_backoff=False,
                         )
                 except asyncio.TimeoutError as exc:  # pragma: no cover - network issues
                     _LOGGER.warning("Timeout reading %s", name)
@@ -1157,12 +1182,6 @@ class ThesslaGreenDeviceScanner:
                 register_ranges[reg.name] = (reg.min, reg.max)
         return register_map, register_ranges
 
-    def _sleep_time(self, attempt: int) -> float:
-        """Return delay for a retry attempt based on backoff."""
-        if self.backoff:
-            return float(self.backoff * 2 ** (attempt - 1))
-        return 0.0
-
     def _log_skipped_ranges(self) -> None:
         """Log summary of ranges skipped due to Modbus exceptions."""
         if self._unsupported_input_ranges:
@@ -1290,11 +1309,16 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_input_registers, self.slave_id, address, count=count
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_input_registers,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None:
                     if response.isError():
@@ -1392,11 +1416,17 @@ class ThesslaGreenDeviceScanner:
                 attempt,
             )
             try:
-                response = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_holding_registers, self.slave_id, address, count=count
-                    ),
+                response = await _call_modbus(
+                    client.read_holding_registers,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
+                    apply_backoff=False,
                 )
                 if response is not None:
                     if response.isError():
@@ -1450,13 +1480,6 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.info("Sleep cancelled while retrying input 0x%04X", address)
-                    raise
-
         self.failed_addresses["modbus_exceptions"]["input_registers"].update(
             range(start, end + 1)
         )
@@ -1507,11 +1530,16 @@ class ThesslaGreenDeviceScanner:
 
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_holding_registers, self.slave_id, address, count=count
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_holding_registers,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None:
                     if response.isError():
@@ -1588,13 +1616,6 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.info("Sleep cancelled while retrying holding 0x%04X", address)
-                    raise
-
         _LOGGER.error(
             "Failed to read holding registers 0x%04X-0x%04X after %d retries",
             start,
@@ -1615,11 +1636,16 @@ class ThesslaGreenDeviceScanner:
         """Read coil registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_coils, self.slave_id, address, count=count
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_coils,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None and not response.isError():
                     bits = cast(list[bool], response.bits[:count])
@@ -1662,12 +1688,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.info("Sleep cancelled while retrying coil 0x%04X", address)
-                    raise
+        
         self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
             range(address, address + count)
         )
@@ -1688,14 +1709,16 @@ class ThesslaGreenDeviceScanner:
         """Read discrete input registers with retry and backoff."""
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await asyncio.wait_for(
-                    _call_modbus(
-                        client.read_discrete_inputs,
-                        self.slave_id,
-                        address,
-                        count=count,
-                    ),
+                response: Any = await _call_modbus(
+                    client.read_discrete_inputs,
+                    self.slave_id,
+                    address,
+                    count=count,
+                    attempt=attempt,
+                    max_attempts=self.retry,
                     timeout=self.timeout,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                 )
                 if response is not None and not response.isError():
                     bits = cast(list[bool], response.bits[:count])
@@ -1738,12 +1761,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-            if attempt < self.retry:
-                try:
-                    await asyncio.sleep(self._sleep_time(attempt))
-                except asyncio.CancelledError:
-                    _LOGGER.info("Sleep cancelled while retrying discrete 0x%04X", address)
-                    raise
+        
         self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
             range(address, address + count)
         )

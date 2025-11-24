@@ -150,17 +150,19 @@ async def test_read_backoff_delay(method, address):
     """Ensure exponential backoff delays between retries."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
+    if method == "_read_input":
+        mock_client.read_input_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await getattr(scanner, method)(mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
     assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]
 
@@ -173,19 +175,21 @@ async def test_read_default_delay(method, address):
     """Use default delay when backoff is not specified."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
     mock_client = AsyncMock()
+    if method == "_read_input":
+        mock_client.read_input_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_holding_registers = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await getattr(scanner, method)(mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
-    assert [call.args[0] for call in sleep_mock.await_args_list] == [0, 0]
+    assert sleep_mock.await_args_list == []
 
 
 @pytest.mark.parametrize(
@@ -199,17 +203,18 @@ async def test_read_binary_backoff_delay(func, address):
     """Coil and discrete reads should respect configured backoff."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
+    if func is ThesslaGreenDeviceScanner._read_coil:
+        mock_client.read_coils = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_discrete_inputs = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await func(scanner, mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
     assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.2]
 
@@ -225,19 +230,20 @@ async def test_read_binary_default_delay(func, address):
     """Default backoff of zero should not delay retries."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
     mock_client = AsyncMock()
+    if func is ThesslaGreenDeviceScanner._read_coil:
+        mock_client.read_coils = AsyncMock(side_effect=ModbusIOException("boom"))
+    else:
+        mock_client.read_discrete_inputs = AsyncMock(side_effect=ModbusIOException("boom"))
+
     sleep_mock = AsyncMock()
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=ModbusIOException("boom")),
-        ) as call_mock,
-        patch("asyncio.sleep", sleep_mock),
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        sleep_mock,
     ):
         result = await func(scanner, mock_client, address, 1)
         assert result is None
-        assert call_mock.await_count == scanner.retry
 
-    assert [call.args[0] for call in sleep_mock.await_args_list] == [0, 0]
+    assert sleep_mock.await_args_list == []
 
 
 async def test_read_input_logs_warning_on_failure(caplog):
@@ -444,7 +450,7 @@ async def test_read_holding_exponential_backoff(caplog):
             AsyncMock(side_effect=ModbusException("boom")),
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.asyncio.sleep",
+            "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
             AsyncMock(),
         ) as sleep_mock,
         caplog.at_level(logging.WARNING),
@@ -473,7 +479,7 @@ async def test_read_holding_returns_none_on_modbus_error():
             call_modbus,
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.asyncio.sleep",
+            "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
             AsyncMock(),
         ),
     ):
