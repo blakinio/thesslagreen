@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
+from homeassistant.helpers.event import async_call_later
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
@@ -53,6 +54,49 @@ if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class _LogLevelManager:
+    """Manage temporary log level changes for the integration."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+        self._restore_level: int | None = None
+        self._undo_callback: Callable[[], None] | None = None
+
+    @staticmethod
+    def _target_logger() -> logging.Logger:
+        return logging.getLogger("custom_components.thessla_green_modbus")
+
+    def set_level(self, level: int, duration: int) -> None:
+        """Apply a new log level and schedule automatic restoration."""
+
+        logger = self._target_logger()
+        previous_level = logger.level
+        logger.setLevel(level)
+        _LOGGER.info(
+            "Set %s log level to %s", logger.name, logging.getLevelName(level)
+        )
+
+        if self._undo_callback:
+            self._undo_callback()
+            self._undo_callback = None
+
+        self._restore_level = previous_level
+        if duration > 0:
+            self._undo_callback = async_call_later(
+                self.hass, duration, self._restore_level_callback
+            )
+
+    def _restore_level_callback(self, _now: Any) -> None:
+        logger = self._target_logger()
+        logger.setLevel(self._restore_level or logging.NOTSET)
+        _LOGGER.info(
+            "Restored %s log level to %s",
+            logger.name,
+            logging.getLevelName(self._restore_level or logging.NOTSET),
+        )
+        self._undo_callback = None
 
 # Map service parameters to corresponding register names
 AIR_QUALITY_REGISTER_MAP = {
@@ -195,6 +239,17 @@ REFRESH_DEVICE_DATA_SCHEMA = vol.Schema(
 SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
+    }
+)
+
+SET_LOG_LEVEL_SCHEMA = vol.Schema(
+    {
+        vol.Optional("level", default="debug"): vol.In(
+            ["debug", "info", "warning", "error"]
+        ),
+        vol.Optional("duration", default=900): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=86400)
+        ),
     }
 )
 
@@ -807,6 +862,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         return results or None
 
+    async def set_debug_logging(call: ServiceCall) -> None:
+        """Temporarily increase integration log level for debugging."""
+
+        level_name = str(call.data.get("level", "debug")).upper()
+        duration = int(call.data.get("duration", 900))
+        level_value = getattr(logging, level_name, logging.DEBUG)
+
+        manager: _LogLevelManager = hass.data.setdefault(DOMAIN, {}).setdefault(
+            "_log_level_manager", _LogLevelManager(hass)
+        )
+        manager.set_level(level_value, duration)
+
     # Register all services
     hass.services.async_register(
         DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
@@ -847,6 +914,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
     )
+    hass.services.async_register(
+        DOMAIN, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA
+    )
 
     _LOGGER.info("ThesslaGreen Modbus services registered successfully")
 
@@ -868,6 +938,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         "refresh_device_data",
         "get_unknown_registers",
         "scan_all_registers",
+        "set_debug_logging",
     ]
 
     for service in services:

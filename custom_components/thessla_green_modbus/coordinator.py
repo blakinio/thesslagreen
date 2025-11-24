@@ -1565,6 +1565,30 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self._disconnect()
 
     @property
+    def status_overview(self) -> dict[str, Any]:
+        """Return a concise online/offline status summary."""
+
+        last_update = self.statistics.get("last_successful_update")
+        last_update_iso = last_update.isoformat() if last_update else None
+        is_connected = bool(self.client and getattr(self.client, "connected", False))
+        recent_update = False
+        if last_update:
+            recent_update = (dt_util.utcnow() - last_update).total_seconds() < (
+                self.scan_interval * 3
+            )
+
+        error_count = int(self.statistics.get("failed_reads", 0))
+        error_count += int(self.statistics.get("connection_errors", 0))
+        error_count += int(self.statistics.get("timeout_errors", 0))
+
+        return {
+            "online": is_connected and recent_update,
+            "last_successful_read": last_update_iso,
+            "error_count": error_count,
+            "scan_interval": self.scan_interval,
+        }
+
+    @property
     def performance_stats(self) -> dict[str, Any]:
         """Get performance statistics."""
         return {
@@ -1615,6 +1639,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "connection": connection,
             "statistics": statistics,
             "performance": self.performance_stats,
+            "status_overview": self.status_overview,
             "device_info": self.device_info,
             "available_registers": {
                 key: sorted(list(value)) for key, value in self.available_registers.items()

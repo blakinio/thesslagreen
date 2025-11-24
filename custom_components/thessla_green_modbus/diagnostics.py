@@ -52,6 +52,7 @@ async def async_get_config_entry_diagnostics(
         "registers_discovered",
         {key: len(val) for key, val in coordinator.available_registers.items()},
     )
+    diagnostics.setdefault("status_overview", coordinator.status_overview)
 
     diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
     diagnostics.setdefault("force_full", coordinator.force_full_register_list)
