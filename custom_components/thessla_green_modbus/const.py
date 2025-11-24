@@ -33,6 +33,10 @@ def _build_map(fn: str) -> dict[str, int]:
     return {r.name: r.address for r in get_registers_by_function(fn) if r.name}
 
 
+COIL_REGISTERS = _build_map("coil")
+DISCRETE_INPUT_REGISTERS = _build_map("discrete")
+HOLDING_REGISTERS = _build_map("holding")
+INPUT_REGISTERS = _build_map("input")
 def coil_registers() -> dict[str, int]:
     return _build_map("coil")
 
