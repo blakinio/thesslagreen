@@ -278,86 +278,41 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._data: dict[str, Any] = {}
         self._device_info: dict[str, Any] = {}
         self._scan_result: dict[str, Any] = {}
+        self._reauth_entry_id: str | None = None
+        self._reauth_existing_data: dict[str, Any] = {}
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:  # pragma: no cover
-        """Handle the initial step.
+    def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
+        """Return schema for connection details with provided defaults."""
 
-        Part of the Home Assistant config flow interface; the framework
-        calls this method directly.
-        """
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            try:
-                max_regs = user_input.get(
-                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-                )
-                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise vol.Invalid(
-                        "max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST]
-                    )
-
-                # Validate input and get device info
-                info = await validate_input(self.hass, user_input)
-
-                # Store data for confirm step
-                self._data = user_input
-                self._device_info = info.get("device_info", {})
-                self._scan_result = info.get("scan_result", {})
-
-                # Set unique ID based on host, port and slave_id
-                # Replace colons in host (IPv6) with hyphens to avoid separator conflicts
-                unique_host = user_input[CONF_HOST].replace(":", "-")
-                await self.async_set_unique_id(
-                    f"{unique_host}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
-                )
-
-            except CannotConnect as exc:
-                errors["base"] = exc.args[0] if exc.args else "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except vol.Invalid as err:
-                _LOGGER.error(
-                    "Invalid input for %s: %s",
-                    err.path[0] if err.path else "unknown",
-                    err,
-                )
-                errors[err.path[0] if err.path else CONF_HOST] = err.error_message
-            except (ConnectionException, ModbusException):
-                _LOGGER.exception("Modbus communication error")
-                errors["base"] = "cannot_connect"
-            except ValueError as err:
-                _LOGGER.error("Invalid value provided: %s", err)
-                errors["base"] = "invalid_input"
-            except KeyError as err:
-                _LOGGER.error("Missing required data: %s", err)
-                errors["base"] = "invalid_input"
-            else:
-                self._abort_if_unique_id_configured()
-                # Show confirmation step with device info
-                return await self.async_step_confirm()
-
-        # Show form
-        data_schema = vol.Schema(
+        return vol.Schema(
             {
-                vol.Required(CONF_HOST): str,
-                vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=65535)
-                ),
-                vol.Required(CONF_SLAVE_ID, default=DEFAULT_SLAVE_ID): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=247)
-                ),
-                vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
+                vol.Required(
+                    CONF_HOST,
+                    default=defaults.get(CONF_HOST, vol.UNDEFINED),
+                ): str,
+                vol.Required(
+                    CONF_PORT,
+                    default=defaults.get(CONF_PORT, DEFAULT_PORT),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                vol.Required(
+                    CONF_SLAVE_ID,
+                    default=defaults.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
+                vol.Optional(
+                    CONF_NAME,
+                    default=defaults.get(CONF_NAME, DEFAULT_NAME),
+                ): str,
                 vol.Optional(
                     CONF_DEEP_SCAN,
-                    default=DEFAULT_DEEP_SCAN,
+                    default=defaults.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
                     description={"advanced": True},
                 ): bool,
                 vol.Optional(
                     CONF_MAX_REGISTERS_PER_REQUEST,
-                    default=DEFAULT_MAX_REGISTERS_PER_REQUEST,
+                    default=defaults.get(
+                        CONF_MAX_REGISTERS_PER_REQUEST,
+                        DEFAULT_MAX_REGISTERS_PER_REQUEST,
+                    ),
                     description={
                         "selector": {
                             "number": {
@@ -371,65 +326,48 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             }
         )
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=data_schema,
-            errors=errors,
-        )
+    def _prepare_entry_payload(self, cap_cls: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Return data and options payloads for the config entry."""
 
-    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle the confirm step."""
-        module = import_module("custom_components.thessla_green_modbus.scanner_core")
-        cap_cls = DeviceCapabilities or module.DeviceCapabilities
-
-        if user_input is not None:
-            # Ensure unique ID is set and not already configured
-            unique_host = self._data[CONF_HOST].replace(":", "-")
-            await self.async_set_unique_id(
-                f"{unique_host}:{self._data[CONF_PORT]}:{self._data[CONF_SLAVE_ID]}"
-            )
-            self._abort_if_unique_id_configured()
-            # Prepare capabilities for persistence
-            caps_obj = self._scan_result.get("capabilities")
-            if dataclasses.is_dataclass(caps_obj):
-                caps_dict = _caps_to_dict(caps_obj)
-            elif isinstance(caps_obj, dict):
-                try:
-                    caps_dict = _caps_to_dict(cap_cls(**caps_obj))
-                except (TypeError, ValueError):
-                    caps_dict = _caps_to_dict(cap_cls())
-            elif isinstance(caps_obj, cap_cls):
-                caps_dict = _caps_to_dict(caps_obj)
-            else:
+        caps_obj = self._scan_result.get("capabilities")
+        if dataclasses.is_dataclass(caps_obj):
+            caps_dict = _caps_to_dict(caps_obj)
+        elif isinstance(caps_obj, dict):
+            try:
+                caps_dict = _caps_to_dict(cap_cls(**caps_obj))
+            except (TypeError, ValueError):
                 caps_dict = _caps_to_dict(cap_cls())
+        elif isinstance(caps_obj, cap_cls):
+            caps_dict = _caps_to_dict(caps_obj)
+        else:
+            caps_dict = _caps_to_dict(cap_cls())
 
-            # Create entry with all data
-            # Use both 'slave_id' and 'unit' for compatibility
-            return self.async_create_entry(
-                title=self._data.get(CONF_NAME, DEFAULT_NAME),
-                data={
-                    CONF_HOST: self._data[CONF_HOST],
-                    CONF_PORT: self._data[CONF_PORT],
-                    CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],  # Standard key
-                    "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
-                    CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
-                    "capabilities": caps_dict,
-                },
-                options={
-                    CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-                    CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
-                        CONF_MAX_REGISTERS_PER_REQUEST,
-                        DEFAULT_MAX_REGISTERS_PER_REQUEST,
-                    ),
-                },
-            )
+        data = {
+            CONF_HOST: self._data[CONF_HOST],
+            CONF_PORT: self._data[CONF_PORT],
+            CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],  # Standard key
+            "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
+            CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
+            "capabilities": caps_dict,
+        }
+        options = {
+            CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+            CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
+                CONF_MAX_REGISTERS_PER_REQUEST,
+                DEFAULT_MAX_REGISTERS_PER_REQUEST,
+            ),
+        }
+        return data, options
 
-        # Prepare description with device info
+    async def _async_show_confirmation(
+        self, cap_cls: Any, step_id: str
+    ) -> FlowResult:
+        """Render confirmation step with device details."""
+
         device_name = self._device_info.get("device_name", "Unknown")
         firmware_version = self._device_info.get("firmware", "Unknown")
         serial_number = self._device_info.get("serial_number", "Unknown")
 
-        # Get scan statistics
         available_registers = self._scan_result.get("available_registers", {})
         caps_obj = self._scan_result.get("capabilities")
         if dataclasses.is_dataclass(caps_obj):
@@ -496,9 +434,197 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         }
 
         return self.async_show_form(
-            step_id="confirm",
+            step_id=step_id,
             description_placeholders=description_placeholders,
         )
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:  # pragma: no cover
+        """Handle the initial step.
+
+        Part of the Home Assistant config flow interface; the framework
+        calls this method directly.
+        """
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                max_regs = user_input.get(
+                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+                )
+                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
+                    raise vol.Invalid(
+                        "max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST]
+                    )
+
+                # Validate input and get device info
+                info = await validate_input(self.hass, user_input)
+
+                # Store data for confirm step
+                self._data = user_input
+                self._device_info = info.get("device_info", {})
+                self._scan_result = info.get("scan_result", {})
+
+                # Set unique ID based on host, port and slave_id
+                # Replace colons in host (IPv6) with hyphens to avoid separator conflicts
+                unique_host = user_input[CONF_HOST].replace(":", "-")
+                await self.async_set_unique_id(
+                    f"{unique_host}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
+                )
+
+            except CannotConnect as exc:
+                errors["base"] = exc.args[0] if exc.args else "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except vol.Invalid as err:
+                _LOGGER.error(
+                    "Invalid input for %s: %s",
+                    err.path[0] if err.path else "unknown",
+                    err,
+                )
+                errors[err.path[0] if err.path else CONF_HOST] = err.error_message
+            except (ConnectionException, ModbusException):
+                _LOGGER.exception("Modbus communication error")
+                errors["base"] = "cannot_connect"
+            except ValueError as err:
+                _LOGGER.error("Invalid value provided: %s", err)
+                errors["base"] = "invalid_input"
+            except KeyError as err:
+                _LOGGER.error("Missing required data: %s", err)
+                errors["base"] = "invalid_input"
+            else:
+                self._abort_if_unique_id_configured()
+                # Show confirmation step with device info
+                return await self.async_step_confirm()
+
+        # Show form
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self._build_connection_schema({}),
+            errors=errors,
+        )
+
+    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Handle the confirm step."""
+        module = import_module("custom_components.thessla_green_modbus.scanner_core")
+        cap_cls = DeviceCapabilities or module.DeviceCapabilities
+
+        if user_input is not None:
+            # Ensure unique ID is set and not already configured
+            unique_host = self._data[CONF_HOST].replace(":", "-")
+            await self.async_set_unique_id(
+                f"{unique_host}:{self._data[CONF_PORT]}:{self._data[CONF_SLAVE_ID]}"
+            )
+            self._abort_if_unique_id_configured()
+            data, options = self._prepare_entry_payload(cap_cls)
+            return self.async_create_entry(
+                title=self._data.get(CONF_NAME, DEFAULT_NAME),
+                data=data,
+                options=options,
+            )
+
+        return await self._async_show_confirmation(cap_cls, "confirm")
+
+    async def async_step_reauth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reauthentication by collecting updated connection details."""
+
+        errors: dict[str, str] = {}
+        entry = None
+        if self.hass is not None:
+            entry_id = self.context.get("entry_id")
+            if entry_id:
+                entry = self.hass.config_entries.async_get_entry(entry_id)
+
+        defaults: dict[str, Any] = {}
+        if entry is not None:
+            defaults = {**entry.options, **entry.data}
+
+        # Initial invocation stores entry information and shows form with defaults
+        if self._reauth_entry_id is None:
+            self._reauth_entry_id = entry.entry_id if entry else None
+            self._reauth_existing_data = defaults
+            return self.async_show_form(
+                step_id="reauth",
+                data_schema=self._build_connection_schema(defaults),
+                errors=errors,
+            )
+
+        if user_input is not None:
+            try:
+                max_regs = user_input.get(
+                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+                )
+                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
+                    raise vol.Invalid(
+                        "max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST]
+                    )
+
+                info = await validate_input(self.hass, user_input)
+                self._data = user_input
+                self._device_info = info.get("device_info", {})
+                self._scan_result = info.get("scan_result", {})
+                return await self.async_step_reauth_confirm()
+
+            except CannotConnect as exc:
+                errors["base"] = exc.args[0] if exc.args else "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except vol.Invalid as err:
+                _LOGGER.error(
+                    "Invalid input for %s: %s",
+                    err.path[0] if err.path else "unknown",
+                    err,
+                )
+                errors[err.path[0] if err.path else CONF_HOST] = err.error_message
+            except (ConnectionException, ModbusException):
+                _LOGGER.exception("Modbus communication error")
+                errors["base"] = "cannot_connect"
+            except ValueError as err:
+                _LOGGER.error("Invalid value provided: %s", err)
+                errors["base"] = "invalid_input"
+            except KeyError as err:
+                _LOGGER.error("Missing required data: %s", err)
+                errors["base"] = "invalid_input"
+
+        return self.async_show_form(
+            step_id="reauth",
+            data_schema=self._build_connection_schema(self._reauth_existing_data),
+            errors=errors,
+        )
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Confirm reauthentication details and update the existing entry."""
+
+        module = import_module("custom_components.thessla_green_modbus.scanner_core")
+        cap_cls = DeviceCapabilities or module.DeviceCapabilities
+
+        if user_input is not None:
+            if self.hass is None or self._reauth_entry_id is None:
+                _LOGGER.error("Cannot complete reauth - missing Home Assistant context")
+                return self.async_abort(reason="reauth_failed")
+
+            entry = self.hass.config_entries.async_get_entry(self._reauth_entry_id)
+            if entry is None:
+                _LOGGER.error(
+                    "Reauthentication requested for missing entry %s", self._reauth_entry_id
+                )
+                return self.async_abort(reason="reauth_entry_missing")
+
+            data, options = self._prepare_entry_payload(cap_cls)
+            combined_options = dict(entry.options)
+            combined_options.update(options)
+            self.hass.config_entries.async_update_entry(
+                entry, data=data, options=combined_options
+            )
+            await self.hass.config_entries.async_reload(entry.entry_id)
+            return self.async_abort(reason="reauth_successful")
+
+        return await self._async_show_confirmation(cap_cls, "reauth_confirm")
 
     @staticmethod
     def async_get_options_flow(

@@ -6,12 +6,14 @@ import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.thessla_green_modbus import (
     async_setup_entry,
     async_unload_entry,
 )
 from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
@@ -81,6 +83,75 @@ async def test_async_setup_entry_failure():
 
         with pytest.raises(ConfigEntryNotReady):
             await async_setup_entry(hass, entry)
+
+
+async def test_async_setup_entry_triggers_reauth_on_auth_error():
+    """Authentication errors during setup should trigger reauth."""
+    hass = MagicMock()
+    hass.data = {}
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry"
+    entry.title = "Test"
+    entry.data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+    }
+    entry.options = {}
+    entry.add_update_listener = MagicMock()
+    entry.async_on_unload = MagicMock()
+    entry.async_start_reauth = AsyncMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
+    ) as mock_coordinator_class:
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_setup = AsyncMock(
+            side_effect=ConnectionException("auth failed")
+        )
+        mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator_class.return_value = mock_coordinator
+
+        result = await async_setup_entry(hass, entry)
+
+    assert result is False
+    entry.async_start_reauth.assert_awaited_once()
+
+
+async def test_async_setup_entry_triggers_reauth_on_refresh_auth_error():
+    """Authentication errors during refresh should trigger reauth."""
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry"
+    entry.title = "Test"
+    entry.data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+    }
+    entry.options = {}
+    entry.add_update_listener = MagicMock()
+    entry.async_on_unload = MagicMock()
+    entry.async_start_reauth = AsyncMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
+    ) as mock_coordinator_class:
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_setup = AsyncMock(return_value=True)
+        mock_coordinator.async_config_entry_first_refresh = AsyncMock(
+            side_effect=UpdateFailed("Invalid credentials")
+        )
+        mock_coordinator_class.return_value = mock_coordinator
+
+        result = await async_setup_entry(hass, entry)
+
+    assert result is False
+    entry.async_start_reauth.assert_awaited_once()
 
 
 @pytest.mark.asyncio

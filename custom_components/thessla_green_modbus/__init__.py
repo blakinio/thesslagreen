@@ -114,6 +114,13 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+def _is_invalid_auth_error(exc: Exception) -> bool:
+    """Return True if the exception indicates invalid authentication."""
+
+    message = str(exc).lower()
+    return any(keyword in message for keyword in ("auth", "credential", "password", "login"))
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
     """Set up ThesslaGreen Modbus from a config entry.
 
@@ -208,6 +215,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         asyncio.TimeoutError,
         OSError,
     ) as exc:
+        if _is_invalid_auth_error(exc):
+            _LOGGER.error("Authentication failed during setup: %s", exc)
+            await entry.async_start_reauth(hass)
+            return False
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
 
@@ -221,6 +232,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         asyncio.TimeoutError,
         OSError,
     ) as exc:
+        if _is_invalid_auth_error(exc):
+            _LOGGER.error("Authentication failed during initial refresh: %s", exc)
+            await entry.async_start_reauth(hass)
+            return False
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
 
