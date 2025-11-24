@@ -12,13 +12,17 @@ import pytest
 # ---------------------------------------------------------------------------
 
 const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-setattr(const, "PERCENTAGE", "%")
-setattr(const, "STATE_UNAVAILABLE", "unavailable")
+const.PERCENTAGE = "%"
+const.STATE_UNAVAILABLE = "unavailable"
 
 # Stub network utilities used by config_flow when select module is imported
 network_mod = types.ModuleType("homeassistant.util.network")
+
+
 def is_host_valid(host: str) -> bool:  # pragma: no cover - simple stub
     return True
+
+
 network_mod.is_host_valid = is_host_valid
 sys.modules["homeassistant.util.network"] = network_mod
 
@@ -123,7 +127,7 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-import custom_components.thessla_green_modbus.select as select_module
+import custom_components.thessla_green_modbus.select as select_module  # noqa: E402
 from custom_components.thessla_green_modbus.const import (  # noqa: E402
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
@@ -225,9 +229,7 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
 
 
 @pytest.mark.asyncio
-async def test_force_full_register_list_adds_missing_entities(
-    mock_coordinator, mock_config_entry
-):
+async def test_force_full_register_list_adds_missing_entities(mock_coordinator, mock_config_entry):
     """Sensors and selects are created from register map when forcing full list."""
 
     hass = MagicMock()

@@ -8,7 +8,9 @@ import sys
 
 
 def main() -> int:
-    base_dir = pathlib.Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus"
+    base_dir = (
+        pathlib.Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus"
+    )
     errors: list[str] = []
     for module in base_dir.rglob("*.py"):
         try:

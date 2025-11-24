@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Pydantic models describing register definitions.
 
 This module validates the raw JSON register description bundled with the
@@ -19,6 +17,8 @@ Key features implemented:
   (``u16``, ``i16`` … ``f64``, ``string``, ``bitmask``) and the expected
   register count is enforced or defaulted.
 """
+
+from __future__ import annotations
 
 import re
 from enum import Enum
@@ -268,7 +268,7 @@ class RegisterDefinition(pydantic.BaseModel):
                 try:
                     int(k)
                 except (TypeError, ValueError):
-                    raise ValueError("enum keys must be numeric")
+                    raise ValueError("enum keys must be numeric") from None
                 if not isinstance(v, str):
                     raise ValueError("enum values must be strings")
 
@@ -348,4 +348,3 @@ class RegisterList(pydantic.BaseModel):
             seen_pairs.add(pair)
             seen_names.add(name)
         return values
-

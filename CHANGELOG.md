@@ -17,8 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Capability detection for Constant Flow and HEWR water removal
 - Airflow unit option allowing `%` or `m³/h` reporting
 - Migration script for clearing legacy airflow statistics
+
 - Documented developer tooling (ruff/black/isort/mypy) and added pre-commit snippet.
 - CI matrix now publishes dedicated hassfest and HACS validation steps.
+- Linting, formatting, and typing tooling alignment for HA compliance
 
 ### Changed
 - Bumped minimum Home Assistant version to 2025.1.0
@@ -29,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   utility modules can be imported without Home Assistant installed
 - Removed non-existent hassfest/hacs PyPI packages from `requirements-dev.txt` in favor of
   GitHub Actions validation.
-
+- Aligned linting configuration (ruff/black/isort) and reformatted the codebase
+  for consistent quality checks
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient
 

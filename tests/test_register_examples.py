@@ -1,4 +1,3 @@
-
 from custom_components.thessla_green_modbus.registers.loader import Register
 
 
@@ -8,14 +7,18 @@ def test_coil_and_discrete_enum():
     assert coil.decode(1) == "ON"
     assert coil.encode("OFF") == 0
 
-    discrete = Register(function=2, address=0, name="discrete", access="ro", enum={0: "brak", 1: "jest"})
+    discrete = Register(
+        function=2, address=0, name="discrete", access="ro", enum={0: "brak", 1: "jest"}
+    )
     assert discrete.decode(0) == "brak"
     assert discrete.encode("jest") == 1
 
 
 def test_holding_multiplier_resolution_and_bcd():
     """Function 03 registers may use multiplier/resolution and BCD."""
-    scaling = Register(function=3, address=4096, name="temp", access="rw", multiplier=0.5, resolution=0.5)
+    scaling = Register(
+        function=3, address=4096, name="temp", access="rw", multiplier=0.5, resolution=0.5
+    )
     assert scaling.decode(45) == 22.5
     assert scaling.encode(22.5) == 45
 

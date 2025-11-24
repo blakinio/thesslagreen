@@ -56,12 +56,8 @@ async def test_read_retries_logged(monkeypatch, caplog):
         registers_sha256=lambda path: "",
         _REGISTERS_PATH="",
     )
-    sys.modules[
-        "custom_components.thessla_green_modbus.registers.loader"
-    ] = loader_stub
-    sys.modules[
-        "custom_components.thessla_green_modbus.registers"
-    ] = types.SimpleNamespace(
+    sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
+    sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNamespace(
         loader=loader_stub,
         get_all_registers=loader_stub.get_all_registers,
         get_registers_by_function=loader_stub.get_registers_by_function,
@@ -83,7 +79,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
         async def read_input_registers(self, address, *, count, unit=None):
             self.calls += 1
             if self.calls == 1:
-                raise asyncio.TimeoutError
+                raise TimeoutError
             return type(
                 "Resp",
                 (),
@@ -113,7 +109,9 @@ async def test_read_retries_logged(monkeypatch, caplog):
         if r.levelno == logging.WARNING
     )
     assert any("attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING)
-    assert sum(1 for r in caplog.records if r.levelno == logging.INFO and "batch=2" in r.message) == 2
+    assert (
+        sum(1 for r in caplog.records if r.levelno == logging.INFO and "batch=2" in r.message) == 2
+    )
 
 
 async def test_write_retries_logged(monkeypatch, caplog):
@@ -128,12 +126,8 @@ async def test_write_retries_logged(monkeypatch, caplog):
         registers_sha256=lambda path: "",
         _REGISTERS_PATH="",
     )
-    sys.modules[
-        "custom_components.thessla_green_modbus.registers.loader"
-    ] = loader_stub
-    sys.modules[
-        "custom_components.thessla_green_modbus.registers"
-    ] = types.SimpleNamespace(
+    sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
+    sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNamespace(
         loader=loader_stub,
         get_all_registers=loader_stub.get_all_registers,
         get_registers_by_function=loader_stub.get_registers_by_function,
@@ -155,7 +149,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
         async def write_register(self, *, address, value, unit=None):
             self.calls += 1
             if self.calls == 1:
-                raise asyncio.TimeoutError
+                raise TimeoutError
             return type(
                 "Resp",
                 (),
@@ -189,6 +183,4 @@ async def test_write_retries_logged(monkeypatch, caplog):
         for r in caplog.records
         if r.levelno == logging.WARNING
     )
-    assert any(
-        "Successfully wrote 1 to register reg" in r.message for r in caplog.records
-    )
+    assert any("Successfully wrote 1 to register reg" in r.message for r in caplog.records)

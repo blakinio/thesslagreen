@@ -81,12 +81,8 @@ def test_unique_id_not_changed_by_airflow_unit():
 def test_unique_ids_distinct_for_same_slave_id_across_coordinators():
     """Coordinators with the same slave ID should still have unique IDs."""
 
-    coordinator_one = _create_coordinator(
-        serial=None, host="192.0.2.10", port=502, slave_id=7
-    )
-    coordinator_two = _create_coordinator(
-        serial=None, host="192.0.2.11", port=502, slave_id=7
-    )
+    coordinator_one = _create_coordinator(serial=None, host="192.0.2.10", port=502, slave_id=7)
+    coordinator_two = _create_coordinator(serial=None, host="192.0.2.11", port=502, slave_id=7)
 
     entity_one = ThesslaGreenEntity(coordinator_one, "test", 1)
     entity_two = ThesslaGreenEntity(coordinator_two, "test", 1)
@@ -209,4 +205,3 @@ def test_unique_id_bit_suffix():
 
     entity = ThesslaGreenEntity(coordinator, "test", 5, bit=0x04)
     assert entity.unique_id == "SN123_10_5_bit2"  # nosec
-

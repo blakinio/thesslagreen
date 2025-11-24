@@ -7,9 +7,10 @@ import sys
 import types
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import ANY, AsyncMock
+from unittest.mock import call as call_obj
 
 import pytest
-from unittest.mock import ANY, AsyncMock, call as call_obj
 
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -271,6 +272,7 @@ def test_get_coordinator_from_entity_id_multiple_devices():
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev1") is coord1
     assert services_module._get_coordinator_from_entity_id(hass, "sensor.dev2") is coord2
 
+
 class Services:
     """Minimal service registry for tests."""
 
@@ -315,9 +317,7 @@ async def test_set_device_name_uses_offsets(monkeypatch):
     await services_module.async_setup_services(hass)
     handler = hass.services.handlers["set_device_name"]
 
-    call = SimpleNamespace(
-        data={"entity_id": ["climate.dev"], "device_name": "ABCDEFGH"}
-    )
+    call = SimpleNamespace(data={"entity_id": ["climate.dev"], "device_name": "ABCDEFGH"})
 
     await handler(call)
 

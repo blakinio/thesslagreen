@@ -8,7 +8,7 @@ import logging
 import random
 import weakref
 from collections.abc import Awaitable, Callable, Iterable
-from typing import Any, List, Tuple
+from typing import Any
 
 from . import const
 
@@ -257,7 +257,7 @@ async def _call_modbus(
 def group_reads(
     addresses: Iterable[int],
     max_block_size: int | None = None,
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """Group raw register addresses into contiguous read blocks.
 
     The addresses are sorted and sequential ranges are merged up to
@@ -272,7 +272,7 @@ def group_reads(
     if not sorted_addresses:
         return []
 
-    groups: List[Tuple[int, int]] = []
+    groups: list[tuple[int, int]] = []
     start = prev = sorted_addresses[0]
     for addr in sorted_addresses[1:]:
         if addr == prev + 1 and (addr - start + 1) <= max_block_size:

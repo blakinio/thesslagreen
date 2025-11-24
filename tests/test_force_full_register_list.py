@@ -48,11 +48,12 @@ async def _setup_coordinator():
     }
     scanner.close = AsyncMock()
 
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
-        AsyncMock(return_value=scanner),
-    ), patch.object(
-        ThesslaGreenModbusCoordinator, "_test_connection", AsyncMock()
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner),
+        ),
+        patch.object(ThesslaGreenModbusCoordinator, "_test_connection", AsyncMock()),
     ):
         coordinator = ThesslaGreenModbusCoordinator(
             hass,

@@ -50,13 +50,9 @@ def _check_strings(data: dict, strings: dict, lang: str) -> list[str]:
     data_keys = _collect_keys(data)
     str_keys = _collect_keys(strings)
     if missing := str_keys - data_keys:
-        msg.append(
-            f"{lang}: missing keys compared to strings.json: {sorted(missing)}"
-        )
+        msg.append(f"{lang}: missing keys compared to strings.json: {sorted(missing)}")
     if extra := data_keys - str_keys:
-        msg.append(
-            f"{lang}: extra keys compared to strings.json: {sorted(extra)}"
-        )
+        msg.append(f"{lang}: extra keys compared to strings.json: {sorted(extra)}")
     return msg
 
 
@@ -132,4 +128,3 @@ def main() -> int:
 
 if __name__ == "__main__":  # pragma: no cover - script entry
     sys.exit(main())
-

@@ -8,8 +8,9 @@ import ipaddress
 import logging
 import socket
 import traceback
+from collections.abc import Awaitable, Callable
 from importlib import import_module
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -23,31 +24,31 @@ from homeassistant.util.network import is_host_valid
 from .const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
+    CONF_AIRFLOW_UNIT,
     CONF_BAUD_RATE,
     CONF_CONNECTION_TYPE,
-    CONF_AIRFLOW_UNIT,
-    CONF_PARITY,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
     CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_PARITY,
     CONF_RETRY,
-    CONF_SERIAL_PORT,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
+    CONF_SERIAL_PORT,
     CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_STOP_BITS,
+    CONF_TIMEOUT,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONF_TIMEOUT,
     DEFAULT_AIRFLOW_UNIT,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
-    DEFAULT_PORT,
     DEFAULT_PARITY,
+    DEFAULT_PORT,
     DEFAULT_RETRY,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
@@ -167,7 +168,7 @@ def _looks_like_hostname(value: str) -> bool:
 
 
 async def _run_with_retry(
-    func: "Callable[[], Awaitable[Any]]",
+    func: Callable[[], Awaitable[Any]],
     *,
     retries: int,
     backoff: float,
@@ -181,13 +182,7 @@ async def _run_with_retry(
     for attempt in range(1, retries + 1):
         try:
             return await func()
-        except (
-            ConnectionException,
-            ModbusIOException,
-            ModbusException,
-            asyncio.TimeoutError,
-            OSError,
-        ):
+        except (TimeoutError, ConnectionException, ModbusIOException, ModbusException, OSError):
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -228,9 +223,7 @@ def _caps_to_dict(obj: Any) -> dict[str, Any]:
     return data
 
 
-async def validate_input(
-    hass: HomeAssistant | None, data: dict[str, Any]
-) -> dict[str, Any]:
+async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
 
     connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
@@ -271,9 +264,9 @@ async def validate_input(
             ipaddress.ip_address(host)
         except ValueError:
             if not _looks_like_hostname(host):
-                raise vol.Invalid("invalid_host", path=[CONF_HOST])
+                raise vol.Invalid("invalid_host", path=[CONF_HOST]) from None
             if not is_host_valid(host):
-                raise vol.Invalid("invalid_host", path=[CONF_HOST])
+                raise vol.Invalid("invalid_host", path=[CONF_HOST]) from None
     else:
         serial_port = str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT) or "").strip()
         if not serial_port:
@@ -308,9 +301,7 @@ async def validate_input(
     else:
         import_func = asyncio.to_thread
 
-    module = await import_func(
-        import_module, "custom_components.thessla_green_modbus.scanner_core"
-    )
+    module = await import_func(import_module, "custom_components.thessla_green_modbus.scanner_core")
     scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
     capabilities_cls = DeviceCapabilities or module.DeviceCapabilities
 
@@ -363,14 +354,10 @@ async def validate_input(
                 _LOGGER.error("Capabilities missing required fields: %s", err)
                 raise CannotConnect("invalid_capabilities") from err
             if isinstance(caps_obj, capabilities_cls):
-                required_fields = {
-                    field.name for field in dataclasses.fields(capabilities_cls)
-                }
+                required_fields = {field.name for field in dataclasses.fields(capabilities_cls)}
                 missing = [f for f in required_fields if f not in caps_dict]
                 if missing:
-                    _LOGGER.error(
-                        "Capabilities missing required fields: %s", set(missing)
-                    )
+                    _LOGGER.error("Capabilities missing required fields: %s", set(missing))
                     raise CannotConnect("invalid_capabilities")
         elif isinstance(caps_obj, dict):
             try:
@@ -401,7 +388,7 @@ async def validate_input(
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         _LOGGER.warning("Timeout during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("timeout") from exc
@@ -458,9 +445,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 return options[0]
             return target
 
-        connection_default = current_values.get(
-            CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE
-        )
+        connection_default = current_values.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
         host_default = current_values.get(CONF_HOST, "")
         port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
         slave_default = current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
@@ -546,8 +531,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 vol.Optional(CONF_BAUD_RATE, default=baud_default): baud_validator,
                 vol.Optional(CONF_PARITY, default=parity_default): parity_validator,
                 vol.Optional(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
-                vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)):
-                    str,
+                vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
                 vol.Optional(
                     CONF_DEEP_SCAN,
                     default=current_values.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
@@ -660,9 +644,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         }
 
         return entry_data, options
-    async def _async_show_confirmation(
-        self, cap_cls: Any, step_id: str
-    ) -> FlowResult:
+
+    async def _async_show_confirmation(self, cap_cls: Any, step_id: str) -> FlowResult:
         """Render confirmation step with device details."""
 
         device_name = self._device_info.get("device_name", "Unknown")
@@ -774,9 +757,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
                 )
                 if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise vol.Invalid(
-                        "max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST]
-                    )
+                    raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
                 # Validate input and get device info
                 info = await validate_input(self.hass, user_input)
@@ -825,30 +806,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             errors=errors,
         )
 
-    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle the confirm step."""
-        module = import_module("custom_components.thessla_green_modbus.scanner_core")
-        cap_cls = DeviceCapabilities or module.DeviceCapabilities
-
-        if user_input is not None:
-            # Ensure unique ID is set and not already configured
-            unique_host = self._data[CONF_HOST].replace(":", "-")
-            await self.async_set_unique_id(
-                f"{unique_host}:{self._data[CONF_PORT]}:{self._data[CONF_SLAVE_ID]}"
-            )
-            self._abort_if_unique_id_configured()
-            data, options = self._prepare_entry_payload(cap_cls)
-            return self.async_create_entry(
-                title=self._data.get(CONF_NAME, DEFAULT_NAME),
-                data=data,
-                options=options,
-            )
-
-        return await self._async_show_confirmation(cap_cls, "confirm")
-
-    async def async_step_reauth(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_reauth(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle reauthentication by collecting updated connection details."""
 
         errors: dict[str, str] = {}
@@ -878,9 +836,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
                 )
                 if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise vol.Invalid(
-                        "max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST]
-                    )
+                    raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
                 info = await validate_input(self.hass, user_input)
                 self._data = user_input
@@ -938,9 +894,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             data, options = self._prepare_entry_payload(cap_cls)
             combined_options = dict(entry.options)
             combined_options.update(options)
-            self.hass.config_entries.async_update_entry(
-                entry, data=data, options=combined_options
-            )
+            self.hass.config_entries.async_update_entry(entry, data=data, options=combined_options)
             await self.hass.config_entries.async_reload(entry.entry_id)
             return self.async_abort(reason="reauth_successful")
 
@@ -989,29 +943,21 @@ class OptionsFlow(config_entries.OptionsFlow):
         entry_data = getattr(self.config_entry, "data", {}) or {}
         entry_options = getattr(self.config_entry, "options", {}) or {}
 
-        current_scan_interval = entry_options.get(
-            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-        )
+        current_scan_interval = entry_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         current_timeout = entry_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
         current_retry = entry_options.get(CONF_RETRY, DEFAULT_RETRY)
         force_full = entry_options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-        current_scan_uart = entry_options.get(
-            CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS
-        )
+        current_scan_uart = entry_options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
         current_skip_missing = entry_options.get(
             CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
         )
-        current_airflow_unit = entry_options.get(
-            CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT
-        )
+        current_airflow_unit = entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
         current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
         current_max_registers_per_request = entry_options.get(
             CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
         )
 
-        transport = entry_data.get(
-            CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE
-        )
+        transport = entry_data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
         if transport == CONNECTION_TYPE_RTU:
             transport_label = "Modbus RTU"
             serial_port = entry_data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
@@ -1019,7 +965,9 @@ class OptionsFlow(config_entries.OptionsFlow):
             parity = entry_data.get(CONF_PARITY, DEFAULT_PARITY)
             stop_bits = entry_data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)
             transport_details = (
-                f" (port: {serial_port or 'n/a'}, baud: {baud}, parity: {parity}, stop bits: {stop_bits})"
+                " ("
+                f"port: {serial_port or 'n/a'}, baud: {baud}, parity: {parity}, "
+                f"stop bits: {stop_bits})"
             )
         else:
             transport_label = "Modbus TCP"

@@ -1,7 +1,5 @@
 from unittest.mock import AsyncMock, patch
 
-from unittest.mock import AsyncMock, patch
-
 import pytest
 
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
@@ -50,9 +48,7 @@ pytestmark = pytest.mark.asyncio
 async def test_backoff_delay(method, address, count, primary_attr, fallback_attr, expected):
     """Scanner helpers honour exponential backoff via _call_modbus."""
 
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "host", 1234, 10, retry=3, backoff=0.1
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("host", 1234, 10, retry=3, backoff=0.1)
     mock_client = AsyncMock()
     setattr(mock_client, primary_attr, AsyncMock(side_effect=ModbusIOException("boom")))
     if fallback_attr is not None:
@@ -105,9 +101,7 @@ async def test_backoff_delay(method, address, count, primary_attr, fallback_attr
 async def test_backoff_zero_no_delay(method, address, count, primary_attr, fallback_attr):
     """When backoff is zero, the helper should not sleep between attempts."""
 
-    scanner = await ThesslaGreenDeviceScanner.create(
-        "host", 1234, 10, retry=3, backoff=0
-    )
+    scanner = await ThesslaGreenDeviceScanner.create("host", 1234, 10, retry=3, backoff=0)
     mock_client = AsyncMock()
     setattr(mock_client, primary_attr, AsyncMock(side_effect=ModbusIOException("boom")))
     if fallback_attr is not None:

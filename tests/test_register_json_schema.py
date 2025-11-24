@@ -5,9 +5,8 @@ from importlib import resources
 def test_register_json_schema() -> None:
     """Validate basic structure of the JSON register file."""
 
-    json_file = (
-        resources.files("custom_components.thessla_green_modbus.registers")
-        .joinpath("thessla_green_registers_full.json")
+    json_file = resources.files("custom_components.thessla_green_modbus.registers").joinpath(
+        "thessla_green_registers_full.json"
     )
     data = json.loads(json_file.read_text(encoding="utf-8"))
     registers = data.get("registers", data) if isinstance(data, dict) else data

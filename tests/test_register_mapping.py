@@ -68,7 +68,6 @@ def test_register_mapping_and_scaling() -> None:
     assert inp.encode(21.5) == 215
 
 
-
 def test_registers_match_json() -> None:
     """Registers loaded by the helper match the JSON definitions."""
 

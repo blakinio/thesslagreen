@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -28,7 +28,7 @@ from .entity_mappings import BINARY_SENSOR_ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 
-BINARY_SENSOR_DEFINITIONS: Dict[str, Dict[str, Any]] = BINARY_SENSOR_ENTITY_MAPPINGS
+BINARY_SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = BINARY_SENSOR_ENTITY_MAPPINGS
 
 
 async def async_setup_entry(
@@ -98,7 +98,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
         address: int,
-        sensor_definition: Dict[str, Any],
+        sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(

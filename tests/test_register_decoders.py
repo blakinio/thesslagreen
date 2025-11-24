@@ -138,9 +138,12 @@ def test_register_encode_numeric_bounds():
 
 def test_register_encode_enum_invalid():
     """Enum registers raise when provided invalid values."""
-    reg = Register(function="holding", address=0, name="mode", access="rw", enum={0: "off", 1: "on"})
+    reg = Register(
+        function="holding", address=0, name="mode", access="rw", enum={0: "off", 1: "on"}
+    )
     with pytest.raises(ValueError):
         reg.encode("invalid")
+
 
 def test_register_decode_encode_string_multi():
     reg = next(r for r in get_registers_by_function("03") if r.name == "device_name")
@@ -213,6 +216,8 @@ def test_multi_register_decode_int32() -> None:
     )
     raw = [0x1234, 0x5678]
     assert reg.decode(raw) == 0x12345678
+
+
 @pytest.fixture
 def float32_register() -> Register:
     """Register representing a 32-bit floating point value."""

@@ -183,7 +183,7 @@ def main(path: Path | None = None) -> int:
         validate(Path(target))
     except Exception as err:  # pragma: no cover - error path
         print(err)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     return 0
 
 

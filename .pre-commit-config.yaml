@@ -1,28 +1,40 @@
 repos:
+  # Ruff (lint + format)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:
       - id: ruff
         args: ["--fix"]
       - id: ruff-format
+
+  # Black
   - repo: https://github.com/psf/black
     rev: 25.11.0
     hooks:
       - id: black
-  - repo: https://github.com/pycqa/isort
+        language_version: python3
+
+  # isort
+  - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
     hooks:
       - id: isort
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
-    hooks:
-      - id: mypy
-        additional_dependencies: []
-        args:
-          - --config-file=pyproject.toml
+
+  # pre-commit-hooks (standard hygiene)
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-merge-conflict
       - id: end-of-file-fixer
       - id: trailing-whitespace
+
+  # mypy (type checking)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies: ["types-requests"]
+        args:
+          - --config-file=pyproject.toml
+          - custom_components
+          - tests

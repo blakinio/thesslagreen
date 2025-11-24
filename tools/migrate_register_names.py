@@ -64,11 +64,8 @@ def migrate(path: Path = JSON_PATH) -> None:
     if len(names) != len(set(names)):
         raise ValueError("Duplicate register names after normalisation")
     registers.sort(key=lambda r: (int(r["address_dec"]), r["name"]))
-    path.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
     migrate()
-

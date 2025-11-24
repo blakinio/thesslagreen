@@ -1,4 +1,5 @@
 """Helpers for encoding/decoding BCD schedule times."""
+
 from __future__ import annotations
 
 from datetime import time
