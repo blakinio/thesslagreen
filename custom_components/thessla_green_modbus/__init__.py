@@ -34,19 +34,31 @@ from .const import (
     CONF_BACKOFF_JITTER,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
+    CONF_CONNECTION_TYPE,
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_RETRY,
+    CONF_SERIAL_PORT,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
+    CONF_BAUD_RATE,
+    CONF_PARITY,
+    CONF_STOP_BITS,
     CONF_TIMEOUT,
+    CONNECTION_TYPE_RTU,
+    CONNECTION_TYPE_TCP,
     DEFAULT_DEEP_SCAN,
+    DEFAULT_CONNECTION_TYPE,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_NAME,
     DEFAULT_PORT,
+    DEFAULT_SERIAL_PORT,
+    DEFAULT_BAUD_RATE,
+    DEFAULT_PARITY,
+    DEFAULT_STOP_BITS,
     DEFAULT_RETRY,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
@@ -137,10 +149,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     await hass.async_add_executor_job(import_module, ".config_flow", __name__)
 
     # Get configuration - support both new and legacy keys
-    host = entry.data[CONF_HOST]
+    connection_type = entry.data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
+    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+        connection_type = DEFAULT_CONNECTION_TYPE
+
+    host = entry.data.get(CONF_HOST, "")
     port = entry.data.get(
         CONF_PORT, DEFAULT_PORT
     )  # Default to DEFAULT_PORT (502; legacy versions used 8899)
+    serial_port = entry.data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
+    baud_rate = entry.data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
+    parity = entry.data.get(CONF_PARITY, DEFAULT_PARITY)
+    stop_bits = entry.data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)
+
+    try:
+        baud_rate = int(baud_rate)
+    except (TypeError, ValueError):
+        baud_rate = DEFAULT_BAUD_RATE
+    parity = str(parity or DEFAULT_PARITY)
+    try:
+        stop_bits = int(stop_bits)
+    except (TypeError, ValueError):
+        stop_bits = DEFAULT_STOP_BITS
 
     # Try to get slave_id from multiple possible keys for compatibility
     slave_id = None
@@ -172,11 +202,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
     )
 
+    if connection_type == CONNECTION_TYPE_RTU:
+        endpoint = serial_port or "serial"
+        transport_label = "Modbus RTU"
+    else:
+        endpoint = f"{host}:{port}"
+        transport_label = "Modbus TCP"
+
     _LOGGER.info(
-        "Initializing ThesslaGreen device: %s at %s:%s (slave_id=%s, scan_interval=%ds)",
+        "Initializing ThesslaGreen device: %s via %s (%s) (slave_id=%s, scan_interval=%ds)",
         name,
-        host,
-        port,
+        transport_label,
+        endpoint,
         slave_id,
         scan_interval,
     )
@@ -193,6 +230,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         port=port,
         slave_id=slave_id,
         name=name,
+        connection_type=connection_type,
+        serial_port=serial_port,
+        baud_rate=baud_rate,
+        parity=parity,
+        stop_bits=stop_bits,
         scan_interval=timedelta(seconds=scan_interval),
         timeout=timeout,
         retry=retry,
@@ -436,6 +478,11 @@ async def async_migrate_entry(
             new_options[CONF_FORCE_FULL_REGISTER_LIST] = False
 
         config_entry.version = 2
+
+    if config_entry.version == 2:
+        if CONF_CONNECTION_TYPE not in new_data:
+            new_data[CONF_CONNECTION_TYPE] = DEFAULT_CONNECTION_TYPE
+        config_entry.version = 3
 
     # Build new unique ID replacing ':' in host with '-' to avoid separator conflicts
     host = new_data.get(CONF_HOST)

@@ -66,19 +66,17 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 
 ## ⚙️ Konfiguracja
 
-### 1. Włącz Modbus TCP w rekuperatorze
-- Menu → Komunikacja → Modbus TCP
-- Włącz: **TAK**
-- Port: **502** (domyślny)
-- ID urządzenia: **10** (domyślny)
+### 1. Włącz Modbus w rekuperatorze
+- **Modbus TCP**: Menu → Komunikacja → Modbus TCP → Włącz **TAK**, Port **502**, ID urządzenia **10**
+- **Modbus RTU**: Menu → Komunikacja → Modbus RTU → Wybierz port fizyczny, ustaw prędkość (np. 19200), parzystość i bity stopu zgodnie z instalacją
 
 ### 2. Dodaj integrację w Home Assistant
 1. **Ustawienia** → **Integracje** → **+ DODAJ INTEGRACJĘ**
 2. Wyszukaj **"ThesslaGreen Modbus"**
 3. Wprowadź dane:
-   - **IP Address**: IP rekuperatora (np. 192.168.1.100)
-   - **Port**: 502
-   - **ID urządzenia**: 10
+   - Wybierz **Typ połączenia**: `Modbus TCP` lub `Modbus RTU`
+   - Dla **Modbus TCP** podaj: IP rekuperatora (np. 192.168.1.100), port (domyślnie 502) i ID urządzenia (domyślnie 10)
+   - Dla **Modbus RTU** podaj: ścieżkę portu szeregowego (np. `/dev/ttyUSB0`), prędkość (np. 19200), parzystość oraz liczbę bitów stopu
 4. Integracja automatycznie przeskanuje urządzenie
 5. Kliknij **DODAJ**
 

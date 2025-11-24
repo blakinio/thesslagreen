@@ -80,9 +80,14 @@ try:  # pragma: no cover - fallback for tests without full HA constants
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
     PERCENTAGE = "%"
 
-from .registers.loader import (
-    get_all_registers,
-)
+try:  # pragma: no cover - optional during isolated tests
+    from .registers.loader import (
+        get_all_registers,
+    )
+except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+
+    def get_all_registers(*_args, **_kwargs):
+        return []
 
 from .const import (
     coil_registers,

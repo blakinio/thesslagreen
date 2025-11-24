@@ -75,9 +75,19 @@ sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader"
 from custom_components.thessla_green_modbus.const import (
     CONF_DEEP_SCAN,
     CONF_SLAVE_ID,
+    CONF_CONNECTION_TYPE,
+    CONF_SERIAL_PORT,
+    CONF_BAUD_RATE,
+    CONF_PARITY,
+    CONF_STOP_BITS,
     CONF_MAX_REGISTERS_PER_REQUEST,
     MAX_BATCH_REGISTERS,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    DEFAULT_BAUD_RATE,
+    DEFAULT_PARITY,
+    DEFAULT_STOP_BITS,
+    CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_RTU,
 )
 
 from custom_components.thessla_green_modbus.config_flow import (
@@ -93,6 +103,14 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
 )
 
 CONF_NAME = "name"
+
+DEFAULT_USER_INPUT = {
+    CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+    CONF_HOST: "192.168.1.100",
+    CONF_PORT: 502,
+    CONF_SLAVE_ID: 10,
+    CONF_NAME: "My Device",
+}
 
 pytestmark = pytest.mark.asyncio
 
@@ -114,6 +132,16 @@ async def test_form_user():
 
     assert result["type"] == "form"
     assert result["errors"] == {}
+    schema_keys = {
+        key.schema if hasattr(key, "schema") else key
+        for key in result["data_schema"].schema
+    }
+    assert CONF_CONNECTION_TYPE in schema_keys
+    assert CONF_HOST in schema_keys
+    assert CONF_SERIAL_PORT in schema_keys
+    assert CONF_BAUD_RATE in schema_keys
+    assert CONF_PARITY in schema_keys
+    assert CONF_STOP_BITS in schema_keys
 
 
 @pytest.mark.parametrize("invalid_port", [0, 65536])
@@ -126,12 +154,7 @@ async def test_form_user_port_out_of_range(invalid_port: int):
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
-            {
-                CONF_HOST: "192.168.1.100",
-                CONF_PORT: invalid_port,
-                CONF_SLAVE_ID: 10,
-                CONF_NAME: "My Device",
-            }
+            dict(DEFAULT_USER_INPUT, **{CONF_PORT: invalid_port})
         )
 
     assert result["type"] == "form"
@@ -152,12 +175,7 @@ async def test_form_user_invalid_slave_id(slave_id: int, expected_error: str):
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
-            {
-                CONF_HOST: "192.168.1.100",
-                CONF_PORT: 502,
-                CONF_SLAVE_ID: slave_id,
-                CONF_NAME: "My Device",
-            }
+            dict(DEFAULT_USER_INPUT, **{CONF_SLAVE_ID: slave_id})
         )
 
     assert result["type"] == "form"
@@ -174,12 +192,7 @@ async def test_form_user_invalid_domain():
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
-            {
-                CONF_HOST: "bad host",
-                CONF_PORT: 502,
-                "slave_id": 10,
-                CONF_NAME: "My Device",
-            }
+            dict(DEFAULT_USER_INPUT, **{CONF_HOST: "bad host"})
         )
 
     assert result["type"] == "form"
@@ -196,18 +209,59 @@ async def test_form_user_invalid_ipv4():
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
-            {
-                CONF_HOST: "256.256.256.256",
-                CONF_PORT: 502,
-                "slave_id": 10,
-                CONF_NAME: "My Device",
-            }
+            dict(DEFAULT_USER_INPUT, **{CONF_HOST: "256.256.256.256"})
         )
 
     assert result["type"] == "form"
     assert result["errors"] == {CONF_HOST: "invalid_host"}
     create_mock.assert_not_called()
 
+
+async def test_form_user_rtu_requires_serial_port():
+    """Modbus RTU requires a serial port path."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        result = await flow.async_step_user(
+            dict(
+                DEFAULT_USER_INPUT,
+                **{
+                    CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+                    CONF_SERIAL_PORT: "",
+                },
+            )
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {CONF_SERIAL_PORT: "invalid_serial_port"}
+    create_mock.assert_not_called()
+
+
+async def test_form_user_rtu_invalid_baud_rate():
+    """Invalid RTU baud rate should be rejected."""
+    flow = ConfigFlow()
+    flow.hass = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+    ) as create_mock:
+        result = await flow.async_step_user(
+            dict(
+                DEFAULT_USER_INPUT,
+                **{
+                    CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+                    CONF_SERIAL_PORT: "/dev/ttyUSB0",
+                    CONF_BAUD_RATE: "invalid",
+                },
+            )
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {CONF_BAUD_RATE: "invalid_baud_rate"}
+    create_mock.assert_not_called()
 
 async def test_form_user_invalid_ipv6():
     """Test invalid IPv6 addresses are rejected."""
@@ -353,14 +407,10 @@ async def test_form_user_success():
         ),
     ):
         result = await flow.async_step_user(
-            {
-                CONF_HOST: "192.168.1.100",
-                CONF_PORT: 502,
-                "slave_id": 10,
-                CONF_NAME: "My Device",
-                CONF_DEEP_SCAN: True,
-                CONF_MAX_REGISTERS_PER_REQUEST: 5,
-            }
+            dict(
+                DEFAULT_USER_INPUT,
+                **{CONF_DEEP_SCAN: True, CONF_MAX_REGISTERS_PER_REQUEST: 5}
+            )
         )
         assert result["type"] == "form"
         assert result["step_id"] == "confirm"
@@ -374,15 +424,68 @@ async def test_form_user_success():
     assert result2["type"] == "create_entry"
     assert result2["title"] == "My Device"
     data = result2["data"]
-    assert data[CONF_HOST] == "192.168.1.100"
-    assert data[CONF_PORT] == 502
-    assert data["slave_id"] == 10
-    assert data["unit"] == 10
-    assert data[CONF_NAME] == "My Device"
+    assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_TCP
+    assert data[CONF_HOST] == DEFAULT_USER_INPUT[CONF_HOST]
+    assert data[CONF_PORT] == DEFAULT_USER_INPUT[CONF_PORT]
+    assert data["slave_id"] == DEFAULT_USER_INPUT[CONF_SLAVE_ID]
+    assert data["unit"] == DEFAULT_USER_INPUT[CONF_SLAVE_ID]
+    assert data[CONF_NAME] == DEFAULT_USER_INPUT[CONF_NAME]
     assert isinstance(data["capabilities"], dict)
     assert data["capabilities"]["expansion_module"] is True
     assert result2["options"][CONF_DEEP_SCAN] is True
     assert result2["options"][CONF_MAX_REGISTERS_PER_REQUEST] == 5
+
+
+async def test_form_user_rtu_success_creates_serial_entry():
+    """RTU configuration should persist serial settings."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    validation_result = {
+        "title": "ThesslaGreen Serial",
+        "device_info": {"device_name": "Serial", "firmware": "1.0", "serial_number": "ABC"},
+        "scan_result": {
+            "device_info": {"device_name": "Serial", "firmware": "1.0", "serial_number": "ABC"},
+            "capabilities": {"basic_control": True},
+            "register_count": 3,
+        },
+    }
+
+    user_input = dict(
+        DEFAULT_USER_INPUT,
+        **{
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+            CONF_SERIAL_PORT: "/dev/ttyUSB0",
+            CONF_BAUD_RATE: DEFAULT_BAUD_RATE,
+            CONF_PARITY: DEFAULT_PARITY,
+            CONF_STOP_BITS: DEFAULT_STOP_BITS,
+        },
+    )
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured"
+        ),
+    ):
+        result = await flow.async_step_user(user_input)
+        assert result["type"] == "form"
+        result2 = await flow.async_step_confirm({})
+
+    data = result2["data"]
+    assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_RTU
+    assert data[CONF_SERIAL_PORT] == "/dev/ttyUSB0"
+    assert data[CONF_BAUD_RATE] == DEFAULT_BAUD_RATE
+    assert data[CONF_PARITY] == DEFAULT_PARITY
+    assert data[CONF_STOP_BITS] == DEFAULT_STOP_BITS
+    # Host/port remain available for diagnostics when provided
+    assert data.get(CONF_HOST) == DEFAULT_USER_INPUT[CONF_HOST]
+    assert data.get(CONF_PORT) == DEFAULT_USER_INPUT[CONF_PORT]
 
 
 async def test_duplicate_entry_aborts():
@@ -408,14 +511,7 @@ async def test_duplicate_entry_aborts():
             side_effect=[None, AbortFlow("already_configured")],
         ),
     ):
-        await flow.async_step_user(
-            {
-                CONF_HOST: "192.168.1.100",
-                CONF_PORT: 502,
-                "slave_id": 10,
-                CONF_NAME: "My Device",
-            }
-        )
+        await flow.async_step_user(DEFAULT_USER_INPUT)
 
         with pytest.raises(AbortFlow):
             await flow.async_step_confirm({})
@@ -446,14 +542,7 @@ async def test_user_step_duplicate_entry_aborts_silently(caplog):
         caplog.at_level(logging.ERROR),
     ):
         with pytest.raises(AbortFlow) as err:
-            await flow.async_step_user(
-                {
-                    CONF_HOST: "192.168.1.100",
-                    CONF_PORT: 502,
-                    "slave_id": 10,
-                    CONF_NAME: "My Device",
-                }
-            )
+            await flow.async_step_user(DEFAULT_USER_INPUT)
 
     assert err.value.reason == "already_configured"
     assert not caplog.records
@@ -586,12 +675,7 @@ async def test_confirm_step_aborts_on_existing_entry():
     flow = ConfigFlow()
     flow.hass = None
 
-    user_input = {
-        CONF_HOST: "192.168.1.100",
-        CONF_PORT: 502,
-        "slave_id": 10,
-        CONF_NAME: "My Device",
-    }
+    user_input = dict(DEFAULT_USER_INPUT)
 
     validation_result = {
         "title": "Device",
