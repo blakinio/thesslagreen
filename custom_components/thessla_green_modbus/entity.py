@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import ThesslaGreenModbusCoordinator
+from .const import device_unique_id_prefix
 
 
 class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
@@ -35,7 +36,14 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         bit_suffix = (
             f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
         )
-        return f"{self.coordinator.slave_id}_{self._address}{bit_suffix}"
+        device_info = getattr(self.coordinator, "device_info", {}) or {}
+        serial_number = device_info.get("serial_number")
+        prefix = device_unique_id_prefix(
+            serial_number,
+            getattr(self.coordinator, "host", ""),
+            getattr(self.coordinator, "port", 0),
+        )
+        return f"{prefix}_{self.coordinator.slave_id}_{self._address}{bit_suffix}"
 
     @property
     def available(self) -> bool:  # pragma: no cover
