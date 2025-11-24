@@ -38,7 +38,7 @@ def test_unique_id_uses_serial_prefix():
     coordinator = _create_coordinator(serial="SN123", host="192.0.2.10", port=502)
 
     entity = ThesslaGreenEntity(coordinator, "test", 1)
-    assert entity.unique_id == "SN123_10_1"  # nosec
+    assert entity.unique_id == "SN123_10_test_1"  # nosec
 
 
 def test_unique_id_varies_with_address():
@@ -47,9 +47,9 @@ def test_unique_id_varies_with_address():
     coordinator = _create_coordinator(serial="SN123", host="192.0.2.10", port=502)
 
     entity = ThesslaGreenEntity(coordinator, "test", 1)
-    assert entity.unique_id == "SN123_10_1"  # nosec
+    assert entity.unique_id == "SN123_10_test_1"  # nosec
     entity = ThesslaGreenEntity(coordinator, "test", 2)
-    assert entity.unique_id == "SN123_10_2"  # nosec
+    assert entity.unique_id == "SN123_10_test_2"  # nosec
 
 
 def test_unique_id_falls_back_to_host_and_port():
@@ -58,7 +58,7 @@ def test_unique_id_falls_back_to_host_and_port():
     coordinator = _create_coordinator(serial=None, host="fd00:1:2::1", port=1502)
 
     entity = ThesslaGreenEntity(coordinator, "test", 1)
-    assert entity.unique_id == "fd00-1-2-1-1502_10_1"  # nosec
+    assert entity.unique_id == "fd00-1-2-1-1502_10_test_1"  # nosec
 
 
 def test_unique_id_not_changed_by_airflow_unit():
@@ -193,7 +193,7 @@ async def test_migrate_entity_unique_ids(hass):
 
         assert await async_setup_entry(hass, entry)  # nosec
 
-    new_unique_id = f"ABC123_{slave_id}_{address}"
+    new_unique_id = f"ABC123_{slave_id}_supply_flow_rate_{address}"
     entity_id = registry.async_get_entity_id("sensor", DOMAIN, new_unique_id)
     assert entity_id is not None  # nosec
     assert registry.entities[entity_id].unique_id == new_unique_id  # nosec
@@ -204,4 +204,4 @@ def test_unique_id_bit_suffix():
     coordinator = _create_coordinator(serial="SN123", host="192.0.2.5", port=502)
 
     entity = ThesslaGreenEntity(coordinator, "test", 5, bit=0x04)
-    assert entity.unique_id == "SN123_10_5_bit2"  # nosec
+    assert entity.unique_id == "SN123_10_test_5_bit4"  # nosec

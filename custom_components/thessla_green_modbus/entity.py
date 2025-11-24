@@ -33,7 +33,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
-        bit_suffix = f"_bit{self._bit.bit_length() - 1}" if self._bit is not None else ""
+        bit_suffix = f"_bit{self._bit}" if self._bit is not None else ""
         device_info = getattr(self.coordinator, "device_info", {}) or {}
         serial_number = device_info.get("serial_number")
         prefix = device_unique_id_prefix(
@@ -41,7 +41,7 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
             getattr(self.coordinator, "host", ""),
             getattr(self.coordinator, "port", 0),
         )
-        return f"{prefix}_{self.coordinator.slave_id}_{self._address}{bit_suffix}"
+        return f"{prefix}_{self.coordinator.slave_id}_{self._key}_{self._address}{bit_suffix}"
 
     @property
     def available(self) -> bool:  # pragma: no cover
