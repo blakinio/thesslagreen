@@ -21,4 +21,3 @@ def _expected_files() -> list[str]:
 def test_manifest_files_list_is_complete() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert sorted(manifest["files"]) == _expected_files()
-

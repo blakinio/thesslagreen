@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -10,20 +10,12 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 # Stub registers module to avoid heavy imports during diagnostics import
-original_registers = sys.modules.get(
-    "custom_components.thessla_green_modbus.registers"
-)
-root_pkg = ModuleType(
-    "custom_components.thessla_green_modbus"
-)
+original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
+root_pkg = ModuleType("custom_components.thessla_green_modbus")
 root_pkg.__path__ = []  # type: ignore[attr-defined]
-registers_module = ModuleType(
-    "custom_components.thessla_green_modbus.registers"
-)
+registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
 registers_module.__path__ = []  # type: ignore[attr-defined]
-loader_module = ModuleType(
-    "custom_components.thessla_green_modbus.registers.loader"
-)
+loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
 loader_module.get_all_registers = lambda: []
 loader_module.registers_sha256 = lambda *args, **kwargs: "hash"
 loader_module.get_registers_by_function = lambda *args, **kwargs: []
@@ -32,21 +24,13 @@ loader_module._REGISTERS_PATH = Path("dummy")
 registers_module.loader = loader_module
 registers_module.get_all_registers = loader_module.get_all_registers
 registers_module.registers_sha256 = loader_module.registers_sha256
-registers_module.get_registers_by_function = (
-    loader_module.get_registers_by_function
-)
+registers_module.get_registers_by_function = loader_module.get_registers_by_function
 registers_module.plan_group_reads = loader_module.plan_group_reads
 registers_module._REGISTERS_PATH = loader_module._REGISTERS_PATH
 root_pkg.registers = registers_module
-sys.modules[
-    "custom_components.thessla_green_modbus",
-] = root_pkg
-sys.modules[
-    "custom_components.thessla_green_modbus.registers",
-] = registers_module
-sys.modules[
-    "custom_components.thessla_green_modbus.registers.loader"
-] = loader_module
+sys.modules["custom_components.thessla_green_modbus",] = root_pkg
+sys.modules["custom_components.thessla_green_modbus.registers",] = registers_module
+sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_module
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
 sys.modules.setdefault("homeassistant.util", ModuleType("homeassistant.util"))
 sys.modules.setdefault("homeassistant.util.network", ModuleType("homeassistant.util.network"))
@@ -58,22 +42,14 @@ from custom_components.thessla_green_modbus.diagnostics import (  # noqa: E402
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
-from custom_components.thessla_green_modbus.scanner_core import (
-    DeviceCapabilities,  # noqa: E402
-)
+from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities  # noqa: E402
 
 # Restore real registers module for subsequent tests
 if original_registers is not None:
-    sys.modules["custom_components.thessla_green_modbus.registers"] = (
-        original_registers
-    )
+    sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
 else:  # pragma: no cover - defensive
-    sys.modules.pop(
-        "custom_components.thessla_green_modbus.registers", None
-    )
-sys.modules.pop(
-    "custom_components.thessla_green_modbus.registers.loader", None
-)
+    sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
+sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
 sys.modules.pop("custom_components.thessla_green_modbus", None)
 
 DOMAIN = "thessla_green_modbus"
@@ -106,9 +82,7 @@ def test_redact_ipv6_zone():
 
     redacted = _redact_sensitive_data(data)
 
-    assert redacted["connection"]["host"] == (
-        "fe80:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:0001"
-    )
+    assert redacted["connection"]["host"] == ("fe80:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:0001")
 
 
 def test_original_diagnostics_unchanged():
@@ -129,7 +103,7 @@ def test_original_diagnostics_unchanged():
 async def test_last_scan_in_diagnostics():
     """Ensure diagnostics include last_scan timestamp."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:
@@ -149,7 +123,9 @@ async def test_last_scan_in_diagnostics():
 
     coord = DummyCoordinator()
     entry = SimpleNamespace(entry_id="test")
-    hass = SimpleNamespace(data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en"))
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en")
+    )
 
     with patch(
         "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
@@ -164,7 +140,7 @@ async def test_last_scan_in_diagnostics():
 async def test_additional_diagnostic_fields():
     """Verify new diagnostic fields are included."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:
@@ -221,7 +197,7 @@ async def test_additional_diagnostic_fields():
 async def test_unknown_registers_in_diagnostics():
     """Ensure diagnostics include skipped and unknown registers from scan."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     scan_result = {
         "unknown_registers": {"input_registers": {1: 99}},
@@ -271,7 +247,7 @@ async def test_unknown_registers_in_diagnostics():
 async def test_raw_registers_in_diagnostics():
     """Ensure diagnostics include raw register dumps when available."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
     scan_result = {
         "raw_registers": {
             "input_registers": {1: 10},
@@ -317,7 +293,7 @@ async def test_raw_registers_in_diagnostics():
 async def test_diagnostics_json_serializable():
     """Ensure diagnostics data is JSON serializable."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:
@@ -359,7 +335,7 @@ async def test_diagnostics_json_serializable():
 async def test_translation_failure_handled(caplog):
     """Ensure translation errors do not break diagnostics."""
 
-    last_scan = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
         def __init__(self) -> None:

@@ -18,7 +18,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
@@ -30,6 +30,7 @@ try:  # pragma: no cover - handle absence of Home Assistant
         SensorStateClass,
     )
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tests without HA
+
     class BinarySensorDeviceClass:  # type: ignore[no-redef]
         RUNNING = "running"
         OPENING = "opening"
@@ -50,6 +51,7 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tes
     class SensorStateClass:  # type: ignore[no-redef]
         MEASUREMENT = "measurement"
         TOTAL_INCREASING = "total_increasing"
+
 
 try:  # pragma: no cover - use HA constants when available
     from homeassistant.const import (
@@ -89,11 +91,12 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
     def get_all_registers(*_args, **_kwargs):
         return []
 
+
 from .const import (
+    SPECIAL_FUNCTION_MAP,
     coil_registers,
     discrete_input_registers,
     holding_registers,
-    SPECIAL_FUNCTION_MAP,
 )
 from .utils import _to_snake_case
 
@@ -108,7 +111,7 @@ _REGISTER_INFO_CACHE: dict[str, dict[str, Any]] | None = None
 # subset of legacy names existed in early versions of the integration. These
 # mappings allow services to transparently use the new entity IDs while warning
 # users to update their automations.
-LEGACY_ENTITY_ID_ALIASES: Dict[str, tuple[str, str]] = {
+LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {
     # Keys are suffixes of legacy entity_ids.
     # "number.rekuperator_predkosc" / "number.rekuperator_speed" → fan entity
     "predkosc": ("fan", "fan"),
@@ -138,15 +141,12 @@ def map_legacy_entity_id(entity_id: str) -> str:
 
     new_domain, new_suffix = LEGACY_ENTITY_ID_ALIASES[suffix]
     parts = object_id.split("_")
-    new_object_id = (
-        "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
-    )
+    new_object_id = "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
     new_entity_id = f"{new_domain}.{new_object_id}"
 
     if not _alias_warning_logged:
         _LOGGER.warning(
-            "Legacy entity ID '%s' detected. Please update automations "
-            "to use '%s'.",
+            "Legacy entity ID '%s' detected. Please update automations " "to use '%s'.",
             entity_id,
             new_entity_id,
         )
@@ -190,12 +190,7 @@ def _get_register_info(name: str) -> dict[str, Any] | None:
                 "step": step,
             }
     info = _REGISTER_INFO_CACHE.get(name)
-    if (
-        info is None
-        and (suffix := name.rsplit("_", 1))
-        and len(suffix) > 1
-        and suffix[1].isdigit()
-    ):
+    if info is None and (suffix := name.rsplit("_", 1)) and len(suffix) > 1 and suffix[1].isdigit():
         info = _REGISTER_INFO_CACHE.get(suffix[0])
     return info
 
@@ -256,6 +251,7 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
 
     return number_configs
 
+
 # Manual overrides for number entities (icons, custom units, etc.)
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Temperature control
@@ -298,9 +294,7 @@ def _load_translation_keys() -> dict[str, set[str]]:
     """Return available translation keys for supported entity types."""
 
     try:
-        with (Path(__file__).with_name("translations") / "en.json").open(
-            encoding="utf-8"
-        ) as f:
+        with (Path(__file__).with_name("translations") / "en.json").open(encoding="utf-8") as f:
             data = json.load(f)
         entity = data.get("entity", {})
         return {
@@ -308,7 +302,11 @@ def _load_translation_keys() -> dict[str, set[str]]:
             "switch": set(entity.get("switch", {}).keys()),
             "select": set(entity.get("select", {}).keys()),
         }
-    except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - fallback when translations missing
+    except (
+        OSError,
+        json.JSONDecodeError,
+        ValueError,
+    ) as err:  # pragma: no cover - fallback when translations missing
         _LOGGER.debug("Failed to load translation keys: %s", err)
         return {"binary_sensor": set(), "switch": set(), "select": set()}
     except Exception as err:  # pragma: no cover - unexpected
@@ -377,9 +375,7 @@ def _load_discrete_mappings() -> tuple[
     # metadata marks them as writable or enumerated. We therefore override
     # any previously generated switch/select configurations.
     diag_registers = {"alarm", "error"}
-    diag_registers.update(
-        reg for reg in holding_registers() if re.match(r"[se](?:_|\d)", reg)
-    )
+    diag_registers.update(reg for reg in holding_registers() if re.match(r"[se](?:_|\d)", reg))
     for reg in diag_registers:
         if reg not in holding_registers() and reg not in {"alarm", "error"}:
             continue
@@ -456,7 +452,7 @@ def _load_discrete_mappings() -> tuple[
 
 # Number entity mappings loaded from register metadata during setup
 NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
-SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # Temperature sensors (Input Registers)
     "outside_temperature": {
         "translation_key": "outside_temperature",
@@ -870,7 +866,7 @@ SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "mode": {
         "icon": "mdi:cog",
         "translation_key": "mode",
@@ -908,7 +904,7 @@ SELECT_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-BINARY_SENSOR_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # System status (from coil registers)
     "duct_water_heater_pump": {
         "translation_key": "duct_water_heater_pump",
@@ -1085,7 +1081,7 @@ SPECIAL_MODE_ICONS = {
     "winter": "mdi:snowflake",
 }
 
-SWITCH_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # System control switches from holding registers
     "on_off_panel_mode": {
         "icon": "mdi:power",
@@ -1120,11 +1116,7 @@ def _extend_entity_mappings_from_registers() -> None:
         if register in SELECT_ENTITY_MAPPINGS:
             continue
 
-        if (
-            register in {"alarm", "error"}
-            or register.startswith("s_")
-            or register.startswith("e_")
-        ):
+        if register in {"alarm", "error"} or register.startswith("s_") or register.startswith("e_"):
             BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
                 register,
                 {
@@ -1168,12 +1160,7 @@ def _extend_entity_mappings_from_registers() -> None:
                     )
                 continue
 
-            if (
-                "W" in access
-                and info_text
-                and ";" in info_text
-                and max_val <= 10
-            ):
+            if "W" in access and info_text and ";" in info_text and max_val <= 10:
                 states: dict[str, int] = {}
                 for part in info_text.split(";"):
                     part = part.strip()

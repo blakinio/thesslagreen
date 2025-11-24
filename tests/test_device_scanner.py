@@ -1,6 +1,5 @@
 """Test device scanner for ThesslaGreen Modbus integration."""
 
-import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -126,7 +125,7 @@ async def test_read_holding_timeout_logging(caplog):
     with (
         patch(
             "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(side_effect=asyncio.TimeoutError()),
+            AsyncMock(side_effect=TimeoutError()),
         ),
         patch("asyncio.sleep", AsyncMock()),
         caplog.at_level(logging.WARNING),
@@ -137,9 +136,7 @@ async def test_read_holding_timeout_logging(caplog):
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
     assert any("Timeout reading holding 0x0001" in msg for msg in warnings)
     errors = [r.message for r in caplog.records if r.levelno == logging.ERROR]
-    assert any(
-        "Failed to read holding registers 0x0001-0x0001" in msg for msg in errors
-    )
+    assert any("Failed to read holding registers 0x0001-0x0001" in msg for msg in errors)
 
 
 @pytest.mark.parametrize(
@@ -1256,8 +1253,6 @@ async def test_constant_flow_detected_from_various_registers(register):
     assert caps.constant_flow is True
 
 
-
-
 async def test_analyze_capabilities():
     """Test capability analysis."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
@@ -1619,6 +1614,7 @@ async def test_scan_logs_missing_expected_registers(caplog):
         if address <= 4 < address + count:
             data[4 - address] = SENSOR_UNAVAILABLE
         return data
+
     scanner = ThesslaGreenDeviceScanner("host", 502)
     with (
         patch("custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS", input_regs),

@@ -14,6 +14,7 @@ binary_sensor_mod = sys.modules.setdefault(
     "homeassistant.components.binary_sensor", type(ha_const)("binary_sensor")
 )
 if not hasattr(binary_sensor_mod, "BinarySensorEntity"):
+
     class BinarySensorEntity:  # pragma: no cover - simple stub
         pass
 
@@ -133,23 +134,29 @@ def test_force_full_register_list_integration():
         entry.add_update_listener = MagicMock()
         entry.async_on_unload = MagicMock()
 
-        with patch(
-            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-            FakeCoordinator,
-        ), patch(
-            "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
-            AsyncMock(),
-        ), patch(
-            "custom_components.thessla_green_modbus._async_migrate_unique_ids",
-            AsyncMock(),
-        ), patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True), patch.dict(
-            binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True
-        ), patch.dict(
-            sys.modules,
-            {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
-        ), patch(
-            "custom_components.thessla_green_modbus.services.async_setup_services",
-            AsyncMock(),
+        with (
+            patch(
+                "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+                FakeCoordinator,
+            ),
+            patch(
+                "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
+                AsyncMock(),
+            ),
+            patch(
+                "custom_components.thessla_green_modbus._async_migrate_unique_ids",
+                AsyncMock(),
+            ),
+            patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True),
+            patch.dict(binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True),
+            patch.dict(
+                sys.modules,
+                {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
+            ),
+            patch(
+                "custom_components.thessla_green_modbus.services.async_setup_services",
+                AsyncMock(),
+            ),
         ):
             await async_setup_entry(hass, entry)
 
@@ -177,23 +184,29 @@ def test_force_full_register_list_integration():
         entry_force.add_update_listener = MagicMock()
         entry_force.async_on_unload = MagicMock()
 
-        with patch(
-            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-            FakeCoordinator,
-        ), patch(
-            "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
-            AsyncMock(),
-        ), patch(
-            "custom_components.thessla_green_modbus._async_migrate_unique_ids",
-            AsyncMock(),
-        ), patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True), patch.dict(
-            binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True
-        ), patch.dict(
-            sys.modules,
-            {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
-        ), patch(
-            "custom_components.thessla_green_modbus.services.async_setup_services",
-            AsyncMock(),
+        with (
+            patch(
+                "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+                FakeCoordinator,
+            ),
+            patch(
+                "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
+                AsyncMock(),
+            ),
+            patch(
+                "custom_components.thessla_green_modbus._async_migrate_unique_ids",
+                AsyncMock(),
+            ),
+            patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True),
+            patch.dict(binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True),
+            patch.dict(
+                sys.modules,
+                {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
+            ),
+            patch(
+                "custom_components.thessla_green_modbus.services.async_setup_services",
+                AsyncMock(),
+            ),
         ):
             await async_setup_entry(hass, entry_force)
 
@@ -210,13 +223,18 @@ def test_force_full_register_list_integration():
                 lambda ents, update=False: added_binary_force.extend(ents),
             )
 
-        sensor_regs_force = {e._register_name for e in added_sensors_force if e._register_name in SENSOR_MAP}
+        sensor_regs_force = {
+            e._register_name for e in added_sensors_force if e._register_name in SENSOR_MAP
+        }
         binary_regs_force = {e._register_name for e in added_binary_force}
 
         assert sensor_regs_force == set(SENSOR_MAP.keys())
         assert binary_regs_force == set(BINARY_MAP.keys())
         assert "supply_temperature" in sensor_regs_force and "supply_temperature" not in sensor_regs
-        assert "contamination_sensor" in binary_regs_force and "contamination_sensor" not in binary_regs
+        assert (
+            "contamination_sensor" in binary_regs_force
+            and "contamination_sensor" not in binary_regs
+        )
 
     import asyncio
 

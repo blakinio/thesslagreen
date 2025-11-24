@@ -44,11 +44,17 @@ def clear_stats(db_path: Path) -> None:
     cur = conn.cursor()
     for sensor in LEGACY_SENSORS:
         cur.execute(
-            "DELETE FROM statistics WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)",
+            (
+                "DELETE FROM statistics "
+                "WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)"
+            ),
             (sensor,),
         )
         cur.execute(
-            "DELETE FROM statistics_short_term WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)",
+            (
+                "DELETE FROM statistics_short_term "
+                "WHERE metadata_id=(SELECT id FROM statistics_meta WHERE statistic_id=?)"
+            ),
             (sensor,),
         )
         cur.execute(

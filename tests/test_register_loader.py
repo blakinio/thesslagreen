@@ -24,8 +24,8 @@ sys.modules.setdefault("custom_components.thessla_green_modbus.const", const_mod
 from custom_components.thessla_green_modbus.registers.loader import (
     _REGISTERS_PATH,
     _SPECIAL_MODES_PATH,
-    _load_registers_from_file,
     RegisterDef,
+    _load_registers_from_file,
     clear_cache,
     get_all_registers,
     get_registers_by_function,

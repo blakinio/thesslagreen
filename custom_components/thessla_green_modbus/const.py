@@ -6,9 +6,9 @@ import asyncio
 import importlib.util
 import re
 import sys
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - optional during isolated tests
     from .registers.loader import (
@@ -18,6 +18,7 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
 
     def get_registers_by_function(fn: str):
         return []
+
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
@@ -29,7 +30,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 MAX_BATCH_REGISTERS = 16
 
 
-@lru_cache(maxsize=None)
+@cache
 def _build_map(fn: str) -> dict[str, int]:
     return {r.name: r.address for r in get_registers_by_function(fn) if r.name}
 
@@ -53,10 +54,9 @@ def input_registers() -> dict[str, int]:
 @lru_cache(maxsize=1)
 def multi_register_sizes() -> dict[str, int]:
     return {
-        r.name: r.length
-        for r in get_registers_by_function("holding")
-        if r.name and r.length > 1
+        r.name: r.length for r in get_registers_by_function("holding") if r.name and r.length > 1
     }
+
 
 OPTIONS_PATH = Path(__file__).parent / "options"
 
@@ -265,9 +265,7 @@ def migrate_unique_id(
         base_uid = f"{slave_id}_{remainder}"
     elif remainder:
         lookup = _build_entity_lookup()
-        register_name, register_type, bit = lookup.get(
-            remainder, (remainder, None, None)
-        )
+        register_name, register_type, bit = lookup.get(remainder, (remainder, None, None))
         address: int | None = None
         if register_type == "holding_registers":
             address = holding_registers().get(register_name)
@@ -295,7 +293,7 @@ def migrate_unique_id(
 
 # Mapping of writable register names to Home Assistant number entity metadata
 # (unit, ranges, scaling factors, etc.)
-NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
+NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "required_temperature": {
         "unit": "°C",
         "min": 16,
@@ -351,7 +349,7 @@ NUMBER_ENTITY_MAPPINGS: Dict[str, Dict[str, Any]] = {
 }
 
 # Aggregated entity mappings for backward compatibility
-ENTITY_MAPPINGS: Dict[str, Dict[str, Dict[str, Any]]] = {
+ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {
     "number": NUMBER_ENTITY_MAPPINGS,
 }
 
@@ -410,7 +408,7 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
     else:
         results = [_load_json_option(fn) for fn, _ in filenames]
 
-    for (_, name), value in zip(filenames, results):
+    for (_, name), value in zip(filenames, results, strict=False):
         globals()[name] = value
 
 

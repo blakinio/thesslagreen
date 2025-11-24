@@ -8,8 +8,8 @@ import pytest
 import custom_components.thessla_green_modbus.services as services
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
     get_register_definition,
+    get_registers_by_function,
 )
 
 # Build a register map similar to what the coordinator exposes.  The schedule
@@ -37,9 +37,7 @@ class DummyCoordinator:
         self.max_registers_per_request = max_registers_per_request
         self.effective_batch = min(max_registers_per_request, MAX_BATCH_REGISTERS)
 
-    async def async_write_register(
-        self, register_name, value, refresh=True, *, offset=0
-    ) -> bool:
+    async def async_write_register(self, register_name, value, refresh=True, *, offset=0) -> bool:
         address = HOLDING_REGISTERS.get(register_name, 0) + offset
         self.writes.append((address, value, self.slave_id))
         try:

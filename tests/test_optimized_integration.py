@@ -12,11 +12,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from custom_components.thessla_green_modbus.const import (
+    SENSOR_UNAVAILABLE,
     coil_registers,
     discrete_input_registers,
     holding_registers,
     input_registers,
-    SENSOR_UNAVAILABLE,
 )
 
 # Setup logging for tests
@@ -287,15 +287,11 @@ class TestThesslaGreenModbusCoordinator:
         assert result == 20.5
 
         # Invalid temperature (sensor disconnected)
-        result = coordinator_data._process_register_value(
-            "outside_temperature", SENSOR_UNAVAILABLE
-        )
+        result = coordinator_data._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
         assert result == SENSOR_UNAVAILABLE
 
         # Another sensor register using the sentinel value
-        result = coordinator_data._process_register_value(
-            "heating_temperature", SENSOR_UNAVAILABLE
-        )
+        result = coordinator_data._process_register_value("heating_temperature", SENSOR_UNAVAILABLE)
         assert result == SENSOR_UNAVAILABLE
 
         # Negative temperature (-5.0°C -> raw value 65486)
@@ -311,9 +307,7 @@ class TestThesslaGreenModbusCoordinator:
         assert result == -100
 
         # Missing flow sensor
-        result = coordinator_data._process_register_value(
-            "exhaust_flow_rate", SENSOR_UNAVAILABLE
-        )
+        result = coordinator_data._process_register_value("exhaust_flow_rate", SENSOR_UNAVAILABLE)
         assert result == SENSOR_UNAVAILABLE
 
     def test_register_grouping(self, coordinator_data):
