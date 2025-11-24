@@ -26,7 +26,7 @@ from datetime import time
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Shared grouping helper
 from ..modbus_helpers import group_reads
@@ -253,7 +253,7 @@ class RegisterDef:
 
         if self.extra and self.extra.get("bitmask") and self.enum:
             raw_int = 0
-            if isinstance(value, (list, tuple, set)):
+            if isinstance(value, list | tuple | set):
                 for item in value:
                     for k, v in self.enum.items():
                         if v == item:
@@ -271,7 +271,7 @@ class RegisterDef:
                 hours, minutes = (int(x) for x in value.split(":"))
             elif isinstance(value, int):
                 hours, minutes = divmod(value, 60)
-            elif isinstance(value, (tuple, list)):
+            elif isinstance(value, tuple | list):
                 hours, minutes = int(value[0]), int(value[1])
             else:  # pragma: no cover - defensive
                 raise ValueError(f"Unsupported BCD value: {value}")
@@ -279,7 +279,7 @@ class RegisterDef:
 
         if self.extra and self.extra.get("aatt"):
             airflow, temp = (
-                value if isinstance(value, (list, tuple)) else (value["airflow"], value["temp"])
+                value if isinstance(value, list | tuple) else (value["airflow"], value["temp"])
             )
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
@@ -379,14 +379,14 @@ def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> li
 
         name = _normalise_name(parsed.name)
 
-        enum_map = parsed.enum
+        enum_map: dict[int | str, Any] | None = cast(dict[int | str, Any] | None, parsed.enum)
         if name == "special_mode":
-            enum_map = _SPECIAL_MODES_ENUM
+            enum_map = cast(dict[int | str, Any], _SPECIAL_MODES_ENUM)
         elif enum_map:
-            if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
-                enum_map = {int(k): v for k, v in enum_map.items()}
-            elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
-                enum_map = {int(v): k for k, v in enum_map.items()}
+            if all(isinstance(k, int | float) or str(k).isdigit() for k in enum_map):
+                enum_map = cast(dict[int | str, Any], {int(k): v for k, v in enum_map.items()})
+            elif all(isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()):
+                enum_map = cast(dict[int | str, Any], {int(v): k for k, v in enum_map.items()})
 
         # ``multiplier`` and ``resolution`` are optional in the JSON.  The
         # dataclass defaults to ``1`` for both fields but passing ``None`` would

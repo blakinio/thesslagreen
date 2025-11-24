@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Compile all modules to detect syntax errors."""
+
 from __future__ import annotations
 
 import pathlib

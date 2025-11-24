@@ -10,17 +10,13 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_registers_by_function,
-)
+from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.scanner_core import (
     DeviceCapabilities,
     ScannerDeviceInfo,
     ThesslaGreenDeviceScanner,
 )
-from custom_components.thessla_green_modbus.scanner_helpers import (
-    _format_register_value,
-)
+from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
 from custom_components.thessla_green_modbus.utils import (
     _decode_aatt,
     _decode_bcd_time,

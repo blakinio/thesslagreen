@@ -17,10 +17,7 @@ try:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.exceptions import ConfigEntryNotReady
-    from homeassistant.helpers.update_coordinator import (
-        DataUpdateCoordinator,
-        UpdateFailed,
-    )
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     ha = types.ModuleType("homeassistant")
     core = types.ModuleType("homeassistant.core")

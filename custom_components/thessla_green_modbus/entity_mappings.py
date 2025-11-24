@@ -25,10 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 try:  # pragma: no cover - handle absence of Home Assistant
     from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-    from homeassistant.components.sensor import (
-        SensorDeviceClass,
-        SensorStateClass,
-    )
+    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tests without HA
 
     class BinarySensorDeviceClass:  # type: ignore[no-redef]
@@ -83,21 +80,14 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only i
     PERCENTAGE = "%"
 
 try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import (
-        get_all_registers,
-    )
+    from .registers.loader import get_all_registers
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
 
     def get_all_registers(*_args, **_kwargs):
         return []
 
 
-from .const import (
-    SPECIAL_FUNCTION_MAP,
-    coil_registers,
-    discrete_input_registers,
-    holding_registers,
-)
+from .const import SPECIAL_FUNCTION_MAP, coil_registers, discrete_input_registers, holding_registers
 from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)

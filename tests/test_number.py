@@ -8,9 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-)
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.registers.loader import (
     get_register_definition,
     get_registers_by_function,

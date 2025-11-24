@@ -11,9 +11,9 @@ from tests.test_translations import (
     OPTION_KEYS,
     PL,
     SELECT_KEYS,
-    SERVICES,
 )
 from tests.test_translations import SENSOR_KEYS as SENSOR_ENTITY_KEYS
+from tests.test_translations import SERVICES
 from tests.test_translations import SWITCH_KEYS as SWITCH_ENTITY_KEYS
 
 SENSOR_KEYS = SENSOR_ENTITY_KEYS + ["air_flow_rate_manual", "air_flow_rate_temporary_2"]

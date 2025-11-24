@@ -183,7 +183,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         # Add raw value for diagnostic purposes
         raw_value = self.coordinator.data.get(self._register_name)
-        if raw_value is not None and isinstance(raw_value, (int, float)):
+        if raw_value is not None and isinstance(raw_value, int | float):
             attrs["raw_value"] = raw_value
 
         return attrs
@@ -208,7 +208,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             else "nominal_exhaust_air_flow"
         )
         nominal = self.coordinator.data.get(nominal_key)
-        if isinstance(nominal, (int, float)) and nominal:
+        if isinstance(nominal, int | float) and nominal:
             return nominal
         return None
 

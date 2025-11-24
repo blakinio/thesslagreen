@@ -294,7 +294,7 @@ def test_register_names_match_translations() -> None:
     ignore = {"hood_output"}
     for var, entity_type in vars_to_entity.items():
         for node in tree.body:
-            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            if isinstance(node, ast.Assign | ast.AnnAssign):
                 target = node.targets[0] if isinstance(node, ast.Assign) else node.target
                 if (
                     isinstance(target, ast.Name)

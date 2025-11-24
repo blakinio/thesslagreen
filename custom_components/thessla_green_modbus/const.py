@@ -11,9 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import (
-        get_registers_by_function,
-    )
+    from .registers.loader import get_registers_by_function
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
 
     def get_registers_by_function(fn: str):

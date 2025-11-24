@@ -65,11 +65,7 @@ from .const import (
     MODBUS_PARITY,
     MODBUS_STOP_BITS,
 )
-from .modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-    ModbusIOException,
-)
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
 

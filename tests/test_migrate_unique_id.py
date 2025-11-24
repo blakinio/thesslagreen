@@ -1,3 +1,4 @@
+from custom_components.thessla_green_modbus.const import DOMAIN, migrate_unique_id
 from custom_components.thessla_green_modbus.const import (
     DOMAIN,
     device_unique_id_prefix,

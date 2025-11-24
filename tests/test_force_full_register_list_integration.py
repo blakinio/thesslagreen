@@ -5,10 +5,7 @@ import homeassistant.const as ha_const
 from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.thessla_green_modbus import async_setup_entry
-from custom_components.thessla_green_modbus.const import (
-    CONF_FORCE_FULL_REGISTER_LIST,
-    DOMAIN,
-)
+from custom_components.thessla_green_modbus.const import CONF_FORCE_FULL_REGISTER_LIST, DOMAIN
 
 binary_sensor_mod = sys.modules.setdefault(
     "homeassistant.components.binary_sensor", type(ha_const)("binary_sensor")

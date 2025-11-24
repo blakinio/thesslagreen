@@ -1,6 +1,6 @@
 # Contributing to ThesslaGreen Modbus Integration
 
-🎉 Thank you for your interest in contributing to the ThesslaGreen Modbus Integration! 
+🎉 Thank you for your interest in contributing to the ThesslaGreen Modbus Integration!
 
 ## 📋 Table of Contents
 
@@ -221,10 +221,10 @@ async def test_your_feature():
     """Test your new feature."""
     # Arrange
     coordinator = create_mock_coordinator()
-    
+
     # Act
     result = await coordinator.your_method()
-    
+
     # Assert
     assert result == expected_value
 ```

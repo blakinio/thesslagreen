@@ -76,6 +76,8 @@ else:  # pragma: no cover
 
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from pymodbus.client import AsyncModbusTcpClient
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -126,9 +128,7 @@ from .const import (
 )
 from .register_map import REGISTER_MAP_VERSION, validate_register_value
 from .modbus_helpers import _call_modbus, group_reads
-from .registers.loader import (
-    get_all_registers,
-)
+from .registers.loader import get_all_registers
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
@@ -208,14 +208,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.backoff = DEFAULT_BACKOFF
 
         jitter_value: float | tuple[float, float] | None
-        if isinstance(backoff_jitter, (int, float)):
+        if isinstance(backoff_jitter, int | float):
             jitter_value = float(backoff_jitter)
         elif isinstance(backoff_jitter, str):
             try:
                 jitter_value = float(backoff_jitter)
             except ValueError:
                 jitter_value = None
-        elif isinstance(backoff_jitter, (list, tuple)) and len(backoff_jitter) >= 2:
+        elif isinstance(backoff_jitter, list | tuple) and len(backoff_jitter) >= 2:
             try:
                 jitter_value = (float(backoff_jitter[0]), float(backoff_jitter[1]))
             except (TypeError, ValueError):
@@ -1380,8 +1380,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 address = definition.address + offset
 
                 if definition.length > 1:
-                    if isinstance(value, (list, tuple)) and not isinstance(
-                        value, (bytes, bytearray, str)
+                    if isinstance(value, list | tuple) and not isinstance(
+                        value, bytes | bytearray | str
                     ):
                         if len(value) + offset > definition.length:
                             _LOGGER.error(
@@ -1414,8 +1414,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                         encoded_values = encoded_values[offset:]
                 else:
-                    if isinstance(value, (list, tuple)) and not isinstance(
-                        value, (bytes, bytearray, str)
+                    if isinstance(value, list | tuple) and not isinstance(
+                        value, bytes | bytearray | str
                     ):
                         _LOGGER.error("Register %s expects a single value", register_name)
                         return False

@@ -49,12 +49,12 @@ jobs:
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Cache pip packages
         uses: actions/cache@v3
         with:
@@ -63,7 +63,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-${{ matrix.python-version }}-
             ${{ runner.os }}-pip-
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -73,15 +73,15 @@ jobs:
           else
             pip install homeassistant
           fi
-      
+
       - name: Run pytest
         run: |
           python -m pytest tests/ -v --tb=short --cov=custom_components.thessla_green_modbus --cov-report=xml
-      
+
       - name: Run optimization validation
         run: |
           python run_optimization_tests.py
-      
+
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.11' && matrix.home-assistant-version == 'latest'
         uses: codecov/codecov-action@v3
@@ -96,22 +96,22 @@ jobs:
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest-homeassistant-custom-component
-      
+
       - name: Run integration tests
         run: |
           python -m pytest tests/test_optimized_integration.py -v
-      
+
       - name: Validate register coverage
         run: |
           python -c "
@@ -131,27 +131,27 @@ jobs:
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install black isort flake8 mypy
           pip install -r requirements.txt
-      
+
       - name: Check code formatting with Black
         run: black --check --diff custom_components/
-      
+
       - name: Check import sorting with isort
         run: isort --check-only --diff custom_components/
-      
+
       - name: Lint with flake8
         run: flake8 custom_components/ --max-line-length=100 --extend-ignore=E203,W503
-      
+
       - name: Type check with mypy
         run: mypy custom_components/thessla_green_modbus/ --ignore-missing-imports
 
@@ -161,12 +161,12 @@ jobs:
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
-      
+
       - name: Run Bandit security scanner
         uses: securecodewarrior/github-action-bandit-scan@v1.0.1
         with:
           config_file: .bandit
-      
+
       - name: Check for hardcoded secrets
         run: |
           ! grep -r "password\|secret\|token\|key" custom_components/ --include="*.py" | grep -v "# nosec"
@@ -181,11 +181,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Generate changelog
         run: |
           git log --oneline --pretty=format:"- %s" $(git describe --tags --abbrev=0)..HEAD > CHANGELOG.md || echo "- Initial release" > CHANGELOG.md
-      
+
       - name: Create release draft
         if: contains(github.event.head_commit.message, 'bump version')
         uses: actions/create-release@v1
