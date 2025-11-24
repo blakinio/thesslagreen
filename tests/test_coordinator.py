@@ -21,11 +21,11 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus.registers.loader import (
+from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402,F811,E501
     RegisterDef,
     get_register_definition,
     get_registers_by_function,
-)  # noqa: E402,F811,E501
+)
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")
@@ -137,6 +137,7 @@ class ConfigEntryNotReady(Exception):
 class HomeAssistantError(Exception):
     pass
 
+
 exceptions.HomeAssistantError = HomeAssistantError
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
 
@@ -193,7 +194,7 @@ HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus.coordinator import (
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     dt_util as coordinator_dt_util,
 )
 
@@ -381,9 +382,7 @@ async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
     HOLDING_REGISTERS["date_time_1"] = 0
 
-    result = await coordinator.async_write_register(
-        "date_time_1", [3, 4], offset=2
-    )
+    result = await coordinator.async_write_register("date_time_1", [3, 4], offset=2)
 
     assert result is True
     client.write_registers.assert_awaited_once_with(
@@ -526,15 +525,13 @@ async def test_read_holding_registers_chunking_and_retries(coordinator):
     coordinator._clear_register_failure = lambda _name: None
     coordinator._mark_registers_failed = lambda _names: None
 
-    response1 = SimpleNamespace(
-        registers=[1] * MAX_BATCH_REGISTERS, isError=lambda: False
-    )
+    response1 = SimpleNamespace(registers=[1] * MAX_BATCH_REGISTERS, isError=lambda: False)
     response2 = SimpleNamespace(registers=[2] * 4, isError=lambda: False)
     response3 = SimpleNamespace(registers=[3], isError=lambda: False)
 
     coordinator.client.read_holding_registers = AsyncMock(
         side_effect=[
-            asyncio.TimeoutError(),
+            TimeoutError(),
             response1,
             ModbusException("boom"),
             response2,

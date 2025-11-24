@@ -109,21 +109,28 @@ async def _setup_entities(force: bool) -> set[str]:
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
 
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-        FakeCoordinator,
-    ), patch(
-        "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
-        AsyncMock(),
-    ), patch(
-        "custom_components.thessla_green_modbus._async_migrate_unique_ids",
-        AsyncMock(),
-    ), patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True), patch.dict(
-        sys.modules,
-        {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
-    ), patch(
-        "custom_components.thessla_green_modbus.services.async_setup_services",
-        AsyncMock(),
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+            FakeCoordinator,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
+            AsyncMock(),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus._async_migrate_unique_ids",
+            AsyncMock(),
+        ),
+        patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True),
+        patch.dict(
+            sys.modules,
+            {"custom_components.thessla_green_modbus.registers.loader": MagicMock()},
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.services.async_setup_services",
+            AsyncMock(),
+        ),
     ):
         await async_setup_entry(hass, entry)
         added: list = []

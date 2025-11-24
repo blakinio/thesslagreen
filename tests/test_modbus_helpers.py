@@ -13,12 +13,8 @@ loader_stub = types.SimpleNamespace(
     get_all_registers=lambda: [],
     get_registers_by_function=lambda fn: [],
 )
-sys.modules[
-    "custom_components.thessla_green_modbus.registers.loader"
-] = loader_stub
-sys.modules[
-    "custom_components.thessla_green_modbus.registers"
-] = types.SimpleNamespace(
+sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
+sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNamespace(
     loader=loader_stub,
     get_all_registers=loader_stub.get_all_registers,
     get_registers_by_function=loader_stub.get_registers_by_function,

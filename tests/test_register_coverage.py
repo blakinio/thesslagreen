@@ -9,7 +9,6 @@ from pathlib import Path
 
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
-
 INTENTIONAL_OMISSIONS = {"exp_version"}
 
 # Minimal Home Assistant stubs required to import entity mappings
@@ -61,18 +60,13 @@ def test_all_registers_covered() -> None:
         if r.get("name")
     }
 
-    entity_mod = importlib.import_module(
-        "custom_components.thessla_green_modbus.entity_mappings"
-    )
+    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
     exposed: set[str] = set()
     for mapping in entity_mod.ENTITY_MAPPINGS.values():
         exposed.update(mapping.keys())
 
     diagnostic_regs = {
-        n
-        for n in registers
-        if n in {"alarm", "error"}
-        or re.match(r"[es](?:_|\d)", n)
+        n for n in registers if n in {"alarm", "error"} or re.match(r"[es](?:_|\d)", n)
     }
 
     missing = registers - exposed - diagnostic_regs - INTENTIONAL_OMISSIONS

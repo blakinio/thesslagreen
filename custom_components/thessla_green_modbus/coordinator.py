@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
@@ -18,15 +18,15 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
         @staticmethod
         def now():
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
         @staticmethod
         def utcnow():
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
     dt_util = _DTUtil()  # type: ignore
 
@@ -91,44 +91,38 @@ if TYPE_CHECKING:  # pragma: no cover - typing helper only
 else:
     AsyncModbusSerialClientType = Any
 
-from .registers.loader import (
-    get_all_registers,
-)
-
 from .config_flow import CannotConnect
 from .const import (
+    CONF_MAX_REGISTERS_PER_REQUEST,
+    CONNECTION_TYPE_RTU,
+    CONNECTION_TYPE_TCP,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
-    DEFAULT_CONNECTION_TYPE,
-    DEFAULT_SERIAL_PORT,
     DEFAULT_BAUD_RATE,
-    DEFAULT_PARITY,
-    DEFAULT_STOP_BITS,
-    CONF_MAX_REGISTERS_PER_REQUEST,
-    CONF_CONNECTION_TYPE,
-    CONF_SERIAL_PORT,
-    CONF_BAUD_RATE,
-    CONF_PARITY,
-    CONF_STOP_BITS,
+    DEFAULT_CONNECTION_TYPE,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
+    DEFAULT_PARITY,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SERIAL_PORT,
+    DEFAULT_STOP_BITS,
     DOMAIN,
-    CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_RTU,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
     MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
+    SERIAL_PARITY_MAP,
+    SERIAL_STOP_BITS_MAP,
     UNKNOWN_MODEL,
     coil_registers,
     discrete_input_registers,
     holding_registers,
     input_registers,
-    SERIAL_PARITY_MAP,
-    SERIAL_STOP_BITS_MAP,
 )
 from .modbus_helpers import _call_modbus, group_reads
+from .registers.loader import (
+    get_all_registers,
+)
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
@@ -246,19 +240,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if entry is not None:
             try:
                 self.effective_batch = min(
-                    int(
-                        entry.options.get(
-                            CONF_MAX_REGISTERS_PER_REQUEST, MAX_BATCH_REGISTERS
-                        )
-                    ),
+                    int(entry.options.get(CONF_MAX_REGISTERS_PER_REQUEST, MAX_BATCH_REGISTERS)),
                     MAX_BATCH_REGISTERS,
                 )
             except (TypeError, ValueError):
                 self.effective_batch = MAX_BATCH_REGISTERS
         else:
-            self.effective_batch = min(
-                int(max_registers_per_request), MAX_BATCH_REGISTERS
-            )
+            self.effective_batch = min(int(max_registers_per_request), MAX_BATCH_REGISTERS)
         if self.effective_batch < 1:
             self.effective_batch = 1
         self.max_registers_per_request = self.effective_batch
@@ -428,7 +416,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.exception("Device scan failed: %s", exc)
                 raise
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning("Device scan timed out: %s", exc)
                 raise
             except (OSError, ValueError) as exc:
@@ -596,7 +584,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.exception("Connection test failed: %s", exc)
                 raise
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning("Connection test timed out: %s", exc)
                 raise
             except OSError as exc:
@@ -617,7 +605,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.exception("Failed to set up Modbus client: %s", exc)
             return False
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             _LOGGER.warning("Setting up Modbus client timed out: %s", exc)
             return False
         except OSError as exc:
@@ -654,9 +642,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     timeout=self.timeout,
                 )
             else:
-                self.client = AsyncModbusTcpClient(
-                    self.host, port=self.port, timeout=self.timeout
-                )
+                self.client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
             if not await self.client.connect():
                 if self.connection_type == CONNECTION_TYPE_RTU:
                     raise ConnectionException(
@@ -668,7 +654,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.statistics["connection_errors"] += 1
             _LOGGER.exception("Failed to establish connection: %s", exc)
             raise
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self.statistics["connection_errors"] += 1
             _LOGGER.warning("Connection attempt timed out: %s", exc)
             raise
@@ -753,7 +739,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 _LOGGER.error("Failed to update data: %s", exc)
                 raise UpdateFailed(f"Error communicating with device: {exc}") from exc
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 self.statistics["failed_reads"] += 1
                 self.statistics["timeout_errors"] += 1
                 self.statistics["last_error"] = str(exc)
@@ -850,7 +836,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             exc,
                         )
                     continue
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._mark_registers_failed(register_names)
                     _LOGGER.warning(
                         "Timeout reading input registers at 0x%04X (attempt %d/%d)",
@@ -952,7 +938,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             exc,
                         )
                     continue
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._mark_registers_failed(register_names)
                     _LOGGER.warning(
                         "Timeout reading holding registers at 0x%04X (attempt %d/%d)",
@@ -1058,7 +1044,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             exc,
                         )
                     continue
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._mark_registers_failed(register_names)
                     _LOGGER.warning(
                         "Timeout reading coil registers at 0x%04X (attempt %d/%d)",
@@ -1164,7 +1150,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             exc,
                         )
                     continue
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._mark_registers_failed(register_names)
                     _LOGGER.warning(
                         "Timeout reading discrete inputs at 0x%04X (attempt %d/%d)",
@@ -1321,9 +1307,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         try:
                             encoded_values = [int(v) for v in value]
                         except (TypeError, ValueError):
-                            _LOGGER.error(
-                                "Register %s expects integer values", register_name
-                            )
+                            _LOGGER.error("Register %s expects integer values", register_name)
                             return False
                     else:
                         encoded = definition.encode(value)
@@ -1427,7 +1411,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             exc,
                         )
                         continue
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         _LOGGER.warning(
                             "Writing register %s timed out (attempt %d/%d)",
                             register_name,

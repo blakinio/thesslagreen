@@ -54,7 +54,7 @@ def _load_patterns(config_file: Path | None, extra_patterns: list[str]) -> list[
     cfg = config_file or DEFAULT_CONFIG_FILE
     if cfg and cfg.exists():
         try:
-            with open(cfg, "r", encoding="utf-8") as f:
+            with open(cfg, encoding="utf-8") as f:
                 data = json.load(f)
             patterns.extend(data.get("old_entity_patterns", []))
             _LOGGER.info(
@@ -117,7 +117,7 @@ def cleanup_entity_registry(config_dir: Path) -> bool:
     backup_path = backup_file(registry_path)
 
     try:
-        with open(registry_path, "r", encoding="utf-8") as f:
+        with open(registry_path, encoding="utf-8") as f:
             registry = json.load(f)
 
         # Find old entities
@@ -190,7 +190,7 @@ def cleanup_automations(config_dir: Path) -> bool:
     _LOGGER.info("Checking automations: %s", automations_path)
 
     try:
-        with open(automations_path, "r", encoding="utf-8") as f:
+        with open(automations_path, encoding="utf-8") as f:
             content = f.read()
 
         # Check for references to old entities
@@ -226,7 +226,7 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
     _LOGGER.info("Checking configuration: %s", config_path)
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             content = f.read()
 
         # Look for problematic references
@@ -343,7 +343,7 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         _LOGGER.warning("\n\nInterrupted by user")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         _LOGGER.error("\nUnexpected error: %s", exc)
-        raise SystemExit(1)
+        raise SystemExit(1) from None

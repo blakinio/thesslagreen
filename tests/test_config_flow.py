@@ -72,29 +72,28 @@ loader_module.registers_sha256 = lambda *args, **kwargs: ""
 loader_module._REGISTERS_PATH = Path("dummy")
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_module)
 
-from custom_components.thessla_green_modbus.const import (
-    CONF_DEEP_SCAN,
-    CONF_SLAVE_ID,
-    CONF_CONNECTION_TYPE,
-    CONF_SERIAL_PORT,
-    CONF_BAUD_RATE,
-    CONF_PARITY,
-    CONF_STOP_BITS,
-    CONF_MAX_REGISTERS_PER_REQUEST,
-    MAX_BATCH_REGISTERS,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
-    DEFAULT_BAUD_RATE,
-    DEFAULT_PARITY,
-    DEFAULT_STOP_BITS,
-    CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_RTU,
-)
-
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
     ConfigFlow,
     InvalidAuth,
     OptionsFlow,
+)
+from custom_components.thessla_green_modbus.const import (
+    CONF_BAUD_RATE,
+    CONF_CONNECTION_TYPE,
+    CONF_DEEP_SCAN,
+    CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_PARITY,
+    CONF_SERIAL_PORT,
+    CONF_SLAVE_ID,
+    CONF_STOP_BITS,
+    CONNECTION_TYPE_RTU,
+    CONNECTION_TYPE_TCP,
+    DEFAULT_BAUD_RATE,
+    DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    DEFAULT_PARITY,
+    DEFAULT_STOP_BITS,
+    MAX_BATCH_REGISTERS,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -133,8 +132,7 @@ async def test_form_user():
     assert result["type"] == "form"
     assert result["errors"] == {}
     schema_keys = {
-        key.schema if hasattr(key, "schema") else key
-        for key in result["data_schema"].schema
+        key.schema if hasattr(key, "schema") else key for key in result["data_schema"].schema
     }
     assert CONF_CONNECTION_TYPE in schema_keys
     assert CONF_HOST in schema_keys
@@ -153,9 +151,7 @@ async def test_form_user_port_out_of_range(invalid_port: int):
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
-        result = await flow.async_step_user(
-            dict(DEFAULT_USER_INPUT, **{CONF_PORT: invalid_port})
-        )
+        result = await flow.async_step_user(dict(DEFAULT_USER_INPUT, **{CONF_PORT: invalid_port}))
 
     assert result["type"] == "form"
     assert result["errors"] == {CONF_PORT: "invalid_port"}
@@ -174,9 +170,7 @@ async def test_form_user_invalid_slave_id(slave_id: int, expected_error: str):
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
-        result = await flow.async_step_user(
-            dict(DEFAULT_USER_INPUT, **{CONF_SLAVE_ID: slave_id})
-        )
+        result = await flow.async_step_user(dict(DEFAULT_USER_INPUT, **{CONF_SLAVE_ID: slave_id}))
 
     assert result["type"] == "form"
     assert result["errors"] == {CONF_SLAVE_ID: expected_error}
@@ -191,9 +185,7 @@ async def test_form_user_invalid_domain():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
-        result = await flow.async_step_user(
-            dict(DEFAULT_USER_INPUT, **{CONF_HOST: "bad host"})
-        )
+        result = await flow.async_step_user(dict(DEFAULT_USER_INPUT, **{CONF_HOST: "bad host"}))
 
     assert result["type"] == "form"
     assert result["errors"] == {CONF_HOST: "invalid_host"}
@@ -262,6 +254,7 @@ async def test_form_user_rtu_invalid_baud_rate():
     assert result["type"] == "form"
     assert result["errors"] == {CONF_BAUD_RATE: "invalid_baud_rate"}
     create_mock.assert_not_called()
+
 
 async def test_form_user_invalid_ipv6():
     """Test invalid IPv6 addresses are rejected."""
@@ -407,10 +400,7 @@ async def test_form_user_success():
         ),
     ):
         result = await flow.async_step_user(
-            dict(
-                DEFAULT_USER_INPUT,
-                **{CONF_DEEP_SCAN: True, CONF_MAX_REGISTERS_PER_REQUEST: 5}
-            )
+            dict(DEFAULT_USER_INPUT, **{CONF_DEEP_SCAN: True, CONF_MAX_REGISTERS_PER_REQUEST: 5})
         )
         assert result["type"] == "form"
         assert result["step_id"] == "confirm"
@@ -936,7 +926,9 @@ async def test_reauth_flow_success():
 
     translations = {
         "component.thessla_green_modbus.auto_detected_note_success": "Auto-detection successful!",
-        "component.thessla_green_modbus.auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
+        "component.thessla_green_modbus.auto_detected_note_limited": (
+            "Limited auto-detection - some registers may be missing."
+        ),
     }
 
     with (
@@ -2125,13 +2117,17 @@ async def test_config_flow_max_registers_per_request_validated():
     for value in (1, MAX_BATCH_REGISTERS):
         flow = ConfigFlow()
         flow.hass = SimpleNamespace()
-        with patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
-            return_value=validation_result,
-        ), patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ), patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured"
+        with (
+            patch(
+                "custom_components.thessla_green_modbus.config_flow.validate_input",
+                return_value=validation_result,
+            ),
+            patch(
+                "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+            ),
+            patch(
+                "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured"
+            ),
         ):
             result = await flow.async_step_user(
                 {

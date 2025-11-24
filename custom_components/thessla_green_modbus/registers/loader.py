@@ -20,12 +20,13 @@ import importlib.resources as resources
 import json
 import logging
 import struct
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import time
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Sequence
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from typing import Any
 
 # Shared grouping helper
 from ..modbus_helpers import group_reads
@@ -46,12 +47,13 @@ def get_registers_path() -> Path:
     """Return resolved path to the bundled register definitions JSON file."""
     return _REGISTERS_PATH.resolve()
 
+
 # Cache for file metadata keyed by path. Each entry stores ``(mtime, sha256)``
 # for the most recently seen state of that file.  A second cache keyed by
 # ``(sha256, mtime)`` stores the parsed register definitions so repeated loads of
 # unchanged files avoid both hashing and JSON parsing.
 _cached_file_info: dict[str, tuple[float, str]] = {}
-_register_cache: dict[tuple[str, float], list["RegisterDef"]] = {}
+_register_cache: dict[tuple[str, float], list[RegisterDef]] = {}
 
 
 def _compute_file_hash(path: Path, mtime: float) -> str:
@@ -60,6 +62,8 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     _cached_file_info[str(path)] = (mtime, digest)
     return digest
+
+
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -89,10 +93,9 @@ class RegisterDef:
     bcd: bool = False
     bits: list[Any] | None = None
 
-
-# ------------------------------------------------------------------
-# Value helpers
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Value helpers
+    # ------------------------------------------------------------------
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
         value: Any
@@ -101,8 +104,7 @@ class RegisterDef:
                 raw_list = list(raw)
             else:
                 raw_list = [
-                    (raw >> (16 * (self.length - 1 - i))) & 0xFFFF
-                    for i in range(self.length)
+                    (raw >> (16 * (self.length - 1 - i))) & 0xFFFF for i in range(self.length)
                 ]
 
             if all(v == 0x8000 for v in raw_list):
@@ -221,19 +223,13 @@ class RegisterDef:
                 num_val = None
             if num_val is not None:
                 if self.min is not None and num_val < Decimal(str(self.min)):
-                    raise ValueError(
-                        f"{value} is below minimum {self.min} for {self.name}"
-                    )
+                    raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
                 if self.max is not None and num_val > Decimal(str(self.max)):
-                    raise ValueError(
-                        f"{value} is above maximum {self.max} for {self.name}"
-                    )
+                    raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
                 scaled = Decimal(str(raw_val))
                 if self.resolution not in (None, 1):
                     step = Decimal(str(self.resolution))
-                    scaled = (
-                        (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
-                    )
+                    scaled = (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
                 if self.multiplier not in (None, 1):
                     mult = Decimal(str(self.multiplier))
                     scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
@@ -241,13 +237,9 @@ class RegisterDef:
 
             typ = self.extra.get("type") if self.extra else None
             if typ == "f32":
-                data = struct.pack(
-                    ">f" if endianness == "big" else "<f", float(raw_val)
-                )
+                data = struct.pack(">f" if endianness == "big" else "<f", float(raw_val))
             elif typ == "f64":
-                data = struct.pack(
-                    ">d" if endianness == "big" else "<d", float(raw_val)
-                )
+                data = struct.pack(">d" if endianness == "big" else "<d", float(raw_val))
             elif typ in {"i32", "u32", "i64", "u64"}:
                 size = 4 if typ in {"i32", "u32"} else 8
                 data = int(raw_val).to_bytes(size, "big", signed=typ.startswith("i"))
@@ -311,19 +303,13 @@ class RegisterDef:
             num_val = None
         if num_val is not None:
             if self.min is not None and num_val < Decimal(str(self.min)):
-                raise ValueError(
-                    f"{value} is below minimum {self.min} for {self.name}"
-                )
+                raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
             if self.max is not None and num_val > Decimal(str(self.max)):
-                raise ValueError(
-                    f"{value} is above maximum {self.max} for {self.name}"
-                )
+                raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
             scaled = Decimal(str(raw))
             if self.resolution not in (None, 1):
                 step = Decimal(str(self.resolution))
-                scaled = (
-                    (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
-                )
+                scaled = (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
             if self.multiplier not in (None, 1):
                 mult = Decimal(str(self.multiplier))
                 scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
@@ -361,9 +347,7 @@ except Exception as err:  # pragma: no cover - unexpected
 # ---------------------------------------------------------------------------
 
 
-def _load_registers_from_file(
-    path: Path, *, mtime: float, file_hash: str
-) -> list[RegisterDef]:
+def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
     ``mtime`` and ``file_hash`` are accepted for backwards compatibility with
@@ -401,9 +385,7 @@ def _load_registers_from_file(
         elif enum_map:
             if all(isinstance(k, (int, float)) or str(k).isdigit() for k in enum_map):
                 enum_map = {int(k): v for k, v in enum_map.items()}
-            elif all(
-                isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()
-            ):
+            elif all(isinstance(v, (int, float)) or str(v).isdigit() for v in enum_map.values()):
                 enum_map = {int(v): k for k, v in enum_map.items()}
 
         # ``multiplier`` and ``resolution`` are optional in the JSON.  The
@@ -498,19 +480,13 @@ def clear_cache() -> None:  # pragma: no cover
 
 def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return all known registers ordered by function and address."""
-    return sorted(
-        load_registers(json_path), key=lambda r: (r.function, r.address)
-    )
+    return sorted(load_registers(json_path), key=lambda r: (r.function, r.address))
 
 
-def get_registers_by_function(
-    fn: str, json_path: Path | str | None = None
-) -> list[RegisterDef]:
+def get_registers_by_function(fn: str, json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return registers for the given function code or name."""
     code = _normalise_function(fn)
     return [r for r in load_registers(json_path) if r.function == code]
-
-
 
 
 @lru_cache(maxsize=1)

@@ -486,4 +486,3 @@ def test_accepts_shorthand_type(tmp_path: Path) -> None:
     reg = regs[0]
     assert reg.length == 2
     assert reg.type == RegisterType.U32
-

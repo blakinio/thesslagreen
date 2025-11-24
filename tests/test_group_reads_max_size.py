@@ -1,9 +1,9 @@
+import pytest
+
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.scanner_core import (
     ThesslaGreenDeviceScanner,
 )
-
-import pytest
 
 
 @pytest.mark.parametrize("limit", [1, 8, MAX_BATCH_REGISTERS, 32])
@@ -16,9 +16,7 @@ def test_group_reads_respects_max_block_size(limit: int) -> None:
     """
 
     addresses = list(range(MAX_BATCH_REGISTERS + 8))
-    scanner = ThesslaGreenDeviceScanner(
-        "host", 502, max_registers_per_request=limit
-    )
+    scanner = ThesslaGreenDeviceScanner("host", 502, max_registers_per_request=limit)
     scanner._known_missing_addresses = set()
 
     groups = scanner._group_registers_for_batch_read(addresses)

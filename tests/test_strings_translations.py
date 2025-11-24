@@ -25,6 +25,6 @@ def test_strings_and_translations_match() -> None:
         data_keys = _collect_keys(data)
         missing = ref_keys - data_keys
         extra = data_keys - ref_keys
-        assert not missing and not extra, (
-            f"{lang}: missing keys {sorted(missing)}, extra keys {sorted(extra)}"
-        )
+        assert (
+            not missing and not extra
+        ), f"{lang}: missing keys {sorted(missing)}, extra keys {sorted(extra)}"

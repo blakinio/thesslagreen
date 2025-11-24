@@ -90,16 +90,12 @@ async def test_block_exception_allows_single_register_reads():
     regs = {f"reg_{addr:04X}": addr for addr in range(0x0010, 0x0014)}
     call_log: list[tuple[int, int]] = []
 
-    error_response = SimpleNamespace(
-        isError=lambda: True, exception_code=4
-    )
+    error_response = SimpleNamespace(isError=lambda: True, exception_code=4)
 
     async def fake_call_modbus(func, slave_id, address, *, count):
         call_log.append((address, count))
         if address == 0x0000 and count == 5:
-            return SimpleNamespace(
-                registers=[4, 85, 0, 0, 0], isError=lambda: False
-            )
+            return SimpleNamespace(registers=[4, 85, 0, 0, 0], isError=lambda: False)
         if address == 0x0018 and count == 6:
             return SimpleNamespace(registers=[0] * 6, isError=lambda: False)
         if address == 0x0010 and count == 4:

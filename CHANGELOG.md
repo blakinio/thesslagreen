@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Simplified runtime dependencies; only require `pymodbus>=3.5.0`
 - Deferred `homeassistant` imports in `custom_components/thessla_green_modbus` so
   utility modules can be imported without Home Assistant installed
+- Aligned linting configuration (ruff/black/isort) and reformatted the codebase
+  for consistent quality checks
 
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient

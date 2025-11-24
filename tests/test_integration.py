@@ -107,9 +107,7 @@ async def test_async_setup_entry_triggers_reauth_on_auth_error():
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
     ) as mock_coordinator_class:
         mock_coordinator = MagicMock()
-        mock_coordinator.async_setup = AsyncMock(
-            side_effect=ConnectionException("auth failed")
-        )
+        mock_coordinator.async_setup = AsyncMock(side_effect=ConnectionException("auth failed"))
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
         mock_coordinator_class.return_value = mock_coordinator
 
@@ -261,7 +259,6 @@ async def test_register_constants():
     input_regs = regs_by_fn["input"]
     holding = regs_by_fn["holding"]
 
-
     # Test that key registers are defined
     assert "power_supply_fans" in coil
     assert "outside_temperature" in input_regs
@@ -314,20 +311,25 @@ async def test_unload_and_reload_entry():
     coordinator2.async_setup = AsyncMock(return_value=True)
     coordinator2.async_shutdown = AsyncMock()
 
-    with patch(
-        "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
-        return_value=[],
-        create=True,
-    ), patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-        side_effect=[coordinator1, coordinator2],
-    ) as mock_coordinator_class, patch(
-        "custom_components.thessla_green_modbus.services.async_setup_services",
-        AsyncMock(),
-    ) as mock_setup_services, patch(
-        "custom_components.thessla_green_modbus.services.async_unload_services",
-        AsyncMock(),
-    ) as mock_unload_services:
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[],
+            create=True,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
+            side_effect=[coordinator1, coordinator2],
+        ) as mock_coordinator_class,
+        patch(
+            "custom_components.thessla_green_modbus.services.async_setup_services",
+            AsyncMock(),
+        ) as mock_setup_services,
+        patch(
+            "custom_components.thessla_green_modbus.services.async_unload_services",
+            AsyncMock(),
+        ) as mock_unload_services,
+    ):
         # Initial setup
         assert await async_setup_entry(hass, entry)
         assert hass.data[DOMAIN][entry.entry_id] is coordinator1
