@@ -29,6 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Custom Modbus client in favor of native AsyncModbusTcpClient
 
+## [2.2.0] - 2025-02-15
+
+### Added
+- Pre-commit configuration with ruff, black, isort, and mypy for consistent checks.
+- GitHub Actions workflow covering linting, typing, pytest, hassfest, and HACS validation.
+
+### Changed
+- Bumped integration version metadata and aligned minimum Home Assistant requirement to 2024.12.0.
+
 ## [2.0.0] - 2025-01-XX - MAJOR OPTIMIZATION RELEASE ⚡
 
 ### 🚀 Performance Improvements

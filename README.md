@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/thesslagreen/thessla-green-modbus-ha.svg)](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.7.0%2B-blue.svg)](https://home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.12.0%2B-blue.svg)](https://home-assistant.io/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
 
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
@@ -35,7 +35,7 @@ Integracja działa jako **hub** w Home Assistant.
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
 
 ### Home Assistant
-- ✅ **Wymagany Home Assistant 2025.7.0+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
+- ✅ **Wymagany Home Assistant 2024.12.0+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
 - ✅ **pymodbus 3.5.0+** - najnowsza biblioteka Modbus
 - ✅ **Python 3.12+** - nowoczesne standardy
 - ✅ **Standardowy AsyncModbusTcpClient** – brak potrzeby własnego klienta Modbus
