@@ -381,7 +381,7 @@ def _load_registers_from_file(
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
     registers: list[RegisterDef] = []
-    parsed_items = RegisterList.model_validate(items).root
+    parsed_items = RegisterList.parse_obj(items).__root__
 
     for parsed in parsed_items:
         function = _normalise_function(parsed.function)
