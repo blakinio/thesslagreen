@@ -30,6 +30,8 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_BACKOFF,
+    CONF_BACKOFF_JITTER,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
     CONF_MAX_REGISTERS_PER_REQUEST,
@@ -41,6 +43,8 @@ from .const import (
     CONF_TIMEOUT,
     DEFAULT_DEEP_SCAN,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
+    DEFAULT_BACKOFF,
+    DEFAULT_BACKOFF_JITTER,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_RETRY,
@@ -149,6 +153,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
     retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
+    backoff = entry.options.get(CONF_BACKOFF, DEFAULT_BACKOFF)
+    backoff_jitter = entry.options.get(CONF_BACKOFF_JITTER, DEFAULT_BACKOFF_JITTER)
     force_full_register_list = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
     scan_uart_settings = entry.options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
     skip_missing_registers = entry.options.get(
@@ -183,6 +189,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         scan_interval=timedelta(seconds=scan_interval),
         timeout=timeout,
         retry=retry,
+        backoff=backoff,
+        backoff_jitter=backoff_jitter,
         force_full_register_list=force_full_register_list,
         scan_uart_settings=scan_uart_settings,
         deep_scan=deep_scan,
