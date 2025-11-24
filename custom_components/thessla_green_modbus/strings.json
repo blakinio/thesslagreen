@@ -5,6 +5,10 @@
   "connection_type_rtu": "Modbus RTU",
   "connection_type_tcp_label": "Modbus TCP",
   "connection_type_rtu_label": "Modbus RTU",
+  "log_level_debug": "Debug",
+  "log_level_info": "Info",
+  "log_level_warning": "Warning",
+  "log_level_error": "Error",
   "diagnostics": {
     "registers_hash": "Register definitions hash",
     "capabilities": "Device capabilities",
@@ -1287,6 +1291,7 @@
           "force_full_register_list": "Force Full Register List (skip scanning)",
           "retry": "Retry Attempts",
           "scan_interval": "Scan Interval (seconds)",
+          "log_level": "Log Level",
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)",
           "deep_scan": "Deep Register Scan",
@@ -1296,6 +1301,7 @@
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
           "scan_interval": "How often to read data from device (10-300 seconds)",
+          "log_level": "Adjust integration logging verbosity without restarting Home Assistant",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics",
@@ -1304,7 +1310,7 @@
         "error": {
           "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
         },
-        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Transport: {transport_label}{transport_details}.",
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
       }
     }

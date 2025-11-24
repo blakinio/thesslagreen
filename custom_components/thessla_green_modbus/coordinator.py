@@ -135,6 +135,13 @@ def get_register_definition(name: str):
 _LOGGER = logging.getLogger(__name__)
 
 
+def _looks_like_invalid_auth(exc: Exception) -> bool:
+    """Return True when exception text suggests authentication errors."""
+
+    message = str(exc).lower()
+    return any(keyword in message for keyword in ("auth", "credential", "password", "login"))
+
+
 class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Optimized data coordinator for ThesslaGreen Modbus device."""
 
@@ -237,6 +244,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.stop_bits not in (1, 2):
             self.stop_bits = DEFAULT_STOP_BITS
 
+        self._reauth_scheduled = False
+
         if entry is not None:
             try:
                 self.effective_batch = min(
@@ -311,6 +320,20 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._last_power_timestamp = dt_util.utcnow()
         self._total_energy = 0.0
+
+    def _trigger_reauth(self, reason: str) -> None:
+        """Schedule a reauthentication flow if not already triggered."""
+
+        if self._reauth_scheduled or self.entry is None:
+            return
+
+        start_reauth = getattr(self.entry, "async_start_reauth", None)
+        if start_reauth is None:
+            return
+
+        self._reauth_scheduled = True
+        _LOGGER.warning("Starting reauthentication for %s (%s)", self._device_name, reason)
+        self.hass.async_create_task(start_reauth(self.hass))
 
     def get_register_map(self, register_type: str) -> dict[str, int]:
         """Return the register map for the given register type."""
@@ -736,6 +759,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if self._consecutive_failures >= self._max_failures:
                     _LOGGER.error("Too many consecutive failures, disconnecting")
                     await self._disconnect()
+                    self._trigger_reauth("connection_failure")
+
+                if _looks_like_invalid_auth(exc):
+                    self._trigger_reauth("invalid_auth")
 
                 _LOGGER.error("Failed to update data: %s", exc)
                 raise UpdateFailed(f"Error communicating with device: {exc}") from exc
@@ -748,6 +775,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if self._consecutive_failures >= self._max_failures:
                     _LOGGER.error("Too many consecutive failures, disconnecting")
                     await self._disconnect()
+                    self._trigger_reauth("timeout")
 
                 _LOGGER.warning("Data update timed out: %s", exc)
                 raise UpdateFailed(f"Timeout during data update: {exc}") from exc
@@ -759,6 +787,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if self._consecutive_failures >= self._max_failures:
                     _LOGGER.error("Too many consecutive failures, disconnecting")
                     await self._disconnect()
+                    self._trigger_reauth("connection_failure")
 
                 _LOGGER.error("Unexpected error during data update: %s", exc)
                 raise UpdateFailed(f"Unexpected error: {exc}") from exc
