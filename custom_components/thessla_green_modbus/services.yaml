@@ -302,3 +302,32 @@ scan_all_registers:
   name: Scan All Registers
   description: Perform full register scan and report unknown registers.
   target: *tg_target
+
+set_debug_logging:
+  name: Set Debug Logging
+  description: Temporarily raise integration log level for debugging.
+  fields:
+    level:
+      name: Log Level
+      description: Log level to apply (DEBUG by default).
+      required: false
+      selector:
+        select:
+          options:
+            - label: Debug
+              value: debug
+            - label: Info
+              value: info
+            - label: Warning
+              value: warning
+            - label: Error
+              value: error
+    duration:
+      name: Duration (seconds)
+      description: How long to keep the elevated level before restoring the previous one (0 = keep until changed).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 86400
+          step: 60

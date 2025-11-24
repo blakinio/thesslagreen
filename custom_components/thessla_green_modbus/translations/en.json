@@ -1609,6 +1609,30 @@
     "scan_all_registers": {
       "description": "Perform full Modbus register scan for diagnostics",
       "name": "Scan All Registers"
+    },
+    "set_debug_logging": {
+      "description": "Temporarily increase integration log level for debugging and restore automatically.",
+      "fields": {
+        "duration": {
+          "description": "Duration in seconds to keep elevated logging (0 = keep until changed).",
+          "name": "Duration (seconds)"
+        },
+        "level": {
+          "description": "Log level to apply during debugging.",
+          "name": "Log Level",
+          "selector": {
+            "select": {
+              "options": {
+                "thessla_green_modbus.debug": "Debug",
+                "thessla_green_modbus.info": "Info",
+                "thessla_green_modbus.warning": "Warning",
+                "thessla_green_modbus.error": "Error"
+              }
+            }
+          }
+        }
+      },
+      "name": "Set Debug Logging"
     }
   },
   "title": "ThesslaGreen Modbus"
