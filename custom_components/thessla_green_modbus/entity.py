@@ -53,4 +53,5 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         return (
             self.coordinator.last_update_success
             and self.coordinator.data.get(self._key) is not None
+            and not getattr(self.coordinator, "offline_state", False)
         )
