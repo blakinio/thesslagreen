@@ -97,6 +97,8 @@ from .registers.loader import (
 
 from .config_flow import CannotConnect
 from .const import (
+    DEFAULT_BACKOFF,
+    DEFAULT_BACKOFF_JITTER,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_SERIAL_PORT,
@@ -152,6 +154,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL,
         timeout: int = 10,
         retry: int = 3,
+        backoff: float = DEFAULT_BACKOFF,
+        backoff_jitter: float | tuple[float, float] | None = DEFAULT_BACKOFF_JITTER,
         force_full_register_list: bool = False,
         scan_uart_settings: bool = False,
         deep_scan: bool = False,
@@ -189,6 +193,30 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._device_name = name
         self.timeout = timeout
         self.retry = retry
+        try:
+            self.backoff = float(backoff)
+        except (TypeError, ValueError):
+            self.backoff = DEFAULT_BACKOFF
+
+        jitter_value: float | tuple[float, float] | None
+        if isinstance(backoff_jitter, (int, float)):
+            jitter_value = float(backoff_jitter)
+        elif isinstance(backoff_jitter, str):
+            try:
+                jitter_value = float(backoff_jitter)
+            except ValueError:
+                jitter_value = None
+        elif isinstance(backoff_jitter, (list, tuple)) and len(backoff_jitter) >= 2:
+            try:
+                jitter_value = (float(backoff_jitter[0]), float(backoff_jitter[1]))
+            except (TypeError, ValueError):
+                jitter_value = None
+        else:
+            jitter_value = None if backoff_jitter in (None, "") else DEFAULT_BACKOFF_JITTER
+
+        if jitter_value in (0, 0.0):
+            jitter_value = 0.0
+        self.backoff_jitter = jitter_value
         self.force_full_register_list = force_full_register_list
         self.scan_uart_settings = scan_uart_settings
         self.deep_scan = deep_scan
@@ -312,6 +340,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             *args,
             attempt=attempt,
             max_attempts=self.retry,
+            timeout=self.timeout,
+            backoff=self.backoff,
+            backoff_jitter=self.backoff_jitter,
             **kwargs,
         )
 
@@ -338,6 +369,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     slave_id=self.slave_id,
                     timeout=self.timeout,
                     retry=self.retry,
+                    backoff=self.backoff,
+                    backoff_jitter=self.backoff_jitter,
                     scan_uart_settings=self.scan_uart_settings,
                     skip_known_missing=self.skip_missing_registers,
                     deep_scan=self.deep_scan,
@@ -1329,6 +1362,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         address=address + idx,
                                         values=[int(v) for v in chunk],
                                         attempt=attempt,
+                                        apply_backoff=idx == 0,
                                     )
                                     if response is None or response.isError():
                                         success = False

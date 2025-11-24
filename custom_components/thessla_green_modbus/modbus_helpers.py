@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import logging
+import random
 import weakref
 from collections.abc import Awaitable, Callable, Iterable
 from typing import Any, List, Tuple
@@ -98,12 +100,42 @@ def _build_request_frame(
     return b""
 
 
+def _calculate_backoff_delay(
+    *,
+    base: float,
+    attempt: int,
+    jitter: float | tuple[float, float] | None,
+) -> float:
+    """Return the delay for the given ``attempt`` including optional jitter."""
+
+    if base <= 0 or attempt <= 1:
+        delay = 0.0
+    else:
+        delay = float(base) * (2 ** (attempt - 2))
+
+    if jitter:
+        if isinstance(jitter, (int, float)):
+            jitter_min = 0.0
+            jitter_max = float(jitter)
+        else:
+            jitter_min, jitter_max = (float(jitter[0]), float(jitter[1]))
+        if jitter_max < jitter_min:
+            jitter_min, jitter_max = jitter_max, jitter_min
+        delay += random.uniform(jitter_min, jitter_max)
+
+    return max(delay, 0.0)
+
+
 async def _call_modbus(
     func: Callable[..., Awaitable[Any]],
     slave_id: int,
     *args: Any,
     attempt: int = 1,
     max_attempts: int = 1,
+    timeout: float | None = None,
+    backoff: float = 0.0,
+    backoff_jitter: float | tuple[float, float] | None = None,
+    apply_backoff: bool = True,
     **kwargs: Any,
 ) -> Any:
     """Invoke a Modbus function handling ``slave``/``unit`` compatibility.
@@ -151,6 +183,27 @@ async def _call_modbus(
 
     func_name = getattr(func, "__name__", repr(func))
     batch_size = kwargs.get("count") or len(kwargs.get("values", [])) or 1
+
+    delay = 0.0
+    if apply_backoff:
+        delay = _calculate_backoff_delay(
+            base=backoff,
+            attempt=attempt,
+            jitter=backoff_jitter,
+        )
+
+    if delay > 0:
+        _LOGGER.debug(
+            "Delaying %.3fs before attempt %s/%s of %s", delay, attempt, max_attempts, func_name
+        )
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            _LOGGER.debug(
+                "Sleep cancelled before calling %s attempt %s/%s", func_name, attempt, max_attempts
+            )
+            raise
+
     _LOGGER.info(
         "Calling %s on slave %s (batch=%s attempt %s/%s)",
         func_name,
@@ -169,12 +222,21 @@ async def _call_modbus(
                 "Sending %s to slave %s: args=%s kwargs=%s", func_name, slave_id, positional, kwargs
             )
 
-    if kwarg == "slave":
-        response = await func(*positional, slave=slave_id, **kwargs)
-    elif kwarg == "unit":
-        response = await func(*positional, unit=slave_id, **kwargs)
-    else:
-        response = await func(*positional, **kwargs)
+    async def _invoke() -> Any:
+        if kwarg == "slave":
+            return await func(*positional, slave=slave_id, **kwargs)
+        if kwarg == "unit":
+            return await func(*positional, unit=slave_id, **kwargs)
+        return await func(*positional, **kwargs)
+
+    try:
+        if timeout is not None:
+            response = await asyncio.wait_for(_invoke(), timeout=timeout)
+        else:
+            response = await _invoke()
+    except Exception:
+        _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
+        raise
 
     if _LOGGER.isEnabledFor(logging.DEBUG):
         try:

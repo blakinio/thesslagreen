@@ -74,6 +74,8 @@ DEFAULT_SLAVE_ID = 10
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
+DEFAULT_BACKOFF = 0.0
+DEFAULT_BACKOFF_JITTER = 0.0
 
 # Connection / transport configuration
 CONF_CONNECTION_TYPE = "connection_type"
@@ -132,6 +134,8 @@ CONF_SLAVE_ID = "slave_id"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TIMEOUT = "timeout"
 CONF_RETRY = "retry"
+CONF_BACKOFF = "backoff"
+CONF_BACKOFF_JITTER = "backoff_jitter"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 CONF_SCAN_UART_SETTINGS = "scan_uart_settings"
 CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
