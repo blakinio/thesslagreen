@@ -447,54 +447,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
         """Return schema for connection details with provided defaults."""
 
-        if user_input is not None:
-            try:
-                max_regs = user_input.get(
-                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-                )
-                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise vol.Invalid(
-                        "max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST]
-                    )
-
-                # Validate input and get device info
-                info = await validate_input(self.hass, user_input)
-
-                # Store data for confirm step
-                self._data = dict(user_input)
-                self._device_info = info.get("device_info", {})
-                self._scan_result = info.get("scan_result", {})
-
-                await self.async_set_unique_id(self._build_unique_id(self._data))
-
-            except CannotConnect as exc:
-                errors["base"] = exc.args[0] if exc.args else "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except vol.Invalid as err:
-                _LOGGER.error(
-                    "Invalid input for %s: %s",
-                    err.path[0] if err.path else "unknown",
-                    err,
-                )
-                field = err.path[0] if err.path else CONF_HOST
-                errors[field] = err.error_message
-            except (ConnectionException, ModbusException):
-                _LOGGER.exception("Modbus communication error")
-                errors["base"] = "cannot_connect"
-            except ValueError as err:
-                _LOGGER.error("Invalid value provided: %s", err)
-                errors["base"] = "invalid_input"
-            except KeyError as err:
-                _LOGGER.error("Missing required data: %s", err)
-                errors["base"] = "invalid_input"
-            else:
-                self._abort_if_unique_id_configured()
-                # Show confirmation step with device info
-                return await self.async_step_confirm()
-
-        # Show form
-        current_values = user_input or {}
+        current_values = defaults or {}
 
         def _option_default(prefix: str, options: list[Any], value: Any, fallback: Any) -> Any:
             target = value if value not in (None, "") else fallback
@@ -598,32 +551,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 vol.Optional(
                     CONF_DEEP_SCAN,
                     default=current_values.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-        return vol.Schema(
-            {
-                vol.Required(
-                    CONF_HOST,
-                    default=defaults.get(CONF_HOST, vol.UNDEFINED),
-                ): str,
-                vol.Required(
-                    CONF_PORT,
-                    default=defaults.get(CONF_PORT, DEFAULT_PORT),
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-                vol.Required(
-                    CONF_SLAVE_ID,
-                    default=defaults.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
-                vol.Optional(
-                    CONF_NAME,
-                    default=defaults.get(CONF_NAME, DEFAULT_NAME),
-                ): str,
-                vol.Optional(
-                    CONF_DEEP_SCAN,
-                    default=defaults.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
                     description={"advanced": True},
                 ): bool,
                 vol.Optional(
                     CONF_MAX_REGISTERS_PER_REQUEST,
-
                     default=current_values.get(
                         CONF_MAX_REGISTERS_PER_REQUEST,
                         DEFAULT_MAX_REGISTERS_PER_REQUEST,
@@ -673,18 +604,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             # Ensure unique ID is set and not already configured
             await self.async_set_unique_id(self._build_unique_id(self._data))
             self._abort_if_unique_id_configured()
-            # Prepare capabilities for persistence
-            caps_obj = self._scan_result.get("capabilities")
-            if dataclasses.is_dataclass(caps_obj):
-                caps_dict = _caps_to_dict(caps_obj)
-            elif isinstance(caps_obj, dict):
-                try:
-                    caps_dict = _caps_to_dict(cap_cls(**caps_obj))
-                except (TypeError, ValueError):
-                    caps_dict = _caps_to_dict(cap_cls())
-            elif isinstance(caps_obj, cap_cls):
-                caps_dict = _caps_to_dict(caps_obj)
-            else:
+            entry_data, options = self._prepare_entry_payload(cap_cls)
+
+            # Create entry with all data
+            # Use both 'slave_id' and 'unit' for compatibility
+            return self.async_create_entry(
+                title=self._data.get(CONF_NAME, DEFAULT_NAME),
+                data=entry_data,
+                options=options,
+            )
+
+        return await self._async_show_confirmation(cap_cls, "confirm")
+
     def _prepare_entry_payload(self, cap_cls: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         """Return data and options payloads for the config entry."""
 
@@ -701,14 +632,29 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         else:
             caps_dict = _caps_to_dict(cap_cls())
 
-        data = {
-            CONF_HOST: self._data[CONF_HOST],
-            CONF_PORT: self._data[CONF_PORT],
+        connection_type = self._data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
+        entry_data: dict[str, Any] = {
+            CONF_CONNECTION_TYPE: connection_type,
             CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],  # Standard key
             "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
             CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
             "capabilities": caps_dict,
         }
+
+        if connection_type == CONNECTION_TYPE_TCP:
+            entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
+            entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
+        else:
+            entry_data[CONF_SERIAL_PORT] = self._data.get(CONF_SERIAL_PORT, "")
+            entry_data[CONF_BAUD_RATE] = self._data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
+            entry_data[CONF_PARITY] = self._data.get(CONF_PARITY, DEFAULT_PARITY)
+            entry_data[CONF_STOP_BITS] = self._data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)
+            # Preserve host/port when provided for diagnostics
+            if CONF_HOST in self._data:
+                entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
+            if CONF_PORT in self._data:
+                entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
+
         options = {
             CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
             CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
@@ -716,43 +662,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 DEFAULT_MAX_REGISTERS_PER_REQUEST,
             ),
         }
-        return data, options
-            connection_type = self._data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-            entry_data: dict[str, Any] = {
-                CONF_CONNECTION_TYPE: connection_type,
-                CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],  # Standard key
-                "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
-                CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
-                "capabilities": caps_dict,
-            }
 
-            if connection_type == CONNECTION_TYPE_TCP:
-                entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
-                entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
-            else:
-                entry_data[CONF_SERIAL_PORT] = self._data.get(CONF_SERIAL_PORT, "")
-                entry_data[CONF_BAUD_RATE] = self._data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
-                entry_data[CONF_PARITY] = self._data.get(CONF_PARITY, DEFAULT_PARITY)
-                entry_data[CONF_STOP_BITS] = self._data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)
-                # Preserve host/port when provided for diagnostics
-                if CONF_HOST in self._data:
-                    entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
-                if CONF_PORT in self._data:
-                    entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
-
-            # Create entry with all data
-            # Use both 'slave_id' and 'unit' for compatibility
-            return self.async_create_entry(
-                title=self._data.get(CONF_NAME, DEFAULT_NAME),
-                data=entry_data,
-                options={
-                    CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-                    CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
-                        CONF_MAX_REGISTERS_PER_REQUEST,
-                        DEFAULT_MAX_REGISTERS_PER_REQUEST,
-                    ),
-                },
-            )
+        return entry_data, options
     async def _async_show_confirmation(
         self, cap_cls: Any, step_id: str
     ) -> FlowResult:
