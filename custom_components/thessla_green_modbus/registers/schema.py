@@ -25,7 +25,7 @@ from enum import Enum
 from typing import Any, Literal
 
 import pydantic
-from pydantic import Field, root_validator, validator
+from pydantic import Field, model_validator, root_validator, validator
 
 from ..utils import _normalise_name
 
@@ -327,14 +327,14 @@ class RegisterDefinition(pydantic.BaseModel):
         return v
 
 
-class RegisterList(pydantic.BaseModel):
+class RegisterList(pydantic.RootModel[list[RegisterDefinition]]):
     """Container model to validate a list of registers."""
 
-    __root__: list[RegisterDefinition]
+    root: list[RegisterDefinition]
 
-    @root_validator(skip_on_failure=True)
-    def unique(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
-        registers: list[RegisterDefinition] = values.get("__root__", [])
+    @model_validator(mode="after")
+    def unique(self) -> "RegisterList":  # pragma: no cover
+        registers = self.root
         seen_pairs: set[tuple[int, int]] = set()
         seen_names: set[str] = set()
         for reg in registers:
@@ -347,4 +347,4 @@ class RegisterList(pydantic.BaseModel):
                 raise ValueError(f"duplicate register name: {name}")
             seen_pairs.add(pair)
             seen_names.add(name)
-        return values
+        return self
