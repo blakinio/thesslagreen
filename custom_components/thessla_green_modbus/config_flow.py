@@ -437,7 +437,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._data: dict[str, Any] = {}
         self._device_info: dict[str, Any] = {}
         self._scan_result: dict[str, Any] = {}
-        self._reauth_entry_id: str | None = None
+        self._reauth_entry_record_id: str | None = None
         self._reauth_existing_data: dict[str, Any] = {}
 
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
@@ -831,8 +831,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             defaults = {**entry.options, **entry.data}
 
         # Initial invocation stores entry information and shows form with defaults
-        if self._reauth_entry_id is None:
-            self._reauth_entry_id = entry.entry_id if entry else None
+        if self._reauth_entry_record_id is None:
+            self._reauth_entry_record_id = entry.entry_id if entry else None
             self._reauth_existing_data = defaults
             return self.async_show_form(
                 step_id="reauth",
@@ -890,14 +890,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
-            if self.hass is None or self._reauth_entry_id is None:
+            if self.hass is None or self._reauth_entry_record_id is None:
                 _LOGGER.error("Cannot complete reauth - missing Home Assistant context")
                 return self.async_abort(reason="reauth_failed")
 
-            entry = self.hass.config_entries.async_get_entry(self._reauth_entry_id)
+            entry = self.hass.config_entries.async_get_entry(self._reauth_entry_record_id)
             if entry is None:
                 _LOGGER.error(
-                    "Reauthentication requested for missing entry %s", self._reauth_entry_id
+                    "Reauthentication requested for missing entry %s",
+                    self._reauth_entry_record_id,
                 )
                 return self.async_abort(reason="reauth_entry_missing")
 

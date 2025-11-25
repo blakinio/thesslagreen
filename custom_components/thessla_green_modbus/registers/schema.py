@@ -25,7 +25,7 @@ from enum import Enum
 from typing import Any, Literal
 
 import pydantic
-from pydantic import Field, model_validator, root_validator, validator
+from pydantic import Field, RootModel, model_validator, root_validator, validator
 
 from ..utils import _normalise_name
 
@@ -327,7 +327,7 @@ class RegisterDefinition(pydantic.BaseModel):
         return v
 
 
-class RegisterList(pydantic.RootModel[list[RegisterDefinition]]):
+class RegisterList(RootModel[list[RegisterDefinition]]):
     """Container model to validate a list of registers."""
 
     root: list[RegisterDefinition]
