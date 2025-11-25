@@ -102,7 +102,7 @@ def validate(path: Path) -> list[RegisterDefinition]:
 
     seen_pairs: set[tuple[int, int]] = set()
     seen_names: set[str] = set()
-    for reg in parsed_list.root:
+    for reg in parsed_list.registers:
         if not reg.description.strip() or not reg.description_en.strip():
             raise ValueError(f"{reg.name}: missing description fields")
 

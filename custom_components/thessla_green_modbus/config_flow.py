@@ -439,7 +439,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._scan_result: dict[str, Any] = {}
         self._tg_reauth_entry_id: str | None = None
         self._tg_reauth_existing_data: dict[str, Any] = {}
-
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
         """Return schema for connection details with provided defaults."""
 
