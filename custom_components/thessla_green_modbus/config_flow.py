@@ -437,8 +437,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._data: dict[str, Any] = {}
         self._device_info: dict[str, Any] = {}
         self._scan_result: dict[str, Any] = {}
-        self._tg_reauth_entry_id: str | None = None
-        self._tg_reauth_existing_data: dict[str, Any] = {}
+        # Store reauthentication context without colliding with
+        # the parent ConfigFlow's internal attributes.
+        self._tg_flow_reauth_entry_id: str | None = None
+        self._tg_flow_reauth_existing_data: dict[str, Any] = {}
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
         """Return schema for connection details with provided defaults."""
 
@@ -830,9 +832,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             defaults = {**entry.options, **entry.data}
 
         # Initial invocation stores entry information and shows form with defaults
-        if self._tg_reauth_entry_id is None:
-            self._tg_reauth_entry_id = entry.entry_id if entry else None
-            self._tg_reauth_existing_data = defaults
+        if self._tg_flow_reauth_entry_id is None:
+            self._tg_flow_reauth_entry_id = entry.entry_id if entry else None
+            self._tg_flow_reauth_existing_data = defaults
             return self.async_show_form(
                 step_id="reauth",
                 data_schema=self._build_connection_schema(defaults),
@@ -876,7 +878,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         return self.async_show_form(
             step_id="reauth",
-            data_schema=self._build_connection_schema(self._tg_reauth_existing_data),
+            data_schema=self._build_connection_schema(self._tg_flow_reauth_existing_data),
             errors=errors,
         )
 
@@ -889,14 +891,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
-            if self.hass is None or self._tg_reauth_entry_id is None:
+            if self.hass is None or self._tg_flow_reauth_entry_id is None:
                 _LOGGER.error("Cannot complete reauth - missing Home Assistant context")
                 return self.async_abort(reason="reauth_failed")
 
-            entry = self.hass.config_entries.async_get_entry(self._tg_reauth_entry_id)
+            entry = self.hass.config_entries.async_get_entry(self._tg_flow_reauth_entry_id)
             if entry is None:
                 _LOGGER.error(
-                    "Reauthentication requested for missing entry %s", self._tg_reauth_entry_id
+                    "Reauthentication requested for missing entry %s", self._tg_flow_reauth_entry_id
                 )
                 return self.async_abort(reason="reauth_entry_missing")
 
