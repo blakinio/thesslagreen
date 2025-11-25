@@ -994,7 +994,7 @@ async def test_reauth_flow_missing_entry_aborts():
     )
     flow.hass = hass
     flow.context = {"entry_id": "missing"}
-    flow._reauth_entry_id = "missing"
+    flow._tg_reauth_entry_id = "missing"
 
     flow._data = {
         CONF_HOST: "192.168.1.100",

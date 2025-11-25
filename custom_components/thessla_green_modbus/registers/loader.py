@@ -527,3 +527,24 @@ def plan_group_reads(max_block_size: int | None = None) -> list[ReadPlan]:
             plans.append(ReadPlan(fn, start, length))
 
     return plans
+
+
+# Backwards compatible alias used throughout the integration and tests.
+Register = RegisterDef
+
+
+# Public exports for import * use in tests and helpers
+__all__ = [
+    "Register",
+    "RegisterDef",
+    "ReadPlan",
+    "_REGISTERS_PATH",
+    "clear_cache",
+    "get_all_registers",
+    "get_register_definition",
+    "get_registers_by_function",
+    "get_registers_path",
+    "group_registers",
+    "load_registers",
+    "plan_group_reads",
+]

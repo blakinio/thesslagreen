@@ -328,15 +328,17 @@ class RegisterDefinition(pydantic.BaseModel):
 
 
 class RegisterList(pydantic.BaseModel):
-    """Container model to validate a list of registers.
-
-    ``pydantic.RootModel`` is unavailable in the Home Assistant runtime so we use
-    a standard model with an explicit ``registers`` field instead.  The
-    behaviour matches the previous root-model implementation while avoiding the
-    ``__root__`` validation error raised by Pydantic v2 when running inside HA.
-    """
+    """Container model to validate a list of registers."""
 
     registers: list[RegisterDefinition]
+
+    # Pydantic v2 discourages using ``__root__`` with ``BaseModel``. Using a
+    # standard field keeps us compatible with Home Assistant's bundled
+    # pydantic version while still providing a ``root`` accessor for legacy
+    # callers.
+    @property
+    def root(self) -> list[RegisterDefinition]:
+        return self.registers
 
     @model_validator(mode="after")
     def unique(self) -> "RegisterList":  # pragma: no cover
