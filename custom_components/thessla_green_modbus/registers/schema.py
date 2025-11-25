@@ -226,7 +226,7 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("function code must be between 1 and 4")
         return v
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def _check_access(cls, values: dict[str, Any]) -> dict[str, Any]:
         function = values.get("function")
         access = values.get("access")
@@ -238,7 +238,7 @@ class RegisterDefinition(pydantic.BaseModel):
     # Additional consistency checks
     # ------------------------------------------------------------------
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def check_consistency(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
         address_hex = values.get("address_hex")
         address_dec = values.get("address_dec")
@@ -332,7 +332,7 @@ class RegisterList(pydantic.BaseModel):
 
     __root__: list[RegisterDefinition]
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def unique(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
         registers: list[RegisterDefinition] = values.get("__root__", [])
         seen_pairs: set[tuple[int, int]] = set()
