@@ -24,8 +24,7 @@ import re
 from enum import Enum
 from typing import Any, Literal
 
-import pydantic
-from pydantic import Field, model_validator, root_validator, validator
+from pydantic import BaseModel, Field, RootModel, model_validator, validator
 
 from ..utils import _normalise_name
 
@@ -103,7 +102,7 @@ _TYPE_LENGTHS: dict[str, int | None] = {
 }
 
 
-class RegisterDefinition(pydantic.BaseModel):
+class RegisterDefinition(BaseModel):
     """Schema describing a raw register definition from JSON."""
 
     function: int
@@ -135,7 +134,8 @@ class RegisterDefinition(pydantic.BaseModel):
     # Normalisation helpers
     # ------------------------------------------------------------------
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def _normalise_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Normalise raw input from JSON."""
 
@@ -226,45 +226,38 @@ class RegisterDefinition(pydantic.BaseModel):
             raise ValueError("function code must be between 1 and 4")
         return v
 
-    @root_validator(skip_on_failure=True)
-    def _check_access(cls, values: dict[str, Any]) -> dict[str, Any]:
-        function = values.get("function")
-        access = values.get("access")
-        if function in {1, 2} and access != "R":
+    @model_validator(mode="after")
+    def _check_access(self) -> "RegisterDefinition":
+        if self.function in {1, 2} and self.access != "R":
             raise ValueError("read-only functions must have R access")
-        return values
+        return self
 
     # ------------------------------------------------------------------
     # Additional consistency checks
     # ------------------------------------------------------------------
 
-    @root_validator(skip_on_failure=True)
-    def check_consistency(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
-        address_hex = values.get("address_hex")
-        address_dec = values.get("address_dec")
-        if address_hex is not None and address_dec is not None:
-            if int(address_hex, 16) != address_dec:
+    @model_validator(mode="after")
+    def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
+        if self.address_hex is not None and self.address_dec is not None:
+            if int(self.address_hex, 16) != self.address_dec:
                 raise ValueError("address_hex does not match address_dec")
 
-        reg_type = values.get("type")
-        length = values.get("length")
-        if reg_type is not None:
+        if self.type is not None:
             try:
-                reg_enum = RegisterType(reg_type)
+                reg_enum = RegisterType(self.type)
             except ValueError as err:  # pragma: no cover - defensive
-                raise ValueError(f"unsupported type: {reg_type}") from err
+                raise ValueError(f"unsupported type: {self.type}") from err
             expected = _TYPE_LENGTHS.get(reg_enum.value)
             if expected is None:
-                if length is None or length < 1:
+                if self.length is None or self.length < 1:
                     raise ValueError("string type requires length >= 1")
-            elif length != expected:
+            elif self.length != expected:
                 raise ValueError("length does not match type")
 
-        enum_vals = values.get("enum")
-        if enum_vals is not None:
-            if not isinstance(enum_vals, dict):
+        if self.enum is not None:
+            if not isinstance(self.enum, dict):
                 raise ValueError("enum must be a mapping")
-            for k, v in enum_vals.items():
+            for k, v in self.enum.items():
                 try:
                     int(k)
                 except (TypeError, ValueError):
@@ -272,12 +265,11 @@ class RegisterDefinition(pydantic.BaseModel):
                 if not isinstance(v, str):
                     raise ValueError("enum values must be strings")
 
-        bits = values.get("bits")
         seen_indices: set[int] = set()
-        if bits is not None:
-            if len(bits) > 16:
+        if self.bits is not None:
+            if len(self.bits) > 16:
                 raise ValueError("bits exceed 16 entries")
-            for bit in bits:
+            for bit in self.bits:
                 if not isinstance(bit, dict):
                     raise ValueError("bits entries must be objects")
                 if "index" not in bit or "name" not in bit:
@@ -294,8 +286,7 @@ class RegisterDefinition(pydantic.BaseModel):
                     raise ValueError("bit name must be snake_case")
                 seen_indices.add(idx)
 
-        extra = values.get("extra")
-        bitmask_val = extra.get("bitmask") if isinstance(extra, dict) else None
+        bitmask_val = self.extra.get("bitmask") if isinstance(self.extra, dict) else None
         mask_int: int | None = None
         if isinstance(bitmask_val, str):
             try:
@@ -308,17 +299,14 @@ class RegisterDefinition(pydantic.BaseModel):
         if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
             raise ValueError("bits exceed bitmask width")
 
-        min_val = values.get("min")
-        max_val = values.get("max")
-        default_val = values.get("default")
-        if min_val is not None and max_val is not None and min_val > max_val:
+        if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("min greater than max")
-        if default_val is not None:
-            if min_val is not None and default_val < min_val:
+        if self.default is not None:
+            if self.min is not None and self.default < self.min:
                 raise ValueError("default below min")
-            if max_val is not None and default_val > max_val:
+            if self.max is not None and self.default > self.max:
                 raise ValueError("default above max")
-        return values
+        return self
 
     @validator("name")
     def name_is_snake(cls, v: str) -> str:  # pragma: no cover
@@ -327,22 +315,16 @@ class RegisterDefinition(pydantic.BaseModel):
         return v
 
 
-class RegisterList(pydantic.BaseModel):
+class RegisterList(RootModel[list[RegisterDefinition]]):
     """Container model to validate a list of registers."""
 
-    registers: list[RegisterDefinition]
-
-    # Pydantic v2 discourages using ``__root__`` with ``BaseModel``. Using a
-    # standard field keeps us compatible with Home Assistant's bundled
-    # pydantic version while still providing a ``root`` accessor for legacy
-    # callers.
     @property
-    def root(self) -> list[RegisterDefinition]:
-        return self.registers
+    def registers(self) -> list[RegisterDefinition]:
+        return self.root
 
     @model_validator(mode="after")
     def unique(self) -> "RegisterList":  # pragma: no cover
-        registers = self.registers
+        registers = self.root
         seen_pairs: set[tuple[int, int]] = set()
         seen_names: set[str] = set()
         for reg in registers:

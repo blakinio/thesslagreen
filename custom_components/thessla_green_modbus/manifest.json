@@ -2,17 +2,17 @@
   "domain": "thessla_green_modbus",
   "name": "ThesslaGreen Modbus",
   "codeowners": [
-    "@thesslagreen"
+    "@blakinio"
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha",
+  "documentation": "https://github.com/blakinio/thesslagreen",
   "homeassistant": ">=2024.12.0",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
+  "issue_tracker": "https://github.com/blakinio/thesslagreen/issues",
   "quality_scale": "silver",
   "requirements": [
-    "pymodbus>=3.5.0"
+    "pymodbus>=3.6.0"
   ],
   "files": [
     "options/bypass_modes.json",
@@ -32,8 +32,14 @@
     "translations/en.json",
     "translations/pl.json"
   ],
-  "version": "2.2.0",
+  "version": "0.1.0",
   "integration_type": "hub",
+  "after_dependencies": [
+    "modbus"
+  ],
+  "loggers": [
+    "custom_components.thessla_green_modbus"
+  ],
   "dhcp": [
     {
       "hostname": "airpack*",
