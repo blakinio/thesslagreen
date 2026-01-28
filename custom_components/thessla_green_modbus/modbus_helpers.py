@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-import random
 import weakref
 from collections.abc import Awaitable, Callable, Iterable
 from typing import Any
 
 from . import const
+from .modbus_decoder import _build_request_frame, _mask_frame
+from .modbus_retry import _calculate_backoff_delay
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,107 +24,6 @@ _SIG_CACHE: weakref.WeakKeyDictionary[Callable[..., Awaitable[Any]], inspect.Sig
     weakref.WeakKeyDictionary()
 )
 
-
-def _mask_frame(frame: bytes) -> str:
-    """Return a hex representation of ``frame`` with the slave ID masked."""
-
-    if not frame:
-        return ""
-
-    hex_str = frame.hex()
-    if len(hex_str) >= 2:
-        return f"**{hex_str[2:]}"
-    return hex_str
-
-
-def _build_request_frame(
-    func_name: str, slave_id: int, positional: list[Any], kwargs: dict[str, Any]
-) -> bytes:
-    """Best-effort Modbus request frame builder for logging."""
-
-    try:
-        if func_name == "read_input_registers":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x04, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
-        if func_name == "read_holding_registers":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x03, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
-        if func_name == "read_coils":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x01, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
-        if func_name == "read_discrete_inputs":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x02, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
-        if func_name == "write_register":
-            addr = int(kwargs.get("address", positional[0]))
-            value = int(kwargs.get("value", positional[1] if len(positional) > 1 else 0))
-            return bytes([slave_id, 0x06, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF])
-        if func_name == "write_registers":
-            addr = int(kwargs.get("address", positional[0]))
-            values = [
-                int(v) for v in kwargs.get("values", positional[1] if len(positional) > 1 else [])
-            ]
-            qty = len(values)
-            frame = bytearray(
-                [
-                    slave_id,
-                    0x10,
-                    addr >> 8,
-                    addr & 0xFF,
-                    qty >> 8,
-                    qty & 0xFF,
-                    qty * 2,
-                ]
-            )
-            for v in values:
-                frame.extend([v >> 8, v & 0xFF])
-            return bytes(frame)
-        if func_name == "write_coil":
-            addr = int(kwargs.get("address", positional[0]))
-            value = (
-                0xFF00
-                if kwargs.get("value", positional[1] if len(positional) > 1 else False)
-                else 0x0000
-            )
-            return bytes([slave_id, 0x05, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF])
-    except (ValueError, TypeError, IndexError) as err:
-        _LOGGER.debug("Failed to build request frame: %s", err)
-        return b""
-    except Exception as err:  # pragma: no cover - unexpected
-        _LOGGER.exception("Unexpected error building request frame: %s", err)
-        return b""
-
-    return b""
-
-
-def _calculate_backoff_delay(
-    *,
-    base: float,
-    attempt: int,
-    jitter: float | tuple[float, float] | None,
-) -> float:
-    """Return the delay for the given ``attempt`` including optional jitter."""
-
-    if base <= 0 or attempt <= 1:
-        delay = 0.0
-    else:
-        delay = float(base) * (2 ** (attempt - 2))
-
-    if jitter:
-        if isinstance(jitter, int | float):
-            jitter_min = 0.0
-            jitter_max = float(jitter)
-        else:
-            jitter_min, jitter_max = (float(jitter[0]), float(jitter[1]))
-        if jitter_max < jitter_min:
-            jitter_min, jitter_max = jitter_max, jitter_min
-        delay += random.uniform(jitter_min, jitter_max)
-
-    return max(delay, 0.0)
 
 
 async def _call_modbus(
@@ -235,7 +135,7 @@ async def _call_modbus(
         else:
             response = await _invoke()
     except Exception:
-        _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
+        _LOGGER.warning("Modbus call %s failed on attempt %s/%s", func_name, attempt, max_attempts)
         raise
 
     if _LOGGER.isEnabledFor(logging.DEBUG):

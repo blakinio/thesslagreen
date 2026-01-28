@@ -248,7 +248,7 @@ During scanning the integration tries many register ranges. If the unit
 doesn't support a range, the logs show a warning like:
 
 ```
-Skipping unsupported input registers 0x0100-0x0102 (exception code 2)
+Skipping unsupported input registers 256-258 (exception code 2)
 ```
 
 Modbus exception codes explain why the read failed:
@@ -329,11 +329,11 @@ operate exclusively on this JSON format.
 ### File format
 
 Each entry in the file is an object with fields:
+Register addresses are stored in decimal form only (**DEC ONLY**).
 
 ```json
 {
   "function": "holding",
-  "address_hex": "0x1001",
   "address_dec": 4097,
   "access": "rw",
   "name": "mode",
@@ -347,7 +347,7 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 ### Adding new registers
 
 1. Edit `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` and append a new object
-   with the required fields (`function`, `address_dec`, `address_hex`, `name`, `description`, `description_en`, `access`).
+   with the required fields (`function`, `address_dec`, `name`, `description`, `description_en`, `access`) and **DEC ONLY** addressing.
 2. Ensure addresses are unique and remain sorted.
 3. Run the validation test:
 

@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, coil_registers, holding_registers
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
@@ -31,12 +31,16 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
+    if not coordinator.capabilities_valid:
+        _LOGGER.error("Capabilities missing; switch setup aborted")
+        return
+
     entities = []
 
     # Create switch entities only for writable registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()
-    holding_map = holding_registers()
-    coil_map = coil_registers()
+    holding_map = coordinator.get_register_map("holding_registers")
+    coil_map = coordinator.get_register_map("coil_registers")
     for key, config in ENTITY_MAPPINGS["switch"].items():
         register_name = config["register"]
 
@@ -46,12 +50,8 @@ async def async_setup_entry(
         if config["register_type"] == "holding_registers":
             if register_name in coordinator.available_registers.get("holding_registers", set()):
                 is_available = True
-            elif coordinator.force_full_register_list and register_name in holding_map:
-                is_available = True
         elif config["register_type"] == "coil_registers":
             if register_name in coordinator.available_registers.get("coil_registers", set()):
-                is_available = True
-            elif coordinator.force_full_register_list and register_name in coil_map:
                 is_available = True
 
         if is_available:

@@ -293,8 +293,10 @@ async def test_async_setup_skips_unknown_register(mock_coordinator, mock_config_
 
 
 @pytest.mark.asyncio
-async def test_force_full_register_list_adds_missing_number(mock_coordinator, mock_config_entry):
-    """Number entities are created from register map when forcing full list."""
+async def test_force_full_register_list_does_not_create_missing_number(
+    mock_coordinator, mock_config_entry
+):
+    """Forced register list no longer creates missing number entities."""
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
@@ -320,5 +322,4 @@ async def test_force_full_register_list_adds_missing_number(mock_coordinator, mo
     ):
         add_entities = MagicMock()
         await async_setup_entry(hass, mock_config_entry, add_entities)
-        created = {entity.register_name for entity in add_entities.call_args[0][0]}
-        assert created == {"max_supply_air_flow_rate"}  # nosec B101
+        add_entities.assert_not_called()

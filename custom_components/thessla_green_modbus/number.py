@@ -43,20 +43,21 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
+    if not coordinator.capabilities_valid:
+        _LOGGER.error("Capabilities missing; number setup aborted")
+        return
+
     entities = []
 
     # Get number entity mappings
     number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS["number"]
 
-    # Create number entities for discovered registers, or all known registers
-    # when ``force_full_register_list`` is enabled.
+    # Create number entities for discovered registers.
     holding_map = coordinator.get_register_map("holding_registers")
     available = coordinator.available_registers.get("holding_registers", set())
 
     for register_name, entity_config in number_mappings.items():
-        force_create = coordinator.force_full_register_list and register_name in holding_map
-
-        if register_name in available or force_create:
+        if register_name in available:
             address = holding_map.get(register_name)
             if address is None:
                 _LOGGER.error(

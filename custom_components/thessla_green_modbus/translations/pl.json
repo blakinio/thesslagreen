@@ -67,7 +67,8 @@
           "parity": "Parzystość",
           "stop_bits": "Bity stopu",
           "deep_scan": "Głęboki skan rejestrów",
-          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
+          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie",
+          "safe_scan": "Bezpieczne skanowanie (bez grupowania)"
         },
         "data_description": {
           "connection_type": "Wybierz Modbus TCP (sieć) lub Modbus RTU (port szeregowy)",
@@ -80,7 +81,8 @@
           "parity": "Ustawienie parzystości dla Modbus RTU",
           "stop_bits": "Liczba bitów stopu dla Modbus RTU",
           "deep_scan": "Odczytaj wszystkie rejestry do diagnostyki (może być wolne)",
-          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)",
+          "safe_scan": "Wyłącza grupowanie odczytów podczas skanowania (wolniejsze, ale bezpieczniejsze)"
         },
         "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP lub Modbus RTU. Integracja automatycznie wykryje funkcje i rejestry urządzenia."
       }
@@ -1295,7 +1297,8 @@
           "skip_missing_registers": "Pomijaj znane brakujące rejestry",
           "timeout": "Limit czasu połączenia (s)",
           "deep_scan": "Głęboki skan rejestrów",
-          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
+          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie",
+          "safe_scan": "Bezpieczne skanowanie (bez grupowania)"
         },
         "data_description": {
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
@@ -1304,8 +1307,9 @@
           "log_level": "Dostosuj poziom logów integracji bez restartu Home Assistanta",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
           "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
-          "deep_scan": "Odczyt surowych rejestrów 0x0000-0x012C do diagnostyki",
-          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)"
+          "deep_scan": "Odczyt surowych rejestrów 0-300 do diagnostyki",
+          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)",
+          "safe_scan": "Wyłącza grupowanie odczytów podczas skanowania (wolniejsze, ale bezpieczniejsze)"
         },
         "error": {
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"

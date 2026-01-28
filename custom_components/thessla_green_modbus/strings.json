@@ -66,7 +66,8 @@
           "parity": "Parity",
           "stop_bits": "Stop Bits",
           "deep_scan": "Deep Register Scan",
-          "max_registers_per_request": "Max Registers per Request"
+          "max_registers_per_request": "Max Registers per Request",
+          "safe_scan": "Safe Scan (no grouping)"
         },
         "data_description": {
           "connection_type": "Choose between Modbus TCP (network) or Modbus RTU (serial)",
@@ -79,7 +80,8 @@
           "parity": "Parity setting for Modbus RTU communication",
           "stop_bits": "Stop bits for Modbus RTU communication",
           "deep_scan": "Read all registers for diagnostics (may be slow)",
-          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
+          "max_registers_per_request": "Maximum registers per Modbus request (1-16)",
+          "safe_scan": "Disable grouped register reads during scanning (slower but safer)"
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
@@ -1295,7 +1297,8 @@
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)",
           "deep_scan": "Deep Register Scan",
-          "max_registers_per_request": "Max Registers per Request"
+          "max_registers_per_request": "Max Registers per Request",
+          "safe_scan": "Safe Scan (no grouping)"
         },
         "data_description": {
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
@@ -1304,8 +1307,9 @@
           "log_level": "Adjust integration logging verbosity without restarting Home Assistant",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
-          "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics",
-          "max_registers_per_request": "Select maximum registers per request (1-16)"
+          "deep_scan": "Read raw registers 0-300 for diagnostics",
+          "max_registers_per_request": "Select maximum registers per request (1-16)",
+          "safe_scan": "Disable grouped register reads during scanning (slower but safer)"
         },
         "error": {
           "max_registers_per_request": "Maximum registers per Modbus request (1-16)"

@@ -140,6 +140,7 @@ OPTION_KEYS = [
     "retry",
     "scan_interval",
     "skip_missing_registers",
+    "safe_scan",
     "timeout",
     "deep_scan",
     "max_registers_per_request",

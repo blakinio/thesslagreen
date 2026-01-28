@@ -143,6 +143,7 @@ CONF_BACKOFF_JITTER = "backoff_jitter"
 CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 CONF_SCAN_UART_SETTINGS = "scan_uart_settings"
 CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
+CONF_SAFE_SCAN = "safe_scan"
 CONF_AIRFLOW_UNIT = "airflow_unit"
 CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnostics
 CONF_MAX_REGISTERS_PER_REQUEST = "max_registers_per_request"
@@ -157,6 +158,7 @@ AIRFLOW_RATE_REGISTERS = {"supply_flow_rate", "exhaust_flow_rate"}
 
 DEFAULT_SCAN_UART_SETTINGS = False
 DEFAULT_SKIP_MISSING_REGISTERS = False
+DEFAULT_SAFE_SCAN = False
 DEFAULT_DEEP_SCAN = False
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
 DEFAULT_LOG_LEVEL = "info"

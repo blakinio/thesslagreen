@@ -229,8 +229,10 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
 
 
 @pytest.mark.asyncio
-async def test_force_full_register_list_adds_missing_entities(mock_coordinator, mock_config_entry):
-    """Sensors and selects are created from register map when forcing full list."""
+async def test_force_full_register_list_does_not_create_missing_entities(
+    mock_coordinator, mock_config_entry
+):
+    """Missing registers are not created even when forcing full list."""
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
@@ -262,18 +264,12 @@ async def test_force_full_register_list_adds_missing_entities(mock_coordinator, 
     with patch.dict(SENSOR_DEFINITIONS, sensor_map, clear=True):
         add_sensors = MagicMock()
         await async_setup_entry(hass, mock_config_entry, add_sensors)
-        sensors = [
-            e._register_name
-            for e in add_sensors.call_args[0][0]
-            if isinstance(e, ThesslaGreenSensor)
-        ]
-        assert sensors == ["supply_temperature"]  # nosec B101
+        add_sensors.assert_not_called()
 
     with patch.dict(select_module.ENTITY_MAPPINGS["select"], select_map, clear=True):
         add_selects = MagicMock()
         await select_async_setup_entry(hass, mock_config_entry, add_selects)
-        selects = [e._register_name for e in add_selects.call_args[0][0]]
-        assert selects == ["mode"]  # nosec B101
+        add_selects.assert_not_called()
 
 
 def test_sensor_registers_match_definition():

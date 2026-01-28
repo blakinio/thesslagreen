@@ -18,6 +18,6 @@ def test_log_skipped_ranges_no_duplicate_spans(caplog):
     with caplog.at_level(logging.WARNING):
         scanner._log_skipped_ranges()
 
-    assert "0x0010-0x0014" in caplog.text
-    assert "0x0010-0x0012" not in caplog.text
-    assert "0x0011-0x0014" not in caplog.text
+    assert "16-20" in caplog.text
+    assert "16-18" not in caplog.text
+    assert "17-20" not in caplog.text

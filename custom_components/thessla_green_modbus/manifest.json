@@ -7,7 +7,7 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/blakinio/thesslagreen",
-  "homeassistant": ">=2024.12.0",
+  "homeassistant": ">=2025.1.0",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/blakinio/thesslagreen/issues",
   "quality_scale": "silver",

@@ -56,6 +56,7 @@ class FakeCoordinator:
         retry,
         force_full_register_list=False,
         scan_uart_settings=False,
+        safe_scan=False,
         deep_scan=False,
         max_registers_per_request=0,
         entry=None,
@@ -71,6 +72,7 @@ class FakeCoordinator:
         self.available_registers = {k: set(v) for k, v in source.items()}
         self.data: dict[str, int] = {}
         self.last_update_success = True
+        self.capabilities_valid = True
 
     async def async_setup(self):
         return True

@@ -32,9 +32,7 @@ def test_register_uniqueness() -> None:
     assert not bad_names, f"Non-snake_case names found: {bad_names}"
 
     def address(reg: dict) -> int:
-        if reg.get("address_dec") is not None:
-            return int(reg["address_dec"])
-        return int(str(reg["address_hex"]), 16)
+        return int(reg["address_dec"])
 
     # (function, address_dec) pairs must be unique
     pair_counts = Counter((reg["function"], address(reg)) for reg in registers)

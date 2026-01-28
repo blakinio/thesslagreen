@@ -40,6 +40,7 @@ from .const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
     CONF_RETRY,
+    CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SERIAL_PORT,
@@ -60,6 +61,7 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_RETRY,
+    DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
     DEFAULT_SERIAL_PORT,
@@ -202,6 +204,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     backoff_jitter = entry.options.get(CONF_BACKOFF_JITTER, DEFAULT_BACKOFF_JITTER)
     force_full_register_list = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
     scan_uart_settings = entry.options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
+    safe_scan = entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)
     skip_missing_registers = entry.options.get(
         CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
     )
@@ -250,6 +253,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         backoff_jitter=backoff_jitter,
         force_full_register_list=force_full_register_list,
         scan_uart_settings=scan_uart_settings,
+        safe_scan=safe_scan,
         deep_scan=deep_scan,
         skip_missing_registers=skip_missing_registers,
         max_registers_per_request=max_registers_per_request,

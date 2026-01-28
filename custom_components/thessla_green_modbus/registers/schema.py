@@ -9,9 +9,8 @@ Key features implemented:
 
 * ``function`` accepts integers or strings and is normalised to the canonical
   integer form (``1`` … ``4``).
-* ``address_dec`` may be provided as either an integer or string.  A canonical
-  ``0x`` prefixed form is stored in ``address_hex`` and the two representations
-  are cross‑checked for consistency.
+* ``address_dec`` may be provided as either an integer or string containing
+  decimal digits only. Hexadecimal formats are rejected.
 * ``length`` accepts ``count`` as an alias.
 * A top level ``type`` field is supported.  It accepts shorthand identifiers
   (``u16``, ``i16`` … ``f64``, ``string``, ``bitmask``) and the expected
@@ -107,7 +106,6 @@ class RegisterDefinition(BaseModel):
 
     function: int
     address_dec: int
-    address_hex: str
     name: str
     access: Literal["R", "RW", "W"]
     unit: str | None = None
@@ -159,29 +157,16 @@ class RegisterDefinition(BaseModel):
             else:
                 raise ValueError("access must be one of 'R', 'RW', 'W'")
 
-        # Normalise address_dec
+        # Normalise address_dec (DEC ONLY)
         addr_dec = data.get("address_dec")
         if addr_dec is not None:
             if isinstance(addr_dec, str):
-                addr_dec = int(addr_dec, 0)
+                if not re.fullmatch(r"[0-9]+", addr_dec):
+                    raise ValueError("address_dec must contain decimal digits only")
+                addr_dec = int(addr_dec)
             elif not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
                 raise TypeError("address_dec must be int or str")
             data["address_dec"] = addr_dec
-
-        # Normalise address_hex
-        addr_hex = data.get("address_hex")
-        if addr_hex is not None:
-            if isinstance(addr_hex, str):
-                addr_hex = addr_hex.lower()
-                addr_hex = addr_hex[2:] if addr_hex.startswith("0x") else addr_hex
-                addr_hex_int = int(addr_hex, 16)
-            elif isinstance(addr_hex, int) and not isinstance(addr_hex, bool):
-                addr_hex_int = addr_hex
-            else:  # pragma: no cover - defensive
-                raise TypeError("address_hex must be str or int")
-            data["address_hex"] = hex(addr_hex_int)
-        elif addr_dec is not None:
-            data["address_hex"] = hex(addr_dec)
 
         # Handle type field (may be top level or inside extra)
         typ = data.pop("type", None)
@@ -238,10 +223,6 @@ class RegisterDefinition(BaseModel):
 
     @model_validator(mode="after")
     def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
-        if self.address_hex is not None and self.address_dec is not None:
-            if int(self.address_hex, 16) != self.address_dec:
-                raise ValueError("address_hex does not match address_dec")
-
         if self.type is not None:
             try:
                 reg_enum = RegisterType(self.type)

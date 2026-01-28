@@ -143,7 +143,7 @@ def test_dynamic_problem_registers_present() -> None:
 
 
 def test_problem_registers_range_mapped() -> None:
-    """Registers 0x2000-0x20FB should map to binary sensors."""
+    """Registers 8192-8443 should map to binary sensors."""
     expected = {name for name, addr in HOLDING_REGISTERS.items() if 0x2000 <= addr <= 0x20FB}
     for key in expected:
         assert key in BINARY_SENSOR_DEFINITIONS  # nosec B101
@@ -196,10 +196,10 @@ async def test_dynamic_register_entity_creation(
 
 
 @pytest.mark.asyncio
-async def test_force_full_register_list_adds_missing_binary_sensor(
+async def test_force_full_register_list_does_not_create_missing_binary_sensor(
     mock_coordinator: MagicMock, mock_config_entry: MagicMock
 ) -> None:
-    """Binary sensors are created from register map when forcing full list."""
+    """Missing binary sensors are not created when forcing full list."""
 
     hass: MagicMock = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
@@ -223,5 +223,4 @@ async def test_force_full_register_list_adds_missing_binary_sensor(
     with patch.dict(BINARY_SENSOR_DEFINITIONS, sensor_map, clear=True):
         add_entities: MagicMock = MagicMock()
         await async_setup_entry(hass, mock_config_entry, add_entities)
-        created = {entity._register_name for entity in add_entities.call_args[0][0]}
-        assert created == {"contamination_sensor"}  # nosec B101
+        add_entities.assert_not_called()

@@ -33,6 +33,7 @@ from .const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
     CONF_RETRY,
+    CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SERIAL_PORT,
@@ -52,6 +53,7 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_RETRY,
+    DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
     DEFAULT_SERIAL_PORT,
@@ -321,6 +323,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
                 retry=DEFAULT_RETRY,
                 backoff=CONFIG_FLOW_BACKOFF,
                 deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+                safe_scan=data.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN),
                 connection_type=connection_type,
                 serial_port=data.get(CONF_SERIAL_PORT),
                 baud_rate=data.get(CONF_BAUD_RATE),
@@ -548,6 +551,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     description={"advanced": True},
                 ): bool,
                 vol.Optional(
+                    CONF_SAFE_SCAN,
+                    default=current_values.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN),
+                    description={"advanced": True},
+                ): bool,
+                vol.Optional(
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_values.get(
                         CONF_MAX_REGISTERS_PER_REQUEST,
@@ -647,6 +655,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         options = {
             CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+            CONF_SAFE_SCAN: self._data.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN),
             CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
                 CONF_MAX_REGISTERS_PER_REQUEST,
                 DEFAULT_MAX_REGISTERS_PER_REQUEST,
@@ -964,6 +973,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         )
         current_airflow_unit = entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
         current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
+        current_safe_scan = entry_options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)
         current_max_registers_per_request = entry_options.get(
             CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
         )
@@ -1032,6 +1042,11 @@ class OptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_DEEP_SCAN,
                     default=current_deep_scan,
+                    description={"advanced": True},
+                ): bool,
+                vol.Optional(
+                    CONF_SAFE_SCAN,
+                    default=current_safe_scan,
                     description={"advanced": True},
                 ): bool,
                 vol.Optional(

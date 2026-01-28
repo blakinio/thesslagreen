@@ -130,9 +130,9 @@ async def test_read_holding_timeout_logging(caplog):
 
     assert result is None
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
-    assert any("Timeout reading holding 0x0001" in msg for msg in warnings)
+    assert any("Timeout reading holding 1" in msg for msg in warnings)
     errors = [r.message for r in caplog.records if r.levelno == logging.ERROR]
-    assert any("Failed to read holding registers 0x0001-0x0001" in msg for msg in errors)
+    assert any("Failed to read holding registers 1-1" in msg for msg in errors)
 
 
 @pytest.mark.parametrize(
@@ -256,7 +256,7 @@ async def test_read_input_logs_warning_on_failure(caplog):
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert "Device does not expose register 0x0001" in caplog.text
+    assert "Device does not expose register 1" in caplog.text
 
 
 async def test_read_input_skips_cached_failures():
@@ -308,7 +308,7 @@ async def test_read_input_skips_range_on_exception_response(caplog):
     assert result is None
     assert call_mock.await_count == 1
     assert set(range(0x0100, 0x0103)) <= scanner._failed_input
-    assert "Skipping unsupported input registers 0x0100-0x0102 (exception code 2)" in caplog.text
+    assert "Skipping unsupported input registers 256-258 (exception code 2)" in caplog.text
 
     # Further reads within the range should be skipped without new calls
     with patch(
@@ -341,7 +341,7 @@ async def test_read_holding_skips_range_on_exception_response(caplog):
     assert result is None
     assert call_mock.await_count == 1
     assert (0x0200, 0x0201) in scanner._unsupported_holding_ranges
-    assert "Skipping unsupported holding registers 0x0200-0x0201 (exception code 2)" in caplog.text
+    assert "Skipping unsupported holding registers 512-513 (exception code 2)" in caplog.text
 
     # Further reads within the range should be skipped without new calls
     with patch(
@@ -408,9 +408,9 @@ async def test_log_skipped_ranges_no_overlap(caplog):
     with caplog.at_level(logging.WARNING):
         scanner._log_skipped_ranges()
 
-    assert "0x0400-0x0401 (exception code 1)" in caplog.text
-    assert "0x0402-0x0406 (exception code 2)" in caplog.text
-    assert "0x0400-0x0404" not in caplog.text
+    assert "1024-1025 (exception code 1)" in caplog.text
+    assert "1026-1030 (exception code 2)" in caplog.text
+    assert "1024-1028" not in caplog.text
 
 
 async def test_read_input_logs_once_per_skipped_range(caplog):
@@ -429,7 +429,7 @@ async def test_read_input_logs_once_per_skipped_range(caplog):
         for record in caplog.records
         if "Skipping cached failed input registers" in record.message
     ]
-    assert messages == ["Skipping cached failed input registers 0x0001-0x0003"]
+    assert messages == ["Skipping cached failed input registers 1-3"]
 
 
 async def test_read_holding_exponential_backoff(caplog):
@@ -453,7 +453,7 @@ async def test_read_holding_exponential_backoff(caplog):
     assert result is None
     assert sleep_mock.await_args_list == [call(0.5), call(1.0)]
     assert any(
-        "Failed to read holding registers 0x0001-0x0001" in record.message
+        "Failed to read holding registers 1-1" in record.message
         for record in caplog.records
     )
 
@@ -1022,7 +1022,7 @@ async def test_missing_register_logged_once(caplog):
     assert call_log.count((2, 1)) == 1
 
     # Missing register logged only once
-    assert caplog.text.count("Failed to read input_registers register 0x0002") == 1
+    assert caplog.text.count("Failed to read input_registers register 2") == 1
 
     # Only valid register is reported as available
     assert "reg_ok" in result["available_registers"]["input_registers"]
@@ -1174,7 +1174,7 @@ async def test_format_register_value_setting():
 
 async def test_format_register_value_invalid_time():
     """Invalid time registers should show raw hex with invalid marker."""
-    assert _format_register_value("schedule_summer_mon_1", 0x2400) == "0x2400 (invalid)"
+    assert _format_register_value("schedule_summer_mon_1", 0x2400) == "9216 (invalid)"
 
 
 async def test_scan_excludes_unavailable_temperature():
@@ -1462,7 +1462,7 @@ async def test_log_invalid_value_debug_when_not_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
+    assert "Invalid value for test_register: raw=1 decoded=1" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
@@ -1478,13 +1478,13 @@ async def test_log_invalid_value_info_then_debug_when_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.INFO
-    assert "raw=0x0001" in caplog.text
+    assert "raw=1" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert "raw=0x0001" in caplog.text
+    assert "raw=1" in caplog.text
 
 
 async def test_log_invalid_value_raw_and_formatted(caplog):
@@ -1494,7 +1494,7 @@ async def test_log_invalid_value_raw_and_formatted(caplog):
     caplog.set_level(logging.DEBUG)
     scanner._log_invalid_value("schedule_time", 0x1600)
 
-    assert "raw=0x1600" in caplog.text
+    assert "raw=5632" in caplog.text
     assert "decoded=16:00" in caplog.text
 
 
@@ -1505,8 +1505,8 @@ async def test_log_invalid_value_invalid_time(caplog):
     caplog.set_level(logging.DEBUG)
     scanner._log_invalid_value("schedule_time", 0x2400)
 
-    assert "raw=0x2400" in caplog.text
-    assert "decoded=0x2400 (invalid)" in caplog.text
+    assert "raw=9216" in caplog.text
+    assert "decoded=9216 (invalid)" in caplog.text
 
 
 async def test_failed_addresses_recorded_on_exception():
@@ -1641,4 +1641,4 @@ async def test_scan_logs_missing_expected_registers(caplog):
         ):
             await scanner.scan()
 
-    assert "reg_a=0x0004" in caplog.text
+    assert "reg_a=4" in caplog.text

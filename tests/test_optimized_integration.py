@@ -73,6 +73,7 @@ class TestThesslaGreenIntegration:
         coordinator.async_shutdown = AsyncMock()
         coordinator.async_request_refresh = AsyncMock()
         coordinator.async_write_register = AsyncMock(return_value=True)
+        coordinator.capabilities_valid = True
 
         # Realistic device data
         coordinator.data = {

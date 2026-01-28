@@ -192,8 +192,10 @@ def test_hvac_mode_mappings():
 
 
 @pytest.mark.asyncio
-async def test_force_full_register_list_creates_climate(mock_coordinator, mock_config_entry):
-    """Climate entity created when forcing full register list."""
+async def test_force_full_register_list_does_not_create_climate(
+    mock_coordinator, mock_config_entry
+):
+    """Climate entity is not created without basic control capability."""
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
@@ -210,5 +212,4 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
-    entities = add_entities.call_args[0][0]
-    assert any(isinstance(e, ThesslaGreenClimate) for e in entities)  # nosec B101
+    add_entities.assert_not_called()

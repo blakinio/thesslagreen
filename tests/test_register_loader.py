@@ -80,7 +80,6 @@ def test_default_multiplier_resolution(tmp_path) -> None:
     reg = {
         "function": "03",
         "address_dec": 0,
-        "address_hex": "0x0000",
         "name": "noscale",
         "access": "R",
     }
@@ -329,14 +328,12 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 1,
-            "address_hex": "0x2",
             "name": "bad_addr",
             "access": "R",
         },
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
             "name": "bad_len",
             "access": "R",
             "length": 1,
@@ -345,14 +342,12 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "01",
             "address_dec": 0,
-            "address_hex": "0x0",
             "name": "bad_access",
             "access": "RW",
         },
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
             "name": "bad_bits",
             "access": "R",
             "bits": [{"name": "a"}],
@@ -360,7 +355,6 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
             "name": "bad_string_len",
             "access": "R",
             "length": 0,
@@ -369,7 +363,6 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
             "name": "bad_bit_name",
             "access": "R",
             "extra": {"bitmask": 0b1},
@@ -378,7 +371,6 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
             "name": "bit_index_out_of_range",
             "access": "R",
             "extra": {"bitmask": 0xFFFF},
@@ -402,7 +394,6 @@ def test_bits_within_bitmask_width(tmp_path) -> None:
     reg = {
         "function": "03",
         "address_dec": 0,
-        "address_hex": "0x0",
         "name": "good_bits",
         "access": "R",
         "extra": {"bitmask": 0b11},
@@ -427,7 +418,6 @@ def test_missing_descriptions_rejected(tmp_path, reg) -> None:
     base = {
         "function": "03",
         "address_dec": 0,
-        "address_hex": "0x0",
         "name": "no_desc",
         "access": "R",
     }
@@ -467,16 +457,6 @@ def test_register_file_sorted() -> None:
     assert keys == sorted(keys)
 
 
-def test_address_hex_matches_dec() -> None:
-    """Each register's hex and decimal addresses should align."""
-
-    import json
-
-    data = json.loads(_REGISTERS_PATH.read_text())
-    for reg in data["registers"]:
-        assert int(reg["address_hex"], 16) == reg["address_dec"]
-
-
 def test_special_modes_invalid_json(monkeypatch) -> None:
     """Loader falls back to empty special mode enum on invalid file."""
 
@@ -510,21 +490,18 @@ def test_get_all_registers_sorted(tmp_path) -> None:
         {
             "function": "03",
             "address_dec": 2,
-            "address_hex": "0x0002",
             "name": "reg_c",
             "access": "R",
         },
         {
             "function": "01",
             "address_dec": 1,
-            "address_hex": "0x0001",
             "name": "reg_a",
             "access": "R",
         },
         {
             "function": "03",
             "address_dec": 1,
-            "address_hex": "0x0001",
             "name": "reg_b",
             "access": "R",
         },

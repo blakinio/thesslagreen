@@ -45,23 +45,25 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
+    if not coordinator.capabilities_valid:
+        _LOGGER.error("Capabilities missing; sensor setup aborted")
+        return
+
     entities = []
     temp_created = 0
     temp_skipped = 0
 
-    # Create sensors for discovered registers, or all known registers when
-    # ``force_full_register_list`` is enabled.
+    # Create sensors for discovered registers.
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in register_map
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
-        if register_name in available or force_create:
+        if register_name in available:
             address = register_map[register_name]
             entities.append(ThesslaGreenSensor(coordinator, register_name, address, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])

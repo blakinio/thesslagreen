@@ -471,6 +471,7 @@ def mock_coordinator():
             "bypass_system": True,
         },
     }
+    coordinator.capabilities_valid = True
     coordinator.available_registers = {
         "input_registers": {"outside_temperature", "supply_temperature", "exhaust_temperature"},
         "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"},

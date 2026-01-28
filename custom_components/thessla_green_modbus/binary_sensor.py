@@ -40,21 +40,23 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
+    if not coordinator.capabilities_valid:
+        _LOGGER.error("Capabilities missing; binary sensor setup aborted")
+        return
+
     entities = []
 
-    # Create binary sensors for discovered registers, or all known registers
-    # when ``force_full_register_list`` is enabled.
+    # Create binary sensors for discovered registers.
     for key, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         register_name = sensor_def.get("register", key)
 
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in register_map
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
-        if register_name in available or force_create:
+        if register_name in available:
             address = register_map.get(register_name)
             entities.append(
                 ThesslaGreenBinarySensor(
