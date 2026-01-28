@@ -30,7 +30,8 @@ from typing import Any, cast
 
 # Shared grouping helper
 from ..modbus_helpers import group_reads
-from ..schedule_helpers import bcd_to_time, time_to_bcd
+from ..schedule_helpers import time_to_bcd
+from ..utils import BCD_TIME_PREFIXES, decode_aatt, decode_bcd_time
 from .schema import RegisterList, _normalise_function, _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
@@ -93,6 +94,25 @@ class RegisterDef:
     bcd: bool = False
     bits: list[Any] | None = None
 
+    def _is_temperature(self) -> bool:
+        """Return True when the register represents a temperature value."""
+
+        if self.unit and "°" in self.unit:
+            return True
+        return "temperature" in self.name
+
+    def _is_bcd_time(self) -> bool:
+        """Return True when the register stores a BCD HHMM time value."""
+
+        return self.bcd or self.name.startswith(BCD_TIME_PREFIXES)
+
+    def _is_aatt(self) -> bool:
+        """Return True when the register stores AATT packed airflow/temp values."""
+
+        if self.extra and self.extra.get("aatt"):
+            return True
+        return self.name.startswith("setting_")
+
     # ------------------------------------------------------------------
     # Value helpers
     # ------------------------------------------------------------------
@@ -107,7 +127,7 @@ class RegisterDef:
                     (raw >> (16 * (self.length - 1 - i))) & 0xFFFF for i in range(self.length)
                 ]
 
-            if all(v == 0x8000 for v in raw_list):
+            if self._is_temperature() and all(v == 0x8000 for v in raw_list):
                 return None
 
             # Multi-register strings are treated specially
@@ -141,7 +161,7 @@ class RegisterDef:
         if isinstance(raw, Sequence):
             raw = raw[0]
 
-        if raw == 0x8000:
+        if self._is_temperature() and raw == 0x8000:
             return None
 
         # Bitmask registers map set bits to enum labels
@@ -168,19 +188,15 @@ class RegisterDef:
         value = raw
 
         # Combined airflow/temperature values use a custom decoding
-        if self.extra and self.extra.get("aatt"):
-            airflow = (raw >> 8) & 0xFF
-            temp = (raw & 0xFF) / 2
-            return airflow, temp
+        if self._is_aatt():
+            decoded = decode_aatt(raw)
+            return decoded
 
         # Schedule registers using BCD time encoding
-        if self.bcd:
-            try:
-                t = bcd_to_time(raw)
-            except Exception:  # pragma: no cover - defensive
-                pass
-            else:
-                return f"{t.hour:02d}:{t.minute:02d}"
+        if self._is_bcd_time():
+            decoded = decode_bcd_time(raw)
+            if decoded is not None:
+                return decoded
 
         if self.multiplier not in (None, 1):
             value *= self.multiplier
@@ -266,7 +282,7 @@ class RegisterDef:
                         return int(k)
             return int(value)
 
-        if self.bcd:
+        if self._is_bcd_time():
             if isinstance(value, str):
                 hours, minutes = (int(x) for x in value.split(":"))
             elif isinstance(value, int):
@@ -277,10 +293,14 @@ class RegisterDef:
                 raise ValueError(f"Unsupported BCD value: {value}")
             return int(time_to_bcd(time(hours, minutes)))
 
-        if self.extra and self.extra.get("aatt"):
-            airflow, temp = (
-                value if isinstance(value, list | tuple) else (value["airflow"], value["temp"])
-            )
+        if self._is_aatt():
+            if isinstance(value, dict):
+                airflow = value.get("airflow_pct", value.get("airflow"))
+                temp = value.get("temp_c", value.get("temp"))
+            elif isinstance(value, (list, tuple)):
+                airflow, temp = value
+            else:
+                airflow, temp = value, 0
             return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
 
         raw: Any = value

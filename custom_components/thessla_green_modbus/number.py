@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capability_rules import capability_block_reason
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -55,6 +56,10 @@ async def async_setup_entry(
 
     for register_name, entity_config in number_mappings.items():
         force_create = coordinator.force_full_register_list and register_name in holding_map
+
+        if reason := capability_block_reason(register_name, coordinator.capabilities):
+            _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
+            continue
 
         if register_name in available or force_create:
             address = holding_map.get(register_name)

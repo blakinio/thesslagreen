@@ -88,7 +88,7 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
 
 
 from .const import SPECIAL_FUNCTION_MAP, coil_registers, discrete_input_registers, holding_registers
-from .utils import _to_snake_case
+from .utils import BCD_TIME_PREFIXES, _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 _REGISTER_INFO_CACHE: dict[str, dict[str, Any]] | None = None
@@ -222,6 +222,10 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
 
         # Skip registers with enumerated states – handled as binary/select
         if _parse_states(info.get("unit")):
+            continue
+
+        # Skip packed schedule/time registers (BCD/AATT); these are not numeric sensors.
+        if register.startswith(BCD_TIME_PREFIXES) or register.startswith("setting_"):
             continue
 
         cfg: dict[str, Any] = {

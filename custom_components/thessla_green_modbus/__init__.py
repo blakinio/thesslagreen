@@ -36,6 +36,7 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
+    CONF_SAFE_SCAN,
     CONF_LOG_LEVEL,
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
@@ -54,6 +55,7 @@ from .const import (
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
+    DEFAULT_SAFE_SCAN,
     DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
@@ -206,6 +208,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
     )
     deep_scan = entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
+    safe_scan = entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)
     max_registers_per_request = entry.options.get(
         CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
     )
@@ -251,6 +254,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         force_full_register_list=force_full_register_list,
         scan_uart_settings=scan_uart_settings,
         deep_scan=deep_scan,
+        safe_scan=safe_scan,
         skip_missing_registers=skip_missing_registers,
         max_registers_per_request=max_registers_per_request,
         entry=entry,
@@ -373,6 +377,12 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
         new_log_level = str(entry.options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL))
         _apply_log_level(new_log_level)
+
+        coordinator.safe_scan = bool(entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN))
+        try:
+            coordinator._compute_register_groups()
+        except Exception:  # pragma: no cover - defensive
+            _LOGGER.debug("Failed to recompute register groups after option update", exc_info=True)
 
         await coordinator.async_request_refresh()
 

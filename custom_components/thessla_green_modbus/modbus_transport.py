@@ -43,45 +43,41 @@ class BaseModbusTransport(ABC):
     async def call(self, func: Any, slave_id: int, *args: Any, **kwargs: Any) -> Any:
         """Call a Modbus function with connection management and retries."""
 
-        last_exc: Exception | None = None
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                await self.ensure_connected()
-                response = await _call_modbus(
-                    func,
-                    slave_id,
-                    *args,
-                    attempt=attempt,
-                    max_attempts=self.max_retries,
-                    timeout=self.timeout,
-                    backoff=0.0,
-                    apply_backoff=False,
-                    **kwargs,
-                )
-                self.offline_state = False
-                return response
-            except (asyncio.TimeoutError, TimeoutError) as exc:
-                last_exc = exc
-                await self._handle_timeout(attempt, exc)
-            except ModbusIOException as exc:
-                last_exc = exc
-                await self._handle_transient(attempt, exc)
-            except (ConnectionException, OSError) as exc:
-                last_exc = exc
-                await self._handle_transient(attempt, exc)
-            except ModbusException as exc:
-                _LOGGER.error("Permanent Modbus error: %s", exc)
-                self.offline_state = True
-                raise
-            except Exception as exc:  # pragma: no cover - unexpected
-                last_exc = exc
-                _LOGGER.error("Unexpected transport error: %s", exc)
-                self.offline_state = True
-                raise
-
-        if last_exc:
-            raise last_exc
-        raise ConnectionException("Modbus call failed without raising an error")
+        try:
+            await self.ensure_connected()
+            response = await _call_modbus(
+                func,
+                slave_id,
+                *args,
+                attempt=1,
+                max_attempts=1,
+                timeout=self.timeout,
+                backoff=0.0,
+                apply_backoff=False,
+                **kwargs,
+            )
+            self.offline_state = False
+            return response
+        except (asyncio.TimeoutError, TimeoutError) as exc:
+            self.offline_state = True
+            await self._reset_connection()
+            raise
+        except ModbusIOException as exc:
+            self.offline_state = True
+            await self._reset_connection()
+            raise
+        except (ConnectionException, OSError) as exc:
+            self.offline_state = True
+            await self._reset_connection()
+            raise
+        except ModbusException as exc:
+            _LOGGER.error("Permanent Modbus error: %s", exc)
+            self.offline_state = True
+            raise
+        except Exception as exc:  # pragma: no cover - unexpected
+            _LOGGER.error("Unexpected transport error: %s", exc)
+            self.offline_state = True
+            raise
 
     async def ensure_connected(self) -> None:
         """Ensure the underlying transport is connected."""
