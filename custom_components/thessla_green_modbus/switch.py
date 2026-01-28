@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capability_rules import capability_block_reason
 from .const import DOMAIN, coil_registers, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -39,6 +40,10 @@ async def async_setup_entry(
     coil_map = coil_registers()
     for key, config in ENTITY_MAPPINGS["switch"].items():
         register_name = config["register"]
+
+        if reason := capability_block_reason(register_name, coordinator.capabilities):
+            _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
+            continue
 
         # Check if this register is available and writable
         is_available = False

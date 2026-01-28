@@ -271,6 +271,7 @@ class ThesslaGreenDeviceScanner:
         skip_known_missing: bool = False,
         deep_scan: bool = False,
         full_register_scan: bool = False,
+        safe_scan: bool = False,
         max_registers_per_request: int = MAX_BATCH_REGISTERS,
         connection_type: str = DEFAULT_CONNECTION_TYPE,
         serial_port: str = DEFAULT_SERIAL_PORT,
@@ -315,6 +316,7 @@ class ThesslaGreenDeviceScanner:
         self.skip_known_missing = skip_known_missing
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
+        self.safe_scan = safe_scan
         try:
             self.effective_batch = min(int(max_registers_per_request), MAX_BATCH_REGISTERS)
         except (TypeError, ValueError):
@@ -432,6 +434,7 @@ class ThesslaGreenDeviceScanner:
         deep_scan: bool = False,
         full_register_scan: bool = False,
         max_registers_per_request: int = MAX_BATCH_REGISTERS,
+        safe_scan: bool = False,
         connection_type: str = DEFAULT_CONNECTION_TYPE,
         serial_port: str = DEFAULT_SERIAL_PORT,
         baud_rate: int = DEFAULT_BAUD_RATE,
@@ -452,6 +455,7 @@ class ThesslaGreenDeviceScanner:
             skip_known_missing,
             deep_scan,
             full_register_scan,
+            safe_scan,
             max_registers_per_request,
             connection_type,
             serial_port,
@@ -664,6 +668,9 @@ class ThesslaGreenDeviceScanner:
         if any(reg.startswith("schedule_") for reg in holdings):
             caps.weekly_schedule = True  # pragma: no cover
 
+        if {"mode", "on_off_panel_mode"} <= holdings:
+            caps.basic_control = True  # pragma: no cover
+
         if any(
             reg in inputs
             for reg in [
@@ -707,6 +714,9 @@ class ThesslaGreenDeviceScanner:
 
         if max_batch is None:
             max_batch = self.effective_batch
+
+        if self.safe_scan:
+            return [(addr, 1) for addr in sorted(set(addresses))]
 
         # First, compute contiguous blocks using the generic ``group_reads``
         # helper.  ``max_gap`` is kept for API compatibility but is not

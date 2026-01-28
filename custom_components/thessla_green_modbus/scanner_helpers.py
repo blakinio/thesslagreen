@@ -39,7 +39,7 @@ def _format_register_value(name: str, value: int) -> int | str | None:
         decoded = decode_bcd_time(value)
         if decoded is None:
             return None if value == SENSOR_UNAVAILABLE else f"0x{value:04X} (invalid)"
-        return f"{decoded.hour:02d}:{decoded.minute:02d}"
+        return decoded
 
     if name.startswith(TIME_REGISTER_PREFIXES):
         decoded = _decode_register_time(value)
@@ -51,7 +51,8 @@ def _format_register_value(name: str, value: int) -> int | str | None:
         decoded = _decode_aatt(value)
         if decoded is None:
             return None if value == SENSOR_UNAVAILABLE else value
-        airflow, temp = decoded
+        airflow = decoded["airflow_pct"]
+        temp = decoded["temp_c"]
         temp_str = f"{temp:g}"
         return f"{airflow}% @ {temp_str}°C"
 

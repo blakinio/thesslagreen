@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capability_rules import capability_block_reason
 from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -47,6 +48,10 @@ async def async_setup_entry(
     for key, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         register_name = sensor_def.get("register", key)
+
+        if reason := capability_block_reason(register_name, coordinator.capabilities):
+            _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
+            continue
 
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())

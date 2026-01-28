@@ -20,6 +20,7 @@ Key features implemented:
 
 from __future__ import annotations
 
+import logging
 import re
 from enum import Enum
 from typing import Any, Literal
@@ -27,6 +28,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, RootModel, model_validator, validator
 
 from ..utils import _normalise_name
+
+_LOGGER = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -159,11 +162,17 @@ class RegisterDefinition(BaseModel):
             else:
                 raise ValueError("access must be one of 'R', 'RW', 'W'")
 
-        # Normalise address_dec
+        # Normalise address_dec (decimal-only per manufacturer PDF)
         addr_dec = data.get("address_dec")
         if addr_dec is not None:
             if isinstance(addr_dec, str):
-                addr_dec = int(addr_dec, 0)
+                if not re.fullmatch(r"[0-9]+", addr_dec):
+                    _LOGGER.error(
+                        "Register address must be DEC per PDF: %s",
+                        addr_dec,
+                    )
+                    raise ValueError("Register address must be DEC per PDF")
+                addr_dec = int(addr_dec)
             elif not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
                 raise TypeError("address_dec must be int or str")
             data["address_dec"] = addr_dec
@@ -173,13 +182,17 @@ class RegisterDefinition(BaseModel):
         if addr_hex is not None:
             if isinstance(addr_hex, str):
                 addr_hex = addr_hex.lower()
-                addr_hex = addr_hex[2:] if addr_hex.startswith("0x") else addr_hex
-                addr_hex_int = int(addr_hex, 16)
+                if not addr_hex.startswith("0x"):
+                    addr_hex = f"0x{addr_hex}"
+                addr_hex_int = addr_dec if addr_dec is not None else None
             elif isinstance(addr_hex, int) and not isinstance(addr_hex, bool):
                 addr_hex_int = addr_hex
             else:  # pragma: no cover - defensive
                 raise TypeError("address_hex must be str or int")
-            data["address_hex"] = hex(addr_hex_int)
+            if addr_hex_int is None:
+                data["address_hex"] = addr_hex
+            else:
+                data["address_hex"] = hex(addr_hex_int)
         elif addr_dec is not None:
             data["address_hex"] = hex(addr_dec)
 
@@ -239,7 +252,7 @@ class RegisterDefinition(BaseModel):
     @model_validator(mode="after")
     def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
         if self.address_hex is not None and self.address_dec is not None:
-            if int(self.address_hex, 16) != self.address_dec:
+            if self.address_hex.lower() != hex(self.address_dec):
                 raise ValueError("address_hex does not match address_dec")
 
         if self.type is not None:
@@ -289,10 +302,9 @@ class RegisterDefinition(BaseModel):
         bitmask_val = self.extra.get("bitmask") if isinstance(self.extra, dict) else None
         mask_int: int | None = None
         if isinstance(bitmask_val, str):
-            try:
-                mask_int = int(bitmask_val, 0)
-            except ValueError:
-                mask_int = None
+            if not re.fullmatch(r"[0-9]+", bitmask_val):
+                raise ValueError("bitmask must be decimal digits")
+            mask_int = int(bitmask_val)
         elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
             mask_int = bitmask_val
 

@@ -13,8 +13,10 @@ with the upstream specification.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable
 import logging
+from typing import Any, Iterable
+
+from .utils import BCD_TIME_PREFIXES
 
 try:
     from .registers.loader import RegisterDef, get_all_registers
@@ -76,6 +78,16 @@ class RegisterMapEntry:
                 raise ValueError(f"Expected iterable flag list for {self.name}, got {type(value)}")
             return list(value)
 
+        if expected == "bcd_time":
+            if isinstance(value, str) and ":" in value:
+                return value
+            raise ValueError(f"Expected HH:MM string for {self.name}, got {type(value)}")
+
+        if expected == "aatt":
+            if isinstance(value, dict) and {"airflow_pct", "temp_c"} <= set(value):
+                return value
+            raise ValueError(f"Expected airflow/temp dict for {self.name}, got {type(value)}")
+
         if expected == "string":
             return str(value)
 
@@ -111,6 +123,12 @@ def _register_type_from_function(function: int) -> str:
 
 
 def _infer_data_type(definition: RegisterDef) -> str:
+    if definition.name.startswith(BCD_TIME_PREFIXES):
+        return "bcd_time"
+    if definition.name.startswith("setting_") or (
+        definition.extra and definition.extra.get("aatt")
+    ):
+        return "aatt"
     if definition.enum:
         return "enum"
     if definition.extra and definition.extra.get("bitmask"):

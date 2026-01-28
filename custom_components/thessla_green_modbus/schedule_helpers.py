@@ -19,4 +19,5 @@ def bcd_to_time(value: int) -> time:
     decoded = decode_bcd_time(value)
     if decoded is None:
         raise ValueError("Invalid or disabled BCD time value")
-    return decoded
+    hours, minutes = (int(part) for part in decoded.split(":", 1))
+    return time(hours, minutes)

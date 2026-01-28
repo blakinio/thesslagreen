@@ -25,8 +25,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # The registers loader previously created a circular dependency with
 # ``modbus_helpers`` but this has been resolved, allowing the import to
 # appear before this constant.
-MAX_REGS_PER_REQUEST = 16
-MAX_BATCH_REGISTERS = MAX_REGS_PER_REQUEST
+MAX_REGISTERS_PER_REQUEST = 16
+MAX_REGS_PER_REQUEST = MAX_REGISTERS_PER_REQUEST
+MAX_BATCH_REGISTERS = MAX_REGISTERS_PER_REQUEST
 
 
 @cache
@@ -145,6 +146,7 @@ CONF_FORCE_FULL_REGISTER_LIST = "force_full_register_list"
 CONF_ENABLE_DEVICE_SCAN = "enable_device_scan"
 CONF_SCAN_UART_SETTINGS = "scan_uart_settings"
 CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
+CONF_SAFE_SCAN = "safe_scan"
 CONF_AIRFLOW_UNIT = "airflow_unit"
 CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnostics
 CONF_MAX_REGISTERS_PER_REQUEST = "max_registers_per_request"
@@ -162,6 +164,7 @@ DEFAULT_SKIP_MISSING_REGISTERS = False
 DEFAULT_ENABLE_DEVICE_SCAN = True
 DEFAULT_DEEP_SCAN = False
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
+DEFAULT_SAFE_SCAN = False
 DEFAULT_LOG_LEVEL = "info"
 LOG_LEVEL_OPTIONS = ["debug", "info", "warning", "error"]
 

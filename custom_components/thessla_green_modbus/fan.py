@@ -15,7 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, holding_registers
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -50,11 +50,6 @@ async def async_setup_entry(
         ) or register in coordinator.available_registers.get("input_registers", set()):
             has_fan_registers = True
             break
-
-    # If force full register list, assume fan is available
-    if not has_fan_registers and coordinator.force_full_register_list:
-        h_regs = holding_registers()
-        has_fan_registers = any(register in h_regs for register in fan_registers[:2])
 
     if has_fan_registers:
         entities = [ThesslaGreenFan(coordinator)]

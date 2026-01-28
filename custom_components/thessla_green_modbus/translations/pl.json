@@ -67,6 +67,7 @@
           "parity": "Parzystość",
           "stop_bits": "Bity stopu",
           "deep_scan": "Głęboki skan rejestrów",
+          "safe_scan": "Bezpieczny skan (bez grupowania)",
           "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
         },
         "data_description": {
@@ -1307,12 +1308,13 @@
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
           "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
           "deep_scan": "Odczyt surowych rejestrów 0x0000-0x012C do diagnostyki",
+          "safe_scan": "Wyłącz grupowanie; czytaj rejestry pojedynczo (maks. 16 na żądanie)",
           "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)"
         },
         "error": {
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
         },
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Skanowanie urządzenia włączone: {device_scan_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Skanowanie urządzenia włączone: {device_scan_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Bezpieczny skan: {safe_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "Opcje ThesslaGreen Modbus"
       }
     }

@@ -16,6 +16,7 @@ __all__ = [
     "decode_int16",
     "decode_temp_01c",
     "decode_bcd_time",
+    "decode_aatt",
     "encode_bcd_time",
 ]
 
@@ -68,7 +69,7 @@ def _decode_register_time(value: int) -> int | None:
 def _decode_bcd_time(value: int) -> int | None:
     """Decode BCD or decimal HHMM values to minutes since midnight."""
 
-    decoded = decode_bcd_time(value)
+    decoded = _decode_bcd_time_to_time(value)
     if decoded is None:
         return None
     return decoded.hour * 60 + decoded.minute
@@ -90,11 +91,8 @@ def decode_temp_01c(u16: int) -> float | None:
     return decode_int16(u16) / 10
 
 
-def decode_bcd_time(value: int) -> time | None:
-    """Decode BCD or decimal HHMM values to ``datetime.time``.
-
-    Returns ``None`` for disabled/invalid values as defined by the Modbus spec.
-    """
+def _decode_bcd_time_to_time(value: int) -> time | None:
+    """Decode BCD or decimal HHMM values to ``datetime.time``."""
 
     if value in (0x8000, 0xFFFF) or value < 0:
         return None
@@ -117,6 +115,18 @@ def decode_bcd_time(value: int) -> time | None:
     return None
 
 
+def decode_bcd_time(value: int) -> str | None:
+    """Decode BCD or decimal HHMM values to ``HH:MM`` strings.
+
+    Returns ``None`` for disabled/invalid values as defined by the Modbus spec.
+    """
+
+    decoded = _decode_bcd_time_to_time(value)
+    if decoded is None:
+        return None
+    return f"{decoded.hour:02d}:{decoded.minute:02d}"
+
+
 def encode_bcd_time(value: time) -> int:
     """Encode ``datetime.time`` into a BCD HHMM value."""
 
@@ -126,7 +136,7 @@ def encode_bcd_time(value: time) -> int:
     return (_int_to_bcd(value.hour) << 8) | _int_to_bcd(value.minute)
 
 
-def _decode_aatt(value: int) -> tuple[int, float] | None:
+def _decode_aatt(value: int) -> dict[str, float | int] | None:
     """Decode airflow percentage and temperature encoded as ``0xAATT``."""
 
     if value == 0x8000 or value < 0:
@@ -138,7 +148,13 @@ def _decode_aatt(value: int) -> tuple[int, float] | None:
     if airflow > 100 or temp_double > 200:
         return None
 
-    return airflow, temp_double / 2
+    return {"airflow_pct": airflow, "temp_c": temp_double / 2}
+
+
+def decode_aatt(value: int) -> dict[str, float | int] | None:
+    """Decode airflow percentage and temperature encoded as ``0xAATT``."""
+
+    return _decode_aatt(value)
 
 
 # Registers storing times as BCD HHMM values
@@ -149,7 +165,8 @@ BCD_TIME_PREFIXES: tuple[str, ...] = (
     "pres_check_time",
     "start_gwc_regen",
     "stop_gwc_regen",
+    "manual_airing_time_to_start",
 )
 
 # All registers storing times; used for generic time validation
-TIME_REGISTER_PREFIXES: tuple[str, ...] = BCD_TIME_PREFIXES + ("manual_airing_time_to_start",)
+TIME_REGISTER_PREFIXES: tuple[str, ...] = BCD_TIME_PREFIXES

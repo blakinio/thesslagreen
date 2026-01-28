@@ -17,6 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .capability_rules import capability_block_reason
 from .const import (
     AIRFLOW_RATE_REGISTERS,
     AIRFLOW_UNIT_PERCENTAGE,
@@ -54,6 +55,12 @@ async def async_setup_entry(
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
+
+        if reason := capability_block_reason(register_name, coordinator.capabilities):
+            _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
+            if is_temp:
+                temp_skipped += 1
+            continue
 
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
