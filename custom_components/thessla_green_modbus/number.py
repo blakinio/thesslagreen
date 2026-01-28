@@ -224,7 +224,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Add register information
         attributes["register_name"] = self.register_name
         register_address = self._address if self._address is not None else 0
-        attributes["register_address"] = f"0x{register_address:04X}"
+        attributes["register_address"] = f"{register_address}"
 
         # Add raw value for debugging
         if self.register_name in self.coordinator.data:

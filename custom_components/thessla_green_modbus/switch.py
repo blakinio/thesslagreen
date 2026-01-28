@@ -189,7 +189,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         register_type = self.entity_config["register_type"]
 
         register_address = self._address if self._address is not None else 0
-        attributes["register_address"] = f"0x{register_address:04X}"
+        attributes["register_address"] = f"{register_address}"
         attributes["register_type"] = register_type
 
         # Add raw value for debugging

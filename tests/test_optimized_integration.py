@@ -311,11 +311,11 @@ class TestThesslaGreenModbusCoordinator:
     def test_register_grouping(self, coordinator_data):
         """Test register grouping algorithm."""
         registers = {
-            "reg1": 0x0010,
-            "reg2": 0x0011,
-            "reg3": 0x0012,
-            "reg4": 0x0020,  # Gap of 14
-            "reg5": 0x0021,
+            "reg1": 16,
+            "reg2": 17,
+            "reg3": 18,
+            "reg4": 32,  # Gap of 14
+            "reg5": 33,
         }
 
         groups = coordinator_data._create_consecutive_groups(registers)
@@ -323,14 +323,14 @@ class TestThesslaGreenModbusCoordinator:
         # Should create 2 groups
         assert len(groups) == 2
         start_addresses = [start for start, *_ in groups]
-        assert 0x0010 in start_addresses
-        assert 0x0020 in start_addresses
+        assert 16 in start_addresses
+        assert 32 in start_addresses
 
         for start, count, key_map in groups:
-            if start == 0x0010:
+            if start == 16:
                 assert count == 3
                 assert len(key_map) == 3
-            if start == 0x0020:
+            if start == 32:
                 assert count == 2
                 assert len(key_map) == 2
 
@@ -484,8 +484,8 @@ class TestThesslaGreenDeviceScanner:
         # Valid values
         assert scanner._is_valid_register_value("test_register", 100) is True
         assert scanner._is_valid_register_value("mode", 1) is True
-        assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
-        assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x2200) is True
+        assert scanner._is_valid_register_value("schedule_summer_mon_1", 1024) is True
+        assert scanner._is_valid_register_value("schedule_summer_mon_1", 8704) is True
 
         # Temperature sensor marked unavailable should still be considered valid
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
@@ -507,10 +507,10 @@ class TestThesslaGreenDeviceScanner:
 
         # Schedule registers decode HH:MM byte values
         scanner._register_ranges["schedule_start_time"] = (0, 2359)
-        assert scanner._is_valid_register_value("schedule_start_time", 0x081E) is True
-        assert scanner._is_valid_register_value("schedule_start_time", 0x0800) is True
-        assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
-        assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
+        assert scanner._is_valid_register_value("schedule_start_time", 2078) is True
+        assert scanner._is_valid_register_value("schedule_start_time", 2048) is True
+        assert scanner._is_valid_register_value("schedule_start_time", 9312) is False
+        assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
 
     def test_capability_analysis(self):
         """Test capability analysis logic."""
@@ -703,7 +703,7 @@ class TestPerformanceOptimizations:
         )
 
         # Simulate many sequential registers
-        test_registers = {f"reg_{i}": 0x1000 + i for i in range(50)}
+        test_registers = {f"reg_{i}": 4096 + i for i in range(50)}
 
         groups = coordinator._create_consecutive_groups(test_registers)
 

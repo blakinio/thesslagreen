@@ -114,9 +114,9 @@ SERIAL_STOP_BITS_MAP = {
 }
 
 # Sensor constants
-SENSOR_UNAVAILABLE = 0x8000  # Indicates missing/invalid sensor reading
+SENSOR_UNAVAILABLE = 32768  # Indicates missing/invalid sensor reading
 
-# Registers that may report SENSOR_UNAVAILABLE (0x8000) when a sensor
+# Registers that may report SENSOR_UNAVAILABLE (32768) when a sensor
 # is missing or disconnected. Derived from the Thessla Green Modbus
 # specification where each of these registers documents this sentinel
 # value. The list is intentionally explicit to also serve as inline

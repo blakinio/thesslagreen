@@ -16,17 +16,24 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_aatt,
     _decode_bcd_time,
     _decode_register_time,
+    decode_temp_01c,
 )
 
 
 def test_decode_register_time_valid():
     """Ensure byte-encoded HH:MM values decode correctly."""
-    assert _decode_register_time(0x081E) == 510
-    assert _decode_register_time(0x1234) == 1132
-    assert _decode_register_time(0x0000) == 0
+    assert _decode_register_time(2078) == 510
+    assert _decode_register_time(4660) == 1132
+    assert _decode_register_time(0) == 0
 
 
-@pytest.mark.parametrize("value", [0x2460, 0x0960, 0x8000, -1])
+def test_decode_temperature_invalid():
+    """Temperature sentinel returns None while valid values decode."""
+    assert decode_temp_01c(32768) is None
+    assert decode_temp_01c(250) == 25.0
+
+
+@pytest.mark.parametrize("value", [9312, 2400, 32768, -1])
 def test_decode_register_time_invalid(value):
     """Values outside valid hour/minute ranges should return None."""
     assert _decode_register_time(value) is None
@@ -34,13 +41,13 @@ def test_decode_register_time_invalid(value):
 
 def test_decode_bcd_time_valid():
     """BCD and decimal HHMM values should be decoded correctly."""
-    assert _decode_bcd_time(0x1234) == 754
-    assert _decode_bcd_time(0x0800) == 480
+    assert _decode_bcd_time(4660) == 754
+    assert _decode_bcd_time(2048) == 480
     # Decimal fallback: BCD path invalid due to minutes > 59
     assert _decode_bcd_time(615) == 375
 
 
-@pytest.mark.parametrize("value", [0x2460, 2400, 0x8000, -1, 0x1A59])
+@pytest.mark.parametrize("value", [9312, 2400, 32768, -1, 6745])
 def test_decode_bcd_time_invalid(value):
     """Invalid BCD or decimal times should return None."""
     assert _decode_bcd_time(value) is None
@@ -48,19 +55,19 @@ def test_decode_bcd_time_invalid(value):
 
 def test_schedule_register_time_format():
     """Schedule registers decode to HH:MM string representation."""
-    minutes = _decode_bcd_time(0x0815)
+    minutes = _decode_bcd_time(2069)
     assert minutes == 8 * 60 + 15
     assert f"{minutes // 60:02d}:{minutes % 60:02d}" == "08:15"
 
 
 def test_decode_aatt_value_valid():
     """Verify combined airflow/temperature registers decode correctly."""
-    assert _decode_aatt(0x3C28) == (60, 20.0)
-    assert _decode_aatt(0x6432) == (100, 25.0)
-    assert _decode_aatt(0x0000) == (0, 0.0)
+    assert _decode_aatt(15400) == (60, 20.0)
+    assert _decode_aatt(25650) == (100, 25.0)
+    assert _decode_aatt(0) == (0, 0.0)
 
 
-@pytest.mark.parametrize("value", [-1, 0xFF28, 0x3DFF, 0x8000])
+@pytest.mark.parametrize("value", [-1, 65320, 15871, 32768])
 def test_decode_aatt_value_invalid(value):
     """Values outside expected ranges should return None."""
     assert _decode_aatt(value) is None
@@ -71,14 +78,14 @@ def test_schedule_and_setting_defaults_valid():
     scanner = ThesslaGreenDeviceScanner("127.0.0.1", 502)
     _, ranges = asyncio.run(scanner._load_registers())
     scanner._register_ranges = ranges
-    assert scanner._is_valid_register_value("schedule_winter_sun_3", 0x1000)
-    assert scanner._is_valid_register_value("setting_summer_mon_1", 0x4100)
+    assert scanner._is_valid_register_value("schedule_winter_sun_3", 4096)
+    assert scanner._is_valid_register_value("setting_summer_mon_1", 16640)
 
 
 def test_register_decode_encode_bcd():
     reg = Register(function=3, address=0, name="schedule_test_start", access="rw", bcd=True)
-    assert reg.decode(0x0815) == "08:15"
-    assert reg.encode("08:15") == 0x0815
+    assert reg.decode(2069) == "08:15"
+    assert reg.encode("08:15") == 2069
 
 
 def test_register_decode_encode_aatt():
@@ -89,25 +96,25 @@ def test_register_decode_encode_aatt():
         access="rw",
         extra={"aatt": True},
     )
-    assert reg.decode(0x3C28) == (60, 20.0)
-    assert reg.encode((60, 20)) == 0x3C28
+    assert reg.decode(15400) == (60, 20.0)
+    assert reg.encode((60, 20)) == 15400
 
 
 def test_register_decode_unavailable_value():
-    """Sentinel value 0x8000 should decode to None."""
+    """Sentinel value 32768 should decode to None."""
     reg = Register(function=4, address=0, name="temp", access="ro")
-    assert reg.decode(0x8000) is None
+    assert reg.decode(32768) is None
 
 
 def test_decode_season_mode_special_value():
-    """Season mode decoder should treat 0x8000 as undefined."""
-    assert _decode_season_mode(0x8000) is None
+    """Season mode decoder should treat 32768 as undefined."""
+    assert _decode_season_mode(32768) is None
 
 
 def test_format_register_value_special_values():
     """Formatter should return None for sentinel values."""
-    assert _format_register_value("schedule_test", 0x8000) is None
-    assert _format_register_value("setting_test", 0x8000) is None
+    assert _format_register_value("schedule_test", 32768) is None
+    assert _format_register_value("setting_test", 32768) is None
 
 
 def test_register_bitmask_decode_encode():
@@ -153,7 +160,7 @@ def test_register_decode_encode_string_multi():
 
 def test_register_decode_encode_uint32():
     reg = next(r for r in get_registers_by_function("03") if r.name == "lock_pass")
-    raw = [0x423F, 0x000F]
+    raw = [16959, 15]
     assert reg.decode(raw) == 999999
     assert reg.encode(999999) == raw
 
@@ -182,7 +189,7 @@ def test_multi_register_decode_string() -> None:
         length=3,
         extra={"type": "string"},
     )
-    raw = [0x4142, 0x4344, 0x4500]  # "ABCDE"
+    raw = [16706, 17220, 17664]  # "ABCDE"
     assert reg.decode(raw) == "ABCDE"
 
 
@@ -212,8 +219,8 @@ def test_multi_register_decode_int32() -> None:
         length=2,
         extra={"type": "i32"},
     )
-    raw = [0x1234, 0x5678]
-    assert reg.decode(raw) == 0x12345678
+    raw = [4660, 22136]
+    assert reg.decode(raw) == 305419896
 
 
 @pytest.fixture

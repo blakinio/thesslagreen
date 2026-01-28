@@ -73,7 +73,7 @@ async def test_read_holding_skips_after_failure():
         ) as call_mock1,
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_holding(mock_client, 0x00A8, 1)
+        result = await scanner._read_holding(mock_client, 168, 1)
         assert result is None
         assert call_mock1.await_count == scanner.retry
 
@@ -82,11 +82,11 @@ async def test_read_holding_skips_after_failure():
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
-        result = await scanner._read_holding(mock_client, 0x00A8, 1)
+        result = await scanner._read_holding(mock_client, 168, 1)
         assert result is None
         call_mock2.assert_not_called()
 
-    assert 0x00A8 in scanner._failed_holding
+    assert 168 in scanner._failed_holding
 
 
 async def test_read_holding_exception_response(caplog):
@@ -106,7 +106,7 @@ async def test_read_holding_exception_response(caplog):
         patch("asyncio.sleep", AsyncMock()),
         caplog.at_level(logging.DEBUG),
     ):
-        result = await scanner._read_holding(mock_client, 0x0001, 1)
+        result = await scanner._read_holding(mock_client, 1, 1)
 
     assert result is None
     assert call_mock.await_count == scanner.retry
@@ -126,18 +126,18 @@ async def test_read_holding_timeout_logging(caplog):
         patch("asyncio.sleep", AsyncMock()),
         caplog.at_level(logging.WARNING),
     ):
-        result = await scanner._read_holding(mock_client, 0x0001, 1)
+        result = await scanner._read_holding(mock_client, 1, 1)
 
     assert result is None
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
-    assert any("Timeout reading holding 0x0001" in msg for msg in warnings)
+    assert any("Timeout reading holding 1" in msg for msg in warnings)
     errors = [r.message for r in caplog.records if r.levelno == logging.ERROR]
-    assert any("Failed to read holding registers 0x0001-0x0001" in msg for msg in errors)
+    assert any("Failed to read holding registers 1-1" in msg for msg in errors)
 
 
 @pytest.mark.parametrize(
     "method, address",
-    [("_read_input", 0x0001), ("_read_holding", 0x0001)],
+    [("_read_input", 1), ("_read_holding", 1)],
 )
 async def test_read_backoff_delay(method, address):
     """Ensure exponential backoff delays between retries."""
@@ -162,7 +162,7 @@ async def test_read_backoff_delay(method, address):
 
 @pytest.mark.parametrize(
     "method, address",
-    [("_read_input", 0x0001), ("_read_holding", 0x0001)],
+    [("_read_input", 1), ("_read_holding", 1)],
 )
 async def test_read_default_delay(method, address):
     """Use default delay when backoff is not specified."""
@@ -188,8 +188,8 @@ async def test_read_default_delay(method, address):
 @pytest.mark.parametrize(
     "func, address",
     [
-        (ThesslaGreenDeviceScanner._read_coil, 0x0000),
-        (ThesslaGreenDeviceScanner._read_discrete, 0x0000),
+        (ThesslaGreenDeviceScanner._read_coil, 0),
+        (ThesslaGreenDeviceScanner._read_discrete, 0),
     ],
 )
 async def test_read_binary_backoff_delay(func, address):
@@ -215,8 +215,8 @@ async def test_read_binary_backoff_delay(func, address):
 @pytest.mark.parametrize(
     "func, address",
     [
-        (ThesslaGreenDeviceScanner._read_coil, 0x0000),
-        (ThesslaGreenDeviceScanner._read_discrete, 0x0000),
+        (ThesslaGreenDeviceScanner._read_coil, 0),
+        (ThesslaGreenDeviceScanner._read_discrete, 0),
     ],
 )
 async def test_read_binary_default_delay(func, address):
@@ -252,11 +252,11 @@ async def test_read_input_logs_warning_on_failure(caplog):
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_input(mock_client, 0x0001, 1)
+        result = await scanner._read_input(mock_client, 1, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert "Device does not expose register 0x0001" in caplog.text
+    assert "Device does not expose register 1" in caplog.text
 
 
 async def test_read_input_skips_cached_failures():
@@ -271,18 +271,18 @@ async def test_read_input_skips_cached_failures():
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_input(mock_client, 0x0001, 1)
+        result = await scanner._read_input(mock_client, 1, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
-    assert {0x0001} <= scanner._failed_input
+    assert {1} <= scanner._failed_input
 
     # Subsequent call should be skipped
     with patch(
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
-        result = await scanner._read_input(mock_client, 0x0001, 1)
+        result = await scanner._read_input(mock_client, 1, 1)
         assert result is None
         call_mock2.assert_not_called()
 
@@ -301,21 +301,21 @@ async def test_read_input_skips_range_on_exception_response(caplog):
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(return_value=error_response),
     ) as call_mock:
-        result = await scanner._read_input(mock_client, 0x0100, 3)
+        result = await scanner._read_input(mock_client, 256, 3)
 
     scanner._log_skipped_ranges()
 
     assert result is None
     assert call_mock.await_count == 1
-    assert set(range(0x0100, 0x0103)) <= scanner._failed_input
-    assert "Skipping unsupported input registers 0x0100-0x0102 (exception code 2)" in caplog.text
+    assert set(range(256, 259)) <= scanner._failed_input
+    assert "Skipping unsupported input registers 256-258 (exception code 2)" in caplog.text
 
     # Further reads within the range should be skipped without new calls
     with patch(
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
-        result = await scanner._read_input(mock_client, 0x0101, 1)
+        result = await scanner._read_input(mock_client, 257, 1)
         assert result is None
         call_mock2.assert_not_called()
 
@@ -334,21 +334,21 @@ async def test_read_holding_skips_range_on_exception_response(caplog):
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(return_value=error_response),
     ) as call_mock:
-        result = await scanner._read_holding(mock_client, 0x0200, 2)
+        result = await scanner._read_holding(mock_client, 512, 2)
 
     scanner._log_skipped_ranges()
 
     assert result is None
     assert call_mock.await_count == 1
-    assert (0x0200, 0x0201) in scanner._unsupported_holding_ranges
-    assert "Skipping unsupported holding registers 0x0200-0x0201 (exception code 2)" in caplog.text
+    assert (512, 513) in scanner._unsupported_holding_ranges
+    assert "Skipping unsupported holding registers 512-513 (exception code 2)" in caplog.text
 
     # Further reads within the range should be skipped without new calls
     with patch(
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
-        result = await scanner._read_holding(mock_client, 0x0201, 1)
+        result = await scanner._read_holding(mock_client, 513, 1)
         assert result is None
         call_mock2.assert_not_called()
 
@@ -357,8 +357,8 @@ async def test_read_holding_skip_cache_reads_unsupported_range():
     """Single reads are attempted even if range was marked unsupported."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
     mock_client = AsyncMock()
-    scanner._unsupported_holding_ranges[(0x0200, 0x0201)] = 1
-    scanner._failed_holding.update({0x0200, 0x0201})
+    scanner._unsupported_holding_ranges[(512, 513)] = 1
+    scanner._failed_holding.update({512, 513})
 
     response = MagicMock()
     response.isError.return_value = False
@@ -368,7 +368,7 @@ async def test_read_holding_skip_cache_reads_unsupported_range():
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(return_value=response),
     ) as call_mock:
-        result = await scanner._read_holding(mock_client, 0x0200, 1, skip_cache=True)
+        result = await scanner._read_holding(mock_client, 512, 1, skip_cache=True)
 
     assert result == [123]
     call_mock.assert_awaited_once()
@@ -378,8 +378,8 @@ async def test_single_read_clears_failed_holding_cache():
     """Successful single reads remove addresses from cached failure ranges."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
     client = AsyncMock()
-    scanner._mark_holding_unsupported(0x0300, 0x0302, 1)
-    scanner._failed_holding.update({0x0300, 0x0301, 0x0302})
+    scanner._mark_holding_unsupported(768, 770, 1)
+    scanner._failed_holding.update({768, 769, 770})
 
     response = MagicMock()
     response.isError.return_value = False
@@ -389,38 +389,38 @@ async def test_single_read_clears_failed_holding_cache():
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         AsyncMock(return_value=response),
     ) as call_mock:
-        result = await scanner._read_holding(client, 0x0301, 1, skip_cache=True)
+        result = await scanner._read_holding(client, 769, 1, skip_cache=True)
 
     assert result == [55]
     call_mock.assert_awaited_once()
-    assert 0x0301 not in scanner._failed_holding
-    assert (0x0300, 0x0300) in scanner._unsupported_holding_ranges
-    assert (0x0302, 0x0302) in scanner._unsupported_holding_ranges
-    assert all(not (start <= 0x0301 <= end) for start, end in scanner._unsupported_holding_ranges)
+    assert 769 not in scanner._failed_holding
+    assert (768, 768) in scanner._unsupported_holding_ranges
+    assert (770, 770) in scanner._unsupported_holding_ranges
+    assert all(not (start <= 769 <= end) for start, end in scanner._unsupported_holding_ranges)
 
 
 async def test_log_skipped_ranges_no_overlap(caplog):
     """Logged skipped ranges should not contain overlaps."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
-    scanner._mark_holding_unsupported(0x0400, 0x0404, 1)
-    scanner._mark_holding_unsupported(0x0402, 0x0406, 2)
+    scanner._mark_holding_unsupported(1024, 1028, 1)
+    scanner._mark_holding_unsupported(1026, 1030, 2)
 
     with caplog.at_level(logging.WARNING):
         scanner._log_skipped_ranges()
 
-    assert "0x0400-0x0401 (exception code 1)" in caplog.text
-    assert "0x0402-0x0406 (exception code 2)" in caplog.text
-    assert "0x0400-0x0404" not in caplog.text
+    assert "1024-1025 (exception code 1)" in caplog.text
+    assert "1026-1030 (exception code 2)" in caplog.text
+    assert "1024-1028" not in caplog.text
 
 
 async def test_read_input_logs_once_per_skipped_range(caplog):
     """Only one log message is emitted per skipped register range."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
-    scanner._failed_input.update({0x0001, 0x0002, 0x0003})
+    scanner._failed_input.update({1, 2, 3})
 
     caplog.set_level(logging.DEBUG)
-    for addr in range(0x0001, 0x0004):
+    for addr in range(1, 4):
         result = await scanner._read_input(mock_client, addr, 1)
         assert result is None
 
@@ -429,7 +429,7 @@ async def test_read_input_logs_once_per_skipped_range(caplog):
         for record in caplog.records
         if "Skipping cached failed input registers" in record.message
     ]
-    assert messages == ["Skipping cached failed input registers 0x0001-0x0003"]
+    assert messages == ["Skipping cached failed input registers 1-3"]
 
 
 async def test_read_holding_exponential_backoff(caplog):
@@ -448,12 +448,12 @@ async def test_read_holding_exponential_backoff(caplog):
         ) as sleep_mock,
         caplog.at_level(logging.WARNING),
     ):
-        result = await scanner._read_holding(client, 0x0001, 1)
+        result = await scanner._read_holding(client, 1, 1)
 
     assert result is None
     assert sleep_mock.await_args_list == [call(0.5), call(1.0)]
     assert any(
-        "Failed to read holding registers 0x0001-0x0001" in record.message
+        "Failed to read holding registers 1-1" in record.message
         for record in caplog.records
     )
 
@@ -476,7 +476,7 @@ async def test_read_holding_returns_none_on_modbus_error():
             AsyncMock(),
         ),
     ):
-        result = await scanner._read_holding(client, 0x0001, 1)
+        result = await scanner._read_holding(client, 1, 1)
 
     assert result is None
     assert call_modbus.await_count == scanner.retry
@@ -490,8 +490,8 @@ async def test_scan_device_success_dynamic():
         if address == 0:
             data = [4, 85, 0, 0, 0]
             return data[:count]
-        if address == 0x0018:
-            return [0x001A, 0x002B, 0x003C, 0x004D, 0x005E, 0x006F][:count]
+        if address == 24:
+            return [26, 43, 60, 77, 94, 111][:count]
         return [1] * count
 
     async def fake_read_holding(client, address, count, **kwargs):
@@ -554,7 +554,7 @@ async def test_read_coil_retries_on_failure(caplog):
         caplog.at_level(logging.DEBUG),
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_coil(mock_client, 0x0000, 1)
+        result = await scanner._read_coil(mock_client, 0, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
@@ -572,7 +572,7 @@ async def test_read_discrete_retries_on_failure(caplog):
         caplog.at_level(logging.DEBUG),
         patch("asyncio.sleep", AsyncMock()),
     ):
-        result = await scanner._read_discrete(mock_client, 0x0000, 1)
+        result = await scanner._read_discrete(mock_client, 0, 1)
         assert result is None
         assert call_mock.await_count == scanner.retry
 
@@ -905,19 +905,19 @@ async def test_scan_device_batch_fallback():
     with (
         patch(
             "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
-            {"ir1": 0x10, "ir2": 0x11},
+            {"ir1": 16, "ir2": 17},
         ),
         patch(
             "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
-            {"hr1": 0x20, "hr2": 0x21},
+            {"hr1": 32, "hr2": 33},
         ),
         patch(
             "custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS",
-            {"cr1": 0x00, "cr2": 0x01},
+            {"cr1": 0, "cr2": 1},
         ),
         patch(
             "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
-            {"dr1": 0x00, "dr2": 0x01},
+            {"dr1": 0, "dr2": 1},
         ),
         patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
     ):
@@ -942,12 +942,12 @@ async def test_scan_device_batch_fallback():
     assert set(result["available_registers"]["discrete_inputs"]) == {"dr1", "dr2"}
 
     # Ensure batch read was attempted and individual fallback reads occurred
-    batch_calls = [call for call in ri.await_args_list if call.args[1] == 0x10]
+    batch_calls = [call for call in ri.await_args_list if call.args[1] == 16]
     assert any(call.args[2] == 2 for call in batch_calls)
 
     single_calls = [call.args[1] for call in ri.await_args_list if call.args[2] == 1]
-    assert single_calls.count(0x10) == 1
-    assert single_calls.count(0x11) == 1
+    assert single_calls.count(16) == 1
+    assert single_calls.count(17) == 1
 
 
 async def test_missing_register_logged_once(caplog):
@@ -964,9 +964,9 @@ async def test_missing_register_logged_once(caplog):
 
     async def fake_read_input(client, address, count, **kwargs):
         call_log.append((address, count))
-        if address == 0x0000 and count == 5:
+        if address == 0 and count == 5:
             return [4, 85, 0, 0, 0]
-        if address == 0x0018 and count == 6:
+        if address == 24 and count == 6:
             return [0] * 6
         if address == 1 and count == 2:
             return None
@@ -1022,7 +1022,7 @@ async def test_missing_register_logged_once(caplog):
     assert call_log.count((2, 1)) == 1
 
     # Missing register logged only once
-    assert caplog.text.count("Failed to read input_registers register 0x0002") == 1
+    assert caplog.text.count("Failed to read input_registers register 2") == 1
 
     # Only valid register is reported as available
     assert "reg_ok" in result["available_registers"]["input_registers"]
@@ -1106,56 +1106,56 @@ async def test_is_valid_register_value():
         log_mock.assert_not_called()
     # HH:MM time registers
     scanner._register_ranges["schedule_start_time"] = (0, 2359)
-    assert scanner._is_valid_register_value("schedule_start_time", 0x081E) is True
-    assert scanner._is_valid_register_value("schedule_start_time", 0x0800) is True
-    assert scanner._is_valid_register_value("schedule_start_time", 0x2460) is False
-    assert scanner._is_valid_register_value("schedule_start_time", 0x0960) is False
+    assert scanner._is_valid_register_value("schedule_start_time", 2078) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 2048) is True
+    assert scanner._is_valid_register_value("schedule_start_time", 9312) is False
+    assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
     # BCD encoded times should also be recognized as valid
-    assert scanner._is_valid_register_value("schedule_winter_mon_4", 0x2200) is True
+    assert scanner._is_valid_register_value("schedule_winter_mon_4", 8704) is True
     # Typical schedule and setting values
-    assert scanner._is_valid_register_value("schedule_summer_mon_1", 0x0400) is True
-    assert scanner._is_valid_register_value("setting_winter_mon_1", 0x322C) is True
+    assert scanner._is_valid_register_value("schedule_summer_mon_1", 1024) is True
+    assert scanner._is_valid_register_value("setting_winter_mon_1", 12844) is True
 
 
 async def test_decode_register_time():
     """Verify time decoding for HH:MM byte-encoded values."""
-    assert _decode_register_time(0x0400) == 240
-    assert _decode_register_time(0x081E) == 510
-    assert _decode_register_time(0x1234) == 1132
-    assert _decode_register_time(0x2460) is None
-    assert _decode_register_time(0x0960) is None
+    assert _decode_register_time(1024) == 240
+    assert _decode_register_time(2078) == 510
+    assert _decode_register_time(4660) == 1132
+    assert _decode_register_time(9312) is None
+    assert _decode_register_time(2400) is None
 
 
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
-    assert _decode_bcd_time(0x0400) == 240
-    assert _decode_bcd_time(0x1234) == 754
-    assert _decode_bcd_time(0x0800) == 480
-    assert _decode_bcd_time(0x2460) is None
+    assert _decode_bcd_time(1024) == 240
+    assert _decode_bcd_time(4660) == 754
+    assert _decode_bcd_time(2048) == 480
+    assert _decode_bcd_time(9312) is None
     assert _decode_bcd_time(2400) is None
 
 
 async def test_decode_aatt_value():
     """Verify decoding of combined airflow and temperature settings."""
-    assert _decode_aatt(0x3C28) == (60, 20.0)
-    assert _decode_aatt(0x322C) == (50, 22.0)
+    assert _decode_aatt(15400) == (60, 20.0)
+    assert _decode_aatt(12844) == (50, 22.0)
     assert _decode_aatt(-1) is None
-    assert _decode_aatt(0xFF28) is None
+    assert _decode_aatt(65320) is None
 
 
 async def test_format_register_value_schedule():
     """Formatted schedule registers should render as HH:MM."""
-    assert _format_register_value("schedule_summer_mon_1", 0x0615) == "06:15"
+    assert _format_register_value("schedule_summer_mon_1", 1557) == "06:15"
 
 
 async def test_format_register_value_manual_airing_le():
     """Little-endian manual airing times should decode correctly."""
-    assert _format_register_value("manual_airing_time_to_start", 0x1E08) == "08:30"
+    assert _format_register_value("manual_airing_time_to_start", 7688) == "08:30"
 
 
 async def test_format_register_value_airing_schedule():
     """Airing schedule registers should render as HH:MM."""
-    assert _format_register_value("airing_summer_mon", 0x0615) == "06:15"
+    assert _format_register_value("airing_summer_mon", 1557) == "06:15"
 
 
 async def test_format_register_value_airing_durations():
@@ -1169,12 +1169,12 @@ async def test_format_register_value_airing_durations():
 
 async def test_format_register_value_setting():
     """Formatted setting registers should show percent and temperature."""
-    assert _format_register_value("setting_winter_mon_1", 0x3C28) == "60% @ 20°C"
+    assert _format_register_value("setting_winter_mon_1", 15400) == "60% @ 20°C"
 
 
 async def test_format_register_value_invalid_time():
     """Invalid time registers should show raw hex with invalid marker."""
-    assert _format_register_value("schedule_summer_mon_1", 0x2400) == "0x2400 (invalid)"
+    assert _format_register_value("schedule_summer_mon_1", 9216) == "9216 (invalid)"
 
 
 async def test_scan_excludes_unavailable_temperature():
@@ -1462,7 +1462,7 @@ async def test_log_invalid_value_debug_when_not_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert "Invalid value for test_register: raw=0x0001 decoded=1" in caplog.text
+    assert "Invalid value for test_register: raw=1 decoded=1" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
@@ -1478,13 +1478,13 @@ async def test_log_invalid_value_info_then_debug_when_verbose(caplog):
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.INFO
-    assert "raw=0x0001" in caplog.text
+    assert "raw=1" in caplog.text
 
     caplog.clear()
     scanner._log_invalid_value("test_register", 1)
 
     assert caplog.records[0].levelno == logging.DEBUG
-    assert "raw=0x0001" in caplog.text
+    assert "raw=1" in caplog.text
 
 
 async def test_log_invalid_value_raw_and_formatted(caplog):
@@ -1492,9 +1492,9 @@ async def test_log_invalid_value_raw_and_formatted(caplog):
     scanner = ThesslaGreenDeviceScanner("host", 502)
 
     caplog.set_level(logging.DEBUG)
-    scanner._log_invalid_value("schedule_time", 0x1600)
+    scanner._log_invalid_value("schedule_time", 5632)
 
-    assert "raw=0x1600" in caplog.text
+    assert "raw=5632" in caplog.text
     assert "decoded=16:00" in caplog.text
 
 
@@ -1503,10 +1503,10 @@ async def test_log_invalid_value_invalid_time(caplog):
     scanner = ThesslaGreenDeviceScanner("host", 502)
 
     caplog.set_level(logging.DEBUG)
-    scanner._log_invalid_value("schedule_time", 0x2400)
+    scanner._log_invalid_value("schedule_time", 9216)
 
-    assert "raw=0x2400" in caplog.text
-    assert "decoded=0x2400 (invalid)" in caplog.text
+    assert "raw=9216" in caplog.text
+    assert "decoded=9216 (invalid)" in caplog.text
 
 
 async def test_failed_addresses_recorded_on_exception():
@@ -1589,7 +1589,7 @@ async def test_deep_scan_collects_raw_registers():
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, deep_scan=True)
         result = await scanner.scan_device()
 
-    expected = 0x012C - 0x000E + 1
+    expected = 300 - 14 + 1
     assert len(result["raw_registers"]) == expected
     assert result["total_addresses_scanned"] == expected
 
@@ -1641,4 +1641,4 @@ async def test_scan_logs_missing_expected_registers(caplog):
         ):
             await scanner.scan()
 
-    assert "reg_a=0x0004" in caplog.text
+    assert "reg_a=4" in caplog.text

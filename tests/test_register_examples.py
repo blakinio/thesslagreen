@@ -23,15 +23,15 @@ def test_holding_multiplier_resolution_and_bcd():
     assert scaling.encode(22.5) == 45
 
     schedule = Register(function=3, address=4097, name="schedule", access="rw", bcd=True)
-    assert schedule.decode(0x0815) == "08:15"
-    assert schedule.encode("08:15") == 0x0815
+    assert schedule.decode(2069) == "08:15"
+    assert schedule.encode("08:15") == 2069
 
 
 def test_input_extra_aatt_and_sentinel():
     """Function 04 registers support extra aatt and sentinel values."""
     combined = Register(function=4, address=16, name="combined", access="ro", extra={"aatt": True})
-    assert combined.decode(0x3C28) == (60, 20.0)
-    assert combined.encode((60, 20.0)) == 0x3C28
+    assert combined.decode(15400) == (60, 20.0)
+    assert combined.encode((60, 20.0)) == 15400
 
     sensor = Register(function=4, address=17, name="sensor", access="ro")
-    assert sensor.decode(0x8000) is None
+    assert sensor.decode(32768) is None

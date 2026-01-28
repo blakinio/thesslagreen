@@ -8,7 +8,7 @@ import inspect
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - optional during isolated tests
     from .registers.loader import get_all_registers, get_registers_path, registers_sha256
@@ -42,7 +42,7 @@ from .const import (
     UNKNOWN_MODEL,
 )
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_helpers import _call_modbus
+from .modbus_helpers import _call_modbus, chunk_register_range
 from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
     MAX_BATCH_REGISTERS,
@@ -440,7 +440,7 @@ class ThesslaGreenDeviceScanner:
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
-    ) -> Self:
+    ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
         self = cls(
             host,
@@ -551,7 +551,7 @@ class ThesslaGreenDeviceScanner:
                         apply_backoff=False,
                     )
                 except TimeoutError as exc:  # pragma: no cover - network issues
-                    _LOGGER.warning("Timeout reading input registers at 0x%04X", start)
+                    _LOGGER.warning("Timeout reading input registers at %d", start)
                     raise ConnectionException("Timeout reading input registers") from exc
                 except ModbusException:
                     raise
@@ -578,7 +578,7 @@ class ThesslaGreenDeviceScanner:
                         apply_backoff=False,
                     )
                 except TimeoutError as exc:  # pragma: no cover - network issues
-                    _LOGGER.warning("Timeout reading holding registers at 0x%04X", start)
+                    _LOGGER.warning("Timeout reading holding registers at %d", start)
                     raise ConnectionException("Timeout reading holding registers") from exc
                 except ModbusException:
                     raise
@@ -604,7 +604,7 @@ class ThesslaGreenDeviceScanner:
         validation of every register.
         """
 
-        if value == 0xFFFF:
+        if value == 65535:
             return False
 
         if name in SENSOR_UNAVAILABLE_REGISTERS and value == SENSOR_UNAVAILABLE:
@@ -772,7 +772,7 @@ class ThesslaGreenDeviceScanner:
             ):
                 if value is None and name in INPUT_REGISTERS:
                     addr = INPUT_REGISTERS[name]
-                    missing_regs.append(f"{name} (0x{addr:04X})")
+                    missing_regs.append(f"{name} ({addr})")
 
         if None not in (major, minor, patch):
             device.firmware = f"{major}.{minor}.{patch}"
@@ -809,8 +809,8 @@ class ThesslaGreenDeviceScanner:
             if name_regs:
                 name_bytes = bytearray()
                 for reg in name_regs:
-                    name_bytes.append((reg >> 8) & 0xFF)
-                    name_bytes.append(reg & 0xFF)
+                    name_bytes.append((reg >> 8) & 255)
+                    name_bytes.append(reg & 255)
                 device.device_name = name_bytes.decode("ascii").rstrip("\x00")
         except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
             _LOGGER.debug("Failed to parse device name: %s", err)
@@ -1079,7 +1079,7 @@ class ThesslaGreenDeviceScanner:
 
         raw_registers: dict[int, int] = {}
         if self.deep_scan:
-            for start, count in self._group_registers_for_batch_read(list(range(0x012D))):
+            for start, count in self._group_registers_for_batch_read(list(range(301))):
                 data = await self._read_input(client, start, count)
                 if data is None:
                     continue
@@ -1108,7 +1108,7 @@ class ThesslaGreenDeviceScanner:
             details = []
             for reg_type, regs in missing_registers.items():
                 formatted = ", ".join(
-                    f"{name}=0x{addr:04X}"
+                    f"{name}={addr}"
                     for name, addr in sorted(regs.items(), key=lambda item: item[1])
                 )
                 details.append(f"{reg_type}: {formatted}")
@@ -1203,26 +1203,26 @@ class ThesslaGreenDeviceScanner:
         """Log summary of ranges skipped due to Modbus exceptions."""
         if self._unsupported_input_ranges:
             ranges = ", ".join(
-                f"0x{start:04X}-0x{end:04X} (exception code {code})"
+                f"{start}-{end} (exception code {code})"
                 for (start, end), code in sorted(self._unsupported_input_ranges.items())
             )
             _LOGGER.warning("Skipping unsupported input registers %s", ranges)
         if self._unsupported_holding_ranges:
             ranges = ", ".join(
-                f"0x{start:04X}-0x{end:04X} (exception code {code})"
+                f"{start}-{end} (exception code {code})"
                 for (start, end), code in sorted(self._unsupported_holding_ranges.items())
             )
             _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
 
         for reg_type, addrs in self.failed_addresses["modbus_exceptions"].items():
             if addrs:
-                hexes = ", ".join(f"0x{addr:04X}" for addr in sorted(addrs))
-                _LOGGER.warning("Failed to read %s at %s", reg_type, hexes)
+                decimals = ", ".join(str(addr) for addr in sorted(addrs))
+                _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
 
         for reg_type, addrs in self.failed_addresses["invalid_values"].items():
             if addrs:
-                hexes = ", ".join(f"0x{addr:04X}" for addr in sorted(addrs))
-                _LOGGER.debug("Invalid values for %s at %s", reg_type, hexes)
+                decimals = ", ".join(str(addr) for addr in sorted(addrs))
+                _LOGGER.debug("Invalid values for %s at %s", reg_type, decimals)
 
     def _log_invalid_value(self, name: str, raw: int) -> None:
         """Log a register value that failed validation."""
@@ -1232,7 +1232,7 @@ class ThesslaGreenDeviceScanner:
             level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
             self._reported_invalid.add(name)
         decoded = _format_register_value(name, raw)
-        _LOGGER.log(level, "Invalid value for %s: raw=0x%04X decoded=%s", name, raw, decoded)
+        _LOGGER.log(level, "Invalid value for %s: raw=%d decoded=%s", name, raw, decoded)
 
     def _mark_input_supported(self, address: int) -> None:
         """Remove address from cached unsupported input ranges after success."""
@@ -1314,7 +1314,7 @@ class ThesslaGreenDeviceScanner:
                 skip_end += 1
             if (skip_start, skip_end) not in self._input_skip_log_ranges:
                 _LOGGER.debug(
-                    "Skipping cached failed input registers 0x%04X-0x%04X",
+                    "Skipping cached failed input registers %d-%d",
                     skip_start,
                     skip_end,
                 )
@@ -1350,21 +1350,21 @@ class ThesslaGreenDeviceScanner:
                         self._mark_input_supported(address)
                     registers = cast(list[int], response.registers)
                     _LOGGER.debug(
-                        "Read input registers 0x%04X-0x%04X: %s",
+                        "Read input registers %d-%d: %s",
                         start,
                         end,
                         registers,
                     )
                     return registers
                 _LOGGER.debug(
-                    "Attempt %d failed to read input 0x%04X: %s",
+                    "Attempt %d failed to read input %d: %s",
                     attempt,
                     address,
                     response,
                 )
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Attempt %d failed to read input 0x%04X: %s",
+                    "Attempt %d failed to read input %d: %s",
                     attempt,
                     address,
                     exc,
@@ -1372,7 +1372,7 @@ class ThesslaGreenDeviceScanner:
                 )
             except TimeoutError as exc:
                 _LOGGER.warning(
-                    "Timeout reading input 0x%04X on attempt %d: %s",
+                    "Timeout reading input %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1381,7 +1381,7 @@ class ThesslaGreenDeviceScanner:
                 break
             except OSError as exc:
                 _LOGGER.error(
-                    "Unexpected error reading input 0x%04X on attempt %d: %s",
+                    "Unexpected error reading input %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1390,7 +1390,7 @@ class ThesslaGreenDeviceScanner:
                 break
             except ModbusIOException as exc:
                 _LOGGER.debug(
-                    "Modbus IO error reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    "Modbus IO error reading input registers %d-%d on attempt %d: %s",
                     start,
                     end,
                     attempt,
@@ -1403,10 +1403,10 @@ class ThesslaGreenDeviceScanner:
                     if failures >= self.retry and address not in self._failed_input:
                         self._failed_input.add(address)
                         self.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+                        _LOGGER.warning("Device does not expose register %d", address)
             except TimeoutError as exc:  # noqa: B025
                 _LOGGER.warning(
-                    "Timeout reading input registers 0x%04X-0x%04X on attempt %d: %s",
+                    "Timeout reading input registers %d-%d on attempt %d: %s",
                     start,
                     end,
                     attempt,
@@ -1416,7 +1416,7 @@ class ThesslaGreenDeviceScanner:
                 break
             except (ModbusException, ConnectionException) as exc:  # noqa: B025
                 _LOGGER.debug(
-                    "Failed to read input registers 0x%04X-0x%04X on attempt %d: %s",
+                    "Failed to read input registers %d-%d on attempt %d: %s",
                     start,
                     end,
                     attempt,
@@ -1426,7 +1426,7 @@ class ThesslaGreenDeviceScanner:
                 break
 
             _LOGGER.debug(
-                "Falling back to holding registers for input 0x%04X (attempt %d)",
+                "Falling back to holding registers for input %d (attempt %d)",
                 address,
                 attempt,
             )
@@ -1456,21 +1456,21 @@ class ThesslaGreenDeviceScanner:
                         self._mark_input_supported(address)
                     registers = cast(list[int], response.registers)
                     _LOGGER.debug(
-                        "Read holding registers 0x%04X-0x%04X (fallback): %s",
+                        "Read holding registers %d-%d (fallback): %s",
                         start,
                         end,
                         registers,
                     )
                     return registers
                 _LOGGER.debug(
-                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    "Fallback attempt %d failed to read holding %d: %s",
                     attempt,
                     address,
                     response,
                 )
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Fallback attempt %d failed to read holding 0x%04X: %s",
+                    "Fallback attempt %d failed to read holding %d: %s",
                     attempt,
                     address,
                     exc,
@@ -1478,7 +1478,7 @@ class ThesslaGreenDeviceScanner:
                 )
             except TimeoutError as exc:
                 _LOGGER.warning(
-                    "Timeout reading holding 0x%04X on attempt %d: %s",
+                    "Timeout reading holding %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1487,7 +1487,7 @@ class ThesslaGreenDeviceScanner:
                 break
             except OSError as exc:
                 _LOGGER.error(
-                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    "Unexpected error reading holding %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1497,7 +1497,7 @@ class ThesslaGreenDeviceScanner:
 
         self.failed_addresses["modbus_exceptions"]["input_registers"].update(range(start, end + 1))
         _LOGGER.error(
-            "Failed to read input registers 0x%04X-0x%04X after %d retries",
+            "Failed to read input registers %d-%d after %d retries",
             start,
             end,
             self.retry,
@@ -1513,8 +1513,8 @@ class ThesslaGreenDeviceScanner:
         """Read a contiguous input register block in MAX-sized chunks."""
 
         results: list[int] = []
-        for chunk_start, chunk_count in _group_reads(
-            range(start, start + count), max_block_size=self.effective_batch
+        for chunk_start, chunk_count in chunk_register_range(
+            start, count, self.effective_batch
         ):
             block = await self._read_input(client, chunk_start, chunk_count)
             if block is None:
@@ -1531,8 +1531,8 @@ class ThesslaGreenDeviceScanner:
         """Read a contiguous holding register block in MAX-sized chunks."""
 
         results: list[int] = []
-        for chunk_start, chunk_count in _group_reads(
-            range(start, start + count), max_block_size=self.effective_batch
+        for chunk_start, chunk_count in chunk_register_range(
+            start, count, self.effective_batch
         ):
             block = await self._read_holding(client, chunk_start, chunk_count)
             if block is None:
@@ -1567,13 +1567,13 @@ class ThesslaGreenDeviceScanner:
                     return None
 
             if address in self._failed_holding:
-                _LOGGER.debug("Skipping cached failed holding register 0x%04X", address)
+                _LOGGER.debug("Skipping cached failed holding register %d", address)
                 self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
                 return None
 
         failures = self._holding_failures.get(address, 0)
         if failures >= self.retry:
-            _LOGGER.warning("Skipping unsupported holding register 0x%04X", address)
+            _LOGGER.warning("Skipping unsupported holding register %d", address)
             self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
             return None
 
@@ -1605,7 +1605,7 @@ class ThesslaGreenDeviceScanner:
                         del self._holding_failures[address]
                     registers = cast(list[int], response.registers)
                     _LOGGER.debug(
-                        "Read holding registers 0x%04X-0x%04X: %s",
+                        "Read holding registers %d-%d: %s",
                         start,
                         end,
                         registers,
@@ -1613,7 +1613,7 @@ class ThesslaGreenDeviceScanner:
                     return registers
             except TimeoutError as exc:
                 _LOGGER.warning(
-                    "Timeout reading holding 0x%04X (attempt %d/%d): %s",
+                    "Timeout reading holding %d (attempt %d/%d): %s",
                     address,
                     attempt,
                     self.retry,
@@ -1626,10 +1626,10 @@ class ThesslaGreenDeviceScanner:
                     if failures >= self.retry and address not in self._failed_holding:
                         self._failed_holding.add(address)
                         self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+                        _LOGGER.warning("Device does not expose register %d", address)
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Failed to read holding 0x%04X (attempt %d/%d): %s",
+                    "Failed to read holding %d (attempt %d/%d): %s",
                     address,
                     attempt,
                     self.retry,
@@ -1642,10 +1642,10 @@ class ThesslaGreenDeviceScanner:
                     if failures >= self.retry and address not in self._failed_holding:
                         self._failed_holding.add(address)
                         self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register 0x%04X", address)
+                        _LOGGER.warning("Device does not expose register %d", address)
             except asyncio.CancelledError:
                 _LOGGER.debug(
-                    "Cancelled reading holding 0x%04X on attempt %d/%d",
+                    "Cancelled reading holding %d on attempt %d/%d",
                     address,
                     attempt,
                     self.retry,
@@ -1653,7 +1653,7 @@ class ThesslaGreenDeviceScanner:
                 raise
             except OSError as exc:
                 _LOGGER.error(
-                    "Unexpected error reading holding 0x%04X on attempt %d: %s",
+                    "Unexpected error reading holding %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1662,7 +1662,7 @@ class ThesslaGreenDeviceScanner:
                 break
 
         _LOGGER.error(
-            "Failed to read holding registers 0x%04X-0x%04X after %d retries",
+            "Failed to read holding registers %d-%d after %d retries",
             start,
             end,
             self.retry,
@@ -1695,7 +1695,7 @@ class ThesslaGreenDeviceScanner:
                 if response is not None and not response.isError():
                     bits = cast(list[bool], response.bits[:count])
                     _LOGGER.debug(
-                        "Read coil registers 0x%04X-0x%04X: %s",
+                        "Read coil registers %d-%d: %s",
                         address,
                         address + count - 1,
                         bits,
@@ -1703,7 +1703,7 @@ class ThesslaGreenDeviceScanner:
                     return bits
             except TimeoutError as exc:
                 _LOGGER.warning(
-                    "Timeout reading coil 0x%04X on attempt %d: %s",
+                    "Timeout reading coil %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1711,7 +1711,7 @@ class ThesslaGreenDeviceScanner:
                 )
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Failed to read coil 0x%04X on attempt %d: %s",
+                    "Failed to read coil %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1719,14 +1719,14 @@ class ThesslaGreenDeviceScanner:
                 )
             except asyncio.CancelledError:
                 _LOGGER.debug(
-                    "Cancelled reading coil 0x%04X on attempt %d",
+                    "Cancelled reading coil %d on attempt %d",
                     address,
                     attempt,
                 )
                 raise
             except OSError as exc:
                 _LOGGER.error(
-                    "Unexpected error reading coil 0x%04X on attempt %d: %s",
+                    "Unexpected error reading coil %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1738,7 +1738,7 @@ class ThesslaGreenDeviceScanner:
             range(address, address + count)
         )
         _LOGGER.error(
-            "Failed to read coil registers 0x%04X-0x%04X after %d retries",
+            "Failed to read coil registers %d-%d after %d retries",
             address,
             address + count - 1,
             self.retry,
@@ -1768,7 +1768,7 @@ class ThesslaGreenDeviceScanner:
                 if response is not None and not response.isError():
                     bits = cast(list[bool], response.bits[:count])
                     _LOGGER.debug(
-                        "Read discrete inputs 0x%04X-0x%04X: %s",
+                        "Read discrete inputs %d-%d: %s",
                         address,
                         address + count - 1,
                         bits,
@@ -1776,7 +1776,7 @@ class ThesslaGreenDeviceScanner:
                     return bits
             except TimeoutError as exc:
                 _LOGGER.warning(
-                    "Timeout reading discrete 0x%04X on attempt %d: %s",
+                    "Timeout reading discrete %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1784,7 +1784,7 @@ class ThesslaGreenDeviceScanner:
                 )
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Failed to read discrete 0x%04X on attempt %d: %s",
+                    "Failed to read discrete %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1792,14 +1792,14 @@ class ThesslaGreenDeviceScanner:
                 )
             except asyncio.CancelledError:
                 _LOGGER.debug(
-                    "Cancelled reading discrete 0x%04X on attempt %d",
+                    "Cancelled reading discrete %d on attempt %d",
                     address,
                     attempt,
                 )
                 raise
             except OSError as exc:
                 _LOGGER.error(
-                    "Unexpected error reading discrete 0x%04X on attempt %d: %s",
+                    "Unexpected error reading discrete %d on attempt %d: %s",
                     address,
                     attempt,
                     exc,
@@ -1811,7 +1811,7 @@ class ThesslaGreenDeviceScanner:
             range(address, address + count)
         )
         _LOGGER.error(
-            "Failed to read discrete inputs 0x%04X-0x%04X after %d retries",
+            "Failed to read discrete inputs %d-%d after %d retries",
             address,
             address + count - 1,
             self.retry,

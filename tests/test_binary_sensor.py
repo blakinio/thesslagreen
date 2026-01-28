@@ -143,8 +143,8 @@ def test_dynamic_problem_registers_present() -> None:
 
 
 def test_problem_registers_range_mapped() -> None:
-    """Registers 0x2000-0x20FB should map to binary sensors."""
-    expected = {name for name, addr in HOLDING_REGISTERS.items() if 0x2000 <= addr <= 0x20FB}
+    """Registers 8192-8443 should map to binary sensors."""
+    expected = {name for name, addr in HOLDING_REGISTERS.items() if 8192 <= addr <= 8443}
     for key in expected:
         assert key in BINARY_SENSOR_DEFINITIONS  # nosec B101
 

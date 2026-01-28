@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
@@ -20,13 +20,13 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
         def now():
             from datetime import datetime
 
-            return datetime.now(UTC)
+            return datetime.now(timezone.utc)
 
         @staticmethod
         def utcnow():
             from datetime import datetime
 
-            return datetime.now(UTC)
+            return datetime.now(timezone.utc)
 
     dt_util = _DTUtil()  # type: ignore
 
@@ -77,23 +77,6 @@ else:  # pragma: no cover
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pymodbus.client import AsyncModbusTcpClient
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-
-try:  # pragma: no cover - serial extras optional at runtime
-    from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
-except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
-    _AsyncModbusSerialClient = None
-    SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
-else:  # pragma: no cover - executed when serial client available
-    SERIAL_IMPORT_ERROR = None
-
-if TYPE_CHECKING:  # pragma: no cover - typing helper only
-    from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
-else:
-    AsyncModbusSerialClientType = Any
 
 from .config_flow import CannotConnect
 from .const import (
@@ -130,7 +113,13 @@ from .const import (
 )
 from .registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .register_map import REGISTER_MAP_VERSION, validate_register_value
-from .modbus_helpers import _call_modbus, group_reads
+from .modbus_helpers import (
+    _call_modbus,
+    chunk_register_range,
+    chunk_register_values,
+    group_reads,
+)
+from .modbus_transport import BaseModbusTransport, RtuModbusTransport, TcpModbusTransport
 from .registers.loader import get_all_registers
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 
@@ -283,7 +272,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.offline_state = False
 
         # Connection management
-        self._client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
+        self._client: Any | None = None
+        self._transport: BaseModbusTransport | None = None
         self._client_lock = asyncio.Lock()
         self._write_lock = asyncio.Lock()
         self._update_in_progress = False
@@ -346,13 +336,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._total_energy = 0.0
 
     @property
-    def client(self) -> AsyncModbusTcpClient | AsyncModbusSerialClientType | None:
+    def client(self) -> Any | None:
         """Return the shared Modbus client."""
 
         return self._client
 
     @client.setter
-    def client(self, value: AsyncModbusTcpClient | AsyncModbusSerialClientType | None) -> None:
+    def client(self, value: Any | None) -> None:
         """Set the shared Modbus client."""
 
         self._client = value
@@ -379,17 +369,28 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self, func: Callable[..., Any], *args: Any, attempt: int = 1, **kwargs: Any
     ) -> Any:
         """Wrapper around Modbus calls injecting the slave ID."""
-        if not self.client:
-            raise ConnectionException("Modbus client is not connected")
-        return await _call_modbus(
+        if self._transport is None:
+            if not self.client:
+                raise ConnectionException("Modbus client is not connected")
+            return await _call_modbus(
+                func,
+                self.slave_id,
+                *args,
+                attempt=attempt,
+                max_attempts=self.retry,
+                timeout=self.timeout,
+                backoff=self.backoff,
+                backoff_jitter=self.backoff_jitter,
+                **kwargs,
+            )
+        return await self._transport.call(
             func,
             self.slave_id,
             *args,
-            attempt=1,
-            max_attempts=1,
-            timeout=self.timeout,
-            backoff=0.0,
-            backoff_jitter=None,
+            attempt=attempt,
+            max_attempts=self.retry,
+            backoff=self.backoff,
+            backoff_jitter=self.backoff_jitter,
             **kwargs,
         )
 
@@ -760,36 +761,40 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 await self._disconnect_locked()
 
             try:
-                if self.connection_type == CONNECTION_TYPE_RTU:
-                    if not self.serial_port:
-                        raise ConnectionException("Serial port not configured for RTU transport")
-                    if _AsyncModbusSerialClient is None:
-                        message = (
-                            "Modbus serial client is unavailable. Install pymodbus with serial support."
-                        )
-                        if SERIAL_IMPORT_ERROR is not None:
-                            message = f"{message} ({SERIAL_IMPORT_ERROR})"
-                        raise ConnectionException(message)
-                    parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+                if self._transport is None:
+                    parity = SERIAL_PARITY_MAP.get(
+                        self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY]
+                    )
                     stop_bits = SERIAL_STOP_BITS_MAP.get(
                         self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
                     )
-                    self.client = _AsyncModbusSerialClient(
-                        method="rtu",
-                        port=self.serial_port,
-                        baudrate=self.baud_rate,
-                        parity=parity,
-                        stopbits=stop_bits,
-                        timeout=self.timeout,
-                    )
-                else:
-                    self.client = AsyncModbusTcpClient(
-                        self.host, port=self.port, timeout=self.timeout
-                    )
+                    if self.connection_type == CONNECTION_TYPE_RTU:
+                        self._transport = RtuModbusTransport(
+                            serial_port=self.serial_port,
+                            baudrate=self.baud_rate,
+                            parity=parity,
+                            stopbits=stop_bits,
+                            max_retries=self.retry,
+                            base_backoff=self.backoff,
+                            max_backoff=DEFAULT_MAX_BACKOFF,
+                            timeout=self.timeout,
+                            offline_state=self.offline_state,
+                        )
+                    else:
+                        self._transport = TcpModbusTransport(
+                            host=self.host,
+                            port=self.port,
+                            max_retries=self.retry,
+                            base_backoff=self.backoff,
+                            max_backoff=DEFAULT_MAX_BACKOFF,
+                            timeout=self.timeout,
+                            offline_state=self.offline_state,
+                        )
 
-                connected = await asyncio.wait_for(self.client.connect(), timeout=self.timeout)
-                if not connected:
-                    raise ConnectionException("Could not connect to configured Modbus endpoint")
+                await self._transport.ensure_connected()
+                self.client = self._transport.client
+                if self.client is None or not getattr(self.client, "connected", False):
+                    raise ConnectionException("Modbus client is not connected")
                 _LOGGER.debug("Modbus connection established")
                 self.offline_state = False
             except (ModbusException, ConnectionException) as exc:
@@ -926,46 +931,53 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["input_registers"]:
-            register_names = [
-                self._find_register_name("input_registers", start_addr + i) for i in range(count)
-            ]
-            if all(name in failed for name in register_names if name):
-                continue
-            try:
-                response = await self._call_modbus(
-                    client.read_input_registers,
-                    start_addr,
-                    count=count,
-                )
-                if response is None or response.isError():
-                    self._mark_registers_failed(register_names)
-                    raise ModbusException(
-                        f"Failed to read input registers at 0x{start_addr:04X}"
+            for chunk_start, chunk_count in chunk_register_range(
+                start_addr, count, self.effective_batch
+            ):
+                register_names = [
+                    self._find_register_name("input_registers", chunk_start + i)
+                    for i in range(chunk_count)
+                ]
+                if all(name in failed for name in register_names if name):
+                    continue
+                try:
+                    response = await self._call_modbus(
+                        client.read_input_registers,
+                        chunk_start,
+                        count=chunk_count,
                     )
+                    if response is None or response.isError():
+                        self._mark_registers_failed(register_names)
+                        raise ModbusException(
+                            f"Failed to read input registers at {chunk_start}"
+                        )
 
-                for i, value in enumerate(response.registers):
-                    addr = start_addr + i
-                    register_name = self._find_register_name("input_registers", addr)
-                    if register_name and register_name in self.available_registers["input_registers"]:
-                        processed_value = self._process_register_value(register_name, value)
-                        if processed_value is not None:
-                            data[register_name] = processed_value
-                            self.statistics["total_registers_read"] += 1
-                            self._clear_register_failure(register_name)
-                            _LOGGER.debug(
-                                "Read input 0x%04X (%s) = %s",
-                                addr,
-                                register_name,
-                                processed_value,
-                            )
+                    for i, value in enumerate(response.registers):
+                        addr = chunk_start + i
+                        register_name = self._find_register_name("input_registers", addr)
+                        if (
+                            register_name
+                            and register_name in self.available_registers["input_registers"]
+                        ):
+                            processed_value = self._process_register_value(register_name, value)
+                            if processed_value is not None:
+                                data[register_name] = processed_value
+                                self.statistics["total_registers_read"] += 1
+                                self._clear_register_failure(register_name)
+                                _LOGGER.debug(
+                                    "Read input %d (%s) = %s",
+                                    addr,
+                                    register_name,
+                                    processed_value,
+                                )
 
-                if len(response.registers) < count:
-                    missing = register_names[len(response.registers) :]
-                    self._mark_registers_failed(missing)
-            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                await self._disconnect()
-                self._mark_registers_failed(register_names)
-                raise
+                    if len(response.registers) < chunk_count:
+                        missing = register_names[len(response.registers) :]
+                        self._mark_registers_failed(missing)
+                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+                    await self._disconnect()
+                    self._mark_registers_failed(register_names)
+                    raise
 
         return data
 
@@ -984,46 +996,53 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["holding_registers"]:
-            register_names = [
-                self._find_register_name("holding_registers", start_addr + i) for i in range(count)
-            ]
-            if all(name in failed for name in register_names if name):
-                continue
-            try:
-                response = await self._call_modbus(
-                    client.read_holding_registers,
-                    start_addr,
-                    count=count,
-                )
-                if response is None or response.isError():
-                    self._mark_registers_failed(register_names)
-                    raise ModbusException(
-                        f"Failed to read holding registers at 0x{start_addr:04X}"
+            for chunk_start, chunk_count in chunk_register_range(
+                start_addr, count, self.effective_batch
+            ):
+                register_names = [
+                    self._find_register_name("holding_registers", chunk_start + i)
+                    for i in range(chunk_count)
+                ]
+                if all(name in failed for name in register_names if name):
+                    continue
+                try:
+                    response = await self._call_modbus(
+                        client.read_holding_registers,
+                        chunk_start,
+                        count=chunk_count,
                     )
+                    if response is None or response.isError():
+                        self._mark_registers_failed(register_names)
+                        raise ModbusException(
+                            f"Failed to read holding registers at {chunk_start}"
+                        )
 
-                for i, value in enumerate(response.registers):
-                    addr = start_addr + i
-                    register_name = self._find_register_name("holding_registers", addr)
-                    if register_name and register_name in self.available_registers["holding_registers"]:
-                        processed_value = self._process_register_value(register_name, value)
-                        if processed_value is not None:
-                            data[register_name] = processed_value
-                            self.statistics["total_registers_read"] += 1
-                            self._clear_register_failure(register_name)
-                            _LOGGER.debug(
-                                "Read holding 0x%04X (%s) = %s",
-                                addr,
-                                register_name,
-                                processed_value,
-                            )
+                    for i, value in enumerate(response.registers):
+                        addr = chunk_start + i
+                        register_name = self._find_register_name("holding_registers", addr)
+                        if (
+                            register_name
+                            and register_name in self.available_registers["holding_registers"]
+                        ):
+                            processed_value = self._process_register_value(register_name, value)
+                            if processed_value is not None:
+                                data[register_name] = processed_value
+                                self.statistics["total_registers_read"] += 1
+                                self._clear_register_failure(register_name)
+                                _LOGGER.debug(
+                                    "Read holding %d (%s) = %s",
+                                    addr,
+                                    register_name,
+                                    processed_value,
+                                )
 
-                if len(response.registers) < count:
-                    missing = register_names[len(response.registers) :]
-                    self._mark_registers_failed(missing)
-            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                await self._disconnect()
-                self._mark_registers_failed(register_names)
-                raise
+                    if len(response.registers) < chunk_count:
+                        missing = register_names[len(response.registers) :]
+                        self._mark_registers_failed(missing)
+                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+                    await self._disconnect()
+                    self._mark_registers_failed(register_names)
+                    raise
 
         return data
 
@@ -1041,47 +1060,54 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["coil_registers"]:
-            register_names = [
-                self._find_register_name("coil_registers", start_addr + i) for i in range(count)
-            ]
-            if all(name in failed for name in register_names if name):
-                continue
-            try:
-                response = await self._call_modbus(
-                    client.read_coils,
-                    start_addr,
-                    count=count,
-                )
-                if response is None or response.isError():
+            for chunk_start, chunk_count in chunk_register_range(
+                start_addr, count, self.effective_batch
+            ):
+                register_names = [
+                    self._find_register_name("coil_registers", chunk_start + i)
+                    for i in range(chunk_count)
+                ]
+                if all(name in failed for name in register_names if name):
+                    continue
+                try:
+                    response = await self._call_modbus(
+                        client.read_coils,
+                        chunk_start,
+                        count=chunk_count,
+                    )
+                    if response is None or response.isError():
+                        self._mark_registers_failed(register_names)
+                        raise ModbusException(f"Failed to read coil registers at {chunk_start}")
+
+                    if not response.bits:
+                        self._mark_registers_failed(register_names)
+                        raise ModbusException(f"No bits returned at {chunk_start}")
+
+                    for i in range(min(chunk_count, len(response.bits))):
+                        addr = chunk_start + i
+                        register_name = self._find_register_name("coil_registers", addr)
+                        if (
+                            register_name
+                            and register_name in self.available_registers["coil_registers"]
+                        ):
+                            bit = response.bits[i]
+                            data[register_name] = bit
+                            self.statistics["total_registers_read"] += 1
+                            self._clear_register_failure(register_name)
+                            _LOGGER.debug(
+                                "Read coil %d (%s) = %s",
+                                addr,
+                                register_name,
+                                bit,
+                            )
+
+                    if len(response.bits) < chunk_count:
+                        missing = register_names[len(response.bits) :]
+                        self._mark_registers_failed(missing)
+                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+                    await self._disconnect()
                     self._mark_registers_failed(register_names)
-                    raise ModbusException(f"Failed to read coil registers at 0x{start_addr:04X}")
-
-                if not response.bits:
-                    self._mark_registers_failed(register_names)
-                    raise ModbusException(f"No bits returned at 0x{start_addr:04X}")
-
-                for i in range(min(count, len(response.bits))):
-                    addr = start_addr + i
-                    register_name = self._find_register_name("coil_registers", addr)
-                    if register_name and register_name in self.available_registers["coil_registers"]:
-                        bit = response.bits[i]
-                        data[register_name] = bit
-                        self.statistics["total_registers_read"] += 1
-                        self._clear_register_failure(register_name)
-                        _LOGGER.debug(
-                            "Read coil 0x%04X (%s) = %s",
-                            addr,
-                            register_name,
-                            bit,
-                        )
-
-                if len(response.bits) < count:
-                    missing = register_names[len(response.bits) :]
-                    self._mark_registers_failed(missing)
-            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                await self._disconnect()
-                self._mark_registers_failed(register_names)
-                raise
+                    raise
 
         return data
 
@@ -1099,49 +1125,56 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         failed: set[str] = getattr(self, "_failed_registers", set())
 
         for start_addr, count in self._register_groups["discrete_inputs"]:
-            register_names = [
-                self._find_register_name("discrete_inputs", start_addr + i) for i in range(count)
-            ]
-            if all(name in failed for name in register_names if name):
-                continue
-            try:
-                response = await self._call_modbus(
-                    client.read_discrete_inputs,
-                    start_addr,
-                    count=count,
-                )
-                if response is None or response.isError():
-                    self._mark_registers_failed(register_names)
-                    raise ModbusException(
-                        f"Failed to read discrete inputs at 0x{start_addr:04X}"
+            for chunk_start, chunk_count in chunk_register_range(
+                start_addr, count, self.effective_batch
+            ):
+                register_names = [
+                    self._find_register_name("discrete_inputs", chunk_start + i)
+                    for i in range(chunk_count)
+                ]
+                if all(name in failed for name in register_names if name):
+                    continue
+                try:
+                    response = await self._call_modbus(
+                        client.read_discrete_inputs,
+                        chunk_start,
+                        count=chunk_count,
                     )
-
-                if not response.bits:
-                    self._mark_registers_failed(register_names)
-                    raise ModbusException(f"No bits returned at 0x{start_addr:04X}")
-
-                for i in range(min(count, len(response.bits))):
-                    addr = start_addr + i
-                    register_name = self._find_register_name("discrete_inputs", addr)
-                    if register_name and register_name in self.available_registers["discrete_inputs"]:
-                        bit = response.bits[i]
-                        data[register_name] = bit
-                        self.statistics["total_registers_read"] += 1
-                        self._clear_register_failure(register_name)
-                        _LOGGER.debug(
-                            "Read discrete 0x%04X (%s) = %s",
-                            addr,
-                            register_name,
-                            bit,
+                    if response is None or response.isError():
+                        self._mark_registers_failed(register_names)
+                        raise ModbusException(
+                            f"Failed to read discrete inputs at {chunk_start}"
                         )
 
-                if len(response.bits) < count:
-                    missing = register_names[len(response.bits) :]
-                    self._mark_registers_failed(missing)
-            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                await self._disconnect()
-                self._mark_registers_failed(register_names)
-                raise
+                    if not response.bits:
+                        self._mark_registers_failed(register_names)
+                        raise ModbusException(f"No bits returned at {chunk_start}")
+
+                    for i in range(min(chunk_count, len(response.bits))):
+                        addr = chunk_start + i
+                        register_name = self._find_register_name("discrete_inputs", addr)
+                        if (
+                            register_name
+                            and register_name in self.available_registers["discrete_inputs"]
+                        ):
+                            bit = response.bits[i]
+                            data[register_name] = bit
+                            self.statistics["total_registers_read"] += 1
+                            self._clear_register_failure(register_name)
+                            _LOGGER.debug(
+                                "Read discrete %d (%s) = %s",
+                                addr,
+                                register_name,
+                                bit,
+                            )
+
+                    if len(response.bits) < chunk_count:
+                        missing = register_names[len(response.bits) :]
+                        self._mark_registers_failed(missing)
+                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+                    await self._disconnect()
+                    self._mark_registers_failed(register_names)
+                    raise
 
         return data
 
@@ -1152,7 +1185,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Decode a raw register value using its definition."""
         definition = get_register_definition(register_name)
-        if value == 0x8000 and definition._is_temperature():
+        if value == 32768 and definition._is_temperature():
             return None
         decoded = definition.decode(value)
 
@@ -1299,14 +1332,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if definition.function == 3:
                             if encoded_values is not None:
                                 success = True
-                                for idx in range(0, len(encoded_values), self.effective_batch):
-                                    chunk = encoded_values[idx : idx + self.effective_batch]
+                                for index, (chunk_start, chunk) in enumerate(
+                                    chunk_register_values(
+                                        address, encoded_values, self.effective_batch
+                                    )
+                                ):
                                     response = await self._call_modbus(
                                         self.client.write_registers,
-                                        address=address + idx,
+                                        address=chunk_start,
                                         values=[int(v) for v in chunk],
                                         attempt=attempt,
-                                        apply_backoff=idx == 0,
+                                        apply_backoff=index == 0,
                                     )
                                     if response is None or response.isError():
                                         success = False
@@ -1412,14 +1448,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not values:
             _LOGGER.error("No values provided for multi-register write at %s", start_address)
             return False
-        if len(values) > MAX_REGS_PER_REQUEST:
-            _LOGGER.error(
-                "Write length %d exceeds max %d for multi-register write",
-                len(values),
-                MAX_REGS_PER_REQUEST,
-            )
-            return False
-
         refresh_after_write = False
         async with self._write_lock:
             try:
@@ -1429,13 +1457,23 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 for attempt in range(1, self.retry + 1):
                     try:
-                        response = await self._call_modbus(
-                            self.client.write_registers,
-                            address=start_address,
-                            values=[int(v) for v in values],
-                            attempt=attempt,
-                        )
-                        if response is None or response.isError():
+                        success = True
+                        for index, (chunk_start, chunk) in enumerate(
+                            chunk_register_values(
+                                start_address, values, self.effective_batch
+                            )
+                        ):
+                            response = await self._call_modbus(
+                                self.client.write_registers,
+                                address=chunk_start,
+                                values=[int(v) for v in chunk],
+                                attempt=attempt,
+                                apply_backoff=index == 0,
+                            )
+                            if response is None or response.isError():
+                                success = False
+                                break
+                        if not success:
                             if attempt == self.retry:
                                 _LOGGER.error(
                                     "Error writing registers at %s: %s",
@@ -1547,7 +1585,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks."""
 
-        if self.client is not None:
+        if self._transport is not None:
+            try:
+                await self._transport.close()
+            except (ModbusException, ConnectionException):
+                _LOGGER.debug("Error disconnecting", exc_info=True)
+            except OSError:
+                _LOGGER.exception("Unexpected error disconnecting")
+        elif self.client is not None:
             try:
                 close = self.client.close
                 if inspect.iscoroutinefunction(close):

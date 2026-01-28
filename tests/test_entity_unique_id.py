@@ -203,5 +203,5 @@ def test_unique_id_bit_suffix():
     """Bit-based entities should include bit position in unique_id."""
     coordinator = _create_coordinator(serial="SN123", host="192.0.2.5", port=502)
 
-    entity = ThesslaGreenEntity(coordinator, "test", 5, bit=0x04)
+    entity = ThesslaGreenEntity(coordinator, "test", 5, bit=4)
     assert entity.unique_id == "SN123_10_test_5_bit4"  # nosec

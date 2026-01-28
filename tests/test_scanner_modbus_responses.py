@@ -36,7 +36,7 @@ async def test_scanner_retries_after_timeout() -> None:
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         side_effect=fake_call,
     ):
-        result = await scanner._read_input(AsyncMock(), 0x0001, 1)
+        result = await scanner._read_input(AsyncMock(), 1, 1)
 
     assert result == [42]  # nosec: explicit assertion
     assert attempts[0] == 1 and attempts[-1] == 2  # nosec: explicit assertion
@@ -51,7 +51,7 @@ async def test_scanner_marks_permanent_failures() -> None:
         side_effect=ConnectionException("down")
     )
 
-    result = await scanner._read_input(mock_client, 0x0001, 1)
+    result = await scanner._read_input(mock_client, 1, 1)
 
     assert result is None  # nosec: explicit assertion
-    assert 0x0001 in scanner._failed_input  # nosec: explicit assertion
+    assert 1 in scanner._failed_input  # nosec: explicit assertion

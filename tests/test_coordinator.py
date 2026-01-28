@@ -317,7 +317,7 @@ async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
 async def test_read_holding_registers_none_client(coordinator, caplog):
     """Return empty data when no Modbus client is present."""
     coordinator.client = None
-    coordinator._register_groups = {"holding_registers": [(0x0000, 1)]}
+    coordinator._register_groups = {"holding_registers": [(0, 1)]}
 
     with caplog.at_level(logging.DEBUG):
         result = await coordinator._read_holding_registers_optimized()
@@ -330,7 +330,7 @@ async def test_read_holding_registers_none_client(coordinator, caplog):
 async def test_read_holding_registers_cancelled_error(coordinator, caplog):
     """Propagate cancellation without logging noise."""
     coordinator.client = MagicMock()
-    coordinator._register_groups = {"holding_registers": [(0x0000, 1)]}
+    coordinator._register_groups = {"holding_registers": [(0, 1)]}
     coordinator._call_modbus = AsyncMock(side_effect=asyncio.CancelledError)
 
     with caplog.at_level(logging.ERROR):
@@ -674,7 +674,7 @@ def test_register_value_processing(coordinator):
     heating_result = coordinator._process_register_value("heating_temperature", 250)
     assert heating_result == 25.0
 
-    invalid_temp = coordinator._process_register_value("outside_temperature", 0x8000)
+    invalid_temp = coordinator._process_register_value("outside_temperature", 32768)
     assert invalid_temp is None
 
     percentage_result = coordinator._process_register_value("supply_percentage", 75)
@@ -683,7 +683,7 @@ def test_register_value_processing(coordinator):
     mode_result = coordinator._process_register_value("mode", 1)
     assert mode_result == 1
 
-    time_result = coordinator._process_register_value("schedule_summer_mon_1", 0x0815)
+    time_result = coordinator._process_register_value("schedule_summer_mon_1", 2069)
     assert time_result == 8 * 60 + 15
 
 
@@ -719,8 +719,8 @@ def test_process_register_value_sensor_unavailable(coordinator, register_name):
 @pytest.mark.parametrize(
     ("register_name", "value", "expected"),
     [
-        ("supply_flow_rate", 0xFFFB, -5),
-        ("outside_temperature", 0x8000, SENSOR_UNAVAILABLE),
+        ("supply_flow_rate", 65531, -5),
+        ("outside_temperature", 32768, SENSOR_UNAVAILABLE),
     ],
 )
 def test_process_register_value_extremes(coordinator, register_name, value, expected):
@@ -846,10 +846,10 @@ async def test_missing_client_raises_connection_exception(coordinator):
     """Missing client should raise ConnectionException instead of AttributeError."""
     coordinator.client = None
     coordinator._register_groups = {
-        "input_registers": [(0x0000, 1)],
-        "holding_registers": [(0x0000, 1)],
-        "coil_registers": [(0x0000, 1)],
-        "discrete_inputs": [(0x0000, 1)],
+        "input_registers": [(0, 1)],
+        "holding_registers": [(0, 1)],
+        "coil_registers": [(0, 1)],
+        "discrete_inputs": [(0, 1)],
     }
 
     with pytest.raises(ConnectionException):

@@ -56,7 +56,7 @@ async def validate_optimization_metrics():
         )
 
         # Simulate many registers
-        test_addresses = [0x1000 + i for i in range(50)]
+        test_addresses = [4096 + i for i in range(50)]
         groups = coordinator._group_registers_for_batch_read(test_addresses, max_gap=15)
 
         # Should create fewer groups than individual registers (optimization working)

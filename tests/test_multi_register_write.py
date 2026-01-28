@@ -26,13 +26,15 @@ async def test_async_write_registers_calls_modbus():
     client = MagicMock()
     client.write_registers = AsyncMock(return_value=response)
     coordinator.client = client
+    coordinator._transport = AsyncMock()
+    coordinator._transport.call = AsyncMock(return_value=response)
 
     assert await coordinator.async_write_registers(100, [1, 2, 3]) is True
-    client.write_registers.assert_called_once()
+    coordinator._transport.call.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_async_write_registers_rejects_oversize():
+async def test_async_write_registers_chunks_oversize():
     hass = MagicMock()
     coordinator = ThesslaGreenModbusCoordinator(
         hass=hass,
@@ -42,9 +44,42 @@ async def test_async_write_registers_rejects_oversize():
         name="test",
     )
     coordinator._ensure_connection = AsyncMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client = MagicMock()
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+    coordinator._transport = AsyncMock()
+    coordinator._transport.call = AsyncMock(return_value=response)
 
     oversized = list(range(17))
-    assert await coordinator.async_write_registers(100, oversized) is False
+    assert await coordinator.async_write_registers(100, oversized) is True
+    assert coordinator._transport.call.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_async_write_registers_passes_attempt():
+    hass = MagicMock()
+    coordinator = ThesslaGreenModbusCoordinator(
+        hass=hass,
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        retry=2,
+    )
+    coordinator._ensure_connection = AsyncMock()
+    response_error = MagicMock()
+    response_error.isError.return_value = True
+    response_ok = MagicMock()
+    response_ok.isError.return_value = False
+    coordinator.client = MagicMock(connected=True)
+    coordinator._transport = AsyncMock()
+    coordinator._transport.call = AsyncMock(side_effect=[response_error, response_ok])
+
+    assert await coordinator.async_write_registers(100, [1, 2]) is True
+    attempts = [call.kwargs.get("attempt") for call in coordinator._transport.call.await_args_list]
+    assert attempts == [1, 2]
 
 
 @pytest.mark.asyncio

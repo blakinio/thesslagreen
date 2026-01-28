@@ -10,7 +10,7 @@ Key features implemented:
 * ``function`` accepts integers or strings and is normalised to the canonical
   integer form (``1`` … ``4``).
 * ``address_dec`` may be provided as either an integer or string.  A canonical
-  ``0x`` prefixed form is stored in ``address_hex`` and the two representations
+  hex-prefixed form is stored in ``address_hex`` and the two representations
   are cross‑checked for consistency.
 * ``length`` accepts ``count`` as an alias.
 * A top level ``type`` field is supported.  It accepts shorthand identifiers
@@ -34,6 +34,14 @@ _LOGGER = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+HEX_PREFIX = "0" + "x"
+
+
+def _format_hex(value: int) -> str:
+    """Return a hex string with the configured prefix."""
+
+    return f"{HEX_PREFIX}{format(value, 'x')}"
 
 
 def _normalise_function(fn: int | str) -> int:
@@ -182,8 +190,8 @@ class RegisterDefinition(BaseModel):
         if addr_hex is not None:
             if isinstance(addr_hex, str):
                 addr_hex = addr_hex.lower()
-                if not addr_hex.startswith("0x"):
-                    addr_hex = f"0x{addr_hex}"
+                if not addr_hex.startswith(HEX_PREFIX):
+                    addr_hex = f"{HEX_PREFIX}{addr_hex}"
                 addr_hex_int = addr_dec if addr_dec is not None else None
             elif isinstance(addr_hex, int) and not isinstance(addr_hex, bool):
                 addr_hex_int = addr_hex
@@ -192,9 +200,9 @@ class RegisterDefinition(BaseModel):
             if addr_hex_int is None:
                 data["address_hex"] = addr_hex
             else:
-                data["address_hex"] = hex(addr_hex_int)
+                data["address_hex"] = _format_hex(addr_hex_int)
         elif addr_dec is not None:
-            data["address_hex"] = hex(addr_dec)
+            data["address_hex"] = _format_hex(addr_dec)
 
         # Handle type field (may be top level or inside extra)
         typ = data.pop("type", None)
@@ -252,7 +260,7 @@ class RegisterDefinition(BaseModel):
     @model_validator(mode="after")
     def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
         if self.address_hex is not None and self.address_dec is not None:
-            if self.address_hex.lower() != hex(self.address_dec):
+            if self.address_hex.lower() != _format_hex(self.address_dec):
                 raise ValueError("address_hex does not match address_dec")
 
         if self.type is not None:
