@@ -18,6 +18,10 @@ sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNa
     loader=loader_stub,
     get_all_registers=loader_stub.get_all_registers,
     get_registers_by_function=loader_stub.get_registers_by_function,
+    MAX_REGS_PER_REQUEST=16,
+    REG_DEEP_SCAN_MAX=301,
+    UART_OPTIONAL_START=4452,
+    UART_OPTIONAL_END=4460,
 )
 
 from custom_components.thessla_green_modbus.modbus_helpers import (  # noqa: E402

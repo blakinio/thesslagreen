@@ -10,12 +10,7 @@ from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import get_registers_by_function
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    def get_registers_by_function(fn: str):
-        return []
+from .registers.loader import get_registers_by_function
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -25,7 +20,8 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # The registers loader previously created a circular dependency with
 # ``modbus_helpers`` but this has been resolved, allowing the import to
 # appear before this constant.
-MAX_BATCH_REGISTERS = 16
+MAX_REGS_PER_REQUEST = 16
+MAX_BATCH_REGISTERS = MAX_REGS_PER_REQUEST
 
 
 @cache
@@ -112,7 +108,7 @@ SERIAL_STOP_BITS_MAP = {
 }
 
 # Sensor constants
-SENSOR_UNAVAILABLE = 0x8000  # Indicates missing/invalid sensor reading
+SENSOR_UNAVAILABLE = 32768  # Indicates missing/invalid sensor reading
 
 # Registers that may report SENSOR_UNAVAILABLE (0x8000) when a sensor
 # is missing or disconnected. Derived from the Thessla Green Modbus
@@ -146,6 +142,8 @@ CONF_SKIP_MISSING_REGISTERS = "skip_missing_registers"
 CONF_AIRFLOW_UNIT = "airflow_unit"
 CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnostics
 CONF_MAX_REGISTERS_PER_REQUEST = "max_registers_per_request"
+CONF_ENABLE_DEVICE_SCAN = "enable_device_scan"
+CONF_SCAN_CACHE = "scan_cache"
 CONF_LOG_LEVEL = "log_level"
 
 AIRFLOW_UNIT_M3H = "m3h"
@@ -159,6 +157,7 @@ DEFAULT_SCAN_UART_SETTINGS = False
 DEFAULT_SKIP_MISSING_REGISTERS = False
 DEFAULT_DEEP_SCAN = False
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
+DEFAULT_ENABLE_DEVICE_SCAN = True
 DEFAULT_LOG_LEVEL = "info"
 LOG_LEVEL_OPTIONS = ["debug", "info", "warning", "error"]
 

@@ -54,6 +54,10 @@ registers_module.get_registers_by_function = registers_loader.get_registers_by_f
 registers_module.get_all_registers = registers_loader.get_all_registers
 registers_module.registers_sha256 = registers_loader.registers_sha256
 registers_module.plan_group_reads = registers_loader.plan_group_reads
+registers_module.MAX_REGS_PER_REQUEST = 16
+registers_module.REG_DEEP_SCAN_MAX = 301
+registers_module.UART_OPTIONAL_START = 4452
+registers_module.UART_OPTIONAL_END = 4460
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", registers_loader)
 registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
@@ -63,6 +67,10 @@ registers_module.get_registers_by_function = lambda *args, **kwargs: []
 registers_module.get_all_registers = lambda *args, **kwargs: []
 registers_module.registers_sha256 = lambda *args, **kwargs: ""
 registers_module.plan_group_reads = lambda *args, **kwargs: []
+registers_module.MAX_REGS_PER_REQUEST = 16
+registers_module.REG_DEEP_SCAN_MAX = 301
+registers_module.UART_OPTIONAL_START = 4452
+registers_module.UART_OPTIONAL_END = 4460
 sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
 loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
 loader_module.get_registers_by_function = lambda *args, **kwargs: []
@@ -93,7 +101,7 @@ from custom_components.thessla_green_modbus.const import (
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_PARITY,
     DEFAULT_STOP_BITS,
-    MAX_BATCH_REGISTERS,
+    MAX_REGS_PER_REQUEST,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -2037,7 +2045,7 @@ async def test_config_flow_max_registers_per_request_validated():
     assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
 
     validation_result = {"device_info": {}, "scan_result": {}}
-    for value in (1, MAX_BATCH_REGISTERS):
+    for value in (1, MAX_REGS_PER_REQUEST):
         flow = ConfigFlow()
         flow.hass = SimpleNamespace()
         with (
@@ -2114,7 +2122,7 @@ async def test_options_flow_max_registers_per_request_validated():
     assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
 
     # Accept values within range
-    for value in (1, MAX_BATCH_REGISTERS):
+    for value in (1, MAX_REGS_PER_REQUEST):
         flow = OptionsFlow(SimpleNamespace(options={}))
         result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: value})
         assert result["type"] == "create_entry"

@@ -31,6 +31,7 @@ from typing import Any, cast
 # Shared grouping helper
 from ..modbus_helpers import group_reads
 from ..schedule_helpers import bcd_to_time, time_to_bcd
+from ..utils import decode_int16
 from .schema import RegisterList, _normalise_function, _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
@@ -104,10 +105,10 @@ class RegisterDef:
                 raw_list = list(raw)
             else:
                 raw_list = [
-                    (raw >> (16 * (self.length - 1 - i))) & 0xFFFF for i in range(self.length)
+                    (raw >> (16 * (self.length - 1 - i))) & 65535 for i in range(self.length)
                 ]
 
-            if all(v == 0x8000 for v in raw_list):
+            if all(v == 32768 for v in raw_list):
                 return None
 
             # Multi-register strings are treated specially
@@ -141,7 +142,7 @@ class RegisterDef:
         if isinstance(raw, Sequence):
             raw = raw[0]
 
-        if raw == 0x8000:
+        if raw == 32768:
             return None
 
         # Bitmask registers map set bits to enum labels
@@ -163,14 +164,14 @@ class RegisterDef:
 
         typ = self.extra.get("type") if self.extra else None
         if typ == "i16":
-            raw = raw if raw < 0x8000 else raw - 0x10000
+            raw = decode_int16(raw)
 
         value = raw
 
         # Combined airflow/temperature values use a custom decoding
         if self.extra and self.extra.get("aatt"):
-            airflow = (raw >> 8) & 0xFF
-            temp = (raw & 0xFF) / 2
+            airflow = (raw >> 8) & 255
+            temp = (raw & 255) / 2
             return airflow, temp
 
         # Schedule registers using BCD time encoding
@@ -281,7 +282,7 @@ class RegisterDef:
             airflow, temp = (
                 value if isinstance(value, list | tuple) else (value["airflow"], value["temp"])
             )
-            return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
+            return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 255)
 
         raw: Any = value
         if self.enum and not (self.extra and self.extra.get("bitmask")):
@@ -316,7 +317,7 @@ class RegisterDef:
             raw = scaled
         typ = self.extra.get("type") if self.extra else None
         if typ == "i16":
-            return int(raw) & 0xFFFF
+            return int(raw) & 65535
         return int(raw)
 
 

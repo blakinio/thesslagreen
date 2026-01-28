@@ -8,20 +8,9 @@ import inspect
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self, cast
+from typing import Any, Self, cast
 
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import get_all_registers, get_registers_path, registers_sha256
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    def get_all_registers(*_args, **_kwargs):
-        return []
-
-    def get_registers_path(*_args, **_kwargs) -> Path:
-        return Path(".")
-
-    def registers_sha256(*_args, **_kwargs) -> str:
-        return ""
+from .registers.loader import get_all_registers, get_registers_path, registers_sha256
 
 
 from .capability_rules import CAPABILITY_PATTERNS
@@ -51,25 +40,9 @@ from .scanner_helpers import (
     UART_OPTIONAL_REGS,
     _format_register_value,
 )
+from .registers import REG_DEEP_SCAN_MAX
 from .utils import BCD_TIME_PREFIXES, _decode_bcd_time
-
-try:  # pragma: no cover - network transport always required
-    from pymodbus.client import AsyncModbusTcpClient
-except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - fatal
-    raise ImportError("pymodbus AsyncModbusTcpClient is required") from exc
-
-try:  # pragma: no cover - serial extras optional
-    from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
-except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
-    _AsyncModbusSerialClient = None
-    SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
-else:  # pragma: no cover - serial client available
-    SERIAL_IMPORT_ERROR = None
-
-if TYPE_CHECKING:  # pragma: no cover - typing helper only
-    from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
-else:
-    AsyncModbusSerialClientType = Any
+from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -378,7 +351,7 @@ class ThesslaGreenDeviceScanner:
         self._unsupported_holding_ranges: dict[tuple[int, int], int] = {}
 
         # Keep track of the Modbus client so it can be closed later
-        self._client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
+        self._client: AsyncModbusTcpClient | AsyncModbusSerialClient | None = None
 
         # Track registers for which invalid values have been reported
         self._reported_invalid: set[str] = set()
@@ -497,18 +470,11 @@ class ThesslaGreenDeviceScanner:
         if self.connection_type == CONNECTION_TYPE_RTU:
             if not self.serial_port:
                 raise ConnectionException("Serial port not configured")
-            if _AsyncModbusSerialClient is None:
-                message = (
-                    "Modbus serial client is unavailable. Install pymodbus with serial support."
-                )
-                if SERIAL_IMPORT_ERROR is not None:
-                    message = f"{message} ({SERIAL_IMPORT_ERROR})"
-                raise ConnectionException(message)
             parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
             stop_bits = SERIAL_STOP_BITS_MAP.get(
                 self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
             )
-            client: AsyncModbusSerialClientType | AsyncModbusTcpClient = _AsyncModbusSerialClient(
+            client: AsyncModbusSerialClient | AsyncModbusTcpClient = AsyncModbusSerialClient(
                 method="rtu",
                 port=self.serial_port,
                 baudrate=self.baud_rate,
@@ -578,7 +544,13 @@ class ThesslaGreenDeviceScanner:
         validation of every register.
         """
 
+        if value == 65535:
+            return False
+
         if name in SENSOR_UNAVAILABLE_REGISTERS and value == SENSOR_UNAVAILABLE:
+            return False
+
+        if "temperature" in name and value == SENSOR_UNAVAILABLE:
             return False
 
         allowed = REGISTER_ALLOWED_VALUES.get(name)
@@ -801,8 +773,8 @@ class ThesslaGreenDeviceScanner:
             if name_regs:
                 name_bytes = bytearray()
                 for reg in name_regs:
-                    name_bytes.append((reg >> 8) & 0xFF)
-                    name_bytes.append(reg & 0xFF)
+                    name_bytes.append((reg >> 8) & 255)
+                    name_bytes.append(reg & 255)
                 device.device_name = name_bytes.decode("ascii").rstrip("\x00")
         except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
             _LOGGER.debug("Failed to parse device name: %s", err)
@@ -1134,7 +1106,9 @@ class ThesslaGreenDeviceScanner:
 
         raw_registers: dict[int, int] = {}
         if self.deep_scan:
-            for start, count in self._group_registers_for_batch_read(list(range(0x012D))):
+            for start, count in self._group_registers_for_batch_read(
+                list(range(REG_DEEP_SCAN_MAX))
+            ):
                 data = await self._read_input(client, start, count)
                 if data is None:
                     continue
@@ -1200,18 +1174,11 @@ class ThesslaGreenDeviceScanner:
         if self.connection_type == CONNECTION_TYPE_RTU:
             if not self.serial_port:
                 raise ConnectionException("Serial port not configured")
-            if _AsyncModbusSerialClient is None:
-                message = (
-                    "Modbus serial client is unavailable. Install pymodbus with serial support."
-                )
-                if SERIAL_IMPORT_ERROR is not None:
-                    message = f"{message} ({SERIAL_IMPORT_ERROR})"
-                raise ConnectionException(message)
             parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
             stop_bits = SERIAL_STOP_BITS_MAP.get(
                 self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
             )
-            self._client = _AsyncModbusSerialClient(
+            self._client = AsyncModbusSerialClient(
                 method="rtu",
                 port=self.serial_port,
                 baudrate=self.baud_rate,
@@ -1333,7 +1300,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_input(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
+        client: AsyncModbusTcpClient | AsyncModbusSerialClient,
         address: int,
         count: int,
         *,
@@ -1557,7 +1524,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_holding(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
+        client: AsyncModbusTcpClient | AsyncModbusSerialClient,
         address: int,
         count: int,
         *,
@@ -1689,7 +1656,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_coil(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
+        client: AsyncModbusTcpClient | AsyncModbusSerialClient,
         address: int,
         count: int,
     ) -> list[bool] | None:
@@ -1762,7 +1729,7 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_discrete(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
+        client: AsyncModbusTcpClient | AsyncModbusSerialClient,
         address: int,
         count: int,
     ) -> list[bool] | None:

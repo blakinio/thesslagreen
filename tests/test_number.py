@@ -102,7 +102,7 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
     def get_register_map(self, register_type: str) -> dict[str, int]:
         return self._register_maps.get(register_type, {})
 
-    async def _ensure_connection(self):
+    async def _ensure_connected(self):
         return None
 
     async def async_request_refresh(self):

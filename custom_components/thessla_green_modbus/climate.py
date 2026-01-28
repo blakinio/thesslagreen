@@ -33,7 +33,6 @@ HVAC_MODE_MAP = {
 HVAC_MODE_REVERSE_MAP = {
     HVACMode.AUTO: 0,
     HVACMode.FAN_ONLY: 1,  # Manual and temporary modes use fan-only
-    HVACMode.OFF: 0,  # Will be handled by on_off_panel_mode
 }
 
 # Preset modes for special functions
@@ -117,20 +116,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         # HVAC modes
         self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]  # pragma: no cover
 
-        # Fan modes (airflow rates)
-        self._attr_fan_modes = [  # pragma: no cover
-            "10%",
-            "20%",
-            "30%",
-            "40%",
-            "50%",
-            "60%",
-            "70%",
-            "80%",
-            "90%",
-            "100%",
-        ]
-
         # Preset modes
         self._attr_preset_modes = PRESET_MODES  # pragma: no cover
 
@@ -204,9 +189,38 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         if not airflow:
             return None
 
-        # Round to nearest 10%
+        min_val, max_val = self._get_percentage_limits()
         rounded = int((airflow + 5) / 10) * 10
-        return f"{max(10, min(100, rounded))}%"
+        return f"{max(min_val, min(max_val, rounded))}%"
+
+    @property
+    def fan_modes(self) -> list[str] | None:  # pragma: no cover
+        """Return dynamic fan mode list based on device limits."""
+        min_val, max_val = self._get_percentage_limits()
+        if max_val < min_val:
+            return None
+        modes = [f"{pct}%" for pct in range(min_val, max_val + 1, 10)]
+        if modes and int(modes[-1].rstrip("%")) != max_val:
+            modes.append(f"{max_val}%")
+        return modes
+
+    def _get_percentage_limits(self) -> tuple[int, int]:
+        """Return dynamic min/max percentage limits from device data."""
+        min_pct = self.coordinator.data.get("min_percentage")
+        max_pct = self.coordinator.data.get("max_percentage")
+        try:
+            min_val = int(min_pct) if min_pct is not None else 10
+        except (TypeError, ValueError):
+            min_val = 10
+        try:
+            max_val = int(max_pct) if max_pct is not None else 150
+        except (TypeError, ValueError):
+            max_val = 150
+        min_val = max(10, min_val)
+        max_val = min(150, max_val)
+        if max_val < min_val:
+            max_val = min_val
+        return min_val, max_val
 
     @property
     def preset_mode(self) -> str | None:
@@ -321,6 +335,8 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         try:
             # Extract percentage from fan mode string
             airflow = int(fan_mode.rstrip("%"))
+            min_val, max_val = self._get_percentage_limits()
+            airflow = max(min_val, min(max_val, airflow))
             _LOGGER.debug("Setting fan mode to %s%% airflow", airflow)
 
             # Set manual airflow rate

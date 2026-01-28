@@ -12,6 +12,8 @@ __all__ = [
     "_decode_aatt",
     "BCD_TIME_PREFIXES",
     "TIME_REGISTER_PREFIXES",
+    "decode_int16",
+    "decode_temp_01c",
 ]
 
 
@@ -49,11 +51,11 @@ def _decode_register_time(value: int) -> int | None:
     extracted hour/minute fall outside of valid ranges.
     """
 
-    if value == 0x8000 or value < 0:
+    if value == 32768 or value < 0:
         return None
 
-    hour = (value >> 8) & 0xFF
-    minute = value & 0xFF
+    hour = (value >> 8) & 255
+    minute = value & 255
     if 0 <= hour <= 23 and 0 <= minute <= 59:
         return hour * 60 + minute
 
@@ -63,13 +65,15 @@ def _decode_register_time(value: int) -> int | None:
 def _decode_bcd_time(value: int) -> int | None:
     """Decode BCD or decimal HHMM values to minutes since midnight."""
 
-    if value == 0x8000 or value < 0:
+    if value == 32768 or value < 0:
         return None
 
-    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
+    nibbles = [(value >> shift) & 15 for shift in (12, 8, 4, 0)]
     if all(n <= 9 for n in nibbles):
         hours = nibbles[0] * 10 + nibbles[1]
         minutes = nibbles[2] * 10 + nibbles[3]
+        if hours == 24 and minutes == 0:
+            return 0
         if hours <= 23 and minutes <= 59:
             return hours * 60 + minutes
 
@@ -83,11 +87,11 @@ def _decode_bcd_time(value: int) -> int | None:
 def _decode_aatt(value: int) -> tuple[int, float] | None:
     """Decode airflow percentage and temperature encoded as ``0xAATT``."""
 
-    if value == 0x8000 or value < 0:
+    if value == 32768 or value < 0:
         return None
 
-    airflow = (value >> 8) & 0xFF
-    temp_double = value & 0xFF
+    airflow = (value >> 8) & 255
+    temp_double = value & 255
 
     if airflow > 100 or temp_double > 200:
         return None
@@ -107,3 +111,15 @@ BCD_TIME_PREFIXES: tuple[str, ...] = (
 
 # All registers storing times; used for generic time validation
 TIME_REGISTER_PREFIXES: tuple[str, ...] = BCD_TIME_PREFIXES + ("manual_airing_time_to_start",)
+
+
+def decode_int16(u16: int) -> int:
+    """Decode an unsigned 16-bit value as signed."""
+    return u16 - 65536 if u16 >= 32768 else u16
+
+
+def decode_temp_01c(u16: int) -> float | None:
+    """Decode temperature in 0.1°C resolution, handling missing values."""
+    if u16 == 32768:
+        return None
+    return decode_int16(u16) / 10

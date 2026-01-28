@@ -189,9 +189,22 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:  # pragma: no cover
         """Set new value."""
         try:
-            success = await self.coordinator.async_write_register(
-                self.register_name, value, refresh=False, offset=0
-            )
+            if self.register_name.startswith("air_flow_rate_temporary"):
+                success = await self.coordinator.async_write_temporary_airflow(
+                    mode=2,
+                    airflow=int(value),
+                    refresh=False,
+                )
+            elif self.register_name.startswith("supply_air_temperature_temporary"):
+                success = await self.coordinator.async_write_temporary_temperature(
+                    mode=2,
+                    temperature=float(value),
+                    refresh=False,
+                )
+            else:
+                success = await self.coordinator.async_write_register(
+                    self.register_name, value, refresh=False, offset=0
+                )
             if success:
                 await self.coordinator.async_request_refresh()
                 _LOGGER.debug("Set %s to %.2f", self.register_name, value)

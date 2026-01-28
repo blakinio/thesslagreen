@@ -253,7 +253,7 @@ def test_coordinator_clamps_effective_batch():
 @pytest.mark.asyncio
 async def test_async_write_invalid_register(coordinator):
     """Return False and do not refresh on unknown register."""
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     result = await coordinator.async_write_register("invalid", 1)
     assert result is False
 
@@ -261,7 +261,7 @@ async def test_async_write_invalid_register(coordinator):
 @pytest.mark.asyncio
 async def test_async_write_valid_register(coordinator):
     """Test successful register write and refresh outside lock."""
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
@@ -272,7 +272,7 @@ async def test_async_write_valid_register(coordinator):
 
     async def refresh_side_effect():
         nonlocal lock_state_during_refresh
-        lock_state_during_refresh = coordinator._connection_lock.locked()
+        lock_state_during_refresh = coordinator._write_lock.locked()
 
     coordinator.async_request_refresh = AsyncMock(side_effect=refresh_side_effect)
 
@@ -286,7 +286,7 @@ async def test_async_write_valid_register(coordinator):
 @pytest.mark.asyncio
 async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatch):
     """Numeric values outside defined range should raise."""
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     coordinator.client = MagicMock()
 
     import custom_components.thessla_green_modbus.coordinator as coordinator_mod
@@ -301,7 +301,7 @@ async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatc
 @pytest.mark.asyncio
 async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
     """Invalid enum values should raise and be propagated."""
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     coordinator.client = MagicMock()
 
     import custom_components.thessla_green_modbus.coordinator as coordinator_mod
@@ -343,7 +343,7 @@ async def test_read_holding_registers_cancelled_error(coordinator, caplog):
 async def test_async_write_multi_register_start(coordinator, monkeypatch):
     """Writing multi-register from start address succeeds."""
     coordinator.async_request_refresh = AsyncMock()
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
@@ -369,7 +369,7 @@ async def test_async_write_multi_register_start(coordinator, monkeypatch):
 async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
     """Writing a subset of a multi-register with an offset succeeds."""
     coordinator.async_request_refresh = AsyncMock()
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
@@ -396,7 +396,7 @@ async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
 async def test_async_write_multi_register_non_start(coordinator, monkeypatch):
     """Multi-register writes from non-start addresses are rejected."""
     coordinator.async_request_refresh = AsyncMock()
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     client = MagicMock()
     client.write_registers = AsyncMock()
     client.write_register = AsyncMock()
@@ -420,7 +420,7 @@ async def test_async_write_multi_register_non_start(coordinator, monkeypatch):
 async def test_async_write_multi_register_wrong_length(coordinator, monkeypatch):
     """Reject writes with incorrect number of values."""
     coordinator.async_request_refresh = AsyncMock()
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     client = MagicMock()
     client.write_registers = AsyncMock()
     coordinator.client = client
@@ -452,7 +452,7 @@ async def test_async_write_register_chunks(coordinator, batch, expected_calls, m
     """Writes are chunked according to configured batch size."""
     coordinator.max_registers_per_request = batch
     coordinator.effective_batch = min(batch, MAX_BATCH_REGISTERS)
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
@@ -479,7 +479,7 @@ async def test_async_write_register_truncates_over_limit(coordinator, monkeypatc
     """Batch sizes over the limit are truncated to the maximum when writing."""
     coordinator.max_registers_per_request = 100
     coordinator.effective_batch = MAX_BATCH_REGISTERS
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
@@ -819,8 +819,8 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
         FakeClient,
     ):
         for _ in range(3):
-            async with coordinator._connection_lock:
-                await coordinator._ensure_connection()
+            async with coordinator._client_lock:
+                await coordinator._ensure_connected()
             assert FakeClient.open_connections == 1
             coordinator.client.connected = False
 
@@ -851,7 +851,7 @@ async def test_missing_client_raises_connection_exception(coordinator):
 async def test_async_update_data_missing_client(coordinator):
     """_async_update_data should raise UpdateFailed when client cannot be established."""
     coordinator.client = None
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
 
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
@@ -860,7 +860,7 @@ async def test_async_update_data_missing_client(coordinator):
 @pytest.mark.asyncio
 async def test_setup_and_refresh_no_cancelled_error(coordinator):
     """Successful setup and refresh should not raise CancelledError."""
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     coordinator.client = MagicMock()
     coordinator.client.connected = True
 
@@ -952,7 +952,7 @@ async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
     )
     coordinator.client = MagicMock(connected=True)
     coordinator._disconnect = AsyncMock()
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     coordinator._read_input_registers_optimized = AsyncMock(
         side_effect=[ConnectionException("fail"), {"reg": 1}]
     )
@@ -991,7 +991,7 @@ async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
     coordinator._max_failures = 1
     coordinator.client = MagicMock(connected=True)
     coordinator._disconnect = AsyncMock()
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     coordinator._read_input_registers_optimized = AsyncMock(side_effect=TimeoutError("boom"))
     coordinator._read_holding_registers_optimized = AsyncMock(return_value={})
     coordinator._read_coil_registers_optimized = AsyncMock(return_value={})

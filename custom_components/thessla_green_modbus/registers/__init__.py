@@ -1,7 +1,37 @@
-"""Helpers for loading ThesslaGreen register definitions.
+"""Helpers and register constants for ThesslaGreen Modbus integration."""
 
-Functionality is provided by the ``loader`` module; import helpers from
-``custom_components.thessla_green_modbus.registers.loader``.
-"""
+# Register address constants (decimal). Hex references are comments only.
+MAX_REGS_PER_REQUEST = 16
 
-__all__: list[str] = []
+REG_MIN_PERCENT = 276  # 0x0114
+REG_MAX_PERCENT = 277  # 0x0115
+REG_ON_OFF_PANEL_MODE = 4387  # 0x1123
+
+REG_TEMPORARY_FLOW_MODE = 4400  # 0x1130
+REG_TEMPORARY_FLOW_VALUE = 4401  # 0x1131
+REG_TEMPORARY_FLOW_FLAG = 4402  # 0x1132
+
+REG_TEMPORARY_TEMP_MODE = 4403  # 0x1133
+REG_TEMPORARY_TEMP_VALUE = 4404  # 0x1134
+REG_TEMPORARY_TEMP_FLAG = 4405  # 0x1135
+
+REG_DEEP_SCAN_MAX = 301  # 0x012D
+
+UART_OPTIONAL_START = 4452  # 0x1164
+UART_OPTIONAL_END = 4460  # 0x116C
+
+__all__ = [
+    "MAX_REGS_PER_REQUEST",
+    "REG_DEEP_SCAN_MAX",
+    "REG_MAX_PERCENT",
+    "REG_MIN_PERCENT",
+    "REG_ON_OFF_PANEL_MODE",
+    "REG_TEMPORARY_FLOW_FLAG",
+    "REG_TEMPORARY_FLOW_MODE",
+    "REG_TEMPORARY_FLOW_VALUE",
+    "REG_TEMPORARY_TEMP_FLAG",
+    "REG_TEMPORARY_TEMP_MODE",
+    "REG_TEMPORARY_TEMP_VALUE",
+    "UART_OPTIONAL_END",
+    "UART_OPTIONAL_START",
+]

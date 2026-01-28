@@ -71,7 +71,7 @@ def test_fan_creation_and_state(mock_coordinator):
     mock_coordinator.data["supply_percentage"] = 50
     mock_coordinator.data["on_off_panel_mode"] = 1
     fan = ThesslaGreenFan(mock_coordinator)
-    assert fan.speed_count == 10
+    assert fan.speed_count == 15
     assert fan.is_on is True
     assert fan.percentage == 50
 
@@ -105,3 +105,24 @@ def test_fan_set_percentage_failure(mock_coordinator):
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
     with pytest.raises(RuntimeError):
         asyncio.run(fan.async_set_percentage(60))
+
+
+@pytest.mark.asyncio
+async def test_fan_clamps_percentage_to_limits(mock_coordinator):
+    """Ensure fan writes clamp to device min/max limits."""
+    mock_coordinator.data["mode"] = 1
+    mock_coordinator.data["min_percentage"] = 30
+    mock_coordinator.data["max_percentage"] = 150
+    fan = ThesslaGreenFan(mock_coordinator)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+
+    await fan.async_set_percentage(10)
+    await fan.async_set_percentage(180)
+
+    airflow_calls = [
+        call
+        for call in mock_coordinator.async_write_register.call_args_list
+        if call.args and call.args[0] == "air_flow_rate_manual"
+    ]
+    assert airflow_calls[0].args[1] == 30
+    assert airflow_calls[1].args[1] == 150

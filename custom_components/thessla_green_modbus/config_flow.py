@@ -25,6 +25,7 @@ from .const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
+    CONF_ENABLE_DEVICE_SCAN,
     CONF_LOG_LEVEL,
     CONF_BAUD_RATE,
     CONF_CONNECTION_TYPE,
@@ -43,6 +44,7 @@ from .const import (
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     DEFAULT_AIRFLOW_UNIT,
+    DEFAULT_ENABLE_DEVICE_SCAN,
     DEFAULT_LOG_LEVEL,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
@@ -61,6 +63,7 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     MAX_BATCH_REGISTERS,
+    MAX_REGS_PER_REQUEST,
     MODBUS_BAUD_RATES,
     MODBUS_PARITY,
     MODBUS_STOP_BITS,
@@ -557,12 +560,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                         "selector": {
                             "number": {
                                 "min": 1,
-                                "max": MAX_BATCH_REGISTERS,
+                                "max": MAX_REGS_PER_REQUEST,
                                 "step": 1,
                             }
                         }
                     },
                 ): int,
+                vol.Optional(
+                    CONF_ENABLE_DEVICE_SCAN,
+                    default=current_values.get(
+                        CONF_ENABLE_DEVICE_SCAN,
+                        DEFAULT_ENABLE_DEVICE_SCAN,
+                    ),
+                    description={"advanced": True},
+                ): bool,
             }
         )
 
@@ -650,6 +661,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
                 CONF_MAX_REGISTERS_PER_REQUEST,
                 DEFAULT_MAX_REGISTERS_PER_REQUEST,
+            ),
+            CONF_ENABLE_DEVICE_SCAN: self._data.get(
+                CONF_ENABLE_DEVICE_SCAN,
+                DEFAULT_ENABLE_DEVICE_SCAN,
             ),
             CONF_LOG_LEVEL: DEFAULT_LOG_LEVEL,
         }
@@ -767,7 +782,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 max_regs = user_input.get(
                     CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
                 )
-                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
+                if not 1 <= max_regs <= MAX_REGS_PER_REQUEST:
                     raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
                 # Validate input and get device info
@@ -846,7 +861,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 max_regs = user_input.get(
                     CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
                 )
-                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
+                if not 1 <= max_regs <= MAX_REGS_PER_REQUEST:
                     raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
                 info = await validate_input(self.hass, user_input)
@@ -944,7 +959,7 @@ class OptionsFlow(config_entries.OptionsFlow):
             max_regs = user_input.get(
                 CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
             )
-            if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
+            if not 1 <= max_regs <= MAX_REGS_PER_REQUEST:
                 errors[CONF_MAX_REGISTERS_PER_REQUEST] = "max_registers_range"
             else:
                 user_input = dict(user_input)
@@ -966,6 +981,10 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
         current_max_registers_per_request = entry_options.get(
             CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+        )
+        current_enable_device_scan = entry_options.get(
+            CONF_ENABLE_DEVICE_SCAN,
+            DEFAULT_ENABLE_DEVICE_SCAN,
         )
         current_log_level = entry_options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
 
@@ -1042,12 +1061,17 @@ class OptionsFlow(config_entries.OptionsFlow):
                         "selector": {
                             "number": {
                                 "min": 1,
-                                "max": MAX_BATCH_REGISTERS,
+                                "max": MAX_REGS_PER_REQUEST,
                                 "step": 1,
                             }
                         },
                     },
                 ): int,
+                vol.Optional(
+                    CONF_ENABLE_DEVICE_SCAN,
+                    default=current_enable_device_scan,
+                    description={"advanced": True},
+                ): bool,
             }
         )
 

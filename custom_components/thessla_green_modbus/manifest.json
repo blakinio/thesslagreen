@@ -2,14 +2,14 @@
   "domain": "thessla_green_modbus",
   "name": "ThesslaGreen Modbus",
   "codeowners": [
-    "@blakinio"
+    "@thesslagreen"
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/blakinio/thesslagreen",
+  "documentation": "https://github.com/thesslagreen/thessla-green-modbus-ha/wiki",
   "homeassistant": ">=2024.12.0",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/blakinio/thesslagreen/issues",
+  "issue_tracker": "https://github.com/thesslagreen/thessla-green-modbus-ha/issues",
   "quality_scale": "silver",
   "requirements": [
     "pymodbus>=3.6.0"
@@ -32,7 +32,7 @@
     "translations/en.json",
     "translations/pl.json"
   ],
-  "version": "0.1.0",
+  "version": "2.2.1",
   "integration_type": "hub",
   "after_dependencies": [
     "modbus"

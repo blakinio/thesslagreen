@@ -150,7 +150,7 @@ async def test_set_temperature_scaling():
     hass = SimpleNamespace()
     coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.client = DummyClient()
-    coordinator._ensure_connection = AsyncMock()
+    coordinator._ensure_connected = AsyncMock()
     coordinator.async_request_refresh = AsyncMock()
     coordinator.available_registers["holding_registers"].add("required_temperature")
     coordinator.capabilities.basic_control = True
@@ -180,6 +180,37 @@ def test_target_temperature_none_when_unavailable():
     assert climate.target_temperature == 20.0
 
 
+def test_hvac_mode_off_uses_panel_mode():
+    """HVAC mode should be OFF when panel mode is off."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.capabilities.basic_control = True
+    coordinator.data = {"on_off_panel_mode": 0, "mode": 0}
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate.hvac_mode == HVACMode.OFF
+
+
+def test_climate_fan_modes_use_device_limits():
+    """Fan modes should follow min/max percentage limits."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.capabilities.basic_control = True
+    coordinator.data = {
+        "on_off_panel_mode": 1,
+        "air_flow_rate_manual": 25,
+        "min_percentage": 20,
+        "max_percentage": 150,
+    }
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate.fan_mode == "30%"
+    assert climate.fan_modes[0] == "20%"
+    assert climate.fan_modes[-1] == "150%"
+
+
 def test_hvac_mode_mappings():
     """Verify device modes map to and from Home Assistant HVAC modes."""
     assert HVAC_MODE_MAP[0] == HVACMode.AUTO
@@ -188,7 +219,7 @@ def test_hvac_mode_mappings():
 
     assert HVAC_MODE_REVERSE_MAP[HVACMode.AUTO] == 0
     assert HVAC_MODE_REVERSE_MAP[HVACMode.FAN_ONLY] == 1
-    assert HVAC_MODE_REVERSE_MAP[HVACMode.OFF] == 0
+    assert HVACMode.OFF not in HVAC_MODE_REVERSE_MAP
 
 
 @pytest.mark.asyncio

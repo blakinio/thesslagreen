@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from .const import MAX_BATCH_REGISTERS, SENSOR_UNAVAILABLE
+from .registers import UART_OPTIONAL_END, UART_OPTIONAL_START
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
@@ -29,7 +30,7 @@ def _format_register_value(name: str, value: int) -> int | str | None:
     """Return a human-readable representation of a register value."""
     if name == "manual_airing_time_to_start":
         raw_value = value
-        value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
+        value = ((value & 255) << 8) | ((value >> 8) & 255)
         decoded = _decode_register_time(value)
         if decoded is None:
             return None if raw_value == SENSOR_UNAVAILABLE else f"0x{raw_value:04X} (invalid)"
@@ -60,10 +61,10 @@ def _format_register_value(name: str, value: int) -> int | str | None:
 
 def _decode_season_mode(value: int) -> int | None:
     """Decode season mode register which may place value in high byte."""
-    if value in (0xFF00, 0xFFFF, SENSOR_UNAVAILABLE):
+    if value in (65280, 65535, SENSOR_UNAVAILABLE):
         return None
-    high = (value >> 8) & 0xFF
-    low = value & 0xFF
+    high = (value >> 8) & 255
+    low = value & 255
     if high and low:
         return None
     return high or low
@@ -81,7 +82,7 @@ SPECIAL_VALUE_DECODERS: dict[str, Callable[[int], int | None]] = {
 # optional and may be absent on devices without the corresponding
 # hardware. They are skipped by default unless UART scanning is
 # explicitly enabled.
-UART_OPTIONAL_REGS = range(0x1164, 0x116C)
+UART_OPTIONAL_REGS = range(UART_OPTIONAL_START, UART_OPTIONAL_END)
 
 # Registers considered safe to read when verifying connectivity.
 # Each entry is a tuple of Modbus function code and register name. The

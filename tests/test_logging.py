@@ -61,6 +61,10 @@ async def test_read_retries_logged(monkeypatch, caplog):
         loader=loader_stub,
         get_all_registers=loader_stub.get_all_registers,
         get_registers_by_function=loader_stub.get_registers_by_function,
+        MAX_REGS_PER_REQUEST=16,
+        REG_DEEP_SCAN_MAX=301,
+        UART_OPTIONAL_START=4452,
+        UART_OPTIONAL_END=4460,
     )
     ha_util = types.SimpleNamespace(
         network=types.SimpleNamespace(is_host_valid=lambda *a, **k: True)
@@ -129,6 +133,10 @@ async def test_write_retries_logged(monkeypatch, caplog):
         loader=loader_stub,
         get_all_registers=loader_stub.get_all_registers,
         get_registers_by_function=loader_stub.get_registers_by_function,
+        MAX_REGS_PER_REQUEST=16,
+        REG_DEEP_SCAN_MAX=301,
+        UART_OPTIONAL_START=4452,
+        UART_OPTIONAL_END=4460,
     )
     ha_util = types.SimpleNamespace(
         network=types.SimpleNamespace(is_host_valid=lambda *a, **k: True)
@@ -169,7 +177,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
     coord = ThesslaGreenModbusCoordinator(hass, "host", 1, 1, "name", scan_interval=1)
     coord.client = DummyClient()
     coord.retry = 2
-    monkeypatch.setattr(coord, "_ensure_connection", lambda: asyncio.sleep(0))
+    monkeypatch.setattr(coord, "_ensure_connected", lambda: asyncio.sleep(0))
 
     caplog.set_level(logging.INFO)
     result = await coord.async_write_register("reg", 1, refresh=False)

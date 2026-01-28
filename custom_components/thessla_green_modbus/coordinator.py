@@ -7,98 +7,25 @@ import inspect
 import logging
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
-try:  # pragma: no cover - handle missing Home Assistant util during tests
-    from homeassistant.util import dt as dt_util
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
-
-    class _DTUtil:
-        """Fallback minimal dt util."""
-
-        @staticmethod
-        def now():
-            from datetime import datetime
-
-            return datetime.now(UTC)
-
-        @staticmethod
-        def utcnow():
-            from datetime import datetime
-
-            return datetime.now(UTC)
-
-    dt_util = _DTUtil()  # type: ignore
-
-try:  # pragma: no cover - used in runtime environments only
-    from homeassistant.const import EVENT_HOMEASSISTANT_STOP
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
-    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
-
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .modbus_exceptions import ConnectionException, ModbusException
-from .modbus_transport import BaseModbusTransport, RtuModbusTransport, TcpModbusTransport
-
-if TYPE_CHECKING:
-    from homeassistant.helpers.device_registry import DeviceInfo
-    from pymodbus.client import AsyncModbusTcpClient
-else:  # pragma: no cover
-    try:
-        from homeassistant.helpers.device_registry import DeviceInfo
-    except (ModuleNotFoundError, ImportError):  # pragma: no cover
-
-        class DeviceInfo:
-            """Minimal fallback DeviceInfo for tests.
-
-            Stores provided keyword arguments and exposes an ``as_dict`` method
-            similar to Home Assistant's ``DeviceInfo`` dataclass.
-            """
-
-            def __init__(self, **kwargs: Any) -> None:
-                self._data: dict[str, Any] = dict(kwargs)
-
-            def as_dict(self) -> dict[str, Any]:
-                """Return stored fields as a dictionary."""
-                return dict(self._data)
-
-            # Provide dictionary-style and attribute-style access for convenience in tests
-            def __getitem__(self, key: str) -> Any:  # pragma: no cover - simple mapping
-                return self._data[key]
-
-            def __getattr__(self, item: str) -> Any:
-                try:
-                    return self._data[item]
-                except KeyError as exc:  # pragma: no cover - mirror dict behaviour
-                    raise AttributeError(item) from exc
-
-    AsyncModbusTcpClient = Any
-
+from .modbus_transport import RtuModbusTransport, TcpModbusTransport
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from pymodbus.client import AsyncModbusTcpClient
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-
-try:  # pragma: no cover - serial extras optional at runtime
-    from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
-except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
-    _AsyncModbusSerialClient = None
-    SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
-else:  # pragma: no cover - executed when serial client available
-    SERIAL_IMPORT_ERROR = None
-
-if TYPE_CHECKING:  # pragma: no cover - typing helper only
-    from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
-else:
-    AsyncModbusSerialClientType = Any
+from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 
 from .config_flow import CannotConnect
 from .const import (
+    CONF_ENABLE_DEVICE_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_SCAN_CACHE,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     DEFAULT_BACKOFF,
@@ -106,6 +33,7 @@ from .const import (
     DEFAULT_MAX_BACKOFF,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
+    DEFAULT_ENABLE_DEVICE_SCAN,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
@@ -130,6 +58,15 @@ from .register_map import REGISTER_MAP_VERSION, validate_register_value
 from .modbus_helpers import _call_modbus, group_reads
 from .registers.loader import get_all_registers
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
+from .registers import (
+    MAX_REGS_PER_REQUEST,
+    REG_TEMPORARY_FLOW_FLAG,
+    REG_TEMPORARY_FLOW_MODE,
+    REG_TEMPORARY_FLOW_VALUE,
+    REG_TEMPORARY_TEMP_FLAG,
+    REG_TEMPORARY_TEMP_MODE,
+    REG_TEMPORARY_TEMP_VALUE,
+)
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
 
@@ -257,13 +194,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if entry is not None:
             try:
                 self.effective_batch = min(
-                    int(entry.options.get(CONF_MAX_REGISTERS_PER_REQUEST, MAX_BATCH_REGISTERS)),
-                    MAX_BATCH_REGISTERS,
+                int(entry.options.get(CONF_MAX_REGISTERS_PER_REQUEST, MAX_REGS_PER_REQUEST)),
+                    MAX_REGS_PER_REQUEST,
                 )
             except (TypeError, ValueError):
-                self.effective_batch = MAX_BATCH_REGISTERS
+                self.effective_batch = MAX_REGS_PER_REQUEST
         else:
-            self.effective_batch = min(int(max_registers_per_request), MAX_BATCH_REGISTERS)
+            self.effective_batch = min(int(max_registers_per_request), MAX_REGS_PER_REQUEST)
         if self.effective_batch < 1:
             self.effective_batch = 1
         self.max_registers_per_request = self.effective_batch
@@ -291,8 +228,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
 
         # Connection management
-        self.client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
-        self._connection_lock = asyncio.Lock()
+        self.client: AsyncModbusTcpClient | AsyncModbusSerialClient | None = None
+        self._client_lock = asyncio.Lock()
+        self._write_lock = asyncio.Lock()
         self._update_in_progress = False
 
         # Stop listener for Home Assistant shutdown
@@ -411,7 +349,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         # Scan device to discover available registers and capabilities
-        if not self.force_full_register_list:
+        scan_enabled = DEFAULT_ENABLE_DEVICE_SCAN
+        if entry is not None:
+            scan_enabled = entry.options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN)
+
+        if not self.force_full_register_list and scan_enabled:
             _LOGGER.info("Scanning device for available registers...")
             scanner = None
             try:
@@ -465,6 +407,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.unknown_registers = self.device_scan_result.get("unknown_registers", {})
                 self.scanned_registers = self.device_scan_result.get("scanned_registers", {})
 
+                self._cache_scan_result()
+
                 _LOGGER.info(
                     "Device scan completed: %d registers found, model: %s, firmware: %s",
                     self.device_scan_result.get("register_count", 0),
@@ -491,8 +435,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     await scanner.close()
         else:
             _LOGGER.info("Using full register list (skipping scan)")
-            # Load all registers if forced
-            self._load_full_register_list()
+            cached = self._load_cached_scan()
+            if cached:
+                self._apply_cached_scan(cached)
+            else:
+                # Load all registers if forced or scan disabled
+                self._load_full_register_list()
 
         model = self.device_info.get("model", UNKNOWN_MODEL)
         firmware = self.device_info.get("firmware", "Unknown")
@@ -575,6 +523,66 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             sum(len(regs) for regs in self.available_registers.values()),
         )
 
+    def _cache_scan_result(self) -> None:
+        """Store scan results in the config entry options for reuse."""
+        if self.entry is None or not hasattr(self.hass, "config_entries"):
+            return
+        cache = {
+            "register_map_version": REGISTER_MAP_VERSION,
+            "firmware": self.device_info.get("firmware"),
+            "available_registers": {
+                key: sorted(list(value)) for key, value in self.available_registers.items()
+            },
+            "device_info": dict(self.device_info),
+            "capabilities": self.capabilities.as_dict(),
+            "unknown_registers": self.unknown_registers,
+            "scanned_registers": self.scanned_registers,
+        }
+        options = dict(self.entry.options)
+        options[CONF_SCAN_CACHE] = cache
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
+
+    def _load_cached_scan(self) -> dict[str, Any] | None:
+        """Load cached scan results when available and compatible."""
+        if self.entry is None:
+            return None
+        cache = self.entry.options.get(CONF_SCAN_CACHE)
+        if not isinstance(cache, dict):
+            return None
+        if cache.get("register_map_version") != REGISTER_MAP_VERSION:
+            return None
+        return cache
+
+    def _apply_cached_scan(self, cache: dict[str, Any]) -> None:
+        """Apply cached scan results to coordinator state."""
+        available = cache.get("available_registers", {})
+        self.available_registers = {
+            "input_registers": set(available.get("input_registers", [])),
+            "holding_registers": set(available.get("holding_registers", [])),
+            "coil_registers": set(available.get("coil_registers", [])),
+            "discrete_inputs": set(available.get("discrete_inputs", [])),
+            "calculated": {"estimated_power", "total_energy"},
+        }
+        self.device_info = dict(cache.get("device_info", {}))
+        caps_obj = cache.get("capabilities", {})
+        if isinstance(caps_obj, dict):
+            try:
+                self.capabilities = DeviceCapabilities(**caps_obj)
+            except (TypeError, ValueError):
+                _LOGGER.debug("Invalid cached capabilities", exc_info=True)
+        self.unknown_registers = cache.get("unknown_registers", {})
+        self.scanned_registers = cache.get("scanned_registers", {})
+        self.device_scan_result = {
+            "available_registers": {
+                key: sorted(list(value)) for key, value in self.available_registers.items()
+            },
+            "device_info": self.device_info,
+            "capabilities": self.capabilities.as_dict(),
+            "register_count": sum(len(v) for v in self.available_registers.values()),
+            "unknown_registers": self.unknown_registers,
+            "scanned_registers": self.scanned_registers,
+        }
+
     def _compute_register_groups(self) -> None:
         """Pre-compute register groups for optimized batch reading."""
         self._register_groups.clear()
@@ -621,39 +629,36 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _test_connection(self) -> None:
         """Test initial connection to the device."""
-        async with self._connection_lock:
-            try:
-                await self._ensure_connection()
+        try:
+            await self._ensure_connected()
 
-                test_addresses = list(input_registers().values())[:3]
+            test_addresses = list(input_registers().values())[:3]
 
-                for addr in test_addresses:
-                    response = await self.client.read_input_registers(
-                        addr, count=1, unit=self.slave_id
-                    )
-                    if response.isError():
-                        raise ConnectionException(f"Cannot read register {addr:#06x}")
+            for addr in test_addresses:
+                response = await self.client.read_input_registers(addr, count=1, unit=self.slave_id)
+                if response.isError():
+                    raise ConnectionException(f"Cannot read register {addr:#06x}")
 
-                client = self.client
-                if client is None or not client.connected:
-                    raise ConnectionException("Modbus client is not connected")
-                # Try to read a basic register to verify communication. "count" must
-                # always be passed as a keyword argument to ``_call_modbus`` to avoid
-                # issues with keyword-only parameters in pymodbus.
-                count = 1
-                response = await self._call_modbus(client.read_input_registers, 0x0000, count=count)
-                if response is None or response.isError():
-                    raise ConnectionException("Cannot read basic register")
-                _LOGGER.debug("Connection test successful")
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.exception("Connection test failed: %s", exc)
-                raise
-            except TimeoutError as exc:
-                _LOGGER.warning("Connection test timed out: %s", exc)
-                raise
-            except OSError as exc:
-                _LOGGER.exception("Unexpected error during connection test: %s", exc)
-                raise
+            client = self.client
+            if client is None or not client.connected:
+                raise ConnectionException("Modbus client is not connected")
+            # Try to read a basic register to verify communication. "count" must
+            # always be passed as a keyword argument to ``_call_modbus`` to avoid
+            # issues with keyword-only parameters in pymodbus.
+            count = 1
+            response = await self._call_modbus(client.read_input_registers, 0, count=count)
+            if response is None or response.isError():
+                raise ConnectionException("Cannot read basic register")
+            _LOGGER.debug("Connection test successful")
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.exception("Connection test failed: %s", exc)
+            raise
+        except TimeoutError as exc:
+            _LOGGER.warning("Connection test timed out: %s", exc)
+            raise
+        except OSError as exc:
+            _LOGGER.exception("Unexpected error during connection test: %s", exc)
+            raise
 
     async def _async_setup_client(self) -> bool:  # pragma: no cover
         """Set up the Modbus client if needed.
@@ -663,8 +668,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ``True`` on success and ``False`` on failure.
         """
         try:
-            async with self._connection_lock:
-                await self._ensure_connection()
+            await self._ensure_connected()
             return True
         except (ModbusException, ConnectionException) as exc:
             _LOGGER.exception("Failed to set up Modbus client: %s", exc)
@@ -676,20 +680,61 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.exception("Unexpected error setting up Modbus client: %s", exc)
             return False
 
-    async def _ensure_connection(self) -> None:
+    async def _ensure_connected(self) -> None:
         """Ensure Modbus connection is established."""
-        if self.connection_type == CONNECTION_TYPE_TCP and self.transport:
-            try:
-                await self.transport.ensure_connected()
-                self.client = getattr(self.transport, "client", None)
-                self.offline_state = self.transport.offline
-                if self.offline_state:
-                    raise ConnectionException("Modbus client is offline")
+        async with self._client_lock:
+            if self.connection_type == CONNECTION_TYPE_TCP and self.transport:
+                try:
+                    await self.transport.ensure_connected()
+                    self.client = getattr(self.transport, "client", None)
+                    self.offline_state = self.transport.offline
+                    if self.offline_state:
+                        raise ConnectionException("Modbus client is offline")
+                    return
+                except (ModbusException, ConnectionException) as exc:
+                    self.statistics["connection_errors"] += 1
+                    self.offline_state = True
+                    _LOGGER.error("Failed to establish TCP connection: %s", exc)
+                    raise
+                except TimeoutError as exc:
+                    self.statistics["connection_errors"] += 1
+                    self.offline_state = True
+                    _LOGGER.warning("Connection attempt timed out: %s", exc)
+                    raise
+                except OSError as exc:
+                    self.statistics["connection_errors"] += 1
+                    self.offline_state = True
+                    _LOGGER.error("Unexpected error establishing connection: %s", exc)
+                    raise
+
+            if self.client and getattr(self.client, "connected", False):
                 return
+            if self.client is not None:
+                await self._disconnect()
+            try:
+                if self.connection_type == CONNECTION_TYPE_RTU:
+                    if not self.serial_port:
+                        raise ConnectionException("Serial port not configured for RTU transport")
+                    parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+                    stop_bits = SERIAL_STOP_BITS_MAP.get(
+                        self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+                    )
+                    self.client = AsyncModbusSerialClient(
+                        method="rtu",
+                        port=self.serial_port,
+                        baudrate=self.baud_rate,
+                        parity=parity,
+                        stopbits=stop_bits,
+                        timeout=self.timeout,
+                    )
+                if self.client and not await self.client.connect():
+                    raise ConnectionException("Could not connect to configured Modbus endpoint")
+                _LOGGER.debug("Modbus connection established")
+                self.offline_state = False
             except (ModbusException, ConnectionException) as exc:
                 self.statistics["connection_errors"] += 1
                 self.offline_state = True
-                _LOGGER.error("Failed to establish TCP connection: %s", exc)
+                _LOGGER.exception("Failed to establish connection: %s", exc)
                 raise
             except TimeoutError as exc:
                 self.statistics["connection_errors"] += 1
@@ -699,55 +744,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except OSError as exc:
                 self.statistics["connection_errors"] += 1
                 self.offline_state = True
-                _LOGGER.error("Unexpected error establishing connection: %s", exc)
+                _LOGGER.exception("Unexpected error establishing connection: %s", exc)
                 raise
-
-        if self.client and getattr(self.client, "connected", False):
-            return
-        if self.client is not None:
-            await self._disconnect()
-        try:
-            if self.connection_type == CONNECTION_TYPE_RTU:
-                if not self.serial_port:
-                    raise ConnectionException("Serial port not configured for RTU transport")
-                if _AsyncModbusSerialClient is None:
-                    message = (
-                        "Modbus serial client is unavailable. Install pymodbus with serial support."
-                    )
-                    if SERIAL_IMPORT_ERROR is not None:
-                        message = f"{message} ({SERIAL_IMPORT_ERROR})"
-                    raise ConnectionException(message)
-                parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
-                stop_bits = SERIAL_STOP_BITS_MAP.get(
-                    self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
-                )
-                self.client = _AsyncModbusSerialClient(
-                    method="rtu",
-                    port=self.serial_port,
-                    baudrate=self.baud_rate,
-                    parity=parity,
-                    stopbits=stop_bits,
-                    timeout=self.timeout,
-                )
-            if self.client and not await self.client.connect():
-                raise ConnectionException("Could not connect to configured Modbus endpoint")
-            _LOGGER.debug("Modbus connection established")
-            self.offline_state = False
-        except (ModbusException, ConnectionException) as exc:
-            self.statistics["connection_errors"] += 1
-            self.offline_state = True
-            _LOGGER.exception("Failed to establish connection: %s", exc)
-            raise
-        except TimeoutError as exc:
-            self.statistics["connection_errors"] += 1
-            self.offline_state = True
-            _LOGGER.warning("Connection attempt timed out: %s", exc)
-            raise
-        except OSError as exc:
-            self.statistics["connection_errors"] += 1
-            self.offline_state = True
-            _LOGGER.exception("Unexpected error establishing connection: %s", exc)
-            raise
 
     async def _async_update_data(self) -> dict[str, Any]:  # pragma: no cover
         """Fetch data from the device with optimized batch reading.
@@ -763,9 +761,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._update_in_progress = True
 
-        async with self._connection_lock:
-            try:
-                await self._ensure_connection()
+        try:
+            async with self._write_lock:
+                await self._ensure_connected()
                 client = self.client
                 if client is None or not client.connected:
                     raise ConnectionException("Modbus client is not connected")
@@ -782,7 +780,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _LOGGER.debug(
                         "Modbus client disconnected during update; attempting reconnection"
                     )
-                    await self._ensure_connection()
+                    await self._ensure_connected()
                     client = self.client
                     if client is None or not client.connected:
                         raise ConnectionException("Modbus client is not connected")
@@ -804,51 +802,51 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
                 return data
 
-            except (ModbusException, ConnectionException) as exc:
-                self.statistics["failed_reads"] += 1
-                self.statistics["last_error"] = str(exc)
-                self._consecutive_failures += 1
-                self.offline_state = True
+        except (ModbusException, ConnectionException) as exc:
+            self.statistics["failed_reads"] += 1
+            self.statistics["last_error"] = str(exc)
+            self._consecutive_failures += 1
+            self.offline_state = True
 
-                if self._consecutive_failures >= self._max_failures:
-                    _LOGGER.error("Too many consecutive failures, disconnecting")
-                    await self._disconnect()
-                    self._trigger_reauth("connection_failure")
+            if self._consecutive_failures >= self._max_failures:
+                _LOGGER.error("Too many consecutive failures, disconnecting")
+                await self._disconnect()
+                self._trigger_reauth("connection_failure")
 
-                if _looks_like_invalid_auth(exc):
-                    self._trigger_reauth("invalid_auth")
+            if _looks_like_invalid_auth(exc):
+                self._trigger_reauth("invalid_auth")
 
-                _LOGGER.error("Failed to update data: %s", exc)
-                raise UpdateFailed(f"Error communicating with device: {exc}") from exc
-            except TimeoutError as exc:
-                self.statistics["failed_reads"] += 1
-                self.statistics["timeout_errors"] += 1
-                self.statistics["last_error"] = str(exc)
-                self._consecutive_failures += 1
-                self.offline_state = True
+            _LOGGER.error("Failed to update data: %s", exc)
+            raise UpdateFailed(f"Error communicating with device: {exc}") from exc
+        except TimeoutError as exc:
+            self.statistics["failed_reads"] += 1
+            self.statistics["timeout_errors"] += 1
+            self.statistics["last_error"] = str(exc)
+            self._consecutive_failures += 1
+            self.offline_state = True
 
-                if self._consecutive_failures >= self._max_failures:
-                    _LOGGER.error("Too many consecutive failures, disconnecting")
-                    await self._disconnect()
-                    self._trigger_reauth("timeout")
+            if self._consecutive_failures >= self._max_failures:
+                _LOGGER.error("Too many consecutive failures, disconnecting")
+                await self._disconnect()
+                self._trigger_reauth("timeout")
 
-                _LOGGER.warning("Data update timed out: %s", exc)
-                raise UpdateFailed(f"Timeout during data update: {exc}") from exc
-            except (OSError, ValueError) as exc:
-                self.statistics["failed_reads"] += 1
-                self.statistics["last_error"] = str(exc)
-                self._consecutive_failures += 1
-                self.offline_state = True
+            _LOGGER.warning("Data update timed out: %s", exc)
+            raise UpdateFailed(f"Timeout during data update: {exc}") from exc
+        except (OSError, ValueError) as exc:
+            self.statistics["failed_reads"] += 1
+            self.statistics["last_error"] = str(exc)
+            self._consecutive_failures += 1
+            self.offline_state = True
 
-                if self._consecutive_failures >= self._max_failures:
-                    _LOGGER.error("Too many consecutive failures, disconnecting")
-                    await self._disconnect()
-                    self._trigger_reauth("connection_failure")
+            if self._consecutive_failures >= self._max_failures:
+                _LOGGER.error("Too many consecutive failures, disconnecting")
+                await self._disconnect()
+                self._trigger_reauth("connection_failure")
 
-                _LOGGER.error("Unexpected error during data update: %s", exc)
-                raise UpdateFailed(f"Unexpected error: {exc}") from exc
-            finally:
-                self._update_in_progress = False
+            _LOGGER.error("Unexpected error during data update: %s", exc)
+            raise UpdateFailed(f"Unexpected error: {exc}") from exc
+        finally:
+            self._update_in_progress = False
 
     async def _read_input_registers_optimized(self) -> dict[str, Any]:
         """Read input registers using optimized batch reading."""
@@ -1269,7 +1267,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Decode a raw register value using its definition."""
 
-        if value == 0x8000:
+        if value == SENSOR_UNAVAILABLE:
             return None
 
         definition = get_register_definition(register_name)
@@ -1367,9 +1365,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """
 
         refresh_after_write = False
-        async with self._connection_lock:
+        async with self._write_lock:
             try:
-                await self._ensure_connection()
+                await self._ensure_connected()
                 if not self.client:
                     raise ConnectionException("Modbus client is not connected")
 
@@ -1445,6 +1443,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                             register_name,
                                             response,
                                         )
+                                        await self._disconnect()
                                         return False
                                     _LOGGER.info("Retrying write to register %s", register_name)
                                     continue
@@ -1473,6 +1472,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     register_name,
                                     response,
                                 )
+                                await self._disconnect()
                                 return False
                             _LOGGER.info("Retrying write to register %s", register_name)
                             continue
@@ -1491,6 +1491,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 register_name,
                                 exc_info=True,
                             )
+                            await self._disconnect()
                             return False
                         _LOGGER.info(
                             "Retrying write to register %s after error: %s",
@@ -1511,19 +1512,162 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 "Persistent timeout writing register %s",
                                 register_name,
                             )
+                            await self._disconnect()
                             return False
                         continue
                     except OSError:
                         _LOGGER.exception("Unexpected error writing register %s", register_name)
+                        await self._disconnect()
                         return False
 
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
                 _LOGGER.exception("Failed to write register %s", register_name)
+                await self._disconnect()
                 return False
 
         if refresh_after_write:
             await self.async_request_refresh()
         return True
+
+    async def async_write_registers(
+        self,
+        start_addr: int,
+        values: list[int],
+        refresh: bool = True,
+    ) -> bool:
+        """Write multiple holding registers with chunking and retries."""
+        if not values:
+            return False
+
+        refresh_after_write = False
+        async with self._write_lock:
+            await self._ensure_connected()
+            if not self.client:
+                raise ConnectionException("Modbus client is not connected")
+
+            for attempt in range(1, self.retry + 1):
+                try:
+                    success = True
+                    for idx in range(0, len(values), self.effective_batch):
+                        chunk = values[idx : idx + self.effective_batch]
+                        response = await self._call_modbus(
+                            self.client.write_registers,
+                            address=start_addr + idx,
+                            values=[int(v) for v in chunk],
+                            attempt=attempt,
+                            apply_backoff=idx == 0,
+                        )
+                        if response is None or response.isError():
+                            success = False
+                            break
+                    if not success:
+                        if attempt == self.retry:
+                            _LOGGER.error(
+                                "Error writing registers at %s: %s",
+                                start_addr,
+                                response,
+                            )
+                            await self._disconnect()
+                            return False
+                        _LOGGER.info("Retrying multi-register write at %s", start_addr)
+                        continue
+
+                    refresh_after_write = refresh
+                    _LOGGER.info("Successfully wrote %d registers at %s", len(values), start_addr)
+                    break
+                except (ModbusException, ConnectionException) as exc:
+                    if attempt == self.retry:
+                        _LOGGER.error(
+                            "Failed to write registers at %s",
+                            start_addr,
+                            exc_info=True,
+                        )
+                        await self._disconnect()
+                        return False
+                    _LOGGER.info(
+                        "Retrying multi-register write at %s after error: %s",
+                        start_addr,
+                        exc,
+                    )
+                except TimeoutError:
+                    _LOGGER.warning(
+                        "Writing registers at %s timed out (attempt %d/%d)",
+                        start_addr,
+                        attempt,
+                        self.retry,
+                        exc_info=True,
+                    )
+                    if attempt == self.retry:
+                        _LOGGER.error(
+                            "Persistent timeout writing registers at %s",
+                            start_addr,
+                        )
+                        await self._disconnect()
+                        return False
+                except OSError:
+                    _LOGGER.exception("Unexpected error writing registers at %s", start_addr)
+                    await self._disconnect()
+                    return False
+
+        if refresh_after_write:
+            await self.async_request_refresh()
+        return True
+
+    async def async_write_temporary_airflow(
+        self,
+        mode: int,
+        airflow: int,
+        flag: int = 1,
+        refresh: bool = True,
+    ) -> bool:
+        """Write temporary airflow using mode/value/flag registers."""
+        mode_name = self._find_register_name("holding_registers", REG_TEMPORARY_FLOW_MODE)
+        value_name = self._find_register_name("holding_registers", REG_TEMPORARY_FLOW_VALUE)
+        flag_name = self._find_register_name("holding_registers", REG_TEMPORARY_FLOW_FLAG)
+        mode_val = (
+            int(get_register_definition(mode_name).encode(mode)) if mode_name else int(mode)
+        )
+        airflow_val = (
+            int(get_register_definition(value_name).encode(airflow))
+            if value_name
+            else int(airflow)
+        )
+        flag_val = (
+            int(get_register_definition(flag_name).encode(flag)) if flag_name else int(flag)
+        )
+        return await self.async_write_registers(
+            REG_TEMPORARY_FLOW_MODE,
+            [mode_val, airflow_val, flag_val],
+            refresh=refresh,
+        )
+
+    async def async_write_temporary_temperature(
+        self,
+        mode: int,
+        temperature: float,
+        flag: int = 1,
+        refresh: bool = True,
+    ) -> bool:
+        """Write temporary supply temperature using mode/value/flag registers."""
+        mode_name = self._find_register_name("holding_registers", REG_TEMPORARY_TEMP_MODE)
+        value_name = self._find_register_name("holding_registers", REG_TEMPORARY_TEMP_VALUE)
+        flag_name = self._find_register_name("holding_registers", REG_TEMPORARY_TEMP_FLAG)
+        mode_val = (
+            int(get_register_definition(mode_name).encode(mode)) if mode_name else int(mode)
+        )
+        temp_val = (
+            int(get_register_definition(value_name).encode(temperature))
+            if value_name
+            else int(temperature)
+        )
+        flag_val = (
+            int(get_register_definition(flag_name).encode(flag)) if flag_name else int(flag)
+        )
+        return await self.async_write_registers(
+            REG_TEMPORARY_TEMP_MODE,
+            [mode_val, temp_val, flag_val],
+            refresh=refresh,
+        )
 
     async def _disconnect(self) -> None:
         """Disconnect from Modbus device."""

@@ -86,8 +86,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # Fan configuration
         self._attr_supported_features = FanEntityFeature.SET_SPEED  # pragma: no cover
 
-        # Speed range (10-100% as per ThesslaGreen specs)
-        self._attr_speed_count = 10  # 10%, 20%, ..., 100%  # pragma: no cover
+        # Speed range defaults to 10-100% until limits are read from device
+        self._attr_speed_count = 10  # pragma: no cover
 
         _LOGGER.debug("Initialized fan entity")
 
@@ -121,8 +121,26 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         if flow_rate is None:
             return None
 
-        # Convert to percentage (clamp to 0-100)
-        return max(0, min(100, int(flow_rate)))
+        _, max_pct = self._get_percentage_limits()
+        return max(0, min(max_pct, int(flow_rate)))
+
+    def _get_percentage_limits(self) -> tuple[int, int]:
+        """Return dynamic min/max percentage limits."""
+        min_pct = self.coordinator.data.get("min_percentage")
+        max_pct = self.coordinator.data.get("max_percentage")
+        try:
+            min_val = int(min_pct) if min_pct is not None else 10
+        except (TypeError, ValueError):
+            min_val = 10
+        try:
+            max_val = int(max_pct) if max_pct is not None else 150
+        except (TypeError, ValueError):
+            max_val = 150
+        min_val = max(10, min_val)
+        max_val = min(150, max_val)
+        if max_val < min_val:
+            max_val = min_val
+        return min_val, max_val
 
     def _get_current_flow_rate(self) -> float | None:
         """Get current flow rate from available registers."""
@@ -142,6 +160,17 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     return float(value)
 
         return None
+
+    @property
+    def speed_count(self) -> int | None:  # pragma: no cover
+        """Return dynamic speed count based on device limits."""
+        min_val, max_val = self._get_percentage_limits()
+        if max_val < min_val:
+            return None
+        steps = list(range(min_val, max_val + 1, 10))
+        if steps and steps[-1] != max_val:
+            steps.append(max_val)
+        return len(steps)
 
     async def async_turn_on(
         self,
@@ -197,8 +226,9 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
-        if percentage < 0 or percentage > 100:
-            _LOGGER.error("Invalid percentage %d (must be 0-100)", percentage)
+        min_val, max_val = self._get_percentage_limits()
+        if percentage < 0:
+            _LOGGER.error("Invalid percentage %d (must be >= 0)", percentage)
             return
 
         try:
@@ -207,8 +237,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 _LOGGER.debug("Set fan speed to 0%")
                 return
 
-            # Ensure minimum flow rate (ThesslaGreen typically requires 10% minimum)
-            actual_percentage = max(10, percentage)
+            clamped = min(max_val, percentage)
+            actual_percentage = max(min_val, clamped)
 
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
@@ -224,12 +254,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 ):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
-                # Auto mode - set auto flow rate
-                if (
-                    "air_flow_rate_temporary_2" in holding_registers()
-                    and "air_flow_rate_temporary_2" in holding_regs
-                ):
-                    await self._write_register("air_flow_rate_temporary_2", actual_percentage)
+                await self.coordinator.async_write_temporary_airflow(
+                    mode=2,
+                    airflow=actual_percentage,
+                    refresh=False,
+                )
 
             _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
 
