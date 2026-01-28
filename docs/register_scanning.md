@@ -12,10 +12,14 @@ incompatibilities.
 Only addresses defined in [entity_mappings.py](../custom_components/thessla_green_modbus/entity_mappings.py)
 are exposed as entities by default. The list covers all supported sensors and controls.
 
-Enabling the **force_full_register_list** option creates entities for every discovered
-register. This can reveal additional data but may also surface partial values or internal
-configuration fields that have no dedicated entity class. Use this option with care and
-primarily for debugging or development purposes.
+All register addresses are treated as decimal values (**DEC ONLY**).
+
+Enabling the **force_full_register_list** option loads the full address list, but entities
+are still created only when valid device capabilities are available. If capabilities are
+missing, entity setup fails fast to avoid speculative entities.
+
+The **safe_scan** option disables register grouping during scans. This is slower but can
+reduce the chance of transient failures on unstable Modbus links.
 
 ## Dodawanie lub aktualizowanie rejestrów
 

@@ -35,16 +35,18 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
+    if not coordinator.has_capabilities():
+        _LOGGER.warning("Capabilities missing; no select entities created")
+        return
+
     entities = []
     # Only create selects for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device() or all known registers when
-    # ``force_full_register_list`` is enabled.
+    # ThesslaGreenDeviceScanner.scan_device().
     for register_name, select_def in ENTITY_MAPPINGS["select"].items():
         register_type = select_def["register_type"]
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in register_map
-        if register_name in available or force_create:
+        if register_name in available:
             address = register_map[register_name]
             entities.append(ThesslaGreenSelect(coordinator, register_name, address, select_def))
 

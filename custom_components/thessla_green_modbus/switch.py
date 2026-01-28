@@ -31,6 +31,10 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
+    if not coordinator.has_capabilities():
+        _LOGGER.warning("Capabilities missing; no switch entities created")
+        return
+
     entities = []
 
     # Create switch entities only for writable registers discovered by
@@ -46,12 +50,8 @@ async def async_setup_entry(
         if config["register_type"] == "holding_registers":
             if register_name in coordinator.available_registers.get("holding_registers", set()):
                 is_available = True
-            elif coordinator.force_full_register_list and register_name in holding_map:
-                is_available = True
         elif config["register_type"] == "coil_registers":
             if register_name in coordinator.available_registers.get("coil_registers", set()):
-                is_available = True
-            elif coordinator.force_full_register_list and register_name in coil_map:
                 is_available = True
 
         if is_available:
@@ -184,7 +184,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         register_type = self.entity_config["register_type"]
 
         register_address = self._address if self._address is not None else 0
-        attributes["register_address"] = f"0x{register_address:04X}"
+        attributes["register_address"] = str(register_address)
         attributes["register_type"] = register_type
 
         # Add raw value for debugging

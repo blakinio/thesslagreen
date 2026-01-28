@@ -235,7 +235,7 @@ async def _call_modbus(
         else:
             response = await _invoke()
     except Exception:
-        _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
+        _LOGGER.warning("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
         raise
 
     if _LOGGER.isEnabledFor(logging.DEBUG):

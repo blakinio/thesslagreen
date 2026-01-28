@@ -147,6 +147,7 @@ CONF_AIRFLOW_UNIT = "airflow_unit"
 CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnostics
 CONF_MAX_REGISTERS_PER_REQUEST = "max_registers_per_request"
 CONF_LOG_LEVEL = "log_level"
+CONF_SAFE_SCAN = "safe_scan"
 
 AIRFLOW_UNIT_M3H = "m3h"
 AIRFLOW_UNIT_PERCENTAGE = "percentage"
@@ -161,6 +162,7 @@ DEFAULT_DEEP_SCAN = False
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
 DEFAULT_LOG_LEVEL = "info"
 LOG_LEVEL_OPTIONS = ["debug", "info", "warning", "error"]
+DEFAULT_SAFE_SCAN = False
 
 # Registers that are known to be unavailable on some devices
 KNOWN_MISSING_REGISTERS = {

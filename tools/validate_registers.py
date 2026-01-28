@@ -62,16 +62,11 @@ def _coerce_registers(registers: list[dict]) -> list[dict]:
         if "address_dec" in data:
             addr_dec = data["address_dec"]
             if isinstance(addr_dec, str):
-                addr_dec = int(addr_dec, 0)
+                addr_dec = addr_dec.strip()
+                if not addr_dec.isdigit():
+                    raise ValueError("address_dec must contain digits only")
+                addr_dec = int(addr_dec)
             data["address_dec"] = addr_dec
-
-        if "address_hex" in data:
-            addr_hex = data["address_hex"]
-            if isinstance(addr_hex, str):
-                addr_hex = int(addr_hex, 0)
-            data["address_hex"] = hex(addr_hex)
-        elif "address_dec" in data:
-            data["address_hex"] = hex(data["address_dec"])
 
         coerced.append(data)
 
@@ -149,10 +144,6 @@ def validate(path: Path) -> list[RegisterDefinition]:
                 seen.add(idx)
                 if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
                     raise ValueError(f"{reg.name}: bit name must be snake_case")
-
-        # Hex/dec address consistency
-        if int(reg.address_hex, 16) != reg.address_dec:
-            raise ValueError(f"{reg.name}: address_hex does not match address_dec")
 
         # Uniqueness checks
         pair = (reg.function, reg.address_dec)

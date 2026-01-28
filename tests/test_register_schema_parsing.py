@@ -14,7 +14,7 @@ def test_register_definition_normalises_fields() -> None:
 
     definition = RegisterDefinition(
         function="input_registers",
-        address_dec="0x0010",
+        address_dec="16",
         name="test_register",
         access="R",
         description="desc",
@@ -22,8 +22,7 @@ def test_register_definition_normalises_fields() -> None:
     )
 
     assert definition.function == 4  # nosec: intended assertion
-    assert definition.address_dec == 0x10  # nosec: intended assertion
-    assert definition.address_hex == "0x10"  # nosec: intended assertion
+    assert definition.address_dec == 16  # nosec: intended assertion
 
 
 def test_register_definition_rejects_mismatched_lengths() -> None:
@@ -42,14 +41,13 @@ def test_register_definition_rejects_mismatched_lengths() -> None:
         )
 
 
-def test_register_definition_rejects_address_mismatch() -> None:
-    """address_hex and address_dec must describe the same location."""
+def test_register_definition_rejects_hex_address() -> None:
+    """address_dec must contain digits only (DEC-only)."""
 
     with pytest.raises(ValueError):
         RegisterDefinition(
             function=1,
-            address_dec=4,
-            address_hex="0x10",
+            address_dec="0x10",
             name="mismatched",
             access="R",
             description="desc",

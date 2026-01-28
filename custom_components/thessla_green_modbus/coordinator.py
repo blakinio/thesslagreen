@@ -37,7 +37,9 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
 
 from homeassistant.core import HomeAssistant
 
+from .modbus_decoder import ModbusDecodeError, decode_bits_response, decode_registers_response
 from .modbus_exceptions import ConnectionException, ModbusException
+from .modbus_retry_policy import RetryPolicy
 from .modbus_transport import BaseModbusTransport, RtuModbusTransport, TcpModbusTransport
 
 if TYPE_CHECKING:
@@ -103,7 +105,6 @@ from .const import (
     CONNECTION_TYPE_TCP,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
-    DEFAULT_MAX_BACKOFF,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
@@ -111,6 +112,7 @@ from .const import (
     DEFAULT_PARITY,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SERIAL_PORT,
+    DEFAULT_SAFE_SCAN,
     MIN_SCAN_INTERVAL,
     DEFAULT_STOP_BITS,
     DOMAIN,
@@ -167,6 +169,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         scan_uart_settings: bool = False,
         deep_scan: bool = False,
         max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
+        safe_scan: bool = DEFAULT_SAFE_SCAN,
         entry: ConfigEntry | None = None,
         skip_missing_registers: bool = False,
         connection_type: str = DEFAULT_CONNECTION_TYPE,
@@ -202,6 +205,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._device_name = name
         self.timeout = timeout
         self.retry = retry
+        self.safe_scan = safe_scan
         try:
             self.backoff = float(backoff)
         except (TypeError, ValueError):
@@ -275,17 +279,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.transport = TcpModbusTransport(
                 host=self.host,
                 port=self.port,
-                max_retries=self.retry,
-                base_backoff=self.backoff,
-                max_backoff=DEFAULT_MAX_BACKOFF,
+                retry_policy=RetryPolicy(max_attempts=1),
                 timeout=self.timeout,
                 offline_state=self.offline_state,
             )
         else:
             self.transport = RtuModbusTransport(
-                max_retries=self.retry,
-                base_backoff=self.backoff,
-                max_backoff=DEFAULT_MAX_BACKOFF,
+                retry_policy=RetryPolicy(max_attempts=1),
                 timeout=self.timeout,
                 offline_state=self.offline_state,
             )
@@ -370,17 +370,32 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Return the register map for the given register type."""
         return self._register_maps.get(register_type, {})
 
-    async def _call_modbus(
-        self, func: Callable[..., Any], *args: Any, attempt: int = 1, **kwargs: Any
-    ) -> Any:
+    def has_capabilities(self) -> bool:
+        """Return True when valid capabilities have been detected."""
+        caps = self.capabilities
+        if caps is None:
+            return False
+        try:
+            data = caps.as_dict()
+        except Exception:  # pragma: no cover - defensive
+            _LOGGER.warning("Failed to read device capabilities", exc_info=True)
+            return False
+        for value in data.values():
+            if isinstance(value, bool) and value:
+                return True
+            if isinstance(value, list) and value:
+                return True
+            if isinstance(value, int) and value > 0:
+                return True
+        return False
+
+    async def _call_modbus(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Wrapper around Modbus calls injecting the slave ID."""
         if self.connection_type == CONNECTION_TYPE_TCP and self.transport:
             return await self.transport.call(
                 func,
                 self.slave_id,
                 *args,
-                attempt=attempt,
-                backoff_jitter=self.backoff_jitter,
                 **kwargs,
             )
 
@@ -390,11 +405,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             func,
             self.slave_id,
             *args,
-            attempt=attempt,
-            max_attempts=self.retry,
             timeout=self.timeout,
-            backoff=self.backoff,
-            backoff_jitter=self.backoff_jitter,
+            attempt=1,
+            max_attempts=1,
+            backoff=0.0,
+            backoff_jitter=None,
+            apply_backoff=False,
             **kwargs,
         )
 
@@ -426,6 +442,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     scan_uart_settings=self.scan_uart_settings,
                     skip_known_missing=self.skip_missing_registers,
                     deep_scan=self.deep_scan,
+                    safe_scan=self.safe_scan,
                     max_registers_per_request=self.effective_batch,
                     connection_type=self.connection_type,
                     serial_port=self.serial_port,
@@ -641,7 +658,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 # always be passed as a keyword argument to ``_call_modbus`` to avoid
                 # issues with keyword-only parameters in pymodbus.
                 count = 1
-                response = await self._call_modbus(client.read_input_registers, 0x0000, count=count)
+                response = await self._call_modbus(client.read_input_registers, 0, count=count)
                 if response is None or response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
@@ -869,82 +886,48 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ]
             if all(name in failed for name in register_names if name):
                 continue
-            for attempt in range(1, self.retry + 1):
-                try:
-                    response = await self._call_modbus(
-                        client.read_input_registers,
-                        start_addr,
-                        count=count,
-                        attempt=attempt,
-                    )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        if attempt == self.retry:
-                            _LOGGER.error("Failed to read input registers at 0x%04X", start_addr)
-                        else:
-                            _LOGGER.info("Retrying input registers at 0x%04X", start_addr)
-                        continue
+            try:
+                response = await self._call_modbus(
+                    client.read_input_registers,
+                    start_addr,
+                    count=count,
+                )
+                registers = decode_registers_response(response)
+            except ModbusDecodeError as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.warning(
+                    "Modbus error reading input registers at %d: %s", start_addr, exc
+                )
+                continue
+            except (ConnectionException, ModbusException, TimeoutError, OSError, ValueError) as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.error(
+                    "I/O failure reading input registers at %d: %s", start_addr, exc
+                )
+                raise
 
-                    for i, value in enumerate(response.registers):
-                        addr = start_addr + i
-                        register_name = self._find_register_name("input_registers", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["input_registers"]
-                        ):
-                            processed_value = self._process_register_value(register_name, value)
-                            if processed_value is not None:
-                                data[register_name] = processed_value
-                                self.statistics["total_registers_read"] += 1
-                                self._clear_register_failure(register_name)
-                                _LOGGER.debug(
-                                    "Read input 0x%04X (%s) = %s",
-                                    addr,
-                                    register_name,
-                                    processed_value,
-                                )
+            for i, value in enumerate(registers):
+                addr = start_addr + i
+                register_name = self._find_register_name("input_registers", addr)
+                if (
+                    register_name
+                    and register_name in self.available_registers["input_registers"]
+                ):
+                    processed_value = self._process_register_value(register_name, value)
+                    if processed_value is not None:
+                        data[register_name] = processed_value
+                        self.statistics["total_registers_read"] += 1
+                        self._clear_register_failure(register_name)
+                        _LOGGER.debug(
+                            "Read input %d (%s) = %s",
+                            addr,
+                            register_name,
+                            processed_value,
+                        )
 
-                    if len(response.registers) < count:
-                        missing = register_names[len(response.registers) :]
-                        self._mark_registers_failed(missing)
-                    break
-                except (ModbusException, ConnectionException) as exc:
-                    self._mark_registers_failed(register_names)
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent failure reading input registers at 0x%04X",
-                            start_addr,
-                            exc_info=True,
-                        )
-                    else:
-                        _LOGGER.info(
-                            "Retrying input registers at 0x%04X after error: %s",
-                            start_addr,
-                            exc,
-                        )
-                    continue
-                except TimeoutError:
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.warning(
-                        "Timeout reading input registers at 0x%04X (attempt %d/%d)",
-                        start_addr,
-                        attempt,
-                        self.retry,
-                    )
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent timeout reading input registers at 0x%04X",
-                            start_addr,
-                        )
-                    continue
-                except (OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.error(
-                        "Unexpected error reading input registers at 0x%04X",
-                        start_addr,
-                        exc_info=True,
-                    )
-                    break
+            if len(registers) < count:
+                missing = register_names[len(registers) :]
+                self._mark_registers_failed(missing)
 
         return data
 
@@ -957,8 +940,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         client = self.client
         if client is None or not client.connected:
-            _LOGGER.debug("Modbus client not available; skipping holding register read")
-            return data
+            raise ConnectionException("Modbus client is not connected")
 
         failed: set[str] = getattr(self, "_failed_registers", set())
 
@@ -968,85 +950,48 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ]
             if all(name in failed for name in register_names if name):
                 continue
-            for attempt in range(1, self.retry + 1):
-                try:
-                    response = await self._call_modbus(
-                        client.read_holding_registers,
-                        start_addr,
-                        count=count,
-                        attempt=attempt,
-                    )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to read holding registers at 0x%04X",
-                                start_addr,
-                            )
-                        else:
-                            _LOGGER.info("Retrying holding registers at 0x%04X", start_addr)
-                        continue
+            try:
+                response = await self._call_modbus(
+                    client.read_holding_registers,
+                    start_addr,
+                    count=count,
+                )
+                registers = decode_registers_response(response)
+            except ModbusDecodeError as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.warning(
+                    "Modbus error reading holding registers at %d: %s", start_addr, exc
+                )
+                continue
+            except (ConnectionException, ModbusException, TimeoutError, OSError, ValueError) as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.error(
+                    "I/O failure reading holding registers at %d: %s", start_addr, exc
+                )
+                raise
 
-                    for i, value in enumerate(response.registers):
-                        addr = start_addr + i
-                        register_name = self._find_register_name("holding_registers", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["holding_registers"]
-                        ):
-                            processed_value = self._process_register_value(register_name, value)
-                            if processed_value is not None:
-                                data[register_name] = processed_value
-                                self.statistics["total_registers_read"] += 1
-                                self._clear_register_failure(register_name)
-                                _LOGGER.debug(
-                                    "Read holding 0x%04X (%s) = %s",
-                                    addr,
-                                    register_name,
-                                    processed_value,
-                                )
+            for i, value in enumerate(registers):
+                addr = start_addr + i
+                register_name = self._find_register_name("holding_registers", addr)
+                if (
+                    register_name
+                    and register_name in self.available_registers["holding_registers"]
+                ):
+                    processed_value = self._process_register_value(register_name, value)
+                    if processed_value is not None:
+                        data[register_name] = processed_value
+                        self.statistics["total_registers_read"] += 1
+                        self._clear_register_failure(register_name)
+                        _LOGGER.debug(
+                            "Read holding %d (%s) = %s",
+                            addr,
+                            register_name,
+                            processed_value,
+                        )
 
-                    if len(response.registers) < count:
-                        missing = register_names[len(response.registers) :]
-                        self._mark_registers_failed(missing)
-                    break
-                except (ModbusException, ConnectionException) as exc:
-                    self._mark_registers_failed(register_names)
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent failure reading holding registers at 0x%04X",
-                            start_addr,
-                            exc_info=True,
-                        )
-                    else:
-                        _LOGGER.info(
-                            "Retrying holding registers at 0x%04X after error: %s",
-                            start_addr,
-                            exc,
-                        )
-                    continue
-                except TimeoutError:
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.warning(
-                        "Timeout reading holding registers at 0x%04X (attempt %d/%d)",
-                        start_addr,
-                        attempt,
-                        self.retry,
-                    )
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent timeout reading holding registers at 0x%04X",
-                            start_addr,
-                        )
-                    continue
-                except (OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.error(
-                        "Unexpected error reading holding registers at 0x%04X",
-                        start_addr,
-                        exc_info=True,
-                    )
-                    break
+            if len(registers) < count:
+                missing = register_names[len(registers) :]
+                self._mark_registers_failed(missing)
 
         return data
 
@@ -1069,90 +1014,45 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ]
             if all(name in failed for name in register_names if name):
                 continue
-            for attempt in range(1, self.retry + 1):
-                try:
-                    response = await self._call_modbus(
-                        client.read_coils,
-                        start_addr,
-                        count=count,
-                        attempt=attempt,
-                    )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        if attempt == self.retry:
-                            _LOGGER.error("Failed to read coil registers at 0x%04X", start_addr)
-                        else:
-                            _LOGGER.info("Retrying coil registers at 0x%04X", start_addr)
-                        continue
+            try:
+                response = await self._call_modbus(
+                    client.read_coils,
+                    start_addr,
+                    count=count,
+                )
+                bits = decode_bits_response(response)
+            except ModbusDecodeError as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.warning(
+                    "Modbus error reading coil registers at %d: %s", start_addr, exc
+                )
+                continue
+            except (ConnectionException, ModbusException, TimeoutError, OSError, ValueError) as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.error("I/O failure reading coil registers at %d: %s", start_addr, exc)
+                raise
 
-                    if not response.bits:
-                        if response.bits is None:
-                            _LOGGER.error(
-                                "No bits returned reading coil registers at 0x%04X",
-                                start_addr,
-                            )
-                        self._mark_registers_failed(register_names)
-                        continue
-
-                    for i in range(min(count, len(response.bits))):
-                        addr = start_addr + i
-                        register_name = self._find_register_name("coil_registers", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["coil_registers"]
-                        ):
-                            bit = response.bits[i]
-                            data[register_name] = bit
-                            self.statistics["total_registers_read"] += 1
-                            self._clear_register_failure(register_name)
-                            _LOGGER.debug(
-                                "Read coil 0x%04X (%s) = %s",
-                                addr,
-                                register_name,
-                                bit,
-                            )
-
-                    if len(response.bits) < count:
-                        missing = register_names[len(response.bits) :]
-                        self._mark_registers_failed(missing)
-                    break
-                except (ModbusException, ConnectionException) as exc:
-                    self._mark_registers_failed(register_names)
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent failure reading coil registers at 0x%04X",
-                            start_addr,
-                            exc_info=True,
-                        )
-                    else:
-                        _LOGGER.info(
-                            "Retrying coil registers at 0x%04X after error: %s",
-                            start_addr,
-                            exc,
-                        )
-                    continue
-                except TimeoutError:
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.warning(
-                        "Timeout reading coil registers at 0x%04X (attempt %d/%d)",
-                        start_addr,
-                        attempt,
-                        self.retry,
+            for i in range(min(count, len(bits))):
+                addr = start_addr + i
+                register_name = self._find_register_name("coil_registers", addr)
+                if (
+                    register_name
+                    and register_name in self.available_registers["coil_registers"]
+                ):
+                    bit = bits[i]
+                    data[register_name] = bit
+                    self.statistics["total_registers_read"] += 1
+                    self._clear_register_failure(register_name)
+                    _LOGGER.debug(
+                        "Read coil %d (%s) = %s",
+                        addr,
+                        register_name,
+                        bit,
                     )
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent timeout reading coil registers at 0x%04X",
-                            start_addr,
-                        )
-                    continue
-                except (OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.error(
-                        "Unexpected error reading coil registers at 0x%04X",
-                        start_addr,
-                        exc_info=True,
-                    )
-                    break
+
+            if len(bits) < count:
+                missing = register_names[len(bits) :]
+                self._mark_registers_failed(missing)
 
         return data
 
@@ -1175,90 +1075,47 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ]
             if all(name in failed for name in register_names if name):
                 continue
-            for attempt in range(1, self.retry + 1):
-                try:
-                    response = await self._call_modbus(
-                        client.read_discrete_inputs,
-                        start_addr,
-                        count=count,
-                        attempt=attempt,
-                    )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        if attempt == self.retry:
-                            _LOGGER.error("Failed to read discrete inputs at 0x%04X", start_addr)
-                        else:
-                            _LOGGER.info("Retrying discrete inputs at 0x%04X", start_addr)
-                        continue
+            try:
+                response = await self._call_modbus(
+                    client.read_discrete_inputs,
+                    start_addr,
+                    count=count,
+                )
+                bits = decode_bits_response(response)
+            except ModbusDecodeError as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.warning(
+                    "Modbus error reading discrete inputs at %d: %s", start_addr, exc
+                )
+                continue
+            except (ConnectionException, ModbusException, TimeoutError, OSError, ValueError) as exc:
+                self._mark_registers_failed(register_names)
+                _LOGGER.error(
+                    "I/O failure reading discrete inputs at %d: %s", start_addr, exc
+                )
+                raise
 
-                    if not response.bits:
-                        if response.bits is None:
-                            _LOGGER.error(
-                                "No bits returned reading discrete inputs at 0x%04X",
-                                start_addr,
-                            )
-                        self._mark_registers_failed(register_names)
-                        continue
-
-                    for i in range(min(count, len(response.bits))):
-                        addr = start_addr + i
-                        register_name = self._find_register_name("discrete_inputs", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["discrete_inputs"]
-                        ):
-                            bit = response.bits[i]
-                            data[register_name] = bit
-                            self.statistics["total_registers_read"] += 1
-                            self._clear_register_failure(register_name)
-                            _LOGGER.debug(
-                                "Read discrete 0x%04X (%s) = %s",
-                                addr,
-                                register_name,
-                                bit,
-                            )
-
-                    if len(response.bits) < count:
-                        missing = register_names[len(response.bits) :]
-                        self._mark_registers_failed(missing)
-                    break
-                except (ModbusException, ConnectionException) as exc:
-                    self._mark_registers_failed(register_names)
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent failure reading discrete inputs at 0x%04X",
-                            start_addr,
-                            exc_info=True,
-                        )
-                    else:
-                        _LOGGER.info(
-                            "Retrying discrete inputs at 0x%04X after error: %s",
-                            start_addr,
-                            exc,
-                        )
-                    continue
-                except TimeoutError:
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.warning(
-                        "Timeout reading discrete inputs at 0x%04X (attempt %d/%d)",
-                        start_addr,
-                        attempt,
-                        self.retry,
+            for i in range(min(count, len(bits))):
+                addr = start_addr + i
+                register_name = self._find_register_name("discrete_inputs", addr)
+                if (
+                    register_name
+                    and register_name in self.available_registers["discrete_inputs"]
+                ):
+                    bit = bits[i]
+                    data[register_name] = bit
+                    self.statistics["total_registers_read"] += 1
+                    self._clear_register_failure(register_name)
+                    _LOGGER.debug(
+                        "Read discrete %d (%s) = %s",
+                        addr,
+                        register_name,
+                        bit,
                     )
-                    if attempt == self.retry:
-                        _LOGGER.error(
-                            "Persistent timeout reading discrete inputs at 0x%04X",
-                            start_addr,
-                        )
-                    continue
-                except (OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    _LOGGER.error(
-                        "Unexpected error reading discrete inputs at 0x%04X",
-                        start_addr,
-                        exc_info=True,
-                    )
-                    break
+
+            if len(bits) < count:
+                missing = register_names[len(bits) :]
+                self._mark_registers_failed(missing)
 
         return data
 

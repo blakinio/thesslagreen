@@ -40,6 +40,7 @@ from .const import (
     CONF_SLAVE_ID,
     CONF_STOP_BITS,
     CONF_TIMEOUT,
+    CONF_SAFE_SCAN,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     DEFAULT_AIRFLOW_UNIT,
@@ -59,6 +60,7 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
+    DEFAULT_SAFE_SCAN,
     DOMAIN,
     MAX_BATCH_REGISTERS,
     MODBUS_BAUD_RATES,
@@ -964,6 +966,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         )
         current_airflow_unit = entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
         current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
+        current_safe_scan = entry_options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)
         current_max_registers_per_request = entry_options.get(
             CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
         )
@@ -1035,6 +1038,11 @@ class OptionsFlow(config_entries.OptionsFlow):
                     description={"advanced": True},
                 ): bool,
                 vol.Optional(
+                    CONF_SAFE_SCAN,
+                    default=current_safe_scan,
+                    description={"advanced": True},
+                ): bool,
+                vol.Optional(
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
                     description={
@@ -1064,6 +1072,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "skip_missing_enabled": "Yes" if current_skip_missing else "No",
                 "current_airflow_unit": current_airflow_unit,
                 "deep_scan_enabled": "Yes" if current_deep_scan else "No",
+                "safe_scan_enabled": "Yes" if current_safe_scan else "No",
                 "current_max_registers_per_request": str(current_max_registers_per_request),
                 "current_log_level": current_log_level,
                 "transport_label": transport_label,

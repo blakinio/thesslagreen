@@ -1293,6 +1293,7 @@
           "scan_interval": "Scan Interval (seconds)",
           "log_level": "Log Level",
           "skip_missing_registers": "Skip Known Missing Registers",
+          "safe_scan": "Safe Scan (no grouping)",
           "timeout": "Connection Timeout (seconds)",
           "deep_scan": "Deep Register Scan",
           "max_registers_per_request": "Max Registers per Request"
@@ -1303,14 +1304,15 @@
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "log_level": "Adjust integration logging verbosity without restarting Home Assistant",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
+          "safe_scan": "Scan registers without grouping (safer, slower)",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
-          "deep_scan": "Read raw registers 0x0000-0x012C for diagnostics",
+          "deep_scan": "Read raw registers 0-300 for diagnostics",
           "max_registers_per_request": "Select maximum registers per request (1-16)"
         },
         "error": {
           "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
         },
-        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
+        "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Safe scan: {safe_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
       }
     }

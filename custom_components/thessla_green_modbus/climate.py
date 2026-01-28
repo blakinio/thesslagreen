@@ -65,12 +65,12 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    # Create climate entity if basic control is available or if the full
-    # register list is forced and required registers exist in the map.
-    holding_map = coordinator.get_register_map("holding_registers")
-    has_basic = coordinator.capabilities.basic_control or (
-        coordinator.force_full_register_list and {"mode", "on_off_panel_mode"} <= holding_map.keys()
-    )
+    if not coordinator.has_capabilities():
+        _LOGGER.warning("Capabilities missing; climate entity not created")
+        return
+
+    # Create climate entity only when basic control capability is available.
+    has_basic = coordinator.capabilities.basic_control
 
     if has_basic:
         entities = [ThesslaGreenClimate(coordinator)]

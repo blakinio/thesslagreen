@@ -15,7 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, holding_registers
+from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -34,6 +34,10 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
+    if not coordinator.has_capabilities():
+        _LOGGER.warning("Capabilities missing; fan entity not created")
+        return
+
     # Check if fan control is available based on registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()
     fan_registers = [
@@ -51,12 +55,7 @@ async def async_setup_entry(
             has_fan_registers = True
             break
 
-    # If force full register list, assume fan is available
-    if not has_fan_registers and coordinator.force_full_register_list:
-        h_regs = holding_registers()
-        has_fan_registers = any(register in h_regs for register in fan_registers[:2])
-
-    if has_fan_registers:
+    if has_fan_registers and coordinator.capabilities.basic_control:
         entities = [ThesslaGreenFan(coordinator)]
         try:
             async_add_entities(entities, True)
@@ -66,7 +65,7 @@ async def async_setup_entry(
             return
         _LOGGER.debug("Added fan entity")
     else:
-        _LOGGER.debug("No fan control registers available - skipping fan entity")
+        _LOGGER.warning("Fan control not available, fan entity not created")
 
 
 class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):

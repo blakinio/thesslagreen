@@ -105,7 +105,7 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 - **Retry**: 1-5 prób (domyślnie 3)
 - **Backoff**: 0-5s opóźnienia między próbami (domyślnie 0, wykładniczy)
 - **Pełna lista rejestrów**: Pomiń skanowanie (może powodować błędy)
-- **Ustawienia UART**: Skanuj opcjonalne rejestry konfiguracji portu (0x1168-0x116B)
+- **Ustawienia UART**: Skanuj opcjonalne rejestry konfiguracji portu (4456–4459)
 - **Airflow unit**: wybierz `m³/h` (domyślnie) lub `percentage`
 
 #### Pełna lista rejestrów
@@ -141,8 +141,9 @@ Integracja może wykryć 200+ rejestrów, ale utworzyć ~100 encji.
 > Home Assistant. Domyślnie integracja udostępnia tylko rejestry
 > zdefiniowane w [`entity_mappings.py`](custom_components/thessla_green_modbus/entity_mappings.py).
 > Włączenie opcji **Pełna lista rejestrów** (`force_full_register_list`)
-> tworzy encje dla każdego znalezionego rejestru, lecz może ujawnić
-> niekompletne dane lub pola konfiguracyjne – używaj jej ostrożnie.
+> ładuje pełną listę adresów, ale encje są tworzone wyłącznie, gdy dostępne
+> są poprawnie wykryte możliwości urządzenia (capabilities). Brak capabilities
+> oznacza brak encji (fail-fast).
 > [Więcej informacji](docs/register_scanning.md).
 
 ### Pełny skan rejestrów
@@ -165,10 +166,11 @@ for start, size in group_reads(range(100), max_block_size=16):
 Definicje rejestrów znajdują się wyłącznie w pliku
 `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`,
 który stanowi kanoniczne źródło prawdy (dawny katalog `registers/` został usunięty).
+Adresy rejestrów są zawsze zapisywane jako wartości dziesiętne (DEC ONLY).
 Każdy wpis w sekcji `registers` zawiera m.in. pola:
 
 - `function` – kod funkcji Modbus (`01`–`04`)
-- `address_dec` / `address_hex` – adres rejestru
+- `address_dec` – adres rejestru (DEC ONLY)
 - `name` – unikalna nazwa w formacie snake_case
 - `description` – opis z dokumentacji (język polski)
 - `description_en` – opis w języku angielskim
@@ -447,7 +449,7 @@ Podczas skanowania integracja próbuje odczytać grupy rejestrów.
 Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
 
 ```
-Skipping unsupported input registers 0x0100-0x0102 (exception code 2)
+Skipping unsupported input registers 256-258 (exception code 2)
 ```
 
 Kody wyjątków Modbus informują, dlaczego odczyt się nie powiódł:
@@ -560,12 +562,11 @@ definicji rejestrów i stanowi jedyne źródło prawdy. Wszystkie narzędzia w
 
 ### Format pliku
 
-Każdy wpis w pliku to obiekt z polami:
+Każdy wpis w pliku to obiekt z polami (DEC ONLY):
 
 ```json
 {
   "function": "holding",
-  "address_hex": "0x1001",
   "address_dec": 4097,
   "access": "rw",
   "name": "mode",

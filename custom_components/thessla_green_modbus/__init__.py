@@ -40,6 +40,7 @@ from .const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
     CONF_RETRY,
+    CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SERIAL_PORT,
@@ -67,6 +68,7 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
+    DEFAULT_SAFE_SCAN,
     DOMAIN,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
@@ -210,6 +212,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
     )
     log_level = entry.options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
+    safe_scan = entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)
     _apply_log_level(str(log_level))
 
     if connection_type == CONNECTION_TYPE_RTU:
@@ -253,6 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         deep_scan=deep_scan,
         skip_missing_registers=skip_missing_registers,
         max_registers_per_request=max_registers_per_request,
+        safe_scan=safe_scan,
         entry=entry,
     )
 

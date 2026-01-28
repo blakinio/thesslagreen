@@ -77,11 +77,11 @@ SPECIAL_VALUE_DECODERS: dict[str, Callable[[int], int | None]] = {
 
 # Optional UART configuration registers (Air-B and Air++ ports)
 # According to the Series 4 Modbus documentation, both the Air-B
-# (0x1164-0x1167) and Air++ (0x1168-0x116B) register blocks are
+# (4452–4455) and Air++ (4456–4459) register blocks are
 # optional and may be absent on devices without the corresponding
 # hardware. They are skipped by default unless UART scanning is
 # explicitly enabled.
-UART_OPTIONAL_REGS = range(0x1164, 0x116C)
+UART_OPTIONAL_REGS = range(4452, 4460)
 
 # Registers considered safe to read when verifying connectivity.
 # Each entry is a tuple of Modbus function code and register name. The
