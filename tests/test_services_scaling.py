@@ -151,7 +151,7 @@ async def test_write_register_scaling_and_endianness():
     coordinator = DummyCoordinator()
 
     await coordinator.async_write_register("required_temperature", 22.5)
-    await coordinator.async_write_register("lock_pass", 0x01020304)
+    await coordinator.async_write_register("lock_pass", 16909060)
 
     assert coordinator.encoded[0] == (
         HOLDING_REGISTERS["required_temperature"],
@@ -160,7 +160,7 @@ async def test_write_register_scaling_and_endianness():
     )  # nosec: B101
     assert coordinator.encoded[1] == (
         HOLDING_REGISTERS["lock_pass"],
-        [0x0304, 0x0102],
+        [772, 258],
         1,
     )  # nosec: B101
 

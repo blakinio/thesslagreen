@@ -31,6 +31,6 @@ async def test_read_cancellation_during_sleep(method, caplog):
     ):
         func = getattr(scanner, method)
         with pytest.raises(asyncio.CancelledError):
-            await func(mock_client, 0x0001, 1)
+            await func(mock_client, 1, 1)
 
     assert not any(record.levelno >= logging.ERROR for record in caplog.records)

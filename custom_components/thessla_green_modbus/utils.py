@@ -55,11 +55,11 @@ def _decode_register_time(value: int) -> int | None:
     extracted hour/minute fall outside of valid ranges.
     """
 
-    if value == 0x8000 or value < 0:
+    if value == 32768 or value < 0:
         return None
 
-    hour = (value >> 8) & 0xFF
-    minute = value & 0xFF
+    hour = (value >> 8) & 255
+    minute = value & 255
     if 0 <= hour <= 23 and 0 <= minute <= 59:
         return hour * 60 + minute
 
@@ -78,15 +78,15 @@ def _decode_bcd_time(value: int) -> int | None:
 def decode_int16(u16: int) -> int:
     """Decode a 16-bit unsigned value into a signed integer."""
 
-    if u16 & 0x8000:
-        return u16 - 0x10000
+    if u16 & 32768:
+        return u16 - 65536
     return u16
 
 
 def decode_temp_01c(u16: int) -> float | None:
-    """Decode temperature scaled in 0.1°C with 0x8000 meaning invalid."""
+    """Decode temperature scaled in 0.1°C with 32768 meaning invalid."""
 
-    if u16 == 0x8000:
+    if u16 == 32768:
         return None
     return decode_int16(u16) / 10
 
@@ -94,10 +94,10 @@ def decode_temp_01c(u16: int) -> float | None:
 def _decode_bcd_time_to_time(value: int) -> time | None:
     """Decode BCD or decimal HHMM values to ``datetime.time``."""
 
-    if value in (0x8000, 0xFFFF) or value < 0:
+    if value in (32768, 65535) or value < 0:
         return None
 
-    nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
+    nibbles = [(value >> shift) & 15 for shift in (12, 8, 4, 0)]
     if all(n <= 9 for n in nibbles):
         hours = nibbles[0] * 10 + nibbles[1]
         minutes = nibbles[2] * 10 + nibbles[3]
@@ -137,13 +137,13 @@ def encode_bcd_time(value: time) -> int:
 
 
 def _decode_aatt(value: int) -> dict[str, float | int] | None:
-    """Decode airflow percentage and temperature encoded as ``0xAATT``."""
+    """Decode airflow percentage and temperature encoded as ``AATT``."""
 
-    if value == 0x8000 or value < 0:
+    if value == 32768 or value < 0:
         return None
 
-    airflow = (value >> 8) & 0xFF
-    temp_double = value & 0xFF
+    airflow = (value >> 8) & 255
+    temp_double = value & 255
 
     if airflow > 100 or temp_double > 200:
         return None
@@ -152,7 +152,7 @@ def _decode_aatt(value: int) -> dict[str, float | int] | None:
 
 
 def decode_aatt(value: int) -> dict[str, float | int] | None:
-    """Decode airflow percentage and temperature encoded as ``0xAATT``."""
+    """Decode airflow percentage and temperature encoded as ``AATT``."""
 
     return _decode_aatt(value)
 

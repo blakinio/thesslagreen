@@ -13,7 +13,7 @@ pytestmark = pytest.mark.asyncio
     [
         (
             ThesslaGreenDeviceScanner._read_input,
-            0x0001,
+            1,
             1,
             "read_input_registers",
             "read_holding_registers",
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.asyncio
         ),
         (
             ThesslaGreenDeviceScanner._read_holding,
-            0x0001,
+            1,
             1,
             "read_holding_registers",
             None,
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.asyncio
         ),
         (
             ThesslaGreenDeviceScanner._read_coil,
-            0x0000,
+            0,
             1,
             "read_coils",
             None,
@@ -37,7 +37,7 @@ pytestmark = pytest.mark.asyncio
         ),
         (
             ThesslaGreenDeviceScanner._read_discrete,
-            0x0000,
+            0,
             1,
             "read_discrete_inputs",
             None,
@@ -70,28 +70,28 @@ async def test_backoff_delay(method, address, count, primary_attr, fallback_attr
     [
         (
             ThesslaGreenDeviceScanner._read_input,
-            0x0001,
+            1,
             1,
             "read_input_registers",
             "read_holding_registers",
         ),
         (
             ThesslaGreenDeviceScanner._read_holding,
-            0x0001,
+            1,
             1,
             "read_holding_registers",
             None,
         ),
         (
             ThesslaGreenDeviceScanner._read_coil,
-            0x0000,
+            0,
             1,
             "read_coils",
             None,
         ),
         (
             ThesslaGreenDeviceScanner._read_discrete,
-            0x0000,
+            0,
             1,
             "read_discrete_inputs",
             None,
@@ -138,7 +138,7 @@ async def test_backoff_with_jitter():
             sleep_mock,
         ),
     ):
-        result = await scanner._read_holding(mock_client, 0x0001, 1)
+        result = await scanner._read_holding(mock_client, 1, 1)
         assert result is None  # nosec
 
     delays = [call.args[0] for call in sleep_mock.await_args_list]

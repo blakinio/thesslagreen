@@ -330,7 +330,7 @@ def test_time_sensor_formats_value(mock_coordinator):
         "value_map": None,
     }
     mock_coordinator.data[register] = 8 * 60 + 5
-    address = 0x2000  # example address for schedule register
+    address = 8192  # example address for schedule register
     sensor = ThesslaGreenSensor(mock_coordinator, register, address, sensor_def)
     assert sensor.native_value == "08:05"
 

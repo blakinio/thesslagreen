@@ -124,10 +124,10 @@ class RegisterDef:
                 raw_list = list(raw)
             else:
                 raw_list = [
-                    (raw >> (16 * (self.length - 1 - i))) & 0xFFFF for i in range(self.length)
+                    (raw >> (16 * (self.length - 1 - i))) & 65535 for i in range(self.length)
                 ]
 
-            if self._is_temperature() and all(v == 0x8000 for v in raw_list):
+            if self._is_temperature() and all(v == 32768 for v in raw_list):
                 return None
 
             # Multi-register strings are treated specially
@@ -161,7 +161,7 @@ class RegisterDef:
         if isinstance(raw, Sequence):
             raw = raw[0]
 
-        if self._is_temperature() and raw == 0x8000:
+        if self._is_temperature() and raw == 32768:
             return None
 
         # Bitmask registers map set bits to enum labels
@@ -183,7 +183,7 @@ class RegisterDef:
 
         typ = self.extra.get("type") if self.extra else None
         if typ == "i16":
-            raw = raw if raw < 0x8000 else raw - 0x10000
+            raw = raw if raw < 32768 else raw - 65536
 
         value = raw
 
@@ -301,7 +301,7 @@ class RegisterDef:
                 airflow, temp = value
             else:
                 airflow, temp = value, 0
-            return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 0xFF)
+            return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 255)
 
         raw: Any = value
         if self.enum and not (self.extra and self.extra.get("bitmask")):
@@ -336,7 +336,7 @@ class RegisterDef:
             raw = scaled
         typ = self.extra.get("type") if self.extra else None
         if typ == "i16":
-            return int(raw) & 0xFFFF
+            return int(raw) & 65535
         return int(raw)
 
 

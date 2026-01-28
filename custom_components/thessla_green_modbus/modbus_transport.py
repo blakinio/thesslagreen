@@ -9,6 +9,14 @@ from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 
+try:  # pragma: no cover - serial extras optional at runtime
+    from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
+except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
+    _AsyncModbusSerialClient = None
+    SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
+else:  # pragma: no cover - executed when serial client available
+    SERIAL_IMPORT_ERROR = None
+
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import _call_modbus, _calculate_backoff_delay
 
@@ -40,7 +48,18 @@ class BaseModbusTransport(ABC):
 
         return self.offline_state
 
-    async def call(self, func: Any, slave_id: int, *args: Any, **kwargs: Any) -> Any:
+    async def call(
+        self,
+        func: Any,
+        slave_id: int,
+        *args: Any,
+        attempt: int = 1,
+        max_attempts: int | None = None,
+        backoff: float | None = None,
+        backoff_jitter: float | tuple[float, float] | None = None,
+        apply_backoff: bool = True,
+        **kwargs: Any,
+    ) -> Any:
         """Call a Modbus function with connection management and retries."""
 
         try:
@@ -49,11 +68,12 @@ class BaseModbusTransport(ABC):
                 func,
                 slave_id,
                 *args,
-                attempt=1,
-                max_attempts=1,
+                attempt=attempt,
+                max_attempts=max_attempts or self.max_retries,
                 timeout=self.timeout,
-                backoff=0.0,
-                apply_backoff=False,
+                backoff=backoff if backoff is not None else self.base_backoff,
+                backoff_jitter=backoff_jitter,
+                apply_backoff=apply_backoff,
                 **kwargs,
             )
             self.offline_state = False
@@ -185,17 +205,64 @@ class TcpModbusTransport(BaseModbusTransport):
 
 
 class RtuModbusTransport(BaseModbusTransport):
-    """Placeholder RTU transport for future USB/serial support."""
+    """RTU Modbus transport implementation using async serial client."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.client = None
+    def __init__(
+        self,
+        *,
+        serial_port: str,
+        baudrate: int,
+        parity: str,
+        stopbits: int,
+        max_retries: int,
+        base_backoff: float,
+        max_backoff: float,
+        timeout: float,
+        offline_state: bool = False,
+    ) -> None:
+        super().__init__(
+            max_retries=max_retries,
+            base_backoff=base_backoff,
+            max_backoff=max_backoff,
+            timeout=timeout,
+            offline_state=offline_state,
+        )
+        self.serial_port = serial_port
+        self.baudrate = baudrate
+        self.parity = parity
+        self.stopbits = stopbits
+        self.client: _AsyncModbusSerialClient | None = None
 
-    def _is_connected(self) -> bool:  # pragma: no cover - placeholder
-        return False
+    def _is_connected(self) -> bool:
+        return bool(self.client and getattr(self.client, "connected", False))
 
-    async def _connect(self) -> None:  # pragma: no cover - placeholder
-        raise ConnectionException("RTU transport not yet implemented")
+    async def _connect(self) -> None:
+        if _AsyncModbusSerialClient is None:
+            message = "Modbus serial client is unavailable. Install pymodbus with serial support."
+            if SERIAL_IMPORT_ERROR is not None:
+                message = f"{message} ({SERIAL_IMPORT_ERROR})"
+            raise ConnectionException(message)
+        if not self.serial_port:
+            raise ConnectionException("Serial port not configured for RTU transport")
+        self.client = _AsyncModbusSerialClient(
+            method="rtu",
+            port=self.serial_port,
+            baudrate=self.baudrate,
+            parity=self.parity,
+            stopbits=self.stopbits,
+            timeout=self.timeout,
+        )
+        connected = await self.client.connect()
+        if not connected:
+            self.offline_state = True
+            raise ConnectionException(f"Could not connect to {self.serial_port}")
+        _LOGGER.debug("RTU Modbus connection established on %s", self.serial_port)
+        self.offline_state = False
 
-    async def _reset_connection(self) -> None:  # pragma: no cover - placeholder
-        self.client = None
+    async def _reset_connection(self) -> None:
+        if self.client is None:
+            return
+        try:
+            await self.client.close()
+        finally:
+            self.client = None

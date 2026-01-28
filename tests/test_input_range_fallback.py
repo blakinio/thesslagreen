@@ -23,16 +23,16 @@ async def test_input_range_read_after_block_failure():
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    regs = {f"reg_{addr:04X}": addr for addr in range(0x000E, 0x001E)}
+    regs = {f"reg_{addr:04X}": addr for addr in range(14, 30)}
     call_log = []
 
     async def fake_call_modbus(func, slave_id, address, *, count):
         call_log.append((address, count))
-        if address == 0x0000 and count == 5:
+        if address == 0 and count == 5:
             return SimpleNamespace(registers=[4, 85, 0, 0, 0], isError=lambda: False)
-        if address == 0x0018 and count == 6:
+        if address == 24 and count == 6:
             return SimpleNamespace(registers=[0] * 6, isError=lambda: False)
-        if address == 0x000E and count == 16:
+        if address == 14 and count == 16:
             return None
         if count == 1:
             return SimpleNamespace(registers=[1], isError=lambda: False)
@@ -70,9 +70,9 @@ async def test_input_range_read_after_block_failure():
             result = await scanner.scan_device()
 
     assert set(result["available_registers"]["input_registers"]) == set(regs)
-    assert (0x000E, 16) in call_log
+    assert (14, 16) in call_log
     single_addresses = [addr for addr, cnt in call_log if cnt == 1]
-    for addr in range(0x000E, 0x001E):
+    for addr in range(14, 30):
         assert addr in single_addresses
 
 
@@ -85,18 +85,18 @@ async def test_block_exception_allows_single_register_reads():
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    regs = {f"reg_{addr:04X}": addr for addr in range(0x0010, 0x0014)}
+    regs = {f"reg_{addr:04X}": addr for addr in range(16, 20)}
     call_log: list[tuple[int, int]] = []
 
     error_response = SimpleNamespace(isError=lambda: True, exception_code=4)
 
     async def fake_call_modbus(func, slave_id, address, *, count):
         call_log.append((address, count))
-        if address == 0x0000 and count == 5:
+        if address == 0 and count == 5:
             return SimpleNamespace(registers=[4, 85, 0, 0, 0], isError=lambda: False)
-        if address == 0x0018 and count == 6:
+        if address == 24 and count == 6:
             return SimpleNamespace(registers=[0] * 6, isError=lambda: False)
-        if address == 0x0010 and count == 4:
+        if address == 16 and count == 4:
             return error_response
         if count == 1:
             return SimpleNamespace(registers=[1], isError=lambda: False)
@@ -137,8 +137,8 @@ async def test_block_exception_allows_single_register_reads():
             result = await scanner.scan_device()
 
     assert set(result["available_registers"]["input_registers"]) == set(regs)
-    assert (0x0010, 4) in call_log
+    assert (16, 4) in call_log
     single_addresses = [addr for addr, cnt in call_log if cnt == 1]
-    for addr in range(0x0010, 0x0014):
+    for addr in range(16, 20):
         assert addr in single_addresses
     assert scanner._unsupported_input_ranges == {}

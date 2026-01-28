@@ -45,23 +45,23 @@ def _build_request_frame(
         if func_name == "read_input_registers":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x04, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
+            return bytes([slave_id, 4, addr >> 8, addr & 255, count >> 8, count & 255])
         if func_name == "read_holding_registers":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x03, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
+            return bytes([slave_id, 3, addr >> 8, addr & 255, count >> 8, count & 255])
         if func_name == "read_coils":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x01, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
+            return bytes([slave_id, 1, addr >> 8, addr & 255, count >> 8, count & 255])
         if func_name == "read_discrete_inputs":
             addr = int(positional[0])
             count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 0x02, addr >> 8, addr & 0xFF, count >> 8, count & 0xFF])
+            return bytes([slave_id, 2, addr >> 8, addr & 255, count >> 8, count & 255])
         if func_name == "write_register":
             addr = int(kwargs.get("address", positional[0]))
             value = int(kwargs.get("value", positional[1] if len(positional) > 1 else 0))
-            return bytes([slave_id, 0x06, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF])
+            return bytes([slave_id, 6, addr >> 8, addr & 255, value >> 8, value & 255])
         if func_name == "write_registers":
             addr = int(kwargs.get("address", positional[0]))
             values = [
@@ -71,25 +71,25 @@ def _build_request_frame(
             frame = bytearray(
                 [
                     slave_id,
-                    0x10,
+                    16,
                     addr >> 8,
-                    addr & 0xFF,
+                    addr & 255,
                     qty >> 8,
-                    qty & 0xFF,
+                    qty & 255,
                     qty * 2,
                 ]
             )
             for v in values:
-                frame.extend([v >> 8, v & 0xFF])
+                frame.extend([v >> 8, v & 255])
             return bytes(frame)
         if func_name == "write_coil":
             addr = int(kwargs.get("address", positional[0]))
             value = (
-                0xFF00
+                65280
                 if kwargs.get("value", positional[1] if len(positional) > 1 else False)
-                else 0x0000
+                else 0
             )
-            return bytes([slave_id, 0x05, addr >> 8, addr & 0xFF, value >> 8, value & 0xFF])
+            return bytes([slave_id, 5, addr >> 8, addr & 255, value >> 8, value & 255])
     except (ValueError, TypeError, IndexError) as err:
         _LOGGER.debug("Failed to build request frame: %s", err)
         return b""
@@ -282,3 +282,53 @@ def group_reads(
         start = prev = addr
     groups.append((start, prev - start + 1))
     return groups
+
+
+def chunk_register_range(
+    start: int,
+    count: int,
+    max_block_size: int | None = None,
+) -> list[tuple[int, int]]:
+    """Split a contiguous register range into safe-sized chunks."""
+
+    if count <= 0:
+        return []
+
+    if max_block_size is None:
+        max_block_size = const.MAX_REGS_PER_REQUEST
+    max_block_size = min(max_block_size, const.MAX_REGS_PER_REQUEST)
+    if max_block_size < 1:
+        max_block_size = 1
+
+    chunks: list[tuple[int, int]] = []
+    remaining = count
+    current = start
+    while remaining > 0:
+        chunk_len = min(remaining, max_block_size)
+        chunks.append((current, chunk_len))
+        current += chunk_len
+        remaining -= chunk_len
+    return chunks
+
+
+def chunk_register_values(
+    start: int,
+    values: list[int],
+    max_block_size: int | None = None,
+) -> list[tuple[int, list[int]]]:
+    """Split register values into safe-sized chunks with updated addresses."""
+
+    if not values:
+        return []
+
+    if max_block_size is None:
+        max_block_size = const.MAX_REGS_PER_REQUEST
+    max_block_size = min(max_block_size, const.MAX_REGS_PER_REQUEST)
+    if max_block_size < 1:
+        max_block_size = 1
+
+    chunks: list[tuple[int, list[int]]] = []
+    for offset in range(0, len(values), max_block_size):
+        chunk = values[offset : offset + max_block_size]
+        chunks.append((start + offset, chunk))
+    return chunks

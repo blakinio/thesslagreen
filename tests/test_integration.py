@@ -272,9 +272,9 @@ async def test_register_constants():
     assert "expansion" in discrete
 
     # Test address ranges
-    assert coil["power_supply_fans"] == 0x000B
-    assert input_regs["outside_temperature"] == 0x0010
-    assert holding["mode"] == 0x1070
+    assert coil["power_supply_fans"] == 11
+    assert input_regs["outside_temperature"] == 16
+    assert holding["mode"] == 4208
 
 
 async def test_unload_and_reload_entry():

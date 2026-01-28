@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Airflow unit option allowing `%` or `m³/h` reporting
 - Migration script for clearing legacy airflow statistics
 
+### Changed
+- Hardening: retry/backoff, RTU support, DEC-only constants, strict 16-reg limit, temp invalid handling
+
 - Documented developer tooling (ruff/black/isort/mypy) and added pre-commit snippet.
 - CI matrix now publishes dedicated hassfest and HACS validation steps.
 - Linting, formatting, and typing tooling alignment for HA compliance

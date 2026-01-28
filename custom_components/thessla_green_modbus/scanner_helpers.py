@@ -29,22 +29,22 @@ def _format_register_value(name: str, value: int) -> int | str | None:
     """Return a human-readable representation of a register value."""
     if name == "manual_airing_time_to_start":
         raw_value = value
-        value = ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
+        value = ((value & 255) << 8) | ((value >> 8) & 255)
         decoded = _decode_register_time(value)
         if decoded is None:
-            return None if raw_value == SENSOR_UNAVAILABLE else f"0x{raw_value:04X} (invalid)"
+            return None if raw_value == SENSOR_UNAVAILABLE else f"{raw_value} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(BCD_TIME_PREFIXES):
         decoded = decode_bcd_time(value)
         if decoded is None:
-            return None if value == SENSOR_UNAVAILABLE else f"0x{value:04X} (invalid)"
+            return None if value == SENSOR_UNAVAILABLE else f"{value} (invalid)"
         return decoded
 
     if name.startswith(TIME_REGISTER_PREFIXES):
         decoded = _decode_register_time(value)
         if decoded is None:
-            return None if value == SENSOR_UNAVAILABLE else f"0x{value:04X} (invalid)"
+            return None if value == SENSOR_UNAVAILABLE else f"{value} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(SETTING_PREFIX):
@@ -61,10 +61,10 @@ def _format_register_value(name: str, value: int) -> int | str | None:
 
 def _decode_season_mode(value: int) -> int | None:
     """Decode season mode register which may place value in high byte."""
-    if value in (0xFF00, 0xFFFF, SENSOR_UNAVAILABLE):
+    if value in (65280, 65535, SENSOR_UNAVAILABLE):
         return None
-    high = (value >> 8) & 0xFF
-    low = value & 0xFF
+    high = (value >> 8) & 255
+    low = value & 255
     if high and low:
         return None
     return high or low
@@ -78,11 +78,11 @@ SPECIAL_VALUE_DECODERS: dict[str, Callable[[int], int | None]] = {
 
 # Optional UART configuration registers (Air-B and Air++ ports)
 # According to the Series 4 Modbus documentation, both the Air-B
-# (0x1164-0x1167) and Air++ (0x1168-0x116B) register blocks are
+# (1164-1167 hex) and Air++ (1168-116B hex) register blocks are
 # optional and may be absent on devices without the corresponding
 # hardware. They are skipped by default unless UART scanning is
 # explicitly enabled.
-UART_OPTIONAL_REGS = range(0x1164, 0x116C)
+UART_OPTIONAL_REGS = range(4452, 4460)
 
 # Registers considered safe to read when verifying connectivity.
 # Each entry is a tuple of Modbus function code and register name. The

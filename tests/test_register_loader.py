@@ -80,7 +80,7 @@ def test_default_multiplier_resolution(tmp_path) -> None:
     reg = {
         "function": "03",
         "address_dec": 0,
-        "address_hex": "0x0000",
+        "address_hex": "0",
         "name": "noscale",
         "access": "R",
     }
@@ -124,7 +124,7 @@ def test_decode_multi_register_string() -> None:
         multiplier=2,
         resolution=1,
     )
-    raw = [0x4142, 0x4344, 0x4500]  # "ABCDE"
+    raw = [16706, 17220, 17664]  # "ABCDE"
     assert reg.decode(raw) == "ABCDE"
 
 
@@ -140,7 +140,7 @@ def test_decode_multi_register_number_scaled_once() -> None:
         multiplier=10,
         resolution=1,
     )
-    raw = [0x0000, 0x0001]
+    raw = [0, 1]
     assert reg.decode(raw) == 10
 
 
@@ -329,14 +329,14 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 1,
-            "address_hex": "0x2",
+            "address_hex": "2",
             "name": "bad_addr",
             "access": "R",
         },
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
+            "address_hex": "0",
             "name": "bad_len",
             "access": "R",
             "length": 1,
@@ -345,14 +345,14 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "01",
             "address_dec": 0,
-            "address_hex": "0x0",
+            "address_hex": "0",
             "name": "bad_access",
             "access": "RW",
         },
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
+            "address_hex": "0",
             "name": "bad_bits",
             "access": "R",
             "bits": [{"name": "a"}],
@@ -360,7 +360,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
+            "address_hex": "0",
             "name": "bad_string_len",
             "access": "R",
             "length": 0,
@@ -369,7 +369,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
+            "address_hex": "0",
             "name": "bad_bit_name",
             "access": "R",
             "extra": {"bitmask": 0b1},
@@ -378,10 +378,10 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
         {
             "function": "03",
             "address_dec": 0,
-            "address_hex": "0x0",
+            "address_hex": "0",
             "name": "bit_index_out_of_range",
             "access": "R",
-            "extra": {"bitmask": 0xFFFF},
+            "extra": {"bitmask": 65535},
             "bits": [{"name": f"b{i}", "index": i} for i in range(17)],
         },
     ],
@@ -402,7 +402,7 @@ def test_bits_within_bitmask_width(tmp_path) -> None:
     reg = {
         "function": "03",
         "address_dec": 0,
-        "address_hex": "0x0",
+        "address_hex": "0",
         "name": "good_bits",
         "access": "R",
         "extra": {"bitmask": 0b11},
@@ -427,7 +427,7 @@ def test_missing_descriptions_rejected(tmp_path, reg) -> None:
     base = {
         "function": "03",
         "address_dec": 0,
-        "address_hex": "0x0",
+        "address_hex": "0",
         "name": "no_desc",
         "access": "R",
     }
@@ -510,21 +510,21 @@ def test_get_all_registers_sorted(tmp_path) -> None:
         {
             "function": "03",
             "address_dec": 2,
-            "address_hex": "0x0002",
+            "address_hex": "2",
             "name": "reg_c",
             "access": "R",
         },
         {
             "function": "01",
             "address_dec": 1,
-            "address_hex": "0x0001",
+            "address_hex": "1",
             "name": "reg_a",
             "access": "R",
         },
         {
             "function": "03",
             "address_dec": 1,
-            "address_hex": "0x0001",
+            "address_hex": "1",
             "name": "reg_b",
             "access": "R",
         },
