@@ -9,8 +9,8 @@ from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
     _decode_aatt,
-    _decode_bcd_time,
     _decode_register_time,
+    decode_bcd_time,
 )
 
 # Specific registers may only accept discrete values
@@ -36,10 +36,10 @@ def _format_register_value(name: str, value: int) -> int | str | None:
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(BCD_TIME_PREFIXES):
-        decoded = _decode_bcd_time(value)
+        decoded = decode_bcd_time(value)
         if decoded is None:
             return None if value == SENSOR_UNAVAILABLE else f"0x{value:04X} (invalid)"
-        return f"{decoded // 60:02d}:{decoded % 60:02d}"
+        return f"{decoded.hour:02d}:{decoded.minute:02d}"
 
     if name.startswith(TIME_REGISTER_PREFIXES):
         decoded = _decode_register_time(value)

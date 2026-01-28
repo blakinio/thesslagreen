@@ -1289,6 +1289,7 @@
       "init": {
         "data": {
           "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)",
+          "enable_device_scan": "Włącz skanowanie urządzenia podczas konfiguracji",
           "retry": "Liczba prób",
           "scan_interval": "Interwał skanowania (s)",
           "log_level": "Poziom logowania",
@@ -1299,6 +1300,7 @@
         },
         "data_description": {
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
+          "enable_device_scan": "Wykonaj skanowanie urządzenia podczas konfiguracji, aby wykryć dostępne rejestry",
           "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
           "log_level": "Dostosuj poziom logów integracji bez restartu Home Assistanta",
@@ -1310,7 +1312,7 @@
         "error": {
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
         },
-        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
+        "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Skanowanie urządzenia włączone: {device_scan_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "Opcje ThesslaGreen Modbus"
       }
     }

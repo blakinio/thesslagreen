@@ -266,8 +266,8 @@ def group_reads(
     """
 
     if max_block_size is None:
-        max_block_size = const.MAX_BATCH_REGISTERS
-    max_block_size = min(max_block_size, const.MAX_BATCH_REGISTERS)
+        max_block_size = const.MAX_REGS_PER_REQUEST
+    max_block_size = min(max_block_size, const.MAX_REGS_PER_REQUEST)
     sorted_addresses = sorted(set(addresses))
     if not sorted_addresses:
         return []

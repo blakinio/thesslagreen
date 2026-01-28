@@ -180,6 +180,45 @@ def test_target_temperature_none_when_unavailable():
     assert climate.target_temperature == 20.0
 
 
+def test_hvac_mode_off_uses_on_off_panel_mode():
+    """Ensure OFF is driven by on_off_panel_mode, not mapped to AUTO."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.capabilities.basic_control = True
+    coordinator.data = {"on_off_panel_mode": 0, "mode": 0}
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate.hvac_mode == HVACMode.OFF
+
+
+def test_fan_modes_respect_min_max_limits():
+    """Fan modes should honor dynamic min/max limits up to 150%."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.data = {"min_percentage": 20, "max_percentage": 150}
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate.fan_modes[0] == "20%"
+    assert climate.fan_modes[-1] == "150%"
+
+
+def test_fan_mode_clamps_to_max_percentage():
+    """Fan mode string should clamp to max percentage."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.data = {
+        "min_percentage": 10,
+        "max_percentage": 150,
+        "air_flow_rate_manual": 160,
+    }
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate.fan_mode == "150%"
+
+
 def test_hvac_mode_mappings():
     """Verify device modes map to and from Home Assistant HVAC modes."""
     assert HVAC_MODE_MAP[0] == HVACMode.AUTO
