@@ -87,7 +87,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         self._attr_supported_features = FanEntityFeature.SET_SPEED  # pragma: no cover
 
         # Speed range (10-100% as per ThesslaGreen specs)
-        self._attr_speed_count = 10  # 10%, 20%, ..., 100%  # pragma: no cover
+        self._attr_speed_count = 15  # 10%..150%  # pragma: no cover
 
         _LOGGER.debug("Initialized fan entity")
 
@@ -121,8 +121,27 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         if flow_rate is None:
             return None
 
-        # Convert to percentage (clamp to 0-100)
-        return max(0, min(100, int(flow_rate)))
+        _min_pct, max_pct = self._percentage_limits()
+        return max(0, min(max_pct, int(flow_rate)))
+
+    def _percentage_limits(self) -> tuple[int, int]:
+        """Return min/max percentage limits derived from device data."""
+
+        min_pct = self.coordinator.data.get("min_percentage")
+        max_pct = self.coordinator.data.get("max_percentage")
+        try:
+            min_val = int(min_pct)
+        except (TypeError, ValueError):
+            min_val = 10
+        try:
+            max_val = int(max_pct)
+        except (TypeError, ValueError):
+            max_val = 150
+        min_val = max(10, min_val)
+        max_val = min(150, max_val)
+        if max_val < min_val:
+            max_val = min_val
+        return min_val, max_val
 
     def _get_current_flow_rate(self) -> float | None:
         """Get current flow rate from available registers."""
@@ -197,18 +216,19 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
-        if percentage < 0 or percentage > 100:
-            _LOGGER.error("Invalid percentage %d (must be 0-100)", percentage)
+        min_pct, max_pct = self._percentage_limits()
+        if percentage < 0:
+            _LOGGER.error("Invalid percentage %d (must be >= 0)", percentage)
             return
 
         try:
-            if percentage == 0:
+            requested = min(percentage, max_pct)
+            if requested == 0:
                 await self.async_turn_off()
                 _LOGGER.debug("Set fan speed to 0%")
                 return
 
-            # Ensure minimum flow rate (ThesslaGreen typically requires 10% minimum)
-            actual_percentage = max(10, percentage)
+            actual_percentage = max(min_pct, requested)
 
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
@@ -224,8 +244,19 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 ):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
-                # Auto mode - set auto flow rate
-                if (
+                # Temporary mode - use 3-register write when available
+                if current_mode == "temporary":
+                    success = await self.coordinator.async_write_temporary_airflow(
+                        actual_percentage, refresh=False
+                    )
+                    if not success and (
+                        "air_flow_rate_temporary_2" in holding_registers()
+                        and "air_flow_rate_temporary_2" in holding_regs
+                    ):
+                        await self._write_register(
+                            "air_flow_rate_temporary_2", actual_percentage
+                        )
+                elif (
                     "air_flow_rate_temporary_2" in holding_registers()
                     and "air_flow_rate_temporary_2" in holding_regs
                 ):

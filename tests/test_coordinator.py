@@ -272,7 +272,7 @@ async def test_async_write_valid_register(coordinator):
 
     async def refresh_side_effect():
         nonlocal lock_state_during_refresh
-        lock_state_during_refresh = coordinator._connection_lock.locked()
+        lock_state_during_refresh = coordinator._write_lock.locked()
 
     coordinator.async_request_refresh = AsyncMock(side_effect=refresh_side_effect)
 
@@ -337,6 +337,20 @@ async def test_read_holding_registers_cancelled_error(coordinator, caplog):
         with pytest.raises(asyncio.CancelledError):
             await coordinator._read_holding_registers_optimized()
     assert caplog.text == ""
+
+
+@pytest.mark.asyncio
+async def test_read_input_registers_reconnect_on_error(coordinator):
+    """Ensure disconnect is triggered after Modbus errors."""
+    coordinator.client = MagicMock()
+    coordinator.client.connected = True
+    coordinator._register_groups = {"input_registers": [(0, 1)]}
+    coordinator._call_modbus = AsyncMock(side_effect=ConnectionException("boom"))
+    coordinator._disconnect = AsyncMock()
+
+    await coordinator._read_input_registers_optimized()
+
+    coordinator._disconnect.assert_called()
 
 
 @pytest.mark.asyncio
@@ -819,8 +833,7 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
         FakeClient,
     ):
         for _ in range(3):
-            async with coordinator._connection_lock:
-                await coordinator._ensure_connection()
+            await coordinator._ensure_connection()
             assert FakeClient.open_connections == 1
             coordinator.client.connected = False
 

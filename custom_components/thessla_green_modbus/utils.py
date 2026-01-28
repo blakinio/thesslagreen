@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import time
 
 __all__ = [
     "_to_snake_case",
@@ -12,6 +13,10 @@ __all__ = [
     "_decode_aatt",
     "BCD_TIME_PREFIXES",
     "TIME_REGISTER_PREFIXES",
+    "decode_int16",
+    "decode_temp_01c",
+    "decode_bcd_time",
+    "encode_bcd_time",
 ]
 
 
@@ -63,21 +68,62 @@ def _decode_register_time(value: int) -> int | None:
 def _decode_bcd_time(value: int) -> int | None:
     """Decode BCD or decimal HHMM values to minutes since midnight."""
 
-    if value == 0x8000 or value < 0:
+    decoded = decode_bcd_time(value)
+    if decoded is None:
+        return None
+    return decoded.hour * 60 + decoded.minute
+
+
+def decode_int16(u16: int) -> int:
+    """Decode a 16-bit unsigned value into a signed integer."""
+
+    if u16 & 0x8000:
+        return u16 - 0x10000
+    return u16
+
+
+def decode_temp_01c(u16: int) -> float | None:
+    """Decode temperature scaled in 0.1°C with 0x8000 meaning invalid."""
+
+    if u16 == 0x8000:
+        return None
+    return decode_int16(u16) / 10
+
+
+def decode_bcd_time(value: int) -> time | None:
+    """Decode BCD or decimal HHMM values to ``datetime.time``.
+
+    Returns ``None`` for disabled/invalid values as defined by the Modbus spec.
+    """
+
+    if value in (0x8000, 0xFFFF) or value < 0:
         return None
 
     nibbles = [(value >> shift) & 0xF for shift in (12, 8, 4, 0)]
     if all(n <= 9 for n in nibbles):
         hours = nibbles[0] * 10 + nibbles[1]
         minutes = nibbles[2] * 10 + nibbles[3]
-        if hours <= 23 and minutes <= 59:
-            return hours * 60 + minutes
+        if hours == 24 and minutes == 0:
+            return time(0, 0)
+        if 0 <= hours <= 23 and 0 <= minutes <= 59:
+            return time(hours, minutes)
 
     hours_dec = value // 100
     minutes_dec = value % 100
+    if hours_dec == 24 and minutes_dec == 0:
+        return time(0, 0)
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
-        return hours_dec * 60 + minutes_dec
+        return time(hours_dec, minutes_dec)
     return None
+
+
+def encode_bcd_time(value: time) -> int:
+    """Encode ``datetime.time`` into a BCD HHMM value."""
+
+    def _int_to_bcd(val: int) -> int:
+        return ((val // 10) << 4) | (val % 10)
+
+    return (_int_to_bcd(value.hour) << 8) | _int_to_bcd(value.minute)
 
 
 def _decode_aatt(value: int) -> tuple[int, float] | None:

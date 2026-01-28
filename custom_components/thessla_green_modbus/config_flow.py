@@ -29,6 +29,7 @@ from .const import (
     CONF_BAUD_RATE,
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
+    CONF_ENABLE_DEVICE_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
@@ -47,6 +48,7 @@ from .const import (
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
+    DEFAULT_ENABLE_DEVICE_SCAN,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
@@ -651,6 +653,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 CONF_MAX_REGISTERS_PER_REQUEST,
                 DEFAULT_MAX_REGISTERS_PER_REQUEST,
             ),
+            CONF_ENABLE_DEVICE_SCAN: self._data.get(
+                CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN
+            ),
             CONF_LOG_LEVEL: DEFAULT_LOG_LEVEL,
         }
 
@@ -962,6 +967,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_skip_missing = entry_options.get(
             CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
         )
+        current_enable_scan = entry_options.get(
+            CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN
+        )
         current_airflow_unit = entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
         current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
         current_max_registers_per_request = entry_options.get(
@@ -1002,6 +1010,10 @@ class OptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_FORCE_FULL_REGISTER_LIST,
                     default=force_full,
+                ): bool,
+                vol.Optional(
+                    CONF_ENABLE_DEVICE_SCAN,
+                    default=current_enable_scan,
                 ): bool,
                 vol.Optional(
                     CONF_LOG_LEVEL,
@@ -1062,6 +1074,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 "force_full_enabled": "Yes" if force_full else "No",
                 "scan_uart_enabled": "Yes" if current_scan_uart else "No",
                 "skip_missing_enabled": "Yes" if current_skip_missing else "No",
+                "device_scan_enabled": "Yes" if current_enable_scan else "No",
                 "current_airflow_unit": current_airflow_unit,
                 "deep_scan_enabled": "Yes" if current_deep_scan else "No",
                 "current_max_registers_per_request": str(current_max_registers_per_request),

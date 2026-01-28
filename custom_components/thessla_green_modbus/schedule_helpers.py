@@ -4,22 +4,19 @@ from __future__ import annotations
 
 from datetime import time
 
-
-def _int_to_bcd(value: int) -> int:
-    return ((value // 10) << 4) | (value % 10)
-
-
-def _bcd_to_int(value: int) -> int:
-    return ((value >> 4) & 0xF) * 10 + (value & 0xF)
+from .utils import decode_bcd_time, encode_bcd_time
 
 
 def time_to_bcd(t: time) -> int:
     """Convert ``datetime.time`` to BCD encoded HHMM value."""
-    return (_int_to_bcd(t.hour) << 8) | _int_to_bcd(t.minute)
+
+    return encode_bcd_time(t)
 
 
 def bcd_to_time(value: int) -> time:
     """Convert BCD encoded HHMM value to ``datetime.time``."""
-    hour = _bcd_to_int(value >> 8)
-    minute = _bcd_to_int(value & 0xFF)
-    return time(hour, minute)
+
+    decoded = decode_bcd_time(value)
+    if decoded is None:
+        raise ValueError("Invalid or disabled BCD time value")
+    return decoded
