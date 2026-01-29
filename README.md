@@ -5,6 +5,10 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1.0%2B-blue.svg)](https://home-assistant.io/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
 
+## Requirements
+
+- Home Assistant **2026.1.0 or newer**
+
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
 
 Najkompletniejsza integracja dla rekuperatorów ThesslaGreen AirPack z protokołem Modbus TCP/RTU. Obsługuje **wszystkie 200+ rejestrów** z dokumentacji [MODBUS_USER_AirPack_Home_08.2021.01](https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf) bez wyjątku.
@@ -24,6 +28,7 @@ Integracja działa jako **hub** w Home Assistant.
 - **📅 Harmonogram tygodniowy** - pełna konfiguracja programów czasowych
 - **🛠️ 14 serwisów** - kompletne API do automatyzacji i kontroli, w tym pełny skan rejestrów
 - **🔧 Diagnostyka i logowanie** - szczegółowe informacje o błędach i wydajności
+- **🔁 Retry i reconnect** - wbudowana obsługa ponownych prób i rekonfiguracji połączenia
 - **🌍 Wsparcie wielojęzyczne** - polski i angielski
 
 ## 📋 Kompatybilność
@@ -49,7 +54,7 @@ Integracja działa jako **hub** w Home Assistant.
 ### Home Assistant
 - ✅ **Minimal Home Assistant version: 2026.1.0**
 - ✅ **Tested with: 2026.1.x**
-- ✅ **pymodbus 3.5.0+** - najnowsza biblioteka Modbus
+- ✅ **pymodbus 3.6.0+** - najnowsza biblioteka Modbus
 - ✅ **Python 3.12+** - nowoczesne standardy
 - ✅ **Standardowy AsyncModbusTcpClient** – brak potrzeby własnego klienta Modbus
 

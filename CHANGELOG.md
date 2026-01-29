@@ -19,17 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migration script for clearing legacy airflow statistics
 
 ### Changed
+- Updated minimum Home Assistant version to 2026.1.0
+- Documentation aligned with current Modbus implementation
+- Clarified protocol limitations (16 registers, invalid temperature handling)
 - Hardening: retry/backoff, RTU support, DEC-only constants, strict 16-reg limit, temp invalid handling
-
 - Documented developer tooling (ruff/black/isort/mypy) and added pre-commit snippet.
 - CI matrix now publishes dedicated hassfest and HACS validation steps.
 - Linting, formatting, and typing tooling alignment for HA compliance
-
-### Changed
-- Bumped minimum Home Assistant version to 2025.1.0
 - Regenerated Modbus register definitions from CSV and updated coverage test
 - Assigned new unique IDs for m³/h airflow sensors
-- Simplified runtime dependencies; only require `pymodbus>=3.5.0`
+- Simplified runtime dependencies; only require `pymodbus>=3.6.0`
 - Deferred `homeassistant` imports in `custom_components/thessla_green_modbus` so
   utility modules can be imported without Home Assistant installed
 - Removed non-existent hassfest/hacs PyPI packages from `requirements-dev.txt` in favor of
