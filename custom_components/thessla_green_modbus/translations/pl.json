@@ -1307,7 +1307,7 @@
           "log_level": "Dostosuj poziom logów integracji bez restartu Home Assistanta",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
           "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
-          "deep_scan": "Odczyt surowych rejestrów 0x0000-0x012C do diagnostyki",
+          "deep_scan": "Odczyt surowych rejestrów 0-300 do diagnostyki",
           "safe_scan": "Wyłącz grupowanie; czytaj rejestry pojedynczo (maks. 16 na żądanie)",
           "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)"
         },

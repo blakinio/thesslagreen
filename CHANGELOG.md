@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated minimum Home Assistant version to 2026.1.0
 - Documentation aligned with current Modbus implementation
 - Clarified protocol limitations (16 registers, invalid temperature handling)
+- Moved config-flow-only exceptions/helpers into a shared errors module to keep runtime imports lightweight.
+- Aligned pymodbus requirements (>=3.6.0) and added voluptuous to dev dependencies for tests.
+- Updated user-facing text to show decimal register ranges instead of hex.
 - Hardening: retry/backoff, RTU support, DEC-only constants, strict 16-reg limit, temp invalid handling
 - Coordinator reads now retry transient Modbus failures with backoff and reconnects between attempts.
 - Temporary airflow/temperature writes now use the 3-register block without fallback single writes.
