@@ -422,13 +422,16 @@ if hasattr(pydantic, "RootModel"):
 
         @property
         def registers(self) -> list[RegisterDefinition]:
-            return getattr(self, "root", self.__root__)
+            root_val = getattr(self, "root", None)
+            if root_val is not None:
+                return root_val
+            return getattr(self, "__root__")  # noqa: B009
 
         if hasattr(pydantic, "model_validator"):
 
             @model_validator(mode="after")
             def unique(self) -> RegisterList:  # pragma: no cover
-                registers = self.root
+                registers = self.registers
                 seen_pairs: set[tuple[int, int]] = set()
                 seen_names: set[str] = set()
                 for reg in registers:
