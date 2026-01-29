@@ -5,7 +5,7 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from conftest import CoordinatorMock
+from tests.conftest import CoordinatorMock
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant

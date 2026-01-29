@@ -1,4 +1,5 @@
 import asyncio
+import importlib.util
 import logging
 import sys
 import types
@@ -132,27 +133,33 @@ class ExceptionResponse:
 
 pymodbus_pdu.ExceptionResponse = ExceptionResponse
 
-sys.modules.update(
-    {
-        "homeassistant": ha,
-        "homeassistant.const": const,
-        "homeassistant.core": core,
-        "homeassistant.helpers": helpers_pkg,
-        "homeassistant.helpers.update_coordinator": helpers_uc,
-        "homeassistant.helpers.device_registry": helpers_dr,
-        "homeassistant.helpers.script": helpers_script,
-        "homeassistant.exceptions": exceptions,
-        "homeassistant.config_entries": config_entries,
-        "homeassistant.util": util,
-        "homeassistant.util.logging": util_logging,
-        "pymodbus": pymodbus,
-        "pymodbus.client": pymodbus_client,
-        "pymodbus.exceptions": pymodbus_exceptions,
-        "pymodbus.pdu": pymodbus_pdu,
-        "voluptuous": vol,
-        "custom_components.thessla_green_modbus.services": cc_services,
-    }
-)
+if "homeassistant" not in sys.modules:
+    try:
+        homeassistant_spec = importlib.util.find_spec("homeassistant")
+    except ValueError:
+        homeassistant_spec = None
+    if homeassistant_spec is None:
+        sys.modules.update(
+            {
+                "homeassistant": ha,
+                "homeassistant.const": const,
+                "homeassistant.core": core,
+                "homeassistant.helpers": helpers_pkg,
+                "homeassistant.helpers.update_coordinator": helpers_uc,
+                "homeassistant.helpers.device_registry": helpers_dr,
+                "homeassistant.helpers.script": helpers_script,
+                "homeassistant.exceptions": exceptions,
+                "homeassistant.config_entries": config_entries,
+                "homeassistant.util": util,
+                "homeassistant.util.logging": util_logging,
+                "pymodbus": pymodbus,
+                "pymodbus.client": pymodbus_client,
+                "pymodbus.exceptions": pymodbus_exceptions,
+                "pymodbus.pdu": pymodbus_pdu,
+                "voluptuous": vol,
+                "custom_components.thessla_green_modbus.services": cc_services,
+            }
+        )
 
 pymodbus_exceptions.ModbusException = ModbusException
 pymodbus_exceptions.ConnectionException = ConnectionException

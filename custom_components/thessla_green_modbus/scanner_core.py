@@ -592,9 +592,12 @@ class ThesslaGreenDeviceScanner:
                     _LOGGER.exception("Unexpected error reading holding registers: %s", exc)
                     raise ModbusException(f"Error reading holding registers: {exc}") from exc
         finally:
-            result = client.close()
-            if inspect.isawaitable(result):
-                await result
+            try:
+                result = client.close()
+                if inspect.isawaitable(result):
+                    await result
+            except (OSError, ConnectionException, ModbusIOException, TypeError):
+                _LOGGER.debug("Error closing Modbus client during verify_connection", exc_info=True)
 
     def _is_valid_register_value(self, name: str, value: int) -> bool:
         """Validate a register value against known constraints.

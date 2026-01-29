@@ -15,10 +15,16 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+USE_REAL_HOMEASSISTANT = os.environ.get("THESSLA_GREEN_USE_HA", "0") == "1"
+
 try:
+    if not USE_REAL_HOMEASSISTANT:
+        raise ModuleNotFoundError
     from homeassistant.util import dt as _ha_dt  # noqa: F401
 
     importlib.import_module("homeassistant.util")  # ensure util submodule is loaded for plugins
+    import homeassistant as ha_module
+    ha_module.components = importlib.import_module("homeassistant.components")
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.exceptions import ConfigEntryNotReady
@@ -400,13 +406,45 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["pymodbus.pdu"] = pymodbus_pdu
     sys.modules["pytest_homeassistant_custom_component.common"] = hacc_common
 
+
+def _ensure_homeassistant_modules() -> None:
+    ha_module = sys.modules.get("homeassistant")
+    if ha_module is None:
+        return
+
+    def _ensure_module(name: str) -> types.ModuleType:
+        module = sys.modules.get(name)
+        if module is None:
+            try:
+                module = importlib.import_module(name)
+            except ModuleNotFoundError:
+                module = types.ModuleType(name)
+                module.__path__ = []  # type: ignore[attr-defined]
+                sys.modules[name] = module
+        return module
+
+    components = _ensure_module("homeassistant.components")
+    helpers = _ensure_module("homeassistant.helpers")
+    setattr(ha_module, "components", components)
+    setattr(ha_module, "helpers", helpers)
+
+    helpers_script = _ensure_module("homeassistant.helpers.script")
+    if not hasattr(helpers_script, "_schedule_stop_scripts_after_shutdown"):
+        helpers_script._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
+    setattr(helpers, "script", helpers_script)
+
+    components_network = _ensure_module("homeassistant.components.network")
+    if not hasattr(components_network, "async_get_source_ip"):
+        async def async_get_source_ip(*_args, **_kwargs):  # pragma: no cover - stub
+            return "127.0.0.1"
+
+        components_network.async_get_source_ip = async_get_source_ip
+    setattr(components, "network", components_network)
+
+
 import custom_components.thessla_green_modbus.registers.loader  # noqa: F401,E402
 
-if "homeassistant" in sys.modules:
-    components = sys.modules.get("homeassistant.components")
-    if components is None:
-        components = importlib.import_module("homeassistant.components")
-    sys.modules["homeassistant"].components = components
+_ensure_homeassistant_modules()
 
 helpers_uc = sys.modules.get("homeassistant.helpers.update_coordinator")
 if helpers_uc is not None and not hasattr(helpers_uc, "CoordinatorEntity"):
@@ -429,12 +467,16 @@ DOMAIN = "thessla_green_modbus"
 
 
 def pytest_configure() -> None:
-    if "homeassistant" not in sys.modules:
-        return
-    components = sys.modules.get("homeassistant.components")
-    if components is None:
-        components = importlib.import_module("homeassistant.components")
-    sys.modules["homeassistant"].components = components
+    _ensure_homeassistant_modules()
+
+
+def pytest_sessionstart(session) -> None:
+    _ensure_homeassistant_modules()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item) -> None:
+    _ensure_homeassistant_modules()
 
 
 class CoordinatorMock(MagicMock):

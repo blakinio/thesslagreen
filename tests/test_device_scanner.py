@@ -7,6 +7,7 @@ import pytest
 
 from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
     ModbusException,
     ModbusIOException,
 )
@@ -44,6 +45,23 @@ async def test_scanner_core_initialization():
     assert scanner.slave_id == 10
     assert scanner.retry == 3
     assert scanner.backoff == 0
+
+
+async def test_verify_connection_close_non_awaitable_on_failure():
+    """Verify close() handles non-awaitable result on connection failure."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    fake_client = MagicMock()
+    fake_client.connect = AsyncMock(return_value=False)
+    fake_client.close = MagicMock(return_value=None)
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner_core.AsyncModbusTcpClient",
+        return_value=fake_client,
+    ):
+        with pytest.raises(ConnectionException):
+            await scanner.verify_connection()
+
+    fake_client.close.assert_called_once()
 
 
 async def test_create_binds_read_helpers():
