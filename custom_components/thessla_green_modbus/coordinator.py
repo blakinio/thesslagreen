@@ -6,12 +6,14 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
+
+    UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
 
     class _DTUtil:
         """Fallback minimal dt util."""
@@ -117,7 +119,7 @@ from .modbus_helpers import (
 )
 from .modbus_transport import BaseModbusTransport, RtuModbusTransport, TcpModbusTransport
 from .register_map import REGISTER_MAP_VERSION, validate_register_value
-from .registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
+from .register_addresses import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .registers.loader import get_all_registers
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 
@@ -412,6 +414,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         def _is_illegal_data_address(response: Any) -> bool:
             return getattr(response, "exception_code", None) == ILLEGAL_DATA_ADDRESS
 
+        def _is_transient_response(response: Any) -> bool:
+            exception_code = getattr(response, "exception_code", None)
+            return exception_code is None or exception_code != ILLEGAL_DATA_ADDRESS
+
         last_error: Exception | None = None
         for attempt in range(1, self.retry + 1):
             try:
@@ -430,6 +436,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         raise _PermanentModbusError(
                             f"Illegal data address for {register_type} registers at {start_address}"
                         )
+                    if _is_transient_response(response):
+                        raise ModbusIOException(
+                            f"Transient error reading {register_type} registers at {start_address}"
+                        )
                     raise ModbusException(
                         f"Failed to read {register_type} registers at {start_address}"
                     )
@@ -441,6 +451,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 await self._disconnect()
                 if attempt >= self.retry:
                     raise
+                try:
+                    await self._ensure_connection()
+                except (TimeoutError, ModbusIOException, ConnectionException, OSError) as reconnect:
+                    last_error = reconnect
+                    _LOGGER.debug(
+                        "Reconnect failed for %s registers at %s (attempt %s/%s): %s",
+                        register_type,
+                        start_address,
+                        attempt + 1,
+                        self.retry,
+                        reconnect,
+                    )
+                    continue
                 _LOGGER.debug(
                     "Retrying %s registers at %s (attempt %s/%s): %s",
                     register_type,
@@ -451,16 +474,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
             except ModbusException as exc:
                 last_error = exc
-                if attempt >= self.retry:
-                    raise
-                _LOGGER.debug(
-                    "Retrying %s registers at %s (attempt %s/%s): %s",
-                    register_type,
-                    start_address,
-                    attempt + 1,
-                    self.retry,
-                    exc,
-                )
+                raise
         if last_error is not None:
             raise last_error
         raise ModbusException(f"Failed to read {register_type} registers at {start_address}")

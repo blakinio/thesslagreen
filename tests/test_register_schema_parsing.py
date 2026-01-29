@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.thessla_green_modbus.registers.schema import (
-    RegisterDefinition,
-    _format_hex,
-)
+from custom_components.thessla_green_modbus.registers.schema import RegisterDefinition
 
 
 def test_register_definition_normalises_fields() -> None:
@@ -24,7 +21,7 @@ def test_register_definition_normalises_fields() -> None:
 
     assert definition.function == 4  # nosec: intended assertion
     assert definition.address_dec == 16  # nosec: intended assertion
-    assert definition.address_hex == _format_hex(16)  # nosec: intended assertion
+    assert definition.address_dec == 16  # nosec: intended assertion
 
 
 def test_register_definition_rejects_mismatched_lengths() -> None:
@@ -43,16 +40,15 @@ def test_register_definition_rejects_mismatched_lengths() -> None:
         )
 
 
-def test_register_definition_rejects_address_mismatch() -> None:
-    """address_hex and address_dec must describe the same location."""
+def test_register_definition_accepts_decimal_address_only() -> None:
+    """address_dec is validated as decimal-only."""
 
-    with pytest.raises(ValueError):
-        RegisterDefinition(
-            function=1,
-            address_dec=4,
-            address_hex=_format_hex(16),
-            name="mismatched",
-            access="R",
-            description="desc",
-            description_en="desc",
-        )
+    definition = RegisterDefinition(
+        function=1,
+        address_dec=4,
+        name="mismatched",
+        access="R",
+        description="desc",
+        description_en="desc",
+    )
+    assert definition.address_dec == 4

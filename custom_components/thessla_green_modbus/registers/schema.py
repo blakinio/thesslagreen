@@ -9,9 +9,7 @@ Key features implemented:
 
 * ``function`` accepts integers or strings and is normalised to the canonical
   integer form (``1`` … ``4``).
-* ``address_dec`` may be provided as either an integer or string.  A canonical
-  hex-prefixed form is stored in ``address_hex`` and the two representations
-  are cross‑checked for consistency.
+* ``address_dec`` may be provided as either an integer or string.
 * ``length`` accepts ``count`` as an alias.
 * A top level ``type`` field is supported.  It accepts shorthand identifiers
   (``u16``, ``i16`` … ``f64``, ``string``, ``bitmask``) and the expected
@@ -25,23 +23,38 @@ import re
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, RootModel, model_validator, validator
+import pydantic
+from pydantic import BaseModel, Field, validator
 
 from ..utils import _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
 
+if hasattr(pydantic, "RootModel"):
+    RootModel = pydantic.RootModel
+else:
+
+    class RootModel(BaseModel):  # type: ignore[no-redef]
+        """Compatibility wrapper for pydantic v1 RootModel."""
+
+        __root__: Any
+
+
+if hasattr(pydantic, "model_validator"):
+    model_validator = pydantic.model_validator
+else:
+
+    def model_validator(*args: Any, **kwargs: Any):
+        if "mode" in kwargs:
+            kwargs = dict(kwargs)
+            mode = kwargs.pop("mode")
+            kwargs["pre"] = mode == "before"
+        return pydantic.root_validator(*args, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-HEX_PREFIX = "0" + "x"
-
-
-def _format_hex(value: int) -> str:
-    """Return a hex string with the configured prefix."""
-
-    return f"{HEX_PREFIX}{format(value, 'x')}"
 
 
 def _normalise_function(fn: int | str) -> int:
@@ -118,7 +131,6 @@ class RegisterDefinition(BaseModel):
 
     function: int
     address_dec: int
-    address_hex: str
     name: str
     access: Literal["R", "RW", "W"]
     unit: str | None = None
@@ -185,25 +197,6 @@ class RegisterDefinition(BaseModel):
                 raise TypeError("address_dec must be int or str")
             data["address_dec"] = addr_dec
 
-        # Normalise address_hex
-        addr_hex = data.get("address_hex")
-        if addr_hex is not None:
-            if isinstance(addr_hex, str):
-                addr_hex = addr_hex.lower()
-                if not addr_hex.startswith(HEX_PREFIX):
-                    addr_hex = f"{HEX_PREFIX}{addr_hex}"
-                addr_hex_int = addr_dec if addr_dec is not None else None
-            elif isinstance(addr_hex, int) and not isinstance(addr_hex, bool):
-                addr_hex_int = addr_hex
-            else:  # pragma: no cover - defensive
-                raise TypeError("address_hex must be str or int")
-            if addr_hex_int is None:
-                data["address_hex"] = addr_hex
-            else:
-                data["address_hex"] = _format_hex(addr_hex_int)
-        elif addr_dec is not None:
-            data["address_hex"] = _format_hex(addr_dec)
-
         # Handle type field (may be top level or inside extra)
         typ = data.pop("type", None)
         extra = data.get("extra")
@@ -247,86 +240,173 @@ class RegisterDefinition(BaseModel):
             raise ValueError("function code must be between 1 and 4")
         return v
 
-    @model_validator(mode="after")
-    def _check_access(self) -> RegisterDefinition:
-        if self.function in {1, 2} and self.access != "R":
-            raise ValueError("read-only functions must have R access")
-        return self
+    if hasattr(pydantic, "model_validator"):
+
+        @model_validator(mode="after")
+        def _check_access(self) -> RegisterDefinition:
+            if self.function in {1, 2} and self.access != "R":
+                raise ValueError("read-only functions must have R access")
+            return self
+
+    else:
+
+        @pydantic.root_validator
+        def _check_access(cls, values: dict[str, Any]) -> dict[str, Any]:
+            function = values.get("function")
+            access = values.get("access")
+            if function in {1, 2} and access != "R":
+                raise ValueError("read-only functions must have R access")
+            return values
 
     # ------------------------------------------------------------------
     # Additional consistency checks
     # ------------------------------------------------------------------
 
-    @model_validator(mode="after")
-    def check_consistency(self) -> RegisterDefinition:  # pragma: no cover
-        if self.address_hex is not None and self.address_dec is not None:
-            if self.address_hex.lower() != _format_hex(self.address_dec):
-                raise ValueError("address_hex does not match address_dec")
+    if hasattr(pydantic, "model_validator"):
 
-        if self.type is not None:
-            try:
-                reg_enum = RegisterType(self.type)
-            except ValueError as err:  # pragma: no cover - defensive
-                raise ValueError(f"unsupported type: {self.type}") from err
-            expected = _TYPE_LENGTHS.get(reg_enum.value)
-            if expected is None:
-                if self.length is None or self.length < 1:
-                    raise ValueError("string type requires length >= 1")
-            elif self.length != expected:
-                raise ValueError("length does not match type")
-
-        if self.enum is not None:
-            if not isinstance(self.enum, dict):
-                raise ValueError("enum must be a mapping")
-            for k, v in self.enum.items():
+        @model_validator(mode="after")
+        def check_consistency(self) -> RegisterDefinition:  # pragma: no cover
+            if self.type is not None:
                 try:
-                    int(k)
-                except (TypeError, ValueError):
-                    raise ValueError("enum keys must be numeric") from None
-                if not isinstance(v, str):
-                    raise ValueError("enum values must be strings")
+                    reg_enum = RegisterType(self.type)
+                except ValueError as err:  # pragma: no cover - defensive
+                    raise ValueError(f"unsupported type: {self.type}") from err
+                expected = _TYPE_LENGTHS.get(reg_enum.value)
+                if expected is None:
+                    if self.length is None or self.length < 1:
+                        raise ValueError("string type requires length >= 1")
+                elif self.length != expected:
+                    raise ValueError("length does not match type")
 
-        seen_indices: set[int] = set()
-        if self.bits is not None:
-            if len(self.bits) > 16:
-                raise ValueError("bits exceed 16 entries")
-            for bit in self.bits:
-                if not isinstance(bit, dict):
-                    raise ValueError("bits entries must be objects")
-                if "index" not in bit or "name" not in bit:
-                    raise ValueError("bits entries must have index and name")
-                idx = bit["index"]
-                name = bit["name"]
-                if not isinstance(idx, int) or isinstance(idx, bool):
-                    raise ValueError("bit index must be an integer")
-                if not 0 <= idx <= 15:
-                    raise ValueError("bit index out of range")
-                if idx in seen_indices:
-                    raise ValueError("bit indices must be unique")
-                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("bit name must be snake_case")
-                seen_indices.add(idx)
+            if self.enum is not None:
+                if not isinstance(self.enum, dict):
+                    raise ValueError("enum must be a mapping")
+                for k, v in self.enum.items():
+                    try:
+                        int(k)
+                    except (TypeError, ValueError):
+                        raise ValueError("enum keys must be numeric") from None
+                    if not isinstance(v, str):
+                        raise ValueError("enum values must be strings")
 
-        bitmask_val = self.extra.get("bitmask") if isinstance(self.extra, dict) else None
-        mask_int: int | None = None
-        if isinstance(bitmask_val, str):
-            if not re.fullmatch(r"[0-9]+", bitmask_val):
-                raise ValueError("bitmask must be decimal digits")
-            mask_int = int(bitmask_val)
-        elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
-            mask_int = bitmask_val
+            seen_indices: set[int] = set()
+            if self.bits is not None:
+                if len(self.bits) > 16:
+                    raise ValueError("bits exceed 16 entries")
+                for bit in self.bits:
+                    if not isinstance(bit, dict):
+                        raise ValueError("bits entries must be objects")
+                    if "index" not in bit or "name" not in bit:
+                        raise ValueError("bits entries must have index and name")
+                    idx = bit["index"]
+                    name = bit["name"]
+                    if not isinstance(idx, int) or isinstance(idx, bool):
+                        raise ValueError("bit index must be an integer")
+                    if not 0 <= idx <= 15:
+                        raise ValueError("bit index out of range")
+                    if idx in seen_indices:
+                        raise ValueError("bit indices must be unique")
+                    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                        raise ValueError("bit name must be snake_case")
+                    seen_indices.add(idx)
 
-        if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
-            raise ValueError("bits exceed bitmask width")
+            bitmask_val = self.extra.get("bitmask") if isinstance(self.extra, dict) else None
+            mask_int: int | None = None
+            if isinstance(bitmask_val, str):
+                if not re.fullmatch(r"[0-9]+", bitmask_val):
+                    raise ValueError("bitmask must be decimal digits")
+                mask_int = int(bitmask_val)
+            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+                mask_int = bitmask_val
 
-        if self.min is not None and self.max is not None and self.min > self.max:
-            raise ValueError("min greater than max")
-        if self.default is not None:
-            if self.min is not None and self.default < self.min:
-                raise ValueError("default below min")
-            if self.max is not None and self.default > self.max:
-                raise ValueError("default above max")
-        return self
+            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
+                raise ValueError("bits exceed bitmask width")
+
+            if self.min is not None and self.max is not None and self.min > self.max:
+                raise ValueError("min greater than max")
+            if self.default is not None:
+                if self.min is not None and self.default < self.min:
+                    raise ValueError("default below min")
+                if self.max is not None and self.default > self.max:
+                    raise ValueError("default above max")
+            return self
+
+    else:
+
+        @pydantic.root_validator
+        def check_consistency(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
+            reg_type = values.get("type")
+            length = values.get("length")
+            if reg_type is not None:
+                try:
+                    reg_enum = RegisterType(reg_type)
+                except ValueError as err:  # pragma: no cover - defensive
+                    raise ValueError(f"unsupported type: {reg_type}") from err
+                expected = _TYPE_LENGTHS.get(reg_enum.value)
+                if expected is None:
+                    if length is None or length < 1:
+                        raise ValueError("string type requires length >= 1")
+                elif length != expected:
+                    raise ValueError("length does not match type")
+
+            enum = values.get("enum")
+            if enum is not None:
+                if not isinstance(enum, dict):
+                    raise ValueError("enum must be a mapping")
+                for k, v in enum.items():
+                    try:
+                        int(k)
+                    except (TypeError, ValueError):
+                        raise ValueError("enum keys must be numeric") from None
+                    if not isinstance(v, str):
+                        raise ValueError("enum values must be strings")
+
+            seen_indices: set[int] = set()
+            bits = values.get("bits")
+            if bits is not None:
+                if len(bits) > 16:
+                    raise ValueError("bits exceed 16 entries")
+                for bit in bits:
+                    if not isinstance(bit, dict):
+                        raise ValueError("bits entries must be objects")
+                    if "index" not in bit or "name" not in bit:
+                        raise ValueError("bits entries must have index and name")
+                    idx = bit["index"]
+                    name = bit["name"]
+                    if not isinstance(idx, int) or isinstance(idx, bool):
+                        raise ValueError("bit index must be an integer")
+                    if not 0 <= idx <= 15:
+                        raise ValueError("bit index out of range")
+                    if idx in seen_indices:
+                        raise ValueError("bit indices must be unique")
+                    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                        raise ValueError("bit name must be snake_case")
+                    seen_indices.add(idx)
+
+            extra = values.get("extra")
+            bitmask_val = extra.get("bitmask") if isinstance(extra, dict) else None
+            mask_int: int | None = None
+            if isinstance(bitmask_val, str):
+                if not re.fullmatch(r"[0-9]+", bitmask_val):
+                    raise ValueError("bitmask must be decimal digits")
+                mask_int = int(bitmask_val)
+            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+                mask_int = bitmask_val
+
+            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
+                raise ValueError("bits exceed bitmask width")
+
+            min_val = values.get("min")
+            max_val = values.get("max")
+            default = values.get("default")
+            if min_val is not None and max_val is not None and min_val > max_val:
+                raise ValueError("min greater than max")
+            if default is not None:
+                if min_val is not None and default < min_val:
+                    raise ValueError("default below min")
+                if max_val is not None and default > max_val:
+                    raise ValueError("default above max")
+            return values
 
     @validator("name")
     def name_is_snake(cls, v: str) -> str:  # pragma: no cover
@@ -335,26 +415,58 @@ class RegisterDefinition(BaseModel):
         return v
 
 
-class RegisterList(RootModel[list[RegisterDefinition]]):
-    """Container model to validate a list of registers."""
+if hasattr(pydantic, "RootModel"):
 
-    @property
-    def registers(self) -> list[RegisterDefinition]:
-        return self.root
+    class RegisterList(RootModel[list[RegisterDefinition]]):
+        """Container model to validate a list of registers."""
 
-    @model_validator(mode="after")
-    def unique(self) -> RegisterList:  # pragma: no cover
-        registers = self.root
-        seen_pairs: set[tuple[int, int]] = set()
-        seen_names: set[str] = set()
-        for reg in registers:
-            fn = _normalise_function(reg.function)
-            name = _normalise_name(reg.name)
-            pair = (fn, reg.address_dec)
-            if pair in seen_pairs:
-                raise ValueError(f"duplicate register pair: {pair}")
-            if name in seen_names:
-                raise ValueError(f"duplicate register name: {name}")
-            seen_pairs.add(pair)
-            seen_names.add(name)
-        return self
+        @property
+        def registers(self) -> list[RegisterDefinition]:
+            return getattr(self, "root", self.__root__)
+
+        if hasattr(pydantic, "model_validator"):
+
+            @model_validator(mode="after")
+            def unique(self) -> RegisterList:  # pragma: no cover
+                registers = self.root
+                seen_pairs: set[tuple[int, int]] = set()
+                seen_names: set[str] = set()
+                for reg in registers:
+                    fn = _normalise_function(reg.function)
+                    name = _normalise_name(reg.name)
+                    pair = (fn, reg.address_dec)
+                    if pair in seen_pairs:
+                        raise ValueError(f"duplicate register pair: {pair}")
+                    if name in seen_names:
+                        raise ValueError(f"duplicate register name: {name}")
+                    seen_pairs.add(pair)
+                    seen_names.add(name)
+                return self
+
+else:
+
+    class RegisterList(RootModel):
+        """Container model to validate a list of registers."""
+
+        __root__: list[RegisterDefinition]
+
+        @property
+        def registers(self) -> list[RegisterDefinition]:
+            return self.__root__
+
+        @pydantic.root_validator
+        def unique(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
+            registers = values.get("__root__", [])
+            seen_pairs: set[tuple[int, int]] = set()
+            seen_names: set[str] = set()
+            for reg in registers:
+                fn = _normalise_function(reg.function)
+                name = _normalise_name(reg.name)
+                pair = (fn, reg.address_dec)
+                if pair in seen_pairs:
+                    raise ValueError(f"duplicate register pair: {pair}")
+                if name in seen_names:
+                    raise ValueError(f"duplicate register name: {name}")
+                seen_pairs.add(pair)
+                seen_names.add(name)
+            return values
