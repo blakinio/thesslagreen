@@ -1,8 +1,8 @@
 # ThesslaGreen Modbus Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/thesslagreen/thessla-green-modbus-ha.svg)](https://github.com/thesslagreen/thessla-green-modbus-ha/releases)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.12.0%2B-blue.svg)](https://home-assistant.io/)
+[![GitHub release](https://img.shields.io/github/release/blakinio/thesslagreen.svg)](https://github.com/blakinio/thesslagreen/releases)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1.0%2B-blue.svg)](https://home-assistant.io/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
 
 ## ✨ Kompletna integracja ThesslaGreen AirPack z Home Assistant
@@ -32,19 +32,23 @@ Integracja działa jako **hub** w Home Assistant.
 - ✅ **ThesslaGreen AirPack Home Series 4** - wszystkie modele
 - ✅ **AirPack Home 300v-850h** (Energy+, Energy, Enthalpy)
 - ✅ **Protokół Modbus TCP** – połączenie natywne, w pełni wspierane
-- 🧪 **Modbus RTU (RS485) / USB** – w fazie przygotowań (planowane wsparcie po stabilnych testach)
+- ✅ **Modbus RTU (RS485) / USB** – wspierane połączenie szeregowe
 - ✅ **Firmware v3.x - v5.x** z automatyczną detekcją
 
 ### Tryby i funkcje Modbus
 - **Harmonogram odczytów:** domyślnie co 30 s, konfigurowalne 10–300 s; nie zaleca się schodzenia poniżej 15 s ze względu na obciążenie urządzenia.
 - **Zakres rejestrów:** pełne wsparcie rejestrów Holding/Input/Coils/Discrete Input zgodnie z dokumentacją producenta.
-- **Kolejkowanie zapytań:** odczyty grupowane w bloki (domyślnie 16) dla minimalizacji ruchu.
+- **Kolejkowanie zapytań:** odczyty grupowane w bloki (maks. 16 rejestrów; domyślnie 16) dla minimalizacji ruchu.
+- **Limit protokołu:** maksymalnie 16 rejestrów na jedno zapytanie (zgodnie z PDF).
+- **Zakres wentylatorów i przepływów:** do 150% (min/max odczytywane z urządzenia).
+- **Wartości temperatury:** 32768 oznacza brak danych i jest mapowane na `unknown`.
 - **Ograniczenia:** jednoczesne połączenia Modbus TCP do jednego sterownika mogą powodować błędy czasowe; zalecane jedno aktywne połączenie (Home Assistant).
 - **Wymagania TCP:** otwarty port 502, stały adres IP, ID urządzenia 10 (auto-fallback na 1 i 247), brak filtrów/firewalla między HA a rekuperatorem.
-- **Plany RTU/USB:** konfiguracja przez `/dev/ttyUSBx` z parametrami 19200 8N1; do czasu wydania stabilnego wsparcia używaj trybu TCP.
+- **RTU/USB:** konfiguracja przez `/dev/ttyUSBx` z parametrami 19200 8N1 (lub zgodnie z instalacją).
 
 ### Home Assistant
-- ✅ **Wymagany Home Assistant 2024.12.0+** — minimalna wersja określona w `manifest.json` (pakiet `homeassistant` nie jest częścią `requirements.txt`)
+- ✅ **Minimal Home Assistant version: 2026.1.0**
+- ✅ **Tested with: 2026.1.x**
 - ✅ **pymodbus 3.5.0+** - najnowsza biblioteka Modbus
 - ✅ **Python 3.12+** - nowoczesne standardy
 - ✅ **Standardowy AsyncModbusTcpClient** – brak potrzeby własnego klienta Modbus
@@ -55,7 +59,7 @@ Integracja działa jako **hub** w Home Assistant.
 
 1. **Dodaj repozytorium custom w HACS:**
    - HACS → Integrations → ⋮ → Custom repositories
-   - URL: `https://github.com/thesslagreen/thessla-green-modbus-ha`
+   - URL: `https://github.com/blakinio/thesslagreen`
    - Category: Integration
    - Kliknij ADD
 
@@ -69,9 +73,15 @@ Integracja działa jako **hub** w Home Assistant.
 ```bash
 # Skopiuj pliki do katalogu custom_components
 cd /config
-git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
-cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_components/
+git clone https://github.com/blakinio/thesslagreen.git
+cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
 ```
+
+## 🛠️ Troubleshooting
+
+- **Timeouty / reconnect:** upewnij się, że tylko Home Assistant utrzymuje połączenie Modbus; zwiększ interwał odczytów i sprawdź stabilność sieci.
+- **Limit 16 rejestrów:** własne skrypty i automatyzacje powinny grupować odczyty do maks. 16 rejestrów na zapytanie, inaczej urządzenie zwraca błędy/timeouty.
+- **Debug logi:** włącz logowanie `custom_components.thessla_green_modbus: debug` w `configuration.yaml` (szczegóły w sekcji diagnostyki).
 
 ## ⚙️ Konfiguracja krok po kroku
 
@@ -82,13 +92,13 @@ cp -r thessla-green-modbus-ha/custom_components/thessla_green_modbus custom_comp
 
 ### 1. Włącz Modbus w rekuperatorze
 - **Modbus TCP**: Menu → Komunikacja → Modbus TCP → Włącz **TAK**, Port **502**, ID urządzenia **10**
-- **Modbus RTU** (planowane wsparcie): Menu → Komunikacja → Modbus RTU → Wybierz port RS485, ustaw prędkość (np. 19200), parzystość i bity stopu zgodnie z instalacją
+- **Modbus RTU**: Menu → Komunikacja → Modbus RTU → Wybierz port RS485, ustaw prędkość (np. 19200), parzystość i bity stopu zgodnie z instalacją
 
 ### 2. Dodaj integrację w Home Assistant
 1. **Ustawienia** → **Integracje** → **+ DODAJ INTEGRACJĘ**
 2. Wyszukaj **"ThesslaGreen Modbus"**
 3. Wprowadź dane połączenia:
-   - Wybierz **Typ połączenia**: `Modbus TCP` lub `Modbus RTU` (gdy będzie dostępne)
+   - Wybierz **Typ połączenia**: `Modbus TCP` lub `Modbus RTU`
    - **Modbus TCP**: adres IP (np. 192.168.1.100), port 502, ID urządzenia 10 (integracja spróbuje także 1 i 247)
    - **Modbus RTU/USB**: ścieżka portu (np. `/dev/ttyUSB0`), prędkość (np. 19200), parzystość i bity stopu
 4. Zatwierdź formularz – integracja uruchomi autoskan rejestrów
@@ -441,7 +451,6 @@ Skipping unsupported input registers 120-130
 
 Są to wpisy informacyjne i zazwyczaj oznaczają, że urządzenie po prostu nie posiada
 tych rejestrów. Można je bezpiecznie zignorować.
-=======
 ### Komunikaty „Skipping unsupported … registers”
 Podczas skanowania integracja próbuje odczytać grupy rejestrów.
 Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
@@ -533,13 +542,13 @@ python3 tools/cleanup_old_entities.py \
 ## 🤝 Wsparcie i rozwój
 
 ### Dokumentacja
-- 📖 [Pełna dokumentacja](https://github.com/thesslagreen/thessla-green-modbus-ha/wiki)
+- 📖 [Pełna dokumentacja](https://github.com/blakinio/thesslagreen/wiki)
 - 🔧 [Konfiguracja zaawansowana](DEPLOYMENT.md)
 - 🚀 [Quick Start Guide](QUICK_START.md)
 
 ### Wsparcie
-- 🐛 [Zgłaszanie błędów](https://github.com/thesslagreen/thessla-green-modbus-ha/issues)
-- 💡 [Propozycje funkcji](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
+- 🐛 [Zgłaszanie błędów](https://github.com/blakinio/thesslagreen/issues)
+- 💡 [Propozycje funkcji](https://github.com/blakinio/thesslagreen/discussions)
 - 🤝 [Contributing](CONTRIBUTING.md)
 
 ### Validate translations
