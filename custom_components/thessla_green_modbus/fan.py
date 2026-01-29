@@ -239,17 +239,16 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 ):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
-                # Temporary mode - use 3-register write when available
+                # Temporary mode - must use 3-register write block
                 if current_mode == "temporary":
                     success = await self.coordinator.async_write_temporary_airflow(
                         actual_percentage, refresh=False
                     )
-                    if not success and (
-                        "air_flow_rate_temporary_2" in holding_registers()
-                        and "air_flow_rate_temporary_2" in holding_regs
-                    ):
-                        await self._write_register("air_flow_rate_temporary_2", actual_percentage)
-                elif (
+                    if not success:
+                        raise RuntimeError("Failed to write temporary airflow block")
+                    await self.coordinator.async_request_refresh()
+                    return
+                if (
                     "air_flow_rate_temporary_2" in holding_registers()
                     and "air_flow_rate_temporary_2" in holding_regs
                 ):

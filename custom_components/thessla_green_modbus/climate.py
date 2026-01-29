@@ -33,7 +33,6 @@ HVAC_MODE_MAP = {
 HVAC_MODE_REVERSE_MAP = {
     HVACMode.AUTO: 0,
     HVACMode.FAN_ONLY: 1,  # Manual and temporary modes use fan-only
-    HVACMode.OFF: 0,
 }
 
 # Preset modes for special functions
@@ -317,14 +316,17 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         _LOGGER.debug("Setting target temperature to %s°C", temperature)
 
-        success = True
         if self.coordinator.data.get("mode") == 2:
             success = await self.coordinator.async_write_temporary_temperature(
                 float(temperature), refresh=False
             )
-        if not success:
-            _LOGGER.error("Failed to set temporary target temperature to %s°C", temperature)
+            if success:
+                await self.coordinator.async_request_refresh()
+            else:
+                _LOGGER.error("Failed to set temporary target temperature to %s°C", temperature)
             return
+
+        success = True
         if "comfort_temperature" in holding_registers():
             success = await self.coordinator.async_write_register(
                 "comfort_temperature", temperature, refresh=False

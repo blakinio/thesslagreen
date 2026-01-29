@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation aligned with current Modbus implementation
 - Clarified protocol limitations (16 registers, invalid temperature handling)
 - Hardening: retry/backoff, RTU support, DEC-only constants, strict 16-reg limit, temp invalid handling
+- Coordinator reads now retry transient Modbus failures with backoff and reconnects between attempts.
+- Temporary airflow/temperature writes now use the 3-register block without fallback single writes.
+- Climate OFF handling now relies only on the on/off register (no OFF→AUTO mapping).
 - Documented developer tooling (ruff/black/isort/mypy) and added pre-commit snippet.
 - CI matrix now publishes dedicated hassfest and HACS validation steps.
 - Linting, formatting, and typing tooling alignment for HA compliance

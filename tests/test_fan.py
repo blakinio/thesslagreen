@@ -105,3 +105,18 @@ def test_fan_set_percentage_failure(mock_coordinator):
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
     with pytest.raises(RuntimeError):
         asyncio.run(fan.async_set_percentage(60))
+
+
+def test_fan_temporary_mode_uses_multi_write(mock_coordinator):
+    """Temporary mode must use the 3-register airflow write block."""
+    mock_coordinator.data["mode"] = 2
+    mock_coordinator.async_write_temporary_airflow = AsyncMock(return_value=True)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    mock_coordinator.async_request_refresh = AsyncMock()
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    asyncio.run(fan.async_set_percentage(70))
+
+    mock_coordinator.async_write_temporary_airflow.assert_awaited_once_with(70, refresh=False)
+    mock_coordinator.async_write_register.assert_not_called()
+    mock_coordinator.async_request_refresh.assert_awaited_once()

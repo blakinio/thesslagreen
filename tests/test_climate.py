@@ -4,7 +4,7 @@ import sys
 import types
 from datetime import timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
@@ -239,7 +239,45 @@ def test_hvac_mode_mappings():
 
     assert HVAC_MODE_REVERSE_MAP[HVACMode.AUTO] == 0
     assert HVAC_MODE_REVERSE_MAP[HVACMode.FAN_ONLY] == 1
-    assert HVAC_MODE_REVERSE_MAP[HVACMode.OFF] == 0
+    assert HVACMode.OFF not in HVAC_MODE_REVERSE_MAP
+
+
+@pytest.mark.asyncio
+async def test_set_hvac_mode_turns_on_before_mode():
+    """Setting HVAC mode should power on before changing the mode register."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.async_write_register = AsyncMock(return_value=True)
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {"on_off_panel_mode": 0}
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    await climate.async_set_hvac_mode(HVACMode.AUTO)
+
+    assert coordinator.async_write_register.await_args_list[:2] == [
+        call("on_off_panel_mode", 1, refresh=False),
+        call("mode", 0, refresh=False),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_temporary_mode_uses_multi_write():
+    """Temporary mode should use the 3-register block and avoid permanent writes."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.data = {"mode": 2}
+    coordinator.async_write_temporary_temperature = AsyncMock(return_value=True)
+    coordinator.async_write_register = AsyncMock(return_value=True)
+    coordinator.async_request_refresh = AsyncMock()
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 22.0})
+
+    coordinator.async_write_temporary_temperature.assert_awaited_once_with(22.0, refresh=False)
+    coordinator.async_write_register.assert_not_called()
+    coordinator.async_request_refresh.assert_awaited_once()
 
 
 @pytest.mark.asyncio

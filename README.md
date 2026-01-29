@@ -47,6 +47,8 @@ Integracja działa jako **hub** w Home Assistant.
 - **Limit protokołu:** maksymalnie 16 rejestrów na jedno zapytanie (zgodnie z PDF).
 - **Zakres wentylatorów i przepływów:** do 150% (min/max odczytywane z urządzenia).
 - **Wartości temperatury:** 32768 oznacza brak danych i jest mapowane na `unknown`.
+- **ON/OFF:** osobny rejestr `on_off_panel_mode` – OFF nie jest mapowany na AUTO.
+- **Tryby tymczasowe:** wymagają zapisu 3 rejestrów (mode/value/flag) w jednym multi-write.
 - **Ograniczenia:** jednoczesne połączenia Modbus TCP do jednego sterownika mogą powodować błędy czasowe; zalecane jedno aktywne połączenie (Home Assistant).
 - **Wymagania TCP:** otwarty port 502, stały adres IP, ID urządzenia 10 (auto-fallback na 1 i 247), brak filtrów/firewalla między HA a rekuperatorem.
 - **RTU/USB:** konfiguracja przez `/dev/ttyUSBx` z parametrami 19200 8N1 (lub zgodnie z instalacją).
@@ -120,7 +122,7 @@ cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
 - **Retry**: 1-5 prób (domyślnie 3)
 - **Backoff**: 0-5s opóźnienia między próbami (domyślnie 0, wykładniczy)
 - **Pełna lista rejestrów**: Pomiń skanowanie (może powodować błędy)
-- **Ustawienia UART**: Skanuj opcjonalne rejestry konfiguracji portu (0x1168-0x116B)
+- **Ustawienia UART**: Skanuj opcjonalne rejestry konfiguracji portu (4456-4459)
 - **Airflow unit**: wybierz `m³/h` (domyślnie) lub `percentage`
 
 #### Pełna lista rejestrów
@@ -461,7 +463,7 @@ Podczas skanowania integracja próbuje odczytać grupy rejestrów.
 Jeśli rekuperator nie obsługuje danego zakresu, w logach pojawia się ostrzeżenie w stylu:
 
 ```
-Skipping unsupported input registers 0x0100-0x0102 (exception code 2)
+Skipping unsupported input registers 256-258 (exception code 2)
 ```
 
 Kody wyjątków Modbus informują, dlaczego odczyt się nie powiódł:
