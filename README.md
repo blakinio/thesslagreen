@@ -45,7 +45,7 @@ Integracja działa jako **hub** w Home Assistant.
 - **Zakres rejestrów:** pełne wsparcie rejestrów Holding/Input/Coils/Discrete Input zgodnie z dokumentacją producenta.
 - **Kolejkowanie zapytań:** odczyty grupowane w bloki (maks. 16 rejestrów; domyślnie 16) dla minimalizacji ruchu.
 - **Limit protokołu:** maksymalnie 16 rejestrów na jedno zapytanie (zgodnie z PDF).
-- **Zakres wentylatorów i przepływów:** do 150% (min/max odczytywane z urządzenia).
+- **Zakres wentylatorów i przepływów:** 0–150% (min/max odczytywane z urządzenia).
 - **Wartości temperatury:** 32768 oznacza brak danych i jest mapowane na `unknown`.
 - **ON/OFF:** osobny rejestr `on_off_panel_mode` – OFF nie jest mapowany na AUTO.
 - **Tryby tymczasowe:** wymagają zapisu 3 rejestrów (mode/value/flag) w jednym multi-write.

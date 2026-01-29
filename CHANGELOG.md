@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migration script for clearing legacy airflow statistics
 
 ### Changed
+- Enforced single-request temporary writes, widened airflow handling to 0–150%, and normalized temperature sentinel values to `unknown`.
 - Updated minimum Home Assistant version to 2026.1.0
 - Documentation aligned with current Modbus implementation
 - Clarified protocol limitations (16 registers, invalid temperature handling)

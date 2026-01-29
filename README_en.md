@@ -39,7 +39,7 @@ The integration works as a **hub** in Home Assistant.
 - **Register coverage:** full support for Holding/Input/Coils/Discrete Input registers per vendor documentation.
 - **Request batching:** reads are grouped into blocks (max 16 registers; 16 by default) to minimize network traffic.
 - **Protocol limit:** max 16 registers per request (per the PDF).
-- **Fan/airflow range:** up to 150% (min/max read from the device).
+- **Fan/airflow range:** 0–150% (min/max read from the device).
 - **Temperature values:** 32768 means invalid data and is mapped to `unknown`.
 - **Limitations:** multiple simultaneous Modbus TCP connections to one controller may cause timeouts; keep only one active connection (Home Assistant).
 - **TCP prerequisites:** port 502 open, static IP, device ID 10 (auto fallback to 1 and 247), no firewall/IPS between HA and the unit.

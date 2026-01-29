@@ -1136,8 +1136,8 @@ async def test_decode_bcd_time():
 
 async def test_decode_aatt_value():
     """Verify decoding of combined airflow and temperature settings."""
-    assert _decode_aatt(15400) == (60, 20.0)
-    assert _decode_aatt(12844) == (50, 22.0)
+    assert _decode_aatt(15400) == {"airflow_pct": 60, "temp_c": 20.0}
+    assert _decode_aatt(12844) == {"airflow_pct": 50, "temp_c": 22.0}
     assert _decode_aatt(-1) is None
     assert _decode_aatt(65320) is None
 

@@ -83,6 +83,39 @@ async def test_async_write_registers_passes_attempt():
 
 
 @pytest.mark.asyncio
+async def test_async_write_registers_single_request_override():
+    """Temporary writes should bypass chunking to keep 3-register atomicity."""
+    hass = MagicMock()
+    coordinator = ThesslaGreenModbusCoordinator(
+        hass=hass,
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+    )
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.effective_batch = 1
+    response = MagicMock()
+    response.isError.return_value = False
+    client = MagicMock(connected=True)
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+
+    assert (
+        await coordinator.async_write_registers(
+            REG_TEMPORARY_FLOW_START,
+            [1, 2, 3],
+            require_single_request=True,
+        )
+        is True
+    )
+    client.write_registers.assert_awaited_once_with(
+        address=REG_TEMPORARY_FLOW_START,
+        values=[1, 2, 3],
+    )
+
+
+@pytest.mark.asyncio
 async def test_async_write_temporary_airflow_uses_three_registers(monkeypatch):
     hass = MagicMock()
     coordinator = ThesslaGreenModbusCoordinator(
@@ -104,7 +137,10 @@ async def test_async_write_temporary_airflow_uses_three_registers(monkeypatch):
 
     assert await coordinator.async_write_temporary_airflow(55) is True
     coordinator.async_write_registers.assert_called_once_with(
-        REG_TEMPORARY_FLOW_START, [2, 55, 1], refresh=True
+        REG_TEMPORARY_FLOW_START,
+        [2, 55, 1],
+        refresh=True,
+        require_single_request=True,
     )
 
 
@@ -130,7 +166,10 @@ async def test_async_write_temporary_temperature_uses_three_registers(monkeypatc
 
     assert await coordinator.async_write_temporary_temperature(21.5) is True
     coordinator.async_write_registers.assert_called_once_with(
-        REG_TEMPORARY_TEMP_START, [2, 21.5, 1], refresh=True
+        REG_TEMPORARY_TEMP_START,
+        [2, 21.5, 1],
+        refresh=True,
+        require_single_request=True,
     )
 
 

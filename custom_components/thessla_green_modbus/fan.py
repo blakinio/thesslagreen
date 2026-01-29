@@ -81,8 +81,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # Fan configuration
         self._attr_supported_features = FanEntityFeature.SET_SPEED  # pragma: no cover
 
-        # Speed range (10-100% as per ThesslaGreen specs)
-        self._attr_speed_count = 15  # 10%..150%  # pragma: no cover
+        # Speed range (0-150% as per ThesslaGreen specs)
+        self._attr_speed_count = 16  # 0%..150%  # pragma: no cover
 
         _LOGGER.debug("Initialized fan entity")
 
@@ -127,12 +127,12 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         try:
             min_val = int(min_pct)
         except (TypeError, ValueError):
-            min_val = 10
+            min_val = 0
         try:
             max_val = int(max_pct)
         except (TypeError, ValueError):
             max_val = 150
-        min_val = max(10, min_val)
+        min_val = max(0, min_val)
         max_val = min(150, max_val)
         if max_val < min_val:
             max_val = min_val

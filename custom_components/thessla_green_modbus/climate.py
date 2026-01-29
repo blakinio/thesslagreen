@@ -213,12 +213,12 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         try:
             min_val = int(min_pct)
         except (TypeError, ValueError):
-            min_val = 10
+            min_val = 0
         try:
             max_val = int(max_pct)
         except (TypeError, ValueError):
             max_val = 150
-        min_val = max(10, min_val)
+        min_val = max(0, min_val)
         max_val = min(150, max_val)
         if max_val < min_val:
             max_val = min_val

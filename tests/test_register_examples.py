@@ -30,7 +30,7 @@ def test_holding_multiplier_resolution_and_bcd():
 def test_input_extra_aatt_and_sentinel():
     """Function 04 registers support extra aatt and sentinel values."""
     combined = Register(function=4, address=16, name="combined", access="ro", extra={"aatt": True})
-    assert combined.decode(15400) == (60, 20.0)
+    assert combined.decode(15400) == {"airflow_pct": 60, "temp_c": 20.0}
     assert combined.encode((60, 20.0)) == 15400
 
     sensor = Register(function=4, address=17, name="sensor", access="ro")
