@@ -593,9 +593,9 @@ class ThesslaGreenDeviceScanner:
                     raise ModbusException(f"Error reading holding registers: {exc}") from exc
         finally:
             try:
-                result = client.close()
-                if inspect.isawaitable(result):
-                    await result
+                res = client.close()
+                if inspect.isawaitable(res):
+                    await res
             except (OSError, ConnectionException, ModbusIOException, TypeError):
                 _LOGGER.debug("Error closing Modbus client during verify_connection", exc_info=True)
 
