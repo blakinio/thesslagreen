@@ -69,6 +69,7 @@ from .const import (
     MODBUS_PARITY,
     MODBUS_STOP_BITS,
 )
+from .errors import CannotConnect, InvalidAuth, is_invalid_auth_error
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
@@ -196,21 +197,6 @@ async def _run_with_retry(
                     raise
     # Should never reach here
     raise RuntimeError("Retry wrapper failed without raising")
-
-
-class CannotConnect(Exception):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(Exception):
-    """Error to indicate there is invalid auth."""
-
-
-def _is_invalid_auth_error(exc: Exception) -> bool:
-    """Check if exception message hints invalid authentication."""
-
-    message = str(exc).lower()
-    return any(token in message for token in ("auth", "credential", "password", "login"))
 
 
 def _caps_to_dict(obj: Any) -> dict[str, Any]:
@@ -406,7 +392,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     except ModbusException as exc:
         _LOGGER.error("Modbus error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        if _is_invalid_auth_error(exc):
+        if is_invalid_auth_error(exc):
             raise InvalidAuth from exc
         raise CannotConnect("modbus_error") from exc
     except AttributeError as exc:

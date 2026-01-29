@@ -185,7 +185,7 @@ który stanowi kanoniczne źródło prawdy (dawny katalog `registers/` został u
 Każdy wpis w sekcji `registers` zawiera m.in. pola:
 
 - `function` – kod funkcji Modbus (`01`–`04`)
-- `address_dec` / `address_hex` – adres rejestru
+- `address_dec` – adres rejestru (liczba dziesiętna)
 - `name` – unikalna nazwa w formacie snake_case
 - `description` – opis z dokumentacji (język polski)
 - `description_en` – opis w języku angielskim
@@ -581,7 +581,6 @@ Każdy wpis w pliku to obiekt z polami:
 ```json
 {
   "function": "holding",
-  "address_hex": "0x1001",
   "address_dec": 4097,
   "access": "rw",
   "name": "mode",

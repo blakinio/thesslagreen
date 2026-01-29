@@ -79,7 +79,6 @@ else:  # pragma: no cover
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .config_flow import CannotConnect
 from .const import (
     CONF_ENABLE_DEVICE_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
@@ -111,6 +110,7 @@ from .const import (
     holding_registers,
     input_registers,
 )
+from .errors import CannotConnect, is_invalid_auth_error
 from .modbus_helpers import (
     _call_modbus,
     chunk_register_range,
@@ -138,13 +138,6 @@ def get_register_definition(name: str):
 
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _looks_like_invalid_auth(exc: Exception) -> bool:
-    """Return True when exception text suggests authentication errors."""
-
-    message = str(exc).lower()
-    return any(keyword in message for keyword in ("auth", "credential", "password", "login"))
 
 
 class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -969,7 +962,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     await self._disconnect()
                     self._trigger_reauth("connection_failure")
 
-                if _looks_like_invalid_auth(exc):
+                if is_invalid_auth_error(exc):
                     self._trigger_reauth("invalid_auth")
 
                 _LOGGER.error("Failed to update data: %s", exc)

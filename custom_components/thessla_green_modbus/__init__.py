@@ -76,6 +76,7 @@ from .const import (
     async_setup_options,
     migrate_unique_id,
 )
+from .errors import is_invalid_auth_error
 from .entity_mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 
@@ -130,13 +131,6 @@ def _get_platforms() -> list[object]:
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.data.setdefault(DOMAIN, {})
     return True
-
-
-def _is_invalid_auth_error(exc: Exception) -> bool:
-    """Return True if the exception indicates invalid authentication."""
-
-    message = str(exc).lower()
-    return any(keyword in message for keyword in ("auth", "credential", "password", "login"))
 
 
 def _apply_log_level(log_level: str) -> None:
@@ -267,7 +261,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     try:
         await coordinator.async_setup()
     except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
-        if _is_invalid_auth_error(exc):
+        if is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during setup: %s", exc)
             await entry.async_start_reauth(hass)
             return False
@@ -278,7 +272,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     try:
         await coordinator.async_config_entry_first_refresh()
     except (TimeoutError, ConnectionException, ModbusException, UpdateFailed, OSError) as exc:
-        if _is_invalid_auth_error(exc):
+        if is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during initial refresh: %s", exc)
             await entry.async_start_reauth(hass)
             return False
