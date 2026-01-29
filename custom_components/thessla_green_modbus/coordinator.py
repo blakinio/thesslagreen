@@ -1255,13 +1255,27 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Decode a raw register value using its definition."""
         definition = get_register_definition(register_name)
         if value == 32768 and definition._is_temperature():
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "Processed %s: raw=%s value=None (temperature sentinel)",
+                    register_name,
+                    value,
+                )
             return None
         decoded = definition.decode(value)
 
         if decoded == SENSOR_UNAVAILABLE:
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "Processed %s: raw=%s value=SENSOR_UNAVAILABLE",
+                    register_name,
+                    value,
+                )
             return SENSOR_UNAVAILABLE
-
-        return validate_register_value(register_name, decoded)
+        validated = validate_register_value(register_name, decoded)
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            _LOGGER.debug("Processed %s: raw=%s value=%s", register_name, value, validated)
+        return validated
 
     def calculate_power_consumption(self, data: dict[str, Any]) -> float | None:
         """Estimate power usage from DAC output voltages."""
@@ -1511,11 +1525,21 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         start_address: int,
         values: list[int],
         refresh: bool = True,
+        *,
+        require_single_request: bool = False,
     ) -> bool:
         """Write multiple holding registers in one Modbus request."""
 
         if not values:
             _LOGGER.error("No values provided for multi-register write at %s", start_address)
+            return False
+        if require_single_request and len(values) > MAX_REGS_PER_REQUEST:
+            _LOGGER.error(
+                "Requested %s registers at %s exceeds maximum %s per request",
+                len(values),
+                start_address,
+                MAX_REGS_PER_REQUEST,
+            )
             return False
         refresh_after_write = False
         async with self._write_lock:
@@ -1527,19 +1551,29 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for attempt in range(1, self.retry + 1):
                     try:
                         success = True
-                        for index, (chunk_start, chunk) in enumerate(
-                            chunk_register_values(start_address, values, self.effective_batch)
-                        ):
+                        if require_single_request:
                             response = await self._call_modbus(
                                 self.client.write_registers,
-                                address=chunk_start,
-                                values=[int(v) for v in chunk],
+                                address=start_address,
+                                values=[int(v) for v in values],
                                 attempt=attempt,
-                                apply_backoff=index == 0,
                             )
                             if response is None or response.isError():
                                 success = False
-                                break
+                        else:
+                            for index, (chunk_start, chunk) in enumerate(
+                                chunk_register_values(start_address, values, self.effective_batch)
+                            ):
+                                response = await self._call_modbus(
+                                    self.client.write_registers,
+                                    address=chunk_start,
+                                    values=[int(v) for v in chunk],
+                                    attempt=attempt,
+                                    apply_backoff=index == 0,
+                                )
+                                if response is None or response.isError():
+                                    success = False
+                                    break
                         if not success:
                             if attempt == self.retry:
                                 _LOGGER.error(
@@ -1619,7 +1653,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             int(value_def.encode(airflow)),
             int(flag_def.encode(1)),
         ]
-        return await self.async_write_registers(REG_TEMPORARY_FLOW_START, values, refresh=refresh)
+        return await self.async_write_registers(
+            REG_TEMPORARY_FLOW_START,
+            values,
+            refresh=refresh,
+            require_single_request=True,
+        )
 
     async def async_write_temporary_temperature(
         self, temperature: float, refresh: bool = True
@@ -1639,7 +1678,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             int(value_def.encode(temperature)),
             int(flag_def.encode(1)),
         ]
-        return await self.async_write_registers(REG_TEMPORARY_TEMP_START, values, refresh=refresh)
+        return await self.async_write_registers(
+            REG_TEMPORARY_TEMP_START,
+            values,
+            refresh=refresh,
+            require_single_request=True,
+        )
 
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks."""

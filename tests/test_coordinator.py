@@ -193,12 +193,10 @@ HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 # ✅ FIXED: Import correct coordinator class name
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
+    _PermanentModbusError,
 )
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     dt_util as coordinator_dt_util,
-)
-from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
-    _PermanentModbusError,
 )
 
 
@@ -714,16 +712,18 @@ def test_dac_value_processing(coordinator, caplog):
 )
 def test_process_register_value_sensor_unavailable(coordinator, register_name):
     """Return sentinel when sensors report unavailable for known sensor registers."""
-    assert (
-        coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE) == SENSOR_UNAVAILABLE
-    )
+    result = coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE)
+    if "temperature" in register_name:
+        assert result is None
+    else:
+        assert result == SENSOR_UNAVAILABLE
 
 
 @pytest.mark.parametrize(
     ("register_name", "value", "expected"),
     [
         ("supply_flow_rate", 65531, -5),
-        ("outside_temperature", 32768, SENSOR_UNAVAILABLE),
+        ("outside_temperature", 32768, None),
     ],
 )
 def test_process_register_value_extremes(coordinator, register_name, value, expected):
@@ -761,11 +761,7 @@ def test_register_value_logging(coordinator, caplog):
     with caplog.at_level(logging.WARNING):
         caplog.clear()
         coordinator._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-        assert "SENSOR_UNAVAILABLE" in caplog.text
-
-        caplog.clear()
-        coordinator._process_register_value("supply_percentage", 150)
-        assert "Out-of-range value for supply_percentage" in caplog.text
+        assert not caplog.records
 
 
 def test_post_process_data(coordinator):

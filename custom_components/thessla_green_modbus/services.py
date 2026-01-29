@@ -145,7 +145,7 @@ SET_AIRFLOW_SCHEDULE_SCHEMA = vol.Schema(
         vol.Required("period"): vol.In(PERIODS),
         vol.Required("start_time"): cv.time,
         vol.Required("end_time"): cv.time,
-        vol.Required("airflow_rate"): vol.All(vol.Coerce(int), vol.Range(min=10, max=100)),
+        vol.Required("airflow_rate"): vol.All(vol.Coerce(int), vol.Range(min=0, max=150)),
         vol.Optional("temperature"): vol.All(vol.Coerce(float), vol.Range(min=16.0, max=30.0)),
     }
 )
@@ -277,6 +277,24 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 return value[len(prefix) :]  # noqa: E203
         return value
 
+    def _clamp_airflow_rate(coordinator: Any, airflow_rate: int) -> int:
+        data = getattr(coordinator, "data", {}) or {}
+        min_pct = data.get("min_percentage")
+        max_pct = data.get("max_percentage")
+        try:
+            min_val = int(min_pct) if min_pct is not None else 0
+        except (TypeError, ValueError):
+            min_val = 0
+        try:
+            max_val = int(max_pct) if max_pct is not None else 150
+        except (TypeError, ValueError):
+            max_val = 150
+        min_val = max(0, min_val)
+        max_val = min(150, max_val)
+        if max_val < min_val:
+            max_val = min_val
+        return max(min_val, min(max_val, int(airflow_rate)))
+
     async def _write_register(
         coordinator: ThesslaGreenModbusCoordinator,
         register: str,
@@ -393,6 +411,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 end_register = f"schedule_{day_name}_period{period}_end"
                 flow_register = f"schedule_{day_name}_period{period}_flow"
                 temp_register = f"schedule_{day_name}_period{period}_temp"
+                clamped_airflow = _clamp_airflow_rate(coordinator, airflow_rate)
 
                 # Write schedule values relying on register encode logic
                 if not await _write_register(
@@ -416,7 +435,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 if not await _write_register(
                     coordinator,
                     flow_register,
-                    airflow_rate,
+                    clamped_airflow,
                     entity_id,
                     "set airflow schedule",
                 ):

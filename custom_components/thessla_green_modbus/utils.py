@@ -145,7 +145,7 @@ def _decode_aatt(value: int) -> dict[str, float | int] | None:
     airflow = (value >> 8) & 255
     temp_double = value & 255
 
-    if airflow > 100 or temp_double > 200:
+    if airflow > 150 or temp_double > 200:
         return None
 
     return {"airflow_pct": airflow, "temp_c": temp_double / 2}

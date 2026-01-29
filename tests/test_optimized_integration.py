@@ -286,11 +286,11 @@ class TestThesslaGreenModbusCoordinator:
 
         # Invalid temperature (sensor disconnected)
         result = coordinator_data._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
-        assert result == SENSOR_UNAVAILABLE
+        assert result is None
 
         # Another sensor register using the sentinel value
         result = coordinator_data._process_register_value("heating_temperature", SENSOR_UNAVAILABLE)
-        assert result == SENSOR_UNAVAILABLE
+        assert result is None
 
         # Negative temperature (-5.0°C -> raw value 65486)
         result = coordinator_data._process_register_value("outside_temperature", 65486)

@@ -62,9 +62,10 @@ def test_schedule_register_time_format():
 
 def test_decode_aatt_value_valid():
     """Verify combined airflow/temperature registers decode correctly."""
-    assert _decode_aatt(15400) == (60, 20.0)
-    assert _decode_aatt(25650) == (100, 25.0)
-    assert _decode_aatt(0) == (0, 0.0)
+    assert _decode_aatt(15400) == {"airflow_pct": 60, "temp_c": 20.0}
+    assert _decode_aatt(25650) == {"airflow_pct": 100, "temp_c": 25.0}
+    assert _decode_aatt(38400) == {"airflow_pct": 150, "temp_c": 0.0}
+    assert _decode_aatt(0) == {"airflow_pct": 0, "temp_c": 0.0}
 
 
 @pytest.mark.parametrize("value", [-1, 65320, 15871, 32768])
@@ -96,7 +97,7 @@ def test_register_decode_encode_aatt():
         access="rw",
         extra={"aatt": True},
     )
-    assert reg.decode(15400) == (60, 20.0)
+    assert reg.decode(15400) == {"airflow_pct": 60, "temp_c": 20.0}
     assert reg.encode((60, 20)) == 15400
 
 
