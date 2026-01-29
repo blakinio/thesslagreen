@@ -596,7 +596,7 @@ class ThesslaGreenDeviceScanner:
                 result = client.close()
                 if inspect.isawaitable(result):
                     await result
-            except (OSError, ConnectionException, ModbusIOException, TypeError):
+            except Exception:
                 _LOGGER.debug("Error closing Modbus client during verify_connection", exc_info=True)
 
     def _is_valid_register_value(self, name: str, value: int) -> bool:
