@@ -18,7 +18,7 @@ else:  # pragma: no cover - executed when serial client available
     SERIAL_IMPORT_ERROR = None
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_helpers import _call_modbus, _calculate_backoff_delay
+from .modbus_helpers import _calculate_backoff_delay, _call_modbus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,15 +78,15 @@ class BaseModbusTransport(ABC):
             )
             self.offline_state = False
             return response
-        except (asyncio.TimeoutError, TimeoutError) as exc:
+        except TimeoutError:
             self.offline_state = True
             await self._reset_connection()
             raise
-        except ModbusIOException as exc:
+        except ModbusIOException:
             self.offline_state = True
             await self._reset_connection()
             raise
-        except (ConnectionException, OSError) as exc:
+        except (ConnectionException, OSError):
             self.offline_state = True
             await self._reset_connection()
             raise
@@ -118,7 +118,12 @@ class BaseModbusTransport(ABC):
     async def _handle_timeout(self, attempt: int, exc: Exception) -> None:
         """Handle timeout errors with reconnection and backoff."""
 
-        _LOGGER.warning("Modbus call timed out on attempt %s/%s: %s", attempt, self.max_retries, exc)
+        _LOGGER.warning(
+            "Modbus call timed out on attempt %s/%s: %s",
+            attempt,
+            self.max_retries,
+            exc,
+        )
         self.offline_state = True
         await self._reset_connection()
         await self._apply_backoff(attempt)

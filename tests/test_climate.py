@@ -192,6 +192,18 @@ def test_hvac_mode_off_uses_on_off_panel_mode():
     assert climate.hvac_mode == HVACMode.OFF
 
 
+def test_hvac_mode_auto_when_panel_on():
+    """Ensure AUTO is reported when the panel is on and mode is automatic."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.capabilities.basic_control = True
+    coordinator.data = {"on_off_panel_mode": 1, "mode": 0}
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate.hvac_mode == HVACMode.AUTO
+
+
 def test_fan_modes_respect_min_max_limits():
     """Fan modes should honor dynamic min/max limits up to 150%."""
     hass = SimpleNamespace()

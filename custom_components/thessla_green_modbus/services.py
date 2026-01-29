@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import UTC
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.service import async_extract_entity_ids
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
@@ -74,9 +75,7 @@ class _LogLevelManager:
         logger = self._target_logger()
         previous_level = logger.level
         logger.setLevel(level)
-        _LOGGER.info(
-            "Set %s log level to %s", logger.name, logging.getLevelName(level)
-        )
+        _LOGGER.info("Set %s log level to %s", logger.name, logging.getLevelName(level))
 
         if self._undo_callback:
             self._undo_callback()
@@ -97,6 +96,7 @@ class _LogLevelManager:
             logging.getLevelName(self._restore_level or logging.NOTSET),
         )
         self._undo_callback = None
+
 
 # Map service parameters to corresponding register names
 AIR_QUALITY_REGISTER_MAP = {
@@ -244,9 +244,7 @@ SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
 
 SET_LOG_LEVEL_SCHEMA = vol.Schema(
     {
-        vol.Optional("level", default="debug"): vol.In(
-            ["debug", "info", "warning", "error"]
-        ),
+        vol.Optional("level", default="debug"): vol.In(["debug", "info", "warning", "error"]),
         vol.Optional("duration", default=900): vol.All(
             vol.Coerce(int), vol.Range(min=0, max=86400)
         ),

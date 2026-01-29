@@ -25,36 +25,37 @@ from .const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
-    CONF_LOG_LEVEL,
     CONF_BAUD_RATE,
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_ENABLE_DEVICE_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
+    CONF_LOG_LEVEL,
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
     CONF_RETRY,
+    CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SERIAL_PORT,
     CONF_SKIP_MISSING_REGISTERS,
-    CONF_SAFE_SCAN,
     CONF_SLAVE_ID,
     CONF_STOP_BITS,
     CONF_TIMEOUT,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     DEFAULT_AIRFLOW_UNIT,
-    DEFAULT_LOG_LEVEL,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
     DEFAULT_ENABLE_DEVICE_SCAN,
+    DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_RETRY,
+    DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
     DEFAULT_SERIAL_PORT,
@@ -62,7 +63,6 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
-    DEFAULT_SAFE_SCAN,
     DOMAIN,
     MAX_BATCH_REGISTERS,
     MODBUS_BAUD_RATES,
@@ -445,6 +445,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         # the parent ConfigFlow's internal attributes.
         self._tg_flow_reauth_entry_id: str | None = None
         self._tg_flow_reauth_existing_data: dict[str, Any] = {}
+
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
         """Return schema for connection details with provided defaults."""
 
@@ -969,9 +970,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_skip_missing = entry_options.get(
             CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
         )
-        current_enable_scan = entry_options.get(
-            CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN
-        )
+        current_enable_scan = entry_options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN)
         current_airflow_unit = entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
         current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
         current_max_registers_per_request = entry_options.get(

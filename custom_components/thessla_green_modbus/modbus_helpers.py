@@ -85,9 +85,7 @@ def _build_request_frame(
         if func_name == "write_coil":
             addr = int(kwargs.get("address", positional[0]))
             value = (
-                65280
-                if kwargs.get("value", positional[1] if len(positional) > 1 else False)
-                else 0
+                65280 if kwargs.get("value", positional[1] if len(positional) > 1 else False) else 0
             )
             return bytes([slave_id, 5, addr >> 8, addr & 255, value >> 8, value & 255])
     except (ValueError, TypeError, IndexError) as err:

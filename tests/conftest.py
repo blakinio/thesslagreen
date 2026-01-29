@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+import custom_components.thessla_green_modbus.registers.loader  # noqa: F401
+
 try:
     from homeassistant.util import dt as _ha_dt  # noqa: F401
 

@@ -9,7 +9,7 @@ description = "ThesslaGreen Modbus integration for Home Assistant"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "ThesslaGreen Modbus Integration", email = "blakinio@o2.pl"}
+    {name = "ThesslaGreen Modbus Integration", email = "thesslagreen@users.noreply.github.com"}
 ]
 keywords = ["home-assistant", "modbus", "hvac", "thesslagreen", "airpack"]
 classifiers = [
@@ -35,10 +35,8 @@ dev = [
     "isort>=5.13.0",
     "ruff>=0.6.0",
     "mypy>=1.10.0",
-    "pydantic>=1.10,<2",
+    "pydantic>=2.0,<3",
     "pre-commit>=3.7.0",
-    "hassfest>=2024.12.0",
-    "hacs>=1.34.0",
     "types-PyYAML>=6.0.12",
 ]
 docs = [
