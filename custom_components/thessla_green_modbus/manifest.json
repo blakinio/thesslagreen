@@ -14,24 +14,6 @@
   "requirements": [
     "pymodbus>=3.6.0"
   ],
-  "files": [
-    "options/bypass_modes.json",
-    "options/days_of_week.json",
-    "options/filter_types.json",
-    "options/gwc_modes.json",
-    "options/modbus_baud_rates.json",
-    "options/modbus_parity.json",
-    "options/modbus_ports.json",
-    "options/modbus_stop_bits.json",
-    "options/periods.json",
-    "options/reset_types.json",
-    "options/special_modes.json",
-    "registers/thessla_green_registers_full.json",
-    "services.yaml",
-    "strings.json",
-    "translations/en.json",
-    "translations/pl.json"
-  ],
   "version": "2.2.0",
   "integration_type": "hub",
   "after_dependencies": [
