@@ -74,6 +74,11 @@ from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOExc
 
 _LOGGER = logging.getLogger(__name__)
 
+
+def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
+    """Return True when a modbus IO error indicates a cancelled request."""
+    return "request cancelled" in str(exc).lower()
+
 ThesslaGreenDeviceScanner: Any | None = None
 DeviceCapabilities: Any | None = None
 
@@ -382,6 +387,10 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc
     except ModbusIOException as exc:
+        if _is_request_cancelled_error(exc):
+            _LOGGER.info("Modbus request cancelled during device validation.")
+            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+            raise CannotConnect("cannot_connect") from exc
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
