@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import UTC
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
@@ -28,7 +28,8 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
         @staticmethod
         def utcnow() -> datetime:
-            return datetime.now(UTC)
+            utc = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
+            return datetime.now(utc)
 
     dt_util = _DTUtil()
 

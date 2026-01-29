@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 """Test configuration for ThesslaGreen Modbus integration."""
 
+import asyncio
 import importlib
 import os
 import sys
@@ -10,7 +11,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import custom_components.thessla_green_modbus.registers.loader  # noqa: F401
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 try:
     from homeassistant.util import dt as _ha_dt  # noqa: F401
@@ -29,6 +32,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     service_helper = types.ModuleType("homeassistant.helpers.service")
     entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
+    event_helper = types.ModuleType("homeassistant.helpers.event")
 
     def _async_entries_for_config_entry(*args, **kwargs):
         return []
@@ -270,6 +274,13 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
     service_helper.async_extract_entity_ids = async_extract_entity_ids
 
+    def async_call_later(_hass, _delay, action):
+        if asyncio.iscoroutinefunction(action):
+            return lambda: None
+        return lambda: None
+
+    event_helper.async_call_later = async_call_later
+
     def er_async_get(hass):
         return getattr(hass, "entity_registry", None)
 
@@ -279,6 +290,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     helpers_pkg.config_validation = cv
     helpers_pkg.selector = selector
     helpers_pkg.service = service_helper
+    helpers_pkg.event = event_helper
     helpers_pkg.entity_registry = entity_registry
     helpers_pkg.script = script_helper
 
@@ -348,6 +360,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.helpers.update_coordinator"] = helpers
     sys.modules["homeassistant.helpers.device_registry"] = device_registry
     sys.modules["homeassistant.helpers.service"] = service_helper
+    sys.modules["homeassistant.helpers.event"] = event_helper
     sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
     sys.modules["homeassistant.helpers.script"] = script_helper
     sys.modules["homeassistant.exceptions"] = exceptions
@@ -387,9 +400,41 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["pymodbus.pdu"] = pymodbus_pdu
     sys.modules["pytest_homeassistant_custom_component.common"] = hacc_common
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import custom_components.thessla_green_modbus.registers.loader  # noqa: F401,E402
+
+if "homeassistant" in sys.modules:
+    components = sys.modules.get("homeassistant.components")
+    if components is None:
+        components = importlib.import_module("homeassistant.components")
+    sys.modules["homeassistant"].components = components
+
+helpers_uc = sys.modules.get("homeassistant.helpers.update_coordinator")
+if helpers_uc is not None and not hasattr(helpers_uc, "CoordinatorEntity"):
+
+    class CoordinatorEntity:  # pragma: no cover - simple stub
+        def __init__(self, coordinator=None):
+            self.coordinator = coordinator
+
+        @classmethod
+        def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
+            return cls
+
+    helpers_uc.CoordinatorEntity = CoordinatorEntity
+
+ha_const = sys.modules.get("homeassistant.const")
+if ha_const is not None and not hasattr(ha_const, "PERCENTAGE"):
+    ha_const.PERCENTAGE = "%"
 
 DOMAIN = "thessla_green_modbus"
+
+
+def pytest_configure() -> None:
+    if "homeassistant" not in sys.modules:
+        return
+    components = sys.modules.get("homeassistant.components")
+    if components is None:
+        components = importlib.import_module("homeassistant.components")
+    sys.modules["homeassistant"].components = components
 
 
 class CoordinatorMock(MagicMock):

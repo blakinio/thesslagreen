@@ -2,17 +2,17 @@ import copy
 import json
 import logging
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
+
 # Stub registers module to avoid heavy imports during diagnostics import
 original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
-root_pkg = ModuleType("custom_components.thessla_green_modbus")
-root_pkg.__path__ = []  # type: ignore[attr-defined]
 registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
 registers_module.__path__ = []  # type: ignore[attr-defined]
 loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
@@ -27,9 +27,7 @@ registers_module.registers_sha256 = loader_module.registers_sha256
 registers_module.get_registers_by_function = loader_module.get_registers_by_function
 registers_module.plan_group_reads = loader_module.plan_group_reads
 registers_module._REGISTERS_PATH = loader_module._REGISTERS_PATH
-root_pkg.registers = registers_module
-sys.modules["custom_components.thessla_green_modbus",] = root_pkg
-sys.modules["custom_components.thessla_green_modbus.registers",] = registers_module
+sys.modules["custom_components.thessla_green_modbus.registers"] = registers_module
 sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_module
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
 sys.modules.setdefault("homeassistant.util", ModuleType("homeassistant.util"))
@@ -50,7 +48,6 @@ if original_registers is not None:
 else:  # pragma: no cover - defensive
     sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
 sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
-sys.modules.pop("custom_components.thessla_green_modbus", None)
 
 DOMAIN = "thessla_green_modbus"
 

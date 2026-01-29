@@ -385,7 +385,10 @@ def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> li
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
     registers: list[RegisterDef] = []
-    parsed_items = RegisterList.model_validate(items).registers
+    if hasattr(RegisterList, "model_validate"):
+        parsed_items = RegisterList.model_validate(items).registers
+    else:
+        parsed_items = RegisterList.parse_obj(items).registers
 
     for parsed in parsed_items:
         function = _normalise_function(parsed.function)
