@@ -49,67 +49,98 @@ async def test_read_retries_logged(monkeypatch, caplog):
     import sys
     import types
 
-    loader_stub = types.SimpleNamespace(
-        _load_registers=lambda: ([], {}),
-        get_all_registers=lambda: [],
-        get_registers_by_function=lambda fn: [],
-        registers_sha256=lambda path: "",
-        _REGISTERS_PATH="",
-    )
-    sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
-    sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNamespace(
-        loader=loader_stub,
-        get_all_registers=loader_stub.get_all_registers,
-        get_registers_by_function=loader_stub.get_registers_by_function,
-    )
-    ha_util = types.SimpleNamespace(
-        network=types.SimpleNamespace(is_host_valid=lambda *a, **k: True)
-    )
-    sys.modules["homeassistant.util"] = ha_util
-    sys.modules["homeassistant.util.network"] = ha_util.network
-    from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+    original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
+    original_loader = sys.modules.get("custom_components.thessla_green_modbus.registers.loader")
+    original_ha_util = sys.modules.get("homeassistant.util")
+    original_ha_network = sys.modules.get("homeassistant.util.network")
 
-    class DummyClient:
-        def __init__(self):
-            self.connected = True
-            self.calls = 0
+    try:
+        loader_stub = types.SimpleNamespace(
+            _load_registers=lambda: ([], {}),
+            get_all_registers=lambda: [],
+            get_registers_by_function=lambda fn: [],
+            registers_sha256=lambda path: "",
+            _REGISTERS_PATH="",
+        )
+        sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
+        sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNamespace(
+            loader=loader_stub,
+            get_all_registers=loader_stub.get_all_registers,
+            get_registers_by_function=loader_stub.get_registers_by_function,
+        )
+        ha_util = types.SimpleNamespace(
+            network=types.SimpleNamespace(is_host_valid=lambda *a, **k: True)
+        )
+        sys.modules["homeassistant.util"] = ha_util
+        sys.modules["homeassistant.util.network"] = ha_util.network
+        from custom_components.thessla_green_modbus.coordinator import (
+            ThesslaGreenModbusCoordinator,
+        )
 
-        async def read_input_registers(self, address, *, count, unit=None):
-            self.calls += 1
-            if self.calls == 1:
-                raise TimeoutError
-            return type(
-                "Resp",
-                (),
-                {
-                    "registers": [1] * count,
-                    "isError": lambda self: False,
-                    "encode": lambda self: b"\x01\x04\x02\x00\x01",
-                },
-            )()
+        class DummyClient:
+            def __init__(self):
+                self.connected = True
+                self.calls = 0
 
-    hass = core.HomeAssistant()
-    coord = ThesslaGreenModbusCoordinator(hass, "host", 1, 1, "name", scan_interval=1)
-    coord.client = DummyClient()
-    coord.retry = 2
-    coord.available_registers["input_registers"] = {"reg0", "reg1"}
-    coord._register_maps["input_registers"] = {"reg0": 0, "reg1": 1}
-    coord._reverse_maps["input_registers"] = {0: "reg0", 1: "reg1"}
-    coord._register_groups["input_registers"] = [(0, 2)]
-    coord._process_register_value = lambda name, value: value
+            async def read_input_registers(self, address, *, count, unit=None):
+                self.calls += 1
+                if self.calls == 1:
+                    raise TimeoutError
+                return type(
+                    "Resp",
+                    (),
+                    {
+                        "registers": [1] * count,
+                        "isError": lambda self: False,
+                        "encode": lambda self: b"\x01\x04\x02\x00\x01",
+                    },
+                )()
 
-    caplog.set_level(logging.DEBUG)
-    data = await coord._read_input_registers_optimized()
-    assert data == {"reg0": 1, "reg1": 1}
-    assert any(
-        "Timeout reading input registers" in r.message
-        for r in caplog.records
-        if r.levelno == logging.WARNING
-    )
-    assert any("attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING)
-    assert (
-        sum(1 for r in caplog.records if r.levelno == logging.INFO and "batch=2" in r.message) == 2
-    )
+        hass = core.HomeAssistant()
+        coord = ThesslaGreenModbusCoordinator(hass, "host", 1, 1, "name", scan_interval=1)
+        coord.client = DummyClient()
+        coord.retry = 2
+        coord.available_registers["input_registers"] = {"reg0", "reg1"}
+        coord._register_maps["input_registers"] = {"reg0": 0, "reg1": 1}
+        coord._reverse_maps["input_registers"] = {0: "reg0", 1: "reg1"}
+        coord._register_groups["input_registers"] = [(0, 2)]
+        coord._process_register_value = lambda name, value: value
+
+        caplog.set_level(logging.DEBUG)
+        data = await coord._read_input_registers_optimized()
+        assert data == {"reg0": 1, "reg1": 1}
+        assert any(
+            "Timeout reading input registers" in r.message
+            for r in caplog.records
+            if r.levelno == logging.WARNING
+        )
+        assert any(
+            "attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING
+        )
+        assert (
+            sum(1 for r in caplog.records if r.levelno == logging.INFO and "batch=2" in r.message)
+            == 2
+        )
+    finally:
+        if original_registers is not None:
+            sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
+        else:
+            sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
+
+        if original_loader is not None:
+            sys.modules["custom_components.thessla_green_modbus.registers.loader"] = original_loader
+        else:
+            sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
+
+        if original_ha_util is not None:
+            sys.modules["homeassistant.util"] = original_ha_util
+        else:
+            sys.modules.pop("homeassistant.util", None)
+
+        if original_ha_network is not None:
+            sys.modules["homeassistant.util.network"] = original_ha_network
+        else:
+            sys.modules.pop("homeassistant.util.network", None)
 
 
 async def test_write_retries_logged(monkeypatch, caplog):
@@ -117,66 +148,97 @@ async def test_write_retries_logged(monkeypatch, caplog):
     import sys
     import types
 
-    loader_stub = types.SimpleNamespace(
-        _load_registers=lambda: ([], {}),
-        get_all_registers=lambda: [],
-        get_registers_by_function=lambda fn: [],
-        registers_sha256=lambda path: "",
-        _REGISTERS_PATH="",
-    )
-    sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
-    sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNamespace(
-        loader=loader_stub,
-        get_all_registers=loader_stub.get_all_registers,
-        get_registers_by_function=loader_stub.get_registers_by_function,
-    )
-    ha_util = types.SimpleNamespace(
-        network=types.SimpleNamespace(is_host_valid=lambda *a, **k: True)
-    )
-    sys.modules["homeassistant.util"] = ha_util
-    sys.modules["homeassistant.util.network"] = ha_util.network
-    from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+    original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
+    original_loader = sys.modules.get("custom_components.thessla_green_modbus.registers.loader")
+    original_ha_util = sys.modules.get("homeassistant.util")
+    original_ha_network = sys.modules.get("homeassistant.util.network")
 
-    class DummyClient:
-        def __init__(self):
-            self.connected = True
-            self.calls = 0
+    try:
+        loader_stub = types.SimpleNamespace(
+            _load_registers=lambda: ([], {}),
+            get_all_registers=lambda: [],
+            get_registers_by_function=lambda fn: [],
+            registers_sha256=lambda path: "",
+            _REGISTERS_PATH="",
+        )
+        sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
+        sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNamespace(
+            loader=loader_stub,
+            get_all_registers=loader_stub.get_all_registers,
+            get_registers_by_function=loader_stub.get_registers_by_function,
+        )
+        ha_util = types.SimpleNamespace(
+            network=types.SimpleNamespace(is_host_valid=lambda *a, **k: True)
+        )
+        sys.modules["homeassistant.util"] = ha_util
+        sys.modules["homeassistant.util.network"] = ha_util.network
+        from custom_components.thessla_green_modbus.coordinator import (
+            ThesslaGreenModbusCoordinator,
+        )
 
-        async def write_register(self, *, address, value, unit=None):
-            self.calls += 1
-            if self.calls == 1:
-                raise TimeoutError
-            return type(
-                "Resp",
-                (),
-                {"isError": lambda self: False, "encode": lambda self: b"\x01\x06\x00\x00\x00\x01"},
-            )()
+        class DummyClient:
+            def __init__(self):
+                self.connected = True
+                self.calls = 0
 
-    class Def:
-        address = 0
-        function = 3
-        length = 1
+            async def write_register(self, *, address, value, unit=None):
+                self.calls += 1
+                if self.calls == 1:
+                    raise TimeoutError
+                return type(
+                    "Resp",
+                    (),
+                    {
+                        "isError": lambda self: False,
+                        "encode": lambda self: b"\x01\x06\x00\x00\x00\x01",
+                    },
+                )()
 
-        def encode(self, val):
-            return val
+        class Def:
+            address = 0
+            function = 3
+            length = 1
 
-    monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        lambda name: Def(),
-    )
+            def encode(self, val):
+                return val
 
-    hass = core.HomeAssistant()
-    coord = ThesslaGreenModbusCoordinator(hass, "host", 1, 1, "name", scan_interval=1)
-    coord.client = DummyClient()
-    coord.retry = 2
-    monkeypatch.setattr(coord, "_ensure_connection", lambda: asyncio.sleep(0))
+        monkeypatch.setattr(
+            "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+            lambda name: Def(),
+        )
 
-    caplog.set_level(logging.INFO)
-    result = await coord.async_write_register("reg", 1, refresh=False)
-    assert result is True
-    assert any(
-        "Writing register reg timed out" in r.message and "attempt 1/2" in r.message
-        for r in caplog.records
-        if r.levelno == logging.WARNING
-    )
-    assert any("Successfully wrote 1 to register reg" in r.message for r in caplog.records)
+        hass = core.HomeAssistant()
+        coord = ThesslaGreenModbusCoordinator(hass, "host", 1, 1, "name", scan_interval=1)
+        coord.client = DummyClient()
+        coord.retry = 2
+        monkeypatch.setattr(coord, "_ensure_connection", lambda: asyncio.sleep(0))
+
+        caplog.set_level(logging.INFO)
+        result = await coord.async_write_register("reg", 1, refresh=False)
+        assert result is True
+        assert any(
+            "Writing register reg timed out" in r.message and "attempt 1/2" in r.message
+            for r in caplog.records
+            if r.levelno == logging.WARNING
+        )
+        assert any("Successfully wrote 1 to register reg" in r.message for r in caplog.records)
+    finally:
+        if original_registers is not None:
+            sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
+        else:
+            sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
+
+        if original_loader is not None:
+            sys.modules["custom_components.thessla_green_modbus.registers.loader"] = original_loader
+        else:
+            sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
+
+        if original_ha_util is not None:
+            sys.modules["homeassistant.util"] = original_ha_util
+        else:
+            sys.modules.pop("homeassistant.util", None)
+
+        if original_ha_network is not None:
+            sys.modules["homeassistant.util.network"] = original_ha_network
+        else:
+            sys.modules.pop("homeassistant.util.network", None)

@@ -15,7 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -248,9 +248,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                         "air_flow_rate_temporary_2" in holding_registers()
                         and "air_flow_rate_temporary_2" in holding_regs
                     ):
-                        await self._write_register(
-                            "air_flow_rate_temporary_2", actual_percentage
-                        )
+                        await self._write_register("air_flow_rate_temporary_2", actual_percentage)
                 elif (
                     "air_flow_rate_temporary_2" in holding_registers()
                     and "air_flow_rate_temporary_2" in holding_regs

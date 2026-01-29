@@ -20,7 +20,7 @@ import importlib.resources as resources
 import json
 import logging
 import struct
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import time
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -547,6 +547,15 @@ def plan_group_reads(max_block_size: int | None = None) -> list[ReadPlan]:
             plans.append(ReadPlan(fn, start, length))
 
     return plans
+
+
+def group_registers(
+    addresses: Iterable[int],
+    max_block_size: int | None = None,
+) -> list[tuple[int, int]]:
+    """Return grouped register ranges for the provided addresses."""
+
+    return group_reads(addresses, max_block_size=max_block_size)
 
 
 # Backwards compatible alias used throughout the integration and tests.

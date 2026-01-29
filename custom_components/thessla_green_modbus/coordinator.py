@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
@@ -20,13 +20,13 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
         def now():
             from datetime import datetime
 
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
         @staticmethod
         def utcnow():
             from datetime import datetime
 
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
     dt_util = _DTUtil()  # type: ignore
 
@@ -76,7 +76,6 @@ else:  # pragma: no cover
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from pymodbus.client import AsyncModbusTcpClient
 
 from .config_flow import CannotConnect
 from .const import (
@@ -86,22 +85,21 @@ from .const import (
     CONNECTION_TYPE_TCP,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
-    DEFAULT_MAX_BACKOFF,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_ENABLE_DEVICE_SCAN,
+    DEFAULT_MAX_BACKOFF,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SERIAL_PORT,
-    MIN_SCAN_INTERVAL,
     DEFAULT_STOP_BITS,
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
-    MAX_BATCH_REGISTERS,
     MAX_REGS_PER_REQUEST,
+    MIN_SCAN_INTERVAL,
     SENSOR_UNAVAILABLE,
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
@@ -111,8 +109,6 @@ from .const import (
     holding_registers,
     input_registers,
 )
-from .registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
-from .register_map import REGISTER_MAP_VERSION, validate_register_value
 from .modbus_helpers import (
     _call_modbus,
     chunk_register_range,
@@ -120,6 +116,8 @@ from .modbus_helpers import (
     group_reads,
 )
 from .modbus_transport import BaseModbusTransport, RtuModbusTransport, TcpModbusTransport
+from .register_map import REGISTER_MAP_VERSION, validate_register_value
+from .registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .registers.loader import get_all_registers
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
 
@@ -614,9 +612,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.entry is None:
             return
 
-        available = {
-            key: sorted(value) for key, value in self.available_registers.items()
-        }
+        available = {key: sorted(value) for key, value in self.available_registers.items()}
         cache = {
             "available_registers": available,
             "device_info": self.device_info,
@@ -650,7 +646,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         _LOGGER.debug("Missing definition for %s: %s", reg, err)
                         length = 1
                     except Exception as err:  # pragma: no cover - unexpected
-                        _LOGGER.exception("Unexpected error getting definition for %s: %s", reg, err)
+                        _LOGGER.exception(
+                            "Unexpected error getting definition for %s: %s",
+                            reg,
+                            err,
+                        )
                         length = 1
                     groups.append((addr, min(length, self.effective_batch)))
                 self._register_groups[key] = groups
@@ -668,7 +668,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _LOGGER.debug("Missing definition for %s: %s", reg, err)
                     length = 1
                 except Exception as err:  # pragma: no cover - unexpected
-                    _LOGGER.exception("Unexpected error getting definition for %s: %s", reg, err)
+                    _LOGGER.exception(
+                        "Unexpected error getting definition for %s: %s",
+                        reg,
+                        err,
+                    )
                     length = 1
                 addresses.extend(range(addr, addr + length))
 
@@ -762,9 +766,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             try:
                 if self._transport is None:
-                    parity = SERIAL_PARITY_MAP.get(
-                        self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY]
-                    )
+                    parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
                     stop_bits = SERIAL_STOP_BITS_MAP.get(
                         self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
                     )
@@ -948,9 +950,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
                     if response is None or response.isError():
                         self._mark_registers_failed(register_names)
-                        raise ModbusException(
-                            f"Failed to read input registers at {chunk_start}"
-                        )
+                        raise ModbusException(f"Failed to read input registers at {chunk_start}")
 
                     for i, value in enumerate(response.registers):
                         addr = chunk_start + i
@@ -1013,9 +1013,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
                     if response is None or response.isError():
                         self._mark_registers_failed(register_names)
-                        raise ModbusException(
-                            f"Failed to read holding registers at {chunk_start}"
-                        )
+                        raise ModbusException(f"Failed to read holding registers at {chunk_start}")
 
                     for i, value in enumerate(response.registers):
                         addr = chunk_start + i
@@ -1142,9 +1140,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
                     if response is None or response.isError():
                         self._mark_registers_failed(register_names)
-                        raise ModbusException(
-                            f"Failed to read discrete inputs at {chunk_start}"
-                        )
+                        raise ModbusException(f"Failed to read discrete inputs at {chunk_start}")
 
                     if not response.bits:
                         self._mark_registers_failed(register_names)
@@ -1459,9 +1455,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     try:
                         success = True
                         for index, (chunk_start, chunk) in enumerate(
-                            chunk_register_values(
-                                start_address, values, self.effective_batch
-                            )
+                            chunk_register_values(start_address, values, self.effective_batch)
                         ):
                             response = await self._call_modbus(
                                 self.client.write_registers,
@@ -1481,9 +1475,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     response,
                                 )
                                 return False
-                            _LOGGER.info(
-                                "Retrying multi-register write at %s", start_address
-                            )
+                            _LOGGER.info("Retrying multi-register write at %s", start_address)
                             await self._disconnect()
                             continue
 
@@ -1527,9 +1519,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         continue
                     except OSError:
                         await self._disconnect()
-                        _LOGGER.exception(
-                            "Unexpected error writing registers at %s", start_address
-                        )
+                        _LOGGER.exception("Unexpected error writing registers at %s", start_address)
                         return False
 
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
@@ -1556,9 +1546,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             int(value_def.encode(airflow)),
             int(flag_def.encode(1)),
         ]
-        return await self.async_write_registers(
-            REG_TEMPORARY_FLOW_START, values, refresh=refresh
-        )
+        return await self.async_write_registers(REG_TEMPORARY_FLOW_START, values, refresh=refresh)
 
     async def async_write_temporary_temperature(
         self, temperature: float, refresh: bool = True
@@ -1578,9 +1566,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             int(value_def.encode(temperature)),
             int(flag_def.encode(1)),
         ]
-        return await self.async_write_registers(
-            REG_TEMPORARY_TEMP_START, values, refresh=refresh
-        )
+        return await self.async_write_registers(REG_TEMPORARY_TEMP_START, values, refresh=refresh)
 
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks."""

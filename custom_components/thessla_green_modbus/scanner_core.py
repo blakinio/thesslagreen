@@ -1513,9 +1513,7 @@ class ThesslaGreenDeviceScanner:
         """Read a contiguous input register block in MAX-sized chunks."""
 
         results: list[int] = []
-        for chunk_start, chunk_count in chunk_register_range(
-            start, count, self.effective_batch
-        ):
+        for chunk_start, chunk_count in chunk_register_range(start, count, self.effective_batch):
             block = await self._read_input(client, chunk_start, chunk_count)
             if block is None:
                 return None
@@ -1531,9 +1529,7 @@ class ThesslaGreenDeviceScanner:
         """Read a contiguous holding register block in MAX-sized chunks."""
 
         results: list[int] = []
-        for chunk_start, chunk_count in chunk_register_range(
-            start, count, self.effective_batch
-        ):
+        for chunk_start, chunk_count in chunk_register_range(start, count, self.effective_batch):
             block = await self._read_holding(client, chunk_start, chunk_count)
             if block is None:
                 return None

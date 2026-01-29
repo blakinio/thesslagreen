@@ -453,8 +453,7 @@ async def test_read_holding_exponential_backoff(caplog):
     assert result is None
     assert sleep_mock.await_args_list == [call(0.5), call(1.0)]
     assert any(
-        "Failed to read holding registers 1-1" in record.message
-        for record in caplog.records
+        "Failed to read holding registers 1-1" in record.message for record in caplog.records
     )
 
 

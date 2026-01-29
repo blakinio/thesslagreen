@@ -21,10 +21,10 @@ fan_mod.FanEntity = FanEntity
 fan_mod.FanEntityFeature = FanEntityFeature
 sys.modules["homeassistant.components.fan"] = fan_mod
 
-from custom_components.thessla_green_modbus.fan import ThesslaGreenFan  # noqa: E402
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
+from custom_components.thessla_green_modbus.fan import ThesslaGreenFan  # noqa: E402
 
 
 def test_fan_percentage_clamps_to_max():

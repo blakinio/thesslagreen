@@ -8,6 +8,9 @@ import weakref
 
 import pytest
 
+original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
+original_loader = sys.modules.get("custom_components.thessla_green_modbus.registers.loader")
+
 loader_stub = types.SimpleNamespace(
     load_registers=lambda: ([], {}),
     get_all_registers=lambda: [],
@@ -26,6 +29,16 @@ from custom_components.thessla_green_modbus.modbus_helpers import (  # noqa: E40
     _call_modbus,
     group_reads,
 )
+
+if original_loader is not None:
+    sys.modules["custom_components.thessla_green_modbus.registers.loader"] = original_loader
+else:
+    sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
+
+if original_registers is not None:
+    sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
+else:
+    sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
 
 pytestmark = pytest.mark.asyncio
 

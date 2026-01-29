@@ -33,6 +33,7 @@ HVAC_MODE_MAP = {
 HVAC_MODE_REVERSE_MAP = {
     HVACMode.AUTO: 0,
     HVACMode.FAN_ONLY: 1,  # Manual and temporary modes use fan-only
+    HVACMode.OFF: 0,
 }
 
 # Preset modes for special functions
