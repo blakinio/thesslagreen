@@ -37,7 +37,7 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
 
 from homeassistant.core import HomeAssistant
 
-from .modbus_exceptions import ConnectionException, ModbusException
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 if TYPE_CHECKING:
     from homeassistant.helpers.device_registry import DeviceInfo
@@ -120,6 +120,13 @@ from .register_map import REGISTER_MAP_VERSION, validate_register_value
 from .registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .registers.loader import get_all_registers
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
+
+ILLEGAL_DATA_ADDRESS = 2
+
+
+class _PermanentModbusError(ModbusException):
+    """Modbus error that should not be retried."""
+
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
 
@@ -391,6 +398,72 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             backoff_jitter=self.backoff_jitter,
             **kwargs,
         )
+
+    async def _read_with_retry(
+        self,
+        func: Callable[..., Any],
+        start_address: int,
+        count: int,
+        *,
+        register_type: str,
+    ) -> Any:
+        """Read registers with retry/backoff on transient transport errors."""
+
+        def _is_illegal_data_address(response: Any) -> bool:
+            return getattr(response, "exception_code", None) == ILLEGAL_DATA_ADDRESS
+
+        last_error: Exception | None = None
+        for attempt in range(1, self.retry + 1):
+            try:
+                response = await self._call_modbus(
+                    func,
+                    start_address,
+                    count=count,
+                    attempt=attempt,
+                )
+                if response is None:
+                    raise ModbusException(
+                        f"Failed to read {register_type} registers at {start_address}"
+                    )
+                if response.isError():
+                    if _is_illegal_data_address(response):
+                        raise _PermanentModbusError(
+                            f"Illegal data address for {register_type} registers at {start_address}"
+                        )
+                    raise ModbusException(
+                        f"Failed to read {register_type} registers at {start_address}"
+                    )
+                return response
+            except _PermanentModbusError:
+                raise
+            except (TimeoutError, ModbusIOException, ConnectionException, OSError) as exc:
+                last_error = exc
+                await self._disconnect()
+                if attempt >= self.retry:
+                    raise
+                _LOGGER.debug(
+                    "Retrying %s registers at %s (attempt %s/%s): %s",
+                    register_type,
+                    start_address,
+                    attempt + 1,
+                    self.retry,
+                    exc,
+                )
+            except ModbusException as exc:
+                last_error = exc
+                if attempt >= self.retry:
+                    raise
+                _LOGGER.debug(
+                    "Retrying %s registers at %s (attempt %s/%s): %s",
+                    register_type,
+                    start_address,
+                    attempt + 1,
+                    self.retry,
+                    exc,
+                )
+        if last_error is not None:
+            raise last_error
+        raise ModbusException(f"Failed to read {register_type} registers at {start_address}")
 
     async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
@@ -943,14 +1016,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if all(name in failed for name in register_names if name):
                     continue
                 try:
-                    response = await self._call_modbus(
+                    response = await self._read_with_retry(
                         client.read_input_registers,
                         chunk_start,
-                        count=chunk_count,
+                        chunk_count,
+                        register_type="input",
                     )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        raise ModbusException(f"Failed to read input registers at {chunk_start}")
 
                     for i, value in enumerate(response.registers):
                         addr = chunk_start + i
@@ -974,8 +1045,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if len(response.registers) < chunk_count:
                         missing = register_names[len(response.registers) :]
                         self._mark_registers_failed(missing)
+                except _PermanentModbusError:
+                    self._mark_registers_failed(register_names)
+                    continue
                 except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    await self._disconnect()
                     self._mark_registers_failed(register_names)
                     raise
 
@@ -1006,14 +1079,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if all(name in failed for name in register_names if name):
                     continue
                 try:
-                    response = await self._call_modbus(
+                    response = await self._read_with_retry(
                         client.read_holding_registers,
                         chunk_start,
-                        count=chunk_count,
+                        chunk_count,
+                        register_type="holding",
                     )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        raise ModbusException(f"Failed to read holding registers at {chunk_start}")
 
                     for i, value in enumerate(response.registers):
                         addr = chunk_start + i
@@ -1037,8 +1108,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if len(response.registers) < chunk_count:
                         missing = register_names[len(response.registers) :]
                         self._mark_registers_failed(missing)
+                except _PermanentModbusError:
+                    self._mark_registers_failed(register_names)
+                    continue
                 except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    await self._disconnect()
                     self._mark_registers_failed(register_names)
                     raise
 
@@ -1068,14 +1141,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if all(name in failed for name in register_names if name):
                     continue
                 try:
-                    response = await self._call_modbus(
+                    response = await self._read_with_retry(
                         client.read_coils,
                         chunk_start,
-                        count=chunk_count,
+                        chunk_count,
+                        register_type="coil",
                     )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        raise ModbusException(f"Failed to read coil registers at {chunk_start}")
 
                     if not response.bits:
                         self._mark_registers_failed(register_names)
@@ -1102,8 +1173,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if len(response.bits) < chunk_count:
                         missing = register_names[len(response.bits) :]
                         self._mark_registers_failed(missing)
+                except _PermanentModbusError:
+                    self._mark_registers_failed(register_names)
+                    continue
                 except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    await self._disconnect()
                     self._mark_registers_failed(register_names)
                     raise
 
@@ -1133,14 +1206,12 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if all(name in failed for name in register_names if name):
                     continue
                 try:
-                    response = await self._call_modbus(
+                    response = await self._read_with_retry(
                         client.read_discrete_inputs,
                         chunk_start,
-                        count=chunk_count,
+                        chunk_count,
+                        register_type="discrete",
                     )
-                    if response is None or response.isError():
-                        self._mark_registers_failed(register_names)
-                        raise ModbusException(f"Failed to read discrete inputs at {chunk_start}")
 
                     if not response.bits:
                         self._mark_registers_failed(register_names)
@@ -1167,8 +1238,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if len(response.bits) < chunk_count:
                         missing = register_names[len(response.bits) :]
                         self._mark_registers_failed(missing)
+                except _PermanentModbusError:
+                    self._mark_registers_failed(register_names)
+                    continue
                 except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    await self._disconnect()
                     self._mark_registers_failed(register_names)
                     raise
 

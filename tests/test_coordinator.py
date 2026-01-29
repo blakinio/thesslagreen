@@ -197,6 +197,9 @@ from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
 from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     dt_util as coordinator_dt_util,
 )
+from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+    _PermanentModbusError,
+)
 
 
 def test_dt_util_timezone_awareness():
@@ -1015,6 +1018,66 @@ async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
 
     coordinator._disconnect.assert_awaited_once()
     assert coordinator.client.connected  # nosec: explicit state check
+
+
+@pytest.mark.asyncio
+async def test_read_with_retry_retries_transient_errors():
+    """Coordinator retries transient read errors before succeeding."""
+
+    coordinator = ThesslaGreenModbusCoordinator(
+        MagicMock(),
+        "host",
+        502,
+        1,
+        "name",
+        retry=2,
+    )
+    coordinator._disconnect = AsyncMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    coordinator._call_modbus = AsyncMock(side_effect=[TimeoutError("boom"), response])
+
+    result = await coordinator._read_with_retry(
+        lambda *_args, **_kwargs: None,  # pragma: no cover - not invoked directly
+        10,
+        1,
+        register_type="input",
+    )
+
+    assert result is response  # nosec: explicit state check
+    assert coordinator._call_modbus.await_count == 2
+    coordinator._disconnect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_read_with_retry_skips_illegal_data_address():
+    """Illegal data address errors should not be retried."""
+
+    coordinator = ThesslaGreenModbusCoordinator(
+        MagicMock(),
+        "host",
+        502,
+        1,
+        "name",
+        retry=3,
+    )
+    coordinator._disconnect = AsyncMock()
+
+    response = MagicMock()
+    response.isError.return_value = True
+    response.exception_code = 2
+    coordinator._call_modbus = AsyncMock(return_value=response)
+
+    with pytest.raises(_PermanentModbusError):
+        await coordinator._read_with_retry(
+            lambda *_args, **_kwargs: None,  # pragma: no cover - not invoked directly
+            10,
+            1,
+            register_type="input",
+        )
+
+    assert coordinator._call_modbus.await_count == 1
+    coordinator._disconnect.assert_not_awaited()
 
 
 def cleanup_modules():
