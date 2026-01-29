@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-    ModbusIOException,
-)
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
 pytestmark = pytest.mark.asyncio
@@ -47,9 +43,7 @@ async def test_scanner_marks_permanent_failures() -> None:
 
     scanner = await ThesslaGreenDeviceScanner.create("host", 1234, 1, retry=2, backoff=0)
     mock_client = AsyncMock()
-    mock_client.read_input_registers = AsyncMock(
-        side_effect=ConnectionException("down")
-    )
+    mock_client.read_input_registers = AsyncMock(side_effect=ConnectionException("down"))
 
     result = await scanner._read_input(mock_client, 1, 1)
 

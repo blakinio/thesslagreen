@@ -36,11 +36,11 @@ from .const import (
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
-    CONF_SAFE_SCAN,
     CONF_LOG_LEVEL,
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
     CONF_RETRY,
+    CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
     CONF_SCAN_UART_SETTINGS,
     CONF_SERIAL_PORT,
@@ -55,13 +55,13 @@ from .const import (
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
-    DEFAULT_SAFE_SCAN,
     DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_RETRY,
+    DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
     DEFAULT_SERIAL_PORT,
@@ -72,7 +72,10 @@ from .const import (
     DOMAIN,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
-from .const import async_setup_options, migrate_unique_id
+from .const import (
+    async_setup_options,
+    migrate_unique_id,
+)
 from .entity_mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 

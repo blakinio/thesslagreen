@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Capability detection for Constant Flow and HEWR water removal
 - Airflow unit option allowing `%` or `m³/h` reporting
 - Migration script for clearing legacy airflow statistics
+- Tests to assert 16-register batching, temporary writes, and HVAC mode behavior
 
 ### Changed
 - Hardening: retry/backoff, RTU support, DEC-only constants, strict 16-reg limit, temp invalid handling

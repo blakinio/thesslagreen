@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 import re
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, Field, RootModel, model_validator, validator
 
@@ -248,7 +248,7 @@ class RegisterDefinition(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _check_access(self) -> "RegisterDefinition":
+    def _check_access(self) -> RegisterDefinition:
         if self.function in {1, 2} and self.access != "R":
             raise ValueError("read-only functions must have R access")
         return self
@@ -258,7 +258,7 @@ class RegisterDefinition(BaseModel):
     # ------------------------------------------------------------------
 
     @model_validator(mode="after")
-    def check_consistency(self) -> "RegisterDefinition":  # pragma: no cover
+    def check_consistency(self) -> RegisterDefinition:  # pragma: no cover
         if self.address_hex is not None and self.address_dec is not None:
             if self.address_hex.lower() != _format_hex(self.address_dec):
                 raise ValueError("address_hex does not match address_dec")
@@ -340,10 +340,10 @@ class RegisterList(RootModel[list[RegisterDefinition]]):
 
     @property
     def registers(self) -> list[RegisterDefinition]:
-        return self.root
+        return cast(list[RegisterDefinition], self.root)
 
     @model_validator(mode="after")
-    def unique(self) -> "RegisterList":  # pragma: no cover
+    def unique(self) -> RegisterList:  # pragma: no cover
         registers = self.root
         seen_pairs: set[tuple[int, int]] = set()
         seen_names: set[str] = set()

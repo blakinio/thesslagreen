@@ -74,6 +74,18 @@ class DataUpdateCoordinator:  # pragma: no cover - simple stub
 
 helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
 
+
+class CoordinatorEntity:  # pragma: no cover - simple stub
+    def __init__(self, coordinator=None):
+        self.coordinator = coordinator
+
+    @classmethod
+    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
+        return cls
+
+
+helpers_uc.CoordinatorEntity = CoordinatorEntity
+
 binary_sensor_mod = types.ModuleType("homeassistant.components.binary_sensor")
 
 
@@ -113,16 +125,10 @@ sys.modules["homeassistant.components.sensor"] = sensor_mod
 
 from custom_components.thessla_green_modbus import select  # noqa: E402
 from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS  # noqa: E402
-from custom_components.thessla_green_modbus.select import ThesslaGreenSelect  # noqa: E402
 from custom_components.thessla_green_modbus.modbus_exceptions import (  # noqa: E402
     ConnectionException,
 )
-from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
-    ENTITY_MAPPINGS,
-)
-from custom_components.thessla_green_modbus.select import (  # noqa: E402
-    ThesslaGreenSelect,
-)
+from custom_components.thessla_green_modbus.select import ThesslaGreenSelect  # noqa: E402
 
 
 def test_select_creation_and_state(mock_coordinator):
@@ -177,9 +183,7 @@ def test_select_modbus_error_creates_issue(mock_coordinator):
         side_effect=ConnectionException("write failed")
     )
     select_entity.hass = MagicMock(
-        helpers=types.SimpleNamespace(
-            issue=types.SimpleNamespace(async_create_issue=AsyncMock())
-        )
+        helpers=types.SimpleNamespace(issue=types.SimpleNamespace(async_create_issue=AsyncMock()))
     )
 
     asyncio.run(select_entity.async_select_option("manual"))

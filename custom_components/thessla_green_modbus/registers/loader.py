@@ -189,14 +189,14 @@ class RegisterDef:
 
         # Combined airflow/temperature values use a custom decoding
         if self._is_aatt():
-            decoded = decode_aatt(raw)
-            return decoded
+            decoded_aatt = decode_aatt(raw)
+            return decoded_aatt
 
         # Schedule registers using BCD time encoding
         if self._is_bcd_time():
-            decoded = decode_bcd_time(raw)
-            if decoded is not None:
-                return decoded
+            decoded_time = decode_bcd_time(raw)
+            if decoded_time is not None:
+                return decoded_time
 
         if self.multiplier not in (None, 1):
             value *= self.multiplier
@@ -297,6 +297,10 @@ class RegisterDef:
             if isinstance(value, dict):
                 airflow = value.get("airflow_pct", value.get("airflow"))
                 temp = value.get("temp_c", value.get("temp"))
+                if airflow is None:
+                    airflow = 0
+                if temp is None:
+                    temp = 0
             elif isinstance(value, (list, tuple)):
                 airflow, temp = value
             else:
@@ -341,7 +345,7 @@ class RegisterDef:
 
 
 # Backwards compatible alias used throughout the project/tests
-Register = RegisterDef
+Register: type[RegisterDef] = RegisterDef
 
 # ---------------------------------------------------------------------------
 # Loading helpers
@@ -564,7 +568,6 @@ __all__ = [
     "get_register_definition",
     "get_registers_by_function",
     "get_registers_path",
-    "group_registers",
     "load_registers",
     "plan_group_reads",
 ]

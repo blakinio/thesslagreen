@@ -132,3 +132,37 @@ async def test_async_write_temporary_temperature_uses_three_registers(monkeypatc
     coordinator.async_write_registers.assert_called_once_with(
         REG_TEMPORARY_TEMP_START, [2, 21.5, 1], refresh=True
     )
+
+
+@pytest.mark.asyncio
+async def test_temporary_temperature_calls_single_multi_write(monkeypatch):
+    hass = MagicMock()
+    coordinator = ThesslaGreenModbusCoordinator(
+        hass=hass,
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+    )
+    coordinator._ensure_connection = AsyncMock()
+    response = MagicMock()
+    response.isError.return_value = False
+    client = MagicMock()
+    client.write_registers = AsyncMock(return_value=response)
+    coordinator.client = client
+    coordinator._transport = AsyncMock()
+    coordinator._transport.call = AsyncMock(return_value=response)
+
+    def fake_def(_name):
+        return SimpleNamespace(encode=lambda value: value)
+
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        fake_def,
+    )
+
+    assert await coordinator.async_write_temporary_temperature(21) is True
+    call = coordinator._transport.call.await_args
+    assert call.args[0] is client.write_registers
+    assert call.kwargs["address"] == REG_TEMPORARY_TEMP_START
+    assert call.kwargs["values"] == [2, 21, 1]

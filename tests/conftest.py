@@ -10,6 +10,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import custom_components.thessla_green_modbus.registers.loader  # noqa: E402,F401
+
 try:
     from homeassistant.util import dt as _ha_dt  # noqa: F401
 

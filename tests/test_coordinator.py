@@ -861,6 +861,32 @@ async def test_missing_client_raises_connection_exception(coordinator):
 
 
 @pytest.mark.asyncio
+async def test_input_reads_respect_effective_batch(coordinator):
+    """Read batching should respect the 16-register limit."""
+    coordinator.client = MagicMock(connected=True)
+    coordinator.effective_batch = 16
+    coordinator._register_groups = {"input_registers": [(0, 20)]}
+    coordinator._reverse_maps["input_registers"] = {i: f"reg{i}" for i in range(20)}
+    coordinator.available_registers["input_registers"] = {f"reg{i}" for i in range(20)}
+
+    async def fake_call(_func, *args, **kwargs):
+        count = kwargs["count"]
+        return SimpleNamespace(
+            registers=[1] * count,
+            isError=lambda: False,
+            encode=lambda: b"",
+        )
+
+    coordinator._call_modbus = AsyncMock(side_effect=fake_call)
+    coordinator._process_register_value = lambda _name, value: value
+
+    data = await coordinator._read_input_registers_optimized()
+    counts = [call.kwargs["count"] for call in coordinator._call_modbus.await_args_list]
+    assert all(count <= 16 for count in counts)
+    assert len(data) == 20
+
+
+@pytest.mark.asyncio
 async def test_async_update_data_missing_client(coordinator):
     """_async_update_data should raise UpdateFailed when client cannot be established."""
     coordinator.client = None

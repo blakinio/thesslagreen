@@ -12,9 +12,10 @@ with the upstream specification.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
-from typing import Any, Iterable
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Any
 
 from .utils import BCD_TIME_PREFIXES
 
@@ -25,6 +26,7 @@ except Exception:  # pragma: no cover - fallback for test stubs
 
     def get_all_registers():  # type: ignore
         return []
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,7 +71,8 @@ class RegisterMapEntry:
         if expected == "enum":
             if self.enum_values and value not in self.enum_values:
                 raise ValueError(
-                    f"Unexpected enum value {value!r} for {self.name}; allowed: {sorted(self.enum_values)}"
+                    f"Unexpected enum value {value!r} for {self.name}; allowed: "
+                    f"{sorted(self.enum_values)}"
                 )
             return value
 
@@ -97,7 +100,9 @@ class RegisterMapEntry:
             elif isinstance(value, (int, float)):
                 coerced = bool(value)
             else:
-                raise ValueError(f"Expected boolean-compatible value for {self.name}, got {type(value)}")
+                raise ValueError(
+                    f"Expected boolean-compatible value for {self.name}, got {type(value)}"
+                )
             return bool(coerced)
 
         numeric: float | int
@@ -118,7 +123,12 @@ class RegisterMapEntry:
 
 
 def _register_type_from_function(function: int) -> str:
-    mapping = {1: "coil_registers", 2: "discrete_inputs", 3: "holding_registers", 4: "input_registers"}
+    mapping = {
+        1: "coil_registers",
+        2: "discrete_inputs",
+        3: "holding_registers",
+        4: "input_registers",
+    }
     return mapping.get(function, "")
 
 
