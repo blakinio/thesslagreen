@@ -45,10 +45,10 @@ docs = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/thesslagreen/thessla-green-modbus-ha"
-"Bug Reports" = "https://github.com/thesslagreen/thessla-green-modbus-ha/issues"
-"Source" = "https://github.com/thesslagreen/thessla-green-modbus-ha"
-"Documentation" = "https://github.com/thesslagreen/thessla-green-modbus-ha/wiki"
+"Homepage" = "https://github.com/blakinio/thesslagreen"
+"Bug Reports" = "https://github.com/blakinio/thesslagreen/issues"
+"Source" = "https://github.com/blakinio/thesslagreen"
+"Documentation" = "https://github.com/blakinio/thesslagreen/wiki"
 
 [tool.setuptools]
 include-package-data = true
