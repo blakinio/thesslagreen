@@ -76,8 +76,8 @@ from .const import (
     async_setup_options,
     migrate_unique_id,
 )
-from .errors import is_invalid_auth_error
 from .entity_mappings import async_setup_entity_mappings
+from .errors import is_invalid_auth_error
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
