@@ -33,6 +33,7 @@ from .const import (
     CONF_BACKOFF,
     CONF_BACKOFF_JITTER,
     CONF_BAUD_RATE,
+    CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
@@ -51,6 +52,9 @@ from .const import (
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP,
+    CONNECTION_MODE_TCP_RTU,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
@@ -80,6 +84,7 @@ from .const import (
 from .entity_mappings import async_setup_entity_mappings
 from .errors import is_invalid_auth_error
 from .modbus_exceptions import ConnectionException, ModbusException
+from .utils import resolve_connection_settings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -160,6 +165,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     connection_type = entry.data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
     if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         connection_type = DEFAULT_CONNECTION_TYPE
+    connection_mode = entry.options.get(
+        CONF_CONNECTION_MODE, entry.data.get(CONF_CONNECTION_MODE)
+    )
+    connection_type, connection_mode = resolve_connection_settings(
+        connection_type, connection_mode, entry.data.get(CONF_PORT, DEFAULT_PORT)
+    )
 
     host = entry.data.get(CONF_HOST, "")
     port = entry.data.get(
@@ -216,12 +227,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     if connection_type == CONNECTION_TYPE_RTU:
         endpoint = serial_port or "serial"
         transport_label = "Modbus RTU"
-    elif connection_type == CONNECTION_TYPE_TCP_RTU:
+    elif connection_mode == CONNECTION_MODE_TCP_RTU:
         endpoint = f"{host}:{port}"
         transport_label = "Modbus TCP RTU"
     else:
         endpoint = f"{host}:{port}"
         transport_label = "Modbus TCP"
+        if connection_mode == CONNECTION_MODE_AUTO:
+            transport_label = "Modbus TCP (Auto)"
 
     _LOGGER.info(
         "Initializing ThesslaGreen device: %s via %s (%s) (slave_id=%s, scan_interval=%ds)",
@@ -243,6 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         slave_id=slave_id,
         name=name,
         connection_type=connection_type,
+        connection_mode=connection_mode,
         serial_port=serial_port,
         baud_rate=baud_rate,
         parity=parity,
@@ -503,6 +517,20 @@ async def async_migrate_entry(
         if CONF_CONNECTION_TYPE not in new_data:
             new_data[CONF_CONNECTION_TYPE] = DEFAULT_CONNECTION_TYPE
         config_entry.version = 3
+
+    if config_entry.version == 3:
+        connection_type = new_data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
+        connection_mode = new_data.get(CONF_CONNECTION_MODE)
+        normalized_type, resolved_mode = resolve_connection_settings(
+            connection_type, connection_mode, new_data.get(CONF_PORT, DEFAULT_PORT)
+        )
+        new_data[CONF_CONNECTION_TYPE] = normalized_type
+        if normalized_type == CONNECTION_TYPE_TCP:
+            new_data[CONF_CONNECTION_MODE] = resolved_mode
+        else:
+            new_data.pop(CONF_CONNECTION_MODE, None)
+            new_options.pop(CONF_CONNECTION_MODE, None)
+        config_entry.version = 4
 
     # Build new unique ID replacing ':' in host with '-' to avoid separator conflicts
     host = new_data.get(CONF_HOST)

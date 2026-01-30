@@ -80,6 +80,7 @@ from custom_components.thessla_green_modbus.config_flow import (
 )
 from custom_components.thessla_green_modbus.const import (
     CONF_BAUD_RATE,
+    CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
@@ -89,6 +90,7 @@ from custom_components.thessla_green_modbus.const import (
     CONF_STOP_BITS,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
+    CONNECTION_MODE_TCP,
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_PARITY,
@@ -135,6 +137,7 @@ async def test_form_user():
         key.schema if hasattr(key, "schema") else key for key in result["data_schema"].schema
     }
     assert CONF_CONNECTION_TYPE in schema_keys
+    assert CONF_CONNECTION_MODE in schema_keys
     assert CONF_HOST in schema_keys
     assert CONF_SERIAL_PORT in schema_keys
     assert CONF_BAUD_RATE in schema_keys
@@ -415,6 +418,7 @@ async def test_form_user_success():
     assert result2["title"] == "My Device"
     data = result2["data"]
     assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_TCP
+    assert data[CONF_CONNECTION_MODE] == CONNECTION_MODE_TCP
     assert data[CONF_HOST] == DEFAULT_USER_INPUT[CONF_HOST]
     assert data[CONF_PORT] == DEFAULT_USER_INPUT[CONF_PORT]
     assert data["slave_id"] == DEFAULT_USER_INPUT[CONF_SLAVE_ID]

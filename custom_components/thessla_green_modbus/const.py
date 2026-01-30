@@ -87,6 +87,7 @@ MIN_SCAN_INTERVAL = 5
 
 # Connection / transport configuration
 CONF_CONNECTION_TYPE = "connection_type"
+CONF_CONNECTION_MODE = "connection_mode"
 CONF_SERIAL_PORT = "serial_port"
 CONF_BAUD_RATE = "baud_rate"
 CONF_PARITY = "parity"
@@ -96,6 +97,11 @@ CONNECTION_TYPE_TCP = "tcp"
 CONNECTION_TYPE_RTU = "rtu"
 CONNECTION_TYPE_TCP_RTU = "tcp_rtu"
 DEFAULT_CONNECTION_TYPE = CONNECTION_TYPE_TCP
+
+CONNECTION_MODE_TCP = "tcp"
+CONNECTION_MODE_TCP_RTU = "tcp_rtu"
+CONNECTION_MODE_AUTO = "auto"
+DEFAULT_CONNECTION_MODE = CONNECTION_MODE_TCP
 
 # Default serial settings mirror the values used by Thessla Green controllers
 DEFAULT_SERIAL_PORT = ""

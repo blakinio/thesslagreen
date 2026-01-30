@@ -26,7 +26,7 @@ async def test_migrate_entry_adds_legacy_port():
     assert result is True
     new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
     assert new_data[CONF_PORT] == 8899
-    assert config_entry.version == 2
+    assert config_entry.version == 4
 
 
 @pytest.mark.asyncio
@@ -45,7 +45,7 @@ async def test_migrate_entry_preserves_existing_port():
     assert result is True
     new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
     assert new_data[CONF_PORT] == 1234
-    assert config_entry.version == 2
+    assert config_entry.version == 4
 
 
 @pytest.mark.asyncio
@@ -68,3 +68,4 @@ async def test_migrate_entry_updates_unique_id():
 
     assert result is True
     assert hass.config_entries.async_update_entry.call_args.kwargs["unique_id"] == "fe80--1:1234:5"
+    assert config_entry.version == 4

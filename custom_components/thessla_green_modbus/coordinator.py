@@ -82,6 +82,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import (
     CONF_ENABLE_DEVICE_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP,
+    CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
@@ -118,11 +121,17 @@ from .modbus_helpers import (
     chunk_register_values,
     group_reads,
 )
-from .modbus_transport import BaseModbusTransport, RtuModbusTransport, TcpModbusTransport
+from .modbus_transport import (
+    BaseModbusTransport,
+    RawRtuOverTcpTransport,
+    RtuModbusTransport,
+    TcpModbusTransport,
+)
 from .register_addresses import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .register_map import REGISTER_MAP_VERSION, validate_register_value
 from .registers.loader import get_all_registers
 from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
+from .utils import resolve_connection_settings
 
 ILLEGAL_DATA_ADDRESS = 2
 
@@ -164,6 +173,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entry: ConfigEntry | None = None,
         skip_missing_registers: bool = False,
         connection_type: str = DEFAULT_CONNECTION_TYPE,
+        connection_mode: str | None = None,
         serial_port: str = DEFAULT_SERIAL_PORT,
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
@@ -194,6 +204,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.port = port
         self.slave_id = slave_id
         self._device_name = name
+        resolved_type, resolved_mode = resolve_connection_settings(
+            connection_type, connection_mode, port
+        )
+        self.connection_type = resolved_type
+        self.connection_mode = resolved_mode
+        self._resolved_connection_mode: str | None = (
+            resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
+        )
         self.timeout = timeout
         self.retry = retry
         try:
@@ -233,10 +251,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             self.enable_device_scan = DEFAULT_ENABLE_DEVICE_SCAN
 
-        conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
-        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
-            conn_type = DEFAULT_CONNECTION_TYPE
-        self.connection_type = conn_type
         self.serial_port = serial_port or DEFAULT_SERIAL_PORT
         try:
             self.baud_rate = int(baud_rate)
@@ -397,7 +411,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _read_with_retry(
         self,
-        func: Callable[..., Any],
+        read_method: Callable[..., Any],
         start_address: int,
         count: int,
         *,
@@ -415,8 +429,8 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         last_error: Exception | None = None
         for attempt in range(1, self.retry + 1):
             try:
-                response = await self._call_modbus(
-                    func,
+                response = await read_method(
+                    self.slave_id,
                     start_address,
                     count=count,
                     attempt=attempt,
@@ -473,6 +487,40 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise last_error
         raise ModbusException(f"Failed to read {register_type} registers at {start_address}")
 
+    async def _read_coils_transport(
+        self,
+        _slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        if not self.client:
+            raise ConnectionException("Modbus client is not connected")
+        return await self._call_modbus(
+            self.client.read_coils,
+            address,
+            count=count,
+            attempt=attempt,
+        )
+
+    async def _read_discrete_inputs_transport(
+        self,
+        _slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        if not self.client:
+            raise ConnectionException("Modbus client is not connected")
+        return await self._call_modbus(
+            self.client.read_discrete_inputs,
+            address,
+            count=count,
+            attempt=attempt,
+        )
+
     async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
         if self.connection_type == CONNECTION_TYPE_RTU:
@@ -514,6 +562,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         max_registers_per_request=self.effective_batch,
                         safe_scan=self.safe_scan,
                         connection_type=self.connection_type,
+                        connection_mode=self.connection_mode,
                         serial_port=self.serial_port,
                         baud_rate=self.baud_rate,
                         parity=self.parity,
@@ -781,23 +830,32 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 await self._ensure_connection()
 
+                transport = self._transport
+                if transport is None:
+                    raise ConnectionException("Modbus transport is not connected")
+
                 test_addresses = list(input_registers().values())[:3]
 
                 for addr in test_addresses:
-                    response = await self.client.read_input_registers(
-                        addr, count=1, unit=self.slave_id
+                    response = await transport.read_input_registers(
+                        self.slave_id,
+                        addr,
+                        count=1,
                     )
                     if response.isError():
                         raise ConnectionException(f"Cannot read register {addr}")
 
-                client = self.client
-                if client is None or not client.connected:
-                    raise ConnectionException("Modbus client is not connected")
+                if not transport.is_connected():
+                    raise ConnectionException("Modbus transport is not connected")
                 # Try to read a basic register to verify communication. "count" must
                 # always be passed as a keyword argument to ``_call_modbus`` to avoid
                 # issues with keyword-only parameters in pymodbus.
                 count = 1
-                response = await self._call_modbus(client.read_input_registers, 0, count=count)
+                response = await transport.read_input_registers(
+                    self.slave_id,
+                    0,
+                    count=count,
+                )
                 if response is None or response.isError():
                     raise ConnectionException("Cannot read basic register")
                 _LOGGER.debug("Connection test successful")
@@ -836,13 +894,64 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         await self._ensure_connected()
 
+    def _build_tcp_transport(
+        self,
+        mode: str,
+    ) -> BaseModbusTransport:
+        if mode == CONNECTION_MODE_TCP_RTU:
+            return RawRtuOverTcpTransport(
+                host=self.host,
+                port=self.port,
+                max_retries=self.retry,
+                base_backoff=self.backoff,
+                max_backoff=DEFAULT_MAX_BACKOFF,
+                timeout=self.timeout,
+                offline_state=self.offline_state,
+            )
+        return TcpModbusTransport(
+            host=self.host,
+            port=self.port,
+            connection_type=CONNECTION_TYPE_TCP,
+            max_retries=self.retry,
+            base_backoff=self.backoff,
+            max_backoff=DEFAULT_MAX_BACKOFF,
+            timeout=self.timeout,
+            offline_state=self.offline_state,
+        )
+
+    async def _select_auto_transport(self) -> None:
+        """Attempt auto-detection between RTU-over-TCP and Modbus TCP."""
+
+        if self._resolved_connection_mode:
+            self._transport = self._build_tcp_transport(self._resolved_connection_mode)
+            return
+
+        attempts: list[tuple[str, float]] = [
+            (CONNECTION_MODE_TCP_RTU, 2.0),
+            (CONNECTION_MODE_TCP, min(max(self.timeout, 5.0), 10.0)),
+        ]
+        last_error: Exception | None = None
+        for mode, timeout in attempts:
+            transport = self._build_tcp_transport(mode)
+            try:
+                await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
+            except Exception as exc:  # pragma: no cover - network dependent
+                last_error = exc
+                await transport.close()
+                continue
+            self._transport = transport
+            self._resolved_connection_mode = mode
+            return
+
+        raise ConnectionException("Auto-detect Modbus transport failed") from last_error
+
     async def _ensure_connected(self) -> None:
         """Ensure Modbus connection is established using the shared client."""
 
         async with self._client_lock:
-            if self.client and getattr(self.client, "connected", False):
+            if self._transport is not None and self._transport.is_connected():
                 return
-            if self.client is not None:
+            if self._transport is not None or self.client is not None:
                 await self._disconnect_locked()
 
             try:
@@ -864,21 +973,19 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             offline_state=self.offline_state,
                         )
                     else:
-                        self._transport = TcpModbusTransport(
-                            host=self.host,
-                            port=self.port,
-                            connection_type=self.connection_type,
-                            max_retries=self.retry,
-                            base_backoff=self.backoff,
-                            max_backoff=DEFAULT_MAX_BACKOFF,
-                            timeout=self.timeout,
-                            offline_state=self.offline_state,
-                        )
+                        if self.connection_mode == CONNECTION_MODE_AUTO:
+                            await self._select_auto_transport()
+                        else:
+                            mode = self.connection_mode or CONNECTION_MODE_TCP
+                            self._transport = self._build_tcp_transport(mode)
+
+                if self._transport is None:
+                    raise ConnectionException("Modbus transport is not available")
 
                 await self._transport.ensure_connected()
-                self.client = self._transport.client
-                if self.client is None or not getattr(self.client, "connected", False):
-                    raise ConnectionException("Modbus client is not connected")
+                self.client = getattr(self._transport, "client", None)
+                if not self._transport.is_connected():
+                    raise ConnectionException("Modbus transport is not connected")
                 _LOGGER.debug("Modbus connection established")
                 self.offline_state = False
             except (ModbusException, ConnectionException) as exc:
@@ -914,9 +1021,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._write_lock:
             try:
                 await self._ensure_connection()
-                client = self.client
-                if client is None or not client.connected:
-                    raise ConnectionException("Modbus client is not connected")
+                transport = self._transport
+                if transport is None or not transport.is_connected():
+                    raise ConnectionException("Modbus transport is not connected")
 
                 data = {}
                 data.update(await self._read_input_registers_optimized())
@@ -926,14 +1033,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 data = self._post_process_data(data)
 
-                if not client.connected:
+                if not transport.is_connected():
                     _LOGGER.debug(
                         "Modbus client disconnected during update; attempting reconnection"
                     )
                     await self._ensure_connection()
-                    client = self.client
-                    if client is None or not client.connected:
-                        raise ConnectionException("Modbus client is not connected")
+                    transport = self._transport
+                    if transport is None or not transport.is_connected():
+                        raise ConnectionException("Modbus transport is not connected")
 
                 self.statistics["successful_reads"] += 1
                 self.statistics["last_successful_update"] = dt_util.utcnow()
@@ -1008,9 +1115,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "input_registers" not in self._register_groups:
             return data
 
-        client = self.client
-        if client is None or not client.connected:
-            raise ConnectionException("Modbus client is not connected")
+        transport = self._transport
+        if transport is None or not transport.is_connected():
+            raise ConnectionException("Modbus transport is not connected")
 
         failed: set[str] = getattr(self, "_failed_registers", set())
 
@@ -1026,7 +1133,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     continue
                 try:
                     response = await self._read_with_retry(
-                        client.read_input_registers,
+                        transport.read_input_registers,
                         chunk_start,
                         chunk_count,
                         register_type="input",
@@ -1070,9 +1177,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "holding_registers" not in self._register_groups:
             return data
 
-        client = self.client
-        if client is None or not client.connected:
-            _LOGGER.debug("Modbus client not available; skipping holding register read")
+        transport = self._transport
+        if transport is None or not transport.is_connected():
+            _LOGGER.debug("Modbus transport not available; skipping holding register read")
             return data
 
         failed: set[str] = getattr(self, "_failed_registers", set())
@@ -1089,7 +1196,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     continue
                 try:
                     response = await self._read_with_retry(
-                        client.read_holding_registers,
+                        transport.read_holding_registers,
                         chunk_start,
                         chunk_count,
                         register_type="holding",
@@ -1151,7 +1258,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     continue
                 try:
                     response = await self._read_with_retry(
-                        client.read_coils,
+                        self._read_coils_transport,
                         chunk_start,
                         chunk_count,
                         register_type="coil",
@@ -1216,7 +1323,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     continue
                 try:
                     response = await self._read_with_retry(
-                        client.read_discrete_inputs,
+                        self._read_discrete_inputs_transport,
                         chunk_start,
                         chunk_count,
                         register_type="discrete",
@@ -1368,8 +1475,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._write_lock:
             try:
                 await self._ensure_connection()
-                if not self.client:
-                    raise ConnectionException("Modbus client is not connected")
+                transport = self._transport
+                if transport is None or not transport.is_connected():
+                    raise ConnectionException("Modbus transport is not connected")
 
                 original_value = value
                 definition = get_register_definition(register_name)
@@ -1429,12 +1537,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                         address, encoded_values, self.effective_batch
                                     )
                                 ):
-                                    response = await self._call_modbus(
-                                        self.client.write_registers,
-                                        address=chunk_start,
+                                    response = await transport.write_registers(
+                                        self.slave_id,
+                                        chunk_start,
                                         values=[int(v) for v in chunk],
                                         attempt=attempt,
-                                        apply_backoff=index == 0,
                                     )
                                     if response is None or response.isError():
                                         success = False
@@ -1450,9 +1557,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     _LOGGER.info("Retrying write to register %s", register_name)
                                     continue
                             else:
-                                response = await self._call_modbus(
-                                    self.client.write_register,
-                                    address=address,
+                                response = await transport.write_register(
+                                    self.slave_id,
+                                    address,
                                     value=int(value),
                                     attempt=attempt,
                                 )
@@ -1554,16 +1661,17 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         async with self._write_lock:
             try:
                 await self._ensure_connection()
-                if not self.client:
-                    raise ConnectionException("Modbus client is not connected")
+                transport = self._transport
+                if transport is None or not transport.is_connected():
+                    raise ConnectionException("Modbus transport is not connected")
 
                 for attempt in range(1, self.retry + 1):
                     try:
                         success = True
                         if require_single_request:
-                            response = await self._call_modbus(
-                                self.client.write_registers,
-                                address=start_address,
+                            response = await transport.write_registers(
+                                self.slave_id,
+                                start_address,
                                 values=[int(v) for v in values],
                                 attempt=attempt,
                             )
@@ -1573,12 +1681,11 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             for index, (chunk_start, chunk) in enumerate(
                                 chunk_register_values(start_address, values, self.effective_batch)
                             ):
-                                response = await self._call_modbus(
-                                    self.client.write_registers,
-                                    address=chunk_start,
+                                response = await transport.write_registers(
+                                    self.slave_id,
+                                    chunk_start,
                                     values=[int(v) for v in chunk],
                                     attempt=attempt,
-                                    apply_backoff=index == 0,
                                 )
                                 if response is None or response.isError():
                                     success = False
@@ -1747,7 +1854,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         last_update = self.statistics.get("last_successful_update")
         last_update_iso = last_update.isoformat() if last_update else None
-        is_connected = bool(self.client and getattr(self.client, "connected", False))
+        is_connected = bool(self._transport and self._transport.is_connected())
         recent_update = False
         if last_update:
             recent_update = (dt_util.utcnow() - last_update).total_seconds() < (
@@ -1790,7 +1897,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "host": self.host,
             "port": self.port,
             "slave_id": self.slave_id,
-            "connected": bool(self.client and getattr(self.client, "connected", False)),
+            "connected": bool(self._transport and self._transport.is_connected()),
             "offline_state": self.offline_state,
             "last_successful_update": last_update.isoformat() if last_update else None,
             "transport": self.connection_type,

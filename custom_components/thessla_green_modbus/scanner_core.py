@@ -25,9 +25,11 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
 
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP,
+    CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_TCP_RTU,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_PARITY,
@@ -46,7 +48,12 @@ from .modbus_helpers import (
     _call_modbus,
     async_maybe_await_close,
     chunk_register_range,
-    get_rtu_framer,
+)
+from .modbus_transport import (
+    BaseModbusTransport,
+    RawRtuOverTcpTransport,
+    RtuModbusTransport,
+    TcpModbusTransport,
 )
 from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
@@ -56,20 +63,13 @@ from .scanner_helpers import (
     UART_OPTIONAL_REGS,
     _format_register_value,
 )
+from .utils import default_connection_mode, resolve_connection_settings
 from .utils import BCD_TIME_PREFIXES, decode_bcd_time
 
 try:  # pragma: no cover - network transport always required
     from pymodbus.client import AsyncModbusTcpClient
 except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - fatal
     raise ImportError("pymodbus AsyncModbusTcpClient is required") from exc
-
-try:  # pragma: no cover - serial extras optional
-    from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
-except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
-    _AsyncModbusSerialClient = None
-    SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
-else:  # pragma: no cover - serial client available
-    SERIAL_IMPORT_ERROR = None
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
@@ -125,41 +125,6 @@ def _build_register_maps() -> None:
     DISCRETE_INPUT_REGISTERS.update(
         {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 2}
     )
-
-
-def _create_tcp_client(
-    host: str,
-    port: int,
-    timeout: float,
-    connection_type: str,
-) -> AsyncModbusTcpClient:
-    """Create a TCP Modbus client, optionally using RTU framing."""
-
-    if connection_type == CONNECTION_TYPE_TCP_RTU:
-        framer = get_rtu_framer()
-        if framer is None:
-            message = (
-                "RTU over TCP requires pymodbus with RTU framer support "
-                "(FramerType.RTU or ModbusRtuFramer)."
-            )
-            _LOGGER.error(message)
-            raise ConnectionException(message)
-        try:
-            return AsyncModbusTcpClient(
-                host,
-                port=port,
-                timeout=timeout,
-                framer=framer,
-            )
-        except TypeError as exc:
-            message = (
-                "RTU over TCP is not supported by the installed pymodbus client. "
-                "Please upgrade pymodbus."
-            )
-            _LOGGER.error("%s (%s)", message, exc)
-            raise ConnectionException(message) from exc
-
-    return AsyncModbusTcpClient(host, port=port, timeout=timeout)
 
     MULTI_REGISTER_SIZES.clear()
     MULTI_REGISTER_SIZES.update(
@@ -323,6 +288,7 @@ class ThesslaGreenDeviceScanner:
         safe_scan: bool = False,
         max_registers_per_request: int = MAX_BATCH_REGISTERS,
         connection_type: str = DEFAULT_CONNECTION_TYPE,
+        connection_mode: str | None = None,
         serial_port: str = DEFAULT_SERIAL_PORT,
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
@@ -374,10 +340,14 @@ class ThesslaGreenDeviceScanner:
             self.effective_batch = 1
         self.max_registers_per_request = self.effective_batch
 
-        conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
-        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
-            conn_type = DEFAULT_CONNECTION_TYPE
-        self.connection_type = conn_type
+        resolved_type, resolved_mode = resolve_connection_settings(
+            connection_type, connection_mode, port
+        )
+        self.connection_type = resolved_type
+        self.connection_mode = resolved_mode
+        self._resolved_connection_mode: str | None = (
+            resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
+        )
         self.serial_port = serial_port or DEFAULT_SERIAL_PORT
         try:
             self.baud_rate = int(baud_rate)
@@ -428,8 +398,9 @@ class ThesslaGreenDeviceScanner:
         self._unsupported_input_ranges: dict[tuple[int, int], int] = {}
         self._unsupported_holding_ranges: dict[tuple[int, int], int] = {}
 
-        # Keep track of the Modbus client so it can be closed later
+        # Keep track of the Modbus client/transport so it can be closed later
         self._client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
+        self._transport: BaseModbusTransport | None = None
 
         # Track registers for which invalid values have been reported
         self._reported_invalid: set[str] = set()
@@ -485,6 +456,7 @@ class ThesslaGreenDeviceScanner:
         max_registers_per_request: int = MAX_BATCH_REGISTERS,
         safe_scan: bool = False,
         connection_type: str = DEFAULT_CONNECTION_TYPE,
+        connection_mode: str | None = None,
         serial_port: str = DEFAULT_SERIAL_PORT,
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
@@ -507,6 +479,7 @@ class ThesslaGreenDeviceScanner:
             safe_scan,
             max_registers_per_request,
             connection_type,
+            connection_mode,
             serial_port,
             baud_rate,
             parity,
@@ -525,6 +498,14 @@ class ThesslaGreenDeviceScanner:
     async def close(self) -> None:
         """Close the underlying Modbus client connection."""
 
+        if self._transport is not None:
+            try:
+                await self._transport.close()
+            except (OSError, ConnectionException, ModbusIOException):
+                _LOGGER.debug("Error closing Modbus transport", exc_info=True)
+            finally:
+                self._transport = None
+
         client = self._client
         if client is None:
             return
@@ -536,6 +517,32 @@ class ThesslaGreenDeviceScanner:
         finally:
             self._client = None
 
+    def _build_tcp_transport(
+        self,
+        mode: str,
+        *,
+        timeout_override: float | None = None,
+    ) -> BaseModbusTransport:
+        timeout = self.timeout if timeout_override is None else timeout_override
+        if mode == CONNECTION_MODE_TCP_RTU:
+            return RawRtuOverTcpTransport(
+                host=self.host,
+                port=self.port,
+                max_retries=self.retry,
+                base_backoff=self.backoff,
+                max_backoff=0.0,
+                timeout=timeout,
+            )
+        return TcpModbusTransport(
+            host=self.host,
+            port=self.port,
+            connection_type=CONNECTION_TYPE_TCP,
+            max_retries=self.retry,
+            base_backoff=self.backoff,
+            max_backoff=0.0,
+            timeout=timeout,
+        )
+
     async def verify_connection(self) -> None:
         """Verify basic Modbus connectivity by reading a few safe registers.
 
@@ -545,136 +552,121 @@ class ThesslaGreenDeviceScanner:
         callers can surface an appropriate error to the user.
         """
 
+        safe_input: list[int] = []
+        safe_holding: list[int] = []
+        for func, name in SAFE_REGISTERS:
+            reg = REGISTER_DEFINITIONS.get(name)
+            if reg is None:
+                continue
+            if func == 4:
+                safe_input.append(reg.address)
+            else:
+                safe_holding.append(reg.address)
+
+        attempts: list[tuple[str | None, BaseModbusTransport, float]] = []
         if self.connection_type == CONNECTION_TYPE_RTU:
             if not self.serial_port:
                 raise ConnectionException("Serial port not configured")
-            if _AsyncModbusSerialClient is None:
-                message = (
-                    "Modbus serial client is unavailable. Install pymodbus with serial support."
-                )
-                if SERIAL_IMPORT_ERROR is not None:
-                    message = f"{message} ({SERIAL_IMPORT_ERROR})"
-                raise ConnectionException(message)
             parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
             stop_bits = SERIAL_STOP_BITS_MAP.get(
                 self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
             )
-            client: AsyncModbusSerialClientType | AsyncModbusTcpClient = _AsyncModbusSerialClient(
-                method="rtu",
-                port=self.serial_port,
-                baudrate=self.baud_rate,
-                parity=parity,
-                stopbits=stop_bits,
-                timeout=self.timeout,
+            attempts.append(
+                (
+                    None,
+                    RtuModbusTransport(
+                        serial_port=self.serial_port,
+                        baudrate=self.baud_rate,
+                        parity=parity,
+                        stopbits=stop_bits,
+                        max_retries=self.retry,
+                        base_backoff=self.backoff,
+                        max_backoff=0.0,
+                        timeout=self.timeout,
+                    ),
+                    self.timeout,
+                )
+            )
+        elif self.connection_mode == CONNECTION_MODE_AUTO:
+            attempts.extend(
+                [
+                    (
+                        CONNECTION_MODE_TCP_RTU,
+                        self._build_tcp_transport(CONNECTION_MODE_TCP_RTU, timeout_override=2.0),
+                        2.0,
+                    ),
+                    (
+                        CONNECTION_MODE_TCP,
+                        self._build_tcp_transport(
+                            CONNECTION_MODE_TCP,
+                            timeout_override=min(max(self.timeout, 5.0), 10.0),
+                        ),
+                        min(max(self.timeout, 5.0), 10.0),
+                    ),
+                ]
             )
         else:
-            _LOGGER.info(
-                "verify_connection: connecting to %s:%s (mode=%s, timeout=%s)",
-                self.host,
-                self.port,
-                self.connection_type,
-                self.timeout,
-            )
-            client = _create_tcp_client(
-                self.host,
-                self.port,
-                self.timeout,
-                self.connection_type,
-            )
-        try:
-            connected = await asyncio.wait_for(client.connect(), timeout=self.timeout)
-            if not connected:
-                raise ConnectionException("Failed to connect")
+            mode = self.connection_mode or default_connection_mode(self.port)
+            attempts.append((mode, self._build_tcp_transport(mode), self.timeout))
 
-            safe_input: list[int] = []
-            safe_holding: list[int] = []
-            for func, name in SAFE_REGISTERS:
-                reg = REGISTER_DEFINITIONS.get(name)
-                if reg is None:
-                    continue
-                if func == 4:
-                    safe_input.append(reg.address)
-                else:
-                    safe_holding.append(reg.address)
+        last_error: Exception | None = None
+        for mode, transport, timeout in attempts:
+            try:
+                _LOGGER.info(
+                    "verify_connection: connecting to %s:%s (mode=%s, timeout=%s)",
+                    self.host,
+                    self.port,
+                    mode or self.connection_type,
+                    timeout,
+                )
+                await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
 
-            for start, count in _group_reads(safe_input, max_block_size=self.effective_batch):
-                try:
+                for start, count in _group_reads(safe_input, max_block_size=self.effective_batch):
                     _LOGGER.debug(
                         "verify_connection: read_input_registers start=%s count=%s",
                         start,
                         count,
                     )
-                    await _call_modbus(
-                        client.read_input_registers,
+                    await transport.read_input_registers(
                         self.slave_id,
                         start,
                         count=count,
-                        timeout=self.timeout,
-                        backoff=self.backoff,
-                        backoff_jitter=self.backoff_jitter,
-                        apply_backoff=False,
                     )
-                except TimeoutError as exc:  # pragma: no cover - network issues
-                    _LOGGER.warning("Timeout reading input registers at %d", start)
-                    raise ConnectionException("Timeout reading input registers") from exc
-                except ModbusIOException as exc:
-                    if _is_request_cancelled_error(exc):
-                        _LOGGER.info("Modbus request cancelled during verify_connection.")
-                        raise TimeoutError("Modbus request cancelled") from exc
-                    raise
-                except ModbusException:
-                    raise
-                except (
-                    OSError,
-                    ValueError,
-                    TypeError,
-                ) as exc:  # pragma: no cover - forward expected errors
-                    raise ModbusException(f"Error reading input registers: {exc}") from exc
-                except Exception as exc:  # pragma: no cover - unexpected
-                    _LOGGER.exception("Unexpected error reading input registers: %s", exc)
-                    raise ModbusException(f"Error reading input registers: {exc}") from exc
 
-            for start, count in _group_reads(safe_holding, max_block_size=self.effective_batch):
-                try:
+                for start, count in _group_reads(safe_holding, max_block_size=self.effective_batch):
                     _LOGGER.debug(
                         "verify_connection: read_holding_registers start=%s count=%s",
                         start,
                         count,
                     )
-                    await _call_modbus(
-                        client.read_holding_registers,
+                    await transport.read_holding_registers(
                         self.slave_id,
                         start,
                         count=count,
-                        timeout=self.timeout,
-                        backoff=self.backoff,
-                        backoff_jitter=self.backoff_jitter,
-                        apply_backoff=False,
                     )
-                except TimeoutError as exc:  # pragma: no cover - network issues
-                    _LOGGER.warning("Timeout reading holding registers at %d", start)
-                    raise ConnectionException("Timeout reading holding registers") from exc
-                except ModbusIOException as exc:
-                    if _is_request_cancelled_error(exc):
-                        _LOGGER.info("Modbus request cancelled during verify_connection.")
-                        raise TimeoutError("Modbus request cancelled") from exc
-                    raise
-                except ModbusException:
-                    raise
-                except (
-                    OSError,
-                    ValueError,
-                    TypeError,
-                ) as exc:  # pragma: no cover - forward expected errors
-                    raise ModbusException(f"Error reading holding registers: {exc}") from exc
-                except Exception as exc:  # pragma: no cover - unexpected
-                    _LOGGER.exception("Unexpected error reading holding registers: %s", exc)
-                    raise ModbusException(f"Error reading holding registers: {exc}") from exc
-        finally:
-            try:
-                await async_maybe_await_close(client)
-            except (OSError, ConnectionException, ModbusIOException, TypeError):
-                _LOGGER.debug("Error closing Modbus client during verify_connection", exc_info=True)
+                if mode is not None:
+                    self._resolved_connection_mode = mode
+                return
+            except ModbusIOException as exc:
+                last_error = exc
+                if _is_request_cancelled_error(exc):
+                    _LOGGER.info("Modbus request cancelled during verify_connection.")
+                    raise TimeoutError("Modbus request cancelled") from exc
+            except asyncio.TimeoutError as exc:
+                last_error = exc
+                _LOGGER.warning("Timeout during verify_connection: %s", exc)
+            except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
+                last_error = exc
+            finally:
+                try:
+                    await transport.close()
+                except (OSError, ConnectionException, ModbusIOException):
+                    _LOGGER.debug(
+                        "Error closing Modbus transport during verify_connection", exc_info=True
+                    )
+
+        if last_error:
+            raise last_error
 
     def _is_valid_register_value(self, name: str, value: int) -> bool:
         """Validate a register value against known constraints.
@@ -813,14 +805,14 @@ class ThesslaGreenDeviceScanner:
 
     async def scan(self) -> dict[str, Any]:
         """Perform the actual register scan using an established connection."""
-        client = self._client
-        if client is None:
-            raise ConnectionException("Client not connected")
+        transport = self._transport
+        if transport is None or not transport.is_connected():
+            raise ConnectionException("Transport not connected")
 
         device = ScannerDeviceInfo()
 
         # Basic firmware/serial information
-        info_regs = await self._read_input_block(client, 0, 30) or []
+        info_regs = await self._read_input_block(0, 30) or []
         major: int | None = None
         minor: int | None = None
         patch: int | None = None
@@ -884,7 +876,7 @@ class ThesslaGreenDeviceScanner:
             start = HOLDING_REGISTERS["device_name"]
             name_regs = (
                 await self._read_holding_block(
-                    client, start, REGISTER_DEFINITIONS["device_name"].length
+                    start, REGISTER_DEFINITIONS["device_name"].length
                 )
                 or []
             )
@@ -921,7 +913,7 @@ class ThesslaGreenDeviceScanner:
                 range(input_max + 1), max_block_size=self.effective_batch
             ):
                 scanned_registers["input_registers"] += count
-                input_data = await self._read_input(client, start, count, skip_cache=True)
+                input_data = await self._read_input(start, count, skip_cache=True)
                 if input_data is None:
                     self.failed_addresses["modbus_exceptions"]["input_registers"].update(
                         range(start, start + count)
@@ -942,7 +934,7 @@ class ThesslaGreenDeviceScanner:
                 range(holding_max + 1), max_block_size=self.effective_batch
             ):
                 scanned_registers["holding_registers"] += count
-                holding_data = await self._read_holding(client, start, count, skip_cache=True)
+                holding_data = await self._read_holding(start, count, skip_cache=True)
                 if holding_data is None:
                     self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
                         range(start, start + count)
@@ -963,7 +955,7 @@ class ThesslaGreenDeviceScanner:
                 range(coil_max + 1), max_block_size=self.effective_batch
             ):
                 scanned_registers["coil_registers"] += count
-                coil_data = await self._read_coil(client, start, count)
+                coil_data = await self._read_coil(start, count)
                 if coil_data is None:
                     self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
                         range(start, start + count)
@@ -980,7 +972,7 @@ class ThesslaGreenDeviceScanner:
                 range(discrete_max + 1), max_block_size=self.effective_batch
             ):
                 scanned_registers["discrete_inputs"] += count
-                discrete_data = await self._read_discrete(client, start, count)
+                discrete_data = await self._read_discrete(start, count)
                 if discrete_data is None:
                     self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
                         range(start, start + count)
@@ -1003,7 +995,7 @@ class ThesslaGreenDeviceScanner:
                 input_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(input_addresses):
-                input_data = await self._read_input(client, start, count)
+                input_data = await self._read_input(start, count)
                 if input_data is None:
                     self.failed_addresses["modbus_exceptions"]["input_registers"].update(
                         range(start, start + count)
@@ -1032,7 +1024,7 @@ class ThesslaGreenDeviceScanner:
                 holding_addresses.extend(range(addr, addr + size))
 
             for start, count in self._group_registers_for_batch_read(holding_addresses):
-                holding_data = await self._read_holding(client, start, count)
+                holding_data = await self._read_holding(start, count)
                 if holding_data is None:
                     self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
                         range(start, start + count)
@@ -1065,7 +1057,7 @@ class ThesslaGreenDeviceScanner:
                 coil_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(coil_addresses):
-                coil_data = await self._read_coil(client, start, count)
+                coil_data = await self._read_coil(start, count)
                 if coil_data is None:
                     self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
                         range(start, start + count)
@@ -1086,7 +1078,7 @@ class ThesslaGreenDeviceScanner:
                 discrete_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(discrete_addresses):
-                discrete_data = await self._read_discrete(client, start, count)
+                discrete_data = await self._read_discrete(start, count)
                 if discrete_data is None:
                     self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
                         range(start, start + count)
@@ -1162,7 +1154,7 @@ class ThesslaGreenDeviceScanner:
         raw_registers: dict[int, int] = {}
         if self.deep_scan:
             for start, count in self._group_registers_for_batch_read(list(range(301))):
-                data = await self._read_input(client, start, count)
+                data = await self._read_input(start, count)
                 if data is None:
                     continue
                 for offset, value in enumerate(data):
@@ -1231,37 +1223,29 @@ class ThesslaGreenDeviceScanner:
         if self.connection_type == CONNECTION_TYPE_RTU:
             if not self.serial_port:
                 raise ConnectionException("Serial port not configured")
-            if _AsyncModbusSerialClient is None:
-                message = (
-                    "Modbus serial client is unavailable. Install pymodbus with serial support."
-                )
-                if SERIAL_IMPORT_ERROR is not None:
-                    message = f"{message} ({SERIAL_IMPORT_ERROR})"
-                raise ConnectionException(message)
             parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
             stop_bits = SERIAL_STOP_BITS_MAP.get(
                 self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
             )
-            self._client = _AsyncModbusSerialClient(
-                method="rtu",
-                port=self.serial_port,
+            self._transport = RtuModbusTransport(
+                serial_port=self.serial_port,
                 baudrate=self.baud_rate,
                 parity=parity,
                 stopbits=stop_bits,
+                max_retries=self.retry,
+                base_backoff=self.backoff,
+                max_backoff=0.0,
                 timeout=self.timeout,
             )
         else:
-            self._client = _create_tcp_client(
-                self.host,
-                self.port,
-                self.timeout,
-                self.connection_type,
-            )
+            mode = self._resolved_connection_mode or self.connection_mode
+            if mode is None or mode == CONNECTION_MODE_AUTO:
+                mode = default_connection_mode(self.port)
+            self._transport = self._build_tcp_transport(mode)
 
         try:
-            connected = await asyncio.wait_for(self._client.connect(), timeout=self.timeout)
-            if not connected:
-                raise ConnectionException("Failed to connect")
+            await asyncio.wait_for(self._transport.ensure_connected(), timeout=self.timeout)
+            self._client = getattr(self._transport, "client", None)
             result = await self.scan()
             if not isinstance(result, dict):
                 raise TypeError("scan() must return a dict")
@@ -1369,9 +1353,9 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_input(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
-        address: int,
-        count: int,
+        client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        address_or_count: int,
+        count: int | None = None,
         *,
         skip_cache: bool = False,
     ) -> list[int] | None:
@@ -1382,6 +1366,18 @@ class ThesslaGreenDeviceScanner:
         checked, allowing each register to be queried once before being cached
         as missing.
         """
+        if count is None:
+            address = int(client_or_address)
+            count = address_or_count
+            client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
+        elif isinstance(client_or_address, int):
+            address = client_or_address
+            count = address_or_count
+            client = None
+        else:
+            client = client_or_address
+            address = address_or_count
+
         start = address
         end = address + count - 1
 
@@ -1411,19 +1407,31 @@ class ThesslaGreenDeviceScanner:
             )
             return None
 
+        transport = self._transport if client is None else None
+        if client is None and transport is None:
+            raise ConnectionException("Modbus transport is not connected")
+
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await _call_modbus(
-                    client.read_input_registers,
-                    self.slave_id,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                    max_attempts=self.retry,
-                    timeout=self.timeout,
-                    backoff=self.backoff,
-                    backoff_jitter=self.backoff_jitter,
-                )
+                if transport is not None:
+                    response = await transport.read_input_registers(
+                        self.slave_id,
+                        address,
+                        count=count,
+                        attempt=attempt,
+                    )
+                else:
+                    response = await _call_modbus(
+                        client.read_input_registers,
+                        self.slave_id,
+                        address,
+                        count=count,
+                        attempt=attempt,
+                        max_attempts=self.retry,
+                        timeout=self.timeout,
+                        backoff=self.backoff,
+                        backoff_jitter=self.backoff_jitter,
+                    )
                 if response is not None:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
@@ -1518,18 +1526,26 @@ class ThesslaGreenDeviceScanner:
                 attempt,
             )
             try:
-                response = await _call_modbus(
-                    client.read_holding_registers,
-                    self.slave_id,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                    max_attempts=self.retry,
-                    timeout=self.timeout,
-                    backoff=self.backoff,
-                    backoff_jitter=self.backoff_jitter,
-                    apply_backoff=False,
-                )
+                if transport is not None:
+                    response = await transport.read_holding_registers(
+                        self.slave_id,
+                        address,
+                        count=count,
+                        attempt=attempt,
+                    )
+                else:
+                    response = await _call_modbus(
+                        client.read_holding_registers,
+                        self.slave_id,
+                        address,
+                        count=count,
+                        attempt=attempt,
+                        max_attempts=self.retry,
+                        timeout=self.timeout,
+                        backoff=self.backoff,
+                        backoff_jitter=self.backoff_jitter,
+                        apply_backoff=False,
+                    )
                 if response is not None:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
@@ -1593,15 +1609,29 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_input_block(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
-        start: int,
-        count: int,
+        client_or_start: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        start_or_count: int,
+        count: int | None = None,
     ) -> list[int] | None:
         """Read a contiguous input register block in MAX-sized chunks."""
+        if count is None:
+            start = int(client_or_start)
+            count = start_or_count
+            client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
+        elif isinstance(client_or_start, int):
+            start = client_or_start
+            count = start_or_count
+            client = None
+        else:
+            client = client_or_start
+            start = start_or_count
 
         results: list[int] = []
         for chunk_start, chunk_count in chunk_register_range(start, count, self.effective_batch):
-            block = await self._read_input(client, chunk_start, chunk_count)
+            if client is None:
+                block = await self._read_input(chunk_start, chunk_count)
+            else:
+                block = await self._read_input(client, chunk_start, chunk_count)
             if block is None:
                 return None
             results.extend(block)
@@ -1609,15 +1639,29 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_holding_block(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
-        start: int,
-        count: int,
+        client_or_start: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        start_or_count: int,
+        count: int | None = None,
     ) -> list[int] | None:
         """Read a contiguous holding register block in MAX-sized chunks."""
+        if count is None:
+            start = int(client_or_start)
+            count = start_or_count
+            client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
+        elif isinstance(client_or_start, int):
+            start = client_or_start
+            count = start_or_count
+            client = None
+        else:
+            client = client_or_start
+            start = start_or_count
 
         results: list[int] = []
         for chunk_start, chunk_count in chunk_register_range(start, count, self.effective_batch):
-            block = await self._read_holding(client, chunk_start, chunk_count)
+            if client is None:
+                block = await self._read_holding(chunk_start, chunk_count)
+            else:
+                block = await self._read_holding(client, chunk_start, chunk_count)
             if block is None:
                 return None
             results.extend(block)
@@ -1625,9 +1669,9 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_holding(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
-        address: int,
-        count: int,
+        client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        address_or_count: int,
+        count: int | None = None,
         *,
         skip_cache: bool = False,
     ) -> list[int] | None:
@@ -1638,6 +1682,18 @@ class ThesslaGreenDeviceScanner:
         failed registers are ignored, allowing each register to be queried
         once before being cached again.
         """
+        if count is None:
+            address = int(client_or_address)
+            count = address_or_count
+            client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
+        elif isinstance(client_or_address, int):
+            address = client_or_address
+            count = address_or_count
+            client = None
+        else:
+            client = client_or_address
+            address = address_or_count
+
         start = address
         end = address + count - 1
 
@@ -1660,19 +1716,31 @@ class ThesslaGreenDeviceScanner:
             self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
             return None
 
+        transport = self._transport if client is None else None
+        if client is None and transport is None:
+            raise ConnectionException("Modbus transport is not connected")
+
         for attempt in range(1, self.retry + 1):
             try:
-                response: Any = await _call_modbus(
-                    client.read_holding_registers,
-                    self.slave_id,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                    max_attempts=self.retry,
-                    timeout=self.timeout,
-                    backoff=self.backoff,
-                    backoff_jitter=self.backoff_jitter,
-                )
+                if transport is not None:
+                    response = await transport.read_holding_registers(
+                        self.slave_id,
+                        address,
+                        count=count,
+                        attempt=attempt,
+                    )
+                else:
+                    response = await _call_modbus(
+                        client.read_holding_registers,
+                        self.slave_id,
+                        address,
+                        count=count,
+                        attempt=attempt,
+                        max_attempts=self.retry,
+                        timeout=self.timeout,
+                        backoff=self.backoff,
+                        backoff_jitter=self.backoff_jitter,
+                    )
                 if response is not None:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
@@ -1757,11 +1825,25 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_coil(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
-        address: int,
-        count: int,
+        client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        address_or_count: int,
+        count: int | None = None,
     ) -> list[bool] | None:
         """Read coil registers with retry and backoff."""
+        if count is None:
+            address = int(client_or_address)
+            count = address_or_count
+            client = self._client
+        elif isinstance(client_or_address, int):
+            address = client_or_address
+            count = address_or_count
+            client = self._client
+        else:
+            client = client_or_address
+            address = address_or_count
+
+        if client is None:
+            raise ConnectionException("Modbus client is not connected")
         for attempt in range(1, self.retry + 1):
             try:
                 response: Any = await _call_modbus(
@@ -1830,11 +1912,25 @@ class ThesslaGreenDeviceScanner:
 
     async def _read_discrete(
         self,
-        client: AsyncModbusTcpClient | AsyncModbusSerialClientType,
-        address: int,
-        count: int,
+        client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        address_or_count: int,
+        count: int | None = None,
     ) -> list[bool] | None:
         """Read discrete input registers with retry and backoff."""
+        if count is None:
+            address = int(client_or_address)
+            count = address_or_count
+            client = self._client
+        elif isinstance(client_or_address, int):
+            address = client_or_address
+            count = address_or_count
+            client = self._client
+        else:
+            client = client_or_address
+            address = address_or_count
+
+        if client is None:
+            raise ConnectionException("Modbus client is not connected")
         for attempt in range(1, self.retry + 1):
             try:
                 response: Any = await _call_modbus(

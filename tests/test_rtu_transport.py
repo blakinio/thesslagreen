@@ -63,16 +63,20 @@ async def test_coordinator_uses_rtu_transport_for_read_write():
     )
     coordinator._ensure_connection = AsyncMock()
     coordinator.client = MagicMock(connected=True)
-    coordinator.client.read_input_registers = AsyncMock()
-    coordinator.client.write_registers = AsyncMock()
     response = MagicMock()
     response.isError.return_value = False
     coordinator._transport = AsyncMock()
-    coordinator._transport.call = AsyncMock(return_value=response)
+    coordinator._transport.is_connected.return_value = True
+    coordinator._transport.read_input_registers = AsyncMock(return_value=response)
+    coordinator._transport.write_registers = AsyncMock(return_value=response)
 
-    await coordinator._call_modbus(coordinator.client.read_input_registers, 0, count=1)
+    await coordinator._read_with_retry(
+        coordinator._transport.read_input_registers,
+        0,
+        1,
+        register_type="input",
+    )
     await coordinator.async_write_registers(10, [1])
 
-    funcs = [call.args[0] for call in coordinator._transport.call.await_args_list]
-    assert coordinator.client.read_input_registers in funcs
-    assert coordinator.client.write_registers in funcs
+    coordinator._transport.read_input_registers.assert_awaited()
+    coordinator._transport.write_registers.assert_awaited()

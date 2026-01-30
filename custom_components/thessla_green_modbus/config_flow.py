@@ -26,6 +26,7 @@ from .const import (
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
     CONF_BAUD_RATE,
+    CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
     CONF_ENABLE_DEVICE_SCAN,
@@ -45,6 +46,9 @@ from .const import (
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP,
+    CONNECTION_MODE_TCP_RTU,
     DEFAULT_AIRFLOW_UNIT,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
@@ -72,6 +76,7 @@ from .const import (
 )
 from .errors import CannotConnect, InvalidAuth, is_invalid_auth_error
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from .utils import default_connection_mode, resolve_connection_settings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -194,7 +199,7 @@ async def _run_with_retry(
             return await func()
         except ModbusIOException as exc:
             if _is_request_cancelled_error(exc):
-                raise asyncio.CancelledError from exc
+                raise TimeoutError("Modbus request cancelled") from exc
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -243,7 +248,17 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
     if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         raise vol.Invalid("invalid_transport", path=[CONF_CONNECTION_TYPE])
-    data[CONF_CONNECTION_TYPE] = connection_type
+
+    connection_mode = data.get(CONF_CONNECTION_MODE)
+    normalized_type, resolved_mode = resolve_connection_settings(
+        connection_type, connection_mode, data.get(CONF_PORT, DEFAULT_PORT)
+    )
+    data[CONF_CONNECTION_TYPE] = normalized_type
+    connection_type = normalized_type
+    if connection_type == CONNECTION_TYPE_TCP:
+        data[CONF_CONNECTION_MODE] = resolved_mode
+    else:
+        data.pop(CONF_CONNECTION_MODE, None)
 
     try:
         slave_id = int(data[CONF_SLAVE_ID])
@@ -331,6 +346,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
                 backoff=CONFIG_FLOW_BACKOFF,
                 deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
                 connection_type=connection_type,
+                connection_mode=data.get(CONF_CONNECTION_MODE),
                 serial_port=data.get(CONF_SERIAL_PORT),
                 baud_rate=data.get(CONF_BAUD_RATE),
                 parity=data.get(CONF_PARITY, DEFAULT_PARITY),
@@ -341,6 +357,11 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         )
 
         short_timeout = max(2, min(timeout, 5))
+        if (
+            connection_type == CONNECTION_TYPE_TCP
+            and data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_AUTO
+        ):
+            short_timeout = min(max(timeout, 5), 10) + 2
 
         # Verify connection by reading a few safe registers
         await _run_with_retry(
@@ -450,7 +471,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for ThesslaGreen Modbus."""
 
-    VERSION = 3  # Used by Home Assistant to manage config entry migrations  # pragma: no cover
+    VERSION = 4  # Used by Home Assistant to manage config entry migrations  # pragma: no cover
 
     def __init__(self) -> None:
         """Initialize config flow."""
@@ -480,6 +501,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         host_default = current_values.get(CONF_HOST, "")
         port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
         slave_default = current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
+        connection_mode_default = current_values.get(CONF_CONNECTION_MODE)
+        _, resolved_mode = resolve_connection_settings(
+            connection_default, connection_mode_default, port_default
+        )
+        connection_mode_default = resolved_mode or default_connection_mode(port_default)
         serial_port_default = current_values.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
         baud_default = _option_default(
             "modbus_baud_rate_",
@@ -559,6 +585,30 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 vol.Optional(CONF_PORT, default=port_default): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=65535)
                 ),
+                vol.Optional(
+                    CONF_CONNECTION_MODE,
+                    default=connection_mode_default,
+                    description={
+                        "selector": {
+                            "select": {
+                                "options": [
+                                    {
+                                        "value": CONNECTION_MODE_TCP,
+                                        "label": f"{DOMAIN}.connection_mode_tcp",
+                                    },
+                                    {
+                                        "value": CONNECTION_MODE_TCP_RTU,
+                                        "label": f"{DOMAIN}.connection_mode_tcp_rtu",
+                                    },
+                                    {
+                                        "value": CONNECTION_MODE_AUTO,
+                                        "label": f"{DOMAIN}.connection_mode_auto",
+                                    },
+                                ]
+                            }
+                        }
+                    },
+                ): vol.In({CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_AUTO}),
                 vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=247)
                 ),
@@ -648,17 +698,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             caps_dict = _caps_to_dict(cap_cls())
 
         connection_type = self._data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
+        connection_mode = self._data.get(CONF_CONNECTION_MODE)
+        normalized_type, resolved_mode = resolve_connection_settings(
+            connection_type, connection_mode, self._data.get(CONF_PORT, DEFAULT_PORT)
+        )
         entry_data: dict[str, Any] = {
-            CONF_CONNECTION_TYPE: connection_type,
+            CONF_CONNECTION_TYPE: normalized_type,
             CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],  # Standard key
             "unit": self._data[CONF_SLAVE_ID],  # Legacy compatibility
             CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
             "capabilities": caps_dict,
         }
 
-        if connection_type in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
+        if normalized_type == CONNECTION_TYPE_TCP:
             entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
             entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
+            entry_data[CONF_CONNECTION_MODE] = resolved_mode
         else:
             entry_data[CONF_SERIAL_PORT] = self._data.get(CONF_SERIAL_PORT, "")
             entry_data[CONF_BAUD_RATE] = self._data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
@@ -743,14 +798,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
         connection_type = self._data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        if connection_type == CONNECTION_TYPE_RTU:
+        connection_mode = self._data.get(CONF_CONNECTION_MODE)
+        normalized_type, resolved_mode = resolve_connection_settings(
+            connection_type, connection_mode, self._data.get(CONF_PORT, DEFAULT_PORT)
+        )
+        if normalized_type == CONNECTION_TYPE_RTU:
             connection_label = self._data.get(CONF_SERIAL_PORT, "Unknown") or "Unknown"
             host_value = self._data.get(CONF_HOST, "-")
             port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
             transport_label = translations.get(
                 f"component.{DOMAIN}.connection_type_rtu_label", "Modbus RTU"
             )
-        elif connection_type == CONNECTION_TYPE_TCP_RTU:
+        elif resolved_mode == CONNECTION_MODE_TCP_RTU:
             host_value = self._data.get(CONF_HOST, "Unknown")
             port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
             connection_label = f"{host_value}:{port_value}"
@@ -762,14 +821,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
             connection_label = f"{host_value}:{port_value}"
             transport_label = translations.get(
-                f"component.{DOMAIN}.connection_type_tcp_label", "Modbus TCP"
+                f"component.{DOMAIN}.connection_mode_auto_label", "Modbus TCP (Auto)"
             )
+            if resolved_mode == CONNECTION_MODE_TCP:
+                transport_label = translations.get(
+                    f"component.{DOMAIN}.connection_type_tcp_label", "Modbus TCP"
+                )
 
         description_placeholders = {
             "host": host_value,
             "port": port_value,
             "endpoint": connection_label,
-            "transport": connection_type.upper(),
+            "transport": (resolved_mode or normalized_type).upper(),
             "transport_label": transport_label,
             "slave_id": str(self._data[CONF_SLAVE_ID]),
             "device_name": device_name,
@@ -1007,7 +1070,13 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_log_level = entry_options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
 
         transport = entry_data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        if transport == CONNECTION_TYPE_RTU:
+        connection_mode = entry_options.get(
+            CONF_CONNECTION_MODE, entry_data.get(CONF_CONNECTION_MODE)
+        )
+        normalized_type, resolved_mode = resolve_connection_settings(
+            transport, connection_mode, entry_data.get(CONF_PORT, DEFAULT_PORT)
+        )
+        if normalized_type == CONNECTION_TYPE_RTU:
             transport_label = "Modbus RTU"
             serial_port = entry_data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
             baud = entry_data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
@@ -1018,11 +1087,13 @@ class OptionsFlow(config_entries.OptionsFlow):
                 f"port: {serial_port or 'n/a'}, baud: {baud}, parity: {parity}, "
                 f"stop bits: {stop_bits})"
             )
-        elif transport == CONNECTION_TYPE_TCP_RTU:
+        elif resolved_mode == CONNECTION_MODE_TCP_RTU:
             transport_label = "Modbus TCP RTU"
             transport_details = ""
         else:
             transport_label = "Modbus TCP"
+            if resolved_mode == CONNECTION_MODE_AUTO:
+                transport_label = "Modbus TCP (Auto)"
             transport_details = ""
 
         data_schema = vol.Schema(
@@ -1099,6 +1170,36 @@ class OptionsFlow(config_entries.OptionsFlow):
                 ): int,
             }
         )
+
+        if normalized_type == CONNECTION_TYPE_TCP:
+            data_schema = data_schema.extend(
+                {
+                    vol.Optional(
+                        CONF_CONNECTION_MODE,
+                        default=resolved_mode or default_connection_mode(entry_data.get(CONF_PORT)),
+                        description={
+                            "selector": {
+                                "select": {
+                                    "options": [
+                                        {
+                                            "value": CONNECTION_MODE_TCP,
+                                            "label": f"{DOMAIN}.connection_mode_tcp",
+                                        },
+                                        {
+                                            "value": CONNECTION_MODE_TCP_RTU,
+                                            "label": f"{DOMAIN}.connection_mode_tcp_rtu",
+                                        },
+                                        {
+                                            "value": CONNECTION_MODE_AUTO,
+                                            "label": f"{DOMAIN}.connection_mode_auto",
+                                        },
+                                    ]
+                                }
+                            }
+                        },
+                    ): vol.In({CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_AUTO}),
+                }
+            )
 
         return self.async_show_form(
             step_id="init",
