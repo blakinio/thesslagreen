@@ -84,6 +84,7 @@ from .const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_TCP_RTU,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
@@ -233,7 +234,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.enable_device_scan = DEFAULT_ENABLE_DEVICE_SCAN
 
         conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
-        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
             conn_type = DEFAULT_CONNECTION_TYPE
         self.connection_type = conn_type
         self.serial_port = serial_port or DEFAULT_SERIAL_PORT
@@ -866,6 +867,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         self._transport = TcpModbusTransport(
                             host=self.host,
                             port=self.port,
+                            connection_type=self.connection_type,
                             max_retries=self.retry,
                             base_backoff=self.backoff,
                             max_backoff=DEFAULT_MAX_BACKOFF,

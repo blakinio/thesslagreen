@@ -94,6 +94,7 @@ CONF_STOP_BITS = "stop_bits"
 
 CONNECTION_TYPE_TCP = "tcp"
 CONNECTION_TYPE_RTU = "rtu"
+CONNECTION_TYPE_TCP_RTU = "tcp_rtu"
 DEFAULT_CONNECTION_TYPE = CONNECTION_TYPE_TCP
 
 # Default serial settings mirror the values used by Thessla Green controllers

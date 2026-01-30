@@ -33,18 +33,59 @@ async def async_maybe_await(result: Any) -> Any:
     return result
 
 
-async def async_close_client(client: Any | None) -> None:
+try:  # pragma: no cover - optional dependency for TCP RTU framing
+    from pymodbus.framer import FramerType
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback
+    FramerType = None
+
+try:  # pragma: no cover - optional dependency for TCP RTU framing
+    from pymodbus.framer import ModbusRtuFramer
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback
+    try:  # pragma: no cover - older pymodbus layout
+        from pymodbus.framer.rtu_framer import ModbusRtuFramer
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
+        ModbusRtuFramer = None
+
+
+def get_rtu_framer() -> Any | None:
+    """Return a Modbus RTU framer class/enum when available."""
+
+    if FramerType is not None:
+        try:
+            return FramerType.RTU
+        except (AttributeError, ValueError):  # pragma: no cover - unexpected
+            return None
+    if ModbusRtuFramer is not None:
+        return ModbusRtuFramer
+    return None
+
+
+async def async_maybe_await_close(obj: Any | None) -> None:
     """Close a Modbus client safely across sync/async implementations."""
 
-    if client is None:
+    if obj is None:
+        return
+
+    close = getattr(obj, "close", None)
+    if close is None or not callable(close):
         return
 
     try:
-        result = client.close()
-    except TypeError:
-        result = client.close
+        result = close()
+    except Exception as exc:  # pragma: no cover - defensive
+        _LOGGER.debug("Error calling close on Modbus client: %s", exc)
+        return
 
-    await async_maybe_await(result)
+    try:
+        await async_maybe_await(result)
+    except Exception as exc:  # pragma: no cover - defensive
+        _LOGGER.debug("Error awaiting Modbus client close: %s", exc)
+
+
+async def async_close_client(client: Any | None) -> None:
+    """Backward-compatible wrapper for safe Modbus client close."""
+
+    await async_maybe_await_close(client)
 
 
 def _mask_frame(frame: bytes) -> str:

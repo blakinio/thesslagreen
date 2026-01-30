@@ -27,6 +27,7 @@ from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_TCP_RTU,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_PARITY,
@@ -41,7 +42,12 @@ from .const import (
     UNKNOWN_MODEL,
 )
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_helpers import _call_modbus, async_close_client, chunk_register_range
+from .modbus_helpers import (
+    _call_modbus,
+    async_maybe_await_close,
+    chunk_register_range,
+    get_rtu_framer,
+)
 from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
     MAX_BATCH_REGISTERS,
@@ -119,6 +125,41 @@ def _build_register_maps() -> None:
     DISCRETE_INPUT_REGISTERS.update(
         {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 2}
     )
+
+
+def _create_tcp_client(
+    host: str,
+    port: int,
+    timeout: float,
+    connection_type: str,
+) -> AsyncModbusTcpClient:
+    """Create a TCP Modbus client, optionally using RTU framing."""
+
+    if connection_type == CONNECTION_TYPE_TCP_RTU:
+        framer = get_rtu_framer()
+        if framer is None:
+            message = (
+                "RTU over TCP requires pymodbus with RTU framer support "
+                "(FramerType.RTU or ModbusRtuFramer)."
+            )
+            _LOGGER.error(message)
+            raise ConnectionException(message)
+        try:
+            return AsyncModbusTcpClient(
+                host,
+                port=port,
+                timeout=timeout,
+                framer=framer,
+            )
+        except TypeError as exc:
+            message = (
+                "RTU over TCP is not supported by the installed pymodbus client. "
+                "Please upgrade pymodbus."
+            )
+            _LOGGER.error("%s (%s)", message, exc)
+            raise ConnectionException(message) from exc
+
+    return AsyncModbusTcpClient(host, port=port, timeout=timeout)
 
     MULTI_REGISTER_SIZES.clear()
     MULTI_REGISTER_SIZES.update(
@@ -334,7 +375,7 @@ class ThesslaGreenDeviceScanner:
         self.max_registers_per_request = self.effective_batch
 
         conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
-        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+        if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
             conn_type = DEFAULT_CONNECTION_TYPE
         self.connection_type = conn_type
         self.serial_port = serial_port or DEFAULT_SERIAL_PORT
@@ -489,7 +530,7 @@ class ThesslaGreenDeviceScanner:
             return
 
         try:
-            await async_close_client(client)
+            await async_maybe_await_close(client)
         except (OSError, ConnectionException, ModbusIOException):
             _LOGGER.debug("Error closing Modbus client", exc_info=True)
         finally:
@@ -527,7 +568,19 @@ class ThesslaGreenDeviceScanner:
                 timeout=self.timeout,
             )
         else:
-            client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+            _LOGGER.info(
+                "verify_connection: connecting to %s:%s (mode=%s, timeout=%s)",
+                self.host,
+                self.port,
+                self.connection_type,
+                self.timeout,
+            )
+            client = _create_tcp_client(
+                self.host,
+                self.port,
+                self.timeout,
+                self.connection_type,
+            )
         try:
             connected = await asyncio.wait_for(client.connect(), timeout=self.timeout)
             if not connected:
@@ -546,6 +599,11 @@ class ThesslaGreenDeviceScanner:
 
             for start, count in _group_reads(safe_input, max_block_size=self.effective_batch):
                 try:
+                    _LOGGER.debug(
+                        "verify_connection: read_input_registers start=%s count=%s",
+                        start,
+                        count,
+                    )
                     await _call_modbus(
                         client.read_input_registers,
                         self.slave_id,
@@ -578,6 +636,11 @@ class ThesslaGreenDeviceScanner:
 
             for start, count in _group_reads(safe_holding, max_block_size=self.effective_batch):
                 try:
+                    _LOGGER.debug(
+                        "verify_connection: read_holding_registers start=%s count=%s",
+                        start,
+                        count,
+                    )
                     await _call_modbus(
                         client.read_holding_registers,
                         self.slave_id,
@@ -609,7 +672,7 @@ class ThesslaGreenDeviceScanner:
                     raise ModbusException(f"Error reading holding registers: {exc}") from exc
         finally:
             try:
-                await async_close_client(client)
+                await async_maybe_await_close(client)
             except (OSError, ConnectionException, ModbusIOException, TypeError):
                 _LOGGER.debug("Error closing Modbus client during verify_connection", exc_info=True)
 
@@ -1188,7 +1251,12 @@ class ThesslaGreenDeviceScanner:
                 timeout=self.timeout,
             )
         else:
-            self._client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+            self._client = _create_tcp_client(
+                self.host,
+                self.port,
+                self.timeout,
+                self.connection_type,
+            )
 
         try:
             connected = await asyncio.wait_for(self._client.connect(), timeout=self.timeout)

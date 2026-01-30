@@ -2,8 +2,10 @@
   "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
   "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
   "connection_type_tcp": "Modbus TCP",
+  "connection_type_tcp_rtu": "Modbus TCP RTU",
   "connection_type_rtu": "Modbus RTU",
   "connection_type_tcp_label": "Modbus TCP",
+  "connection_type_tcp_rtu_label": "Modbus TCP RTU",
   "connection_type_rtu_label": "Modbus RTU",
   "log_level_debug": "Debug",
   "log_level_info": "Info",
@@ -71,7 +73,7 @@
           "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
         },
         "data_description": {
-          "connection_type": "Wybierz Modbus TCP (sieć) lub Modbus RTU (port szeregowy)",
+          "connection_type": "Wybierz Modbus TCP (sieć), Modbus TCP RTU (RTU po TCP) lub Modbus RTU (port szeregowy)",
           "host": "Adres IP urządzenia AirPack w lokalnej sieci",
           "name": "Nazwa urządzenia w Home Assistant",
           "port": "Port Modbus TCP (domyślnie 502)",

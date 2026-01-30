@@ -50,6 +50,7 @@ from .const import (
     CONF_TIMEOUT,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_TCP_RTU,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
@@ -157,7 +158,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     # Get configuration - support both new and legacy keys
     connection_type = entry.data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         connection_type = DEFAULT_CONNECTION_TYPE
 
     host = entry.data.get(CONF_HOST, "")
@@ -215,6 +216,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     if connection_type == CONNECTION_TYPE_RTU:
         endpoint = serial_port or "serial"
         transport_label = "Modbus RTU"
+    elif connection_type == CONNECTION_TYPE_TCP_RTU:
+        endpoint = f"{host}:{port}"
+        transport_label = "Modbus TCP RTU"
     else:
         endpoint = f"{host}:{port}"
         transport_label = "Modbus TCP"
