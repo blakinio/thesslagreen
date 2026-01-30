@@ -77,7 +77,8 @@ _LOGGER = logging.getLogger(__name__)
 
 def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
     """Return True when a modbus IO error indicates a cancelled request."""
-    return "request cancelled" in str(exc).lower()
+    message = str(exc).lower()
+    return "request cancelled" in message or "cancelled" in message
 
 ThesslaGreenDeviceScanner: Any | None = None
 DeviceCapabilities: Any | None = None

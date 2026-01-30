@@ -25,6 +25,28 @@ _SIG_CACHE: weakref.WeakKeyDictionary[Callable[..., Awaitable[Any]], inspect.Sig
 )
 
 
+async def async_maybe_await(result: Any) -> Any:
+    """Await a result only if it is awaitable."""
+
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
+async def async_close_client(client: Any | None) -> None:
+    """Close a Modbus client safely across sync/async implementations."""
+
+    if client is None:
+        return
+
+    try:
+        result = client.close()
+    except TypeError:
+        result = client.close
+
+    await async_maybe_await(result)
+
+
 def _mask_frame(frame: bytes) -> str:
     """Return a hex representation of ``frame`` with the slave ID masked."""
 

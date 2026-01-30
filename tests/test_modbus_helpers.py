@@ -27,6 +27,7 @@ from custom_components.thessla_green_modbus.modbus_helpers import (  # noqa: E40
     _KWARG_CACHE,
     _SIG_CACHE,
     _call_modbus,
+    async_close_client,
     group_reads,
 )
 
@@ -109,3 +110,34 @@ async def test_modbus_cache_entries_removed_on_gc():
     assert func_ref() is None
     assert len(_KWARG_CACHE) == 0
     assert len(_SIG_CACHE) == 0
+
+
+async def test_async_close_client_with_sync_close():
+    """Synchronous close should be handled without awaiting."""
+
+    class SyncClient:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+            return None
+
+    client = SyncClient()
+    await async_close_client(client)
+    assert client.closed is True  # nosec B101
+
+
+async def test_async_close_client_with_async_close():
+    """Async close should be awaited."""
+
+    class AsyncClient:
+        def __init__(self):
+            self.closed = False
+
+        async def close(self):
+            self.closed = True
+
+    client = AsyncClient()
+    await async_close_client(client)
+    assert client.closed is True  # nosec B101
