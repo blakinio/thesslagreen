@@ -109,11 +109,10 @@ MULTI_REGISTER_SIZES: dict[str, int] = {}
 REGISTER_HASH: str | None = None
 
 
-def _build_register_maps() -> None:
-    """Populate register lookup maps from current register definitions."""
+def _build_register_maps_from(regs: list[Any], register_hash: str) -> None:
+    """Populate register lookup maps from provided register definitions."""
     global REGISTER_HASH
-    regs = get_all_registers()
-    REGISTER_HASH = registers_sha256(get_registers_path())
+    REGISTER_HASH = register_hash
 
     REGISTER_DEFINITIONS.clear()
     REGISTER_DEFINITIONS.update({r.name: r for r in regs})
@@ -148,6 +147,13 @@ def _build_register_maps() -> None:
     )
 
 
+def _build_register_maps() -> None:
+    """Populate register lookup maps from current register definitions."""
+    regs = get_all_registers()
+    register_hash = registers_sha256(get_registers_path())
+    _build_register_maps_from(regs, register_hash)
+
+
 # Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
@@ -156,9 +162,17 @@ def _ensure_register_maps() -> None:
         _build_register_maps()
 
 
-async def async_ensure_register_maps() -> None:
+async def _async_ensure_register_maps(hass: Any | None) -> None:
     """Ensure register lookup maps are populated without blocking the event loop."""
-    await asyncio.to_thread(_ensure_register_maps)
+    register_hash = await async_registers_sha256(hass, get_registers_path())
+    if not REGISTER_DEFINITIONS or register_hash != REGISTER_HASH:
+        regs = await async_get_all_registers(hass)
+        _build_register_maps_from(regs, register_hash)
+
+
+async def async_ensure_register_maps(hass: Any | None = None) -> None:
+    """Ensure register lookup maps are populated without blocking the event loop."""
+    await _async_ensure_register_maps(hass)
 
 
 @dataclass(slots=True)
@@ -311,6 +325,7 @@ class ThesslaGreenDeviceScanner:
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
         *,
+        hass: Any | None = None,
         registers_ready: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names.
@@ -496,7 +511,7 @@ class ThesslaGreenDeviceScanner:
         hass: Any | None = None,
     ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
-        await async_ensure_register_maps()
+        await async_ensure_register_maps(hass)
         self = cls(
             host,
             port,
@@ -518,6 +533,7 @@ class ThesslaGreenDeviceScanner:
             baud_rate,
             parity,
             stop_bits,
+            hass=hass,
             registers_ready=True,
         )
         await self._async_setup()
@@ -623,12 +639,15 @@ class ThesslaGreenDeviceScanner:
                 )
             )
         elif self.connection_mode == CONNECTION_MODE_AUTO:
+            rtu_timeout = min(max(self.timeout, 2.0), 5.0)
             attempts.extend(
                 [
                     (
                         CONNECTION_MODE_TCP_RTU,
-                        self._build_tcp_transport(CONNECTION_MODE_TCP_RTU, timeout_override=2.0),
-                        2.0,
+                        self._build_tcp_transport(
+                            CONNECTION_MODE_TCP_RTU, timeout_override=rtu_timeout
+                        ),
+                        rtu_timeout,
                     ),
                     (
                         CONNECTION_MODE_TCP,
@@ -688,7 +707,7 @@ class ThesslaGreenDeviceScanner:
                 last_error = exc
                 if _is_request_cancelled_error(exc):
                     _LOGGER.info("Modbus request cancelled during verify_connection.")
-                    raise asyncio.CancelledError() from exc
+                    raise TimeoutError("Modbus request cancelled") from exc
             except asyncio.TimeoutError as exc:
                 last_error = exc
                 _LOGGER.warning("Timeout during verify_connection: %s", exc)
