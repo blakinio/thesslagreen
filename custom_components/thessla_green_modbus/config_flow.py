@@ -399,8 +399,11 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc
     except asyncio.CancelledError as exc:
-        _LOGGER.info("Modbus request cancelled during device validation.")
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        cause = exc.__cause__
+        if isinstance(cause, ModbusIOException) and _is_request_cancelled_error(cause):
+            _LOGGER.info("Modbus request cancelled during device validation.")
+            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+            raise CannotConnect("timeout") from cause
         raise
     except ModbusIOException as exc:
         if _is_request_cancelled_error(exc):
