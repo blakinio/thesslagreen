@@ -17,8 +17,14 @@ except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
 else:  # pragma: no cover - executed when serial client available
     SERIAL_IMPORT_ERROR = None
 
+from .const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_helpers import _calculate_backoff_delay, _call_modbus, async_close_client
+from .modbus_helpers import (
+    _calculate_backoff_delay,
+    _call_modbus,
+    async_maybe_await_close,
+    get_rtu_framer,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -171,6 +177,7 @@ class TcpModbusTransport(BaseModbusTransport):
         *,
         host: str,
         port: int,
+        connection_type: str = CONNECTION_TYPE_TCP,
         max_retries: int,
         base_backoff: float,
         max_backoff: float,
@@ -186,13 +193,50 @@ class TcpModbusTransport(BaseModbusTransport):
         )
         self.host = host
         self.port = port
+        self.connection_type = connection_type
         self.client: AsyncModbusTcpClient | None = None
 
     def _is_connected(self) -> bool:
         return bool(self.client and getattr(self.client, "connected", False))
 
     async def _connect(self) -> None:
-        self.client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
+        if self.connection_type == CONNECTION_TYPE_TCP_RTU:
+            framer = get_rtu_framer()
+            if framer is None:
+                message = (
+                    "RTU over TCP requires pymodbus with RTU framer support "
+                    "(FramerType.RTU or ModbusRtuFramer)."
+                )
+                _LOGGER.error(message)
+                raise ConnectionException(message)
+            _LOGGER.info(
+                "Connecting Modbus TCP RTU to %s:%s (timeout=%s)",
+                self.host,
+                self.port,
+                self.timeout,
+            )
+            try:
+                self.client = AsyncModbusTcpClient(
+                    self.host,
+                    port=self.port,
+                    timeout=self.timeout,
+                    framer=framer,
+                )
+            except TypeError as exc:
+                message = (
+                    "RTU over TCP is not supported by the installed pymodbus client. "
+                    "Please upgrade pymodbus."
+                )
+                _LOGGER.error("%s (%s)", message, exc)
+                raise ConnectionException(message) from exc
+        else:
+            _LOGGER.info(
+                "Connecting Modbus TCP to %s:%s (timeout=%s)",
+                self.host,
+                self.port,
+                self.timeout,
+            )
+            self.client = AsyncModbusTcpClient(self.host, port=self.port, timeout=self.timeout)
         connected = await self.client.connect()
         if not connected:
             self.offline_state = True
@@ -204,7 +248,7 @@ class TcpModbusTransport(BaseModbusTransport):
         if self.client is None:
             return
         try:
-            await async_close_client(self.client)
+            await async_maybe_await_close(self.client)
         finally:
             self.client = None
 
@@ -268,6 +312,6 @@ class RtuModbusTransport(BaseModbusTransport):
         if self.client is None:
             return
         try:
-            await async_close_client(self.client)
+            await async_maybe_await_close(self.client)
         finally:
             self.client = None

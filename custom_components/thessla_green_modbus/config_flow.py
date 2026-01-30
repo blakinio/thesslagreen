@@ -44,6 +44,7 @@ from .const import (
     CONF_TIMEOUT,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_TCP_RTU,
     DEFAULT_AIRFLOW_UNIT,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
@@ -240,7 +241,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     """Validate the user input allows us to connect."""
 
     connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         raise vol.Invalid("invalid_transport", path=[CONF_CONNECTION_TYPE])
     data[CONF_CONNECTION_TYPE] = connection_type
 
@@ -264,7 +265,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     except (TypeError, ValueError) as exc:
         raise vol.Invalid("invalid_port", path=[CONF_PORT]) from exc
 
-    if connection_type == CONNECTION_TYPE_TCP:
+    if connection_type in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
         if not host:
             raise vol.Invalid("missing_host", path=[CONF_HOST])
         data[CONF_HOST] = host
@@ -542,6 +543,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                                         "label": f"{DOMAIN}.connection_type_tcp",
                                     },
                                     {
+                                        "value": CONNECTION_TYPE_TCP_RTU,
+                                        "label": f"{DOMAIN}.connection_type_tcp_rtu",
+                                    },
+                                    {
                                         "value": CONNECTION_TYPE_RTU,
                                         "label": f"{DOMAIN}.connection_type_rtu",
                                     },
@@ -549,7 +554,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                             }
                         }
                     },
-                ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU}),
+                ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
                 vol.Optional(CONF_HOST, default=host_default): str,
                 vol.Optional(CONF_PORT, default=port_default): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=65535)
@@ -651,7 +656,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             "capabilities": caps_dict,
         }
 
-        if connection_type == CONNECTION_TYPE_TCP:
+        if connection_type in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
             entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
             entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
         else:
@@ -744,6 +749,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
             transport_label = translations.get(
                 f"component.{DOMAIN}.connection_type_rtu_label", "Modbus RTU"
+            )
+        elif connection_type == CONNECTION_TYPE_TCP_RTU:
+            host_value = self._data.get(CONF_HOST, "Unknown")
+            port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
+            connection_label = f"{host_value}:{port_value}"
+            transport_label = translations.get(
+                f"component.{DOMAIN}.connection_type_tcp_rtu_label", "Modbus TCP RTU"
             )
         else:
             host_value = self._data.get(CONF_HOST, "Unknown")
@@ -1006,6 +1018,9 @@ class OptionsFlow(config_entries.OptionsFlow):
                 f"port: {serial_port or 'n/a'}, baud: {baud}, parity: {parity}, "
                 f"stop bits: {stop_bits})"
             )
+        elif transport == CONNECTION_TYPE_TCP_RTU:
+            transport_label = "Modbus TCP RTU"
+            transport_details = ""
         else:
             transport_label = "Modbus TCP"
             transport_details = ""

@@ -64,6 +64,28 @@ async def test_verify_connection_close_non_awaitable_on_failure():
     fake_client.close.assert_called_once()
 
 
+async def test_verify_connection_close_non_awaitable_on_success():
+    """Verify close() handles non-awaitable result on success."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    fake_client = MagicMock()
+    fake_client.connect = AsyncMock(return_value=True)
+    fake_client.close = MagicMock(return_value=None)
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner_core.AsyncModbusTcpClient",
+            return_value=fake_client,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            AsyncMock(),
+        ),
+    ):
+        await scanner.verify_connection()
+
+    fake_client.close.assert_called_once()
+
+
 async def test_create_binds_read_helpers():
     """Scanner.create binds read helper methods to the instance."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
