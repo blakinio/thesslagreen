@@ -190,7 +190,19 @@ async def _run_with_retry(
     for attempt in range(1, retries + 1):
         try:
             return await func()
-        except (TimeoutError, ConnectionException, ModbusIOException, ModbusException, OSError):
+        except ModbusIOException as exc:
+            if _is_request_cancelled_error(exc):
+                raise asyncio.CancelledError from exc
+            if attempt >= retries:
+                raise
+            delay = backoff * 2 ** (attempt - 1)
+            if delay:
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError:
+                    _LOGGER.info("Retry sleep cancelled")
+                    raise
+        except (TimeoutError, ConnectionException, ModbusException, OSError):
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -386,6 +398,10 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.error("Connection error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc
+    except asyncio.CancelledError as exc:
+        _LOGGER.info("Modbus request cancelled during device validation.")
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        raise
     except ModbusIOException as exc:
         if _is_request_cancelled_error(exc):
             _LOGGER.info("Modbus request cancelled during device validation.")
