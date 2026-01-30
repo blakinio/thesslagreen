@@ -10,8 +10,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import get_all_registers, get_registers_path, registers_sha256
+    from .registers.loader import (
+        async_get_all_registers,
+        async_registers_sha256,
+        get_all_registers,
+        get_registers_path,
+        registers_sha256,
+    )
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+
+    async def async_get_all_registers(*_args, **_kwargs):
+        return []
+
+    async def async_registers_sha256(*_args, **_kwargs) -> str:
+        return ""
 
     def get_all_registers(*_args, **_kwargs):
         return []
@@ -142,6 +154,53 @@ def _ensure_register_maps() -> None:
     current_hash = registers_sha256(get_registers_path())
     if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
         _build_register_maps()
+
+
+async def _async_build_register_maps(hass: Any | None) -> None:
+    """Populate register lookup maps from current register definitions asynchronously."""
+    global REGISTER_HASH
+    regs = await async_get_all_registers(hass)
+    REGISTER_HASH = await async_registers_sha256(hass, get_registers_path())
+
+    REGISTER_DEFINITIONS.clear()
+    REGISTER_DEFINITIONS.update({r.name: r for r in regs})
+
+    INPUT_REGISTERS.clear()
+    INPUT_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 4}
+    )
+
+    HOLDING_REGISTERS.clear()
+    HOLDING_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 3}
+    )
+
+    COIL_REGISTERS.clear()
+    COIL_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 1}
+    )
+
+    DISCRETE_INPUT_REGISTERS.clear()
+    DISCRETE_INPUT_REGISTERS.update(
+        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 2}
+    )
+
+    MULTI_REGISTER_SIZES.clear()
+    MULTI_REGISTER_SIZES.update(
+        {
+            name: reg.length
+            for name, reg in REGISTER_DEFINITIONS.items()
+            if reg.function == 3 and reg.length > 1
+        }
+    )
+
+
+async def _async_ensure_register_maps(hass: Any | None) -> None:
+    """Ensure register lookup maps are populated asynchronously."""
+
+    current_hash = await async_registers_sha256(hass, get_registers_path())
+    if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
+        await _async_build_register_maps(hass)
 
 
 @dataclass(slots=True)
@@ -293,13 +352,13 @@ class ThesslaGreenDeviceScanner:
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
+        hass: Any | None = None,
     ) -> None:
         """Initialize device scanner with consistent parameter names.
 
         ``max_registers_per_request`` is clamped to the safe Modbus range of
         1-16 registers per request.
         """
-        _ensure_register_maps()
         self.host = host
         self.port = port
         self.slave_id = slave_id
@@ -363,6 +422,7 @@ class ThesslaGreenDeviceScanner:
         )
         if self.stop_bits not in (1, 2):
             self.stop_bits = DEFAULT_STOP_BITS
+        self._hass = hass
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -421,6 +481,11 @@ class ThesslaGreenDeviceScanner:
 
         # Pre-compute addresses of known missing registers for batch grouping
         self._known_missing_addresses: set[int] = set()
+
+    def _update_known_missing_addresses(self) -> None:
+        """Populate cached missing register addresses from known missing list."""
+
+        self._known_missing_addresses.clear()
         for reg_type, names in KNOWN_MISSING_REGISTERS.items():
             mapping = {
                 "input_registers": INPUT_REGISTERS,
@@ -436,7 +501,10 @@ class ThesslaGreenDeviceScanner:
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
+
+        await _async_ensure_register_maps(self._hass)
         self._registers, self._register_ranges = await self._load_registers()
+        self._update_known_missing_addresses()
 
     @classmethod
     async def create(
@@ -461,6 +529,7 @@ class ThesslaGreenDeviceScanner:
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
+        hass: Any | None = None,
     ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
         self = cls(
@@ -484,6 +553,7 @@ class ThesslaGreenDeviceScanner:
             baud_rate,
             parity,
             stop_bits,
+            hass,
         )
         await self._async_setup()
 
@@ -647,11 +717,13 @@ class ThesslaGreenDeviceScanner:
                 if mode is not None:
                     self._resolved_connection_mode = mode
                 return
+            except asyncio.CancelledError:
+                raise
             except ModbusIOException as exc:
                 last_error = exc
                 if _is_request_cancelled_error(exc):
                     _LOGGER.info("Modbus request cancelled during verify_connection.")
-                    raise TimeoutError("Modbus request cancelled") from exc
+                    raise asyncio.CancelledError() from exc
             except asyncio.TimeoutError as exc:
                 last_error = exc
                 _LOGGER.warning("Timeout during verify_connection: %s", exc)
@@ -1262,7 +1334,7 @@ class ThesslaGreenDeviceScanner:
         """Load Modbus register definitions and value ranges."""
         register_map: dict[int, dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
         register_ranges: dict[str, tuple[int | None, int | None]] = {}
-        for reg in get_all_registers():
+        for reg in await async_get_all_registers(self._hass):
             if not reg.name:
                 continue
             register_map[reg.function][reg.address] = reg.name

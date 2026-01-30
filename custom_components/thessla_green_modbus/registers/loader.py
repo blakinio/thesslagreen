@@ -15,6 +15,7 @@ reads.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import importlib.resources as resources
 import json
@@ -61,6 +62,28 @@ def _compute_file_hash(path: Path, mtime: float) -> str:
     """Return SHA256 digest for ``path`` and update the cache."""
 
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    _cached_file_info[str(path)] = (mtime, digest)
+    return digest
+
+
+async def _async_executor(
+    hass: Any | None,
+    func: Any,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """Run ``func`` in the executor or background thread."""
+
+    if hass is not None:
+        return await hass.async_add_executor_job(func, *args, **kwargs)
+    return await asyncio.to_thread(func, *args, **kwargs)
+
+
+async def async_compute_file_hash(hass: Any | None, path: Path, mtime: float) -> str:
+    """Return SHA256 digest for ``path`` and update the cache asynchronously."""
+
+    data = await _async_executor(hass, path.read_bytes)
+    digest = hashlib.sha256(data).hexdigest()
     _cached_file_info[str(path)] = (mtime, digest)
     return digest
 
@@ -367,20 +390,8 @@ except Exception as err:  # pragma: no cover - unexpected
 # ---------------------------------------------------------------------------
 
 
-def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> list[RegisterDef]:
-    """Load register definitions from ``path``.
-
-    ``mtime`` and ``file_hash`` are accepted for backwards compatibility with
-    tests that spy on cache behaviour.  They do not influence the parsing
-    directly; caching is handled in ``load_registers`` using these values.
-    """
-
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as err:  # pragma: no cover - sanity check
-        raise RuntimeError(f"Register definition file missing: {path}") from err
-    except Exception as err:  # pragma: no cover - defensive
-        raise RuntimeError(f"Failed to read register definitions from {path}") from err
+def _parse_registers(raw: Any) -> list[RegisterDef]:
+    """Parse raw register definition data into RegisterDef objects."""
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
@@ -446,6 +457,40 @@ def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> li
     return registers
 
 
+def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> list[RegisterDef]:
+    """Load register definitions from ``path``.
+
+    ``mtime`` and ``file_hash`` are accepted for backwards compatibility with
+    tests that spy on cache behaviour.  They do not influence the parsing
+    directly; caching is handled in ``load_registers`` using these values.
+    """
+
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as err:  # pragma: no cover - sanity check
+        raise RuntimeError(f"Register definition file missing: {path}") from err
+    except Exception as err:  # pragma: no cover - defensive
+        raise RuntimeError(f"Failed to read register definitions from {path}") from err
+
+    return _parse_registers(raw)
+
+
+async def async_load_registers_from_file(
+    hass: Any | None, path: Path, *, mtime: float, file_hash: str
+) -> list[RegisterDef]:
+    """Load register definitions from ``path`` asynchronously."""
+
+    try:
+        raw_text = await _async_executor(hass, path.read_text, encoding="utf-8")
+        raw = json.loads(raw_text)
+    except FileNotFoundError as err:  # pragma: no cover - sanity check
+        raise RuntimeError(f"Register definition file missing: {path}") from err
+    except Exception as err:  # pragma: no cover - defensive
+        raise RuntimeError(f"Failed to read register definitions from {path}") from err
+
+    return _parse_registers(raw)
+
+
 def registers_sha256(json_path: Path | str) -> str:
     """Return the SHA256 hash of ``json_path``.
 
@@ -461,6 +506,19 @@ def registers_sha256(json_path: Path | str) -> str:
         return cached[1]
 
     return _compute_file_hash(path, mtime)
+
+
+async def async_registers_sha256(hass: Any | None, json_path: Path | str) -> str:
+    """Return the SHA256 hash of ``json_path`` asynchronously."""
+
+    path = Path(json_path)
+    mtime = path.stat().st_mtime
+    path_str = str(path)
+    cached = _cached_file_info.get(path_str)
+    if cached and cached[0] == mtime:
+        return cached[1]
+
+    return await async_compute_file_hash(hass, path, mtime)
 
 
 def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
@@ -481,6 +539,22 @@ def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     regs = _register_cache.get(key)
     if regs is None:
         regs = _load_registers_from_file(path, mtime=mtime, file_hash=file_hash)
+        _register_cache[key] = regs
+    return regs
+
+
+async def async_load_registers(
+    hass: Any | None, json_path: Path | str | None = None
+) -> list[RegisterDef]:
+    """Return cached register definitions asynchronously."""
+
+    path = Path(json_path) if json_path is not None else _REGISTERS_PATH
+    file_hash = await async_registers_sha256(hass, path)
+    mtime = _cached_file_info[str(path)][0]
+    key = (file_hash, mtime)
+    regs = _register_cache.get(key)
+    if regs is None:
+        regs = await async_load_registers_from_file(hass, path, mtime=mtime, file_hash=file_hash)
         _register_cache[key] = regs
     return regs
 
@@ -506,10 +580,28 @@ def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     return sorted(load_registers(json_path), key=lambda r: (r.function, r.address))
 
 
+async def async_get_all_registers(
+    hass: Any | None, json_path: Path | str | None = None
+) -> list[RegisterDef]:
+    """Return all known registers asynchronously."""
+
+    regs = await async_load_registers(hass, json_path)
+    return sorted(regs, key=lambda r: (r.function, r.address))
+
+
 def get_registers_by_function(fn: str, json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return registers for the given function code or name."""
     code = _normalise_function(fn)
     return [r for r in load_registers(json_path) if r.function == code]
+
+
+async def async_get_registers_by_function(
+    hass: Any | None, fn: str, json_path: Path | str | None = None
+) -> list[RegisterDef]:
+    """Return registers for the given function code or name asynchronously."""
+
+    code = _normalise_function(fn)
+    return [r for r in await async_load_registers(hass, json_path) if r.function == code]
 
 
 @lru_cache(maxsize=1)
@@ -571,6 +663,12 @@ __all__ = [
     "RegisterDef",
     "ReadPlan",
     "_REGISTERS_PATH",
+    "async_compute_file_hash",
+    "async_get_all_registers",
+    "async_get_registers_by_function",
+    "async_load_registers",
+    "async_load_registers_from_file",
+    "async_registers_sha256",
     "clear_cache",
     "get_all_registers",
     "get_register_definition",

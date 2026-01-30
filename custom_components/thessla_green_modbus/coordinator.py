@@ -567,6 +567,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         baud_rate=self.baud_rate,
                         parity=self.parity,
                         stop_bits=self.stop_bits,
+                        hass=self.hass,
                     )
 
                     self.device_scan_result = await scanner.scan_device()

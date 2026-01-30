@@ -291,14 +291,15 @@ async def _call_modbus(
             return await func(*positional, unit=slave_id, **kwargs)
         return await func(*positional, **kwargs)
 
+    _ = timeout
     try:
-        if timeout is not None:
-            response = await asyncio.wait_for(_invoke(), timeout=timeout)
-        else:
-            response = await _invoke()
+        response = await _invoke()
     except asyncio.CancelledError:
         _LOGGER.debug("Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts)
         raise
+    except TimeoutError as err:
+        _LOGGER.debug("Call to %s timed out on attempt %s/%s", func_name, attempt, max_attempts)
+        raise TimeoutError("Modbus request timed out") from err
     except Exception as err:
         if isinstance(err, ModbusIOException) and "request cancelled" in str(err).lower():
             _LOGGER.debug(

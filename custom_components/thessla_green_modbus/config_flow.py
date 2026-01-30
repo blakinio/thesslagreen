@@ -197,9 +197,11 @@ async def _run_with_retry(
     for attempt in range(1, retries + 1):
         try:
             return await func()
+        except asyncio.CancelledError:
+            raise
         except ModbusIOException as exc:
             if _is_request_cancelled_error(exc):
-                raise TimeoutError("Modbus request cancelled") from exc
+                raise asyncio.CancelledError() from exc
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -351,6 +353,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
                 baud_rate=data.get(CONF_BAUD_RATE),
                 parity=data.get(CONF_PARITY, DEFAULT_PARITY),
                 stop_bits=data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS),
+                hass=hass,
             ),
             retries=DEFAULT_RETRY,
             backoff=CONFIG_FLOW_BACKOFF,
@@ -421,12 +424,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.error("Connection error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc
-    except asyncio.CancelledError as exc:
-        cause = exc.__cause__
-        if isinstance(cause, ModbusIOException) and _is_request_cancelled_error(cause):
-            _LOGGER.info("Modbus request cancelled during device validation.")
-            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-            raise CannotConnect("timeout") from cause
+    except asyncio.CancelledError:
         raise
     except ModbusIOException as exc:
         if _is_request_cancelled_error(exc):
