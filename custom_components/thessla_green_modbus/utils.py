@@ -183,14 +183,16 @@ def resolve_connection_settings(
     """Resolve connection type/mode with legacy handling and defaults."""
 
     conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
-    if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
-        conn_type = DEFAULT_CONNECTION_TYPE
-
     if conn_type == CONNECTION_TYPE_RTU:
-        return conn_type, None
+        return CONNECTION_TYPE_RTU, None
 
     if conn_type == CONNECTION_TYPE_TCP_RTU:
-        return CONNECTION_TYPE_TCP, CONNECTION_MODE_TCP_RTU
+        conn_type = CONNECTION_TYPE_TCP
+        if connection_mode is None:
+            connection_mode = CONNECTION_MODE_TCP_RTU
+
+    if conn_type != CONNECTION_TYPE_TCP:
+        conn_type = DEFAULT_CONNECTION_TYPE
 
     if connection_mode in (CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_AUTO):
         return CONNECTION_TYPE_TCP, connection_mode

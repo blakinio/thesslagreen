@@ -87,7 +87,6 @@ from .const import (
     CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_TCP_RTU,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
@@ -97,6 +96,7 @@ from .const import (
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
+    DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SERIAL_PORT,
     DEFAULT_STOP_BITS,
@@ -927,10 +927,15 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._transport = self._build_tcp_transport(self._resolved_connection_mode)
             return
 
-        attempts: list[tuple[str, float]] = [
-            (CONNECTION_MODE_TCP_RTU, 2.0),
-            (CONNECTION_MODE_TCP, min(max(self.timeout, 5.0), 10.0)),
+        prefer_tcp = self.port == DEFAULT_PORT
+        mode_order = [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU] if prefer_tcp else [
+            CONNECTION_MODE_TCP_RTU,
+            CONNECTION_MODE_TCP,
         ]
+        attempts: list[tuple[str, float]] = []
+        for mode in mode_order:
+            timeout = 2.0 if mode == CONNECTION_MODE_TCP_RTU else min(max(self.timeout, 5.0), 10.0)
+            attempts.append((mode, timeout))
         last_error: Exception | None = None
         for mode, timeout in attempts:
             transport = self._build_tcp_transport(mode)
@@ -942,6 +947,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 continue
             self._transport = transport
             self._resolved_connection_mode = mode
+            _LOGGER.info(
+                "Auto-selected Modbus transport %s for %s:%s", mode, self.host, self.port
+            )
             return
 
         raise ConnectionException("Auto-detect Modbus transport failed") from last_error
