@@ -11,6 +11,7 @@ from collections.abc import Awaitable, Callable, Iterable
 from typing import Any
 
 from . import const
+from .modbus_exceptions import ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -232,8 +233,16 @@ async def _call_modbus(
             response = await asyncio.wait_for(_invoke(), timeout=timeout)
         else:
             response = await _invoke()
-    except Exception:
-        _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
+    except asyncio.CancelledError:
+        _LOGGER.debug("Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts)
+        raise
+    except Exception as err:
+        if isinstance(err, ModbusIOException) and "request cancelled" in str(err).lower():
+            _LOGGER.debug(
+                "Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts
+            )
+        else:
+            _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
         raise
 
     if _LOGGER.isEnabledFor(logging.DEBUG):
