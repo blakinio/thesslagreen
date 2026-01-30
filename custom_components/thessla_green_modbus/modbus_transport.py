@@ -292,9 +292,32 @@ class TcpModbusTransport(BaseModbusTransport):
     def _is_connected(self) -> bool:
         return bool(self.client and getattr(self.client, "connected", False))
 
-    async def _connect(self) -> None:
+    def _build_tcp_client(self, *, framer: Any | None = None) -> AsyncModbusTcpClient:
         from pymodbus.client import AsyncModbusTcpClient as AsyncTcpClient
 
+        common_kwargs: dict[str, Any] = {
+            "port": self.port,
+            "timeout": self.timeout,
+            "reconnect_delay": 1,
+            "reconnect_delay_max": 300,
+            "retries": self.max_retries,
+        }
+        if framer is not None:
+            common_kwargs["framer"] = framer
+
+        try:
+            return AsyncTcpClient(self.host, **common_kwargs)
+        except TypeError as exc:
+            _LOGGER.debug(
+                "AsyncModbusTcpClient does not accept reconnect parameters: %s",
+                exc,
+            )
+            fallback_kwargs = {k: v for k, v in common_kwargs.items() if k in {"port", "timeout"}}
+            if framer is not None:
+                fallback_kwargs["framer"] = framer
+            return AsyncTcpClient(self.host, **fallback_kwargs)
+
+    async def _connect(self) -> None:
         if self.connection_type == CONNECTION_TYPE_TCP_RTU:
             framer = get_rtu_framer()
             if framer is None:
@@ -311,12 +334,7 @@ class TcpModbusTransport(BaseModbusTransport):
                 self.timeout,
             )
             try:
-                self.client = AsyncTcpClient(
-                    self.host,
-                    port=self.port,
-                    timeout=self.timeout,
-                    framer=framer,
-                )
+                self.client = self._build_tcp_client(framer=framer)
             except TypeError as exc:
                 message = (
                     "RTU over TCP is not supported by the installed pymodbus client. "
@@ -331,7 +349,7 @@ class TcpModbusTransport(BaseModbusTransport):
                 self.port,
                 self.timeout,
             )
-            self.client = AsyncTcpClient(self.host, port=self.port, timeout=self.timeout)
+            self.client = self._build_tcp_client()
         connected = await self.client.connect()
         if not connected:
             self.offline_state = True

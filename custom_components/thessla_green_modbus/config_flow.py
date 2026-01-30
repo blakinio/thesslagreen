@@ -93,6 +93,34 @@ DeviceCapabilities: Any | None = None
 CONFIG_FLOW_BACKOFF = 0.1
 
 
+def _connection_mode_selector_options() -> list[dict[str, str]]:
+    """Return unique selector options for connection mode selection."""
+
+    options = [
+        {
+            "value": CONNECTION_MODE_AUTO,
+            "label": f"{DOMAIN}.connection_mode_auto",
+        },
+        {
+            "value": CONNECTION_MODE_TCP_RTU,
+            "label": f"{DOMAIN}.connection_mode_tcp_rtu",
+        },
+        {
+            "value": CONNECTION_MODE_TCP,
+            "label": f"{DOMAIN}.connection_mode_tcp",
+        },
+    ]
+    seen: set[str] = set()
+    unique_options: list[dict[str, str]] = []
+    for option in options:
+        value = option["value"]
+        if value in seen:
+            continue
+        seen.add(value)
+        unique_options.append(option)
+    return unique_options
+
+
 def _strip_translation_prefix(value: str) -> str:
     """Remove integration/domain prefixes from option strings."""
 
@@ -613,20 +641,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                         description={
                             "selector": {
                                 "select": {
-                                    "options": [
-                                        {
-                                            "value": CONNECTION_MODE_AUTO,
-                                            "label": f"{DOMAIN}.connection_mode_auto",
-                                        },
-                                        {
-                                            "value": CONNECTION_MODE_TCP_RTU,
-                                            "label": f"{DOMAIN}.connection_mode_tcp_rtu",
-                                        },
-                                        {
-                                            "value": CONNECTION_MODE_TCP,
-                                            "label": f"{DOMAIN}.connection_mode_tcp",
-                                        },
-                                    ]
+                                    "options": _connection_mode_selector_options()
                                 }
                             }
                         },
@@ -1181,20 +1196,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                         description={
                             "selector": {
                                 "select": {
-                                    "options": [
-                                        {
-                                            "value": CONNECTION_MODE_TCP,
-                                            "label": f"{DOMAIN}.connection_mode_tcp",
-                                        },
-                                        {
-                                            "value": CONNECTION_MODE_TCP_RTU,
-                                            "label": f"{DOMAIN}.connection_mode_tcp_rtu",
-                                        },
-                                        {
-                                            "value": CONNECTION_MODE_AUTO,
-                                            "label": f"{DOMAIN}.connection_mode_auto",
-                                        },
-                                    ]
+                                    "options": _connection_mode_selector_options()
                                 }
                             }
                         },
