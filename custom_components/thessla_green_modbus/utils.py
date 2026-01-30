@@ -5,6 +5,17 @@ from __future__ import annotations
 import re
 from datetime import time
 
+from .const import (
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP,
+    CONNECTION_MODE_TCP_RTU,
+    CONNECTION_TYPE_RTU,
+    CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_TCP_RTU,
+    DEFAULT_CONNECTION_TYPE,
+    DEFAULT_PORT,
+)
+
 __all__ = [
     "_to_snake_case",
     "_normalise_name",
@@ -13,11 +24,13 @@ __all__ = [
     "_decode_aatt",
     "BCD_TIME_PREFIXES",
     "TIME_REGISTER_PREFIXES",
+    "default_connection_mode",
     "decode_int16",
     "decode_temp_01c",
     "decode_bcd_time",
     "decode_aatt",
     "encode_bcd_time",
+    "resolve_connection_settings",
 ]
 
 
@@ -155,6 +168,41 @@ def decode_aatt(value: int) -> dict[str, float | int] | None:
     """Decode airflow percentage and temperature encoded as ``AATT``."""
 
     return _decode_aatt(value)
+
+
+def default_connection_mode(port: int | None) -> str:
+    """Return the default TCP connection mode based on the port heuristic."""
+
+    try:
+        port_value = int(port) if port is not None else DEFAULT_PORT
+    except (TypeError, ValueError):
+        port_value = DEFAULT_PORT
+    if port_value != DEFAULT_PORT:
+        return CONNECTION_MODE_TCP_RTU
+    return CONNECTION_MODE_TCP
+
+
+def resolve_connection_settings(
+    connection_type: str | None,
+    connection_mode: str | None,
+    port: int | None,
+) -> tuple[str, str | None]:
+    """Resolve connection type/mode with legacy handling and defaults."""
+
+    conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
+    if conn_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
+        conn_type = DEFAULT_CONNECTION_TYPE
+
+    if conn_type == CONNECTION_TYPE_RTU:
+        return conn_type, None
+
+    if conn_type == CONNECTION_TYPE_TCP_RTU:
+        return CONNECTION_TYPE_TCP, CONNECTION_MODE_TCP_RTU
+
+    if connection_mode in (CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_AUTO):
+        return CONNECTION_TYPE_TCP, connection_mode
+
+    return CONNECTION_TYPE_TCP, default_connection_mode(port)
 
 
 # Registers storing times as BCD HHMM values

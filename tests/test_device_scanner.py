@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP, SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -50,40 +50,32 @@ async def test_scanner_core_initialization():
 async def test_verify_connection_close_non_awaitable_on_failure():
     """Verify close() handles non-awaitable result on connection failure."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
-    fake_client = MagicMock()
-    fake_client.connect = AsyncMock(return_value=False)
-    fake_client.close = MagicMock(return_value=None)
+    fake_transport = MagicMock()
+    fake_transport.ensure_connected = AsyncMock(side_effect=ConnectionException("fail"))
+    fake_transport.read_input_registers = AsyncMock()
+    fake_transport.read_holding_registers = AsyncMock()
+    fake_transport.close = MagicMock(return_value=None)
 
-    with patch(
-        "custom_components.thessla_green_modbus.scanner_core.AsyncModbusTcpClient",
-        return_value=fake_client,
-    ):
+    with patch.object(scanner, "_build_tcp_transport", return_value=fake_transport):
         with pytest.raises(ConnectionException):
             await scanner.verify_connection()
 
-    fake_client.close.assert_called_once()
+    fake_transport.close.assert_called_once()
 
 
 async def test_verify_connection_close_non_awaitable_on_success():
     """Verify close() handles non-awaitable result on success."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
-    fake_client = MagicMock()
-    fake_client.connect = AsyncMock(return_value=True)
-    fake_client.close = MagicMock(return_value=None)
+    fake_transport = MagicMock()
+    fake_transport.ensure_connected = AsyncMock(return_value=True)
+    fake_transport.read_input_registers = AsyncMock()
+    fake_transport.read_holding_registers = AsyncMock()
+    fake_transport.close = MagicMock(return_value=None)
 
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core.AsyncModbusTcpClient",
-            return_value=fake_client,
-        ),
-        patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
-            AsyncMock(),
-        ),
-    ):
+    with patch.object(scanner, "_build_tcp_transport", return_value=fake_transport):
         await scanner.verify_connection()
 
-    fake_client.close.assert_called_once()
+    fake_transport.close.assert_called_once()
 
 
 async def test_create_binds_read_helpers():
@@ -557,6 +549,7 @@ async def test_scan_device_success_dynamic():
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
             patch.object(scanner, "_is_valid_register_value", return_value=True),
         ):
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
     assert "outside_temperature" in result["available_registers"]["input_registers"]
     assert "access_level" in result["available_registers"]["holding_registers"]
@@ -648,6 +641,7 @@ async def test_scan_device_success_static(mock_modbus_response):
             mock_client_class.return_value = mock_client
 
             with patch.object(scanner, "_is_valid_register_value", return_value=True):
+                scanner.connection_mode = CONNECTION_MODE_TCP
                 result = await scanner.scan_device()
 
                 assert "available_registers" in result
@@ -671,6 +665,7 @@ async def test_scan_device_connection_failure():
         mock_client_class.return_value = mock_client
 
         with pytest.raises(Exception, match="Failed to connect"):
+            scanner.connection_mode = CONNECTION_MODE_TCP
             await scanner.scan_device()
         await scanner.close()
 
@@ -715,6 +710,7 @@ async def test_scan_device_firmware_unavailable(caplog):
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
             caplog.set_level(logging.WARNING)
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
     assert result["device_info"]["firmware"] == "Unknown"
@@ -760,6 +756,7 @@ async def test_scan_device_firmware_bulk_fallback():
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
     assert result["device_info"]["firmware"] == "4.85.0"
@@ -804,6 +801,7 @@ async def test_scan_device_firmware_partial_bulk_fallback():
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
     assert result["device_info"]["firmware"] == "4.85.0"
@@ -846,6 +844,7 @@ async def test_scan_blocks_propagated():
                 patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
                 patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
             ):
+                scanner.connection_mode = CONNECTION_MODE_TCP
                 result = await scanner.scan_device()
 
     expected_blocks = {
@@ -903,6 +902,7 @@ async def test_full_register_scan_collects_unknown_registers():
                 patch.object(scanner, "_read_discrete", AsyncMock(return_value=[False])),
                 patch.object(scanner, "_is_valid_register_value", return_value=True),
             ):
+                scanner.connection_mode = CONNECTION_MODE_TCP
                 result = await scanner.scan_device()
 
     assert result["unknown_registers"]["input_registers"] == {1: 1}
@@ -973,6 +973,7 @@ async def test_scan_device_batch_fallback():
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
     assert set(result["available_registers"]["input_registers"]) == {"ir1", "ir2"}
@@ -1053,6 +1054,7 @@ async def test_missing_register_logged_once(caplog):
             patch.object(scanner, "_is_valid_register_value", return_value=True),
         ):
             caplog.set_level(logging.DEBUG)
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
     # Block read + single read for each register
@@ -1103,6 +1105,7 @@ async def test_temperature_register_unavailable_kept():
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
@@ -1249,6 +1252,7 @@ async def test_scan_excludes_unavailable_temperature():
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
             patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
         ):
+            scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
@@ -1369,6 +1373,7 @@ async def test_scan_device_includes_capabilities_in_device_info():
     caps = DeviceCapabilities(heating_system=True)
 
     with patch.object(scanner, "scan", AsyncMock(return_value=(info, caps, {}))):
+        scanner.connection_mode = CONNECTION_MODE_TCP
         result = await scanner.scan_device()
 
     assert result["device_info"]["capabilities"] == ["heating_system"]
@@ -1404,6 +1409,7 @@ async def test_capability_count_includes_booleans(caplog):
                 patch.object(scanner, "_read_discrete", AsyncMock(return_value=[])),
             ):
                 with caplog.at_level(logging.INFO):
+                    scanner.connection_mode = CONNECTION_MODE_TCP
                     await scanner.scan_device()
 
     assert any("2 capabilities" in record.message for record in caplog.records)
@@ -1626,6 +1632,7 @@ async def test_deep_scan_collects_raw_registers():
         patch.object(ThesslaGreenDeviceScanner, "_read_discrete", fake_read_discrete),
     ):
         scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, deep_scan=True)
+        scanner.connection_mode = CONNECTION_MODE_TCP
         result = await scanner.scan_device()
 
     expected = 300 - 14 + 1

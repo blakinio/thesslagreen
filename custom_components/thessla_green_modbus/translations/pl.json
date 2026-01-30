@@ -7,6 +7,10 @@
   "connection_type_tcp_label": "Modbus TCP",
   "connection_type_tcp_rtu_label": "Modbus TCP RTU",
   "connection_type_rtu_label": "Modbus RTU",
+  "connection_mode_tcp": "Modbus TCP (bramka)",
+  "connection_mode_tcp_rtu": "RTU po TCP (RAW)",
+  "connection_mode_auto": "Automatyczny",
+  "connection_mode_auto_label": "Modbus TCP (Auto)",
   "log_level_debug": "Debug",
   "log_level_info": "Info",
   "log_level_warning": "Ostrzeżenia",
@@ -60,6 +64,7 @@
         "title": "Konfiguracja ThesslaGreen Modbus",
         "data": {
           "connection_type": "Typ połączenia",
+          "connection_mode": "Tryb połączenia",
           "host": "Adres IP",
           "port": "Port",
           "slave_id": "ID Urządzenia",
@@ -74,6 +79,7 @@
         },
         "data_description": {
           "connection_type": "Wybierz Modbus TCP (sieć), Modbus TCP RTU (RTU po TCP) lub Modbus RTU (port szeregowy)",
+          "connection_mode": "Wybierz tryb TCP (bramka), RTU po TCP (RAW) lub automatyczne wykrywanie",
           "host": "Adres IP urządzenia AirPack w lokalnej sieci",
           "name": "Nazwa urządzenia w Home Assistant",
           "port": "Port Modbus TCP (domyślnie 502)",

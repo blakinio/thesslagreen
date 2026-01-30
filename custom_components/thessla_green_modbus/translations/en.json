@@ -7,6 +7,10 @@
   "connection_type_tcp_label": "Modbus TCP",
   "connection_type_tcp_rtu_label": "Modbus TCP RTU",
   "connection_type_rtu_label": "Modbus RTU",
+  "connection_mode_tcp": "Modbus TCP (Gateway)",
+  "connection_mode_tcp_rtu": "RTU over TCP (RAW)",
+  "connection_mode_auto": "Auto-detect",
+  "connection_mode_auto_label": "Modbus TCP (Auto)",
   "log_level_debug": "Debug",
   "log_level_info": "Info",
   "log_level_warning": "Warning",
@@ -59,6 +63,7 @@
       "user": {
         "data": {
           "connection_type": "Connection Type",
+          "connection_mode": "Connection Mode",
           "host": "IP Address",
           "name": "Name",
           "port": "Port",
@@ -73,6 +78,7 @@
         },
         "data_description": {
           "connection_type": "Choose between Modbus TCP (network), Modbus TCP RTU (RTU over TCP), or Modbus RTU (serial)",
+          "connection_mode": "Choose TCP gateway, raw RTU over TCP, or auto-detect the TCP mode",
           "host": "IP address of the AirPack device on your local network",
           "name": "Device name in Home Assistant",
           "port": "Modbus TCP port (default 502)",
