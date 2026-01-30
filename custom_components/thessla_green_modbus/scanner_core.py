@@ -10,8 +10,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import get_all_registers, get_registers_path, registers_sha256
+    from .registers.loader import (
+        async_get_all_registers,
+        async_registers_sha256,
+        get_all_registers,
+        get_registers_path,
+        registers_sha256,
+    )
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+
+    async def async_get_all_registers(*_args, **_kwargs):
+        return []
+
+    async def async_registers_sha256(*_args, **_kwargs) -> str:
+        return ""
 
     def get_all_registers(*_args, **_kwargs):
         return []
@@ -371,6 +383,7 @@ class ThesslaGreenDeviceScanner:
         )
         if self.stop_bits not in (1, 2):
             self.stop_bits = DEFAULT_STOP_BITS
+        self._hass = hass
 
         # Available registers storage
         self.available_registers: dict[str, set[str]] = {
@@ -432,6 +445,11 @@ class ThesslaGreenDeviceScanner:
     def _populate_known_missing_addresses(self) -> None:
         """Pre-compute addresses of known missing registers for batch grouping."""
         self._known_missing_addresses: set[int] = set()
+
+    def _update_known_missing_addresses(self) -> None:
+        """Populate cached missing register addresses from known missing list."""
+
+        self._known_missing_addresses.clear()
         for reg_type, names in KNOWN_MISSING_REGISTERS.items():
             mapping = {
                 "input_registers": INPUT_REGISTERS,
@@ -447,7 +465,10 @@ class ThesslaGreenDeviceScanner:
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
+
+        await _async_ensure_register_maps(self._hass)
         self._registers, self._register_ranges = await self._load_registers()
+        self._update_known_missing_addresses()
 
     @classmethod
     async def create(
@@ -472,6 +493,7 @@ class ThesslaGreenDeviceScanner:
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
+        hass: Any | None = None,
     ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
         await async_ensure_register_maps()
@@ -660,11 +682,13 @@ class ThesslaGreenDeviceScanner:
                 if mode is not None:
                     self._resolved_connection_mode = mode
                 return
+            except asyncio.CancelledError:
+                raise
             except ModbusIOException as exc:
                 last_error = exc
                 if _is_request_cancelled_error(exc):
                     _LOGGER.info("Modbus request cancelled during verify_connection.")
-                    raise TimeoutError("Modbus request cancelled") from exc
+                    raise asyncio.CancelledError() from exc
             except asyncio.TimeoutError as exc:
                 last_error = exc
                 _LOGGER.warning("Timeout during verify_connection: %s", exc)
@@ -1275,7 +1299,7 @@ class ThesslaGreenDeviceScanner:
         """Load Modbus register definitions and value ranges."""
         register_map: dict[int, dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
         register_ranges: dict[str, tuple[int | None, int | None]] = {}
-        for reg in get_all_registers():
+        for reg in await async_get_all_registers(self._hass):
             if not reg.name:
                 continue
             register_map[reg.function][reg.address] = reg.name

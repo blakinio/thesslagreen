@@ -853,6 +853,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 skip_known_missing=False,
                 full_register_scan=True,
                 max_registers_per_request=coordinator.effective_batch,
+                hass=hass,
             )
             try:
                 scan_result = await scanner.scan_device()

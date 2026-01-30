@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 """Tests for the Modbus helper utilities."""
 
+import asyncio
 import gc
 import sys
 import types
@@ -72,6 +73,16 @@ async def test_call_modbus_supports_no_slave_or_unit():
 
     result = await _call_modbus(func, 1, 30, 4)
     assert result == (30, 4)  # nosec B101
+
+
+async def test_call_modbus_propagates_cancelled_error():
+    """Cancelled errors should propagate without being mapped."""
+
+    async def func(address, *, count):
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        await _call_modbus(func, 1, 30, 4)
 
 
 async def test_group_reads_merges_sequential_addresses():
