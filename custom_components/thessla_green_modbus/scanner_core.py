@@ -156,51 +156,9 @@ def _ensure_register_maps() -> None:
         _build_register_maps()
 
 
-async def _async_build_register_maps(hass: Any | None) -> None:
-    """Populate register lookup maps from current register definitions asynchronously."""
-    global REGISTER_HASH
-    regs = await async_get_all_registers(hass)
-    REGISTER_HASH = await async_registers_sha256(hass, get_registers_path())
-
-    REGISTER_DEFINITIONS.clear()
-    REGISTER_DEFINITIONS.update({r.name: r for r in regs})
-
-    INPUT_REGISTERS.clear()
-    INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 4}
-    )
-
-    HOLDING_REGISTERS.clear()
-    HOLDING_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 3}
-    )
-
-    COIL_REGISTERS.clear()
-    COIL_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 1}
-    )
-
-    DISCRETE_INPUT_REGISTERS.clear()
-    DISCRETE_INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 2}
-    )
-
-    MULTI_REGISTER_SIZES.clear()
-    MULTI_REGISTER_SIZES.update(
-        {
-            name: reg.length
-            for name, reg in REGISTER_DEFINITIONS.items()
-            if reg.function == 3 and reg.length > 1
-        }
-    )
-
-
-async def _async_ensure_register_maps(hass: Any | None) -> None:
-    """Ensure register lookup maps are populated asynchronously."""
-
-    current_hash = await async_registers_sha256(hass, get_registers_path())
-    if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
-        await _async_build_register_maps(hass)
+async def async_ensure_register_maps() -> None:
+    """Ensure register lookup maps are populated without blocking the event loop."""
+    await asyncio.to_thread(_ensure_register_maps)
 
 
 @dataclass(slots=True)
@@ -352,13 +310,16 @@ class ThesslaGreenDeviceScanner:
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
-        hass: Any | None = None,
+        *,
+        registers_ready: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names.
 
         ``max_registers_per_request`` is clamped to the safe Modbus range of
         1-16 registers per request.
         """
+        if not registers_ready:
+            _ensure_register_maps()
         self.host = host
         self.port = port
         self.slave_id = slave_id
@@ -479,7 +440,10 @@ class ThesslaGreenDeviceScanner:
             },
         }
 
-        # Pre-compute addresses of known missing registers for batch grouping
+        self._populate_known_missing_addresses()
+
+    def _populate_known_missing_addresses(self) -> None:
+        """Pre-compute addresses of known missing registers for batch grouping."""
         self._known_missing_addresses: set[int] = set()
 
     def _update_known_missing_addresses(self) -> None:
@@ -532,6 +496,7 @@ class ThesslaGreenDeviceScanner:
         hass: Any | None = None,
     ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
+        await async_ensure_register_maps()
         self = cls(
             host,
             port,
@@ -553,7 +518,7 @@ class ThesslaGreenDeviceScanner:
             baud_rate,
             parity,
             stop_bits,
-            hass,
+            registers_ready=True,
         )
         await self._async_setup()
 

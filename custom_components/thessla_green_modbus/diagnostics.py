@@ -35,11 +35,17 @@ async def async_get_config_entry_diagnostics(
 
     diagnostics = coordinator.get_diagnostic_data()
     diagnostics.setdefault("effective_batch", coordinator.effective_batch)
-    diagnostics.setdefault("registers_hash", registers_sha256(_REGISTERS_PATH))
+    diagnostics.setdefault(
+        "registers_hash",
+        await hass.async_add_executor_job(registers_sha256, _REGISTERS_PATH),
+    )
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
 
     diagnostics.setdefault("firmware_version", coordinator.device_info.get("firmware"))
-    diagnostics.setdefault("total_registers_json", len(get_all_registers()))
+    diagnostics.setdefault(
+        "total_registers_json",
+        await hass.async_add_executor_job(lambda: len(get_all_registers())),
+    )
     diagnostics.setdefault(
         "total_available_registers",
         sum(len(regs) for regs in coordinator.available_registers.values()),
