@@ -390,7 +390,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         if _is_request_cancelled_error(exc):
             _LOGGER.info("Modbus request cancelled during device validation.")
             _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-            raise CannotConnect("cannot_connect") from exc
+            raise CannotConnect("timeout") from exc
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
