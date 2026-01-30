@@ -13,7 +13,6 @@ from .const import (
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
     DEFAULT_CONNECTION_TYPE,
-    DEFAULT_PORT,
 )
 
 __all__ = [
@@ -171,15 +170,9 @@ def decode_aatt(value: int) -> dict[str, float | int] | None:
 
 
 def default_connection_mode(port: int | None) -> str:
-    """Return the default TCP connection mode based on the port heuristic."""
+    """Return the default TCP connection mode for config defaults."""
 
-    try:
-        port_value = int(port) if port is not None else DEFAULT_PORT
-    except (TypeError, ValueError):
-        port_value = DEFAULT_PORT
-    if port_value != DEFAULT_PORT:
-        return CONNECTION_MODE_TCP_RTU
-    return CONNECTION_MODE_TCP
+    return CONNECTION_MODE_AUTO
 
 
 def resolve_connection_settings(

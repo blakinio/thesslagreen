@@ -258,7 +258,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     data[CONF_CONNECTION_TYPE] = normalized_type
     connection_type = normalized_type
     if connection_type == CONNECTION_TYPE_TCP:
-        data[CONF_CONNECTION_MODE] = resolved_mode
+        data[CONF_CONNECTION_MODE] = resolved_mode or CONNECTION_MODE_AUTO
     else:
         data.pop(CONF_CONNECTION_MODE, None)
 
@@ -275,14 +275,16 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     name = data.get(CONF_NAME, DEFAULT_NAME)
     timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
-    host = str(data.get(CONF_HOST, "") or "").strip()
-    port_raw = data.get(CONF_PORT, DEFAULT_PORT)
-    try:
-        port = int(port_raw)
-    except (TypeError, ValueError) as exc:
-        raise vol.Invalid("invalid_port", path=[CONF_PORT]) from exc
+    host = ""
+    port = DEFAULT_PORT
 
-    if connection_type in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
+    if connection_type == CONNECTION_TYPE_TCP:
+        host = str(data.get(CONF_HOST, "") or "").strip()
+        port_raw = data.get(CONF_PORT, DEFAULT_PORT)
+        try:
+            port = int(port_raw)
+        except (TypeError, ValueError) as exc:
+            raise vol.Invalid("invalid_port", path=[CONF_PORT]) from exc
         if not host:
             raise vol.Invalid("missing_host", path=[CONF_HOST])
         data[CONF_HOST] = host
@@ -298,6 +300,10 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
                 raise vol.Invalid("invalid_host", path=[CONF_HOST]) from None
             if not is_host_valid(host):
                 raise vol.Invalid("invalid_host", path=[CONF_HOST]) from None
+        data.pop(CONF_SERIAL_PORT, None)
+        data.pop(CONF_BAUD_RATE, None)
+        data.pop(CONF_PARITY, None)
+        data.pop(CONF_STOP_BITS, None)
     else:
         serial_port = str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT) or "").strip()
         if not serial_port:
@@ -322,9 +328,8 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
             raise vol.Invalid("invalid_stop_bits", path=[CONF_STOP_BITS]) from err
         data[CONF_STOP_BITS] = stop_bits
 
-        # For RTU, store a canonical port number for diagnostics but do not enforce it
-        data[CONF_PORT] = port
-        data[CONF_HOST] = host
+        data.pop(CONF_HOST, None)
+        data.pop(CONF_PORT, None)
 
     import_func: Callable[..., Awaitable[Any]]
     if hass:
@@ -495,7 +500,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
         slave_default = current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
         connection_mode_default = current_values.get(CONF_CONNECTION_MODE)
-        _, resolved_mode = resolve_connection_settings(
+        connection_default, resolved_mode = resolve_connection_settings(
             connection_default, connection_mode_default, port_default
         )
         connection_mode_default = resolved_mode or default_connection_mode(port_default)
@@ -548,91 +553,98 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         else:
             stop_bits_validator = vol.In(["1", "2"])
 
-        data_schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_CONNECTION_TYPE,
-                    default=connection_default,
-                    description={
-                        "selector": {
-                            "select": {
-                                "options": [
-                                    {
-                                        "value": CONNECTION_TYPE_TCP,
-                                        "label": f"{DOMAIN}.connection_type_tcp",
-                                    },
-                                    {
-                                        "value": CONNECTION_TYPE_TCP_RTU,
-                                        "label": f"{DOMAIN}.connection_type_tcp_rtu",
-                                    },
-                                    {
-                                        "value": CONNECTION_TYPE_RTU,
-                                        "label": f"{DOMAIN}.connection_type_rtu",
-                                    },
-                                ]
-                            }
+        data_schema = {
+            vol.Required(
+                CONF_CONNECTION_TYPE,
+                default=connection_default,
+                description={
+                    "selector": {
+                        "select": {
+                            "options": [
+                                {
+                                    "value": CONNECTION_TYPE_TCP,
+                                    "label": f"{DOMAIN}.connection_type_tcp",
+                                },
+                                {
+                                    "value": CONNECTION_TYPE_RTU,
+                                    "label": f"{DOMAIN}.connection_type_rtu",
+                                },
+                            ]
                         }
-                    },
-                ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
-                vol.Optional(CONF_HOST, default=host_default): str,
-                vol.Optional(CONF_PORT, default=port_default): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=65535)
-                ),
-                vol.Optional(
-                    CONF_CONNECTION_MODE,
-                    default=connection_mode_default,
-                    description={
-                        "selector": {
-                            "select": {
-                                "options": [
-                                    {
-                                        "value": CONNECTION_MODE_TCP,
-                                        "label": f"{DOMAIN}.connection_mode_tcp",
-                                    },
-                                    {
-                                        "value": CONNECTION_MODE_TCP_RTU,
-                                        "label": f"{DOMAIN}.connection_mode_tcp_rtu",
-                                    },
-                                    {
-                                        "value": CONNECTION_MODE_AUTO,
-                                        "label": f"{DOMAIN}.connection_mode_auto",
-                                    },
-                                ]
-                            }
-                        }
-                    },
-                ): vol.In({CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_AUTO}),
-                vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=247)
-                ),
-                vol.Optional(CONF_SERIAL_PORT, default=serial_port_default): str,
-                vol.Optional(CONF_BAUD_RATE, default=baud_default): baud_validator,
-                vol.Optional(CONF_PARITY, default=parity_default): parity_validator,
-                vol.Optional(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
-                vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
-                vol.Optional(
-                    CONF_DEEP_SCAN,
-                    default=current_values.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-                    description={"advanced": True},
-                ): bool,
-                vol.Optional(
+                    }
+                },
+            ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU}),
+            vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=247)
+            ),
+            vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
+            vol.Optional(
+                CONF_DEEP_SCAN,
+                default=current_values.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+                description={"advanced": True},
+            ): bool,
+            vol.Optional(
+                CONF_MAX_REGISTERS_PER_REQUEST,
+                default=current_values.get(
                     CONF_MAX_REGISTERS_PER_REQUEST,
-                    default=current_values.get(
-                        CONF_MAX_REGISTERS_PER_REQUEST,
-                        DEFAULT_MAX_REGISTERS_PER_REQUEST,
-                    ),
-                    description={
-                        "selector": {
-                            "number": {
-                                "min": 1,
-                                "max": MAX_BATCH_REGISTERS,
-                                "step": 1,
-                            }
+                    DEFAULT_MAX_REGISTERS_PER_REQUEST,
+                ),
+                description={
+                    "selector": {
+                        "number": {
+                            "min": 1,
+                            "max": MAX_BATCH_REGISTERS,
+                            "step": 1,
                         }
-                    },
-                ): int,
-            }
-        )
+                    }
+                },
+            ): int,
+        }
+
+        if connection_default == CONNECTION_TYPE_TCP:
+            data_schema.update(
+                {
+                    vol.Required(CONF_HOST, default=host_default): str,
+                    vol.Required(CONF_PORT, default=port_default): vol.All(
+                        vol.Coerce(int), vol.Range(min=1, max=65535)
+                    ),
+                    vol.Required(
+                        CONF_CONNECTION_MODE,
+                        default=connection_mode_default,
+                        description={
+                            "selector": {
+                                "select": {
+                                    "options": [
+                                        {
+                                            "value": CONNECTION_MODE_AUTO,
+                                            "label": f"{DOMAIN}.connection_mode_auto",
+                                        },
+                                        {
+                                            "value": CONNECTION_MODE_TCP_RTU,
+                                            "label": f"{DOMAIN}.connection_mode_tcp_rtu",
+                                        },
+                                        {
+                                            "value": CONNECTION_MODE_TCP,
+                                            "label": f"{DOMAIN}.connection_mode_tcp",
+                                        },
+                                    ]
+                                }
+                            }
+                        },
+                    ): vol.In({CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_AUTO}),
+                }
+            )
+        else:
+            data_schema.update(
+                {
+                    vol.Required(CONF_SERIAL_PORT, default=serial_port_default): str,
+                    vol.Required(CONF_BAUD_RATE, default=baud_default): baud_validator,
+                    vol.Required(CONF_PARITY, default=parity_default): parity_validator,
+                    vol.Required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
+                }
+            )
+
+        data_schema = vol.Schema(data_schema)
 
         return data_schema
 
@@ -869,12 +881,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 self._device_info = info.get("device_info", {})
                 self._scan_result = info.get("scan_result", {})
 
-                # Set unique ID based on host, port and slave_id
-                # Replace colons in host (IPv6) with hyphens to avoid separator conflicts
-                unique_host = user_input[CONF_HOST].replace(":", "-")
-                await self.async_set_unique_id(
-                    f"{unique_host}:{user_input[CONF_PORT]}:{user_input[CONF_SLAVE_ID]}"
-                )
+                await self.async_set_unique_id(self._build_unique_id(user_input))
 
             except CannotConnect as exc:
                 errors["base"] = exc.args[0] if exc.args else "cannot_connect"
@@ -904,7 +911,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         # Show form
         return self.async_show_form(
             step_id="user",
-            data_schema=self._build_connection_schema({}),
+            data_schema=self._build_connection_schema(user_input or {}),
             errors=errors,
         )
 
@@ -969,7 +976,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         return self.async_show_form(
             step_id="reauth",
-            data_schema=self._build_connection_schema(self._tg_flow_reauth_existing_data),
+            data_schema=self._build_connection_schema(
+                user_input or self._tg_flow_reauth_existing_data
+            ),
             errors=errors,
         )
 
