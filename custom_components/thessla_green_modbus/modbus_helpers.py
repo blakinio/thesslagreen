@@ -235,7 +235,12 @@ async def _call_modbus(
     kwarg = _KWARG_CACHE.get(func)
     if kwarg is None:
         # Determine which keyword the function accepts
-        if "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+        if (
+            "device_id" in params
+            and params["device_id"].kind is not inspect.Parameter.POSITIONAL_ONLY
+        ):
+            kwarg = "device_id"
+        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
             kwarg = "slave"
         elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
             kwarg = "unit"
@@ -285,6 +290,8 @@ async def _call_modbus(
             )
 
     async def _invoke() -> Any:
+        if kwarg == "device_id":
+            return await func(*positional, device_id=slave_id, **kwargs)
         if kwarg == "slave":
             return await func(*positional, slave=slave_id, **kwargs)
         if kwarg == "unit":
