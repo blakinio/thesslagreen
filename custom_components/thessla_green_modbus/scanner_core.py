@@ -144,6 +144,11 @@ def _ensure_register_maps() -> None:
         _build_register_maps()
 
 
+async def async_ensure_register_maps() -> None:
+    """Ensure register lookup maps are populated without blocking the event loop."""
+    await asyncio.to_thread(_ensure_register_maps)
+
+
 @dataclass(slots=True)
 class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
@@ -293,13 +298,16 @@ class ThesslaGreenDeviceScanner:
         baud_rate: int = DEFAULT_BAUD_RATE,
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
+        *,
+        registers_ready: bool = False,
     ) -> None:
         """Initialize device scanner with consistent parameter names.
 
         ``max_registers_per_request`` is clamped to the safe Modbus range of
         1-16 registers per request.
         """
-        _ensure_register_maps()
+        if not registers_ready:
+            _ensure_register_maps()
         self.host = host
         self.port = port
         self.slave_id = slave_id
@@ -419,7 +427,10 @@ class ThesslaGreenDeviceScanner:
             },
         }
 
-        # Pre-compute addresses of known missing registers for batch grouping
+        self._populate_known_missing_addresses()
+
+    def _populate_known_missing_addresses(self) -> None:
+        """Pre-compute addresses of known missing registers for batch grouping."""
         self._known_missing_addresses: set[int] = set()
         for reg_type, names in KNOWN_MISSING_REGISTERS.items():
             mapping = {
@@ -463,6 +474,7 @@ class ThesslaGreenDeviceScanner:
         stop_bits: int = DEFAULT_STOP_BITS,
     ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
+        await async_ensure_register_maps()
         self = cls(
             host,
             port,
@@ -484,6 +496,7 @@ class ThesslaGreenDeviceScanner:
             baud_rate,
             parity,
             stop_bits,
+            registers_ready=True,
         )
         await self._async_setup()
 
