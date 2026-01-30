@@ -18,7 +18,7 @@ else:  # pragma: no cover - executed when serial client available
     SERIAL_IMPORT_ERROR = None
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_helpers import _calculate_backoff_delay, _call_modbus
+from .modbus_helpers import _calculate_backoff_delay, _call_modbus, async_close_client
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ class TcpModbusTransport(BaseModbusTransport):
         if self.client is None:
             return
         try:
-            await self.client.close()
+            await async_close_client(self.client)
         finally:
             self.client = None
 
@@ -268,6 +268,6 @@ class RtuModbusTransport(BaseModbusTransport):
         if self.client is None:
             return
         try:
-            await self.client.close()
+            await async_close_client(self.client)
         finally:
             self.client = None

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import collections.abc
-import inspect
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -42,7 +41,7 @@ from .const import (
     UNKNOWN_MODEL,
 )
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_helpers import _call_modbus, chunk_register_range
+from .modbus_helpers import _call_modbus, async_close_client, chunk_register_range
 from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
     MAX_BATCH_REGISTERS,
@@ -78,6 +77,15 @@ REGISTER_DEFINITIONS: dict[str, Any] = {}
 INPUT_REGISTERS: dict[str, int] = {}
 HOLDING_REGISTERS: dict[str, int] = {}
 COIL_REGISTERS: dict[str, int] = {}
+
+
+def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
+    """Return True when a modbus IO error indicates a cancelled request."""
+
+    message = str(exc).lower()
+    return "request cancelled outside pymodbus" in message or "cancelled" in message
+
+
 DISCRETE_INPUT_REGISTERS: dict[str, int] = {}
 MULTI_REGISTER_SIZES: dict[str, int] = {}
 REGISTER_HASH: str | None = None
@@ -481,9 +489,7 @@ class ThesslaGreenDeviceScanner:
             return
 
         try:
-            result = client.close()
-            if inspect.isawaitable(result):
-                await result
+            await async_close_client(client)
         except (OSError, ConnectionException, ModbusIOException):
             _LOGGER.debug("Error closing Modbus client", exc_info=True)
         finally:
@@ -553,6 +559,11 @@ class ThesslaGreenDeviceScanner:
                 except TimeoutError as exc:  # pragma: no cover - network issues
                     _LOGGER.warning("Timeout reading input registers at %d", start)
                     raise ConnectionException("Timeout reading input registers") from exc
+                except ModbusIOException as exc:
+                    if _is_request_cancelled_error(exc):
+                        _LOGGER.info("Modbus request cancelled during verify_connection.")
+                        raise TimeoutError("Modbus request cancelled") from exc
+                    raise
                 except ModbusException:
                     raise
                 except (
@@ -580,6 +591,11 @@ class ThesslaGreenDeviceScanner:
                 except TimeoutError as exc:  # pragma: no cover - network issues
                     _LOGGER.warning("Timeout reading holding registers at %d", start)
                     raise ConnectionException("Timeout reading holding registers") from exc
+                except ModbusIOException as exc:
+                    if _is_request_cancelled_error(exc):
+                        _LOGGER.info("Modbus request cancelled during verify_connection.")
+                        raise TimeoutError("Modbus request cancelled") from exc
+                    raise
                 except ModbusException:
                     raise
                 except (
@@ -593,9 +609,7 @@ class ThesslaGreenDeviceScanner:
                     raise ModbusException(f"Error reading holding registers: {exc}") from exc
         finally:
             try:
-                res = client.close()
-                if inspect.isawaitable(res):
-                    await res
+                await async_close_client(client)
             except (OSError, ConnectionException, ModbusIOException, TypeError):
                 _LOGGER.debug("Error closing Modbus client during verify_connection", exc_info=True)
 
