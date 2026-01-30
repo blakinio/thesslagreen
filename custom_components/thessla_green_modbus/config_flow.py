@@ -359,12 +359,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
             backoff=CONFIG_FLOW_BACKOFF,
         )
 
-        short_timeout = max(2, min(timeout, 5))
-        if (
-            connection_type == CONNECTION_TYPE_TCP
-            and data.get(CONF_CONNECTION_MODE) == CONNECTION_MODE_AUTO
-        ):
-            short_timeout = min(max(timeout, 5), 10) + 2
+        short_timeout = max(2, timeout)
 
         # Verify connection by reading a few safe registers
         await _run_with_retry(
