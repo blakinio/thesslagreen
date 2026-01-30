@@ -51,7 +51,6 @@ from .const import (
     CONF_TIMEOUT,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_TCP_RTU,
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP,
     CONNECTION_MODE_TCP_RTU,
@@ -163,7 +162,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     # Get configuration - support both new and legacy keys
     connection_type = entry.data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
+    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
         connection_type = DEFAULT_CONNECTION_TYPE
     connection_mode = entry.options.get(
         CONF_CONNECTION_MODE, entry.data.get(CONF_CONNECTION_MODE)

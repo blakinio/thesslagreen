@@ -45,6 +45,7 @@ from .const import (
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_PARITY,
+    DEFAULT_PORT,
     DEFAULT_SERIAL_PORT,
     DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
@@ -154,6 +155,13 @@ def _build_register_maps() -> None:
     _build_register_maps_from(regs, register_hash)
 
 
+async def _async_build_register_maps(hass: Any | None) -> None:
+    """Populate register lookup maps from current definitions asynchronously."""
+    register_hash = await async_registers_sha256(hass, get_registers_path())
+    regs = await async_get_all_registers(hass)
+    _build_register_maps_from(regs, register_hash)
+
+
 # Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
@@ -166,8 +174,7 @@ async def _async_ensure_register_maps(hass: Any | None) -> None:
     """Ensure register lookup maps are populated without blocking the event loop."""
     register_hash = await async_registers_sha256(hass, get_registers_path())
     if not REGISTER_DEFINITIONS or register_hash != REGISTER_HASH:
-        regs = await async_get_all_registers(hass)
-        _build_register_maps_from(regs, register_hash)
+        await _async_build_register_maps(hass)
 
 
 async def async_ensure_register_maps(hass: Any | None = None) -> None:
@@ -594,6 +601,26 @@ class ThesslaGreenDeviceScanner:
             timeout=timeout,
         )
 
+    def _build_auto_tcp_attempts(self) -> list[tuple[str, BaseModbusTransport, float]]:
+        rtu_timeout = min(max(self.timeout, 2.0), 5.0)
+        tcp_timeout = min(max(self.timeout, 5.0), 10.0)
+        prefer_tcp = self.port == DEFAULT_PORT
+        mode_order = [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU] if prefer_tcp else [
+            CONNECTION_MODE_TCP_RTU,
+            CONNECTION_MODE_TCP,
+        ]
+        attempts: list[tuple[str, BaseModbusTransport, float]] = []
+        for mode in mode_order:
+            timeout = rtu_timeout if mode == CONNECTION_MODE_TCP_RTU else tcp_timeout
+            attempts.append(
+                (
+                    mode,
+                    self._build_tcp_transport(mode, timeout_override=timeout),
+                    timeout,
+                )
+            )
+        return attempts
+
     async def verify_connection(self) -> None:
         """Verify basic Modbus connectivity by reading a few safe registers.
 
@@ -639,26 +666,7 @@ class ThesslaGreenDeviceScanner:
                 )
             )
         elif self.connection_mode == CONNECTION_MODE_AUTO:
-            rtu_timeout = min(max(self.timeout, 2.0), 5.0)
-            attempts.extend(
-                [
-                    (
-                        CONNECTION_MODE_TCP_RTU,
-                        self._build_tcp_transport(
-                            CONNECTION_MODE_TCP_RTU, timeout_override=rtu_timeout
-                        ),
-                        rtu_timeout,
-                    ),
-                    (
-                        CONNECTION_MODE_TCP,
-                        self._build_tcp_transport(
-                            CONNECTION_MODE_TCP,
-                            timeout_override=min(max(self.timeout, 5.0), 10.0),
-                        ),
-                        min(max(self.timeout, 5.0), 10.0),
-                    ),
-                ]
-            )
+            attempts.extend(self._build_auto_tcp_attempts())
         else:
             mode = self.connection_mode or default_connection_mode(self.port)
             attempts.append((mode, self._build_tcp_transport(mode), self.timeout))
@@ -699,6 +707,13 @@ class ThesslaGreenDeviceScanner:
                         count=count,
                     )
                 if mode is not None:
+                    if self.connection_mode == CONNECTION_MODE_AUTO:
+                        _LOGGER.info(
+                            "verify_connection: auto-selected Modbus transport %s for %s:%s",
+                            mode,
+                            self.host,
+                            self.port,
+                        )
                     self._resolved_connection_mode = mode
                 return
             except asyncio.CancelledError:
@@ -1296,8 +1311,29 @@ class ThesslaGreenDeviceScanner:
         else:
             mode = self._resolved_connection_mode or self.connection_mode
             if mode is None or mode == CONNECTION_MODE_AUTO:
-                mode = default_connection_mode(self.port)
-            self._transport = self._build_tcp_transport(mode)
+                last_error: Exception | None = None
+                for selected_mode, transport, timeout in self._build_auto_tcp_attempts():
+                    try:
+                        await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
+                    except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
+                        last_error = exc
+                        await transport.close()
+                        continue
+                    self._transport = transport
+                    self._resolved_connection_mode = selected_mode
+                    _LOGGER.info(
+                        "scan_device: auto-selected Modbus transport %s for %s:%s",
+                        selected_mode,
+                        self.host,
+                        self.port,
+                    )
+                    break
+                if self._transport is None:
+                    raise ConnectionException(
+                        "Auto-detect Modbus transport failed"
+                    ) from last_error
+            else:
+                self._transport = self._build_tcp_transport(mode)
 
         try:
             await asyncio.wait_for(self._transport.ensure_connected(), timeout=self.timeout)

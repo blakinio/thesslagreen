@@ -45,7 +45,6 @@ from .const import (
     CONF_TIMEOUT,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_TCP_RTU,
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP,
     CONNECTION_MODE_TCP_RTU,
@@ -201,7 +200,7 @@ async def _run_with_retry(
             raise
         except ModbusIOException as exc:
             if _is_request_cancelled_error(exc):
-                raise asyncio.CancelledError() from exc
+                raise TimeoutError("Modbus request cancelled") from exc
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -248,7 +247,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     """Validate the user input allows us to connect."""
 
     connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
+    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
         raise vol.Invalid("invalid_transport", path=[CONF_CONNECTION_TYPE])
 
     connection_mode = data.get(CONF_CONNECTION_MODE)
