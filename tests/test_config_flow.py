@@ -90,7 +90,9 @@ from custom_components.thessla_green_modbus.const import (
     CONF_STOP_BITS,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONNECTION_MODE_TCP,
+    CONNECTION_TYPE_TCP_RTU,
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP_RTU,
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_PARITY,
@@ -137,12 +139,12 @@ async def test_form_user():
         key.schema if hasattr(key, "schema") else key for key in result["data_schema"].schema
     }
     assert CONF_CONNECTION_TYPE in schema_keys
-    assert CONF_CONNECTION_MODE in schema_keys
+    assert CONF_CONNECTION_MODE not in schema_keys
     assert CONF_HOST in schema_keys
-    assert CONF_SERIAL_PORT in schema_keys
-    assert CONF_BAUD_RATE in schema_keys
-    assert CONF_PARITY in schema_keys
-    assert CONF_STOP_BITS in schema_keys
+    assert CONF_SERIAL_PORT not in schema_keys
+    assert CONF_BAUD_RATE not in schema_keys
+    assert CONF_PARITY not in schema_keys
+    assert CONF_STOP_BITS not in schema_keys
 
 
 @pytest.mark.parametrize("invalid_port", [0, 65536])
@@ -418,7 +420,7 @@ async def test_form_user_success():
     assert result2["title"] == "My Device"
     data = result2["data"]
     assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_TCP
-    assert data[CONF_CONNECTION_MODE] == CONNECTION_MODE_TCP
+    assert data[CONF_CONNECTION_MODE] == CONNECTION_MODE_AUTO
     assert data[CONF_HOST] == DEFAULT_USER_INPUT[CONF_HOST]
     assert data[CONF_PORT] == DEFAULT_USER_INPUT[CONF_PORT]
     assert data["slave_id"] == DEFAULT_USER_INPUT[CONF_SLAVE_ID]
@@ -480,6 +482,54 @@ async def test_form_user_rtu_success_creates_serial_entry():
     # Host/port remain available for diagnostics when provided
     assert data.get(CONF_HOST) == DEFAULT_USER_INPUT[CONF_HOST]
     assert data.get(CONF_PORT) == DEFAULT_USER_INPUT[CONF_PORT]
+
+
+async def test_form_user_tcp_rtu_success_creates_tcp_rtu_entry():
+    """TCP RTU configuration should normalize to TCP with TCP RTU mode."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    validation_result = {
+        "title": "ThesslaGreen TCP RTU",
+        "device_info": {"device_name": "TCP RTU", "firmware": "1.0", "serial_number": "XYZ"},
+        "scan_result": {
+            "device_info": {"device_name": "TCP RTU", "firmware": "1.0", "serial_number": "XYZ"},
+            "capabilities": {"basic_control": True},
+            "register_count": 2,
+        },
+    }
+
+    user_input = dict(
+        DEFAULT_USER_INPUT,
+        **{
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP_RTU,
+        },
+    )
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            return_value=validation_result,
+        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
+            "_abort_if_unique_id_configured"
+        ),
+        patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            new=AsyncMock(return_value={}),
+        ),
+    ):
+        result = await flow.async_step_user(user_input)
+        assert result["type"] == "form"
+        result2 = await flow.async_step_confirm({})
+
+    data = result2["data"]
+    assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_TCP
+    assert data[CONF_CONNECTION_MODE] == CONNECTION_MODE_TCP_RTU
+    assert data[CONF_HOST] == DEFAULT_USER_INPUT[CONF_HOST]
+    assert data[CONF_PORT] == DEFAULT_USER_INPUT[CONF_PORT]
 
 
 async def test_duplicate_entry_aborts():

@@ -275,19 +275,25 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     """Validate the user input allows us to connect."""
 
     connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU):
+    if connection_type not in (
+        CONNECTION_TYPE_TCP,
+        CONNECTION_TYPE_TCP_RTU,
+        CONNECTION_TYPE_RTU,
+    ):
         raise vol.Invalid("invalid_transport", path=[CONF_CONNECTION_TYPE])
 
-    connection_mode = data.get(CONF_CONNECTION_MODE)
-    normalized_type, resolved_mode = resolve_connection_settings(
-        connection_type, connection_mode, data.get(CONF_PORT, DEFAULT_PORT)
-    )
-    data[CONF_CONNECTION_TYPE] = normalized_type
-    connection_type = normalized_type
-    if connection_type == CONNECTION_TYPE_TCP:
-        data[CONF_CONNECTION_MODE] = resolved_mode or CONNECTION_MODE_AUTO
-    else:
+    if connection_type == CONNECTION_TYPE_TCP_RTU:
+        data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
+        data[CONF_CONNECTION_MODE] = CONNECTION_MODE_TCP_RTU
+        connection_type = CONNECTION_TYPE_TCP
+    elif connection_type == CONNECTION_TYPE_TCP:
+        data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
         data.pop(CONF_CONNECTION_MODE, None)
+        connection_type = CONNECTION_TYPE_TCP
+    else:
+        data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_RTU
+        data.pop(CONF_CONNECTION_MODE, None)
+        connection_type = CONNECTION_TYPE_RTU
 
     try:
         slave_id = int(data[CONF_SLAVE_ID])
@@ -527,10 +533,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
         slave_default = current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
         connection_mode_default = current_values.get(CONF_CONNECTION_MODE)
-        connection_default, resolved_mode = resolve_connection_settings(
+        normalized_type, resolved_mode = resolve_connection_settings(
             connection_default, connection_mode_default, port_default
         )
-        connection_mode_default = resolved_mode or default_connection_mode(port_default)
+        if normalized_type == CONNECTION_TYPE_TCP and resolved_mode == CONNECTION_MODE_TCP_RTU:
+            connection_default = CONNECTION_TYPE_TCP_RTU
+        else:
+            connection_default = normalized_type
         serial_port_default = current_values.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
         baud_default = _option_default(
             "modbus_baud_rate_",
@@ -593,6 +602,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                                     "label": f"{DOMAIN}.connection_type_tcp",
                                 },
                                 {
+                                    "value": CONNECTION_TYPE_TCP_RTU,
+                                    "label": f"{DOMAIN}.connection_type_tcp_rtu",
+                                },
+                                {
                                     "value": CONNECTION_TYPE_RTU,
                                     "label": f"{DOMAIN}.connection_type_rtu",
                                 },
@@ -600,7 +613,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                         }
                     }
                 },
-            ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU}),
+            ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
             vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
                 vol.Coerce(int), vol.Range(min=1, max=247)
             ),
@@ -628,24 +641,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             ): int,
         }
 
-        if connection_default == CONNECTION_TYPE_TCP:
+        if connection_default in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
             data_schema.update(
                 {
                     vol.Required(CONF_HOST, default=host_default): str,
                     vol.Required(CONF_PORT, default=port_default): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=65535)
                     ),
-                    vol.Required(
-                        CONF_CONNECTION_MODE,
-                        default=connection_mode_default,
-                        description={
-                            "selector": {
-                                "select": {
-                                    "options": _connection_mode_selector_options()
-                                }
-                            }
-                        },
-                    ): vol.In({CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_AUTO}),
                 }
             )
         else:
