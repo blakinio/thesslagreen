@@ -103,11 +103,15 @@ CONNECTION_MODE_TCP_RTU = "tcp_rtu"
 CONNECTION_MODE_AUTO = "auto"
 DEFAULT_CONNECTION_MODE = CONNECTION_MODE_AUTO
 
-# Default serial settings mirror the values used by Thessla Green controllers
+# Default serial settings per ProtokolModbusRTU_AirPack4 specification: "9600 bps 8/N/1"
 DEFAULT_SERIAL_PORT = ""
-DEFAULT_BAUD_RATE = 19200
-DEFAULT_PARITY = "even"
+DEFAULT_BAUD_RATE = 9600
+DEFAULT_PARITY = "none"
 DEFAULT_STOP_BITS = 1
+
+# Register name prefixes used to identify error/status registers
+ERROR_REGISTER_PREFIX = "e_"
+STATUS_REGISTER_PREFIX = "s_"
 
 SERIAL_PARITY_MAP = {
     "none": "N",

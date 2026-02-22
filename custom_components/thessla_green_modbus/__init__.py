@@ -49,11 +49,11 @@ from .const import (
     CONF_SLAVE_ID,
     CONF_STOP_BITS,
     CONF_TIMEOUT,
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
-    CONNECTION_MODE_AUTO,
-    CONNECTION_MODE_TCP_RTU,
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
@@ -74,12 +74,10 @@ from .const import (
     DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
     DOMAIN,
-)
-from .const import PLATFORMS as PLATFORM_DOMAINS
-from .const import (
     async_setup_options,
     migrate_unique_id,
 )
+from .const import PLATFORMS as PLATFORM_DOMAINS
 from .entity_mappings import async_setup_entity_mappings
 from .errors import is_invalid_auth_error
 from .modbus_exceptions import ConnectionException, ModbusException
