@@ -75,3 +75,72 @@ def test_pdf_register_decoding_types() -> None:
     assert registers["schedule_summer_mon_1"]["name"].startswith(BCD_TIME_PREFIXES)
     assert registers["manual_airing_time_to_start"]["name"].startswith(BCD_TIME_PREFIXES)
     assert registers["setting_summer_mon_1"]["name"].startswith("setting_")
+
+
+def test_pdf_register_units() -> None:
+    """Ensure units match PDF specifications for key registers."""
+
+    registers = _load_register_json()
+
+    assert registers["supply_flow_rate"]["unit"] == "m3/h"
+    assert registers["exhaust_flow_rate"]["unit"] == "m3/h"
+
+    assert registers["supply_percentage"]["unit"] == "%"
+    assert registers["exhaust_percentage"]["unit"] == "%"
+    assert registers["air_flow_rate_manual"]["unit"] == "%"
+
+    assert registers["supply_air_temperature_manual"]["unit"] == "°C"
+    assert registers["supply_air_temperature_manual"]["multiplier"] == 0.5
+
+
+def test_pdf_register_access() -> None:
+    """Ensure read/write access flags match PDF specifications."""
+
+    registers = _load_register_json()
+
+    read_only = [
+        "outside_temperature",
+        "supply_temperature",
+        "exhaust_temperature",
+        "supply_percentage",
+        "exhaust_percentage",
+        "supply_flow_rate",
+        "exhaust_flow_rate",
+        "version_major",
+        "version_minor",
+        "version_patch",
+    ]
+    for name in read_only:
+        assert registers[name]["access"] == "R", f"{name} should be read-only"
+
+    read_write = [
+        "mode",
+        "season_mode",
+        "air_flow_rate_manual",
+        "supply_air_temperature_manual",
+        "special_mode",
+        "schedule_summer_mon_1",
+        "setting_summer_mon_1",
+    ]
+    for name in read_write:
+        assert registers[name]["access"] == "RW", f"{name} should be read-write"
+
+
+def test_pdf_register_enum_values() -> None:
+    """Ensure enum registers have correct value sets from PDF."""
+
+    registers = _load_register_json()
+
+    mode_reg = registers["mode"]
+    assert mode_reg.get("enum") is not None
+    assert "0" in mode_reg["enum"]
+    assert "1" in mode_reg["enum"]
+    assert "2" in mode_reg["enum"]
+
+    season_reg = registers["season_mode"]
+    assert season_reg.get("enum") is not None
+    assert set(season_reg["enum"].keys()) == {"0", "1"}
+
+    special_reg = registers["special_mode"]
+    assert special_reg.get("enum") is not None
+    assert len(special_reg["enum"]) >= 10
