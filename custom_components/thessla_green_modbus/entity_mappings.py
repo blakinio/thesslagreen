@@ -532,14 +532,14 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:fan-plus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "exhaust_air_flow": {
         "translation_key": "exhaust_air_flow",
         "icon": "mdi:fan-minus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     # Percentage sensors
     "supply_percentage": {
@@ -624,32 +624,33 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "antifreeze_mode": {
         "translation_key": "antifreeze_mode",
         "icon": "mdi:snowflake-alert",
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "mode": {
         "translation_key": "mode",
         "icon": "mdi:cog",
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
+        "value_map": {0: "auto", 1: "manual", 2: "temporary"},
     },
     "season_mode": {
         "translation_key": "season_mode",
         "icon": "mdi:weather-sunny",
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "gwc_mode": {
         "translation_key": "gwc_mode",
         "icon": "mdi:pipe",
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "bypass_mode": {
         "translation_key": "bypass_mode",
         "icon": "mdi:pipe-leak",
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "comfort_mode": {
         "translation_key": "comfort_mode",
         "icon": "mdi:home-heart",
-        "register_type": "input_registers",
+        "register_type": "holding_registers",
     },
     "constant_flow_active": {
         "translation_key": "constant_flow_active",
@@ -671,7 +672,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "holding_registers",
+        "register_type": "calculated",
     },
     "supply_air_temperature_temporary_2": {
         "translation_key": "supply_air_temperature_temporary_2",
@@ -679,7 +680,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "holding_registers",
+        "register_type": "calculated",
     },
     "min_bypass_temperature": {
         "translation_key": "min_bypass_temperature",
@@ -711,7 +712,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "holding_registers",
+        "register_type": "calculated",
     },
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
@@ -840,14 +841,14 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:fan-plus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
-        "register_type": "holding_registers",
+        "register_type": "calculated",
     },
     "intensive_exhaust": {
         "translation_key": "intensive_exhaust",
         "icon": "mdi:fan-minus",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
-        "register_type": "holding_registers",
+        "register_type": "calculated",
     },
     # Calculated metrics
     "calculated_efficiency": {
@@ -856,7 +857,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": getattr(SensorDeviceClass, "EFFICIENCY", "efficiency"),
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
-        "register_type": "input_registers",
+        "register_type": "calculated",
     },
 }
 

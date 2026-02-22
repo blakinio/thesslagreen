@@ -69,7 +69,7 @@ async def async_setup_entry(
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
         if register_name in available or force_create:
-            address = register_map[register_name]
+            address = register_map.get(register_name, 0)
             entities.append(ThesslaGreenSensor(coordinator, register_name, address, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
             if is_temp:

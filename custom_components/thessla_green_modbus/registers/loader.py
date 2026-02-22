@@ -29,10 +29,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
-# Shared grouping helper
-from ..modbus_helpers import group_reads
-from ..schedule_helpers import time_to_bcd
-from ..utils import BCD_TIME_PREFIXES, decode_aatt, decode_bcd_time
 from .schema import RegisterList, _normalise_function, _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
@@ -127,6 +123,8 @@ class RegisterDef:
     def _is_bcd_time(self) -> bool:
         """Return True when the register stores a BCD HHMM time value."""
 
+        from ..utils import BCD_TIME_PREFIXES
+
         return self.bcd or self.name.startswith(BCD_TIME_PREFIXES)
 
     def _is_aatt(self) -> bool:
@@ -212,11 +210,15 @@ class RegisterDef:
 
         # Combined airflow/temperature values use a custom decoding
         if self._is_aatt():
+            from ..utils import decode_aatt
+
             decoded = decode_aatt(raw)
             return decoded
 
         # Schedule registers using BCD time encoding
         if self._is_bcd_time():
+            from ..utils import decode_bcd_time
+
             decoded = decode_bcd_time(raw)
             if decoded is not None:
                 return decoded
@@ -314,6 +316,8 @@ class RegisterDef:
                 hours, minutes = int(value[0]), int(value[1])
             else:  # pragma: no cover - defensive
                 raise ValueError(f"Unsupported BCD value: {value}")
+            from ..schedule_helpers import time_to_bcd
+
             return int(time_to_bcd(time(hours, minutes)))
 
         if self._is_aatt():
@@ -636,6 +640,8 @@ def plan_group_reads(max_block_size: int | None = None) -> list[ReadPlan]:
         addr_range = range(reg.address, reg.address + reg.length)
         regs_by_fn.setdefault(reg.function, []).extend(addr_range)
 
+    from ..modbus_helpers import group_reads
+
     plans: list[ReadPlan] = []
     for fn, addresses in regs_by_fn.items():
         for start, length in group_reads(addresses, max_block_size=max_block_size):
@@ -649,6 +655,8 @@ def group_registers(
     max_block_size: int | None = None,
 ) -> list[tuple[int, int]]:
     """Return grouped register ranges for the provided addresses."""
+
+    from ..modbus_helpers import group_reads
 
     return group_reads(addresses, max_block_size=max_block_size)
 

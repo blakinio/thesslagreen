@@ -171,9 +171,9 @@ def _calculate_backoff_delay(
     """Return the delay for the given ``attempt`` including optional jitter."""
 
     if base <= 0 or attempt <= 1:
-        delay = 0.0
-    else:
-        delay = float(base) * (2 ** (attempt - 2))
+        return 0.0
+
+    delay = float(base) * (2 ** (attempt - 2))
 
     if jitter:
         if isinstance(jitter, int | float):

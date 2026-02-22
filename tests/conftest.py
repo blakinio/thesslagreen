@@ -7,6 +7,7 @@ import os
 import sys
 import types
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -191,6 +192,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             self.logger = logger
             self.name = name
             self.update_interval = update_interval
+            self.data: dict = {}
 
         async def async_shutdown(self) -> None:  # pragma: no cover - stub
             return None
@@ -240,7 +242,8 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     helpers.CoordinatorEntity = CoordinatorEntity
 
     class DeviceInfo:  # type: ignore[override]
-        pass
+        def __init__(self, **kwargs: object) -> None:
+            pass
 
     device_registry.DeviceInfo = DeviceInfo
     exceptions.ConfigEntryNotReady = ConfigEntryNotReady
@@ -425,13 +428,13 @@ def _ensure_homeassistant_modules() -> None:
 
     components = _ensure_module("homeassistant.components")
     helpers = _ensure_module("homeassistant.helpers")
-    setattr(ha_module, "components", components)
-    setattr(ha_module, "helpers", helpers)
+    ha_module.components = components
+    ha_module.helpers = helpers
 
     helpers_script = _ensure_module("homeassistant.helpers.script")
     if not hasattr(helpers_script, "_schedule_stop_scripts_after_shutdown"):
         helpers_script._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
-    setattr(helpers, "script", helpers_script)
+    helpers.script = helpers_script
 
     components_network = _ensure_module("homeassistant.components.network")
     if not hasattr(components_network, "async_get_source_ip"):
@@ -439,7 +442,7 @@ def _ensure_homeassistant_modules() -> None:
             return "127.0.0.1"
 
         components_network.async_get_source_ip = async_get_source_ip
-    setattr(components, "network", components_network)
+    components.network = components_network
 
 
 import custom_components.thessla_green_modbus.registers.loader  # noqa: F401,E402
@@ -496,7 +499,8 @@ class CoordinatorMock(MagicMock):
     @device_scan_result.setter
     def device_scan_result(self, value):  # type: ignore[override]
         self.device_info = value.get("device_info", {})
-        self.capabilities = value.get("capabilities", {})
+        caps = value.get("capabilities", {})
+        self.capabilities = SimpleNamespace(**caps) if isinstance(caps, dict) else caps
 
 
 @pytest.fixture
@@ -558,6 +562,17 @@ def mock_coordinator():
             "constant_flow": True,
             "gwc_system": True,
             "bypass_system": True,
+            "heating_system": True,
+            "cooling_system": True,
+            "weekly_schedule": True,
+            "sensor_outside_temperature": True,
+            "sensor_supply_temperature": True,
+            "sensor_exhaust_temperature": True,
+            "sensor_fpx_temperature": True,
+            "sensor_duct_supply_temperature": True,
+            "sensor_gwc_temperature": True,
+            "sensor_ambient_temperature": True,
+            "sensor_heating_temperature": True,
         },
     }
     coordinator.available_registers = {

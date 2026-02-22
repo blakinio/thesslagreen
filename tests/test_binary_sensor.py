@@ -169,7 +169,11 @@ async def test_async_setup_creates_all_binary_sensors(
     mock_coordinator.available_registers = available
 
     add_entities: MagicMock = MagicMock()
-    await async_setup_entry(hass, mock_config_entry, add_entities)
+    with patch(
+        "custom_components.thessla_green_modbus.binary_sensor.capability_block_reason",
+        return_value=None,
+    ):
+        await async_setup_entry(hass, mock_config_entry, add_entities)
 
     entities = add_entities.call_args[0][0]
     assert len(entities) == len(BINARY_SENSOR_DEFINITIONS)  # nosec B101

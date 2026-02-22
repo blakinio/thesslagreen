@@ -532,8 +532,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             if MODBUS_BAUD_RATES
             else vol.All(vol.Coerce(int), vol.Range(min=1200, max=230400))
         )
-        parity_validator: Any = vol.In(MODBUS_PARITY) if MODBUS_PARITY else vol.In(["none", "even", "odd"])
-        stop_bits_validator: Any = vol.In(MODBUS_STOP_BITS) if MODBUS_STOP_BITS else vol.In(["1", "2"])
+        parity_validator: Any = (
+            vol.In(MODBUS_PARITY) if MODBUS_PARITY else vol.In(["none", "even", "odd"])
+        )
+        stop_bits_validator: Any = (
+            vol.In(MODBUS_STOP_BITS) if MODBUS_STOP_BITS else vol.In(["1", "2"])
+        )
 
         data_schema: dict[Any, Any] = {
             vol.Required(
@@ -543,15 +547,26 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     "selector": {
                         "select": {
                             "options": [
-                                {"value": CONNECTION_TYPE_TCP, "label": f"{DOMAIN}.connection_type_tcp"},
-                                {"value": CONNECTION_TYPE_TCP_RTU, "label": f"{DOMAIN}.connection_type_tcp_rtu"},
-                                {"value": CONNECTION_TYPE_RTU, "label": f"{DOMAIN}.connection_type_rtu"},
+                                {
+                                    "value": CONNECTION_TYPE_TCP,
+                                    "label": f"{DOMAIN}.connection_type_tcp",
+                                },
+                                {
+                                    "value": CONNECTION_TYPE_TCP_RTU,
+                                    "label": f"{DOMAIN}.connection_type_tcp_rtu",
+                                },
+                                {
+                                    "value": CONNECTION_TYPE_RTU,
+                                    "label": f"{DOMAIN}.connection_type_rtu",
+                                },
                             ]
                         }
                     }
                 },
             ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
-            vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
+            vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=247)
+            ),
             vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
             vol.Optional(
                 CONF_DEEP_SCAN,
@@ -560,7 +575,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             ): bool,
             vol.Optional(
                 CONF_MAX_REGISTERS_PER_REQUEST,
-                default=current_values.get(CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST),
+                default=current_values.get(
+                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+                ),
                 description={
                     "selector": {
                         "number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}
@@ -573,7 +590,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             data_schema.update(
                 {
                     vol.Required(CONF_HOST, default=host_default): str,
-                    vol.Required(CONF_PORT, default=port_default): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                    vol.Required(CONF_PORT, default=port_default): vol.All(
+                        vol.Coerce(int), vol.Range(min=1, max=65535)
+                    ),
                 }
             )
         else:
@@ -668,8 +687,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         options = {
             CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-            CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST),
-            CONF_ENABLE_DEVICE_SCAN: self._data.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN),
+            CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
+                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+            ),
+            CONF_ENABLE_DEVICE_SCAN: self._data.get(
+                CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN
+            ),
             CONF_LOG_LEVEL: DEFAULT_LOG_LEVEL,
         }
 
@@ -725,7 +748,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"
         auto_detected_note = translations.get(
             f"component.{DOMAIN}.{key}",
-            "Auto-detection successful!" if register_count > 0 else "Limited auto-detection - some registers may be missing.",
+            "Auto-detection successful!"
+            if register_count > 0
+            else "Limited auto-detection - some registers may be missing.",
         )
 
         connection_type = self._data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
@@ -738,19 +763,27 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             connection_label = self._data.get(CONF_SERIAL_PORT, "Unknown") or "Unknown"
             host_value = self._data.get(CONF_HOST, "-")
             port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
-            transport_label = translations.get(f"component.{DOMAIN}.connection_type_rtu_label", "Modbus RTU")
+            transport_label = translations.get(
+                f"component.{DOMAIN}.connection_type_rtu_label", "Modbus RTU"
+            )
         elif resolved_mode == CONNECTION_MODE_TCP_RTU:
             host_value = self._data.get(CONF_HOST, "Unknown")
             port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
             connection_label = f"{host_value}:{port_value}"
-            transport_label = translations.get(f"component.{DOMAIN}.connection_type_tcp_rtu_label", "Modbus TCP RTU")
+            transport_label = translations.get(
+                f"component.{DOMAIN}.connection_type_tcp_rtu_label", "Modbus TCP RTU"
+            )
         else:
             host_value = self._data.get(CONF_HOST, "Unknown")
             port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
             connection_label = f"{host_value}:{port_value}"
-            transport_label = translations.get(f"component.{DOMAIN}.connection_mode_auto_label", "Modbus TCP (Auto)")
+            transport_label = translations.get(
+                f"component.{DOMAIN}.connection_mode_auto_label", "Modbus TCP (Auto)"
+            )
             if resolved_mode == CONNECTION_MODE_TCP:
-                transport_label = translations.get(f"component.{DOMAIN}.connection_type_tcp_label", "Modbus TCP")
+                transport_label = translations.get(
+                    f"component.{DOMAIN}.connection_type_tcp_label", "Modbus TCP"
+                )
 
         description_placeholders = {
             "host": host_value,
@@ -774,13 +807,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
             description_placeholders=description_placeholders,
         )
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:  # pragma: no cover
+    async def async_step_user(  # pragma: no cover
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             try:
-                max_regs = user_input.get(CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST)
+                max_regs = user_input.get(
+                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+                )
                 if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
                     raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
@@ -847,7 +884,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         if user_input is not None:
             try:
-                max_regs = user_input.get(CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST)
+                max_regs = user_input.get(
+                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+                )
                 if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
                     raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
@@ -880,11 +919,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         return self.async_show_form(
             step_id="reauth",
-            data_schema=self._build_connection_schema(user_input or self._tg_flow_reauth_existing_data),
+            data_schema=self._build_connection_schema(
+                user_input or self._tg_flow_reauth_existing_data
+            ),
             errors=errors,
         )
 
-    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Confirm reauthentication details and update the existing entry."""
         module = import_module("custom_components.thessla_green_modbus.scanner_core")
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
@@ -896,7 +939,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
             entry = self.hass.config_entries.async_get_entry(self._tg_flow_reauth_entry_id)
             if entry is None:
-                _LOGGER.error("Reauthentication requested for missing entry %s", self._tg_flow_reauth_entry_id)
+                _LOGGER.error(
+                    "Reauthentication requested for missing entry %s",
+                    self._tg_flow_reauth_entry_id,
+                )
                 return self.async_abort(reason="reauth_entry_missing")
 
             data, options = self._prepare_entry_payload(cap_cls)
@@ -909,7 +955,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         return await self._async_show_confirmation(cap_cls, "reauth_confirm")
 
     @staticmethod
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> OptionsFlow:  # pragma: no cover
+    def async_get_options_flow(  # pragma: no cover
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlow:
         """Return the options flow handler."""
         return OptionsFlow(config_entry)
 
@@ -921,12 +969,16 @@ class OptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:  # pragma: no cover
+    async def async_step_init(  # pragma: no cover
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Handle options flow."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            max_regs = user_input.get(CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST)
+            max_regs = user_input.get(
+                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+            )
             if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
                 errors[CONF_MAX_REGISTERS_PER_REQUEST] = "max_registers_range"
             else:
@@ -944,7 +996,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_retry = entry_options.get(CONF_RETRY, DEFAULT_RETRY)
         force_full = entry_options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
         current_scan_uart = entry_options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
-        current_skip_missing = entry_options.get(CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS)
+        current_skip_missing = entry_options.get(
+            CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
+        )
         current_enable_scan = entry_options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN)
         current_airflow_unit = entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
         current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
@@ -955,7 +1009,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         current_log_level = entry_options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
 
         transport = entry_data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        connection_mode = entry_options.get(CONF_CONNECTION_MODE, entry_data.get(CONF_CONNECTION_MODE))
+        connection_mode = entry_options.get(
+            CONF_CONNECTION_MODE, entry_data.get(CONF_CONNECTION_MODE)
+        )
         normalized_type, resolved_mode = resolve_connection_settings(
             transport, connection_mode, entry_data.get(CONF_PORT, DEFAULT_PORT)
         )
@@ -1009,11 +1065,15 @@ class OptionsFlow(config_entries.OptionsFlow):
                 ): vol.In({"debug", "info", "warning", "error"}),
                 vol.Optional(CONF_SCAN_UART_SETTINGS, default=current_scan_uart): bool,
                 vol.Optional(CONF_SKIP_MISSING_REGISTERS, default=current_skip_missing): bool,
-                vol.Optional(CONF_SAFE_SCAN, default=current_safe_scan, description={"advanced": True}): bool,
+                vol.Optional(
+                    CONF_SAFE_SCAN, default=current_safe_scan, description={"advanced": True}
+                ): bool,
                 vol.Optional(CONF_AIRFLOW_UNIT, default=current_airflow_unit): vol.In(
                     [AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE]
                 ),
-                vol.Optional(CONF_DEEP_SCAN, default=current_deep_scan, description={"advanced": True}): bool,
+                vol.Optional(
+                    CONF_DEEP_SCAN, default=current_deep_scan, description={"advanced": True}
+                ): bool,
                 vol.Optional(
                     CONF_MAX_REGISTERS_PER_REQUEST,
                     default=current_max_registers_per_request,
