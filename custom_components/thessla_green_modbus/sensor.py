@@ -24,7 +24,9 @@ from .const import (
     CONF_AIRFLOW_UNIT,
     DEFAULT_AIRFLOW_UNIT,
     DOMAIN,
+    ERROR_REGISTER_PREFIX,
     SENSOR_UNAVAILABLE,
+    STATUS_REGISTER_PREFIX,
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
@@ -33,6 +35,11 @@ from .utils import TIME_REGISTER_PREFIXES
 
 _LOGGER = logging.getLogger(__name__)
 SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {})
+
+
+def _is_error_or_status_register(key: str) -> bool:
+    """Return True when *key* belongs to an error or status register."""
+    return key.startswith(ERROR_REGISTER_PREFIX) or key.startswith(STATUS_REGISTER_PREFIX)
 
 
 async def async_setup_entry(
@@ -84,7 +91,7 @@ async def async_setup_entry(
     error_registers = [
         key
         for key in coordinator.available_registers.get("holding_registers", set())
-        if key.startswith("e_") or key.startswith("s_")
+        if _is_error_or_status_register(key)
     ]
     if error_registers:
         entities.append(ThesslaGreenActiveErrorsSensor(coordinator))
@@ -247,7 +254,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         errors = [
             self._translations.get(f"codes.{key}", key)
             for key, value in self.coordinator.data.items()
-            if (key.startswith("e_") or key.startswith("s_")) and value
+            if _is_error_or_status_register(key) and value
         ]
         return ", ".join(sorted(errors)) if errors else None
 
@@ -257,7 +264,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         active = [
             key
             for key, value in self.coordinator.data.items()
-            if (key.startswith("e_") or key.startswith("s_")) and value
+            if _is_error_or_status_register(key) and value
         ]
         return {"active_errors": active} if active else {}
 
@@ -285,7 +292,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         codes = [
             key
             for key, value in self.coordinator.data.items()
-            if value and (key.startswith("e_") or key.startswith("s_"))
+            if value and _is_error_or_status_register(key)
         ]
         labels = [self._translations.get(f"codes.{code}", code) for code in codes]
         return ", ".join(sorted(labels)) if labels else None
@@ -296,7 +303,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         codes = sorted(
             code
             for code, value in self.coordinator.data.items()
-            if value and (code.startswith("e_") or code.startswith("s_"))
+            if value and _is_error_or_status_register(code)
         )
         if not codes:
             return {}

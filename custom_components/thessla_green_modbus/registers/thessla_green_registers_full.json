@@ -14,7 +14,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy",
-      "description_en": "Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy"
+      "description_en": "Duct water heater circulation pump relay output state"
     },
     {
       "function": "01",
@@ -30,7 +30,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia siłownika przepustnicy bypass",
-      "description_en": "Stan wyjścia siłownika przepustnicy bypass"
+      "description_en": "Bypass damper actuator output state"
     },
     {
       "function": "01",
@@ -46,7 +46,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia sygnału potwierdzenia pracy centrali (O1)",
-      "description_en": "Stan wyjścia sygnału potwierdzenia pracy centrali (O1)"
+      "description_en": "AHU confirmation signal output state (O1)"
     },
     {
       "function": "01",
@@ -62,7 +62,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia przekaźnika zasilania wentylatorów",
-      "description_en": "Stan wyjścia przekaźnika zasilania wentylatorów"
+      "description_en": "Fan power supply relay output state"
     },
     {
       "function": "01",
@@ -78,7 +78,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia przekaźnika zasilania kabla grzejnego",
-      "description_en": "Stan wyjścia przekaźnika zasilania kabla grzejnego"
+      "description_en": "Heating cable power relay output state"
     },
     {
       "function": "01",
@@ -94,7 +94,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)",
-      "description_en": "Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)"
+      "description_en": "Expansion module operation confirmation relay output state"
     },
     {
       "function": "01",
@@ -110,7 +110,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia przekaźnika GWC",
-      "description_en": "Stan wyjścia przekaźnika GWC"
+      "description_en": "GWC relay output state"
     },
     {
       "function": "01",
@@ -126,7 +126,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wyjścia zasilającego przepustnicę okapu",
-      "description_en": "Stan wyjścia zasilającego przepustnicę okapu"
+      "description_en": "Hood damper power supply output state"
     },
     {
       "function": "02",
@@ -142,7 +142,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia zabezpieczenia termicznego elektrycznej nagrzewnicy kanałowej",
-      "description_en": "Stan wejścia zabezpieczenia termicznego elektrycznej nagrzewnicy kanałowej"
+      "description_en": "Duct electric heater thermal protection input state"
     },
     {
       "function": "02",
@@ -158,7 +158,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Komunikacja z modułem Expansion",
-      "description_en": "Komunikacja z modułem Expansion"
+      "description_en": "Expansion module communication state"
     },
     {
       "function": "02",
@@ -174,7 +174,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia presostatu filtra kanałowego",
-      "description_en": "Stan wejścia presostatu filtra kanałowego"
+      "description_en": "Duct filter differential pressure switch input state"
     },
     {
       "function": "02",
@@ -190,7 +190,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia włącznika funkcji OKAP",
-      "description_en": "Stan wejścia włącznika funkcji OKAP"
+      "description_en": "Hood function switch input state"
     },
     {
       "function": "02",
@@ -206,7 +206,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia dwustanowego czujnika jakości powietrza",
-      "description_en": "Stan wejścia dwustanowego czujnika jakości powietrza"
+      "description_en": "Binary air quality sensor input state"
     },
     {
       "function": "02",
@@ -222,7 +222,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia dwustanowego czujnika wilgotności",
-      "description_en": "Stan wejścia dwustanowego czujnika wilgotności"
+      "description_en": "Binary humidity sensor input state"
     },
     {
       "function": "02",
@@ -238,7 +238,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia włącznika funkcji WIETRZENIE",
-      "description_en": "Stan wejścia włącznika funkcji WIETRZENIE"
+      "description_en": "Airing function switch input state"
     },
     {
       "function": "02",
@@ -254,7 +254,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia przełącznika AirS w pozycji \"Wietrzenie\"",
-      "description_en": "Stan wejścia przełącznika AirS w pozycji \"Wietrzenie\""
+      "description_en": "AirS panel switch input state – Airing position"
     },
     {
       "function": "02",
@@ -270,7 +270,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia przełącznika AirS w pozycji \"3 bieg\"",
-      "description_en": "Stan wejścia przełącznika AirS w pozycji \"3 bieg\""
+      "description_en": "AirS panel switch input state – Speed 3 position"
     },
     {
       "function": "02",
@@ -286,7 +286,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia przełącznika AirS w pozycji \"2 bieg\"",
-      "description_en": "Stan wejścia przełącznika AirS w pozycji \"2 bieg\""
+      "description_en": "AirS panel switch input state – Speed 2 position"
     },
     {
       "function": "02",
@@ -302,7 +302,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia przełącznika AirS w pozycji \"1 bieg\"",
-      "description_en": "Stan wejścia przełącznika AirS w pozycji \"1 bieg\""
+      "description_en": "AirS panel switch input state – Speed 1 position"
     },
     {
       "function": "02",
@@ -318,7 +318,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia włącznika funkcji KOMINEK",
-      "description_en": "Stan wejścia włącznika funkcji KOMINEK"
+      "description_en": "Fireplace function switch input state"
     },
     {
       "function": "02",
@@ -334,7 +334,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia sygnału alarmu pożarowego (P.POZ.)",
-      "description_en": "Stan wejścia sygnału alarmu pożarowego (P.POZ.)"
+      "description_en": "Fire alarm signal input state (F.FIRE.)"
     },
     {
       "function": "02",
@@ -350,7 +350,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia presostatu filtrów w rekuperatorze (DP1)",
-      "description_en": "Stan wejścia presostatu filtrów w rekuperatorze (DP1)"
+      "description_en": "AHU filter differential pressure switch input state (DP1)"
     },
     {
       "function": "02",
@@ -366,7 +366,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia zabezpieczenia termicznego nagrzewnicy systemu przeciwzamrożeniowego FPX",
-      "description_en": "Stan wejścia zabezpieczenia termicznego nagrzewnicy systemu przeciwzamrożeniowego FPX"
+      "description_en": "FPX anti-freeze heater thermal protection input state"
     },
     {
       "function": "02",
@@ -382,7 +382,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Stan wejścia sygnału załączenia funkcji PUSTY DOM",
-      "description_en": "Stan wejścia sygnału załączenia funkcji PUSTY DOM"
+      "description_en": "Empty house function activation signal input state"
     },
     {
       "function": "03",
@@ -395,7 +395,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data i godzina - liczba dziesiątek / jedności roku i miesiąc [RRMM]",
-      "description_en": "Data i godzina - liczba dziesiątek / jedności roku i miesiąc [RRMM]"
+      "description_en": "Date and time - tens/units of year and month [YYMM]"
     },
     {
       "function": "03",
@@ -408,7 +408,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data i godzina - dzień miesiąca i dzień tygodnia [DDTT]",
-      "description_en": "Data i godzina - dzień miesiąca i dzień tygodnia [DDTT]"
+      "description_en": "Date and time - day of month and day of week [DDWW]"
     },
     {
       "function": "03",
@@ -421,7 +421,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data i godzina - godzina i minuta [GGmm]",
-      "description_en": "Data i godzina - godzina i minuta [GGmm]"
+      "description_en": "Date and time - hour and minute [HHmm]"
     },
     {
       "function": "03",
@@ -434,7 +434,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data i godzina - sekunda i setne części sekundy [sscc]",
-      "description_en": "Data i godzina - sekunda i setne części sekundy [sscc]"
+      "description_en": "Date and time - second and hundredths of a second [sscc]"
     },
     {
       "function": "03",
@@ -447,7 +447,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data zablokowania centrali kluczem produktu - liczba dziesiątek / jedności roku [00RR]",
-      "description_en": "Data zablokowania centrali kluczem produktu - liczba dziesiątek / jedności roku [00RR]"
+      "description_en": "Product key lock date - tens/units of year [00YY]"
     },
     {
       "function": "03",
@@ -460,7 +460,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data zablokowania centrali kluczem produktu - miesiąc [00MM]",
-      "description_en": "Data zablokowania centrali kluczem produktu - miesiąc [00MM]"
+      "description_en": "Product key lock date - month [00MM]"
     },
     {
       "function": "03",
@@ -473,7 +473,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data zablokowania centrali kluczem produktu - dzień [00DD]",
-      "description_en": "Data zablokowania centrali kluczem produktu - dzień [00DD]"
+      "description_en": "Product key lock date - day [00DD]"
     },
     {
       "function": "03",
@@ -490,7 +490,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Tryby specjalne pracy centrali",
-      "description_en": "Tryby specjalne pracy centrali"
+      "description_en": "AHU special operating modes"
     },
     {
       "function": "03",
@@ -507,7 +507,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Poziom dostępu",
-      "description_en": "Poziom dostępu"
+      "description_en": "Access level"
     },
     {
       "function": "03",
@@ -520,7 +520,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 1",
-      "description_en": "LATO - Poniedziałek - 1"
+      "description_en": "SUMMER – Monday – slot 1"
     },
     {
       "function": "03",
@@ -533,7 +533,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 2",
-      "description_en": "LATO - Poniedziałek - 2"
+      "description_en": "SUMMER – Monday – slot 2"
     },
     {
       "function": "03",
@@ -546,7 +546,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 3",
-      "description_en": "LATO - Poniedziałek - 3"
+      "description_en": "SUMMER – Monday – slot 3"
     },
     {
       "function": "03",
@@ -559,7 +559,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 4",
-      "description_en": "LATO - Poniedziałek - 4"
+      "description_en": "SUMMER – Monday – slot 4"
     },
     {
       "function": "03",
@@ -572,7 +572,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 1",
-      "description_en": "LATO - Wtorek - 1"
+      "description_en": "SUMMER – Tuesday – slot 1"
     },
     {
       "function": "03",
@@ -585,7 +585,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 2",
-      "description_en": "LATO - Wtorek - 2"
+      "description_en": "SUMMER – Tuesday – slot 2"
     },
     {
       "function": "03",
@@ -598,7 +598,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 3",
-      "description_en": "LATO - Wtorek - 3"
+      "description_en": "SUMMER – Tuesday – slot 3"
     },
     {
       "function": "03",
@@ -611,7 +611,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 4",
-      "description_en": "LATO - Wtorek - 4"
+      "description_en": "SUMMER – Tuesday – slot 4"
     },
     {
       "function": "03",
@@ -624,7 +624,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 1",
-      "description_en": "LATO - Środa - 1"
+      "description_en": "SUMMER – Wednesday – slot 1"
     },
     {
       "function": "03",
@@ -637,7 +637,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 2",
-      "description_en": "LATO - Środa - 2"
+      "description_en": "SUMMER – Wednesday – slot 2"
     },
     {
       "function": "03",
@@ -650,7 +650,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 3",
-      "description_en": "LATO - Środa - 3"
+      "description_en": "SUMMER – Wednesday – slot 3"
     },
     {
       "function": "03",
@@ -663,7 +663,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 4",
-      "description_en": "LATO - Środa - 4"
+      "description_en": "SUMMER – Wednesday – slot 4"
     },
     {
       "function": "03",
@@ -676,7 +676,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 1",
-      "description_en": "LATO - Czwartek - 1"
+      "description_en": "SUMMER – Thursday – slot 1"
     },
     {
       "function": "03",
@@ -689,7 +689,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 2",
-      "description_en": "LATO - Czwartek - 2"
+      "description_en": "SUMMER – Thursday – slot 2"
     },
     {
       "function": "03",
@@ -702,7 +702,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 3",
-      "description_en": "LATO - Czwartek - 3"
+      "description_en": "SUMMER – Thursday – slot 3"
     },
     {
       "function": "03",
@@ -715,7 +715,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 4",
-      "description_en": "LATO - Czwartek - 4"
+      "description_en": "SUMMER – Thursday – slot 4"
     },
     {
       "function": "03",
@@ -728,7 +728,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 1",
-      "description_en": "LATO - Piątek - 1"
+      "description_en": "SUMMER – Friday – slot 1"
     },
     {
       "function": "03",
@@ -741,7 +741,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 2",
-      "description_en": "LATO - Piątek - 2"
+      "description_en": "SUMMER – Friday – slot 2"
     },
     {
       "function": "03",
@@ -754,7 +754,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 3",
-      "description_en": "LATO - Piątek - 3"
+      "description_en": "SUMMER – Friday – slot 3"
     },
     {
       "function": "03",
@@ -767,7 +767,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 4",
-      "description_en": "LATO - Piątek - 4"
+      "description_en": "SUMMER – Friday – slot 4"
     },
     {
       "function": "03",
@@ -780,7 +780,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 1",
-      "description_en": "LATO - Sobota - 1"
+      "description_en": "SUMMER – Saturday – slot 1"
     },
     {
       "function": "03",
@@ -793,7 +793,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 2",
-      "description_en": "LATO - Sobota - 2"
+      "description_en": "SUMMER – Saturday – slot 2"
     },
     {
       "function": "03",
@@ -806,7 +806,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 3",
-      "description_en": "LATO - Sobota - 3"
+      "description_en": "SUMMER – Saturday – slot 3"
     },
     {
       "function": "03",
@@ -819,7 +819,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 4",
-      "description_en": "LATO - Sobota - 4"
+      "description_en": "SUMMER – Saturday – slot 4"
     },
     {
       "function": "03",
@@ -832,7 +832,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 1",
-      "description_en": "LATO - Niedziela - 1"
+      "description_en": "SUMMER – Sunday – slot 1"
     },
     {
       "function": "03",
@@ -845,7 +845,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 2",
-      "description_en": "LATO - Niedziela - 2"
+      "description_en": "SUMMER – Sunday – slot 2"
     },
     {
       "function": "03",
@@ -858,7 +858,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 3",
-      "description_en": "LATO - Niedziela - 3"
+      "description_en": "SUMMER – Sunday – slot 3"
     },
     {
       "function": "03",
@@ -871,7 +871,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 4",
-      "description_en": "LATO - Niedziela - 4"
+      "description_en": "SUMMER – Sunday – slot 4"
     },
     {
       "function": "03",
@@ -884,7 +884,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 1",
-      "description_en": "ZIMA - Poniedziałek - 1"
+      "description_en": "WINTER – Monday – slot 1"
     },
     {
       "function": "03",
@@ -897,7 +897,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 2",
-      "description_en": "ZIMA - Poniedziałek - 2"
+      "description_en": "WINTER – Monday – slot 2"
     },
     {
       "function": "03",
@@ -910,7 +910,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 3",
-      "description_en": "ZIMA - Poniedziałek - 3"
+      "description_en": "WINTER – Monday – slot 3"
     },
     {
       "function": "03",
@@ -923,7 +923,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 4",
-      "description_en": "ZIMA - Poniedziałek - 4"
+      "description_en": "WINTER – Monday – slot 4"
     },
     {
       "function": "03",
@@ -936,7 +936,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 1",
-      "description_en": "ZIMA - Wtorek - 1"
+      "description_en": "WINTER – Tuesday – slot 1"
     },
     {
       "function": "03",
@@ -949,7 +949,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 2",
-      "description_en": "ZIMA - Wtorek - 2"
+      "description_en": "WINTER – Tuesday – slot 2"
     },
     {
       "function": "03",
@@ -962,7 +962,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 3",
-      "description_en": "ZIMA - Wtorek - 3"
+      "description_en": "WINTER – Tuesday – slot 3"
     },
     {
       "function": "03",
@@ -975,7 +975,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 4",
-      "description_en": "ZIMA - Wtorek - 4"
+      "description_en": "WINTER – Tuesday – slot 4"
     },
     {
       "function": "03",
@@ -988,7 +988,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 1",
-      "description_en": "ZIMA - Środa - 1"
+      "description_en": "WINTER – Wednesday – slot 1"
     },
     {
       "function": "03",
@@ -1001,7 +1001,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 2",
-      "description_en": "ZIMA - Środa - 2"
+      "description_en": "WINTER – Wednesday – slot 2"
     },
     {
       "function": "03",
@@ -1014,7 +1014,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 3",
-      "description_en": "ZIMA - Środa - 3"
+      "description_en": "WINTER – Wednesday – slot 3"
     },
     {
       "function": "03",
@@ -1027,7 +1027,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 4",
-      "description_en": "ZIMA - Środa - 4"
+      "description_en": "WINTER – Wednesday – slot 4"
     },
     {
       "function": "03",
@@ -1040,7 +1040,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 1",
-      "description_en": "ZIMA - Czwartek - 1"
+      "description_en": "WINTER – Thursday – slot 1"
     },
     {
       "function": "03",
@@ -1053,7 +1053,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 2",
-      "description_en": "ZIMA - Czwartek - 2"
+      "description_en": "WINTER – Thursday – slot 2"
     },
     {
       "function": "03",
@@ -1066,7 +1066,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 3",
-      "description_en": "ZIMA - Czwartek - 3"
+      "description_en": "WINTER – Thursday – slot 3"
     },
     {
       "function": "03",
@@ -1079,7 +1079,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 4",
-      "description_en": "ZIMA - Czwartek - 4"
+      "description_en": "WINTER – Thursday – slot 4"
     },
     {
       "function": "03",
@@ -1092,7 +1092,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 1",
-      "description_en": "ZIMA - Piątek - 1"
+      "description_en": "WINTER – Friday – slot 1"
     },
     {
       "function": "03",
@@ -1105,7 +1105,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 2",
-      "description_en": "ZIMA - Piątek - 2"
+      "description_en": "WINTER – Friday – slot 2"
     },
     {
       "function": "03",
@@ -1118,7 +1118,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 3",
-      "description_en": "ZIMA - Piątek - 3"
+      "description_en": "WINTER – Friday – slot 3"
     },
     {
       "function": "03",
@@ -1131,7 +1131,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 4",
-      "description_en": "ZIMA - Piątek - 4"
+      "description_en": "WINTER – Friday – slot 4"
     },
     {
       "function": "03",
@@ -1144,7 +1144,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 1",
-      "description_en": "ZIMA - Sobota - 1"
+      "description_en": "WINTER – Saturday – slot 1"
     },
     {
       "function": "03",
@@ -1157,7 +1157,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 2",
-      "description_en": "ZIMA - Sobota - 2"
+      "description_en": "WINTER – Saturday – slot 2"
     },
     {
       "function": "03",
@@ -1170,7 +1170,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 3",
-      "description_en": "ZIMA - Sobota - 3"
+      "description_en": "WINTER – Saturday – slot 3"
     },
     {
       "function": "03",
@@ -1183,7 +1183,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 4",
-      "description_en": "ZIMA - Sobota - 4"
+      "description_en": "WINTER – Saturday – slot 4"
     },
     {
       "function": "03",
@@ -1196,7 +1196,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 1",
-      "description_en": "ZIMA - Niedziela - 1"
+      "description_en": "WINTER – Sunday – slot 1"
     },
     {
       "function": "03",
@@ -1209,7 +1209,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 2",
-      "description_en": "ZIMA - Niedziela - 2"
+      "description_en": "WINTER – Sunday – slot 2"
     },
     {
       "function": "03",
@@ -1222,7 +1222,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 3",
-      "description_en": "ZIMA - Niedziela - 3"
+      "description_en": "WINTER – Sunday – slot 3"
     },
     {
       "function": "03",
@@ -1235,7 +1235,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 4",
-      "description_en": "ZIMA - Niedziela - 4"
+      "description_en": "WINTER – Sunday – slot 4"
     },
     {
       "function": "03",
@@ -1248,7 +1248,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 1 [AATT]",
-      "description_en": "LATO - Poniedziałek - 1 [AATT]"
+      "description_en": "SUMMER – Monday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1261,7 +1261,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 2 [AATT]",
-      "description_en": "LATO - Poniedziałek - 2 [AATT]"
+      "description_en": "SUMMER – Monday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1274,7 +1274,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 3 [AATT]",
-      "description_en": "LATO - Poniedziałek - 3 [AATT]"
+      "description_en": "SUMMER – Monday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1287,7 +1287,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - 4 [AATT]",
-      "description_en": "LATO - Poniedziałek - 4 [AATT]"
+      "description_en": "SUMMER – Monday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1300,7 +1300,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 1 [AATT]",
-      "description_en": "LATO - Wtorek - 1 [AATT]"
+      "description_en": "SUMMER – Tuesday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1313,7 +1313,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 2 [AATT]",
-      "description_en": "LATO - Wtorek - 2 [AATT]"
+      "description_en": "SUMMER – Tuesday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1326,7 +1326,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 3 [AATT]",
-      "description_en": "LATO - Wtorek - 3 [AATT]"
+      "description_en": "SUMMER – Tuesday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1339,7 +1339,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - 4 [AATT]",
-      "description_en": "LATO - Wtorek - 4 [AATT]"
+      "description_en": "SUMMER – Tuesday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1352,7 +1352,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 1 [AATT]",
-      "description_en": "LATO - Środa - 1 [AATT]"
+      "description_en": "SUMMER – Wednesday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1365,7 +1365,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 2 [AATT]",
-      "description_en": "LATO - Środa - 2 [AATT]"
+      "description_en": "SUMMER – Wednesday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1378,7 +1378,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 3 [AATT]",
-      "description_en": "LATO - Środa - 3 [AATT]"
+      "description_en": "SUMMER – Wednesday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1391,7 +1391,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - 4 [AATT]",
-      "description_en": "LATO - Środa - 4 [AATT]"
+      "description_en": "SUMMER – Wednesday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1404,7 +1404,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 1 [AATT]",
-      "description_en": "LATO - Czwartek - 1 [AATT]"
+      "description_en": "SUMMER – Thursday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1417,7 +1417,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 2 [AATT]",
-      "description_en": "LATO - Czwartek - 2 [AATT]"
+      "description_en": "SUMMER – Thursday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1430,7 +1430,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 3 [AATT]",
-      "description_en": "LATO - Czwartek - 3 [AATT]"
+      "description_en": "SUMMER – Thursday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1443,7 +1443,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - 4 [AATT]",
-      "description_en": "LATO - Czwartek - 4 [AATT]"
+      "description_en": "SUMMER – Thursday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1456,7 +1456,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 1 [AATT]",
-      "description_en": "LATO - Piątek - 1 [AATT]"
+      "description_en": "SUMMER – Friday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1469,7 +1469,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 2 [AATT]",
-      "description_en": "LATO - Piątek - 2 [AATT]"
+      "description_en": "SUMMER – Friday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1482,7 +1482,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 3 [AATT]",
-      "description_en": "LATO - Piątek - 3 [AATT]"
+      "description_en": "SUMMER – Friday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1495,7 +1495,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - 4 [AATT]",
-      "description_en": "LATO - Piątek - 4 [AATT]"
+      "description_en": "SUMMER – Friday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1508,7 +1508,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 1 [AATT]",
-      "description_en": "LATO - Sobota - 1 [AATT]"
+      "description_en": "SUMMER – Saturday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1521,7 +1521,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 2 [AATT]",
-      "description_en": "LATO - Sobota - 2 [AATT]"
+      "description_en": "SUMMER – Saturday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1534,7 +1534,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 3 [AATT]",
-      "description_en": "LATO - Sobota - 3 [AATT]"
+      "description_en": "SUMMER – Saturday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1547,7 +1547,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - 4 [AATT]",
-      "description_en": "LATO - Sobota - 4 [AATT]"
+      "description_en": "SUMMER – Saturday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1560,7 +1560,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 1 [AATT]",
-      "description_en": "LATO - Niedziela - 1 [AATT]"
+      "description_en": "SUMMER – Sunday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1573,7 +1573,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 2 [AATT]",
-      "description_en": "LATO - Niedziela - 2 [AATT]"
+      "description_en": "SUMMER – Sunday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1586,7 +1586,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 3 [AATT]",
-      "description_en": "LATO - Niedziela - 3 [AATT]"
+      "description_en": "SUMMER – Sunday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1599,7 +1599,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - 4 [AATT]",
-      "description_en": "LATO - Niedziela - 4 [AATT]"
+      "description_en": "SUMMER – Sunday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1612,7 +1612,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 1 [AATT]",
-      "description_en": "ZIMA - Poniedziałek - 1 [AATT]"
+      "description_en": "WINTER – Monday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1625,7 +1625,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 2 [AATT]",
-      "description_en": "ZIMA - Poniedziałek - 2 [AATT]"
+      "description_en": "WINTER – Monday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1638,7 +1638,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 3 [AATT]",
-      "description_en": "ZIMA - Poniedziałek - 3 [AATT]"
+      "description_en": "WINTER – Monday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1651,7 +1651,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - 4 [AATT]",
-      "description_en": "ZIMA - Poniedziałek - 4 [AATT]"
+      "description_en": "WINTER – Monday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1664,7 +1664,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 1 [AATT]",
-      "description_en": "ZIMA - Wtorek - 1 [AATT]"
+      "description_en": "WINTER – Tuesday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1677,7 +1677,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 2 [AATT]",
-      "description_en": "ZIMA - Wtorek - 2 [AATT]"
+      "description_en": "WINTER – Tuesday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1690,7 +1690,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 3 [AATT]",
-      "description_en": "ZIMA - Wtorek - 3 [AATT]"
+      "description_en": "WINTER – Tuesday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1703,7 +1703,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - 4 [AATT]",
-      "description_en": "ZIMA - Wtorek - 4 [AATT]"
+      "description_en": "WINTER – Tuesday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1716,7 +1716,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 1 [AATT]",
-      "description_en": "ZIMA - Środa - 1 [AATT]"
+      "description_en": "WINTER – Wednesday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1729,7 +1729,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 2 [AATT]",
-      "description_en": "ZIMA - Środa - 2 [AATT]"
+      "description_en": "WINTER – Wednesday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1742,7 +1742,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 3 [AATT]",
-      "description_en": "ZIMA - Środa - 3 [AATT]"
+      "description_en": "WINTER – Wednesday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1755,7 +1755,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - 4 [AATT]",
-      "description_en": "ZIMA - Środa - 4 [AATT]"
+      "description_en": "WINTER – Wednesday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1768,7 +1768,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 1 [AATT]",
-      "description_en": "ZIMA - Czwartek - 1 [AATT]"
+      "description_en": "WINTER – Thursday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1781,7 +1781,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 2 [AATT]",
-      "description_en": "ZIMA - Czwartek - 2 [AATT]"
+      "description_en": "WINTER – Thursday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1794,7 +1794,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 3 [AATT]",
-      "description_en": "ZIMA - Czwartek - 3 [AATT]"
+      "description_en": "WINTER – Thursday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1807,7 +1807,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - 4 [AATT]",
-      "description_en": "ZIMA - Czwartek - 4 [AATT]"
+      "description_en": "WINTER – Thursday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1820,7 +1820,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 1 [AATT]",
-      "description_en": "ZIMA - Piątek - 1 [AATT]"
+      "description_en": "WINTER – Friday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1833,7 +1833,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 2 [AATT]",
-      "description_en": "ZIMA - Piątek - 2 [AATT]"
+      "description_en": "WINTER – Friday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1846,7 +1846,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 3 [AATT]",
-      "description_en": "ZIMA - Piątek - 3 [AATT]"
+      "description_en": "WINTER – Friday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1859,7 +1859,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - 4 [AATT]",
-      "description_en": "ZIMA - Piątek - 4 [AATT]"
+      "description_en": "WINTER – Friday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1872,7 +1872,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 1 [AATT]",
-      "description_en": "ZIMA - Sobota - 1 [AATT]"
+      "description_en": "WINTER – Saturday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1885,7 +1885,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 2 [AATT]",
-      "description_en": "ZIMA - Sobota - 2 [AATT]"
+      "description_en": "WINTER – Saturday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1898,7 +1898,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 3 [AATT]",
-      "description_en": "ZIMA - Sobota - 3 [AATT]"
+      "description_en": "WINTER – Saturday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1911,7 +1911,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - 4 [AATT]",
-      "description_en": "ZIMA - Sobota - 4 [AATT]"
+      "description_en": "WINTER – Saturday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1924,7 +1924,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 1 [AATT]",
-      "description_en": "ZIMA - Niedziela - 1 [AATT]"
+      "description_en": "WINTER – Sunday – slot 1 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1937,7 +1937,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 2 [AATT]",
-      "description_en": "ZIMA - Niedziela - 2 [AATT]"
+      "description_en": "WINTER – Sunday – slot 2 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1950,7 +1950,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 3 [AATT]",
-      "description_en": "ZIMA - Niedziela - 3 [AATT]"
+      "description_en": "WINTER – Sunday – slot 3 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1963,7 +1963,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - 4 [AATT]",
-      "description_en": "ZIMA - Niedziela - 4 [AATT]"
+      "description_en": "WINTER – Sunday – slot 4 [intensity/temp]"
     },
     {
       "function": "03",
@@ -1976,7 +1976,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Poniedziałek - Wietrzenie [GGMM]",
-      "description_en": "LATO - Poniedziałek - Wietrzenie [GGMM]"
+      "description_en": "SUMMER – Monday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -1989,7 +1989,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Wtorek - Wietrzenie [GGMM]",
-      "description_en": "LATO - Wtorek - Wietrzenie [GGMM]"
+      "description_en": "SUMMER – Tuesday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2002,7 +2002,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Środa - Wietrzenie [GGMM]",
-      "description_en": "LATO - Środa - Wietrzenie [GGMM]"
+      "description_en": "SUMMER – Wednesday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2015,7 +2015,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Czwartek - Wietrzenie [GGMM]",
-      "description_en": "LATO - Czwartek - Wietrzenie [GGMM]"
+      "description_en": "SUMMER – Thursday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2028,7 +2028,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Piątek - Wietrzenie [GGMM]",
-      "description_en": "LATO - Piątek - Wietrzenie [GGMM]"
+      "description_en": "SUMMER – Friday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2041,7 +2041,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Sobota - Wietrzenie [GGMM]",
-      "description_en": "LATO - Sobota - Wietrzenie [GGMM]"
+      "description_en": "SUMMER – Saturday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2054,7 +2054,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "LATO - Niedziela - Wietrzenie [GGMM]",
-      "description_en": "LATO - Niedziela - Wietrzenie [GGMM]"
+      "description_en": "SUMMER – Sunday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2067,7 +2067,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Poniedziałek - Wietrzenie [GGMM]",
-      "description_en": "ZIMA - Poniedziałek - Wietrzenie [GGMM]"
+      "description_en": "WINTER – Monday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2080,7 +2080,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Wtorek - Wietrzenie [GGMM]",
-      "description_en": "ZIMA - Wtorek - Wietrzenie [GGMM]"
+      "description_en": "WINTER – Tuesday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2093,7 +2093,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Środa - Wietrzenie [GGMM]",
-      "description_en": "ZIMA - Środa - Wietrzenie [GGMM]"
+      "description_en": "WINTER – Wednesday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2106,7 +2106,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Czwartek - Wietrzenie [GGMM]",
-      "description_en": "ZIMA - Czwartek - Wietrzenie [GGMM]"
+      "description_en": "WINTER – Thursday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2119,7 +2119,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Piątek - Wietrzenie [GGMM]",
-      "description_en": "ZIMA - Piątek - Wietrzenie [GGMM]"
+      "description_en": "WINTER – Friday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2132,7 +2132,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Sobota - Wietrzenie [GGMM]",
-      "description_en": "ZIMA - Sobota - Wietrzenie [GGMM]"
+      "description_en": "WINTER – Saturday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2145,7 +2145,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ZIMA - Niedziela - Wietrzenie [GGMM]",
-      "description_en": "ZIMA - Niedziela - Wietrzenie [GGMM]"
+      "description_en": "WINTER – Sunday – airing time [HHmm]"
     },
     {
       "function": "03",
@@ -2158,7 +2158,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Dane kalibracyjne zegara czasu rzeczywistego",
-      "description_en": "Dane kalibracyjne zegara czasu rzeczywistego"
+      "description_en": "Real-time clock calibration data"
     },
     {
       "function": "03",
@@ -2171,7 +2171,7 @@
       "multiplier": null,
       "resolution": null,
       "description": "Wersja oprogramowania modułu CF lub (od 4.75) TG-02",
-      "description_en": "Wersja oprogramowania modułu CF lub (od 4.75) TG-02"
+      "description_en": "CF module (or TG-02 from v4.75) firmware version"
     },
     {
       "function": "03",
@@ -2197,7 +2197,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wartość chwilowa strumienia powietrza - nawiew",
-      "description_en": "Wartość chwilowa strumienia powietrza - nawiew"
+      "description_en": "Instantaneous supply airflow rate"
     },
     {
       "function": "03",
@@ -2210,7 +2210,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wartość chwilowa strumienia powietrza - wywiew",
-      "description_en": "Wartość chwilowa strumienia powietrza - wywiew"
+      "description_en": "Instantaneous exhaust airflow rate"
     },
     {
       "function": "03",
@@ -2223,7 +2223,7 @@
       "multiplier": 0.00244,
       "resolution": 0.00244,
       "description": "Napięcie sterujące wentylatorem nawiewnym (PWM)",
-      "description_en": "Napięcie sterujące wentylatorem nawiewnym (PWM)"
+      "description_en": "Supply fan control voltage (PWM)"
     },
     {
       "function": "03",
@@ -2236,7 +2236,7 @@
       "multiplier": 0.00244,
       "resolution": 0.00244,
       "description": "Napięcie sterujące wentylatorem wywiewnym (PWM)",
-      "description_en": "Napięcie sterujące wentylatorem wywiewnym (PWM)"
+      "description_en": "Exhaust fan control voltage (PWM)"
     },
     {
       "function": "03",
@@ -2249,7 +2249,7 @@
       "multiplier": 0.00244,
       "resolution": 0.00244,
       "description": "Napięcie sterujące nagrzewnicą kanałową (PWM)",
-      "description_en": "Napięcie sterujące nagrzewnicą kanałową (PWM)"
+      "description_en": "Duct heater control voltage (PWM)"
     },
     {
       "function": "03",
@@ -2262,7 +2262,7 @@
       "multiplier": 0.00244,
       "resolution": 0.00244,
       "description": "Napięcie sterujące chłodnicą kanałową (PWM)",
-      "description_en": "Napięcie sterujące chłodnicą kanałową (PWM)"
+      "description_en": "Duct cooler control voltage (PWM)"
     },
     {
       "function": "03",
@@ -2275,7 +2275,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Maksymalna możliwa do ustawienia intensywność wentylacji (nawiew)",
-      "description_en": "Maksymalna możliwa do ustawienia intensywność wentylacji (nawiew)"
+      "description_en": "Maximum settable ventilation intensity (supply)"
     },
     {
       "function": "03",
@@ -2288,7 +2288,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (nawiew)",
-      "description_en": "Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (nawiew)"
+      "description_en": "Maximum settable ventilation intensity for GWC installation (supply)"
     },
     {
       "function": "03",
@@ -2301,7 +2301,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Maksymalna możliwa do ustawienia intensywność wentylacji (wywiew)",
-      "description_en": "Maksymalna możliwa do ustawienia intensywność wentylacji (wywiew)"
+      "description_en": "Maximum settable ventilation intensity (exhaust)"
     },
     {
       "function": "03",
@@ -2314,7 +2314,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (wywiew)",
-      "description_en": "Maksymalna możliwa do ustawienia intensywność wentylacji dla instalacji z GWC (wywiew)"
+      "description_en": "Maximum settable ventilation intensity for GWC installation (exhaust)"
     },
     {
       "function": "03",
@@ -2330,7 +2330,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Flaga uruchomienia systemu FPX",
-      "description_en": "Flaga uruchomienia systemu FPX"
+      "description_en": "FPX system activation flag"
     },
     {
       "function": "03",
@@ -2347,7 +2347,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Tryb działania systemu FPX",
-      "description_en": "Tryb działania systemu FPX"
+      "description_en": "FPX system operating mode"
     },
     {
       "function": "03",
@@ -2364,7 +2364,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Tryb pracy AirPack",
-      "description_en": "Tryb pracy AirPack"
+      "description_en": "AirPack operating mode"
     },
     {
       "function": "03",
@@ -2380,7 +2380,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wybór harmonogramu - tryb AUTOMATYCZNY",
-      "description_en": "Wybór harmonogramu - tryb AUTOMATYCZNY"
+      "description_en": "Schedule selection – automatic mode"
     },
     {
       "function": "03",
@@ -2393,7 +2393,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji - tryb MANUALNY",
-      "description_en": "Intensywność wentylacji - tryb MANUALNY"
+      "description_en": "Ventilation intensity – manual mode"
     },
     {
       "function": "03",
@@ -2406,7 +2406,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji - tryb CHWILOWY",
-      "description_en": "Intensywność wentylacji - tryb CHWILOWY"
+      "description_en": "Ventilation intensity – temporary mode"
     },
     {
       "function": "03",
@@ -2419,7 +2419,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Zadana temperatura nawiewu - tryb MANUALNY",
-      "description_en": "Zadana temperatura nawiewu - tryb MANUALNY"
+      "description_en": "Supply air temperature setpoint – manual mode"
     },
     {
       "function": "03",
@@ -2432,7 +2432,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Zadana temperatura nawiewu - tryb CHWILOWY",
-      "description_en": "Zadana temperatura nawiewu - tryb CHWILOWY"
+      "description_en": "Supply air temperature setpoint – temporary mode"
     },
     {
       "function": "03",
@@ -2445,7 +2445,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawa intensywności wentylacji - \"1 bieg\" - panel AirS",
-      "description_en": "Nastawa intensywności wentylacji - \"1 bieg\" - panel AirS"
+      "description_en": "Ventilation intensity setpoint – speed 1 – AirS panel"
     },
     {
       "function": "03",
@@ -2458,7 +2458,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawa intensywności wentylacji - \"2 bieg\" - panel AirS",
-      "description_en": "Nastawa intensywności wentylacji - \"2 bieg\" - panel AirS"
+      "description_en": "Ventilation intensity setpoint – speed 2 – AirS panel"
     },
     {
       "function": "03",
@@ -2471,7 +2471,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawa intensywności wentylacji - \"3 bieg\" - panel AirS",
-      "description_en": "Nastawa intensywności wentylacji - \"3 bieg\" - panel AirS"
+      "description_en": "Ventilation intensity setpoint – speed 3 – AirS panel"
     },
     {
       "function": "03",
@@ -2484,7 +2484,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Godzina rozpoczęcia wietrzenia w trybie MANUALNYM [GGMM]",
-      "description_en": "Godzina rozpoczęcia wietrzenia w trybie MANUALNYM [GGMM]"
+      "description_en": "Manual airing start time [HHmm]"
     },
     {
       "function": "03",
@@ -2510,7 +2510,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Funkcje specjalne",
-      "description_en": "Funkcje specjalne"
+      "description_en": "Special functions"
     },
     {
       "function": "03",
@@ -2523,7 +2523,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji OKAP (nawiew)",
-      "description_en": "Intensywność wentylacji dla funkcji OKAP (nawiew)"
+      "description_en": "Ventilation intensity for hood function (supply)"
     },
     {
       "function": "03",
@@ -2536,7 +2536,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji OKAP (wywiew)",
-      "description_en": "Intensywność wentylacji dla funkcji OKAP (wywiew)"
+      "description_en": "Ventilation intensity for hood function (exhaust)"
     },
     {
       "function": "03",
@@ -2549,7 +2549,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Różnicowanie strumieni dla funkcji KOMINEK",
-      "description_en": "Różnicowanie strumieni dla funkcji KOMINEK"
+      "description_en": "Airflow differentiation for fireplace function"
     },
     {
       "function": "03",
@@ -2562,7 +2562,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4, 5 (łazienka)",
-      "description_en": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4, 5 (łazienka)"
+      "description_en": "Ventilation intensity for airing function – special function No. 3, 4, 5 (bathroom)"
     },
     {
       "function": "03",
@@ -2575,7 +2575,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)",
-      "description_en": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)"
+      "description_en": "Ventilation intensity for airing function – special function No. 7, 8, 9 (rooms)"
     },
     {
       "function": "03",
@@ -2588,7 +2588,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 6 (usuwanie zanieczyszczeń)",
-      "description_en": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 6 (usuwanie zanieczyszczeń)"
+      "description_en": "Ventilation intensity for airing function – special function No. 6 (pollutant removal)"
     },
     {
       "function": "03",
@@ -2601,7 +2601,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji PUSTY DOM",
-      "description_en": "Intensywność wentylacji dla funkcji PUSTY DOM"
+      "description_en": "Ventilation intensity for empty house function"
     },
     {
       "function": "03",
@@ -2614,7 +2614,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)",
-      "description_en": "Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)"
+      "description_en": "Airing function operating time – special function No. 7, 8, 9 (rooms)"
     },
     {
       "function": "03",
@@ -2627,7 +2627,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 3 (łazienka)",
-      "description_en": "Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 3 (łazienka)"
+      "description_en": "Airing function operating time – special function No. 3 (bathroom)"
     },
     {
       "function": "03",
@@ -2640,7 +2640,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Opóźnienie załączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka)",
-      "description_en": "Opóźnienie załączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka)"
+      "description_en": "Airing function switch-on delay – special function No. 4 (bathroom)"
     },
     {
       "function": "03",
@@ -2653,7 +2653,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Opóźnienie wyłączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka)",
-      "description_en": "Opóźnienie wyłączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka)"
+      "description_en": "Airing function switch-off delay – special function No. 4 (bathroom)"
     },
     {
       "function": "03",
@@ -2666,7 +2666,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Czas działania funkcji KOMINEK",
-      "description_en": "Czas działania funkcji KOMINEK"
+      "description_en": "Fireplace function operating time"
     },
     {
       "function": "03",
@@ -2679,7 +2679,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4",
-      "description_en": "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4"
+      "description_en": "Ventilation intensity for airing function – special function No. 3, 4"
     },
     {
       "function": "03",
@@ -2692,7 +2692,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji dla funkcji OTWARTE OKNA (wywiew)",
-      "description_en": "Intensywność wentylacji dla funkcji OTWARTE OKNA (wywiew)"
+      "description_en": "Ventilation intensity for open window function (exhaust)"
     },
     {
       "function": "03",
@@ -2713,7 +2713,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",
-      "description_en": "Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów"
+      "description_en": "Day of week for the automatic filter check procedure"
     },
     {
       "function": "03",
@@ -2726,7 +2726,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM]",
-      "description_en": "Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM]"
+      "description_en": "Filter auto-check procedure start time [HHmm]"
     },
     {
       "function": "03",
@@ -2742,7 +2742,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Dezaktywacja działania GWC",
-      "description_en": "Dezaktywacja działania GWC"
+      "description_en": "GWC deactivation"
     },
     {
       "function": "03",
@@ -2755,7 +2755,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Dolny próg temperatury załączenia funkcji GWC",
-      "description_en": "Dolny próg temperatury załączenia funkcji GWC"
+      "description_en": "Lower temperature threshold for GWC activation"
     },
     {
       "function": "03",
@@ -2768,7 +2768,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Górny próg temperatury załączenia funkcji GWC",
-      "description_en": "Górny próg temperatury załączenia funkcji GWC"
+      "description_en": "Upper temperature threshold for GWC activation"
     },
     {
       "function": "03",
@@ -2785,7 +2785,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wybór typu regeneracji złoża GWC",
-      "description_en": "Wybór typu regeneracji złoża GWC"
+      "description_en": "GWC bed regeneration type selection"
     },
     {
       "function": "03",
@@ -2802,7 +2802,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Aktualny status działania GWC",
-      "description_en": "Aktualny status działania GWC"
+      "description_en": "Current GWC operating status"
     },
     {
       "function": "03",
@@ -2815,7 +2815,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Czas trwania regeneracji złoża GWC dla regeneracji temperaturowej",
-      "description_en": "Czas trwania regeneracji złoża GWC dla regeneracji temperaturowej"
+      "description_en": "GWC bed regeneration duration for temperature-based regeneration"
     },
     {
       "function": "03",
@@ -2828,7 +2828,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Różnica temperatur warunkująca załączenie regeneracji temperaturowej złoża GWC",
-      "description_en": "Różnica temperatur warunkująca załączenie regeneracji temperaturowej złoża GWC"
+      "description_en": "Temperature differential required to activate GWC bed temperature regeneration"
     },
     {
       "function": "03",
@@ -2841,7 +2841,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Godzina i minuta rozpoczęcia regeneracji zimą [GGMM] w przypadku regeneracji dobowej (harmonogram)",
-      "description_en": "Godzina i minuta rozpoczęcia regeneracji zimą [GGMM] w przypadku regeneracji dobowej (harmonogram)"
+      "description_en": "GWC regeneration start time in winter [HHmm] (daily schedule)"
     },
     {
       "function": "03",
@@ -2854,7 +2854,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Godzina i minuta zakończenia regeneracji zimą [GGMM] w przypadku regeneracji dobowej (harmonogram)",
-      "description_en": "Godzina i minuta zakończenia regeneracji zimą [GGMM] w przypadku regeneracji dobowej (harmonogram)"
+      "description_en": "GWC regeneration end time in winter [HHmm] (daily schedule)"
     },
     {
       "function": "03",
@@ -2867,7 +2867,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Godzina i minuta rozpoczęcia regeneracji latem [GGMM] w przypadku regeneracji dobowej (harmonogram)",
-      "description_en": "Godzina i minuta rozpoczęcia regeneracji latem [GGMM] w przypadku regeneracji dobowej (harmonogram)"
+      "description_en": "GWC regeneration start time in summer [HHmm] (daily schedule)"
     },
     {
       "function": "03",
@@ -2880,7 +2880,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Godzina i minuta zakończenia regeneracji latem [GGMM] w przypadku regeneracji dobowej (harmonogram)",
-      "description_en": "Godzina i minuta zakończenia regeneracji latem [GGMM] w przypadku regeneracji dobowej (harmonogram)"
+      "description_en": "GWC regeneration end time in summer [HHmm] (daily schedule)"
     },
     {
       "function": "03",
@@ -2896,7 +2896,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Flaga informująca o aktywnym trybie regeneracji złoża GWC",
-      "description_en": "Flaga informująca o aktywnym trybie regeneracji złoża GWC"
+      "description_en": "Flag indicating active GWC bed regeneration mode"
     },
     {
       "function": "03",
@@ -2912,7 +2912,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wybór trybu pracy AirPack - EKO / KOMFORT",
-      "description_en": "Wybór trybu pracy AirPack - EKO / KOMFORT"
+      "description_en": "AirPack operating mode selection – ECO / COMFORT"
     },
     {
       "function": "03",
@@ -2929,7 +2929,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Aktualny status trybu KOMFORT",
-      "description_en": "Aktualny status trybu KOMFORT"
+      "description_en": "Current COMFORT mode status"
     },
     {
       "function": "03",
@@ -2945,7 +2945,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Dezaktywacja działania bypass",
-      "description_en": "Dezaktywacja działania bypass"
+      "description_en": "Bypass deactivation"
     },
     {
       "function": "03",
@@ -2958,7 +2958,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Minimalna temperatura powietrza zewnętrznego warunkująca załączenie bypass",
-      "description_en": "Minimalna temperatura powietrza zewnętrznego warunkująca załączenie bypass"
+      "description_en": "Minimum outdoor air temperature required to activate bypass"
     },
     {
       "function": "03",
@@ -2971,7 +2971,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Temperatura aktywacji działania bypass w funkcji grzania (freeheating)",
-      "description_en": "Temperatura aktywacji działania bypass w funkcji grzania (freeheating)"
+      "description_en": "Bypass activation temperature for free heating function"
     },
     {
       "function": "03",
@@ -2984,7 +2984,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Temperatura aktywacji działania bypass w funkcji chłodzenia (freecooling)",
-      "description_en": "Temperatura aktywacji działania bypass w funkcji chłodzenia (freecooling)"
+      "description_en": "Bypass activation temperature for free cooling function"
     },
     {
       "function": "03",
@@ -3001,7 +3001,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Aktualny status bypass",
-      "description_en": "Aktualny status bypass"
+      "description_en": "Current bypass status"
     },
     {
       "function": "03",
@@ -3018,7 +3018,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Tryb pracy / sposób realizacji funkcji bypass",
-      "description_en": "Tryb pracy / sposób realizacji funkcji bypass"
+      "description_en": "Bypass function operating mode / method"
     },
     {
       "function": "03",
@@ -3031,7 +3031,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Różnicowanie strumieni (wywiew < nawiew) dla bypass działającego w trybie 2",
-      "description_en": "Różnicowanie strumieni (wywiew < nawiew) dla bypass działającego w trybie 2"
+      "description_en": "Airflow differentiation (exhaust < supply) for bypass operating in mode 2"
     },
     {
       "function": "03",
@@ -3044,7 +3044,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadana intensywność wentylacji (nawiew) dla bypass działającego w trybie 2 lub 3",
-      "description_en": "Zadana intensywność wentylacji (nawiew) dla bypass działającego w trybie 2 lub 3"
+      "description_en": "Ventilation intensity setpoint (supply) for bypass mode 2 or 3"
     },
     {
       "function": "03",
@@ -3057,7 +3057,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nominalny strumień powietrza nawiewanego",
-      "description_en": "Nominalny strumień powietrza nawiewanego"
+      "description_en": "Nominal supply airflow rate"
     },
     {
       "function": "03",
@@ -3070,7 +3070,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nominalny strumień powietrza wywiewanego",
-      "description_en": "Nominalny strumień powietrza wywiewanego"
+      "description_en": "Nominal exhaust airflow rate"
     },
     {
       "function": "03",
@@ -3083,7 +3083,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nominalny strumień powietrza nawiewanego dla działającego GWC powietrznego (typ 1)",
-      "description_en": "Nominalny strumień powietrza nawiewanego dla działającego GWC powietrznego (typ 1)"
+      "description_en": "Nominal supply airflow rate with active air-type GWC (type 1)"
     },
     {
       "function": "03",
@@ -3096,7 +3096,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nominalny strumień powietrza wywiewanego dla działającego GWC powietrznego (typ 1)",
-      "description_en": "Nominalny strumień powietrza wywiewanego dla działającego GWC powietrznego (typ 1)"
+      "description_en": "Nominal exhaust airflow rate with active air-type GWC (type 1)"
     },
     {
       "function": "03",
@@ -3112,7 +3112,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Kod alarmu zatrzymującego pracę AirPack",
-      "description_en": "Kod alarmu zatrzymującego pracę AirPack"
+      "description_en": "AirPack shutdown alarm code"
     },
     {
       "function": "03",
@@ -3128,7 +3128,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "ON / OFF - załączanie urządzenia",
-      "description_en": "ON / OFF - załączanie urządzenia"
+      "description_en": "ON / OFF – device power control"
     },
     {
       "function": "03",
@@ -3147,7 +3147,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wybór języka panelu Air++",
-      "description_en": "Wybór języka panelu Air++"
+      "description_en": "Air++ panel language selection"
     },
     {
       "function": "03",
@@ -3164,7 +3164,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Tryb pracy AirPack - równorzędny z 0x1133",
-      "description_en": "Tryb pracy AirPack - równorzędny z 0x1133"
+      "description_en": "AirPack operating mode – equivalent to 0x1133"
     },
     {
       "function": "03",
@@ -3177,7 +3177,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Intensywność wentylacji - tryb CHWILOWY",
-      "description_en": "Intensywność wentylacji - tryb CHWILOWY"
+      "description_en": "Ventilation intensity – temporary mode"
     },
     {
       "function": "03",
@@ -3193,7 +3193,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Flaga wymuszenia / aktywacji trybu CHWILOWEGO - zmiana intensywności wentylacji",
-      "description_en": "Flaga wymuszenia / aktywacji trybu CHWILOWEGO - zmiana intensywności wentylacji"
+      "description_en": "Temporary mode force/activation flag – ventilation intensity change"
     },
     {
       "function": "03",
@@ -3210,7 +3210,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Tryb pracy AirPack - równorzędny z 0x1130",
-      "description_en": "Tryb pracy AirPack - równorzędny z 0x1130"
+      "description_en": "AirPack operating mode – equivalent to 0x1130"
     },
     {
       "function": "03",
@@ -3223,7 +3223,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Zadana temperatura nawiewu - tryb CHWILOWY",
-      "description_en": "Zadana temperatura nawiewu - tryb CHWILOWY"
+      "description_en": "Supply air temperature setpoint – temporary mode"
     },
     {
       "function": "03",
@@ -3239,7 +3239,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Flaga wymuszenia / aktywacji trybu CHWILOWEGO - zmiana wartości zadanej temperatury nawiewu",
-      "description_en": "Flaga wymuszenia / aktywacji trybu CHWILOWEGO - zmiana wartości zadanej temperatury nawiewu"
+      "description_en": "Temporary mode force/activation flag – supply air temperature setpoint change"
     },
     {
       "function": "03",
@@ -3255,7 +3255,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Reset ustawień użytkownika",
-      "description_en": "Reset ustawień użytkownika"
+      "description_en": "User settings reset"
     },
     {
       "function": "03",
@@ -3271,7 +3271,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Reset ustawień trybów pracy",
-      "description_en": "Reset ustawień trybów pracy"
+      "description_en": "Operating mode settings reset"
     },
     {
       "function": "03",
@@ -3292,7 +3292,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów",
-      "description_en": "Dzień tygodnia, w którym przeprowadzana będzie procedura automatycznej kontroli filtrów"
+      "description_en": "Day of week for the automatic filter check procedure"
     },
     {
       "function": "03",
@@ -3305,7 +3305,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM]",
-      "description_en": "Godzina i minuta rozpoczęcia automatycznej procedury kontroli filtrów [GGMM]"
+      "description_en": "Filter auto-check procedure start time [HHmm]"
     },
     {
       "function": "03",
@@ -3318,7 +3318,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawy komunikacji Modbus - port Air-B ID urządzenia",
-      "description_en": "Nastawy komunikacji Modbus - port Air-B ID urządzenia"
+      "description_en": "Modbus communication settings – Air-B port device ID"
     },
     {
       "function": "03",
@@ -3341,7 +3341,7 @@
       "multiplier": 3.0,
       "resolution": 3.0,
       "description": "Nastawy komunikacji Modbus - port Air-B Szybkość transmisji",
-      "description_en": "Nastawy komunikacji Modbus - port Air-B Szybkość transmisji"
+      "description_en": "Modbus communication settings – Air-B port baud rate"
     },
     {
       "function": "03",
@@ -3358,7 +3358,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawy komunikacji Modbus - port Air-B Parzystość",
-      "description_en": "Nastawy komunikacji Modbus - port Air-B Parzystość"
+      "description_en": "Modbus communication settings – Air-B port parity"
     },
     {
       "function": "03",
@@ -3374,7 +3374,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawy komunikacji Modbus - port Air-B Bity stopu",
-      "description_en": "Nastawy komunikacji Modbus - port Air-B Bity stopu"
+      "description_en": "Modbus communication settings – Air-B port stop bits"
     },
     {
       "function": "03",
@@ -3387,7 +3387,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawy komunikacji Modbus - port Air++ ID urządzenia",
-      "description_en": "Nastawy komunikacji Modbus - port Air++ ID urządzenia"
+      "description_en": "Modbus communication settings – Air++ port device ID"
     },
     {
       "function": "03",
@@ -3410,7 +3410,7 @@
       "multiplier": 3.0,
       "resolution": 3.0,
       "description": "Nastawy komunikacji Modbus - port Air++ Szybkość transmisji",
-      "description_en": "Nastawy komunikacji Modbus - port Air++ Szybkość transmisji"
+      "description_en": "Modbus communication settings – Air++ port baud rate"
     },
     {
       "function": "03",
@@ -3427,7 +3427,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawy komunikacji Modbus - port Air++ Parzystość",
-      "description_en": "Nastawy komunikacji Modbus - port Air++ Parzystość"
+      "description_en": "Modbus communication settings – Air++ port parity"
     },
     {
       "function": "03",
@@ -3443,7 +3443,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nastawy komunikacji Modbus - port Air++ Bity stopu",
-      "description_en": "Nastawy komunikacji Modbus - port Air++ Bity stopu"
+      "description_en": "Modbus communication settings – Air++ port stop bits"
     },
     {
       "function": "03",
@@ -3510,7 +3510,7 @@
       "multiplier": 0.5,
       "resolution": 0.5,
       "description": "Temperatura zadana trybu KOMFORT",
-      "description_en": "Temperatura zadana trybu KOMFORT"
+      "description_en": "Comfort mode target temperature"
     },
     {
       "function": "03",
@@ -3528,7 +3528,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "System kontroli filtrów / typ filtrów",
-      "description_en": "System kontroli filtrów / typ filtrów"
+      "description_en": "Filter control system / filter type"
     },
     {
       "function": "03",
@@ -3544,7 +3544,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Alarmy - Flaga informująca o wystąpieniu ostrzeżenia - alarm \"E\"",
-      "description_en": "Alarmy - Flaga informująca o wystąpieniu ostrzeżenia - alarm \"E\""
+      "description_en": "Alarms – warning occurrence flag – \"E\" alarm"
     },
     {
       "function": "03",
@@ -3560,7 +3560,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Alarmy - Flaga informująca o wystąpieniu błędu - alarm \"S\"",
-      "description_en": "Alarmy - Flaga informująca o wystąpieniu błędu - alarm \"S\""
+      "description_en": "Alarms – error occurrence flag – \"S\" alarm"
     },
     {
       "function": "03",
@@ -3576,7 +3576,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Błąd komunikacji I2C",
-      "description_en": "Błąd komunikacji I2C"
+      "description_en": "I2C communication error"
     },
     {
       "function": "03",
@@ -3592,7 +3592,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zabezpieczenie termiczne nagrzewnicy FPX zadziałało maksymalną ilość razy w określonym czasie",
-      "description_en": "Zabezpieczenie termiczne nagrzewnicy FPX zadziałało maksymalną ilość razy w określonym czasie"
+      "description_en": "FPX heater thermal protection activated maximum number of times within the specified period"
     },
     {
       "function": "03",
@@ -3608,7 +3608,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak możliwości kalibracji urządzenia ze względu na zbyt niską temperaturę powietrza zewnętrznego",
-      "description_en": "Brak możliwości kalibracji urządzenia ze względu na zbyt niską temperaturę powietrza zewnętrznego"
+      "description_en": "Device calibration not possible due to outdoor air temperature too low"
     },
     {
       "function": "03",
@@ -3624,7 +3624,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Sygnalizacja konieczności wprowadzenia klucza produktu",
-      "description_en": "Sygnalizacja konieczności wprowadzenia klucza produktu"
+      "description_en": "Product key entry required indication"
     },
     {
       "function": "03",
@@ -3640,7 +3640,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Centrala zatrzymana z panelu AirS",
-      "description_en": "Centrala zatrzymana z panelu AirS"
+      "description_en": "AHU stopped from AirS panel"
     },
     {
       "function": "03",
@@ -3656,7 +3656,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadziałał czujnik PPOŻ",
-      "description_en": "Zadziałał czujnik PPOŻ"
+      "description_en": "Fire protection sensor activated"
     },
     {
       "function": "03",
@@ -3669,7 +3669,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile",
-      "description_en": "Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile"
+      "description_en": "AHU stopped from Air+, AirL+, Air++ or AirMobile panel"
     },
     {
       "function": "03",
@@ -3685,7 +3685,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej zadziałało maksymalną ilość razy",
-      "description_en": "Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej zadziałało maksymalną ilość razy"
+      "description_en": "Water heater anti-freeze protection activated maximum number of times"
     },
     {
       "function": "03",
@@ -3701,7 +3701,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej nie przyniosło oczekiwanych rezultatów",
-      "description_en": "Zabezpieczenie przeciwzamrożeniowe nagrzewnicy wodnej nie przyniosło oczekiwanych rezultatów"
+      "description_en": "Water heater anti-freeze protection did not achieve expected results"
     },
     {
       "function": "03",
@@ -3717,7 +3717,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali przy aktywnym systemie FPX",
-      "description_en": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w centrali przy aktywnym systemie FPX"
+      "description_en": "AHU electric heater thermal protection activated while FPX system is active"
     },
     {
       "function": "03",
@@ -3733,7 +3733,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nie zostały wymienione filtry w centrali (w przypadku centrali wyposażonej w presostat)",
-      "description_en": "Nie zostały wymienione filtry w centrali (w przypadku centrali wyposażonej w presostat)"
+      "description_en": "AHU filters not replaced (unit with pressure switch)"
     },
     {
       "function": "03",
@@ -3749,7 +3749,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nie zostały wymienione filtry w centrali (w przypadku centrali nie wyposażonej w presostat)",
-      "description_en": "Nie zostały wymienione filtry w centrali (w przypadku centrali nie wyposażonej w presostat)"
+      "description_en": "AHU filters not replaced (unit without pressure switch)"
     },
     {
       "function": "03",
@@ -3765,7 +3765,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nie został wymieniony filtr kanałowy",
-      "description_en": "Nie został wymieniony filtr kanałowy"
+      "description_en": "Duct filter not replaced"
     },
     {
       "function": "03",
@@ -3781,7 +3781,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nie zadziałało zabezpieczenie przeciwzamrożeniowe wymiennika rekuperacyjnego (FPX)",
-      "description_en": "Nie zadziałało zabezpieczenie przeciwzamrożeniowe wymiennika rekuperacyjnego (FPX)"
+      "description_en": "Heat exchanger anti-freeze protection (FPX) did not activate"
     },
     {
       "function": "03",
@@ -3797,7 +3797,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Uszkodzony czujnik temperatury powietrza na wlocie do wymiennika rekuperacyjnego przy temperaturze powietrza zewnętrznego stanowiącej warunki do zadziałania systemu FPX",
-      "description_en": "Uszkodzony czujnik temperatury powietrza na wlocie do wymiennika rekuperacyjnego przy temperaturze powietrza zewnętrznego stanowiącej warunki do zadziałania systemu FPX"
+      "description_en": "Temperature sensor at heat exchanger inlet damaged while outdoor temp conditions require FPX activation"
     },
     {
       "function": "03",
@@ -3813,7 +3813,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Uszkodzony czujnik temperatury powietrza w kanale nawiewnym za nagrzewnicą wodną",
-      "description_en": "Uszkodzony czujnik temperatury powietrza w kanale nawiewnym za nagrzewnicą wodną"
+      "description_en": "Temperature sensor in supply duct after water heater damaged"
     },
     {
       "function": "03",
@@ -3829,7 +3829,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Uszkodzony czujnik temperatury powietrza zewnętrznego",
-      "description_en": "Uszkodzony czujnik temperatury powietrza zewnętrznego"
+      "description_en": "Outdoor air temperature sensor damaged"
     },
     {
       "function": "03",
@@ -3845,7 +3845,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Uszkodzony czujnik temperatury powietrza zewnętrznego oraz czujnik temperatury powietrza dla glikolowego GWC",
-      "description_en": "Uszkodzony czujnik temperatury powietrza zewnętrznego oraz czujnik temperatury powietrza dla glikolowego GWC"
+      "description_en": "Outdoor air temperature sensor and glycol GWC temperature sensor damaged"
     },
     {
       "function": "03",
@@ -3861,7 +3861,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zbyt wysoka temperatura przed rekuperatorem",
-      "description_en": "Zbyt wysoka temperatura przed rekuperatorem"
+      "description_en": "Air temperature before heat exchanger too high"
     },
     {
       "function": "03",
@@ -3877,7 +3877,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nie działa wentylator nawiewny",
-      "description_en": "Nie działa wentylator nawiewny"
+      "description_en": "Supply fan not operating"
     },
     {
       "function": "03",
@@ -3893,7 +3893,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Nie działa wentylator wywiewny",
-      "description_en": "Nie działa wentylator wywiewny"
+      "description_en": "Exhaust fan not operating"
     },
     {
       "function": "03",
@@ -3909,7 +3909,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak komunikacji z modułem TG-02",
-      "description_en": "Brak komunikacji z modułem TG-02"
+      "description_en": "No communication with TG-02 module"
     },
     {
       "function": "03",
@@ -3925,7 +3925,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Sygnalizacja konieczności wprowadzenia klucza produktu centrali wentylacyjnej AirPack",
-      "description_en": "Sygnalizacja konieczności wprowadzenia klucza produktu centrali wentylacyjnej AirPack"
+      "description_en": "AirPack product key entry required indication"
     },
     {
       "function": "03",
@@ -3941,7 +3941,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak odczytu z czujnika temperatury powietrza zewnętrznego - CZERPNIA (TZ1)",
-      "description_en": "Brak odczytu z czujnika temperatury powietrza zewnętrznego - CZERPNIA (TZ1)"
+      "description_en": "No reading from outdoor air temperature sensor – air intake (TZ1)"
     },
     {
       "function": "03",
@@ -3957,7 +3957,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak odczytu z czujnika temperatury powietrza nawiewanego - NAWIEW (TN1)",
-      "description_en": "Brak odczytu z czujnika temperatury powietrza nawiewanego - NAWIEW (TN1)"
+      "description_en": "No reading from supply air temperature sensor – supply (TN1)"
     },
     {
       "function": "03",
@@ -3973,7 +3973,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak odczytu z czujnika temperatury powietrza usuwanego z pomieszczeń - WYWIEW (TP)",
-      "description_en": "Brak odczytu z czujnika temperatury powietrza usuwanego z pomieszczeń - WYWIEW (TP)"
+      "description_en": "No reading from exhaust air temperature sensor – exhaust (TP)"
     },
     {
       "function": "03",
@@ -3989,7 +3989,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak odczytu z czujnika temperatury powietrza na wlocie do wymiennika rekuperacyjnego - FPX (TZ2)",
-      "description_en": "Brak odczytu z czujnika temperatury powietrza na wlocie do wymiennika rekuperacyjnego - FPX (TZ2)"
+      "description_en": "No reading from temperature sensor at heat exchanger inlet – FPX (TZ2)"
     },
     {
       "function": "03",
@@ -4005,7 +4005,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO)",
-      "description_en": "Brak odczytu z czujnika temperatury powietrza w pomieszczeniu, w którym jest zamontowana centrala (TO)"
+      "description_en": "No reading from room temperature sensor where AHU is installed (TO)"
     },
     {
       "function": "03",
@@ -4021,7 +4021,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak odczytu z czujnika temperatury powietrza nawiewanego za wymiennikiem kanałowym (TN2)",
-      "description_en": "Brak odczytu z czujnika temperatury powietrza nawiewanego za wymiennikiem kanałowym (TN2)"
+      "description_en": "No reading from supply air temperature sensor after duct heat exchanger (TN2)"
     },
     {
       "function": "03",
@@ -4037,7 +4037,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak odczytu z czujnika temperatury powietrza zewnętrznego glikolowego GWC (TZ3)",
-      "description_en": "Brak odczytu z czujnika temperatury powietrza zewnętrznego glikolowego GWC (TZ3)"
+      "description_en": "No reading from glycol GWC outdoor air temperature sensor (TZ3)"
     },
     {
       "function": "03",
@@ -4053,7 +4053,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Awaria czujnika CF wentylatora nawiewnego - Brak komunikacji z przetwornikiem ciśnienia wentylatora",
-      "description_en": "Awaria czujnika CF wentylatora nawiewnego - Brak komunikacji z przetwornikiem ciśnienia wentylatora"
+      "description_en": "Supply fan CF sensor failure – no communication with fan pressure transducer"
     },
     {
       "function": "03",
@@ -4069,7 +4069,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Awaria czujnika CF wentylatora wywiewnego - Brak komunikacji z przetwornikiem ciśnienia wentylatora",
-      "description_en": "Awaria czujnika CF wentylatora wywiewnego - Brak komunikacji z przetwornikiem ciśnienia wentylatora"
+      "description_en": "Exhaust fan CF sensor failure – no communication with fan pressure transducer"
     },
     {
       "function": "03",
@@ -4085,7 +4085,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Temperatura powietrza usuwanego z pomieszczeń wyższa od maksymalnej",
-      "description_en": "Temperatura powietrza usuwanego z pomieszczeń wyższa od maksymalnej"
+      "description_en": "Exhaust air temperature above maximum limit"
     },
     {
       "function": "03",
@@ -4098,7 +4098,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Flagi błędów E196-E199",
-      "description_en": "Flagi błędów E196-E199"
+      "description_en": "Error flags E196–E199"
     },
     {
       "function": "03",
@@ -4146,7 +4146,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Brak komunikacji z modułem Expansion",
-      "description_en": "Brak komunikacji z modułem Expansion"
+      "description_en": "No communication with Expansion module"
     },
     {
       "function": "03",
@@ -4162,7 +4162,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Sygnalizacja konieczności wymiany filtrów w centrali nie wyposażonej w presostat",
-      "description_en": "Sygnalizacja konieczności wymiany filtrów w centrali nie wyposażonej w presostat"
+      "description_en": "AHU filter replacement required indication (unit without pressure switch)"
     },
     {
       "function": "03",
@@ -4178,7 +4178,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Sygnalizacja konieczności wymiany filtra kanałowego",
-      "description_en": "Sygnalizacja konieczności wymiany filtra kanałowego"
+      "description_en": "Duct filter replacement required indication"
     },
     {
       "function": "03",
@@ -4194,7 +4194,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Sygnalizacja konieczności wymiany filtrów w centrali wyposażonej w presostat",
-      "description_en": "Sygnalizacja konieczności wymiany filtrów w centrali wyposażonej w presostat"
+      "description_en": "AHU filter replacement required indication (unit with pressure switch)"
     },
     {
       "function": "04",
@@ -4207,7 +4207,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Główna wersja oprogramowania",
-      "description_en": "Główna wersja oprogramowania"
+      "description_en": "Firmware major version"
     },
     {
       "function": "04",
@@ -4220,7 +4220,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wersja poboczna oprogramowania",
-      "description_en": "Wersja poboczna oprogramowania"
+      "description_en": "Firmware minor version"
     },
     {
       "function": "04",
@@ -4241,7 +4241,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Bieżący dzień tygodnia dla trybu automatycznego",
-      "description_en": "Bieżący dzień tygodnia dla trybu automatycznego"
+      "description_en": "Current day of week for automatic mode"
     },
     {
       "function": "04",
@@ -4259,7 +4259,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Bieżący odcinek czasowy dla trybu automatycznego",
-      "description_en": "Bieżący odcinek czasowy dla trybu automatycznego"
+      "description_en": "Current time slot for automatic mode"
     },
     {
       "function": "04",
@@ -4272,7 +4272,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Wersja poprawki oprogramowania",
-      "description_en": "Wersja poprawki oprogramowania"
+      "description_en": "Firmware patch version"
     },
     {
       "function": "04",
@@ -4285,7 +4285,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Data kompilacji oprogramowania Basic",
-      "description_en": "Data kompilacji oprogramowania Basic"
+      "description_en": "Firmware Basic compilation date"
     },
     {
       "function": "04",
@@ -4298,7 +4298,7 @@
       "multiplier": 2.0,
       "resolution": 2.0,
       "description": "Godzina kompilacji oprogramowania Basic",
-      "description_en": "Godzina kompilacji oprogramowania Basic"
+      "description_en": "Firmware Basic compilation time"
     },
     {
       "function": "04",
@@ -4311,7 +4311,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura powietrza zewnętrznego (TZ1)",
-      "description_en": "Temperatura powietrza zewnętrznego (TZ1)"
+      "description_en": "Outdoor air temperature (TZ1)"
     },
     {
       "function": "04",
@@ -4324,7 +4324,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura powietrza nawiewanego (TN1)",
-      "description_en": "Temperatura powietrza nawiewanego (TN1)"
+      "description_en": "Supply air temperature (TN1)"
     },
     {
       "function": "04",
@@ -4337,7 +4337,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura powietrza usuwanego z pomieszczenia (TP)",
-      "description_en": "Temperatura powietrza usuwanego z pomieszczenia (TP)"
+      "description_en": "Exhaust air temperature (TP)"
     },
     {
       "function": "04",
@@ -4350,7 +4350,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura powietrza za nagrzewnicą FPX (TZ2)",
-      "description_en": "Temperatura powietrza za nagrzewnicą FPX (TZ2)"
+      "description_en": "Air temperature after FPX anti-freeze heater (TZ2)"
     },
     {
       "function": "04",
@@ -4363,7 +4363,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura powietrza za nagrzewnicą / chłodnicą kanałową (TN2)",
-      "description_en": "Temperatura powietrza za nagrzewnicą / chłodnicą kanałową (TN2)"
+      "description_en": "Air temperature after duct heater/cooler (TN2)"
     },
     {
       "function": "04",
@@ -4376,7 +4376,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura przed wymiennikiem systemu glikolowego GWC (TZ3)",
-      "description_en": "Temperatura przed wymiennikiem systemu glikolowego GWC (TZ3)"
+      "description_en": "Air temperature before glycol GWC heat exchanger (TZ3)"
     },
     {
       "function": "04",
@@ -4389,7 +4389,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura otoczenia (TO)",
-      "description_en": "Temperatura otoczenia (TO)"
+      "description_en": "Ambient temperature (TO)"
     },
     {
       "function": "04",
@@ -4402,7 +4402,7 @@
       "multiplier": 0.1,
       "resolution": 0.1,
       "description": "Temperatura nagrzewnicy (TH)",
-      "description_en": "Temperatura nagrzewnicy (TH)"
+      "description_en": "Heater temperature (TH)"
     },
     {
       "function": "04",
@@ -4437,7 +4437,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Status aktywności systemu Constant Flow",
-      "description_en": "Status aktywności systemu Constant Flow"
+      "description_en": "Constant Flow system active status"
     },
     {
       "function": "04",
@@ -4450,7 +4450,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadana intensywność wentylacji (nawiew)",
-      "description_en": "Zadana intensywność wentylacji (nawiew)"
+      "description_en": "Ventilation intensity setpoint (supply)"
     },
     {
       "function": "04",
@@ -4463,7 +4463,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadana intensywność wentylacji (nawiew)",
-      "description_en": "Zadana intensywność wentylacji (nawiew)"
+      "description_en": "Ventilation intensity setpoint (supply)"
     },
     {
       "function": "04",
@@ -4476,7 +4476,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadany strumień przepływu (nawiew)",
-      "description_en": "Zadany strumień przepływu (nawiew)"
+      "description_en": "Supply airflow rate setpoint"
     },
     {
       "function": "04",
@@ -4489,7 +4489,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Zadany strumień przepływu (wywiew)",
-      "description_en": "Zadany strumień przepływu (wywiew)"
+      "description_en": "Exhaust airflow rate setpoint"
     },
     {
       "function": "04",
@@ -4502,7 +4502,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Minimalna możliwa do ustawienia intensywność wentylacji",
-      "description_en": "Minimalna możliwa do ustawienia intensywność wentylacji"
+      "description_en": "Minimum settable ventilation intensity"
     },
     {
       "function": "04",
@@ -4515,7 +4515,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Maksymalna możliwa do ustawienia intensywność wentylacji",
-      "description_en": "Maksymalna możliwa do ustawienia intensywność wentylacji"
+      "description_en": "Maximum settable ventilation intensity"
     },
     {
       "function": "04",
@@ -4531,7 +4531,7 @@
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Status działania procedury HEWR",
-      "description_en": "Status działania procedury HEWR"
+      "description_en": "HEWR procedure operating status"
     }
   ]
 }
