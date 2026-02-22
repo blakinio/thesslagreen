@@ -116,6 +116,13 @@ class BaseModbusTransport(ABC):
             self.offline_state = True
             await self._reset_connection()
             raise
+        except asyncio.CancelledError:
+            self.offline_state = True
+            try:
+                await self._reset_connection()
+            except Exception:
+                pass
+            raise
         except ModbusException as exc:
             _LOGGER.error("Permanent Modbus error: %s", exc)
             self.offline_state = True

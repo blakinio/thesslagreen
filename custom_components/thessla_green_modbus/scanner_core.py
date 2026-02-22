@@ -285,7 +285,7 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
         """
 
         if self._as_dict_cache is None:
-            data = asdict(self)
+            data = {k: v for k, v in asdict(self).items() if not k.startswith("_")}
             for key, value in data.items():
                 if isinstance(value, set):
                     data[key] = sorted(value)
