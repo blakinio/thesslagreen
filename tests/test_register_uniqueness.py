@@ -41,6 +41,6 @@ def test_register_uniqueness() -> None:
         "Duplicate (function, address_dec) pairs found: " f"{duplicate_pairs}"
     )
 
-    # The list must be deterministically sorted by address then name
-    sorted_regs = sorted(registers, key=lambda r: (address(r), r["name"]))
-    assert registers == sorted_regs, "Registers are not sorted by address_dec"
+    # The list must be deterministically sorted by function then address
+    sorted_regs = sorted(registers, key=lambda r: (int(str(r["function"])), address(r)))
+    assert registers == sorted_regs, "Registers are not sorted by function then address_dec"

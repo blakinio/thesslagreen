@@ -224,10 +224,6 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if _parse_states(info.get("unit")):
             continue
 
-        # Skip packed schedule/time registers (BCD/AATT); these are not numeric sensors.
-        if register.startswith(BCD_TIME_PREFIXES) or register.startswith("setting_"):
-            continue
-
         cfg: dict[str, Any] = {
             "unit": info.get("unit"),
             "step": info.get("step", 1),
