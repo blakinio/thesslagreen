@@ -88,7 +88,7 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
 
 
 from .const import SPECIAL_FUNCTION_MAP, coil_registers, discrete_input_registers, holding_registers
-from .utils import BCD_TIME_PREFIXES, _to_snake_case
+from .utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
 _REGISTER_INFO_CACHE: dict[str, dict[str, Any]] | None = None

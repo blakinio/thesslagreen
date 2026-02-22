@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from datetime import time
 
-
 __all__ = [
     "_to_snake_case",
     "_normalise_name",

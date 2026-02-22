@@ -63,13 +63,13 @@ from .modbus_helpers import (
     async_maybe_await_close,
     chunk_register_range,
 )
+from .modbus_helpers import group_reads as _group_reads
 from .modbus_transport import (
     BaseModbusTransport,
     RawRtuOverTcpTransport,
     RtuModbusTransport,
     TcpModbusTransport,
 )
-from .modbus_helpers import group_reads as _group_reads
 from .scanner_helpers import (
     MAX_BATCH_REGISTERS,
     REGISTER_ALLOWED_VALUES,
@@ -77,8 +77,12 @@ from .scanner_helpers import (
     UART_OPTIONAL_REGS,
     _format_register_value,
 )
-from .utils import default_connection_mode, resolve_connection_settings
-from .utils import BCD_TIME_PREFIXES, decode_bcd_time
+from .utils import (
+    BCD_TIME_PREFIXES,
+    decode_bcd_time,
+    default_connection_mode,
+    resolve_connection_settings,
+)
 
 try:  # pragma: no cover - network transport always required
     from pymodbus.client import AsyncModbusTcpClient
