@@ -44,6 +44,7 @@ from .const import (
     CONNECTION_TYPE_TCP,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
+    DEFAULT_MAX_BACKOFF,
     DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_SERIAL_PORT,
@@ -588,7 +589,7 @@ class ThesslaGreenDeviceScanner:
                 port=self.port,
                 max_retries=self.retry,
                 base_backoff=self.backoff,
-                max_backoff=0.0,
+                max_backoff=DEFAULT_MAX_BACKOFF,
                 timeout=timeout,
             )
         return TcpModbusTransport(
@@ -597,7 +598,7 @@ class ThesslaGreenDeviceScanner:
             connection_type=CONNECTION_TYPE_TCP,
             max_retries=self.retry,
             base_backoff=self.backoff,
-            max_backoff=0.0,
+            max_backoff=DEFAULT_MAX_BACKOFF,
             timeout=timeout,
         )
 
@@ -659,7 +660,7 @@ class ThesslaGreenDeviceScanner:
                         stopbits=stop_bits,
                         max_retries=self.retry,
                         base_backoff=self.backoff,
-                        max_backoff=0.0,
+                        max_backoff=DEFAULT_MAX_BACKOFF,
                         timeout=self.timeout,
                     ),
                     self.timeout,
@@ -1305,7 +1306,7 @@ class ThesslaGreenDeviceScanner:
                 stopbits=stop_bits,
                 max_retries=self.retry,
                 base_backoff=self.backoff,
-                max_backoff=0.0,
+                max_backoff=DEFAULT_MAX_BACKOFF,
                 timeout=self.timeout,
             )
         else:
