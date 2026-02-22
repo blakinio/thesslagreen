@@ -501,6 +501,78 @@ class RtuModbusTransport(BaseModbusTransport):
         finally:
             self.client = None
 
+    async def read_input_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        if self.client is None:
+            raise ConnectionException("Modbus serial client is not connected")
+        return await self.call(
+            self.client.read_input_registers,
+            slave_id,
+            address,
+            count=count,
+            attempt=attempt,
+        )
+
+    async def read_holding_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        if self.client is None:
+            raise ConnectionException("Modbus serial client is not connected")
+        return await self.call(
+            self.client.read_holding_registers,
+            slave_id,
+            address,
+            count=count,
+            attempt=attempt,
+        )
+
+    async def write_register(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        value: int,
+        attempt: int = 1,
+    ) -> Any:
+        if self.client is None:
+            raise ConnectionException("Modbus serial client is not connected")
+        return await self.call(
+            self.client.write_register,
+            slave_id,
+            address,
+            value=value,
+            attempt=attempt,
+        )
+
+    async def write_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        values: list[int],
+        attempt: int = 1,
+    ) -> Any:
+        if self.client is None:
+            raise ConnectionException("Modbus serial client is not connected")
+        return await self.call(
+            self.client.write_registers,
+            slave_id,
+            address,
+            values=values,
+            attempt=attempt,
+        )
+
 
 class RawRtuOverTcpTransport(BaseModbusTransport):
     """RTU-over-TCP transport that sends raw Modbus RTU frames over TCP."""
@@ -538,7 +610,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
                 asyncio.open_connection(self.host, self.port),
                 timeout=self.timeout,
             )
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             raise TimeoutError(f"Timed out connecting to {self.host}:{self.port}") from exc
         except OSError as exc:
             raise ConnectionException(f"Could not connect to {self.host}:{self.port}") from exc
@@ -563,7 +635,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             return await asyncio.wait_for(self._reader.readexactly(size), timeout=self.timeout)
         except asyncio.IncompleteReadError as exc:
             raise ModbusIOException("Incomplete RTU response") from exc
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             raise TimeoutError("Timed out waiting for RTU response") from exc
 
     @staticmethod

@@ -700,13 +700,6 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for reg_type, names in KNOWN_MISSING_REGISTERS.items():
                 self.available_registers[reg_type].difference_update(names)
 
-        self.device_info = {
-            "device_name": f"{DEFAULT_NAME} {UNKNOWN_MODEL}",
-            "model": UNKNOWN_MODEL,
-            "firmware": "Unknown",
-            "serial_number": "Unknown",
-        }
-
         _LOGGER.info(
             "Loaded full register list: %d total registers",
             sum(len(regs) for regs in self.available_registers.values()),
@@ -1541,7 +1534,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if definition.function == 3:
                             if encoded_values is not None:
                                 success = True
-                                for index, (chunk_start, chunk) in enumerate(
+                                for _index, (chunk_start, chunk) in enumerate(
                                     chunk_register_values(
                                         address, encoded_values, self.effective_batch
                                     )
@@ -1687,7 +1680,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             if response is None or response.isError():
                                 success = False
                         else:
-                            for index, (chunk_start, chunk) in enumerate(
+                            for _index, (chunk_start, chunk) in enumerate(
                                 chunk_register_values(start_address, values, self.effective_batch)
                             ):
                                 response = await transport.write_registers(

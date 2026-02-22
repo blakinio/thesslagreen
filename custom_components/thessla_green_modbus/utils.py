@@ -5,15 +5,6 @@ from __future__ import annotations
 import re
 from datetime import time
 
-from .const import (
-    CONNECTION_MODE_AUTO,
-    CONNECTION_MODE_TCP,
-    CONNECTION_MODE_TCP_RTU,
-    CONNECTION_TYPE_RTU,
-    CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_TCP_RTU,
-    DEFAULT_CONNECTION_TYPE,
-)
 
 __all__ = [
     "_to_snake_case",
@@ -172,6 +163,8 @@ def decode_aatt(value: int) -> dict[str, float | int] | None:
 def default_connection_mode(port: int | None) -> str:
     """Return the default TCP connection mode for config defaults."""
 
+    from .const import CONNECTION_MODE_AUTO
+
     return CONNECTION_MODE_AUTO
 
 
@@ -181,6 +174,16 @@ def resolve_connection_settings(
     port: int | None,
 ) -> tuple[str, str | None]:
     """Resolve connection type/mode with legacy handling and defaults."""
+
+    from .const import (
+        CONNECTION_MODE_AUTO,
+        CONNECTION_MODE_TCP,
+        CONNECTION_MODE_TCP_RTU,
+        CONNECTION_TYPE_RTU,
+        CONNECTION_TYPE_TCP,
+        CONNECTION_TYPE_TCP_RTU,
+        DEFAULT_CONNECTION_TYPE,
+    )
 
     conn_type = (connection_type or DEFAULT_CONNECTION_TYPE).lower()
     if conn_type == CONNECTION_TYPE_RTU:

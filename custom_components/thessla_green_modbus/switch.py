@@ -61,9 +61,9 @@ async def async_setup_entry(
 
         if is_available:
             address = (
-                holding_map[register_name]
+                holding_map.get(register_name, 0)
                 if config["register_type"] == "holding_registers"
-                else coil_map[register_name]
+                else coil_map.get(register_name, 0)
             )
             entities.append(
                 ThesslaGreenSwitch(
@@ -173,7 +173,10 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
 
     async def _write_register(self, register_name: str, value: int) -> None:
         """Write value to register."""
-        success = await self.coordinator.async_write_register(register_name, value, refresh=False)
+        offset = self.entity_config.get("offset", 0)
+        success = await self.coordinator.async_write_register(
+            register_name, value, refresh=False, offset=offset
+        )
         if not success:
             raise RuntimeError(f"Failed to write register {register_name}")
 

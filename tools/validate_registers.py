@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pydantic
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from ..custom_components.thessla_green_modbus.registers.schema import RegisterDefinition
+    from custom_components.thessla_green_modbus.registers.schema import RegisterDefinition
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -50,7 +50,7 @@ def _coerce_registers(registers: list[dict]) -> list[dict]:
     same coercion here before handing off to the pydantic models.
     """
 
-    from ..custom_components.thessla_green_modbus.registers.schema import _normalise_function
+    from custom_components.thessla_green_modbus.registers.schema import _normalise_function
 
     coerced: list[dict] = []
     for item in registers:
@@ -82,7 +82,7 @@ def validate(path: Path) -> list[RegisterDefinition]:
     """Validate ``path`` and return the parsed register definitions."""
 
     _prepare_environment()
-    from ..custom_components.thessla_green_modbus.registers.schema import (
+    from custom_components.thessla_green_modbus.registers.schema import (
         _TYPE_LENGTHS,
         RegisterList,
         RegisterType,
@@ -170,7 +170,7 @@ def main(path: Path | None = None) -> int:
     """Validate registers file, exiting with ``1`` on error."""
 
     _prepare_environment()
-    from ..custom_components.thessla_green_modbus.registers.loader import _REGISTERS_PATH
+    from custom_components.thessla_green_modbus.registers.loader import _REGISTERS_PATH
 
     target = Path(path) if path is not None else _REGISTERS_PATH
 

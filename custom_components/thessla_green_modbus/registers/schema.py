@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 import pydantic
@@ -96,7 +96,7 @@ def _normalise_function(fn: int | str) -> int:
     return fn
 
 
-class RegisterType(str, Enum):
+class RegisterType(StrEnum):
     """Supported register data types."""
 
     U16 = "u16"

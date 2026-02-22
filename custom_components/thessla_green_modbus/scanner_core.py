@@ -723,10 +723,10 @@ class ThesslaGreenDeviceScanner:
                 if _is_request_cancelled_error(exc):
                     _LOGGER.info("Modbus request cancelled during verify_connection.")
                     raise TimeoutError("Modbus request cancelled") from exc
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 last_error = exc
                 _LOGGER.warning("Timeout during verify_connection: %s", exc)
-            except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
+            except (ConnectionException, ModbusException, OSError) as exc:
                 last_error = exc
             finally:
                 try:

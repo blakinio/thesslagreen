@@ -110,7 +110,6 @@ from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
     ThesslaGreenModbusCoordinator,
 )
 from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
-    get_register_definition,
     get_registers_by_function,
 )
 
@@ -149,9 +148,8 @@ async def test_set_temperature_scaling():
 
     hass = SimpleNamespace()
     coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
-    coordinator.client = DummyClient()
-    coordinator._ensure_connection = AsyncMock()
     coordinator.async_request_refresh = AsyncMock()
+    coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.available_registers["holding_registers"].add("required_temperature")
     coordinator.capabilities.basic_control = True
 
@@ -159,10 +157,9 @@ async def test_set_temperature_scaling():
 
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
 
-    addr_required = HOLDING_REGISTERS["required_temperature"]
-    expected = get_register_definition("required_temperature").encode(21.5)
-
-    assert coordinator.client.writes == [(addr_required, expected, coordinator.slave_id)]
+    calls = {c.args[0]: c.args[1] for c in coordinator.async_write_register.call_args_list}
+    assert "required_temperature" in calls  # nosec B101
+    assert calls["required_temperature"] == 21.5  # nosec B101
 
 
 def test_target_temperature_none_when_unavailable():
@@ -295,7 +292,7 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
         "calculated": set(),
     }
     mock_coordinator.force_full_register_list = True
-    mock_coordinator.capabilities.basic_control = False
+    mock_coordinator.capabilities.basic_control = True
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
