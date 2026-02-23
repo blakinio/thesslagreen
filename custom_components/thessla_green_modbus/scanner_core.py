@@ -1936,6 +1936,11 @@ class ThesslaGreenDeviceScanner:
 
         if client is None:
             raise ConnectionException("Modbus client is not connected")
+        # Refresh client from transport in case transport reconnected since scan start
+        if client is self._client and self._transport is not None:
+            fresh = getattr(self._transport, "client", None)
+            if fresh is not None:
+                client = fresh
         for attempt in range(1, self.retry + 1):
             try:
                 response: Any = await _call_modbus(
@@ -1980,6 +1985,7 @@ class ThesslaGreenDeviceScanner:
                         transport_client = getattr(self._transport, "client", None)
                         if transport_client is not None:
                             client = transport_client
+                            self._client = transport_client
                     except Exception:
                         pass
             except asyncio.CancelledError:
@@ -2031,6 +2037,11 @@ class ThesslaGreenDeviceScanner:
 
         if client is None:
             raise ConnectionException("Modbus client is not connected")
+        # Refresh client from transport in case transport reconnected since scan start
+        if client is self._client and self._transport is not None:
+            fresh = getattr(self._transport, "client", None)
+            if fresh is not None:
+                client = fresh
         for attempt in range(1, self.retry + 1):
             try:
                 response: Any = await _call_modbus(
@@ -2075,6 +2086,7 @@ class ThesslaGreenDeviceScanner:
                         transport_client = getattr(self._transport, "client", None)
                         if transport_client is not None:
                             client = transport_client
+                            self._client = transport_client
                     except Exception:
                         pass
             except asyncio.CancelledError:
