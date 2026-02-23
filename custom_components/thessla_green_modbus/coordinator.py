@@ -936,7 +936,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 await asyncio.wait_for(transport.ensure_connected(), timeout=3.0)
                 try:
                     await asyncio.wait_for(
-                        transport.read_holding_registers(0, 2, self.slave_id),
+                        transport.read_holding_registers(self.slave_id, 0, count=2),
                         timeout=timeout,
                     )
                 except ModbusException:
