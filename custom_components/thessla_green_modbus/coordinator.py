@@ -927,13 +927,20 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ]
         attempts: list[tuple[str, float]] = []
         for mode in mode_order:
-            timeout = 2.0 if mode == CONNECTION_MODE_TCP_RTU else min(max(self.timeout, 5.0), 10.0)
+            timeout = 5.0 if mode == CONNECTION_MODE_TCP_RTU else min(max(self.timeout, 5.0), 10.0)
             attempts.append((mode, timeout))
         last_error: Exception | None = None
         for mode, timeout in attempts:
             transport = self._build_tcp_transport(mode)
             try:
-                await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
+                await asyncio.wait_for(transport.ensure_connected(), timeout=3.0)
+                try:
+                    await asyncio.wait_for(
+                        transport.read_holding_registers(0, 2, self.slave_id),
+                        timeout=timeout,
+                    )
+                except ModbusException:
+                    pass  # Device responded with a Modbus error — valid protocol, accept this transport
             except Exception as exc:  # pragma: no cover - network dependent
                 last_error = exc
                 await transport.close()
