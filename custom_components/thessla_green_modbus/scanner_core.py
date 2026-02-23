@@ -1991,6 +1991,14 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if self._transport is not None:
+                    try:
+                        await self._transport.ensure_connected()
+                        transport_client = getattr(self._transport, "client", None)
+                        if transport_client is not None:
+                            client = transport_client
+                    except Exception:
+                        pass
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading coil %d on attempt %d",
@@ -2078,6 +2086,14 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if self._transport is not None:
+                    try:
+                        await self._transport.ensure_connected()
+                        transport_client = getattr(self._transport, "client", None)
+                        if transport_client is not None:
+                            client = transport_client
+                    except Exception:
+                        pass
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading discrete %d on attempt %d",

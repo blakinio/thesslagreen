@@ -381,7 +381,7 @@ class TcpModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.read_input_registers,
             slave_id,
@@ -399,7 +399,7 @@ class TcpModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.read_holding_registers,
             slave_id,
@@ -417,7 +417,7 @@ class TcpModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.write_register,
             slave_id,
@@ -435,7 +435,7 @@ class TcpModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.write_registers,
             slave_id,
@@ -517,7 +517,7 @@ class RtuModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus serial client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.read_input_registers,
             slave_id,
@@ -535,7 +535,7 @@ class RtuModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus serial client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.read_holding_registers,
             slave_id,
@@ -553,7 +553,7 @@ class RtuModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus serial client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.write_register,
             slave_id,
@@ -571,7 +571,7 @@ class RtuModbusTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         if self.client is None:
-            raise ConnectionException("Modbus serial client is not connected")
+            await self.ensure_connected()
         return await self.call(
             self.client.write_registers,
             slave_id,
