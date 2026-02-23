@@ -1320,6 +1320,18 @@ class ThesslaGreenDeviceScanner:
                 for selected_mode, transport, timeout in self._build_auto_tcp_attempts():
                     try:
                         await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
+                        # Protocol probe: verify actual Modbus protocol works, not just
+                        # the TCP socket. A TCP_RTU transport can open a TCP connection to any
+                        # device, but reads will time out if the device speaks Modbus TCP instead
+                        # of RTU-over-TCP. This mirrors verify_connection: TimeoutError means
+                        # wrong protocol; any other outcome (even a Modbus exception code) means
+                        # the device responded in the expected protocol.
+                        try:
+                            await transport.read_input_registers(self.slave_id, 0, 2)
+                        except TimeoutError:
+                            raise
+                        except Exception:
+                            pass  # Non-timeout response confirms protocol is working
                     except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
                         last_error = exc
                         await transport.close()
