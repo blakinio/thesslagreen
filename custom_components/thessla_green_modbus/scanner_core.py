@@ -1327,7 +1327,7 @@ class ThesslaGreenDeviceScanner:
                         # wrong protocol; any other outcome (even a Modbus exception code) means
                         # the device responded in the expected protocol.
                         try:
-                            await transport.read_input_registers(self.slave_id, 0, 2)
+                            await transport.read_input_registers(self.slave_id, 0, count=2)
                         except TimeoutError:
                             raise
                         except Exception:
@@ -1566,32 +1566,6 @@ class ThesslaGreenDeviceScanner:
                     address,
                     response,
                 )
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug(
-                    "Attempt %d failed to read input %d: %s",
-                    attempt,
-                    address,
-                    exc,
-                    exc_info=True,
-                )
-            except TimeoutError as exc:
-                _LOGGER.warning(
-                    "Timeout reading input %d on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-            except OSError as exc:
-                _LOGGER.error(
-                    "Unexpected error reading input %d on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
             except ModbusIOException as exc:
                 _LOGGER.debug(
                     "Modbus IO error reading input registers %d-%d on attempt %d: %s",
@@ -1608,7 +1582,7 @@ class ThesslaGreenDeviceScanner:
                         self._failed_input.add(address)
                         self.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
                         _LOGGER.warning("Device does not expose register %d", address)
-            except TimeoutError as exc:  # noqa: B025
+            except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading input registers %d-%d on attempt %d: %s",
                     start,
@@ -1618,7 +1592,16 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
-            except (ModbusException, ConnectionException) as exc:  # noqa: B025
+            except OSError as exc:
+                _LOGGER.error(
+                    "Unexpected error reading input %d on attempt %d: %s",
+                    address,
+                    attempt,
+                    exc,
+                    exc_info=True,
+                )
+                break
+            except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
                     "Failed to read input registers %d-%d on attempt %d: %s",
                     start,
@@ -1991,6 +1974,14 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if self._transport is not None:
+                    try:
+                        await self._transport.ensure_connected()
+                        transport_client = getattr(self._transport, "client", None)
+                        if transport_client is not None:
+                            client = transport_client
+                    except Exception:
+                        pass
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading coil %d on attempt %d",
@@ -2078,6 +2069,14 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if self._transport is not None:
+                    try:
+                        await self._transport.ensure_connected()
+                        transport_client = getattr(self._transport, "client", None)
+                        if transport_client is not None:
+                            client = transport_client
+                    except Exception:
+                        pass
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading discrete %d on attempt %d",
