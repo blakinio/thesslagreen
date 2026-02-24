@@ -406,48 +406,28 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def _async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator) -> None:
-    """Remove or rename legacy fan-related entity IDs."""
+    """Remove legacy number entity IDs replaced by the fan entity.
+
+    HA's entity registry does not allow changing domains via async_update_entity,
+    so old number.* entities cannot be renamed to fan.*. They are simply removed;
+    the fan.rekuperator_fan entity is created by the fan platform setup.
+    """
     from homeassistant.helpers import entity_registry as er  # type: ignore
 
     registry = er.async_get(hass)
     new_entity_id = "fan.rekuperator_fan"
     migrated = False
-    host = coordinator.host
-    port = coordinator.port
-    slave_id = coordinator.slave_id
-    serial = coordinator.device_info.get("serial_number")
 
-    if registry.async_get(new_entity_id):
-        for old_entity_id in LEGACY_FAN_ENTITY_IDS:
-            if registry.async_get(old_entity_id):
-                registry.async_remove(old_entity_id)
-                migrated = True
-    else:
-        for old_entity_id in LEGACY_FAN_ENTITY_IDS:
-            if registry.async_get(old_entity_id):
-                new_unique_id = migrate_unique_id(
-                    f"{DOMAIN}_{host.replace(':', '-')}_{port}_{slave_id}_fan",
-                    serial_number=serial,
-                    host=host,
-                    port=port,
-                    slave_id=slave_id,
-                )
-                registry.async_update_entity(
-                    old_entity_id,
-                    new_entity_id=new_entity_id,
-                    new_unique_id=new_unique_id,
-                )
-                migrated = True
-                break
-        for old_entity_id in LEGACY_FAN_ENTITY_IDS:
-            if registry.async_get(old_entity_id):
-                registry.async_remove(old_entity_id)
-                migrated = True
+    for old_entity_id in LEGACY_FAN_ENTITY_IDS:
+        if registry.async_get(old_entity_id):
+            registry.async_remove(old_entity_id)
+            migrated = True
 
     global _fan_migration_logged
     if migrated and not _fan_migration_logged:
         _LOGGER.warning(
-            "Legacy fan entity detected. Renamed to '%s'. Please update automations.",
+            "Removed legacy entity/entities %s. Please update automations to use '%s'.",
+            LEGACY_FAN_ENTITY_IDS,
             new_entity_id,
         )
         _fan_migration_logged = True
