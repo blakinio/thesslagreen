@@ -936,11 +936,13 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 await asyncio.wait_for(transport.ensure_connected(), timeout=3.0)
                 try:
                     await asyncio.wait_for(
-                        transport.read_holding_registers(0, 2, self.slave_id),
+                        transport.read_holding_registers(self.slave_id, 0, count=2),
                         timeout=timeout,
                     )
+                except (ModbusIOException, ConnectionException):
+                    raise  # timeout / no connection = wrong protocol, reject transport
                 except ModbusException:
-                    pass  # Device responded with a Modbus error — valid protocol, accept this transport
+                    pass  # device returned Modbus error code = valid protocol, accept transport
             except Exception as exc:  # pragma: no cover - network dependent
                 last_error = exc
                 await transport.close()
