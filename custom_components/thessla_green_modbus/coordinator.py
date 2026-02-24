@@ -939,8 +939,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         transport.read_holding_registers(self.slave_id, 0, count=2),
                         timeout=timeout,
                     )
+                except (ModbusIOException, ConnectionException):
+                    raise  # timeout / no connection = wrong protocol, reject transport
                 except ModbusException:
-                    pass  # Device responded with a Modbus error — valid protocol, accept this transport
+                    pass  # device returned Modbus error code = valid protocol, accept transport
             except Exception as exc:  # pragma: no cover - network dependent
                 last_error = exc
                 await transport.close()
