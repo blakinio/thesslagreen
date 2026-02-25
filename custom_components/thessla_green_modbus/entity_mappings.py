@@ -741,9 +741,6 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "bypass_off": {
         "translation_key": "bypass_off",
         "icon": "mdi:thermometer-off",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
     # PWM control values (napięcia wentylatorów)
