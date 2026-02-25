@@ -172,7 +172,7 @@ DEFAULT_AIRFLOW_UNIT = AIRFLOW_UNIT_M3H
 # Registers reporting airflow that changed units from percentage to m³/h
 AIRFLOW_RATE_REGISTERS = {"supply_flow_rate", "exhaust_flow_rate"}
 
-DEFAULT_SCAN_UART_SETTINGS = False
+DEFAULT_SCAN_UART_SETTINGS = True
 DEFAULT_SKIP_MISSING_REGISTERS = False
 DEFAULT_ENABLE_DEVICE_SCAN = True
 DEFAULT_DEEP_SCAN = False
