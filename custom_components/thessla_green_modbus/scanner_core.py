@@ -914,6 +914,39 @@ class ThesslaGreenDeviceScanner:
                 else:
                     patch = value
 
+        # Some devices reject larger blocks around register 0 but still allow
+        # individual reads of the firmware registers. Retry missing values as
+        # single-register probes while bypassing failed-range caching.
+        if None in (major, minor, patch):
+            fallback_results: dict[str, int] = {}
+            for name in ("version_major", "version_minor", "version_patch"):
+                current = (
+                    major
+                    if name == "version_major"
+                    else minor
+                    if name == "version_minor"
+                    else patch
+                )
+                if current is not None:
+                    continue
+
+                try:
+                    probe = await self._read_input(INPUT_REGISTERS[name], 1, skip_cache=True)
+                except (TypeError, ValueError, IndexError) as exc:  # pragma: no cover - best effort
+                    firmware_err = exc
+                    continue
+                except Exception as exc:  # pragma: no cover - unexpected
+                    _LOGGER.exception("Unexpected firmware probe error for %s: %s", name, exc)
+                    firmware_err = exc
+                    continue
+
+                if probe:
+                    fallback_results[name] = probe[0]
+
+            major = fallback_results.get("version_major", major)
+            minor = fallback_results.get("version_minor", minor)
+            patch = fallback_results.get("version_patch", patch)
+
         missing_regs: list[str] = []
         if None in (major, minor, patch):
             for name, value in (

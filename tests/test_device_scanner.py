@@ -678,8 +678,12 @@ async def test_scan_device_firmware_unavailable(caplog):
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    async def fake_read_input(client, address, count, *, skip_cache=False):
-        if address == 0 and count == 30:
+    async def fake_read_input(*args, skip_cache=False):
+        if len(args) == 2:
+            address, count = args
+        else:
+            _, address, count = args
+        if address == 0 and count >= 16:
             return None
         if count == 1 and address in (
             INPUT_REGISTERS["version_major"],
@@ -689,13 +693,25 @@ async def test_scan_device_firmware_unavailable(caplog):
             return None
         return [1] * count
 
-    async def fake_read_holding(client, address, count, **kwargs):
+    async def fake_read_holding(*args, **kwargs):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [1] * count
 
-    async def fake_read_coil(client, address, count):
+    async def fake_read_coil(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
-    async def fake_read_discrete(client, address, count):
+    async def fake_read_discrete(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
@@ -725,8 +741,12 @@ async def test_scan_device_firmware_bulk_fallback():
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    async def fake_read_input(client, address, count, *, skip_cache=False):
-        if address == 0 and count == 30:
+    async def fake_read_input(*args, skip_cache=False):
+        if len(args) == 2:
+            address, count = args
+        else:
+            _, address, count = args
+        if address == 0 and count >= 16:
             return None
         if count == 1 and address == INPUT_REGISTERS["version_major"]:
             return [4]
@@ -736,13 +756,25 @@ async def test_scan_device_firmware_bulk_fallback():
             return [0]
         return [1] * count
 
-    async def fake_read_holding(client, address, count, **kwargs):
+    async def fake_read_holding(*args, **kwargs):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [1] * count
 
-    async def fake_read_coil(client, address, count):
+    async def fake_read_coil(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
-    async def fake_read_discrete(client, address, count):
+    async def fake_read_discrete(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
@@ -770,9 +802,15 @@ async def test_scan_device_firmware_partial_bulk_fallback():
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    async def fake_read_input(client, address, count, *, skip_cache=False):
-        if address == 0 and count == 30:
+    async def fake_read_input(*args, skip_cache=False):
+        if len(args) == 2:
+            address, count = args
+        else:
+            _, address, count = args
+        if address == 0 and count >= 16:
             return [4, 85]
+        if address >= 16:
+            return []
         if count == 1 and address == INPUT_REGISTERS["version_patch"]:
             return [0]
         if count == 1 and address == INPUT_REGISTERS["version_major"]:
@@ -781,13 +819,25 @@ async def test_scan_device_firmware_partial_bulk_fallback():
             return [85]
         return [1] * count
 
-    async def fake_read_holding(client, address, count, **kwargs):
+    async def fake_read_holding(*args, **kwargs):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [1] * count
 
-    async def fake_read_coil(client, address, count):
+    async def fake_read_coil(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
-    async def fake_read_discrete(client, address, count):
+    async def fake_read_discrete(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
@@ -1088,10 +1138,18 @@ async def test_temperature_register_unavailable_kept():
     async def fake_read_holding(client, address, count, **kwargs):
         return [1] * count
 
-    async def fake_read_coil(client, address, count):
+    async def fake_read_coil(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
-    async def fake_read_discrete(client, address, count):
+    async def fake_read_discrete(*args):
+        if len(args) == 2:
+            _, count = args
+        else:
+            _, _, count = args
         return [False] * count
 
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
