@@ -562,7 +562,7 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         max_registers_per_request=self.effective_batch,
                         safe_scan=self.safe_scan,
                         connection_type=self.connection_type,
-                        connection_mode=self.connection_mode,
+                        connection_mode=self._resolved_connection_mode or self.connection_mode,
                         serial_port=self.serial_port,
                         baud_rate=self.baud_rate,
                         parity=self.parity,
@@ -571,6 +571,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
 
                     self.device_scan_result = await scanner.scan_device()
+                    if self.connection_mode == CONNECTION_MODE_AUTO:
+                        if resolved := self.device_scan_result.get("resolved_connection_mode"):
+                            self._resolved_connection_mode = resolved
                     self.last_scan = dt_util.utcnow()
                     scan_registers = self.device_scan_result.get("available_registers", {})
                     self.available_registers = {
