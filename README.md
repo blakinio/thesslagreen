@@ -89,6 +89,26 @@ cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
 - **Timeouty / reconnect:** upewnij się, że tylko Home Assistant utrzymuje połączenie Modbus; zwiększ interwał odczytów i sprawdź stabilność sieci.
 - **Limit 16 rejestrów:** własne skrypty i automatyzacje powinny grupować odczyty do maks. 16 rejestrów na zapytanie, inaczej urządzenie zwraca błędy/timeouty.
 - **Debug logi:** włącz logowanie `custom_components.thessla_green_modbus: debug` w `configuration.yaml` (szczegóły w sekcji diagnostyki).
+- **Stare encje w automatyzacjach:** ostrzeżenie `Referenced entities number.rekuperator_predkosc are missing` oznacza, że automatyzacja odwołuje się do usuniętej encji. Zamień ją na `fan.rekuperator_fan` i zaktualizuj automatyzacje/skrypty.
+
+### Typowy przypadek: dużo stanów „nie działa” + kody `E*`
+
+Jeśli widzisz jednocześnie wiele encji w stanie `nie działa`/`niedostępny` oraz
+`sensor.*error_codes` zwraca ciąg kodów (np. `e_138, e_139, e_152, ...`),
+oznacza to zwykle, że urządzenie zgłasza aktywne alarmy lub pracuje w trybie
+awaryjnym, a nie że integracja „zgubiła” pojedynczą encję.
+
+W takiej sytuacji:
+1. Sprawdź listę alarmów bezpośrednio na panelu ThesslaGreen i skasuj/usuń
+   przyczynę alarmów (filtry, czujniki, zabezpieczenia, przewody).
+2. Odczytaj `sensor.thessla_error_codes` (to agregat aktywnych kodów E/S) oraz
+   atrybuty diagnostyczne integracji (`failed_reads`, `last_error`,
+   `last_successful_update`).
+3. Jeżeli jednocześnie pojawiają się nielogiczne przepływy (np. `4864 m³/h`)
+   przy niskim procencie wentylatora (np. `30%`), uruchom ponownie integrację i
+   sprawdź konfigurację połączenia (ID urządzenia, TCP/RTU, parametry UART).
+4. Gdy problem pozostaje, pobierz diagnostykę z integracji i dołącz ją do
+   zgłoszenia issue.
 
 ## ⚙️ Konfiguracja krok po kroku
 

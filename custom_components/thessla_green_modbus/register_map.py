@@ -70,6 +70,11 @@ class RegisterMapEntry:
 
         if expected == "enum":
             if self.enum_values and value not in self.enum_values:
+                # Some firmware variants expose undocumented enum/raw values.
+                # Keep them for read-only entities so the dashboard can still
+                # display data instead of showing ``unknown``/``unavailable``.
+                if self.entity_domain in {"sensor", "binary_sensor", "switch"}:
+                    return value
                 raise ValueError(
                     f"Unexpected enum value {value!r} for {self.name}; allowed: "
                     f"{sorted(self.enum_values)}"
