@@ -130,7 +130,11 @@ from .modbus_transport import (
 from .register_addresses import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .register_map import REGISTER_MAP_VERSION, validate_register_value
 from .registers.loader import get_all_registers
-from .scanner_core import DeviceCapabilities, ThesslaGreenDeviceScanner
+from .scanner_core import (
+    DeviceCapabilities,
+    ThesslaGreenDeviceScanner,
+    _is_request_cancelled_error,
+)
 from .utils import resolve_connection_settings
 
 ILLEGAL_DATA_ADDRESS = 2
@@ -839,8 +843,10 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         addr,
                         count=1,
                     )
-                    if response.isError():
+                    if response is None:
                         raise ConnectionException(f"Cannot read register {addr}")
+                    # Modbus error responses (e.g. exception code 2 — Illegal Data
+                    # Address) still prove bidirectional communication with the device.
 
                 if not transport.is_connected():
                     raise ConnectionException("Modbus transport is not connected")
@@ -853,9 +859,18 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     0,
                     count=count,
                 )
-                if response is None or response.isError():
+                if response is None:
                     raise ConnectionException("Cannot read basic register")
+                # Modbus error response still proves the device is reachable.
                 _LOGGER.debug("Connection test successful")
+            except ModbusIOException as exc:
+                if _is_request_cancelled_error(exc):
+                    _LOGGER.warning(
+                        "Connection test skipped — device busy after scan: %s", exc
+                    )
+                    return  # Non-fatal: scan already proved the device is reachable
+                _LOGGER.exception("Connection test failed: %s", exc)
+                raise
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.exception("Connection test failed: %s", exc)
                 raise
