@@ -38,3 +38,9 @@ def test_malformed_options_file(monkeypatch, caplog):
         options = const._load_json_option("special_modes.json")
 
     assert options == []  # nosec B101
+
+
+def test_scan_uart_defaults_enabled():
+    """Ensure UART scan option is enabled by default for critical diagnostics."""
+    assert const.CONF_SCAN_UART_SETTINGS == "scan_uart_settings"
+    assert const.DEFAULT_SCAN_UART_SETTINGS is True
