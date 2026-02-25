@@ -23,6 +23,44 @@ from .registers.loader import _REGISTERS_PATH, get_all_registers, registers_sha2
 _LOGGER = logging.getLogger(__name__)
 
 
+async def _run_executor_job(hass: HomeAssistant, func, *args):
+    """Run a callable using HA executor when available, fallback inline in tests."""
+
+    if hasattr(hass, "async_add_executor_job"):
+        return await hass.async_add_executor_job(func, *args)
+    return func(*args)
+
+
+def _detect_data_anomalies(data: dict[str, Any]) -> list[str]:
+    """Return best-effort diagnostics insights based on current coordinator data."""
+
+    anomalies: list[str] = []
+
+    supply_air_flow = data.get("supply_air_flow")
+    exhaust_air_flow = data.get("exhaust_air_flow")
+    cf_version = data.get("cf_version")
+    supply_flow_rate = data.get("supply_flow_rate")
+    exhaust_flow_rate = data.get("exhaust_flow_rate")
+
+    # Some devices report obviously incorrect instantaneous airflow values where
+    # both airflow registers mirror the CF firmware value. Surface this in
+    # diagnostics to speed up troubleshooting and support triage.
+    if (
+        isinstance(supply_air_flow, int)
+        and isinstance(exhaust_air_flow, int)
+        and isinstance(cf_version, int)
+        and supply_air_flow == exhaust_air_flow == cf_version
+        and cf_version >= 4096
+        and isinstance(supply_flow_rate, int)
+        and isinstance(exhaust_flow_rate, int)
+        and supply_flow_rate < 1000
+        and exhaust_flow_rate < 1000
+    ):
+        anomalies.append("mirrored_airflow_register_values")
+
+    return anomalies
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:  # pragma: no cover
@@ -37,14 +75,14 @@ async def async_get_config_entry_diagnostics(
     diagnostics.setdefault("effective_batch", coordinator.effective_batch)
     diagnostics.setdefault(
         "registers_hash",
-        await hass.async_add_executor_job(registers_sha256, _REGISTERS_PATH),
+        await _run_executor_job(hass, registers_sha256, _REGISTERS_PATH),
     )
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
 
     diagnostics.setdefault("firmware_version", coordinator.device_info.get("firmware"))
     diagnostics.setdefault(
         "total_registers_json",
-        await hass.async_add_executor_job(lambda: len(get_all_registers())),
+        await _run_executor_job(hass, lambda: len(get_all_registers())),
     )
     diagnostics.setdefault(
         "total_available_registers",
@@ -54,7 +92,7 @@ async def async_get_config_entry_diagnostics(
         "registers_discovered",
         {key: len(val) for key, val in coordinator.available_registers.items()},
     )
-    diagnostics.setdefault("status_overview", coordinator.status_overview)
+    diagnostics.setdefault("status_overview", getattr(coordinator, "status_overview", None))
 
     diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
     diagnostics.setdefault("force_full", coordinator.force_full_register_list)
@@ -105,6 +143,11 @@ async def async_get_config_entry_diagnostics(
                 active_errors[key] = translations.get(f"codes.{key}", key)
     if active_errors:
         diagnostics["active_errors"] = active_errors
+
+    if coordinator.data:
+        anomalies = _detect_data_anomalies(coordinator.data)
+        if anomalies:
+            diagnostics["anomalies"] = anomalies
 
     diagnostics_safe = _redact_sensitive_data(diagnostics)
     _LOGGER.debug("Generated diagnostics for ThesslaGreen device")
