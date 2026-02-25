@@ -25,6 +25,19 @@ _SIG_CACHE: weakref.WeakKeyDictionary[Callable[..., Awaitable[Any]], inspect.Sig
 )
 
 
+def _should_apply_external_timeout(func: Callable[..., Awaitable[Any]]) -> bool:
+    """Return whether ``asyncio.wait_for`` should wrap ``func`` calls.
+
+    Pymodbus clients already implement their own timeout and cancellation
+    handling. Wrapping those calls in an external ``wait_for`` can cancel
+    requests mid-flight, leaving stale transaction IDs and causing follow-up
+    "request ask for transaction_id" desynchronization errors.
+    """
+
+    module_name = getattr(func, "__module__", "") or ""
+    return not module_name.startswith("pymodbus")
+
+
 async def async_maybe_await(result: Any) -> Any:
     """Await a result only if it is awaitable."""
 
@@ -299,7 +312,7 @@ async def _call_modbus(
         return await func(*positional, **kwargs)
 
     try:
-        if timeout is not None:
+        if timeout is not None and _should_apply_external_timeout(func):
             response = await asyncio.wait_for(_invoke(), timeout=timeout)
         else:
             response = await _invoke()

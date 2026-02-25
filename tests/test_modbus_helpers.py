@@ -75,6 +75,19 @@ async def test_call_modbus_supports_no_slave_or_unit():
     assert result == (30, 4)  # nosec B101
 
 
+async def test_call_modbus_skips_external_timeout_for_pymodbus_callables():
+    """Pymodbus callables should rely on their own internal timeout handling."""
+
+    async def func(address, *, count, device_id=None):
+        await asyncio.sleep(0.01)
+        return address, count, device_id
+
+    func.__module__ = "pymodbus.client.mixin"
+
+    result = await _call_modbus(func, 1, 20, 3, timeout=0.000001)
+    assert result == (20, 3, 1)  # nosec B101
+
+
 async def test_call_modbus_propagates_cancelled_error():
     """Cancelled errors should propagate without being mapped."""
 
