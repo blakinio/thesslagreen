@@ -82,6 +82,34 @@ def test_redact_ipv6_zone():
     assert redacted["connection"]["host"] == ("fe80:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:0001")
 
 
+
+
+def test_detect_data_anomalies_mirrored_airflow_values():
+    data = {
+        "supply_air_flow": 4864,
+        "exhaust_air_flow": 4864,
+        "cf_version": 4864,
+        "supply_flow_rate": 99,
+        "exhaust_flow_rate": 99,
+    }
+
+    from custom_components.thessla_green_modbus.diagnostics import _detect_data_anomalies
+
+    assert _detect_data_anomalies(data) == ["mirrored_airflow_register_values"]
+
+
+def test_detect_data_anomalies_ignores_normal_values():
+    data = {
+        "supply_air_flow": 220,
+        "exhaust_air_flow": 210,
+        "cf_version": 4864,
+        "supply_flow_rate": 60,
+        "exhaust_flow_rate": 58,
+    }
+
+    from custom_components.thessla_green_modbus.diagnostics import _detect_data_anomalies
+
+    assert _detect_data_anomalies(data) == []
 def test_original_diagnostics_unchanged():
     """Ensure the input diagnostics dict is not modified by redaction."""
     data = {
@@ -284,6 +312,48 @@ async def test_raw_registers_in_diagnostics():
     assert result["raw_registers"] == scan_result["raw_registers"]
     assert result["last_scan"] == last_scan.isoformat()
     assert result["error_statistics"] == {"connection_errors": 0, "timeout_errors": 0}
+
+
+@pytest.mark.asyncio
+async def test_anomalies_in_diagnostics():
+    """Ensure diagnostics include detected data anomalies when present."""
+
+    class DummyCoordinator:
+        def __init__(self) -> None:
+            self.last_scan = None
+            self.device_scan_result = None
+            self.data = {
+                "supply_air_flow": 4864,
+                "exhaust_air_flow": 4864,
+                "cf_version": 4864,
+                "supply_flow_rate": 99,
+                "exhaust_flow_rate": 99,
+            }
+            self.device_info = {}
+            self.available_registers = {}
+            self.statistics = {}
+            self.capabilities = SimpleNamespace(as_dict=lambda: {})
+            self.deep_scan = False
+            self.force_full_register_list = False
+            self.effective_batch = 0
+
+        def get_diagnostic_data(self):
+            return {}
+
+    coord = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test")
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}},
+        config=SimpleNamespace(language="en"),
+    )
+
+    with patch(
+        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+        AsyncMock(return_value={}),
+    ):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["anomalies"] == ["mirrored_airflow_register_values"]
 
 
 @pytest.mark.asyncio
