@@ -1287,6 +1287,7 @@ class ThesslaGreenDeviceScanner:
                     k: sorted(v) for k, v in self.failed_addresses["invalid_values"].items() if v
                 },
             },
+            "resolved_connection_mode": self._resolved_connection_mode,
         }
         if self.deep_scan:
             result["raw_registers"] = raw_registers
@@ -1330,8 +1331,12 @@ class ThesslaGreenDeviceScanner:
                             await transport.read_input_registers(self.slave_id, 0, count=2)
                         except TimeoutError:
                             raise
+                        except ModbusIOException as exc:
+                            if _is_request_cancelled_error(exc):
+                                raise TimeoutError(str(exc)) from exc
+                            # Other Modbus exceptions (error codes) confirm protocol is working
                         except Exception:
-                            pass  # Non-timeout response confirms protocol is working
+                            pass  # Non-timeout, non-cancelled response confirms protocol is working
                     except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
                         last_error = exc
                         await transport.close()
@@ -1575,6 +1580,8 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                if _is_request_cancelled_error(exc):
+                    break  # Treat cancellation like a timeout — stop retrying
                 if count == 1:
                     failures = self._input_failures.get(address, 0) + 1
                     self._input_failures[address] = failures
