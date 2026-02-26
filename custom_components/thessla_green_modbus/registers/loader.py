@@ -409,11 +409,14 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
         function = _normalise_function(parsed.function)
         raw_address = int(parsed.address_dec)
 
+        # Keep register addresses exactly as provided in the JSON definition.
+        #
+        # Older revisions attempted to normalise some function groups into a
+        # compact, zero-based space (e.g. subtracting 1 for discrete inputs and
+        # 111 for selected holding registers). That remapping causes reads to
+        # target different addresses than the register list and can make valid
+        # device registers appear "missing" during capability scan.
         address = raw_address
-        if function == 2:
-            address -= 1
-        elif function == 3 and address >= 111:
-            address -= 111
 
         name = _normalise_name(parsed.name)
 
