@@ -2014,6 +2014,75 @@ async def test_validate_input_timeout_errors(exc, err_key):
     scanner_instance.close.assert_awaited_once()
 
 
+
+
+async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
+    """Cancelled request timeout should not emit traceback debug logs."""
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(side_effect=TimeoutError("Modbus request cancelled")),
+        scan_device=AsyncMock(return_value={"capabilities": DeviceCapabilities()}),
+        close=AsyncMock(),
+    )
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner_instance),
+        ),
+        patch("asyncio.sleep", AsyncMock()),
+        caplog.at_level(logging.DEBUG),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert err.value.args[0] == "timeout"
+    assert "Timeout during device validation: Modbus request cancelled" in caplog.text
+    assert "Traceback:" not in caplog.text
+
+
+async def test_validate_input_cancelled_modbus_io_suppresses_traceback(caplog):
+    """Cancelled ModbusIOException should not emit traceback debug logs."""
+    from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
+    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+
+    data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 502,
+        "slave_id": 10,
+        CONF_NAME: "Test",
+    }
+
+    scanner_instance = SimpleNamespace(
+        verify_connection=AsyncMock(side_effect=ModbusIOException("Request cancelled outside pymodbus.")),
+        scan_device=AsyncMock(return_value={"capabilities": DeviceCapabilities()}),
+        close=AsyncMock(),
+    )
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner_instance),
+        ),
+        patch("asyncio.sleep", AsyncMock()),
+        caplog.at_level(logging.DEBUG),
+    ):
+        with pytest.raises(CannotConnect) as err:
+            await validate_input(None, data)
+
+    assert err.value.args[0] == "timeout"
+    assert "Timeout during device validation: Modbus request cancelled" in caplog.text
+    assert "Traceback:" not in caplog.text
+
 async def test_validate_input_dns_failure():
     """DNS resolution failures should raise a specific error."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input

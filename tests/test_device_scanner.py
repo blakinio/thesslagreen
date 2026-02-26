@@ -167,6 +167,32 @@ async def test_read_holding_timeout_logging(caplog):
     assert any("Failed to read holding registers 1-1" in msg for msg in errors)
 
 
+async def test_read_holding_cancelled_request_logs_without_traceback(caplog):
+    """Cancelled pymodbus requests should not emit debug traceback spam."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+    cancelled_exc = ModbusIOException("Request cancelled outside pymodbus.")
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            AsyncMock(side_effect=cancelled_exc),
+        ),
+        patch("asyncio.sleep", AsyncMock()),
+        caplog.at_level(logging.DEBUG),
+    ):
+        result = await scanner._read_holding(mock_client, 4387, 1)
+
+    assert result is None
+    cancelled_records = [
+        record
+        for record in caplog.records
+        if "Cancelled reading holding registers 4387-4387" in record.getMessage()
+    ]
+    assert cancelled_records
+    assert all(record.exc_info is None for record in cancelled_records)
+
+
 @pytest.mark.parametrize(
     "method, address",
     [("_read_input", 1), ("_read_holding", 1)],
@@ -1477,6 +1503,8 @@ async def test_scan_populates_device_name():
     """Scanner should include device_name in returned device info."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
     scanner._client = object()
+    scanner._transport = MagicMock()
+    scanner._transport.is_connected.return_value = True
     scanner._registers = {4: {}, 3: {}, 1: {}, 2: {}}
     scanner.available_registers = {
         "input_registers": set(),
@@ -1505,6 +1533,74 @@ async def test_scan_populates_device_name():
 
     assert result["device_info"]["device_name"] == device_name
 
+
+
+
+async def test_scan_falls_back_to_single_input_reads_after_failed_batch():
+    """Input addresses should be recovered via single-register probes after batch failure."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    scanner._client = object()
+    scanner._transport = MagicMock()
+    scanner._transport.is_connected.return_value = True
+
+    async def fake_read_input(address, count, *, skip_cache=False):
+        if skip_cache and count == 1:
+            values = {
+                0: 3,
+                1: 0,
+                4: 11,
+                16: 215,
+                17: 220,
+            }
+            value = values.get(address)
+            return [value] if value is not None else None
+        if (address, count) == (16, 2):
+            return None
+        if (address, count) == (0, 2):
+            return [3, 0]
+        if (address, count) == (4, 1):
+            return [11]
+        return []
+
+    with (
+        patch.dict(
+            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
+            {
+                "version_major": 0,
+                "version_minor": 1,
+                "version_patch": 4,
+                "outside_temperature": 16,
+                "supply_temperature": 17,
+            },
+            clear=True,
+        ),
+        patch.dict(
+            "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
+            {},
+            clear=True,
+        ),
+        patch.dict(
+            "custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS",
+            {},
+            clear=True,
+        ),
+        patch.dict(
+            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
+            {},
+            clear=True,
+        ),
+        patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=[])),
+        patch.object(scanner, "_analyze_capabilities", return_value=DeviceCapabilities()),
+    ):
+        result = await scanner.scan()
+
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
+    assert "supply_temperature" in result["available_registers"]["input_registers"]
 
 async def test_scan_reports_diagnostic_registers_on_error():
     """Diagnostic holding registers are reported even when reads fail."""
