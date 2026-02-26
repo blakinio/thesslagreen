@@ -427,6 +427,7 @@ class ThesslaGreenDeviceScanner:
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: dict[int, dict[int, str]] = {}
         self._register_ranges: dict[str, tuple[int | None, int | None]] = {}
+        self._names_by_address: dict[int, dict[int, set[str]]] = {4: {}, 3: {}, 1: {}, 2: {}}
 
         # Track holding registers that consistently fail to respond so we
         # can avoid retrying them repeatedly during scanning. The value is
@@ -496,7 +497,27 @@ class ThesslaGreenDeviceScanner:
 
         await _async_ensure_register_maps(self._hass)
         self._registers, self._register_ranges = await self._load_registers()
+        self._names_by_address = {
+            4: self._build_names_by_address(INPUT_REGISTERS),
+            3: self._build_names_by_address(HOLDING_REGISTERS),
+            1: self._build_names_by_address(COIL_REGISTERS),
+            2: self._build_names_by_address(DISCRETE_INPUT_REGISTERS),
+        }
         self._update_known_missing_addresses()
+
+    @staticmethod
+    def _build_names_by_address(mapping: dict[str, int]) -> dict[int, set[str]]:
+        """Create address->name aliases map from name->address mapping."""
+
+        by_address: dict[int, set[str]] = {}
+        for name, addr in mapping.items():
+            by_address.setdefault(addr, set()).add(name)
+        return by_address
+
+    def _alias_names(self, function: int, address: int) -> set[str]:
+        """Return all register names sharing the same function/address pair."""
+
+        return self._names_by_address.get(function, {}).get(address, set())
 
     @classmethod
     async def create(
@@ -1033,7 +1054,11 @@ class ThesslaGreenDeviceScanner:
                     addr = start + offset
                     reg_name = self._registers.get(4, {}).get(addr)
                     if reg_name and self._is_valid_register_value(reg_name, value):
-                        self.available_registers["input_registers"].add(reg_name)
+                        names = self._alias_names(4, addr)
+                        if names:
+                            self.available_registers["input_registers"].update(names)
+                        else:
+                            self.available_registers["input_registers"].add(reg_name)
                     else:
                         unknown_registers["input_registers"][addr] = value
                         if reg_name:
@@ -1054,7 +1079,11 @@ class ThesslaGreenDeviceScanner:
                     addr = start + offset
                     reg_name = self._registers.get(3, {}).get(addr)
                     if reg_name and self._is_valid_register_value(reg_name, value):
-                        self.available_registers["holding_registers"].add(reg_name)
+                        names = self._alias_names(3, addr)
+                        if names:
+                            self.available_registers["holding_registers"].update(names)
+                        else:
+                            self.available_registers["holding_registers"].add(reg_name)
                     else:
                         unknown_registers["holding_registers"][addr] = value
                         if reg_name:
@@ -1074,7 +1103,11 @@ class ThesslaGreenDeviceScanner:
                 for offset, value in enumerate(coil_data):
                     addr = start + offset
                     if (reg_name := self._registers.get(1, {}).get(addr)) is not None:
-                        self.available_registers["coil_registers"].add(reg_name)
+                        names = self._alias_names(1, addr)
+                        if names:
+                            self.available_registers["coil_registers"].update(names)
+                        else:
+                            self.available_registers["coil_registers"].add(reg_name)
                     else:
                         unknown_registers["coil_registers"][addr] = value
 
@@ -1091,17 +1124,21 @@ class ThesslaGreenDeviceScanner:
                 for offset, value in enumerate(discrete_data):
                     addr = start + offset
                     if (reg_name := self._registers.get(2, {}).get(addr)) is not None:
-                        self.available_registers["discrete_inputs"].add(reg_name)
+                        names = self._alias_names(2, addr)
+                        if names:
+                            self.available_registers["discrete_inputs"].update(names)
+                        else:
+                            self.available_registers["discrete_inputs"].add(reg_name)
                     else:
                         unknown_registers["discrete_inputs"][addr] = value
         else:
             # Scan Input Registers in batches
-            input_addr_to_name: dict[int, str] = {}
+            input_addr_to_names: dict[int, set[str]] = {}
             input_addresses: list[int] = []
             for name, addr in INPUT_REGISTERS.items():
                 if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
                     continue
-                input_addr_to_name[addr] = name
+                input_addr_to_names.setdefault(addr, set()).add(name)
                 input_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(input_addresses):
@@ -1114,15 +1151,15 @@ class ThesslaGreenDeviceScanner:
 
                 for offset, value in enumerate(input_data):
                     addr = start + offset
-                    if reg_name := input_addr_to_name.get(addr):
-                        if self._is_valid_register_value(reg_name, value):
-                            self.available_registers["input_registers"].add(reg_name)
+                    if reg_names := input_addr_to_names.get(addr):
+                        if any(self._is_valid_register_value(name, value) for name in reg_names):
+                            self.available_registers["input_registers"].update(reg_names)
                         else:
                             self.failed_addresses["invalid_values"]["input_registers"].add(addr)
-                            self._log_invalid_value(reg_name, value)
+                            self._log_invalid_value(sorted(reg_names)[0], value)
 
             # Scan Holding Registers in batches
-            holding_info: dict[int, tuple[str, int]] = {}
+            holding_info: dict[int, tuple[set[str], int]] = {}
             holding_addresses: list[int] = []
             for name, addr in HOLDING_REGISTERS.items():
                 if not self.scan_uart_settings and addr in UART_OPTIONAL_REGS:
@@ -1130,7 +1167,11 @@ class ThesslaGreenDeviceScanner:
                 if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["holding_registers"]:
                     continue
                 size = MULTI_REGISTER_SIZES.get(name, 1)
-                holding_info[addr] = (name, size)
+                if addr in holding_info:
+                    names, _existing_size = holding_info[addr]
+                    names.add(name)
+                else:
+                    holding_info[addr] = ({name}, size)
                 holding_addresses.extend(range(addr, addr + size))
 
             for start, count in self._group_registers_for_batch_read(holding_addresses):
@@ -1144,12 +1185,12 @@ class ThesslaGreenDeviceScanner:
                 for offset, value in enumerate(holding_data):
                     addr = start + offset
                     if addr in holding_info:
-                        name, _size = holding_info[addr]
-                        if self._is_valid_register_value(name, value):
-                            self.available_registers["holding_registers"].add(name)
+                        names, _size = holding_info[addr]
+                        if any(self._is_valid_register_value(name, value) for name in names):
+                            self.available_registers["holding_registers"].update(names)
                         else:
                             self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
-                            self._log_invalid_value(name, value)
+                            self._log_invalid_value(sorted(names)[0], value)
 
             # Always expose diagnostic registers so error entities exist even
             # when the device does not implement them.
@@ -1158,12 +1199,12 @@ class ThesslaGreenDeviceScanner:
                     self.available_registers["holding_registers"].add(name)
 
             # Scan Coil Registers in batches
-            coil_addr_to_name: dict[int, str] = {}
+            coil_addr_to_names: dict[int, set[str]] = {}
             coil_addresses: list[int] = []
             for name, addr in COIL_REGISTERS.items():
                 if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["coil_registers"]:
                     continue
-                coil_addr_to_name[addr] = name
+                coil_addr_to_names.setdefault(addr, set()).add(name)
                 coil_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(coil_addresses):
@@ -1175,16 +1216,16 @@ class ThesslaGreenDeviceScanner:
                     continue
                 for offset, value in enumerate(coil_data):
                     addr = start + offset
-                    if addr in coil_addr_to_name and value is not None:
-                        self.available_registers["coil_registers"].add(coil_addr_to_name[addr])
+                    if addr in coil_addr_to_names and value is not None:
+                        self.available_registers["coil_registers"].update(coil_addr_to_names[addr])
 
             # Scan Discrete Input Registers in batches
-            discrete_addr_to_name: dict[int, str] = {}
+            discrete_addr_to_names: dict[int, set[str]] = {}
             discrete_addresses: list[int] = []
             for name, addr in DISCRETE_INPUT_REGISTERS.items():
                 if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["discrete_inputs"]:
                     continue
-                discrete_addr_to_name[addr] = name
+                discrete_addr_to_names.setdefault(addr, set()).add(name)
                 discrete_addresses.append(addr)
 
             for start, count in self._group_registers_for_batch_read(discrete_addresses):
@@ -1196,8 +1237,10 @@ class ThesslaGreenDeviceScanner:
                     continue
                 for offset, value in enumerate(discrete_data):
                     addr = start + offset
-                    if addr in discrete_addr_to_name and value is not None:
-                        self.available_registers["discrete_inputs"].add(discrete_addr_to_name[addr])
+                    if addr in discrete_addr_to_names and value is not None:
+                        self.available_registers["discrete_inputs"].update(
+                            discrete_addr_to_names[addr]
+                        )
 
         caps = self._analyze_capabilities()
         self.capabilities = caps
