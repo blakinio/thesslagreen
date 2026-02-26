@@ -1658,7 +1658,10 @@ class ThesslaGreenDeviceScanner:
         if client is None and transport is None:
             raise ConnectionException("Modbus transport is not connected")
 
+        attempted_reads = 0
+        aborted_transiently = False
         for attempt in range(1, self.retry + 1):
+            attempted_reads = attempt
             try:
                 if transport is not None:
                     response = await transport.read_input_registers(
@@ -1714,6 +1717,7 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 if _is_request_cancelled_error(exc):
+                    aborted_transiently = True
                     break  # Treat cancellation like a timeout — stop retrying
                 if count == 1:
                     failures = self._input_failures.get(address, 0) + 1
@@ -1731,6 +1735,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
+                aborted_transiently = True
                 break
             except OSError as exc:
                 _LOGGER.error(
@@ -1829,6 +1834,16 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
+
+        if aborted_transiently:
+            _LOGGER.warning(
+                "Aborted reading input registers %d-%d after %d/%d attempts due to timeout/cancellation",
+                start,
+                end,
+                attempted_reads,
+                self.retry,
+            )
+            return None
 
         self.failed_addresses["modbus_exceptions"]["input_registers"].update(range(start, end + 1))
         _LOGGER.error(
@@ -1952,7 +1967,10 @@ class ThesslaGreenDeviceScanner:
         if client is None and transport is None:
             raise ConnectionException("Modbus transport is not connected")
 
+        attempted_reads = 0
+        aborted_transiently = False
         for attempt in range(1, self.retry + 1):
+            attempted_reads = attempt
             try:
                 if transport is not None:
                     response = await transport.read_holding_registers(
@@ -2010,6 +2028,7 @@ class ThesslaGreenDeviceScanner:
                         self._failed_holding.add(address)
                         self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
                         _LOGGER.warning("Device does not expose register %d", address)
+                aborted_transiently = True
             except ModbusIOException as exc:
                 if _is_request_cancelled_error(exc):
                     _LOGGER.debug(
@@ -2020,6 +2039,7 @@ class ThesslaGreenDeviceScanner:
                         self.retry,
                         exc,
                     )
+                    aborted_transiently = True
                     break
                 _LOGGER.debug(
                     "Failed to read holding %d (attempt %d/%d): %s",
@@ -2069,6 +2089,16 @@ class ThesslaGreenDeviceScanner:
                     exc_info=True,
                 )
                 break
+
+        if aborted_transiently:
+            _LOGGER.warning(
+                "Aborted reading holding registers %d-%d after %d/%d attempts due to timeout/cancellation",
+                start,
+                end,
+                attempted_reads,
+                self.retry,
+            )
+            return None
 
         _LOGGER.error(
             "Failed to read holding registers %d-%d after %d retries",
