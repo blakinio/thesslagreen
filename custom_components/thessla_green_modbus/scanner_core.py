@@ -1147,6 +1147,24 @@ class ThesslaGreenDeviceScanner:
                     self.failed_addresses["modbus_exceptions"]["input_registers"].update(
                         range(start, start + count)
                     )
+                    _LOGGER.debug(
+                        "Input batch read %d-%d failed; probing addresses individually",
+                        start,
+                        start + count - 1,
+                    )
+                    for addr in range(start, start + count):
+                        reg_names = input_addr_to_names.get(addr)
+                        if not reg_names:
+                            continue
+                        probe = await self._read_input(addr, 1, skip_cache=True)
+                        if not probe:
+                            continue
+                        value = probe[0]
+                        if any(self._is_valid_register_value(name, value) for name in reg_names):
+                            self.available_registers["input_registers"].update(reg_names)
+                        else:
+                            self.failed_addresses["invalid_values"]["input_registers"].add(addr)
+                            self._log_invalid_value(sorted(reg_names)[0], value)
                     continue
 
                 for offset, value in enumerate(input_data):
@@ -1180,6 +1198,24 @@ class ThesslaGreenDeviceScanner:
                     self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
                         range(start, start + count)
                     )
+                    _LOGGER.debug(
+                        "Holding batch read %d-%d failed; probing addresses individually",
+                        start,
+                        start + count - 1,
+                    )
+                    for addr in range(start, start + count):
+                        if addr not in holding_info:
+                            continue
+                        names, _size = holding_info[addr]
+                        probe = await self._read_holding(addr, 1, skip_cache=True)
+                        if not probe:
+                            continue
+                        value = probe[0]
+                        if any(self._is_valid_register_value(name, value) for name in names):
+                            self.available_registers["holding_registers"].update(names)
+                        else:
+                            self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
+                            self._log_invalid_value(sorted(names)[0], value)
                     continue
 
                 for offset, value in enumerate(holding_data):
@@ -1477,14 +1513,34 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
 
         for reg_type, addrs in self.failed_addresses["modbus_exceptions"].items():
-            if addrs:
-                decimals = ", ".join(str(addr) for addr in sorted(addrs))
+            filtered = self._filter_unsupported_addresses(reg_type, addrs)
+            if filtered:
+                decimals = ", ".join(str(addr) for addr in sorted(filtered))
                 _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
 
         for reg_type, addrs in self.failed_addresses["invalid_values"].items():
             if addrs:
                 decimals = ", ".join(str(addr) for addr in sorted(addrs))
                 _LOGGER.debug("Invalid values for %s at %s", reg_type, decimals)
+
+    def _filter_unsupported_addresses(self, reg_type: str, addrs: set[int]) -> set[int]:
+        """Return failed addresses that are not already covered by unsupported spans."""
+
+        if reg_type == "input_registers":
+            ranges = self._unsupported_input_ranges
+        elif reg_type == "holding_registers":
+            ranges = self._unsupported_holding_ranges
+        else:
+            return set(addrs)
+
+        if not ranges:
+            return set(addrs)
+
+        return {
+            addr
+            for addr in addrs
+            if not any(start <= addr <= end for start, end in ranges)
+        }
 
     def _log_invalid_value(self, name: str, raw: int) -> None:
         """Log a register value that failed validation."""
@@ -1941,6 +1997,32 @@ class ThesslaGreenDeviceScanner:
             except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading holding %d (attempt %d/%d): %s",
+                    address,
+                    attempt,
+                    self.retry,
+                    exc,
+                    exc_info=True,
+                )
+                if count == 1:
+                    failures = self._holding_failures.get(address, 0) + 1
+                    self._holding_failures[address] = failures
+                    if failures >= self.retry and address not in self._failed_holding:
+                        self._failed_holding.add(address)
+                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
+                        _LOGGER.warning("Device does not expose register %d", address)
+            except ModbusIOException as exc:
+                if _is_request_cancelled_error(exc):
+                    _LOGGER.debug(
+                        "Cancelled reading holding registers %d-%d on attempt %d/%d: %s",
+                        start,
+                        end,
+                        attempt,
+                        self.retry,
+                        exc,
+                    )
+                    break
+                _LOGGER.debug(
+                    "Failed to read holding %d (attempt %d/%d): %s",
                     address,
                     attempt,
                     self.retry,
