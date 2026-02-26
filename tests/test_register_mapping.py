@@ -77,10 +77,6 @@ def test_registers_match_json() -> None:
     for item in data["registers"]:
         fn = item["function"]
         addr = int(item["address_dec"])
-        if fn == "02":
-            addr -= 1
-        elif fn == "03" and addr >= 111:
-            addr -= 111
         by_func[fn][_to_snake_case(item["name"])] = addr
 
     for fn in ["01", "02", "03", "04"]:
