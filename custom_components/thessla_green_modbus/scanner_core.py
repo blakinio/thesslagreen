@@ -1016,7 +1016,7 @@ class ThesslaGreenDeviceScanner:
                 for reg in name_regs:
                     name_bytes.append((reg >> 8) & 255)
                     name_bytes.append(reg & 255)
-                device.device_name = name_bytes.decode("ascii").rstrip("\x00")
+                device.device_name = name_bytes.decode("ascii", errors="replace").rstrip("\x00")
         except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
             _LOGGER.debug("Failed to parse device name: %s", err)
         except Exception as err:  # pragma: no cover - unexpected
