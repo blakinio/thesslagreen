@@ -1536,6 +1536,42 @@ async def test_scan_populates_device_name():
 
 
 
+
+
+async def test_scan_populates_device_name_with_non_ascii_bytes() -> None:
+    """Scanner should replace invalid ASCII bytes in device name instead of failing."""
+    scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
+    scanner._client = object()
+    scanner._transport = MagicMock()
+    scanner._transport.is_connected.return_value = True
+    scanner._registers = {4: {}, 3: {}, 1: {}, 2: {}}
+    scanner.available_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+
+    name_bytes = b"Test AirPac" + bytes([0xDF]) + b"\x00\x00\x00\x00\x00"
+    regs = [(name_bytes[i] << 8) | name_bytes[i + 1] for i in range(0, 16, 2)]
+
+    async def fake_read_holding(client, address, count, *, skip_cache=False):
+        if address == HOLDING_REGISTERS["device_name"]:
+            return regs
+        return None
+
+    with (
+        patch.object(scanner, "_read_input", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+        patch.object(scanner, "_analyze_capabilities", return_value=DeviceCapabilities()),
+    ):
+        result = await scanner.scan()
+
+    assert result["device_info"]["device_name"] == "Test AirPac�"
+
+
 async def test_scan_falls_back_to_single_input_reads_after_failed_batch():
     """Input addresses should be recovered via single-register probes after batch failure."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)

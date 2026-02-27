@@ -155,7 +155,16 @@ class RegisterDef:
             if self.extra and self.extra.get("type") == "string":
                 encoding = self.extra.get("encoding", "ascii")
                 data = b"".join(w.to_bytes(2, "big") for w in raw_list)
-                return data.rstrip(b"\x00").decode(encoding)
+                clean = data.rstrip(b"\x00")
+                try:
+                    return clean.decode(encoding)
+                except UnicodeDecodeError:
+                    _LOGGER.debug(
+                        "Failed to decode register %s as %s; replacing invalid bytes",
+                        self.name,
+                        encoding,
+                    )
+                    return clean.decode(encoding, errors="replace")
 
             endianness = self.extra.get("endianness", "big") if self.extra else "big"
             words = raw_list if endianness == "big" else list(reversed(raw_list))

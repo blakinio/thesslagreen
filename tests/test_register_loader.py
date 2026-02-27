@@ -127,6 +127,21 @@ def test_decode_multi_register_string() -> None:
     assert reg.decode(raw) == "ABCDE"
 
 
+
+
+def test_decode_multi_register_string_with_non_ascii_bytes() -> None:
+    """String decode should tolerate non-ASCII bytes without raising."""
+    reg = RegisterDef(
+        function=3,
+        address=0,
+        name="device_name",
+        access="ro",
+        length=2,
+        extra={"type": "string", "encoding": "ascii"},
+    )
+    raw = [0x5445, 0xDF00]  # "TE" + 0xDF + NUL
+    assert reg.decode(raw) == "TE�"
+
 def test_decode_multi_register_number_scaled_once() -> None:
     """Numeric multi-register values apply multiplier/resolution exactly once."""
     reg = RegisterDef(
