@@ -818,7 +818,7 @@ class ThesslaGreenDeviceScanner:
         if any(reg.startswith("schedule_") for reg in holdings):
             caps.weekly_schedule = True  # pragma: no cover
 
-        if {"mode", "on_off_panel_mode"} <= holdings:
+        if "on_off_panel_mode" in holdings:
             caps.basic_control = True  # pragma: no cover
 
         if any(
