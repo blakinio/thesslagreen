@@ -257,9 +257,12 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if not info:
             continue
 
-        # Skip registers already exposed as sensors — they are read-only displays
-        # and should not additionally appear as writable number entities.
-        if register in SENSOR_ENTITY_MAPPINGS:
+        # Some writable holding registers are also exposed as sensors for
+        # display/diagnostics. Keep creating number entities for writable
+        # registers so users can still edit configuration values. For
+        # read-only sensor registers we skip number creation to avoid dead
+        # controls.
+        if register in SENSOR_ENTITY_MAPPINGS and "W" not in (info.get("access") or ""):
             continue
 
         # Skip diagnostic/error registers (E/S codes and alarm/error flags)

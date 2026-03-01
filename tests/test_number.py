@@ -145,6 +145,9 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
+    SENSOR_ENTITY_MAPPINGS,
+)
 from custom_components.thessla_green_modbus.number import (  # noqa: E402
     ENTITY_MAPPINGS,
     ThesslaGreenNumber,
@@ -277,6 +280,20 @@ def test_number_invalid_register_raises(mock_coordinator):
     """Ensure unknown registers raise KeyError."""
     with pytest.raises(KeyError):
         ThesslaGreenNumber(mock_coordinator, "invalid_register", {})
+
+
+def test_number_mappings_include_writable_sensor_registers_only():
+    """Writable sensor-backed holding registers should still expose numbers."""
+
+    number_keys = ENTITY_MAPPINGS["number"]
+
+    # Writable and sensor-backed registers must expose number controls.
+    assert "hood_exhaust_coef" in SENSOR_ENTITY_MAPPINGS
+    assert "hood_exhaust_coef" in number_keys
+
+    # Read-only sensor registers must not expose number controls.
+    assert "dac_supply" in SENSOR_ENTITY_MAPPINGS
+    assert "dac_supply" not in number_keys
 
 
 @pytest.mark.asyncio
