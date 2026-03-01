@@ -4523,12 +4523,6 @@
       "name": "e196_e199",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "1": "E196",
-        "2": "E197",
-        "4": "E198",
-        "8": "E199"
-      },
       "multiplier": 1.0,
       "resolution": 1.0,
       "extra": {
