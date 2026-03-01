@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import re
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, cast
@@ -581,12 +582,14 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             self._resolved_connection_mode = resolved
                     self.last_scan = dt_util.utcnow()
                     scan_registers = self.device_scan_result.get("available_registers", {})
-                    self.available_registers = {
-                        "input_registers": set(scan_registers.get("input_registers", [])),
-                        "holding_registers": set(scan_registers.get("holding_registers", [])),
-                        "coil_registers": set(scan_registers.get("coil_registers", [])),
-                        "discrete_inputs": set(scan_registers.get("discrete_inputs", [])),
-                    }
+                    self.available_registers = self._normalise_available_registers(
+                        {
+                            "input_registers": scan_registers.get("input_registers", []),
+                            "holding_registers": scan_registers.get("holding_registers", []),
+                            "coil_registers": scan_registers.get("coil_registers", []),
+                            "discrete_inputs": scan_registers.get("discrete_inputs", []),
+                        }
+                    )
                     if self.skip_missing_registers:
                         for reg_type, names in KNOWN_MISSING_REGISTERS.items():
                             self.available_registers[reg_type].difference_update(names)
@@ -713,6 +716,27 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             sum(len(regs) for regs in self.available_registers.values()),
         )
 
+    @staticmethod
+    def _normalise_cached_register_name(name: str) -> str:
+        """Normalise legacy cached register names to current canonical form."""
+
+        match = re.fullmatch(r"([es])(\d+)", name)
+        if match:
+            return f"{match.group(1)}_{int(match.group(2))}"
+        return name
+
+    def _normalise_available_registers(self, available: dict[str, list[str] | set[str]]) -> dict[str, set[str]]:
+        """Return available register names with legacy aliases normalised."""
+
+        normalised: dict[str, set[str]] = {}
+        for reg_type, names in available.items():
+            if not isinstance(names, list | set):
+                continue
+            normalised[reg_type] = {
+                self._normalise_cached_register_name(str(name)) for name in names
+            }
+        return normalised
+
     def _apply_scan_cache(self, cache: dict[str, Any]) -> bool:
         """Apply cached scan data if available."""
 
@@ -721,9 +745,9 @@ class ThesslaGreenModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return False
 
         try:
-            self.available_registers = {
-                key: set(value) for key, value in available.items() if isinstance(value, list)
-            }
+            self.available_registers = self._normalise_available_registers(
+                {key: value for key, value in available.items() if isinstance(value, list)}
+            )
         except (TypeError, ValueError):
             return False
 
