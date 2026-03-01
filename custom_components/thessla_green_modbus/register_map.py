@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .utils import BCD_TIME_PREFIXES
@@ -51,6 +51,7 @@ class RegisterMapEntry:
     enum_values: set[Any]
     model_variants: tuple[str, ...]
     entity_domain: str | None = None
+    enum_map: dict[int, Any] = field(default_factory=dict)
 
     def validate(self, value: Any) -> Any:
         """Validate and normalise a decoded value.
@@ -66,7 +67,9 @@ class RegisterMapEntry:
 
         expected = self.data_type
         if self.entity_domain in {"binary_sensor", "switch"}:
-            expected = "bool" if expected not in {"enum", "bitmask"} else expected
+            # Bitmask registers keep their type; all others (including enum) become bool.
+            if expected != "bitmask":
+                expected = "bool"
 
         if expected == "enum":
             if self.enum_values and value not in self.enum_values:
@@ -106,6 +109,12 @@ class RegisterMapEntry:
                 coerced: bool | int | float = value
             elif isinstance(value, (int, float)):
                 coerced = bool(value)
+            elif isinstance(value, str) and self.enum_map:
+                # Value is an enum-decoded string (e.g. "brak"/"jest").
+                # Reverse-lookup the original integer key and coerce that to bool.
+                rev = {v: k for k, v in self.enum_map.items()}
+                raw_key = rev.get(value)
+                return bool(raw_key) if raw_key is not None else bool(value)
             else:
                 raise ValueError(
                     f"Expected boolean-compatible value for {self.name}, got {type(value)}"
@@ -206,6 +215,7 @@ def build_register_map() -> dict[str, RegisterMapEntry]:
             enum_values=set(register.enum.values()) if register.enum else set(),
             model_variants=_model_variants(register),
             entity_domain=_resolve_entity_domain(register.name),
+            enum_map={int(k): v for k, v in register.enum.items() if isinstance(k, (int, str)) and str(k).lstrip("-").isdigit()} if register.enum else {},
         )
         entries[register.name] = entry
     return entries
