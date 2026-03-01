@@ -31,6 +31,7 @@ from .const import (
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
+from .registers.loader import get_register_definition
 from .utils import TIME_REGISTER_PREFIXES
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,6 +41,26 @@ SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {}
 def _is_error_or_status_register(key: str) -> bool:
     """Return True when *key* belongs to an error or status register."""
     return key.startswith(ERROR_REGISTER_PREFIX) or key.startswith(STATUS_REGISTER_PREFIX)
+
+
+def _format_error_status_code(key: str) -> str:
+    """Convert internal register key (e.g. ``e_100``) to display code (``E100``)."""
+
+    if key.startswith((ERROR_REGISTER_PREFIX, STATUS_REGISTER_PREFIX)):
+        prefix, _, suffix = key.partition("_")
+        if suffix.isdigit():
+            return f"{prefix.upper()}{int(suffix)}"
+    return key.upper()
+
+
+def _error_status_description(key: str) -> str:
+    """Return a human-readable description for an error/status register key."""
+
+    try:
+        definition = get_register_definition(key)
+    except Exception:  # pragma: no cover - defensive fallback
+        return key
+    return definition.description_en or definition.description or key
 
 
 async def async_setup_entry(
@@ -250,13 +271,13 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:  # pragma: no cover
-        """Return comma-separated translated active error/status codes."""
-        errors = [
-            self._translations.get(f"codes.{key}", key)
+        """Return comma-separated list of active E/S code identifiers."""
+        codes = [
+            _format_error_status_code(key)
             for key, value in self.coordinator.data.items()
             if _is_error_or_status_register(key) and value
         ]
-        return ", ".join(sorted(errors)) if errors else None
+        return ", ".join(sorted(codes)) if codes else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
@@ -301,13 +322,13 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:  # pragma: no cover
-        """Return comma-separated list of translated active error/status labels."""
+        """Return comma-separated list of active E/S code identifiers."""
         codes = [
             key
             for key, value in self.coordinator.data.items()
             if value and _is_error_or_status_register(key)
         ]
-        labels = [self._translations.get(f"codes.{code}", code) for code in codes]
+        labels = [_format_error_status_code(code) for code in codes]
         return ", ".join(sorted(labels)) if labels else None
 
     @property
@@ -321,5 +342,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         if not codes:
             return {}
 
-        errors = {code: self._translations.get(f"codes.{code}", code) for code in codes}
-        return {"errors": errors, "codes": codes}
+        errors = {
+            _format_error_status_code(code): _error_status_description(code) for code in codes
+        }
+        return {"errors": errors, "codes": [_format_error_status_code(code) for code in codes]}

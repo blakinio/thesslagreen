@@ -223,7 +223,7 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
             await async_setup_entry(hass, mock_config_entry, add_entities)
         entities = add_entities.call_args[0][0]
         sensor = next(e for e in entities if isinstance(e, ThesslaGreenErrorCodesSensor))
-        assert sensor.native_value == "Device status S 2"  # nosec B101
+        assert sensor.native_value == "S2"  # nosec B101
 
     asyncio.run(run_test())
 
@@ -427,11 +427,11 @@ def test_active_errors_sensor(mock_coordinator, mock_config_entry):
             )
             sensor.hass = hass
             await sensor.async_added_to_hass()
-            assert sensor.native_value == "Outside temp sensor missing"
+            assert sensor.native_value == "E100"
             assert sensor.extra_state_attributes["errors"] == {
-                "e_100": "Outside temp sensor missing"
+                "E100": "No reading from outdoor air temperature sensor – air intake (TZ1)"
             }
-            assert sensor.extra_state_attributes["codes"] == ["e_100"]
+            assert sensor.extra_state_attributes["codes"] == ["E100"]
 
     asyncio.run(run_test())
 

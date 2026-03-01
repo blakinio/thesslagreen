@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 from importlib import resources
+from pathlib import Path
+
+import pytest
 
 from custom_components.thessla_green_modbus.utils import BCD_TIME_PREFIXES
 
@@ -144,3 +147,50 @@ def test_pdf_register_enum_values() -> None:
     special_reg = registers["special_mode"]
     assert special_reg.get("enum") is not None
     assert len(special_reg["enum"]) >= 10
+
+
+def test_local_airpack4_pdf_fn_addr_coverage() -> None:
+    """Ensure each function/address pair from local AirPack4 PDF exists in JSON."""
+
+    pypdf = pytest.importorskip("pypdf")
+
+    pdf_path = Path(__file__).resolve().parents[1] / "ProtokolModbusRTU_AirPack4.pdf"
+    reader = pypdf.PdfReader(str(pdf_path))
+    text = "\n".join((page.extract_text() or "") for page in reader.pages)
+
+    import re
+
+    section = None
+    section_re = re.compile(r"^(0[1-4])\s*-")
+    row_re = re.compile(r"^(0x[0-9A-Fa-f]{4})\s+(\d+)\s+([RW-]\s*/\s*[RW-])\s+([A-Za-z0-9_]+)")
+
+    pdf_pairs: set[tuple[int, int]] = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        sec_match = section_re.match(line)
+        if sec_match:
+            section = int(sec_match.group(1))
+            continue
+        row_match = row_re.match(line)
+        if row_match and section is not None:
+            pdf_pairs.add((section, int(row_match.group(2))))
+
+    registers = _load_register_json()
+    json_pairs = {
+        (_normalise_function(entry["function"]), int(entry["address_dec"]))
+        for entry in registers.values()
+    }
+
+    # Known conflict between vendor PDFs: in the local AirPack4 RTU PDF
+    # duct_heater_protection is listed at DI address 0, while integration
+    # keeps the long-standing canonical mapping at address 2.
+    #
+    # Similar issue exists for E200/E201 where the local PDF lists the pair
+    # at 8392/8393, while the canonical integration mapping keeps E200/E201
+    # at 8394/8395 (historically used across this project).
+    known_pdf_only_pairs = {(2, 0), (3, 8392), (3, 8393)}
+
+    missing = sorted((pdf_pairs - json_pairs) - known_pdf_only_pairs)
+    assert not missing, f"Missing PDF registers in JSON: {missing}"

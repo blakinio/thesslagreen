@@ -297,6 +297,42 @@
       },
       "work_permit": {
         "name": "Zezwolenie pracy"
+      },
+      "s_28": {
+        "name": "Awaria sterowania nagrzewnicy wtórnej"
+      },
+      "e_108": {
+        "name": "Brak odczytu czujnika TW"
+      },
+      "e_140": {
+        "name": "Awaria czujnika CF filtra nawiewnego"
+      },
+      "e_141": {
+        "name": "Awaria czujnika CF filtra wywiewnego"
+      },
+      "e_144": {
+        "name": "Błąd utrzymania przepływu nawiewu"
+      },
+      "e_145": {
+        "name": "Błąd utrzymania przepływu wywiewu"
+      },
+      "e_148": {
+        "name": "Zużycie filtra nawiewnego (próg)"
+      },
+      "e_149": {
+        "name": "Zużycie filtra wywiewnego (próg)"
+      },
+      "e_150": {
+        "name": "Wymagana wymiana filtra nawiewnego"
+      },
+      "e_151": {
+        "name": "Wymagana wymiana filtra wywiewnego"
+      },
+      "e_156": {
+        "name": "Przekroczony czas użytkowania filtra nawiewnego"
+      },
+      "e_157": {
+        "name": "Przekroczony czas użytkowania filtra wywiewnego"
       }
     },
     "climate": {

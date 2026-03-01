@@ -297,6 +297,42 @@
       },
       "work_permit": {
         "name": "Work Permit"
+      },
+      "s_28": {
+        "name": "Secondary Heater Control Fault"
+      },
+      "e_108": {
+        "name": "No Reading from TW Sensor"
+      },
+      "e_140": {
+        "name": "Supply Filter CF Sensor Fault"
+      },
+      "e_141": {
+        "name": "Exhaust Filter CF Sensor Fault"
+      },
+      "e_144": {
+        "name": "Supply Airflow Maintenance Error"
+      },
+      "e_145": {
+        "name": "Exhaust Airflow Maintenance Error"
+      },
+      "e_148": {
+        "name": "Supply Filter Wear Above Threshold"
+      },
+      "e_149": {
+        "name": "Exhaust Filter Wear Above Threshold"
+      },
+      "e_150": {
+        "name": "Supply Filter Replacement Required"
+      },
+      "e_151": {
+        "name": "Exhaust Filter Replacement Required"
+      },
+      "e_156": {
+        "name": "Supply Filter Service Time Elapsed"
+      },
+      "e_157": {
+        "name": "Exhaust Filter Service Time Elapsed"
       }
     },
     "climate": {
