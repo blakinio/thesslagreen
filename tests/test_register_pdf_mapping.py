@@ -186,11 +186,7 @@ def test_local_airpack4_pdf_fn_addr_coverage() -> None:
     # Known conflict between vendor PDFs: in the local AirPack4 RTU PDF
     # duct_heater_protection is listed at DI address 0, while integration
     # keeps the long-standing canonical mapping at address 2.
-    #
-    # Similar issue exists for E200/E201 where the local PDF lists the pair
-    # at 8392/8393, while the canonical integration mapping keeps E200/E201
-    # at 8394/8395 (historically used across this project).
-    known_pdf_only_pairs = {(2, 0), (3, 8392), (3, 8393)}
+    known_pdf_only_pairs = {(2, 0)}
 
     missing = sorted((pdf_pairs - json_pairs) - known_pdf_only_pairs)
     assert not missing, f"Missing PDF registers in JSON: {missing}"

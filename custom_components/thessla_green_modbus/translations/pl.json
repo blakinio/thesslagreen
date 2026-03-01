@@ -333,6 +333,18 @@
       },
       "e_157": {
         "name": "Przekroczony czas użytkowania filtra wywiewnego"
+      },
+      "e_196_e_199_e_196": {
+        "name": "Błąd E196"
+      },
+      "e_196_e_199_e_197": {
+        "name": "Błąd E197"
+      },
+      "e_196_e_199_e_198": {
+        "name": "Błąd E198"
+      },
+      "e_196_e_199_e_199": {
+        "name": "Błąd E199"
       }
     },
     "climate": {

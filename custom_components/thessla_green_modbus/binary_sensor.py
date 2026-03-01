@@ -139,17 +139,19 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         # Handle different register types
         register_type = self._sensor_def["register_type"]
 
+        bit = self._sensor_def.get("bit")
+
         if register_type in ["coil_registers", "discrete_inputs"]:
             # Coils and discrete inputs are already boolean
             result = bool(value)
 
         elif register_type == "input_registers":
             # Input registers: 1 = active/on, 0 = inactive/off
-            result = bool(value)
+            result = bool(value & bit) if bit is not None else bool(value)
 
         elif register_type == "holding_registers":
-            # Holding registers: depends on register
-            result = bool(value)
+            # Holding registers: apply bit mask for bitmask registers
+            result = bool(value & bit) if bit is not None else bool(value)
 
         else:
             result = False
