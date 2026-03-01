@@ -220,6 +220,13 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if re.match(r"[se](?:_|\d)", register) or register in {"alarm", "error"}:
             continue
 
+        # Skip BCD time registers (schedule/airing/GWC-regen timeslots) – they
+        # decode to "HH:MM" strings, not floats, and are exposed as sensors.
+        from .utils import BCD_TIME_PREFIXES
+
+        if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
+            continue
+
         # Skip registers with enumerated states – handled as binary/select
         if _parse_states(info.get("unit")):
             continue
@@ -1113,6 +1120,21 @@ def _extend_entity_mappings_from_registers() -> None:
                     "icon": "mdi:alert-circle",
                     "register_type": "holding_registers",
                     "device_class": BinarySensorDeviceClass.PROBLEM,
+                },
+            )
+            continue
+
+        # BCD time registers (schedule/airing/GWC timeslots) → read-only text
+        # sensors that display the decoded "HH:MM" value.
+        from .utils import BCD_TIME_PREFIXES
+
+        if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
+            SENSOR_ENTITY_MAPPINGS.setdefault(
+                register,
+                {
+                    "translation_key": register,
+                    "icon": "mdi:clock-outline",
+                    "register_type": "holding_registers",
                 },
             )
             continue

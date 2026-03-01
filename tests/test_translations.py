@@ -133,11 +133,43 @@ SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
 NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 # Error/status code translations are not currently enforced
 CODE_KEYS: list[str] = []
+
+# Extend BINARY_KEYS with dynamically generated alarm/error/s_*/e_* registers
+# and extend SENSOR_KEYS with dynamically generated BCD time registers (schedule_,
+# airing_*, gwc regen, etc.).  These are not in the static dicts above but ARE
+# written into the translation files.
+import json as _json  # noqa: E402  (already imported at module level as json)
+import re as _re  # noqa: E402
+
+_REGISTERS_JSON = ROOT / "registers" / "thessla_green_registers_full.json"
+
+try:
+    from custom_components.thessla_green_modbus.utils import (  # noqa: E402
+        BCD_TIME_PREFIXES,
+        _normalise_name,
+    )
+
+    _reg_data = _json.loads(_REGISTERS_JSON.read_text(encoding="utf-8"))
+    for _r in _reg_data.get("registers", []):
+        _name = _normalise_name(_r.get("name") or "")
+        if not _name:
+            continue
+        if _name in {"alarm", "error"} or _re.match(r"^[se]_", _name):
+            if _name not in BINARY_KEYS:
+                BINARY_KEYS.append(_name)
+        if any(_name.startswith(_p) for _p in BCD_TIME_PREFIXES):
+            if _name not in SENSOR_KEYS:
+                SENSOR_KEYS.append(_name)
+except Exception:  # pragma: no cover - best-effort extension
+    pass
 ISSUE_KEYS = ["modbus_write_failed"]
 
 OPTION_KEYS = [
+    "enable_device_scan",
     "force_full_register_list",
+    "log_level",
     "retry",
+    "safe_scan",
     "scan_interval",
     "skip_missing_registers",
     "timeout",
