@@ -82,6 +82,8 @@ class RegisterMapEntry:
             return value
 
         if expected == "bitmask":
+            if isinstance(value, int):
+                return value  # raw integer stored for per-bit sensor processing
             if not isinstance(value, Iterable) or isinstance(value, (str, bytes)):
                 raise ValueError(f"Expected iterable flag list for {self.name}, got {type(value)}")
             return list(value)
