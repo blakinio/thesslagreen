@@ -434,3 +434,21 @@ def test_active_errors_sensor(mock_coordinator, mock_config_entry):
             assert sensor.extra_state_attributes["codes"] == ["e_100"]
 
     asyncio.run(run_test())
+
+
+def test_active_errors_sensor_available_without_synthetic_data_key(mock_coordinator):
+    """Active errors sensor should not require coordinator.data['active_errors']."""
+
+    sensor = ThesslaGreenActiveErrorsSensor(mock_coordinator)
+
+    mock_coordinator.last_update_success = True
+    mock_coordinator.offline_state = False
+    mock_coordinator.data = {"e_101": 1}
+    assert sensor.available is True  # nosec B101
+
+    mock_coordinator.last_update_success = False
+    assert sensor.available is False  # nosec B101
+
+    mock_coordinator.last_update_success = True
+    mock_coordinator.offline_state = True
+    assert sensor.available is False  # nosec B101
