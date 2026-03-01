@@ -109,6 +109,9 @@
       "airing_switch": {
         "name": "Airing Switch"
       },
+      "alarm": {
+        "name": "E Alarm"
+      },
       "bypass": {
         "name": "Bypass"
       },
@@ -127,8 +130,62 @@
       "duct_water_heater_pump": {
         "name": "Water Heater Pump"
       },
+      "e_100": {
+        "name": "Outdoor Air Sensor Failure (TZ1)"
+      },
+      "e_101": {
+        "name": "Supply Air Sensor Failure (TN1)"
+      },
+      "e_102": {
+        "name": "Exhaust Air Sensor Failure (TP)"
+      },
+      "e_103": {
+        "name": "HX Inlet Sensor Failure (TZ2)"
+      },
+      "e_104": {
+        "name": "Room Temp Sensor Failure (TO)"
+      },
+      "e_105": {
+        "name": "Duct HX Supply Sensor Failure (TN2)"
+      },
+      "e_106": {
+        "name": "GWC Outdoor Sensor Failure (TZ3)"
+      },
+      "e_138": {
+        "name": "Supply Fan CF Sensor Failure"
+      },
+      "e_139": {
+        "name": "Exhaust Fan CF Sensor Failure"
+      },
+      "e_152": {
+        "name": "Exhaust Air Temp Too High"
+      },
+      "e_196_e_199": {
+        "name": "Error Flags E196–E199"
+      },
+      "e_200": {
+        "name": "Central Heater Overprotection"
+      },
+      "e_201": {
+        "name": "Duct Heater Overprotection"
+      },
+      "e_249": {
+        "name": "No Expansion Module Communication"
+      },
+      "e_250": {
+        "name": "AHU Filter Replacement Required"
+      },
+      "e_251": {
+        "name": "Duct Filter Replacement Required"
+      },
+      "e_99": {
+        "name": "AirPack Product Key Required"
+      },
       "empty_house": {
         "name": "Empty House"
+      },
+      "error": {
+        "name": "S Error"
       },
       "expansion": {
         "name": "Expansion"
@@ -168,6 +225,72 @@
       },
       "power_supply_fans": {
         "name": "Power Supply Fans"
+      },
+      "s_10": {
+        "name": "Fire Protection Sensor Activated"
+      },
+      "s_13": {
+        "name": "AHU Stopped (Air+/AirL+ Panel)"
+      },
+      "s_14": {
+        "name": "Water Heater Anti-Freeze Activated"
+      },
+      "s_15": {
+        "name": "Water Heater Anti-Freeze Not Effective"
+      },
+      "s_16": {
+        "name": "Electric Heater Overprotection (FPX Active)"
+      },
+      "s_17": {
+        "name": "AHU Filters Not Replaced (With Pressure Switch)"
+      },
+      "s_19": {
+        "name": "AHU Filters Not Replaced (No Pressure Switch)"
+      },
+      "s_2": {
+        "name": "I2C Communication Error"
+      },
+      "s_20": {
+        "name": "Duct Filter Not Replaced"
+      },
+      "s_22": {
+        "name": "FPX Anti-Freeze Did Not Activate"
+      },
+      "s_23": {
+        "name": "HX Inlet Temp Sensor Damaged (FPX Conditions)"
+      },
+      "s_24": {
+        "name": "Supply Duct Temp Sensor Damaged"
+      },
+      "s_25": {
+        "name": "Outdoor Air Temp Sensor Damaged"
+      },
+      "s_26": {
+        "name": "Outdoor & GWC Temp Sensors Damaged"
+      },
+      "s_29": {
+        "name": "Pre-HX Air Temperature Too High"
+      },
+      "s_30": {
+        "name": "Supply Fan Not Operating"
+      },
+      "s_31": {
+        "name": "Exhaust Fan Not Operating"
+      },
+      "s_32": {
+        "name": "No TG-02 Module Communication"
+      },
+      "s_6": {
+        "name": "FPX Heater Overprotection"
+      },
+      "s_7": {
+        "name": "Calibration Not Possible (Low Outdoor Temp)"
+      },
+      "s_8": {
+        "name": "Product Key Required"
+      },
+      "s_9": {
+        "name": "AHU Stopped (AirS Panel)"
       },
       "water_removal_active": {
         "name": "Water Removal Active"
@@ -209,11 +332,17 @@
       "air_flow_rate_manual": {
         "name": "Air Flow Rate Manual"
       },
+      "air_flow_rate_temporary": {
+        "name": "Temporary Air Flow Rate"
+      },
       "air_flow_rate_temporary_1": {
         "name": "Air Flow Rate Temporary 1"
       },
       "air_flow_rate_temporary_2": {
         "name": "Air Flow Rate Temporary 2"
+      },
+      "air_flow_rate_temporary_4401": {
+        "name": "Temporary Air Flow Rate (Ext.)"
       },
       "air_temperature_summer_free_cooling": {
         "name": "Air Temperature Summer Free Cooling"
@@ -344,6 +473,9 @@
       "dac_supply": {
         "name": "Dac Supply"
       },
+      "date_time": {
+        "name": "Date/Time (YYMM)"
+      },
       "date_time_1": {
         "name": "Date Time 1"
       },
@@ -355,6 +487,18 @@
       },
       "date_time_4": {
         "name": "Date Time 4"
+      },
+      "date_time_ddtt": {
+        "name": "Date/Time Day & Weekday (DDWW)"
+      },
+      "date_time_ggmm": {
+        "name": "Date/Time Hour & Minute"
+      },
+      "date_time_sscc": {
+        "name": "Date/Time Seconds"
+      },
+      "delta_t_gwc": {
+        "name": "GWC Activation Temperature Differential"
       },
       "device_name": {
         "name": "Device Name"
@@ -431,6 +575,9 @@
       "exhaust_air_flow": {
         "name": "Exhaust Air Flow"
       },
+      "exp_version": {
+        "name": "Expansion Module Firmware Version"
+      },
       "fan_speed_1_coef": {
         "name": "Fan Speed 1 Coef"
       },
@@ -478,6 +625,15 @@
       },
       "language": {
         "name": "Language"
+      },
+      "lock_date": {
+        "name": "Product Key Lock Date (Year)"
+      },
+      "lock_date_00dd": {
+        "name": "Product Key Lock Date (Day)"
+      },
+      "lock_date_00mm": {
+        "name": "Product Key Lock Date (Month)"
       },
       "lock_date_1": {
         "name": "Lock Date 1"
@@ -539,17 +695,29 @@
       "open_window_coef": {
         "name": "Open Window Coef"
       },
+      "pres_check_day": {
+        "name": "Filter Check Day of Week"
+      },
       "pres_check_day_1": {
         "name": "Pres Check Day 1"
       },
       "pres_check_day_2": {
         "name": "Pres Check Day 2"
       },
+      "pres_check_day_4432": {
+        "name": "Filter Check Day of Week (Ext.)"
+      },
+      "pres_check_time": {
+        "name": "Filter Check Start Time"
+      },
       "pres_check_time_1": {
         "name": "Pres Check Time 1"
       },
       "pres_check_time_2": {
         "name": "Pres Check Time 2"
+      },
+      "pres_check_time_ggmm": {
+        "name": "Filter Check Start Time (Ext.)"
       },
       "required_temperature": {
         "name": "Required Temperature"
@@ -920,11 +1088,17 @@
       "supply_air_temperature_manual": {
         "name": "Supply Air Temperature Manual"
       },
+      "supply_air_temperature_temporary": {
+        "name": "Temporary Supply Air Temperature"
+      },
       "supply_air_temperature_temporary_1": {
         "name": "Supply Air Temperature Temporary 1"
       },
       "supply_air_temperature_temporary_2": {
         "name": "Supply Air Temperature Temporary 2"
+      },
+      "supply_air_temperature_temporary_4404": {
+        "name": "Temporary Supply Air Temperature (Ext.)"
       },
       "temperature_change_flag": {
         "name": "Temperature Change Flag"

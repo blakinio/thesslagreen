@@ -109,6 +109,9 @@
       "airing_switch": {
         "name": "Przełącznik wietrzenia"
       },
+      "alarm": {
+        "name": "Alarm E"
+      },
       "bypass": {
         "name": "Bypass"
       },
@@ -127,8 +130,62 @@
       "duct_water_heater_pump": {
         "name": "Pompa nagrzewnicy kanałowej"
       },
+      "e_100": {
+        "name": "Awaria czujnika TZ1"
+      },
+      "e_101": {
+        "name": "Awaria czujnika TN1"
+      },
+      "e_102": {
+        "name": "Awaria czujnika TP"
+      },
+      "e_103": {
+        "name": "Awaria czujnika TZ2"
+      },
+      "e_104": {
+        "name": "Awaria czujnika TO"
+      },
+      "e_105": {
+        "name": "Awaria czujnika TN2"
+      },
+      "e_106": {
+        "name": "Awaria czujnika TZ3"
+      },
+      "e_138": {
+        "name": "Awaria czujnika CF (nawiew)"
+      },
+      "e_139": {
+        "name": "Awaria czujnika CF (wywiew)"
+      },
+      "e_152": {
+        "name": "Temperatura wywiewu zbyt wysoka"
+      },
+      "e_196_e_199": {
+        "name": "Flagi błędów E196–E199"
+      },
+      "e_200": {
+        "name": "Ochrona termiczna nagrzewnicy (centrala)"
+      },
+      "e_201": {
+        "name": "Ochrona termiczna nagrzewnicy (kanał)"
+      },
+      "e_249": {
+        "name": "Brak komunikacji z modułem Expansion"
+      },
+      "e_250": {
+        "name": "Wymagana wymiana filtrów (bez presostatu)"
+      },
+      "e_251": {
+        "name": "Wymagana wymiana filtra kanałowego"
+      },
+      "e_99": {
+        "name": "Wymagany klucz produktu AirPack"
+      },
       "empty_house": {
         "name": "Pusty dom"
+      },
+      "error": {
+        "name": "Błąd S"
       },
       "expansion": {
         "name": "Ekspansja"
@@ -168,6 +225,72 @@
       },
       "power_supply_fans": {
         "name": "Zasilanie wentylatorów"
+      },
+      "s_10": {
+        "name": "Czujnik PPOŻ zadziałał"
+      },
+      "s_13": {
+        "name": "Centrala zatrzymana (panel Air+/AirL+)"
+      },
+      "s_14": {
+        "name": "Ochrona przeciwzamrożeniowa nagrzewnicy (limit)"
+      },
+      "s_15": {
+        "name": "Ochrona przeciwzamrożeniowa nagrzewnicy nieskuteczna"
+      },
+      "s_16": {
+        "name": "Ochrona termiczna nagrzewnicy el. (FPX aktywny)"
+      },
+      "s_17": {
+        "name": "Filtry niezmienione (z presostarem)"
+      },
+      "s_19": {
+        "name": "Filtry niezmienione (bez presostatu)"
+      },
+      "s_2": {
+        "name": "Błąd komunikacji I2C"
+      },
+      "s_20": {
+        "name": "Filtr kanałowy niezmieniony"
+      },
+      "s_22": {
+        "name": "FPX nie zadziałało"
+      },
+      "s_23": {
+        "name": "Czujnik wlotu do rekuperatora uszkodzony (FPX)"
+      },
+      "s_24": {
+        "name": "Czujnik kanału nawiewnego uszkodzony"
+      },
+      "s_25": {
+        "name": "Czujnik temperatury zewnętrznej uszkodzony"
+      },
+      "s_26": {
+        "name": "Czujniki temp. zewn. i GWC uszkodzone"
+      },
+      "s_29": {
+        "name": "Temperatura przed rekuperatorem zbyt wysoka"
+      },
+      "s_30": {
+        "name": "Wentylator nawiewny nie działa"
+      },
+      "s_31": {
+        "name": "Wentylator wywiewny nie działa"
+      },
+      "s_32": {
+        "name": "Brak komunikacji z modułem TG-02"
+      },
+      "s_6": {
+        "name": "Zabezpieczenie termiczne FPX (limit)"
+      },
+      "s_7": {
+        "name": "Brak możliwości kalibracji (niska temp. zewn.)"
+      },
+      "s_8": {
+        "name": "Wymagany klucz produktu"
+      },
+      "s_9": {
+        "name": "Centrala zatrzymana (panel AirS)"
       },
       "water_removal_active": {
         "name": "Usuwanie wody aktywne"
@@ -209,11 +332,17 @@
       "air_flow_rate_manual": {
         "name": "Przepływ powietrza manualnie"
       },
+      "air_flow_rate_temporary": {
+        "name": "Intensywność wentylacji (tryb chwilowy)"
+      },
       "air_flow_rate_temporary_1": {
         "name": "Air Flow Rate Temporary 1"
       },
       "air_flow_rate_temporary_2": {
         "name": "Air Flow Rate Temporary 2"
+      },
+      "air_flow_rate_temporary_4401": {
+        "name": "Intensywność wentylacji (tryb chwilowy, roz.)"
       },
       "air_temperature_summer_free_cooling": {
         "name": "Temperatura lato chłodzenie free"
@@ -344,6 +473,9 @@
       "dac_supply": {
         "name": "Dac Supply"
       },
+      "date_time": {
+        "name": "Data i godzina (RRMM)"
+      },
       "date_time_1": {
         "name": "Date Time 1"
       },
@@ -355,6 +487,18 @@
       },
       "date_time_4": {
         "name": "Date Time 4"
+      },
+      "date_time_ddtt": {
+        "name": "Data i godzina (dzień/tydzień)"
+      },
+      "date_time_ggmm": {
+        "name": "Data i godzina (GGmm)"
+      },
+      "date_time_sscc": {
+        "name": "Data i godzina (sekundy)"
+      },
+      "delta_t_gwc": {
+        "name": "Delta T aktywacji GWC"
       },
       "device_name": {
         "name": "Device Name"
@@ -431,6 +575,9 @@
       "exhaust_air_flow": {
         "name": "Exhaust Air Flow"
       },
+      "exp_version": {
+        "name": "Wersja oprogramowania modułu Expansion"
+      },
       "fan_speed_1_coef": {
         "name": "Fan Speed 1 Coef"
       },
@@ -478,6 +625,15 @@
       },
       "language": {
         "name": "Language"
+      },
+      "lock_date": {
+        "name": "Data blokady kluczem (rok)"
+      },
+      "lock_date_00dd": {
+        "name": "Data blokady kluczem (dzień)"
+      },
+      "lock_date_00mm": {
+        "name": "Data blokady kluczem (miesiąc)"
       },
       "lock_date_1": {
         "name": "Lock Date 1"
@@ -539,17 +695,29 @@
       "open_window_coef": {
         "name": "Open Window Coef"
       },
+      "pres_check_day": {
+        "name": "Dzień kontroli filtrów"
+      },
       "pres_check_day_1": {
         "name": "Pres Check Day 1"
       },
       "pres_check_day_2": {
         "name": "Pres Check Day 2"
       },
+      "pres_check_day_4432": {
+        "name": "Dzień kontroli filtrów (roz.)"
+      },
+      "pres_check_time": {
+        "name": "Godzina kontroli filtrów"
+      },
       "pres_check_time_1": {
         "name": "Pres Check Time 1"
       },
       "pres_check_time_2": {
         "name": "Pres Check Time 2"
+      },
+      "pres_check_time_ggmm": {
+        "name": "Godzina kontroli filtrów (roz.)"
       },
       "required_temperature": {
         "name": "Temperatura zadana"
@@ -920,11 +1088,17 @@
       "supply_air_temperature_manual": {
         "name": "Temperatura nawiewu manualnie"
       },
+      "supply_air_temperature_temporary": {
+        "name": "Temperatura nawiewu (tryb chwilowy)"
+      },
       "supply_air_temperature_temporary_1": {
         "name": "Supply Air Temperature Temporary 1"
       },
       "supply_air_temperature_temporary_2": {
         "name": "Supply Air Temperature Temporary 2"
+      },
+      "supply_air_temperature_temporary_4404": {
+        "name": "Temperatura nawiewu (tryb chwilowy, roz.)"
       },
       "temperature_change_flag": {
         "name": "Temperature Change Flag"
