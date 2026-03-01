@@ -107,8 +107,12 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         self._attr_max_temp = 35.0  # pragma: no cover
         self._attr_target_temperature_step = 0.5  # pragma: no cover
 
-        # HVAC modes
-        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]  # pragma: no cover
+        # HVAC modes — FAN_ONLY (manual) requires the `mode` holding register
+        _holding_map = coordinator.get_register_map("holding_registers")
+        if "mode" in _holding_map:
+            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]  # pragma: no cover
+        else:
+            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO]  # pragma: no cover
 
         # Fan modes (airflow rates)
         self._attr_fan_modes = []  # pragma: no cover
@@ -296,12 +300,12 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
                 return
 
-            # Set mode
-
+            # Set mode (only when the `mode` register is available on this device)
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
-            success = await self.coordinator.async_write_register(
-                "mode", device_mode, refresh=False
-            )
+            if "mode" in self.coordinator.get_register_map("holding_registers"):
+                success = await self.coordinator.async_write_register(
+                    "mode", device_mode, refresh=False
+                )
 
         if success:
             await self.coordinator.async_request_refresh()
