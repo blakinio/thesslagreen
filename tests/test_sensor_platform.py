@@ -293,30 +293,24 @@ def test_sensor_registers_match_definition():
         assert name in mapping[reg_type], f"{name} not in {reg_type}"
 
 
-def test_sensor_value_map(mock_coordinator, mock_config_entry):
+def test_sensor_value_map(mock_coordinator):
     """Sensors with value_map return mapped state."""
+    # ``mode`` was previously a sensor; test that the value_map logic works
+    # via direct instantiation with a custom sensor_def.
+    sensor_def = {
+        "translation_key": "mode",
+        "register_type": "holding_registers",
+        "unit": None,
+        "device_class": None,
+        "state_class": None,
+        "value_map": {0: "auto", 1: "manual", 2: "temporary"},
+    }
+    mock_coordinator.data["mode"] = 0
+    sensor = ThesslaGreenSensor(mock_coordinator, "mode", 100, sensor_def)
+    assert sensor.native_value == "auto"
 
-    async def run_test() -> None:
-        hass = MagicMock()
-        hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
-
-        mock_coordinator.available_registers = {
-            "input_registers": set(),
-            "holding_registers": {"mode"},
-        }
-        mock_coordinator.data["mode"] = 0
-
-        add_entities = MagicMock()
-        await async_setup_entry(hass, mock_config_entry, add_entities)
-        sensor = next(
-            e for e in add_entities.call_args[0][0] if getattr(e, "_register_name", "") == "mode"
-        )
-        assert sensor.native_value == "auto"
-
-        mock_coordinator.data["mode"] = 2
-        assert sensor.native_value == "temporary"
-
-    asyncio.run(run_test())
+    mock_coordinator.data["mode"] = 2
+    assert sensor.native_value == "temporary"
 
 
 def test_time_sensor_formats_value(mock_coordinator):
@@ -373,7 +367,12 @@ def test_percentage_sensor_unavailable_without_nominal():
 
 
 def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
-    """Register remains available for both select and sensor entities."""
+    """Mode register is only exposed as a select entity, not as a sensor.
+
+    ``mode`` was previously defined in both SENSOR_ENTITY_MAPPINGS and
+    SELECT_ENTITY_MAPPINGS which caused duplicate entities.  The sensor entry
+    has been removed; only the select entity should be created.
+    """
 
     async def run_test() -> None:
         hass = MagicMock()
@@ -390,7 +389,12 @@ def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
         add_select = MagicMock()
         await select_async_setup_entry(hass, mock_config_entry, add_select)
 
-        assert any(ent._register_name == "mode" for ent in add_sensor.call_args[0][0])
+        # mode must NOT be a sensor anymore
+        sensor_names = [
+            getattr(ent, "_register_name", "") for ent in add_sensor.call_args[0][0]
+        ]
+        assert "mode" not in sensor_names, "mode should not be a sensor entity"
+        # mode MUST still be a select entity
         assert any(ent._register_name == "mode" for ent in add_select.call_args[0][0])
 
     asyncio.run(run_test())

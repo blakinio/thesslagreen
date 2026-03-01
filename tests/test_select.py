@@ -139,7 +139,7 @@ def test_select_option_change(mock_coordinator):
         mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
     )
     asyncio.run(select_entity.async_select_option("manual"))
-    mock_coordinator.async_write_register.assert_awaited_with("mode", 1, offset=0)
+    mock_coordinator.async_write_register.assert_awaited_with("mode", 1, refresh=False)
     mock_coordinator.async_request_refresh.assert_awaited_once()
 
 

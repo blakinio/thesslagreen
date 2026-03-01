@@ -216,6 +216,11 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if not info:
             continue
 
+        # Skip registers already exposed as sensors — they are read-only displays
+        # and should not additionally appear as writable number entities.
+        if register in SENSOR_ENTITY_MAPPINGS:
+            continue
+
         # Skip diagnostic/error registers (E/S codes and alarm/error flags)
         if re.match(r"[se](?:_|\d)", register) or register in {"alarm", "error"}:
             continue
@@ -629,27 +634,8 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:snowflake-alert",
         "register_type": "holding_registers",
     },
-    "mode": {
-        "translation_key": "mode",
-        "icon": "mdi:cog",
-        "register_type": "holding_registers",
-        "value_map": {0: "auto", 1: "manual", 2: "temporary"},
-    },
-    "season_mode": {
-        "translation_key": "season_mode",
-        "icon": "mdi:weather-sunny",
-        "register_type": "holding_registers",
-    },
-    "gwc_mode": {
-        "translation_key": "gwc_mode",
-        "icon": "mdi:pipe",
-        "register_type": "holding_registers",
-    },
-    "bypass_mode": {
-        "translation_key": "bypass_mode",
-        "icon": "mdi:pipe-leak",
-        "register_type": "holding_registers",
-    },
+    # mode, season_mode, gwc_mode and bypass_mode are covered by SELECT_ENTITY_MAPPINGS
+    # which already provides both read and write capability — no separate sensor needed.
     "comfort_mode": {
         "translation_key": "comfort_mode",
         "icon": "mdi:home-heart",
@@ -669,22 +655,9 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    "supply_air_temperature_temporary_1": {
-        "translation_key": "supply_air_temperature_temporary_1",
-        "icon": "mdi:thermometer-plus",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "calculated",
-    },
-    "supply_air_temperature_temporary_2": {
-        "translation_key": "supply_air_temperature_temporary_2",
-        "icon": "mdi:thermometer-plus",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "calculated",
-    },
+    # supply_air_temperature_temporary_1 and _2 were register_type="calculated"
+    # and are never instantiated by the sensor platform — removed until a
+    # computed-register mechanism is implemented.
     "min_bypass_temperature": {
         "translation_key": "min_bypass_temperature",
         "icon": "mdi:thermometer-low",
@@ -709,14 +682,8 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    "required_temp": {
-        "translation_key": "required_temp",
-        "icon": "mdi:thermometer",
-        "device_class": SensorDeviceClass.TEMPERATURE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfTemperature.CELSIUS,
-        "register_type": "calculated",
-    },
+    # required_temp was register_type="calculated" and is never instantiated
+    # by the sensor platform — removed until a computed-register mechanism exists.
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
         "icon": "mdi:fan-plus",
@@ -783,23 +750,9 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": UnitOfElectricPotential.VOLT,
         "register_type": "holding_registers",
     },
-    # Derived power sensors
-    "estimated_power": {
-        "translation_key": "estimated_power",
-        "icon": "mdi:flash",
-        "device_class": SensorDeviceClass.POWER,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": "W",
-        "register_type": "calculated",
-    },
-    "total_energy": {
-        "translation_key": "total_energy",
-        "icon": "mdi:counter",
-        "device_class": SensorDeviceClass.ENERGY,
-        "state_class": SensorStateClass.TOTAL_INCREASING,
-        "unit": "kWh",
-        "register_type": "calculated",
-    },
+    # estimated_power and total_energy were register_type="calculated" and are
+    # never instantiated by the sensor platform — removed until a
+    # computed-register mechanism is implemented.
     # Coefficients and intensive settings
     "fan_speed_1_coef": {
         "translation_key": "fan_speed_1_coef",
@@ -836,29 +789,9 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
-    "intensive_supply": {
-        "translation_key": "intensive_supply",
-        "icon": "mdi:fan-plus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "calculated",
-    },
-    "intensive_exhaust": {
-        "translation_key": "intensive_exhaust",
-        "icon": "mdi:fan-minus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "calculated",
-    },
-    # Calculated metrics
-    "calculated_efficiency": {
-        "translation_key": "calculated_efficiency",
-        "icon": "mdi:percent",
-        "device_class": getattr(SensorDeviceClass, "EFFICIENCY", "efficiency"),
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "calculated",
-    },
+    # intensive_supply, intensive_exhaust and calculated_efficiency were
+    # register_type="calculated" and are never instantiated by the sensor
+    # platform — removed until a computed-register mechanism is implemented.
 }
 
 SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
@@ -1054,13 +987,8 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.MOISTURE,
         "register_type": "input_registers",
     },
-    # Device main status (from holding registers)
-    "on_off_panel_mode": {
-        "translation_key": "on_off_panel_mode",
-        "icon": "mdi:power",
-        "device_class": BinarySensorDeviceClass.POWER,
-        "register_type": "holding_registers",
-    },
+    # on_off_panel_mode is covered by SWITCH_ENTITY_MAPPINGS which provides
+    # both read and control capability — no separate binary sensor needed.
 }
 
 SPECIAL_MODE_ICONS = {
