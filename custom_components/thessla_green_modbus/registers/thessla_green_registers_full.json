@@ -3847,10 +3847,6 @@
       "name": "s_13",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1.0,
       "resolution": 1.0,
       "description": "Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile",
@@ -4039,10 +4035,6 @@
       "name": "s_28",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Awaria układu sterowania nagrzewnicy wtórnej. Odłącz AirPack od zasilania.",
@@ -4247,10 +4239,6 @@
       "name": "e_108",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Brak odczytu z czujnika temperatury powietrza umieszczonego za wymiennikiem ciepła (TW).",
@@ -4295,10 +4283,6 @@
       "name": "e_140",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Awaria czujnika CF filtra nawiewnego – brak komunikacji z przetwornikiem ciśnienia filtra.",
@@ -4311,10 +4295,6 @@
       "name": "e_141",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Awaria czujnika CF filtra wywiewnego – brak komunikacji z przetwornikiem ciśnienia filtra.",
@@ -4353,10 +4333,6 @@
       "name": "e_144",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Błąd utrzymania przepływu na wentylatorze nawiewnym.",
@@ -4369,10 +4345,6 @@
       "name": "e_145",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Błąd utrzymania przepływu na wentylatorze wywiewnym.",
@@ -4411,10 +4383,6 @@
       "name": "e_148",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Zużycie filtra nawiewnego powyżej wartości granicznej.",
@@ -4427,10 +4395,6 @@
       "name": "e_149",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Zużycie filtra wywiewnego powyżej wartości granicznej.",
@@ -4443,10 +4407,6 @@
       "name": "e_150",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Konieczna jest wymiana filtra nawiewnego.",
@@ -4459,10 +4419,6 @@
       "name": "e_151",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Konieczna jest wymiana filtra wywiewnego.",
@@ -4491,10 +4447,6 @@
       "name": "e_156",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Upłynął maksymalny czas użytkowania filtra nawiewnego.",
@@ -4507,10 +4459,6 @@
       "name": "e_157",
       "access": "RW",
       "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Upłynął maksymalny czas użytkowania filtra wywiewnego.",
