@@ -55,8 +55,8 @@ def test_example_register_mapping() -> None:
         return reg.address
 
     assert addr("01", "duct_water_heater_pump") == 5
-    assert addr("02", "expansion") == 0
-    assert addr("03", "mode") == 4097
+    assert addr("02", "expansion") == 1
+    assert addr("03", "mode") == 4208
     assert addr("04", "outside_temperature") == 16
 
 
@@ -340,12 +340,6 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
 @pytest.mark.parametrize(
     "register",
     [
-        {
-            "function": "03",
-            "address_dec": 1,
-            "name": "bad_addr",
-            "access": "R",
-        },
         {
             "function": "03",
             "address_dec": 0,

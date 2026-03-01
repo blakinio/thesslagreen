@@ -922,6 +922,28 @@ async def test_capabilities_loaded_from_config_entry():
     assert coordinator.capabilities.expansion_module is True
 
 
+def test_apply_scan_cache_normalises_legacy_error_status_names(coordinator):
+    """Legacy cached names like e108/s28 should be normalised to e_108/s_28."""
+
+    cache = {
+        "available_registers": {
+            "holding_registers": ["e108", "s28", "mode"],
+            "input_registers": ["outside_temperature"],
+            "coil_registers": [],
+            "discrete_inputs": [],
+        },
+        "device_info": {},
+        "capabilities": {},
+    }
+
+    assert coordinator._apply_scan_cache(cache) is True
+    assert "e_108" in coordinator.available_registers["holding_registers"]
+    assert "s_28" in coordinator.available_registers["holding_registers"]
+    assert "e108" not in coordinator.available_registers["holding_registers"]
+    assert "s28" not in coordinator.available_registers["holding_registers"]
+
+
+
 @pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):
     """Invalid capabilities format should raise CannotConnect."""
