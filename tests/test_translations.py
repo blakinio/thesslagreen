@@ -149,6 +149,8 @@ try:
         _normalise_name,
     )
 
+    from custom_components.thessla_green_modbus.utils import _to_snake_case  # noqa: E402
+
     _reg_data = _json.loads(_REGISTERS_JSON.read_text(encoding="utf-8"))
     for _r in _reg_data.get("registers", []):
         _name = _normalise_name(_r.get("name") or "")
@@ -160,6 +162,15 @@ try:
         if any(_name.startswith(_p) for _p in BCD_TIME_PREFIXES):
             if _name not in SENSOR_KEYS:
                 SENSOR_KEYS.append(_name)
+        # Bitmask registers with named bits generate individual binary sensor keys
+        _extra = _r.get("extra") or {}
+        if _extra.get("bitmask") and _r.get("bits"):
+            for _bit in _r["bits"]:
+                _bit_name = _bit.get("name") if isinstance(_bit, dict) else None
+                if _bit_name:
+                    _bit_key = f"{_name}_{_to_snake_case(_bit_name)}"
+                    if _bit_key not in BINARY_KEYS:
+                        BINARY_KEYS.append(_bit_key)
 except Exception:  # pragma: no cover - best-effort extension
     pass
 ISSUE_KEYS = ["modbus_write_failed"]
