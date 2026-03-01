@@ -141,17 +141,22 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
         if register_type in ["coil_registers", "discrete_inputs"]:
             # Coils and discrete inputs are already boolean
-            return bool(value)
+            result = bool(value)
 
         elif register_type == "input_registers":
             # Input registers: 1 = active/on, 0 = inactive/off
-            return bool(value)
+            result = bool(value)
 
         elif register_type == "holding_registers":
             # Holding registers: depends on register
-            return bool(value)
+            result = bool(value)
 
-        return False
+        else:
+            result = False
+
+        if self._sensor_def.get("inverted"):
+            return not result
+        return result
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover

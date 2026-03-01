@@ -109,6 +109,9 @@
       "airing_switch": {
         "name": "Przełącznik wietrzenia"
       },
+      "alarm": {
+        "name": "Alarm E"
+      },
       "bypass": {
         "name": "Bypass"
       },
@@ -127,8 +130,65 @@
       "duct_water_heater_pump": {
         "name": "Pompa nagrzewnicy kanałowej"
       },
+      "e_100": {
+        "name": "Awaria czujnika TZ1"
+      },
+      "e_101": {
+        "name": "Awaria czujnika TN1"
+      },
+      "e_102": {
+        "name": "Awaria czujnika TP"
+      },
+      "e_103": {
+        "name": "Awaria czujnika TZ2"
+      },
+      "e_104": {
+        "name": "Awaria czujnika TO"
+      },
+      "e_105": {
+        "name": "Awaria czujnika TN2"
+      },
+      "e_106": {
+        "name": "Awaria czujnika TZ3"
+      },
+      "e_138": {
+        "name": "Awaria czujnika CF (nawiew)"
+      },
+      "e_139": {
+        "name": "Awaria czujnika CF (wywiew)"
+      },
+      "e_152": {
+        "name": "Temperatura wywiewu zbyt wysoka"
+      },
+      "e_196_e_199": {
+        "name": "Flagi błędów E196–E199"
+      },
+      "e_200": {
+        "name": "Ochrona termiczna nagrzewnicy (centrala)"
+      },
+      "e_201": {
+        "name": "Ochrona termiczna nagrzewnicy (kanał)"
+      },
+      "e_249": {
+        "name": "Brak komunikacji z modułem Expansion"
+      },
+      "e_250": {
+        "name": "Wymagana wymiana filtrów (bez presostatu)"
+      },
+      "e_251": {
+        "name": "Wymagana wymiana filtra kanałowego"
+      },
+      "e_252": {
+        "name": "Wymagana wymiana filtrów (z presostarem)"
+      },
+      "e_99": {
+        "name": "Wymagany klucz produktu AirPack"
+      },
       "empty_house": {
         "name": "Pusty dom"
+      },
+      "error": {
+        "name": "Błąd S"
       },
       "expansion": {
         "name": "Ekspansja"
@@ -168,6 +228,72 @@
       },
       "power_supply_fans": {
         "name": "Zasilanie wentylatorów"
+      },
+      "s_10": {
+        "name": "Czujnik PPOŻ zadziałał"
+      },
+      "s_13": {
+        "name": "Centrala zatrzymana (panel Air+/AirL+)"
+      },
+      "s_14": {
+        "name": "Ochrona przeciwzamrożeniowa nagrzewnicy (limit)"
+      },
+      "s_15": {
+        "name": "Ochrona przeciwzamrożeniowa nagrzewnicy nieskuteczna"
+      },
+      "s_16": {
+        "name": "Ochrona termiczna nagrzewnicy el. (FPX aktywny)"
+      },
+      "s_17": {
+        "name": "Filtry niezmienione (z presostarem)"
+      },
+      "s_19": {
+        "name": "Filtry niezmienione (bez presostatu)"
+      },
+      "s_2": {
+        "name": "Błąd komunikacji I2C"
+      },
+      "s_20": {
+        "name": "Filtr kanałowy niezmieniony"
+      },
+      "s_22": {
+        "name": "FPX nie zadziałało"
+      },
+      "s_23": {
+        "name": "Czujnik wlotu do rekuperatora uszkodzony (FPX)"
+      },
+      "s_24": {
+        "name": "Czujnik kanału nawiewnego uszkodzony"
+      },
+      "s_25": {
+        "name": "Czujnik temperatury zewnętrznej uszkodzony"
+      },
+      "s_26": {
+        "name": "Czujniki temp. zewn. i GWC uszkodzone"
+      },
+      "s_29": {
+        "name": "Temperatura przed rekuperatorem zbyt wysoka"
+      },
+      "s_30": {
+        "name": "Wentylator nawiewny nie działa"
+      },
+      "s_31": {
+        "name": "Wentylator wywiewny nie działa"
+      },
+      "s_32": {
+        "name": "Brak komunikacji z modułem TG-02"
+      },
+      "s_6": {
+        "name": "Zabezpieczenie termiczne FPX (limit)"
+      },
+      "s_7": {
+        "name": "Brak możliwości kalibracji (niska temp. zewn.)"
+      },
+      "s_8": {
+        "name": "Wymagany klucz produktu"
+      },
+      "s_9": {
+        "name": "Centrala zatrzymana (panel AirS)"
       },
       "water_removal_active": {
         "name": "Usuwanie wody aktywne"
@@ -209,11 +335,17 @@
       "air_flow_rate_manual": {
         "name": "Przepływ powietrza manualnie"
       },
+      "air_flow_rate_temporary": {
+        "name": "Intensywność wentylacji (tryb chwilowy)"
+      },
       "air_flow_rate_temporary_1": {
         "name": "Air Flow Rate Temporary 1"
       },
       "air_flow_rate_temporary_2": {
         "name": "Air Flow Rate Temporary 2"
+      },
+      "air_flow_rate_temporary_4401": {
+        "name": "Intensywność wentylacji (tryb chwilowy, roz.)"
       },
       "air_temperature_summer_free_cooling": {
         "name": "Temperatura lato chłodzenie free"
@@ -233,27 +365,6 @@
       "airing_panel_mode_time": {
         "name": "Airing Panel Mode Time"
       },
-      "airing_summer_fri": {
-        "name": "Airing Summer Fri"
-      },
-      "airing_summer_mon": {
-        "name": "Airing Summer Mon"
-      },
-      "airing_summer_sat": {
-        "name": "Airing Summer Sat"
-      },
-      "airing_summer_sun": {
-        "name": "Airing Summer Sun"
-      },
-      "airing_summer_thu": {
-        "name": "Airing Summer Thu"
-      },
-      "airing_summer_tue": {
-        "name": "Airing Summer Tue"
-      },
-      "airing_summer_wed": {
-        "name": "Airing Summer Wed"
-      },
       "airing_switch_coef": {
         "name": "Airing Switch Coef"
       },
@@ -265,27 +376,6 @@
       },
       "airing_switch_mode_time": {
         "name": "Airing Switch Mode Time"
-      },
-      "airing_winter_fri": {
-        "name": "Airing Winter Fri"
-      },
-      "airing_winter_mon": {
-        "name": "Airing Winter Mon"
-      },
-      "airing_winter_sat": {
-        "name": "Airing Winter Sat"
-      },
-      "airing_winter_sun": {
-        "name": "Airing Winter Sun"
-      },
-      "airing_winter_thu": {
-        "name": "Airing Winter Thu"
-      },
-      "airing_winter_tue": {
-        "name": "Airing Winter Tue"
-      },
-      "airing_winter_wed": {
-        "name": "Airing Winter Wed"
       },
       "alarm": {
         "name": "Alarm"
@@ -344,6 +434,9 @@
       "dac_supply": {
         "name": "Dac Supply"
       },
+      "date_time": {
+        "name": "Data i godzina (RRMM)"
+      },
       "date_time_1": {
         "name": "Date Time 1"
       },
@@ -355,6 +448,18 @@
       },
       "date_time_4": {
         "name": "Date Time 4"
+      },
+      "date_time_ddtt": {
+        "name": "Data i godzina (dzień/tydzień)"
+      },
+      "date_time_ggmm": {
+        "name": "Data i godzina (GGmm)"
+      },
+      "date_time_sscc": {
+        "name": "Data i godzina (sekundy)"
+      },
+      "delta_t_gwc": {
+        "name": "Delta T aktywacji GWC"
       },
       "device_name": {
         "name": "Device Name"
@@ -431,6 +536,9 @@
       "exhaust_air_flow": {
         "name": "Exhaust Air Flow"
       },
+      "exp_version": {
+        "name": "Wersja oprogramowania modułu Expansion"
+      },
       "fan_speed_1_coef": {
         "name": "Fan Speed 1 Coef"
       },
@@ -479,6 +587,15 @@
       "language": {
         "name": "Language"
       },
+      "lock_date": {
+        "name": "Data blokady kluczem (rok)"
+      },
+      "lock_date_00dd": {
+        "name": "Data blokady kluczem (dzień)"
+      },
+      "lock_date_00mm": {
+        "name": "Data blokady kluczem (miesiąc)"
+      },
       "lock_date_1": {
         "name": "Lock Date 1"
       },
@@ -493,9 +610,6 @@
       },
       "lock_pass": {
         "name": "Lock Pass"
-      },
-      "manual_airing_time_to_start": {
-        "name": "Manual Airing Time To Start"
       },
       "max_exhaust_air_flow_rate": {
         "name": "Maksymalny przepływ wywiewu"
@@ -539,191 +653,23 @@
       "open_window_coef": {
         "name": "Open Window Coef"
       },
+      "pres_check_day": {
+        "name": "Dzień kontroli filtrów"
+      },
       "pres_check_day_1": {
         "name": "Pres Check Day 1"
       },
       "pres_check_day_2": {
         "name": "Pres Check Day 2"
       },
-      "pres_check_time_1": {
-        "name": "Pres Check Time 1"
-      },
-      "pres_check_time_2": {
-        "name": "Pres Check Time 2"
+      "pres_check_day_4432": {
+        "name": "Dzień kontroli filtrów (roz.)"
       },
       "required_temperature": {
         "name": "Temperatura zadana"
       },
       "rtc_cal": {
         "name": "Rtc Cal"
-      },
-      "schedule_summer_fri_1": {
-        "name": "Schedule Summer Fri 1"
-      },
-      "schedule_summer_fri_2": {
-        "name": "Schedule Summer Fri 2"
-      },
-      "schedule_summer_fri_3": {
-        "name": "Schedule Summer Fri 3"
-      },
-      "schedule_summer_fri_4": {
-        "name": "Schedule Summer Fri 4"
-      },
-      "schedule_summer_mon_1": {
-        "name": "Schedule Summer Mon 1"
-      },
-      "schedule_summer_mon_2": {
-        "name": "Schedule Summer Mon 2"
-      },
-      "schedule_summer_mon_3": {
-        "name": "Schedule Summer Mon 3"
-      },
-      "schedule_summer_mon_4": {
-        "name": "Schedule Summer Mon 4"
-      },
-      "schedule_summer_sat_1": {
-        "name": "Schedule Summer Sat 1"
-      },
-      "schedule_summer_sat_2": {
-        "name": "Schedule Summer Sat 2"
-      },
-      "schedule_summer_sat_3": {
-        "name": "Schedule Summer Sat 3"
-      },
-      "schedule_summer_sat_4": {
-        "name": "Schedule Summer Sat 4"
-      },
-      "schedule_summer_sun_1": {
-        "name": "Schedule Summer Sun 1"
-      },
-      "schedule_summer_sun_2": {
-        "name": "Schedule Summer Sun 2"
-      },
-      "schedule_summer_sun_3": {
-        "name": "Schedule Summer Sun 3"
-      },
-      "schedule_summer_sun_4": {
-        "name": "Schedule Summer Sun 4"
-      },
-      "schedule_summer_thu_1": {
-        "name": "Schedule Summer Thu 1"
-      },
-      "schedule_summer_thu_2": {
-        "name": "Schedule Summer Thu 2"
-      },
-      "schedule_summer_thu_3": {
-        "name": "Schedule Summer Thu 3"
-      },
-      "schedule_summer_thu_4": {
-        "name": "Schedule Summer Thu 4"
-      },
-      "schedule_summer_tue_1": {
-        "name": "Schedule Summer Tue 1"
-      },
-      "schedule_summer_tue_2": {
-        "name": "Schedule Summer Tue 2"
-      },
-      "schedule_summer_tue_3": {
-        "name": "Schedule Summer Tue 3"
-      },
-      "schedule_summer_tue_4": {
-        "name": "Schedule Summer Tue 4"
-      },
-      "schedule_summer_wed_1": {
-        "name": "Schedule Summer Wed 1"
-      },
-      "schedule_summer_wed_2": {
-        "name": "Schedule Summer Wed 2"
-      },
-      "schedule_summer_wed_3": {
-        "name": "Schedule Summer Wed 3"
-      },
-      "schedule_summer_wed_4": {
-        "name": "Schedule Summer Wed 4"
-      },
-      "schedule_winter_fri_1": {
-        "name": "Schedule Winter Fri 1"
-      },
-      "schedule_winter_fri_2": {
-        "name": "Schedule Winter Fri 2"
-      },
-      "schedule_winter_fri_3": {
-        "name": "Schedule Winter Fri 3"
-      },
-      "schedule_winter_fri_4": {
-        "name": "Schedule Winter Fri 4"
-      },
-      "schedule_winter_mon_1": {
-        "name": "Schedule Winter Mon 1"
-      },
-      "schedule_winter_mon_2": {
-        "name": "Schedule Winter Mon 2"
-      },
-      "schedule_winter_mon_3": {
-        "name": "Schedule Winter Mon 3"
-      },
-      "schedule_winter_mon_4": {
-        "name": "Schedule Winter Mon 4"
-      },
-      "schedule_winter_sat_1": {
-        "name": "Schedule Winter Sat 1"
-      },
-      "schedule_winter_sat_2": {
-        "name": "Schedule Winter Sat 2"
-      },
-      "schedule_winter_sat_3": {
-        "name": "Schedule Winter Sat 3"
-      },
-      "schedule_winter_sat_4": {
-        "name": "Schedule Winter Sat 4"
-      },
-      "schedule_winter_sun_1": {
-        "name": "Schedule Winter Sun 1"
-      },
-      "schedule_winter_sun_2": {
-        "name": "Schedule Winter Sun 2"
-      },
-      "schedule_winter_sun_3": {
-        "name": "Schedule Winter Sun 3"
-      },
-      "schedule_winter_sun_4": {
-        "name": "Schedule Winter Sun 4"
-      },
-      "schedule_winter_thu_1": {
-        "name": "Schedule Winter Thu 1"
-      },
-      "schedule_winter_thu_2": {
-        "name": "Schedule Winter Thu 2"
-      },
-      "schedule_winter_thu_3": {
-        "name": "Schedule Winter Thu 3"
-      },
-      "schedule_winter_thu_4": {
-        "name": "Schedule Winter Thu 4"
-      },
-      "schedule_winter_tue_1": {
-        "name": "Schedule Winter Tue 1"
-      },
-      "schedule_winter_tue_2": {
-        "name": "Schedule Winter Tue 2"
-      },
-      "schedule_winter_tue_3": {
-        "name": "Schedule Winter Tue 3"
-      },
-      "schedule_winter_tue_4": {
-        "name": "Schedule Winter Tue 4"
-      },
-      "schedule_winter_wed_1": {
-        "name": "Schedule Winter Wed 1"
-      },
-      "schedule_winter_wed_2": {
-        "name": "Schedule Winter Wed 2"
-      },
-      "schedule_winter_wed_3": {
-        "name": "Schedule Winter Wed 3"
-      },
-      "schedule_winter_wed_4": {
-        "name": "Schedule Winter Wed 4"
       },
       "season_mode": {
         "name": "Season Mode"
@@ -899,20 +845,8 @@
       "special_mode": {
         "name": "Special Mode"
       },
-      "start_gwc_regen_summer_time": {
-        "name": "Start Gwc Regen Summer Time"
-      },
-      "start_gwc_regen_winter_time": {
-        "name": "Start Gwc Regen Winter Time"
-      },
       "stop_ahu_code": {
         "name": "Stop Ahu Code"
-      },
-      "stop_gwc_regen_summer_time": {
-        "name": "Stop Gwc Regen Summer Time"
-      },
-      "stop_gwc_regen_winter_time": {
-        "name": "Stop Gwc Regen Winter Time"
       },
       "supply_air_flow": {
         "name": "Supply Air Flow"
@@ -920,11 +854,17 @@
       "supply_air_temperature_manual": {
         "name": "Temperatura nawiewu manualnie"
       },
+      "supply_air_temperature_temporary": {
+        "name": "Temperatura nawiewu (tryb chwilowy)"
+      },
       "supply_air_temperature_temporary_1": {
         "name": "Supply Air Temperature Temporary 1"
       },
       "supply_air_temperature_temporary_2": {
         "name": "Supply Air Temperature Temporary 2"
+      },
+      "supply_air_temperature_temporary_4404": {
+        "name": "Temperatura nawiewu (tryb chwilowy, roz.)"
       },
       "temperature_change_flag": {
         "name": "Temperature Change Flag"
@@ -1009,6 +949,48 @@
       "air_temperature_summer_free_heating": {
         "name": "Temperatura lato grzanie free"
       },
+      "airing_summer_fri": {
+        "name": "Airing Summer Fri"
+      },
+      "airing_summer_mon": {
+        "name": "Airing Summer Mon"
+      },
+      "airing_summer_sat": {
+        "name": "Airing Summer Sat"
+      },
+      "airing_summer_sun": {
+        "name": "Airing Summer Sun"
+      },
+      "airing_summer_thu": {
+        "name": "Airing Summer Thu"
+      },
+      "airing_summer_tue": {
+        "name": "Airing Summer Tue"
+      },
+      "airing_summer_wed": {
+        "name": "Airing Summer Wed"
+      },
+      "airing_winter_fri": {
+        "name": "Airing Winter Fri"
+      },
+      "airing_winter_mon": {
+        "name": "Airing Winter Mon"
+      },
+      "airing_winter_sat": {
+        "name": "Airing Winter Sat"
+      },
+      "airing_winter_sun": {
+        "name": "Airing Winter Sun"
+      },
+      "airing_winter_thu": {
+        "name": "Airing Winter Thu"
+      },
+      "airing_winter_tue": {
+        "name": "Airing Winter Tue"
+      },
+      "airing_winter_wed": {
+        "name": "Airing Winter Wed"
+      },
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
       },
@@ -1031,9 +1013,6 @@
       },
       "cf_version": {
         "name": "Wersja modułu CF"
-      },
-      "error_codes": {
-        "name": "Kody błędów i statusów"
       },
       "comfort_mode": {
         "name": "Tryb komfort"
@@ -1059,17 +1038,17 @@
       "dac_supply": {
         "name": "Napięcie wentylatora nawiewnego"
       },
-      "estimated_power": {
-        "name": "Szacowana moc"
-      },
-      "total_energy": {
-        "name": "Całkowita energia"
-      },
       "day_of_week": {
         "name": "Dzień tygodnia"
       },
       "duct_supply_temperature": {
         "name": "Temperatura kanału nawiewnego"
+      },
+      "error_codes": {
+        "name": "Kody błędów i statusów"
+      },
+      "estimated_power": {
+        "name": "Szacowana moc"
       },
       "exhaust_air_flow": {
         "name": "Strumień powietrza wywiewnego"
@@ -1121,6 +1100,9 @@
       "intensive_supply": {
         "name": "Intensywność nawiewu"
       },
+      "manual_airing_time_to_start": {
+        "name": "Manual Airing Time To Start"
+      },
       "max_exhaust_air_flow_rate": {
         "name": "Maksymalny przepływ wywiewu"
       },
@@ -1156,8 +1138,182 @@
       "period": {
         "name": "Okres czasowy"
       },
+      "pres_check_time": {
+        "name": "Godzina kontroli filtrów"
+      },
+      "pres_check_time_ggmm": {
+        "name": "Godzina kontroli filtrów (roz.)"
+      },
       "required_temp": {
         "name": "Temperatura zadana"
+      },
+      "schedule_summer_fri_1": {
+        "name": "Schedule Summer Fri 1"
+      },
+      "schedule_summer_fri_2": {
+        "name": "Schedule Summer Fri 2"
+      },
+      "schedule_summer_fri_3": {
+        "name": "Schedule Summer Fri 3"
+      },
+      "schedule_summer_fri_4": {
+        "name": "Schedule Summer Fri 4"
+      },
+      "schedule_summer_mon_1": {
+        "name": "Schedule Summer Mon 1"
+      },
+      "schedule_summer_mon_2": {
+        "name": "Schedule Summer Mon 2"
+      },
+      "schedule_summer_mon_3": {
+        "name": "Schedule Summer Mon 3"
+      },
+      "schedule_summer_mon_4": {
+        "name": "Schedule Summer Mon 4"
+      },
+      "schedule_summer_sat_1": {
+        "name": "Schedule Summer Sat 1"
+      },
+      "schedule_summer_sat_2": {
+        "name": "Schedule Summer Sat 2"
+      },
+      "schedule_summer_sat_3": {
+        "name": "Schedule Summer Sat 3"
+      },
+      "schedule_summer_sat_4": {
+        "name": "Schedule Summer Sat 4"
+      },
+      "schedule_summer_sun_1": {
+        "name": "Schedule Summer Sun 1"
+      },
+      "schedule_summer_sun_2": {
+        "name": "Schedule Summer Sun 2"
+      },
+      "schedule_summer_sun_3": {
+        "name": "Schedule Summer Sun 3"
+      },
+      "schedule_summer_sun_4": {
+        "name": "Schedule Summer Sun 4"
+      },
+      "schedule_summer_thu_1": {
+        "name": "Schedule Summer Thu 1"
+      },
+      "schedule_summer_thu_2": {
+        "name": "Schedule Summer Thu 2"
+      },
+      "schedule_summer_thu_3": {
+        "name": "Schedule Summer Thu 3"
+      },
+      "schedule_summer_thu_4": {
+        "name": "Schedule Summer Thu 4"
+      },
+      "schedule_summer_tue_1": {
+        "name": "Schedule Summer Tue 1"
+      },
+      "schedule_summer_tue_2": {
+        "name": "Schedule Summer Tue 2"
+      },
+      "schedule_summer_tue_3": {
+        "name": "Schedule Summer Tue 3"
+      },
+      "schedule_summer_tue_4": {
+        "name": "Schedule Summer Tue 4"
+      },
+      "schedule_summer_wed_1": {
+        "name": "Schedule Summer Wed 1"
+      },
+      "schedule_summer_wed_2": {
+        "name": "Schedule Summer Wed 2"
+      },
+      "schedule_summer_wed_3": {
+        "name": "Schedule Summer Wed 3"
+      },
+      "schedule_summer_wed_4": {
+        "name": "Schedule Summer Wed 4"
+      },
+      "schedule_winter_fri_1": {
+        "name": "Schedule Winter Fri 1"
+      },
+      "schedule_winter_fri_2": {
+        "name": "Schedule Winter Fri 2"
+      },
+      "schedule_winter_fri_3": {
+        "name": "Schedule Winter Fri 3"
+      },
+      "schedule_winter_fri_4": {
+        "name": "Schedule Winter Fri 4"
+      },
+      "schedule_winter_mon_1": {
+        "name": "Schedule Winter Mon 1"
+      },
+      "schedule_winter_mon_2": {
+        "name": "Schedule Winter Mon 2"
+      },
+      "schedule_winter_mon_3": {
+        "name": "Schedule Winter Mon 3"
+      },
+      "schedule_winter_mon_4": {
+        "name": "Schedule Winter Mon 4"
+      },
+      "schedule_winter_sat_1": {
+        "name": "Schedule Winter Sat 1"
+      },
+      "schedule_winter_sat_2": {
+        "name": "Schedule Winter Sat 2"
+      },
+      "schedule_winter_sat_3": {
+        "name": "Schedule Winter Sat 3"
+      },
+      "schedule_winter_sat_4": {
+        "name": "Schedule Winter Sat 4"
+      },
+      "schedule_winter_sun_1": {
+        "name": "Schedule Winter Sun 1"
+      },
+      "schedule_winter_sun_2": {
+        "name": "Schedule Winter Sun 2"
+      },
+      "schedule_winter_sun_3": {
+        "name": "Schedule Winter Sun 3"
+      },
+      "schedule_winter_sun_4": {
+        "name": "Schedule Winter Sun 4"
+      },
+      "schedule_winter_thu_1": {
+        "name": "Schedule Winter Thu 1"
+      },
+      "schedule_winter_thu_2": {
+        "name": "Schedule Winter Thu 2"
+      },
+      "schedule_winter_thu_3": {
+        "name": "Schedule Winter Thu 3"
+      },
+      "schedule_winter_thu_4": {
+        "name": "Schedule Winter Thu 4"
+      },
+      "schedule_winter_tue_1": {
+        "name": "Schedule Winter Tue 1"
+      },
+      "schedule_winter_tue_2": {
+        "name": "Schedule Winter Tue 2"
+      },
+      "schedule_winter_tue_3": {
+        "name": "Schedule Winter Tue 3"
+      },
+      "schedule_winter_tue_4": {
+        "name": "Schedule Winter Tue 4"
+      },
+      "schedule_winter_wed_1": {
+        "name": "Schedule Winter Wed 1"
+      },
+      "schedule_winter_wed_2": {
+        "name": "Schedule Winter Wed 2"
+      },
+      "schedule_winter_wed_3": {
+        "name": "Schedule Winter Wed 3"
+      },
+      "schedule_winter_wed_4": {
+        "name": "Schedule Winter Wed 4"
       },
       "season_mode": {
         "name": "Tryb sezonowy",
@@ -1168,6 +1324,18 @@
       },
       "serial_number": {
         "name": "Numer seryjny"
+      },
+      "start_gwc_regen_summer_time": {
+        "name": "Start Gwc Regen Summer Time"
+      },
+      "start_gwc_regen_winter_time": {
+        "name": "Start Gwc Regen Winter Time"
+      },
+      "stop_gwc_regen_summer_time": {
+        "name": "Stop Gwc Regen Summer Time"
+      },
+      "stop_gwc_regen_winter_time": {
+        "name": "Stop Gwc Regen Winter Time"
       },
       "supply_air_flow": {
         "name": "Strumień powietrza nawiewnego"
@@ -1189,6 +1357,9 @@
       },
       "supply_temperature": {
         "name": "Temperatura nawiewu"
+      },
+      "total_energy": {
+        "name": "Całkowita energia"
       },
       "version_major": {
         "name": "Wersja główna"
@@ -1297,15 +1468,16 @@
     "step": {
       "init": {
         "data": {
-          "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)",
-          "enable_device_scan": "Włącz skanowanie urządzenia podczas konfiguracji",
-          "retry": "Liczba prób",
-          "scan_interval": "Interwał skanowania (s)",
-          "log_level": "Poziom logowania",
-          "skip_missing_registers": "Pomijaj znane brakujące rejestry",
-          "timeout": "Limit czasu połączenia (s)",
           "deep_scan": "Głęboki skan rejestrów",
-          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie"
+          "enable_device_scan": "Włącz skanowanie urządzenia podczas konfiguracji",
+          "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)",
+          "log_level": "Poziom logowania",
+          "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie",
+          "retry": "Liczba prób",
+          "safe_scan": "Bezpieczne skanowanie (odczyt pojedynczych rejestrów)",
+          "scan_interval": "Interwał skanowania (s)",
+          "skip_missing_registers": "Pomijaj znane brakujące rejestry",
+          "timeout": "Limit czasu połączenia (s)"
         },
         "data_description": {
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
