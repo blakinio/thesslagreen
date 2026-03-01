@@ -223,9 +223,6 @@
       "info": {
         "name": "Unit Operation Confirmation"
       },
-      "on_off_panel_mode": {
-        "name": "On/Off Panel Mode"
-      },
       "power_supply_fans": {
         "name": "Power Supply Fans"
       },
@@ -997,19 +994,8 @@
       "antifreeze_mode": {
         "name": "Antifreeze Mode"
       },
-      "bypass_mode": {
-        "name": "Bypass Mode Status",
-        "state": {
-          "auto": "Automatic",
-          "closed": "Closed",
-          "open": "Open"
-        }
-      },
       "bypass_off": {
         "name": "Bypass Off"
-      },
-      "calculated_efficiency": {
-        "name": "Calculated Efficiency"
       },
       "cf_version": {
         "name": "CF Module Version"
@@ -1047,9 +1033,6 @@
       "error_codes": {
         "name": "Error and status codes"
       },
-      "estimated_power": {
-        "name": "Estimated Power"
-      },
       "exhaust_air_flow": {
         "name": "Exhaust Air Flow"
       },
@@ -1074,14 +1057,6 @@
       "fpx_temperature": {
         "name": "FPX Temperature"
       },
-      "gwc_mode": {
-        "name": "GWC Mode",
-        "state": {
-          "auto": "Automatic",
-          "forced": "Forced",
-          "off": "Off"
-        }
-      },
       "gwc_temperature": {
         "name": "GWC Temperature"
       },
@@ -1093,12 +1068,6 @@
       },
       "hood_supply_coef": {
         "name": "Hood Supply Coefficient"
-      },
-      "intensive_exhaust": {
-        "name": "Intensive Exhaust"
-      },
-      "intensive_supply": {
-        "name": "Intensive Supply"
       },
       "manual_airing_time_to_start": {
         "name": "Manual Airing Time To Start"
@@ -1118,14 +1087,6 @@
       "min_percentage": {
         "name": "Minimum Percentage"
       },
-      "mode": {
-        "name": "Mode",
-        "state": {
-          "auto": "Auto",
-          "manual": "Manual",
-          "temporary": "Temporary"
-        }
-      },
       "nominal_exhaust_air_flow": {
         "name": "Nominal Exhaust Air Flow"
       },
@@ -1143,9 +1104,6 @@
       },
       "pres_check_time_ggmm": {
         "name": "Filter Check Start Time (Ext.)"
-      },
-      "required_temp": {
-        "name": "Required Temperature"
       },
       "schedule_summer_fri_1": {
         "name": "Schedule Summer Fri 1"
@@ -1315,13 +1273,6 @@
       "schedule_winter_wed_4": {
         "name": "Schedule Winter Wed 4"
       },
-      "season_mode": {
-        "name": "Season Mode",
-        "state": {
-          "summer": "Summer",
-          "winter": "Winter"
-        }
-      },
       "serial_number": {
         "name": "Serial Number"
       },
@@ -1343,12 +1294,6 @@
       "supply_air_temperature_manual": {
         "name": "Supply Air Temperature Manual"
       },
-      "supply_air_temperature_temporary_1": {
-        "name": "Supply Air Temperature Temporary 1"
-      },
-      "supply_air_temperature_temporary_2": {
-        "name": "Supply Air Temperature Temporary 2"
-      },
       "supply_flow_rate_m3h": {
         "name": "Supply Flow Rate (m³/h)"
       },
@@ -1357,9 +1302,6 @@
       },
       "supply_temperature": {
         "name": "Supply Temperature"
-      },
-      "total_energy": {
-        "name": "Total Energy"
       },
       "version_major": {
         "name": "Major Version"

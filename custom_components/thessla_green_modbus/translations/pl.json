@@ -223,9 +223,6 @@
       "info": {
         "name": "Informacja"
       },
-      "on_off_panel_mode": {
-        "name": "Tryb panelu wł/wył"
-      },
       "power_supply_fans": {
         "name": "Zasilanie wentylatorów"
       },
@@ -997,19 +994,8 @@
       "antifreeze_mode": {
         "name": "Tryb antyzamrożeniowy"
       },
-      "bypass_mode": {
-        "name": "Tryb bypass",
-        "state": {
-          "auto": "Automatic",
-          "closed": "Closed",
-          "open": "Open"
-        }
-      },
       "bypass_off": {
         "name": "Wyłączenie bypass"
-      },
-      "calculated_efficiency": {
-        "name": "Obliczona sprawność"
       },
       "cf_version": {
         "name": "Wersja modułu CF"
@@ -1047,9 +1033,6 @@
       "error_codes": {
         "name": "Kody błędów i statusów"
       },
-      "estimated_power": {
-        "name": "Szacowana moc"
-      },
       "exhaust_air_flow": {
         "name": "Strumień powietrza wywiewnego"
       },
@@ -1074,14 +1057,6 @@
       "fpx_temperature": {
         "name": "Temperatura FPX"
       },
-      "gwc_mode": {
-        "name": "Tryb GWC",
-        "state": {
-          "auto": "Automatic",
-          "forced": "Forced",
-          "off": "Off"
-        }
-      },
       "gwc_temperature": {
         "name": "Temperatura GWC"
       },
@@ -1093,12 +1068,6 @@
       },
       "hood_supply_coef": {
         "name": "Współczynnik okapu nawiew"
-      },
-      "intensive_exhaust": {
-        "name": "Intensywność wywiewu"
-      },
-      "intensive_supply": {
-        "name": "Intensywność nawiewu"
       },
       "manual_airing_time_to_start": {
         "name": "Manual Airing Time To Start"
@@ -1118,14 +1087,6 @@
       "min_percentage": {
         "name": "Minimalny procent"
       },
-      "mode": {
-        "name": "Tryb pracy",
-        "state": {
-          "auto": "Auto",
-          "manual": "Manual",
-          "temporary": "Temporary"
-        }
-      },
       "nominal_exhaust_air_flow": {
         "name": "Nominalny przepływ wywiewu"
       },
@@ -1143,9 +1104,6 @@
       },
       "pres_check_time_ggmm": {
         "name": "Godzina kontroli filtrów (roz.)"
-      },
-      "required_temp": {
-        "name": "Temperatura zadana"
       },
       "schedule_summer_fri_1": {
         "name": "Schedule Summer Fri 1"
@@ -1315,13 +1273,6 @@
       "schedule_winter_wed_4": {
         "name": "Schedule Winter Wed 4"
       },
-      "season_mode": {
-        "name": "Tryb sezonowy",
-        "state": {
-          "summer": "Summer",
-          "winter": "Winter"
-        }
-      },
       "serial_number": {
         "name": "Numer seryjny"
       },
@@ -1343,12 +1294,6 @@
       "supply_air_temperature_manual": {
         "name": "Temperatura nawiewu manualnie"
       },
-      "supply_air_temperature_temporary_1": {
-        "name": "Tymczasowa temperatura nawiewu 1"
-      },
-      "supply_air_temperature_temporary_2": {
-        "name": "Tymczasowa temperatura nawiewu 2"
-      },
       "supply_flow_rate_m3h": {
         "name": "Przepływ nawiewu (m³/h)"
       },
@@ -1357,9 +1302,6 @@
       },
       "supply_temperature": {
         "name": "Temperatura nawiewu"
-      },
-      "total_energy": {
-        "name": "Całkowita energia"
       },
       "version_major": {
         "name": "Wersja główna"
