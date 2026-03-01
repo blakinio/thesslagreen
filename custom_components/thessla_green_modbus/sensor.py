@@ -200,8 +200,19 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
     def available(self) -> bool:  # pragma: no cover
         """Return if entity has valid data."""
         value = self.coordinator.data.get(self._register_name)
-        if not (self.coordinator.last_update_success and value not in (None, SENSOR_UNAVAILABLE)):
+
+        if not self.coordinator.last_update_success or getattr(self.coordinator, "offline_state", False):
             return False
+
+        if value == SENSOR_UNAVAILABLE:
+            return False
+
+        # Some schedule slots can be intentionally unset on device and decode to
+        # ``None`` (e.g. 0xFFFF). Keep the entity available in that case so it
+        # appears as unknown instead of unavailable.
+        if value is None and not self._register_name.startswith(TIME_REGISTER_PREFIXES):
+            return False
+
         if self._use_percentage() and self._get_nominal_flow() is None:
             return False
         return True

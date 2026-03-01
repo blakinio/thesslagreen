@@ -330,6 +330,28 @@ def test_time_sensor_formats_value(mock_coordinator):
     assert sensor.native_value == "08:05"
 
 
+
+def test_time_sensor_with_empty_slot_is_available(mock_coordinator):
+    """Schedule sensors should stay available when slot is unset (None)."""
+
+    register = "schedule_summer_mon_1"
+    sensor_def = {
+        "translation_key": register,
+        "register_type": "holding_registers",
+        "unit": None,
+        "device_class": None,
+        "state_class": None,
+        "value_map": None,
+    }
+    mock_coordinator.last_update_success = True
+    mock_coordinator.offline_state = False
+    mock_coordinator.data[register] = None
+    sensor = ThesslaGreenSensor(mock_coordinator, register, 16, sensor_def)
+
+    assert sensor.available is True
+    assert sensor.native_value is None
+
+
 def test_sensor_reports_unavailable_when_no_data():
     """Sensors return None and are marked unavailable when data missing."""
     coord = MagicMock()
