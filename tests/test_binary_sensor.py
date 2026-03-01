@@ -89,6 +89,23 @@ def test_binary_sensor_creation_and_state(mock_coordinator: MagicMock) -> None:
     assert sensor.is_on is True  # nosec B101
 
 
+def test_fire_alarm_binary_sensor_inverted(mock_coordinator: MagicMock) -> None:
+    """Fire alarm uses NC logic: True from device means no alarm (circuit closed)."""
+    reg_type = BINARY_SENSOR_DEFINITIONS["fire_alarm"]["register_type"]
+    address = mock_coordinator._register_maps[reg_type]["fire_alarm"]
+    sensor = ThesslaGreenBinarySensor(
+        mock_coordinator, "fire_alarm", address, BINARY_SENSOR_DEFINITIONS["fire_alarm"]
+    )
+
+    # Device reads True (NC closed = normal, no alarm) → HA should show False (safe)
+    mock_coordinator.data["fire_alarm"] = True
+    assert sensor.is_on is False  # nosec B101
+
+    # Device reads False (NC open = alarm triggered) → HA should show True (unsafe)
+    mock_coordinator.data["fire_alarm"] = False
+    assert sensor.is_on is True  # nosec B101
+
+
 def test_binary_sensor_icons(mock_coordinator: MagicMock) -> None:
     """Icon should switch to valid alternatives when sensor is off."""
 

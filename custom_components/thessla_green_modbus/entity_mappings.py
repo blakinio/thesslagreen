@@ -1038,6 +1038,7 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:fire",
         "device_class": BinarySensorDeviceClass.SAFETY,
         "register_type": "discrete_inputs",
+        "inverted": True,  # NC contact: True = circuit closed = no alarm, False = alarm triggered
     },
     # Active modes (from input registers)
     "water_removal_active": {
