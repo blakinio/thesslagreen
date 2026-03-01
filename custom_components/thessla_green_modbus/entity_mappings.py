@@ -108,6 +108,35 @@ LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {
     "speed": ("fan", "fan"),
 }
 
+# Exact object_id aliases used by earlier releases. These are matched before
+# ``LEGACY_ENTITY_ID_ALIASES`` to avoid ambiguity for names ending with
+# common suffixes like ``_mode``.
+LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
+    # Legacy number entities migrated to read-only sensors.
+    "rekuperator_antifreeze_mode": ("sensor", "rekuperator_antifreeze_mode"),
+    "rekuperator_comfort_mode": ("sensor", "rekuperator_comfort_mode"),
+    "rekuperator_dac_supply": ("sensor", "rekuperator_dac_supply"),
+    "rekuperator_dac_exhaust": ("sensor", "rekuperator_dac_exhaust"),
+    "rekuperator_dac_heater": ("sensor", "rekuperator_dac_heater"),
+    "rekuperator_dac_cooler": ("sensor", "rekuperator_dac_cooler"),
+    "rekuperator_supply_air_flow": ("sensor", "rekuperator_supply_air_flow"),
+    "rekuperator_exhaust_air_flow": ("sensor", "rekuperator_exhaust_air_flow"),
+    "rekuperator_hood_supply_coef": ("sensor", "rekuperator_hood_supply_coef"),
+    "rekuperator_hood_exhaust_coef": ("sensor", "rekuperator_hood_exhaust_coef"),
+    "rekuperator_fan_speed_1_coef": ("sensor", "rekuperator_fan_speed_1_coef"),
+    "rekuperator_fan_speed_2_coef": ("sensor", "rekuperator_fan_speed_2_coef"),
+    "rekuperator_fan_speed_3_coef": ("sensor", "rekuperator_fan_speed_3_coef"),
+    # Legacy status sensors migrated to select/switch controls.
+    "rekuperator_mode": ("select", "rekuperator_mode"),
+    "rekuperator_gwc_mode": ("select", "rekuperator_gwc_mode"),
+    "rekuperator_season_mode": ("select", "rekuperator_season_mode"),
+    "rekuperator_bypass_mode_status": ("select", "rekuperator_bypass_mode"),
+    "rekuperator_on_off_panel_mode": ("switch", "rekuperator_on_off_panel_mode"),
+    # Legacy aliases for historical register naming.
+    "rekuperator_bypass_coef_1": ("number", "rekuperator_bypass_coef1"),
+    "rekuperator_bypass_coef_2": ("number", "rekuperator_bypass_coef2"),
+}
+
 _alias_warning_logged = False
 
 
@@ -125,6 +154,18 @@ def map_legacy_entity_id(entity_id: str) -> str:
         return entity_id
 
     domain, object_id = entity_id.split(".", 1)
+    if object_id in LEGACY_ENTITY_ID_OBJECT_ALIASES:
+        new_domain, new_object_id = LEGACY_ENTITY_ID_OBJECT_ALIASES[object_id]
+        new_entity_id = f"{new_domain}.{new_object_id}"
+        if not _alias_warning_logged:
+            _LOGGER.warning(
+                "Legacy entity ID '%s' detected. Please update automations to use '%s'.",
+                entity_id,
+                new_entity_id,
+            )
+            _alias_warning_logged = True
+        return new_entity_id
+
     suffix = object_id.rsplit("_", 1)[-1]
     if suffix not in LEGACY_ENTITY_ID_ALIASES:
         return entity_id
