@@ -110,8 +110,6 @@ def _decode_bcd_time_to_time(value: int) -> time | None:
 
     hours_dec = value // 100
     minutes_dec = value % 100
-    if hours_dec == 24 and minutes_dec == 0:
-        return time(0, 0)
     if 0 <= hours_dec <= 23 and 0 <= minutes_dec <= 59:
         return time(hours_dec, minutes_dec)
     return None

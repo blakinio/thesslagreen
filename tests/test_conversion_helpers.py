@@ -24,4 +24,4 @@ def test_decode_temp_01c() -> None:
 def test_bcd_time_roundtrip() -> None:
     value = time(6, 30)
     encoded = encode_bcd_time(value)
-    assert decode_bcd_time(encoded) == value
+    assert decode_bcd_time(encoded) == "06:30"

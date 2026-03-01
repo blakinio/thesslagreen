@@ -191,7 +191,7 @@ class RegisterDef:
         if isinstance(raw, Sequence):
             raw = raw[0]
 
-        if self._is_temperature() and raw == 32768:
+        if raw == 32768 and (self.function == 4 or self._is_temperature()):
             return None
 
         # Bitmask registers map set bits to enum labels

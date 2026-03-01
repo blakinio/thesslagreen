@@ -265,8 +265,8 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if register in SENSOR_ENTITY_MAPPINGS and "W" not in (info.get("access") or ""):
             continue
 
-        # Skip diagnostic/error registers (E/S codes and alarm/error flags)
-        if re.match(r"[se](?:_|\d)", register) or register in {"alarm", "error"}:
+        # Skip diagnostic/error/fault registers (E/S/F codes and alarm/error flags)
+        if re.match(r"[sef](?:_|\d)", register) or register in {"alarm", "error"}:
             continue
 
         # Skip BCD time registers (schedule/airing/GWC-regen timeslots) – they
@@ -1084,7 +1084,12 @@ def _extend_entity_mappings_from_registers() -> None:
         if register in SELECT_ENTITY_MAPPINGS:
             continue
 
-        if register in {"alarm", "error"} or register.startswith("s_") or register.startswith("e_"):
+        if (
+            register in {"alarm", "error"}
+            or register.startswith("s_")
+            or register.startswith("e_")
+            or register.startswith("f_")
+        ):
             BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
                 register,
                 {

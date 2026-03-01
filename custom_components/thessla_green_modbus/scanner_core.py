@@ -474,6 +474,7 @@ class ThesslaGreenDeviceScanner:
     def _populate_known_missing_addresses(self) -> None:
         """Pre-compute addresses of known missing registers for batch grouping."""
         self._known_missing_addresses: set[int] = set()
+        self._update_known_missing_addresses()
 
     def _update_known_missing_addresses(self) -> None:
         """Populate cached missing register addresses from known missing list."""
@@ -898,8 +899,23 @@ class ThesslaGreenDeviceScanner:
         if not self._known_missing_addresses:
             return groups
 
-        filtered = [addr for addr in addresses if addr not in self._known_missing_addresses]
-        return _group_reads(filtered, max_block_size=max_batch)
+        # Known missing registers are isolated into their own single-register
+        # groups so that a failure to read them does not prevent the surrounding
+        # valid registers from being read.  Each batch produced by group_reads
+        # is split individually at the missing addresses so that the max_batch
+        # window boundaries are preserved.
+        result: list[tuple[int, int]] = []
+        for start, length in groups:
+            current = start
+            for addr in range(start, start + length):
+                if addr in self._known_missing_addresses:
+                    if addr > current:
+                        result.append((current, addr - current))
+                    result.append((addr, 1))
+                    current = addr + 1
+            if current < start + length:
+                result.append((current, start + length - current))
+        return result
 
     async def scan(self) -> dict[str, Any]:
         """Perform the actual register scan using an established connection."""
