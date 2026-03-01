@@ -287,6 +287,19 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         )
 
     @property
+    def available(self) -> bool:  # pragma: no cover
+        """Return sensor availability.
+
+        This entity is synthetic (key ``active_errors`` does not map to a raw
+        register), so availability must depend on coordinator state rather than
+        ``coordinator.data[self._key]``.
+        """
+        return bool(
+            self.coordinator.last_update_success
+            and not getattr(self.coordinator, "offline_state", False)
+        )
+
+    @property
     def native_value(self) -> str | None:  # pragma: no cover
         """Return comma-separated list of translated active error/status labels."""
         codes = [
