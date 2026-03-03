@@ -36,6 +36,8 @@ def _format_register_value(name: str, value: int) -> int | str | None:
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
 
     if name.startswith(BCD_TIME_PREFIXES):
+        if value > 0x2359:
+            return None if value == SENSOR_UNAVAILABLE else f"{value} (invalid)"
         decoded = decode_bcd_time(value)
         if decoded is None:
             return None if value == SENSOR_UNAVAILABLE else f"{value} (invalid)"

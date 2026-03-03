@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import dataclasses
 import ipaddress
 import logging
@@ -400,7 +401,8 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     import_func: Callable[..., Awaitable[Any]]
     import_func = hass.async_add_executor_job if hass else asyncio.to_thread
 
-    module = await import_func(import_module, "custom_components.thessla_green_modbus.scanner_core")
+    module_result = import_func(import_module, "custom_components.thessla_green_modbus.scanner_core")
+    module = await module_result if inspect.isawaitable(module_result) else module_result
     scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
     capabilities_cls = DeviceCapabilities or module.DeviceCapabilities
 

@@ -303,7 +303,7 @@ async def _call_modbus(
             )
             raise
 
-    _LOGGER.debug(
+    _LOGGER.info(
         "Calling %s on slave %s (batch=%s attempt %s/%s)",
         func_name,
         slave_id,

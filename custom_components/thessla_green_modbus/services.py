@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
@@ -56,6 +57,10 @@ if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+_ENTITY_IDS_VALIDATOR = getattr(cv, "entity_ids", list)
+_CV_TIME = getattr(cv, "time", str)
+_CV_STRING = getattr(cv, "string", str)
 
 
 class _LogLevelManager:
@@ -121,7 +126,7 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
         raw_ids = list(raw_ids)
 
     mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
-    mapped_call = ServiceCall(
+    mapped_call = SimpleNamespace(
         domain=getattr(call, "domain", DOMAIN),
         service=getattr(call, "service", ""),
         data={**call.data, "entity_id": mapped_ids},
@@ -133,7 +138,7 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
 # Service schemas
 SET_SPECIAL_MODE_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("mode"): vol.In(SPECIAL_MODE_OPTIONS),
         vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=480)),
     }
@@ -141,11 +146,11 @@ SET_SPECIAL_MODE_SCHEMA = vol.Schema(
 
 SET_AIRFLOW_SCHEDULE_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("day"): vol.In(DAYS_OF_WEEK),
         vol.Required("period"): vol.In(PERIODS),
-        vol.Required("start_time"): cv.time,
-        vol.Required("end_time"): cv.time,
+        vol.Required("start_time"): _CV_TIME,
+        vol.Required("end_time"): _CV_TIME,
         vol.Required("airflow_rate"): vol.All(vol.Coerce(int), vol.Range(min=0, max=150)),
         vol.Optional("temperature"): vol.All(vol.Coerce(float), vol.Range(min=16.0, max=30.0)),
     }
@@ -153,7 +158,7 @@ SET_AIRFLOW_SCHEDULE_SCHEMA = vol.Schema(
 
 SET_BYPASS_PARAMETERS_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("mode"): vol.In(BYPASS_MODES),
         vol.Optional("min_outdoor_temperature"): vol.All(
             vol.Coerce(float), vol.Range(min=10.0, max=40.0)
@@ -163,7 +168,7 @@ SET_BYPASS_PARAMETERS_SCHEMA = vol.Schema(
 
 SET_GWC_PARAMETERS_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("mode"): vol.In(GWC_MODES),
         vol.Optional("min_air_temperature"): vol.All(
             vol.Coerce(float), vol.Range(min=0.0, max=20.0)
@@ -176,7 +181,7 @@ SET_GWC_PARAMETERS_SCHEMA = vol.Schema(
 
 SET_AIR_QUALITY_THRESHOLDS_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Optional("co2_low"): vol.All(vol.Coerce(int), vol.Range(min=400, max=800)),
         vol.Optional("co2_medium"): vol.All(vol.Coerce(int), vol.Range(min=600, max=1200)),
         vol.Optional("co2_high"): vol.All(vol.Coerce(int), vol.Range(min=800, max=1600)),
@@ -186,7 +191,7 @@ SET_AIR_QUALITY_THRESHOLDS_SCHEMA = vol.Schema(
 
 SET_TEMPERATURE_CURVE_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("slope"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
         vol.Required("offset"): vol.All(vol.Coerce(float), vol.Range(min=-10.0, max=10.0)),
         vol.Optional("max_supply_temp"): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=95.0)),
@@ -196,27 +201,27 @@ SET_TEMPERATURE_CURVE_SCHEMA = vol.Schema(
 
 RESET_FILTERS_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("filter_type"): vol.In(FILTER_TYPES),
     }
 )
 
 RESET_SETTINGS_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("reset_type"): vol.In(RESET_TYPES),
     }
 )
 
 START_PRESSURE_TEST_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
     }
 )
 
 SET_MODBUS_PARAMETERS_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("port"): vol.In(MODBUS_PORTS),
         vol.Optional("baud_rate"): vol.In(MODBUS_BAUD_RATES),
         vol.Optional("parity"): vol.In(MODBUS_PARITY),
@@ -226,20 +231,20 @@ SET_MODBUS_PARAMETERS_SCHEMA = vol.Schema(
 
 SET_DEVICE_NAME_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
-        vol.Required("device_name"): vol.All(cv.string, vol.Length(min=1, max=16)),
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
+        vol.Required("device_name"): vol.All(_CV_STRING, vol.Length(min=1, max=16)),
     }
 )
 
 REFRESH_DEVICE_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
     }
 )
 
 SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
     {
-        vol.Required("entity_id"): cv.entity_ids,
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
     }
 )
 

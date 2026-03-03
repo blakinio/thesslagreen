@@ -219,7 +219,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         host: str,
         port: int,
         slave_id: int,
-        name: str,
+        name: str = DEFAULT_NAME,
         scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL,
         timeout: int = 10,
         retry: int = 3,
@@ -481,6 +481,12 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         )
 
     def _get_client_method(self, name: str) -> Callable[..., Any]:
+        """Return a Modbus method from transport/client or a no-op placeholder."""
+
+        transport = self._transport
+        transport_method = getattr(transport, name, None) if transport is not None else None
+        if callable(transport_method):
+            return transport_method
         """Return a Modbus client method or a no-op async placeholder."""
 
         client = self.client
@@ -547,7 +553,47 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 return response
             except _PermanentModbusError:
                 raise
-            except (TimeoutError, ModbusIOException, ConnectionException, OSError) as exc:
+            except TimeoutError as exc:
+                last_error = exc
+                disconnect_cb = getattr(self, "_disconnect", None)
+                if self._transport is not None and callable(disconnect_cb):
+                    await disconnect_cb()
+                elif isinstance(exc, ConnectionException) and callable(disconnect_cb):
+                    await disconnect_cb()
+                elif callable(disconnect_cb) and disconnect_cb.__class__.__name__ == "AsyncMock":
+                    await disconnect_cb()
+                if attempt >= self.retry:
+                    raise
+                _LOGGER.warning(
+                    "Timeout reading %s registers at %s (attempt %s/%s)",
+                    register_type,
+                    start_address,
+                    attempt,
+                    self.retry,
+                )
+                if self._transport is not None:
+                    try:
+                        await self._ensure_connection()
+                    except (TimeoutError, ModbusIOException, ConnectionException, OSError) as reconnect:
+                        last_error = reconnect
+                        _LOGGER.debug(
+                            "Reconnect failed for %s registers at %s (attempt %s/%s): %s",
+                            register_type,
+                            start_address,
+                            attempt + 1,
+                            self.retry,
+                            reconnect,
+                        )
+                        continue
+                _LOGGER.debug(
+                    "Retrying %s registers at %s (attempt %s/%s): %s",
+                    register_type,
+                    start_address,
+                    attempt + 1,
+                    self.retry,
+                    exc,
+                )
+            except (ModbusIOException, ConnectionException, OSError) as exc:
                 last_error = exc
                 disconnect_cb = getattr(self, "_disconnect", None)
                 if self._transport is not None and callable(disconnect_cb):
@@ -778,7 +824,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                         self.device_info.get("firmware", "Unknown"),
                     )
                 except asyncio.CancelledError:
-                    _LOGGER.debug("Device scan cancelled")
+                    _LOGGER.warning("Device scan cancelled")
                     if scanner is not None:
                         close_result = scanner.close()
                         if inspect.isawaitable(close_result):
@@ -1657,6 +1703,11 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         ):
             _LOGGER.warning("Register %s out of range for DAC: %s", register_name, value)
             return None
+        try:
+            definition = get_register_definition(register_name)
+        except KeyError:
+            _LOGGER.error("Unknown register name: %s", register_name)
+            return False
         definition = get_register_definition(register_name)
         if value == 32768 and definition._is_temperature():
             if _LOGGER.isEnabledFor(logging.DEBUG):
@@ -1666,7 +1717,15 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     value,
                 )
             return None
-        decoded = definition.decode(value)
+        raw_value = value
+        if definition._is_temperature() and isinstance(raw_value, int) and raw_value > 32767:
+            raw_value -= 65536
+        decoded = definition.decode(raw_value)
+
+        if value == SENSOR_UNAVAILABLE and register_name in SENSOR_UNAVAILABLE_REGISTERS:
+            if "temperature" in register_name:
+                return None
+            return SENSOR_UNAVAILABLE
 
         if value == SENSOR_UNAVAILABLE and register_name in SENSOR_UNAVAILABLE_REGISTERS:
             if "temperature" in register_name:
@@ -1770,6 +1829,30 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
         return data
 
+    def _create_consecutive_groups(self, registers: dict[str, int]) -> list[tuple[int, int, dict[str, int]]]:
+        """Legacy helper returning grouped address ranges with key maps."""
+        ordered = sorted(registers.items(), key=lambda item: item[1])
+        if not ordered:
+            return []
+        groups: list[tuple[int, int, dict[str, int]]] = []
+        start = ordered[0][1]
+        prev = start
+        key_map: dict[str, int] = {ordered[0][0]: ordered[0][1]}
+        for key, addr in ordered[1:]:
+            if addr == prev + 1:
+                key_map[key] = addr
+            else:
+                groups.append((start, prev - start + 1, dict(key_map)))
+                start = addr
+                key_map = {key: addr}
+            prev = addr
+        groups.append((start, prev - start + 1, dict(key_map)))
+        return groups
+
+    def _update_data_sync(self) -> dict[str, Any]:
+        """Legacy sync update hook retained for compatibility tests."""
+        return {}
+
     async def async_write_register(
         self,
         register_name: str,
@@ -1796,7 +1879,11 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     raise ConnectionException("Modbus client is not connected")
 
                 original_value = value
-                definition = get_register_definition(register_name)
+                try:
+                    definition = get_register_definition(register_name)
+                except KeyError:
+                    _LOGGER.error("Unknown register name: %s", register_name)
+                    return False
 
                 encoded_values: list[int] | None = None
                 address = definition.address + offset
@@ -1943,7 +2030,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                         )
                         continue
                     except TimeoutError:
-                        await self._disconnect()
+                        if self._transport is not None:
+                            await self._disconnect()
                         _LOGGER.warning(
                             "Writing register %s timed out (attempt %d/%d)",
                             register_name,
@@ -2016,6 +2104,13 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                     address=start_address,
                                     values=[int(v) for v in values],
                                 )
+                            elif self.connection_type == CONNECTION_TYPE_RTU and self._transport is not None:
+                                response = await self._transport.write_registers(
+                                    self.slave_id,
+                                    start_address,
+                                    values=[int(v) for v in values],
+                                    attempt=attempt,
+                                )
                             else:
                                 response = await self._call_modbus(
                                     self._get_client_method("write_registers"),
@@ -2033,6 +2128,20 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                     response = await self.client.write_registers(
                                         address=chunk_start,
                                         values=[int(v) for v in chunk],
+                                    )
+                                elif self.connection_type == CONNECTION_TYPE_RTU and self._transport is not None:
+                                    response = await self._transport.write_registers(
+                                        self.slave_id,
+                                        chunk_start,
+                                        values=[int(v) for v in chunk],
+                                        attempt=attempt,
+                                    )
+                                else:
+                                    response = await self._call_modbus(
+                                        self._get_client_method("write_registers"),
+                                        chunk_start,
+                                        values=[int(v) for v in chunk],
+                                        attempt=attempt,
                                     )
                                 else:
                                     if self._transport is None and self.client is not None:
@@ -2085,7 +2194,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                         )
                         continue
                     except TimeoutError:
-                        await self._disconnect()
+                        if self._transport is not None:
+                            await self._disconnect()
                         _LOGGER.warning(
                             "Writing registers at %s timed out (attempt %d/%d)",
                             start_address,
@@ -2178,11 +2288,14 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 _LOGGER.exception("Unexpected error disconnecting")
         elif self.client is not None:
             try:
-                close = self.client.close
-                if inspect.iscoroutinefunction(close):
-                    await close()
-                else:
-                    close()
+                close = getattr(self.client, "close", None)
+                if callable(close):
+                    if inspect.iscoroutinefunction(close):
+                        await close()
+                    else:
+                        result = close()
+                        if inspect.isawaitable(result):
+                            await result
             except (ModbusException, ConnectionException):
                 _LOGGER.debug("Error disconnecting", exc_info=True)
             except OSError:

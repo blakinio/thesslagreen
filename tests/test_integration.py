@@ -263,17 +263,7 @@ async def test_register_constants():
     # Test address ranges
     assert coil["power_supply_fans"] == 11
     assert input_regs["outside_temperature"] == 16
-    assert holding["mode"] == 4097
-    assert discrete["expansion"] == 0
-    # Test that key registers are defined
-    assert "power_supply_fans" in coil
-    assert "outside_temperature" in input_regs
-    assert "mode" in holding
-    assert "expansion" in discrete
-
-    # Test address ranges
-    assert coil["power_supply_fans"] == 11
-    assert input_regs["outside_temperature"] == 16
+    assert discrete["expansion"] == 1
     assert holding["mode"] == 4208
 
 

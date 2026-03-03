@@ -12,7 +12,9 @@ from typing import Any, cast
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE
+from homeassistant import const as ha_const
+
+PERCENTAGE = getattr(ha_const, "PERCENTAGE", "%")
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -126,7 +128,7 @@ async def async_setup_entry(
         _LOGGER.debug(
             "Created %d sensor entities for %s",
             len(entities),
-            coordinator.device_name,
+            getattr(coordinator, "device_name", getattr(coordinator, "_device_name", "ThesslaGreen")),
         )
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")

@@ -95,6 +95,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     components_pkg = types.ModuleType("homeassistant.components")
     sensor_comp = types.ModuleType("homeassistant.components.sensor")
     binary_sensor_comp = types.ModuleType("homeassistant.components.binary_sensor")
+    climate_comp = types.ModuleType("homeassistant.components.climate")
 
     class SensorDeviceClass:  # pragma: no cover - enum stub
         TEMPERATURE = "temperature"
@@ -128,11 +129,36 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         CLOSING = "closing"
 
     binary_sensor_comp.BinarySensorDeviceClass = BinarySensorDeviceClass
+
+    class ClimateEntity:  # pragma: no cover - simple stub
+        pass
+
+    class ClimateEntityFeature:  # pragma: no cover - enum-like flags
+        TARGET_TEMPERATURE = 1
+        FAN_MODE = 2
+        PRESET_MODE = 4
+
+    class HVACMode:  # pragma: no cover - enum stub
+        OFF = "off"
+        AUTO = "auto"
+        FAN_ONLY = "fan_only"
+
+    class HVACAction:  # pragma: no cover - enum stub
+        OFF = "off"
+        FAN = "fan"
+
+    climate_comp.ClimateEntity = ClimateEntity
+    climate_comp.ClimateEntityFeature = ClimateEntityFeature
+    climate_comp.HVACMode = HVACMode
+    climate_comp.HVACAction = HVACAction
+    climate_comp.PRESET_ECO = "eco"
     components_pkg.sensor = sensor_comp
     components_pkg.binary_sensor = binary_sensor_comp
+    components_pkg.climate = climate_comp
     sys.modules["homeassistant.components"] = components_pkg
     sys.modules["homeassistant.components.sensor"] = sensor_comp
     sys.modules["homeassistant.components.binary_sensor"] = binary_sensor_comp
+    sys.modules["homeassistant.components.climate"] = climate_comp
     ha.const = const
 
     class MockConfigEntry:  # pragma: no cover - simplified stub
@@ -323,11 +349,36 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         pass
 
     class AsyncModbusTcpClient:  # type: ignore[override]
-        pass
+        def __init__(self, *args, **kwargs):
+            self.connected = True
+
+        async def connect(self):
+            self.connected = True
+            return True
+
+        async def close(self):
+            self.connected = False
+            return None
+
+        async def read_input_registers(self, *_args, **_kwargs):
+            return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+
+        async def read_holding_registers(self, *_args, **_kwargs):
+            return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+
+        async def read_coils(self, *_args, **_kwargs):
+            return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+
+        async def read_discrete_inputs(self, *_args, **_kwargs):
+            return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+
+        async def write_register(self, *_args, **_kwargs):
+            return type("Resp", (), {"isError": lambda self: False})()
 
     pymodbus_client_tcp.ModbusTcpClient = ModbusTcpClient
     pymodbus_client_tcp.AsyncModbusTcpClient = AsyncModbusTcpClient
     pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
+    pymodbus_client.ModbusTcpClient = AsyncModbusTcpClient
     pymodbus_client.tcp = pymodbus_client_tcp
     pymodbus.client = pymodbus_client
     pymodbus_exceptions.ModbusException = ModbusException
