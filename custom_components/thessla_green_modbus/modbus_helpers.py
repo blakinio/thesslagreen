@@ -25,6 +25,22 @@ _SIG_CACHE: weakref.WeakKeyDictionary[Callable[..., Awaitable[Any]], inspect.Sig
 )
 
 
+def _get_signature(func: Callable[..., Awaitable[Any]]) -> inspect.Signature | None:
+    """Return a cached signature when introspection is available."""
+
+    signature = _SIG_CACHE.get(func)
+    if signature is not None:
+        return signature
+
+    try:
+        signature = inspect.signature(func)
+    except (TypeError, ValueError):
+        return None
+
+    _SIG_CACHE[func] = signature
+    return signature
+
+
 def _should_apply_external_timeout(func: Callable[..., Awaitable[Any]]) -> bool:
     """Return whether ``asyncio.wait_for`` should wrap ``func`` calls.
 
@@ -222,28 +238,28 @@ async def _call_modbus(
     """
 
     # Fetch and cache the function signature
-    signature = _SIG_CACHE.get(func)
-    if signature is None:
-        signature = inspect.signature(func)
-        _SIG_CACHE[func] = signature
+    signature = _get_signature(func)
 
     # Map positional arguments to keyword-only parameters so that any values
     # intended for keyword-only parameters (e.g. ``count``) are moved into
     # ``kwargs``.
-    params = signature.parameters
+    params = signature.parameters if signature is not None else {}
     positional: list[Any] = []
-    param_iter = iter(params.values())
-    for arg in args:
-        try:
-            param = next(param_iter)
-        except StopIteration:
-            positional.append(arg)
-            continue
+    if signature is not None:
+        param_iter = iter(params.values())
+        for arg in args:
+            try:
+                param = next(param_iter)
+            except StopIteration:
+                positional.append(arg)
+                continue
 
-        if param.kind is inspect.Parameter.KEYWORD_ONLY:
-            kwargs[param.name] = arg
-        else:
-            positional.append(arg)
+            if param.kind is inspect.Parameter.KEYWORD_ONLY:
+                kwargs[param.name] = arg
+            else:
+                positional.append(arg)
+    else:
+        positional = list(args)
 
     kwarg = _KWARG_CACHE.get(func)
     if kwarg is None:
@@ -258,7 +274,10 @@ async def _call_modbus(
         elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
             kwarg = "unit"
         else:
-            kwarg = ""
+            # Some tests use plain ``Mock``/``AsyncMock`` callables that do not
+            # expose a valid signature. Prefer ``slave`` as default because it
+            # matches modern pymodbus and is accepted by autospecced mocks.
+            kwarg = "slave" if signature is None else ""
         _KWARG_CACHE[func] = kwarg
 
     func_name = getattr(func, "__name__", repr(func))

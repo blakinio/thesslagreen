@@ -186,6 +186,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         def async_create_entry(self, **kwargs):  # type: ignore[override]
             return {"type": "create_entry", **kwargs}
 
+        def async_abort(self, **kwargs):  # type: ignore[override]
+            return {"type": "abort", **kwargs}
+
     class DataUpdateCoordinator:  # type: ignore[override]
         def __init__(self, hass, logger, name=None, update_interval=None):
             self.hass = hass
@@ -226,6 +229,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
 
         def async_create_entry(self, **kwargs):  # type: ignore[override]
             return {"type": "create_entry", **kwargs}
+
+        def async_abort(self, **kwargs):  # type: ignore[override]
+            return {"type": "abort", **kwargs}
 
     config_entries.OptionsFlow = OptionsFlow
     helpers.DataUpdateCoordinator = DataUpdateCoordinator
@@ -435,6 +441,31 @@ def _ensure_homeassistant_modules() -> None:
     if not hasattr(helpers_script, "_schedule_stop_scripts_after_shutdown"):
         helpers_script._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
     helpers.script = helpers_script
+
+    cv_mod = _ensure_module("homeassistant.helpers.config_validation")
+    if not hasattr(cv_mod, "entity_ids"):
+        cv_mod.entity_ids = list
+    if not hasattr(cv_mod, "string"):
+        cv_mod.string = str
+    if not hasattr(cv_mod, "port"):
+        cv_mod.port = int
+    if not hasattr(cv_mod, "boolean"):
+        cv_mod.boolean = bool
+    if not hasattr(cv_mod, "time"):
+        cv_mod.time = str
+    helpers.config_validation = cv_mod
+
+    helpers_translation = sys.modules.get("homeassistant.helpers.translation")
+    if helpers_translation is None:
+        helpers_translation = types.ModuleType("homeassistant.helpers.translation")
+
+        async def async_get_translations(*args, **kwargs):  # pragma: no cover - stub
+            return {}
+
+        helpers_translation.async_get_translations = async_get_translations
+        sys.modules["homeassistant.helpers.translation"] = helpers_translation
+
+    helpers.translation = helpers_translation
 
     components_network = _ensure_module("homeassistant.components.network")
     if not hasattr(components_network, "async_get_source_ip"):
