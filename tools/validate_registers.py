@@ -96,7 +96,10 @@ def validate(path: Path) -> list[RegisterDefinition]:
 
     registers = _coerce_registers(registers)
     try:
-        parsed_list = RegisterList.model_validate(registers)
+        if hasattr(RegisterList, "model_validate"):
+            parsed_list = RegisterList.model_validate(registers)
+        else:
+            parsed_list = RegisterList.parse_obj(registers)
     except pydantic.ValidationError as err:
         raise ValueError(err) from err
 
@@ -163,7 +166,7 @@ def validate(path: Path) -> list[RegisterDefinition]:
         seen_pairs.add(pair)
         seen_names.add(reg.name)
 
-    return parsed_list.root
+    return parsed_list.registers
 
 
 def main(path: Path | None = None) -> int:
