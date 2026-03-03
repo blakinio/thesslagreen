@@ -191,6 +191,9 @@ class RegisterDef:
         if isinstance(raw, Sequence):
             raw = raw[0]
 
+        if self.name.startswith("dac_") and not (0 <= raw <= 4095):
+            return None
+
         if raw == 32768 and (self.function == 4 or self._is_temperature()):
             return None
 

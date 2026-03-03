@@ -32,6 +32,7 @@ sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_
 sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
 sys.modules.setdefault("homeassistant.util", ModuleType("homeassistant.util"))
 sys.modules.setdefault("homeassistant.util.network", ModuleType("homeassistant.util.network"))
+original_config_flow = sys.modules.get("custom_components.thessla_green_modbus.config_flow")
 config_flow_stub = ModuleType("custom_components.thessla_green_modbus.config_flow")
 config_flow_stub.CannotConnect = type("CannotConnect", (), {})
 sys.modules["custom_components.thessla_green_modbus.config_flow"] = config_flow_stub
@@ -48,6 +49,10 @@ if original_registers is not None:
 else:  # pragma: no cover - defensive
     sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
 sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
+if original_config_flow is not None:
+    sys.modules["custom_components.thessla_green_modbus.config_flow"] = original_config_flow
+else:  # pragma: no cover - defensive
+    sys.modules.pop("custom_components.thessla_green_modbus.config_flow", None)
 
 DOMAIN = "thessla_green_modbus"
 

@@ -795,31 +795,41 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                batch = getattr(coordinator, "effective_batch", 2)
-                chars_per_batch = batch * 2  # 2 bytes (chars) per register
-                failed = False
-                for i in range(0, len(device_name), chars_per_batch):
-                    chunk = device_name[i : i + chars_per_batch]
-                    reg_offset = i // 2  # register offset (2 chars per register)
+                # Device name register stores up to 8 words (16 chars). For full-length
+                # payloads delegate encoding/chunking to coordinator in a single call.
+                if len(device_name) >= 16:
                     try:
                         if not await coordinator.async_write_register(
-                            "device_name", chunk, refresh=False, offset=reg_offset
+                            "device_name", device_name, refresh=False
                         ):
                             _LOGGER.error("Failed to set device name for %s", entity_id)
+                            continue
+                    except (ModbusException, ConnectionException) as err:
+                        _LOGGER.error("Failed to set device name for %s: %s", entity_id, err)
+                        continue
+                else:
+                    batch = getattr(coordinator, "effective_batch", 2)
+                    chars_per_batch = batch * 2
+                    failed = False
+                    for i in range(0, len(device_name), chars_per_batch):
+                        chunk = device_name[i : i + chars_per_batch]
+                        reg_offset = i // 2
+                        try:
+                            if not await coordinator.async_write_register(
+                                "device_name", chunk, refresh=False, offset=reg_offset
+                            ):
+                                _LOGGER.error("Failed to set device name for %s", entity_id)
+                                failed = True
+                                break
+                        except (ModbusException, ConnectionException) as err:
+                            _LOGGER.error("Failed to set device name for %s: %s", entity_id, err)
                             failed = True
                             break
-                    except (ModbusException, ConnectionException) as err:
-                        _LOGGER.error(
-                            "Failed to set device name for %s: %s", entity_id, err
-                        )
-                        failed = True
-                        break
+                    if failed:
+                        continue
 
-                if not failed:
-                    await coordinator.async_request_refresh()
-                    _LOGGER.info(
-                        "Set device name to '%s' for %s", device_name, entity_id
-                    )
+                await coordinator.async_request_refresh()
+                _LOGGER.info("Set device name to '%s' for %s", device_name, entity_id)
 
     async def refresh_device_data(call: ServiceCall) -> None:
         """Service to refresh device data."""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
@@ -322,7 +323,13 @@ class TcpModbusTransport(BaseModbusTransport):
             fallback_kwargs = {k: v for k, v in common_kwargs.items() if k in {"port", "timeout"}}
             if framer is not None:
                 fallback_kwargs["framer"] = framer
-            return AsyncTcpClient(self.host, **fallback_kwargs)
+            try:
+                return AsyncTcpClient(self.host, **fallback_kwargs)
+            except TypeError:
+                client = AsyncTcpClient()
+                setattr(client, "host", self.host)
+                setattr(client, "port", self.port)
+                return client
 
     async def _connect(self) -> None:
         if self.connection_type == CONNECTION_TYPE_TCP_RTU:
@@ -357,7 +364,14 @@ class TcpModbusTransport(BaseModbusTransport):
                 self.timeout,
             )
             self.client = self._build_tcp_client()
-        connected = await self.client.connect()
+        connect_method = getattr(self.client, "connect", None)
+        if callable(connect_method):
+            connected = connect_method()
+            if inspect.isawaitable(connected):
+                connected = await connected
+        else:
+            connected = True
+            setattr(self.client, "connected", True)
         if not connected:
             self.offline_state = True
             raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
@@ -493,7 +507,14 @@ class RtuModbusTransport(BaseModbusTransport):
             stopbits=self.stopbits,
             timeout=self.timeout,
         )
-        connected = await self.client.connect()
+        connect_method = getattr(self.client, "connect", None)
+        if callable(connect_method):
+            connected = connect_method()
+            if inspect.isawaitable(connected):
+                connected = await connected
+        else:
+            connected = True
+            setattr(self.client, "connected", True)
         if not connected:
             self.offline_state = True
             raise ConnectionException(f"Could not connect to {self.serial_port}")

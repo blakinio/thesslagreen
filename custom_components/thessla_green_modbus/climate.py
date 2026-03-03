@@ -320,7 +320,8 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         _LOGGER.debug("Setting target temperature to %s°C", temperature)
 
-        if self.coordinator.data.get("mode") == 2:
+        coordinator_data = self.coordinator.data or {}
+        if coordinator_data.get("mode") == 2:
             success = await self.coordinator.async_write_temporary_temperature(
                 float(temperature), refresh=False
             )
