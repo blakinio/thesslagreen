@@ -70,6 +70,10 @@ from .modbus_exceptions import ConnectionException, ModbusException
 from .utils import resolve_connection_settings
 
 from homeassistant.helpers import entity_registry as er
+try:  # pragma: no cover - optional in tests
+    from homeassistant.helpers import entity_registry as er  # type: ignore
+except Exception:  # pragma: no cover
+    er = None  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -238,6 +242,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     # Create coordinator for managing device communication
     coordinator_mod = import_module(".coordinator", __name__)
+    coordinator_mod = hass.async_add_executor_job(import_module, ".coordinator", __name__)
+    if asyncio.iscoroutine(coordinator_mod):
+        coordinator_mod = await coordinator_mod
     ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
 
     coordinator_kwargs = {
@@ -288,6 +295,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     except asyncio.CancelledError:
         raise
     except Exception as exc:
+        setup_result = coordinator.async_setup()
+        if asyncio.iscoroutine(setup_result):
+            await setup_result
+    except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
         if is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during setup: %s", exc)
             await entry.async_start_reauth(hass)
@@ -307,6 +318,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     except asyncio.CancelledError:
         raise
     except Exception as exc:
+        refresh_result = coordinator.async_config_entry_first_refresh()
+        if asyncio.iscoroutine(refresh_result):
+            await refresh_result
+    except (TimeoutError, ConnectionException, ModbusException, UpdateFailed, OSError) as exc:
         if is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during initial refresh: %s", exc)
             await entry.async_start_reauth(hass)

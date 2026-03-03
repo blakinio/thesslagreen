@@ -487,6 +487,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         transport_method = getattr(transport, name, None) if transport is not None else None
         if callable(transport_method):
             return transport_method
+        """Return a Modbus client method or a no-op async placeholder."""
 
         client = self.client
         method = getattr(client, name, None) if client is not None else None
@@ -556,6 +557,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 last_error = exc
                 disconnect_cb = getattr(self, "_disconnect", None)
                 if self._transport is not None and callable(disconnect_cb):
+                    await disconnect_cb()
+                elif isinstance(exc, ConnectionException) and callable(disconnect_cb):
                     await disconnect_cb()
                 elif callable(disconnect_cb) and disconnect_cb.__class__.__name__ == "AsyncMock":
                     await disconnect_cb()
@@ -1705,6 +1708,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         except KeyError:
             _LOGGER.error("Unknown register name: %s", register_name)
             return False
+        definition = get_register_definition(register_name)
         if value == 32768 and definition._is_temperature():
             if _LOGGER.isEnabledFor(logging.DEBUG):
                 _LOGGER.debug(
@@ -1717,6 +1721,11 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         if definition._is_temperature() and isinstance(raw_value, int) and raw_value > 32767:
             raw_value -= 65536
         decoded = definition.decode(raw_value)
+
+        if value == SENSOR_UNAVAILABLE and register_name in SENSOR_UNAVAILABLE_REGISTERS:
+            if "temperature" in register_name:
+                return None
+            return SENSOR_UNAVAILABLE
 
         if value == SENSOR_UNAVAILABLE and register_name in SENSOR_UNAVAILABLE_REGISTERS:
             if "temperature" in register_name:
@@ -2134,6 +2143,19 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                         values=[int(v) for v in chunk],
                                         attempt=attempt,
                                     )
+                                else:
+                                    if self._transport is None and self.client is not None:
+                                        response = await self.client.write_registers(
+                                            address=chunk_start,
+                                            values=[int(v) for v in chunk],
+                                        )
+                                    else:
+                                        response = await self._call_modbus(
+                                            self._get_client_method("write_registers"),
+                                            chunk_start,
+                                            values=[int(v) for v in chunk],
+                                            attempt=attempt,
+                                        )
                                 if response is None or response.isError():
                                     success = False
                                     break

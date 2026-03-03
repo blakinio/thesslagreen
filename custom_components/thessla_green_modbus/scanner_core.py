@@ -194,6 +194,7 @@ async def _sleep_retry_backoff(
     else:
         # Keep a cancellation yield point even when backoff is disabled.
         await asyncio.sleep(0)
+        await _mh.asyncio.sleep(delay)
 
 
 
@@ -1023,6 +1024,7 @@ class ThesslaGreenDeviceScanner:
             if self._client is None:
                 raise ConnectionException("Transport not connected")
         elif not transport.is_connected() and self._client is None:
+        elif not transport.is_connected():
             raise ConnectionException("Transport not connected")
 
         device = ScannerDeviceInfo()
@@ -1253,6 +1255,7 @@ class ThesslaGreenDeviceScanner:
             ):
                 scanned_registers["coil_registers"] += count
                 coil_data = await self._read_coil(self._client, start, count) if self._client is not None else await self._read_coil(None, start, count)
+                coil_data = await self._read_coil(self._client, start, count) if self._client is not None else await self._read_coil(start, count)
                 if coil_data is None:
                     self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
                         range(start, start + count)
@@ -1274,6 +1277,7 @@ class ThesslaGreenDeviceScanner:
             ):
                 scanned_registers["discrete_inputs"] += count
                 discrete_data = await self._read_discrete(self._client, start, count) if self._client is not None else await self._read_discrete(None, start, count)
+                discrete_data = await self._read_discrete(self._client, start, count) if self._client is not None else await self._read_discrete(start, count)
                 if discrete_data is None:
                     self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
                         range(start, start + count)
@@ -1306,6 +1310,7 @@ class ThesslaGreenDeviceScanner:
                 except TypeError:
                     input_data = await self._read_input(start, count)
 
+                input_data = await self._read_input(self._client, start, count) if self._client is not None else await self._read_input(start, count)
                 if input_data is None:
                     self.failed_addresses["modbus_exceptions"]["input_registers"].update(
                         range(start, start + count)
@@ -1368,6 +1373,7 @@ class ThesslaGreenDeviceScanner:
                 except TypeError:
                     holding_data = await self._read_holding(start, count)
 
+                holding_data = await self._read_holding(self._client, start, count) if self._client is not None else await self._read_holding(start, count)
                 if holding_data is None:
                     self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
                         range(start, start + count)
@@ -1424,6 +1430,7 @@ class ThesslaGreenDeviceScanner:
 
             for start, count in self._group_registers_for_batch_read(coil_addresses):
                 coil_data = await self._read_coil(self._client, start, count) if self._client is not None else await self._read_coil(None, start, count)
+                coil_data = await self._read_coil(self._client, start, count) if self._client is not None else await self._read_coil(start, count)
                 if coil_data is None:
                     self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
                         range(start, start + count)
@@ -1451,6 +1458,7 @@ class ThesslaGreenDeviceScanner:
 
             for start, count in self._group_registers_for_batch_read(discrete_addresses):
                 discrete_data = await self._read_discrete(self._client, start, count) if self._client is not None else await self._read_discrete(None, start, count)
+                discrete_data = await self._read_discrete(self._client, start, count) if self._client is not None else await self._read_discrete(start, count)
                 if discrete_data is None:
                     self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
                         range(start, start + count)
@@ -1983,6 +1991,8 @@ class ThesslaGreenDeviceScanner:
                         self._failed_input.add(address)
                         self.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
                         _LOGGER.warning("Device does not expose register %d", address)
+
+            await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
 
             await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
 
