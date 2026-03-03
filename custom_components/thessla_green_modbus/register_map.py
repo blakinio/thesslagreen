@@ -67,8 +67,8 @@ class RegisterMapEntry:
 
         expected = self.data_type
         if self.entity_domain in {"binary_sensor", "switch"}:
-            # Bitmask registers keep their type; all others (including enum) become bool.
-            if expected != "bitmask":
+            # Bitmask/enum registers keep their native type; others become bool.
+            if expected not in {"bitmask", "enum"}:
                 expected = "bool"
 
         if expected == "enum":

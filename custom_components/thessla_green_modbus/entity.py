@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers import update_coordinator as update_coordinator_helper
+
+CoordinatorEntity = getattr(update_coordinator_helper, "CoordinatorEntity", object)
 
 from .const import device_unique_id_prefix
 from .coordinator import ThesslaGreenModbusCoordinator
 
 
-class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
+class ThesslaGreenEntity(CoordinatorEntity):
     """Base entity for ThesslaGreen devices."""
 
     _attr_has_entity_name = True
@@ -22,7 +24,14 @@ class ThesslaGreenEntity(CoordinatorEntity[ThesslaGreenModbusCoordinator]):
         bit: int | None = None,
     ) -> None:
         """Initialize the entity."""
-        super().__init__(coordinator)
+        try:
+            super().__init__(coordinator)
+        except TypeError:
+            try:
+                super().__init__()
+            except TypeError:
+                pass
+            self.coordinator = coordinator
         self._key = key
         self._address = address
         self._bit = bit

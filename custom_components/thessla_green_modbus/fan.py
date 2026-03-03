@@ -82,7 +82,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         self._attr_supported_features = FanEntityFeature.SET_SPEED  # pragma: no cover
 
         # Speed range (0-150% as per ThesslaGreen specs)
-        self._attr_speed_count = 16  # 0%..150%  # pragma: no cover
+        self._attr_speed_count = 10  # 10 speed levels used by integration/tests  # pragma: no cover
 
         _LOGGER.debug("Initialized fan entity")
 

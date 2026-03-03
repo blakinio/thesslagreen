@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import dataclasses
 import ipaddress
 import logging
@@ -81,6 +82,32 @@ from .utils import resolve_connection_settings
 _LOGGER = logging.getLogger(__name__)
 
 
+class _FallbackFlowBase:
+    """Fallback flow base for minimal test environments."""
+
+    def __init_subclass__(cls, **kwargs):
+        return None
+
+    async def async_set_unique_id(self, *args, **kwargs):
+        return None
+
+    def _abort_if_unique_id_configured(self):
+        return None
+
+    def async_show_form(self, **kwargs):
+        return {"type": "form", **kwargs}
+
+    def async_create_entry(self, **kwargs):
+        return {"type": "create_entry", **kwargs}
+
+    def async_abort(self, **kwargs):
+        return {"type": "abort", **kwargs}
+
+
+_BASE_CONFIG_FLOW = getattr(config_entries, "ConfigFlow", _FallbackFlowBase)
+_BASE_OPTIONS_FLOW = getattr(config_entries, "OptionsFlow", _FallbackFlowBase)
+
+
 def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
     """Return True when a modbus IO error indicates a cancelled request."""
     message = str(exc).lower()
@@ -93,6 +120,50 @@ DeviceCapabilities: Any | None = None
 # Delay between retries when establishing the connection during the config flow.
 # Uses exponential backoff: ``backoff * 2 ** (attempt-1)``.
 CONFIG_FLOW_BACKOFF = 0.1
+
+
+
+
+
+
+class _VolInvalid(Exception):
+    """Fallback voluptuous Invalid-like exception."""
+
+    def __init__(self, error_message: str, path: list[str] | None = None) -> None:
+        super().__init__(error_message)
+        self.error_message = error_message
+        self.path = path or []
+
+
+VOL_INVALID = getattr(vol, "Invalid", _VolInvalid)
+if not hasattr(vol, "Invalid"):
+    setattr(vol, "Invalid", VOL_INVALID)
+
+
+def _schema(definition: Any) -> Any:
+    """Create voluptuous schema with `.schema` compatibility for tests."""
+    schema_obj = vol.Schema(definition)
+    if not hasattr(schema_obj, "schema"):
+        setattr(schema_obj, "schema", definition)
+    return schema_obj
+
+def _required(schema: Any, **kwargs: Any) -> Any:
+    """Compat wrapper for voluptuous.Required across test stubs."""
+    try:
+        return vol.Required(schema, **kwargs)
+    except TypeError:
+        msg = kwargs.get("msg")
+        default = kwargs.get("default", ...)
+        description = kwargs.get("description")
+        try:
+            return vol.Required(schema, msg, default, description)
+        except TypeError:
+            if default is not ...:
+                try:
+                    return vol.Required(schema, default=default)
+                except TypeError:
+                    return vol.Required(schema)
+            return vol.Required(schema)
 
 
 def _strip_translation_prefix(value: str) -> str:
@@ -240,7 +311,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         CONNECTION_TYPE_TCP_RTU,
         CONNECTION_TYPE_RTU,
     ):
-        raise vol.Invalid("invalid_transport", path=[CONF_CONNECTION_TYPE])
+        raise VOL_INVALID("invalid_transport", path=[CONF_CONNECTION_TYPE])
 
     # Normalize: TCP_RTU is stored as TCP + connection_mode=TCP_RTU
     if connection_type == CONNECTION_TYPE_TCP_RTU:
@@ -259,11 +330,11 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     try:
         slave_id = int(data[CONF_SLAVE_ID])
     except (KeyError, TypeError, ValueError) as exc:
-        raise vol.Invalid("invalid_slave", path=[CONF_SLAVE_ID]) from exc
+        raise VOL_INVALID("invalid_slave", path=[CONF_SLAVE_ID]) from exc
     if slave_id < 1:
-        raise vol.Invalid("invalid_slave_low", path=[CONF_SLAVE_ID])
+        raise VOL_INVALID("invalid_slave_low", path=[CONF_SLAVE_ID])
     if slave_id > 247:
-        raise vol.Invalid("invalid_slave_high", path=[CONF_SLAVE_ID])
+        raise VOL_INVALID("invalid_slave_high", path=[CONF_SLAVE_ID])
     data[CONF_SLAVE_ID] = slave_id
 
     name = data.get(CONF_NAME, DEFAULT_NAME)
@@ -278,12 +349,12 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         try:
             port = int(port_raw)
         except (TypeError, ValueError) as exc:
-            raise vol.Invalid("invalid_port", path=[CONF_PORT]) from exc
+            raise VOL_INVALID("invalid_port", path=[CONF_PORT]) from exc
         if not host:
-            raise vol.Invalid("missing_host", path=[CONF_HOST])
+            raise VOL_INVALID("missing_host", path=[CONF_HOST])
         data[CONF_HOST] = host
         if not 1 <= port <= 65535:
-            raise vol.Invalid("invalid_port", path=[CONF_PORT])
+            raise VOL_INVALID("invalid_port", path=[CONF_PORT])
         data[CONF_PORT] = port
 
         # Validate host is either an IP address or a valid hostname
@@ -291,9 +362,9 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
             ipaddress.ip_address(host)
         except ValueError:
             if not _looks_like_hostname(host):
-                raise vol.Invalid("invalid_host", path=[CONF_HOST]) from None
+                raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
             if not is_host_valid(host):
-                raise vol.Invalid("invalid_host", path=[CONF_HOST]) from None
+                raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
 
         data.pop(CONF_SERIAL_PORT, None)
         data.pop(CONF_BAUD_RATE, None)
@@ -303,25 +374,25 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     else:
         serial_port = str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT) or "").strip()
         if not serial_port:
-            raise vol.Invalid("invalid_serial_port", path=[CONF_SERIAL_PORT])
+            raise VOL_INVALID("invalid_serial_port", path=[CONF_SERIAL_PORT])
         data[CONF_SERIAL_PORT] = serial_port
 
         try:
             baud_rate = _normalize_baud_rate(data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE))
         except ValueError as err:
-            raise vol.Invalid("invalid_baud_rate", path=[CONF_BAUD_RATE]) from err
+            raise VOL_INVALID("invalid_baud_rate", path=[CONF_BAUD_RATE]) from err
         data[CONF_BAUD_RATE] = baud_rate
 
         try:
             parity = _normalize_parity(data.get(CONF_PARITY, DEFAULT_PARITY))
         except ValueError as err:
-            raise vol.Invalid("invalid_parity", path=[CONF_PARITY]) from err
+            raise VOL_INVALID("invalid_parity", path=[CONF_PARITY]) from err
         data[CONF_PARITY] = parity
 
         try:
             stop_bits = _normalize_stop_bits(data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS))
         except ValueError as err:
-            raise vol.Invalid("invalid_stop_bits", path=[CONF_STOP_BITS]) from err
+            raise VOL_INVALID("invalid_stop_bits", path=[CONF_STOP_BITS]) from err
         data[CONF_STOP_BITS] = stop_bits
 
         data.pop(CONF_HOST, None)
@@ -330,7 +401,8 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     import_func: Callable[..., Awaitable[Any]]
     import_func = hass.async_add_executor_job if hass else asyncio.to_thread
 
-    module = await import_func(import_module, "custom_components.thessla_green_modbus.scanner_core")
+    module_result = import_func(import_module, "custom_components.thessla_green_modbus.scanner_core")
+    module = await module_result if inspect.isawaitable(module_result) else module_result
     scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
     capabilities_cls = DeviceCapabilities or module.DeviceCapabilities
 
@@ -387,7 +459,11 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
                 _LOGGER.error("Capabilities missing required fields: %s", err)
                 raise CannotConnect("invalid_capabilities") from err
             if isinstance(caps_obj, capabilities_cls):
-                required_fields = {field.name for field in dataclasses.fields(capabilities_cls)}
+                required_fields = {
+                    field.name
+                    for field in dataclasses.fields(capabilities_cls)
+                    if not field.name.startswith("_")
+                }
                 missing = [f for f in required_fields if f not in caps_dict]
                 if missing:
                     _LOGGER.error("Capabilities missing required fields: %s", set(missing))
@@ -456,7 +532,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
             await scanner.close()
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
+class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for ThesslaGreen Modbus."""
 
     VERSION = 4  # pragma: no cover
@@ -468,6 +544,39 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         self._scan_result: dict[str, Any] = {}
         self._tg_flow_reauth_entry_id: str | None = None
         self._tg_flow_reauth_existing_data: dict[str, Any] = {}
+
+    async def async_set_unique_id(self, *args, **kwargs):
+        base = getattr(super(), "async_set_unique_id", None)
+        if callable(base):
+            result = base(*args, **kwargs)
+            if asyncio.iscoroutine(result):
+                return await result
+            return result
+        return None
+
+    def _abort_if_unique_id_configured(self):
+        base = getattr(super(), "_abort_if_unique_id_configured", None)
+        if callable(base):
+            return base()
+        return None
+
+    def async_show_form(self, **kwargs):
+        base = getattr(super(), "async_show_form", None)
+        if callable(base):
+            return base(**kwargs)
+        return {"type": "form", **kwargs}
+
+    def async_create_entry(self, **kwargs):
+        base = getattr(super(), "async_create_entry", None)
+        if callable(base):
+            return base(**kwargs)
+        return {"type": "create_entry", **kwargs}
+
+    def async_abort(self, **kwargs):
+        base = getattr(super(), "async_abort", None)
+        if callable(base):
+            return base(**kwargs)
+        return {"type": "abort", **kwargs}
 
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
         """Return schema for connection details with provided defaults."""
@@ -540,7 +649,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
         data_schema: dict[Any, Any] = {
-            vol.Required(
+            _required(
                 CONF_CONNECTION_TYPE,
                 default=connection_default,
                 description={
@@ -564,7 +673,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     }
                 },
             ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
-            vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
+            _required(CONF_SLAVE_ID, default=slave_default): vol.All(
                 vol.Coerce(int), vol.Range(min=1, max=247)
             ),
             vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
@@ -589,8 +698,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         if connection_default in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
             data_schema.update(
                 {
-                    vol.Required(CONF_HOST, default=host_default): str,
-                    vol.Required(CONF_PORT, default=port_default): vol.All(
+                    _required(CONF_HOST, default=host_default): str,
+                    _required(CONF_PORT, default=port_default): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=65535)
                     ),
                 }
@@ -598,14 +707,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         else:
             data_schema.update(
                 {
-                    vol.Required(CONF_SERIAL_PORT, default=serial_port_default): str,
-                    vol.Required(CONF_BAUD_RATE, default=baud_default): baud_validator,
-                    vol.Required(CONF_PARITY, default=parity_default): parity_validator,
-                    vol.Required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
+                    _required(CONF_SERIAL_PORT, default=serial_port_default): str,
+                    _required(CONF_BAUD_RATE, default=baud_default): baud_validator,
+                    _required(CONF_PARITY, default=parity_default): parity_validator,
+                    _required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
                 }
             )
 
-        return vol.Schema(data_schema)
+        return _schema(data_schema)
 
     @staticmethod
     def _build_unique_id(data: dict[str, Any]) -> str:
@@ -819,7 +928,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
                 )
                 if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
+                    raise VOL_INVALID("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
                 info = await validate_input(self.hass, user_input)
 
@@ -833,7 +942,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 errors["base"] = exc.args[0] if exc.args else "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except vol.Invalid as err:
+            except VOL_INVALID as err:
                 _LOGGER.error(
                     "Invalid input for %s: %s",
                     err.path[0] if err.path else "unknown",
@@ -888,7 +997,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
                 )
                 if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise vol.Invalid("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
+                    raise VOL_INVALID("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
 
                 info = await validate_input(self.hass, user_input)
                 self._data = user_input
@@ -900,7 +1009,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 errors["base"] = exc.args[0] if exc.args else "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except vol.Invalid as err:
+            except VOL_INVALID as err:
                 _LOGGER.error(
                     "Invalid input for %s: %s",
                     err.path[0] if err.path else "unknown",
@@ -933,15 +1042,21 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
-            if self.hass is None or self._tg_flow_reauth_entry_id is None:
+            reauth_entry_id = self._tg_flow_reauth_entry_id or getattr(
+                self, "_tg_reauth_entry_id", None
+            )
+            if self.hass is None:
                 _LOGGER.error("Cannot complete reauth - missing Home Assistant context")
                 return self.async_abort(reason="reauth_failed")
+            if reauth_entry_id is None:
+                _LOGGER.error("Cannot complete reauth - missing entry id")
+                return self.async_abort(reason="reauth_entry_missing")
 
-            entry = self.hass.config_entries.async_get_entry(self._tg_flow_reauth_entry_id)
+            entry = self.hass.config_entries.async_get_entry(reauth_entry_id)
             if entry is None:
                 _LOGGER.error(
                     "Reauthentication requested for missing entry %s",
-                    self._tg_flow_reauth_entry_id,
+                    reauth_entry_id,
                 )
                 return self.async_abort(reason="reauth_entry_missing")
 
@@ -962,12 +1077,30 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         return OptionsFlow(config_entry)
 
 
-class OptionsFlow(config_entries.OptionsFlow):
+class OptionsFlow(_BASE_OPTIONS_FLOW):
     """Handle options flow for ThesslaGreen Modbus."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
+
+    def async_show_form(self, **kwargs):
+        base = getattr(super(), "async_show_form", None)
+        if callable(base):
+            return base(**kwargs)
+        return {"type": "form", **kwargs}
+
+    def async_create_entry(self, **kwargs):
+        base = getattr(super(), "async_create_entry", None)
+        if callable(base):
+            return base(**kwargs)
+        return {"type": "create_entry", **kwargs}
+
+    def async_abort(self, **kwargs):
+        base = getattr(super(), "async_abort", None)
+        if callable(base):
+            return base(**kwargs)
+        return {"type": "abort", **kwargs}
 
     async def async_step_init(  # pragma: no cover
         self, user_input: dict[str, Any] | None = None
@@ -1036,7 +1169,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 transport_label = "Modbus TCP (Auto)"
             transport_details = ""
 
-        data_schema = vol.Schema(
+        data_schema = _schema(
             {
                 vol.Optional(CONF_SCAN_INTERVAL, default=current_scan_interval): vol.All(
                     vol.Coerce(int), vol.Range(min=10, max=300)
