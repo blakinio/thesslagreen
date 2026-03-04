@@ -121,7 +121,7 @@ class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
 
 
 coordinator_module.ThesslaGreenModbusCoordinator = ThesslaGreenModbusCoordinator
-sys.modules["custom_components.thessla_green_modbus.coordinator"] = coordinator_module
+sys.modules.setdefault("custom_components.thessla_green_modbus.coordinator", coordinator_module)
 
 helpers_uc = sys.modules.setdefault(
     "homeassistant.helpers.update_coordinator",

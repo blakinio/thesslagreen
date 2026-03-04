@@ -133,6 +133,19 @@ try:
 except TypeError:  # pragma: no cover - non-generic test stubs
     COORDINATOR_BASE = DataUpdateCoordinator
 
+
+
+def _update_failed_exception(message: str) -> Exception:
+    """Return UpdateFailed instance from current HA helper module."""
+
+    try:
+        mod = import_module("homeassistant.helpers.update_coordinator")
+        cls = getattr(mod, "UpdateFailed", UpdateFailed)
+    except Exception:
+        cls = UpdateFailed
+    return cls(message)
+
+
 from .const import (
     CONF_ENABLE_DEVICE_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
@@ -1259,6 +1272,17 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         async with self._client_lock:
             if self._transport is not None and self._transport.is_connected():
                 return
+            if self._transport is None and self.client is not None:
+                if bool(getattr(self.client, "connected", False)):
+                    return
+                connect_method = getattr(self.client, "connect", None)
+                if callable(connect_method):
+                    connect_result = connect_method()
+                    if inspect.isawaitable(connect_result):
+                        connect_result = await connect_result
+                    if bool(connect_result) or bool(getattr(self.client, "connected", False)):
+                        setattr(self.client, "connected", True)
+                        return
             if self._transport is not None or self.client is not None:
                 await self._disconnect_locked()
 
@@ -1384,7 +1408,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     self._trigger_reauth("invalid_auth")
 
                 _LOGGER.error("Failed to update data: %s", exc)
-                raise UpdateFailed(f"Error communicating with device: {exc}") from exc
+                raise _update_failed_exception(f"Error communicating with device: {exc}") from exc
             except TimeoutError as exc:
                 self.statistics["failed_reads"] += 1
                 self.statistics["timeout_errors"] += 1
@@ -1398,7 +1422,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     self._trigger_reauth("timeout")
 
                 _LOGGER.warning("Data update timed out: %s", exc)
-                raise UpdateFailed(f"Timeout during data update: {exc}") from exc
+                raise _update_failed_exception(f"Timeout during data update: {exc}") from exc
             except (OSError, ValueError) as exc:
                 self.statistics["failed_reads"] += 1
                 self.statistics["last_error"] = str(exc)

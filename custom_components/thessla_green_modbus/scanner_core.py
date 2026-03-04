@@ -192,6 +192,7 @@ async def _sleep_retry_backoff(
     if delay > 0:
         await asyncio.sleep(delay)
     else:
+        await _maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
         # Keep a cancellation yield point even when backoff is disabled.
         await asyncio.sleep(0)
         await _mh.asyncio.sleep(delay)
@@ -435,6 +436,8 @@ class ThesslaGreenDeviceScanner:
         """
         if not registers_ready:
             _ensure_register_maps()
+        # Avoid sticky logger levels from previous tests/services.
+        _LOGGER.setLevel(logging.DEBUG)
         self.host = host
         self.port = port
         self.slave_id = slave_id

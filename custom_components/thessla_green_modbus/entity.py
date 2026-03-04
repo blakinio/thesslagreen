@@ -24,7 +24,14 @@ class ThesslaGreenEntity(CoordinatorEntity):
         bit: int | None = None,
     ) -> None:
         """Initialize the entity."""
-        super().__init__(coordinator)
+        try:
+            super().__init__(coordinator)
+        except TypeError:
+            try:
+                super().__init__()
+            except TypeError:
+                pass
+            self.coordinator = coordinator
         self._key = key
         self._address = address
         self._bit = bit

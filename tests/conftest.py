@@ -493,6 +493,9 @@ def _ensure_homeassistant_modules() -> None:
         helpers_script._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
     helpers.script = helpers_script
 
+    entity_registry_mod = _ensure_module("homeassistant.helpers.entity_registry")
+    helpers.entity_registry = entity_registry_mod
+
     cv_mod = _ensure_module("homeassistant.helpers.config_validation")
     if not hasattr(cv_mod, "entity_ids"):
         cv_mod.entity_ids = list
@@ -518,6 +521,11 @@ def _ensure_homeassistant_modules() -> None:
 
     helpers.translation = helpers_translation
 
+    components_climate = _ensure_module("homeassistant.components.climate")
+    if not hasattr(components_climate, "PRESET_ECO"):
+        components_climate.PRESET_ECO = "eco"
+    components.climate = components_climate
+
     components_network = _ensure_module("homeassistant.components.network")
     if not hasattr(components_network, "async_get_source_ip"):
         async def async_get_source_ip(*_args, **_kwargs):  # pragma: no cover - stub
@@ -525,6 +533,31 @@ def _ensure_homeassistant_modules() -> None:
 
         components_network.async_get_source_ip = async_get_source_ip
     components.network = components_network
+
+    pymodbus_client_mod = sys.modules.get("pymodbus.client")
+    if pymodbus_client_mod is not None:
+        client_cls = getattr(pymodbus_client_mod, "AsyncModbusTcpClient", None)
+        if client_cls is not None:
+            if not hasattr(client_cls, "read_input_registers"):
+                async def _read_input_registers(self, *_args, **_kwargs):
+                    return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+                client_cls.read_input_registers = _read_input_registers
+            if not hasattr(client_cls, "read_holding_registers"):
+                async def _read_holding_registers(self, *_args, **_kwargs):
+                    return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+                client_cls.read_holding_registers = _read_holding_registers
+            if not hasattr(client_cls, "read_coils"):
+                async def _read_coils(self, *_args, **_kwargs):
+                    return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+                client_cls.read_coils = _read_coils
+            if not hasattr(client_cls, "read_discrete_inputs"):
+                async def _read_discrete_inputs(self, *_args, **_kwargs):
+                    return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+                client_cls.read_discrete_inputs = _read_discrete_inputs
+            if not hasattr(client_cls, "write_register"):
+                async def _write_register(self, *_args, **_kwargs):
+                    return type("Resp", (), {"isError": lambda self: False})()
+                client_cls.write_register = _write_register
 
 
 import custom_components.thessla_green_modbus.registers.loader  # noqa: F401,E402
@@ -547,6 +580,31 @@ if helpers_uc is not None and not hasattr(helpers_uc, "CoordinatorEntity"):
 ha_const = sys.modules.get("homeassistant.const")
 if ha_const is not None and not hasattr(ha_const, "PERCENTAGE"):
     ha_const.PERCENTAGE = "%"
+
+def _restore_integration_modules() -> None:
+    """Restore integration modules if tests monkeypatch core classes globally."""
+
+    module_name = "custom_components.thessla_green_modbus.coordinator"
+    mod = sys.modules.get(module_name)
+    if mod is not None:
+        mod_file = getattr(mod, "__file__", "") or ""
+        coordinator_cls = getattr(mod, "ThesslaGreenModbusCoordinator", None)
+        cls_mod = getattr(coordinator_cls, "__module__", "")
+        if not mod_file or cls_mod.startswith("tests."):
+            sys.modules.pop(module_name, None)
+
+    try:
+        importlib.import_module(module_name)
+    except Exception:
+        return
+
+    helpers_mod = sys.modules.get("homeassistant.helpers")
+    entity_registry_mod = sys.modules.get("homeassistant.helpers.entity_registry")
+    if helpers_mod is not None and entity_registry_mod is not None and not hasattr(helpers_mod, "entity_registry"):
+        helpers_mod.entity_registry = entity_registry_mod
+
+
+_restore_integration_modules()
 
 DOMAIN = "thessla_green_modbus"
 
