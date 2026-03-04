@@ -306,11 +306,22 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         else:
             # Turn on device first and capture result
             power_on_success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+            success = await self.coordinator.async_write_register(
+                "on_off_panel_mode", 0, refresh=False, offset=0
+            )
+        else:
+            # Turn on device first and capture result
+            power_on_success = await self.coordinator.async_write_register(
+                "on_off_panel_mode", 1, refresh=False, offset=0
+            )
 
             # Retry once if power on failed
             if not power_on_success:
                 _LOGGER.warning("Power-on failed when setting HVAC mode to %s, retrying", hvac_mode)
                 power_on_success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+                power_on_success = await self.coordinator.async_write_register(
+                    "on_off_panel_mode", 1, refresh=False, offset=0
+                )
 
             if not power_on_success:
                 _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
@@ -320,6 +331,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
             if "mode" in self.coordinator.get_register_map("holding_registers"):
                 success = await self._write_register_compat("mode", device_mode, refresh=False)
+                success = await self.coordinator.async_write_register(
+                    "mode", device_mode, refresh=False, offset=0
+                )
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -353,6 +367,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         if success:
             success = await self._write_register_compat("required_temperature", temperature, refresh=False)
+            success = await self.coordinator.async_write_register(
+                "required_temperature", temperature, refresh=False, offset=0
+            )
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -370,6 +387,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             min_pct, max_pct = self._percentage_limits()
             airflow = max(min_pct, min(max_pct, airflow))
             success = await self._write_register_compat("air_flow_rate_manual", airflow, refresh=False)
+            success = await self.coordinator.async_write_register(
+                "air_flow_rate_manual", airflow, refresh=False, offset=0
+            )
 
             if success:
                 await self.coordinator.async_request_refresh()
@@ -391,6 +411,10 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
         success = await self._write_register_compat("special_mode", special_mode_value, refresh=False)
+        await self.coordinator.async_write_register("on_off_panel_mode", 1, refresh=False, offset=0)
+        success = await self.coordinator.async_write_register(
+            "special_mode", special_mode_value, refresh=False, offset=0
+        )
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -401,6 +425,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         """Turn the climate entity on."""
         _LOGGER.debug("Turning on climate entity")
         success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+        success = await self.coordinator.async_write_register("on_off_panel_mode", 1, refresh=False, offset=0)
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -411,6 +436,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         """Turn the climate entity off."""
         _LOGGER.debug("Turning off climate entity")
         success = await self._write_register_compat("on_off_panel_mode", 0, refresh=False)
+        success = await self.coordinator.async_write_register("on_off_panel_mode", 0, refresh=False, offset=0)
 
         if success:
             await self.coordinator.async_request_refresh()
