@@ -131,58 +131,58 @@
         "name": "Pompa nagrzewnicy kanałowej"
       },
       "e_100": {
-        "name": "Awaria czujnika TZ1"
+        "name": "E100: Awaria czujnika TZ1"
       },
       "e_101": {
-        "name": "Awaria czujnika TN1"
+        "name": "E101: Awaria czujnika TN1"
       },
       "e_102": {
-        "name": "Awaria czujnika TP"
+        "name": "E102: Awaria czujnika TP"
       },
       "e_103": {
-        "name": "Awaria czujnika TZ2"
+        "name": "E103: Awaria czujnika TZ2"
       },
       "e_104": {
-        "name": "Awaria czujnika TO"
+        "name": "E104: Awaria czujnika TO"
       },
       "e_105": {
-        "name": "Awaria czujnika TN2"
+        "name": "E105: Awaria czujnika TN2"
       },
       "e_106": {
-        "name": "Awaria czujnika TZ3"
+        "name": "E106: Awaria czujnika TZ3"
       },
       "e_138": {
-        "name": "Awaria czujnika CF (nawiew)"
+        "name": "E138: Awaria czujnika CF (nawiew)"
       },
       "e_139": {
-        "name": "Awaria czujnika CF (wywiew)"
+        "name": "E139: Awaria czujnika CF (wywiew)"
       },
       "e_152": {
-        "name": "Temperatura wywiewu zbyt wysoka"
+        "name": "E152: Temperatura wywiewu zbyt wysoka"
       },
       "e_196_e_199": {
         "name": "Flagi błędów E196–E199"
       },
       "e_200": {
-        "name": "Ochrona termiczna nagrzewnicy (centrala)"
+        "name": "E200: Ochrona termiczna nagrzewnicy (centrala)"
       },
       "e_201": {
-        "name": "Ochrona termiczna nagrzewnicy (kanał)"
+        "name": "E201: Ochrona termiczna nagrzewnicy (kanał)"
       },
       "e_249": {
-        "name": "Brak komunikacji z modułem Expansion"
+        "name": "E249: Brak komunikacji z modułem Expansion"
       },
       "e_250": {
-        "name": "Wymagana wymiana filtrów (bez presostatu)"
+        "name": "E250: Wymagana wymiana filtrów (bez presostatu)"
       },
       "e_251": {
-        "name": "Wymagana wymiana filtra kanałowego"
+        "name": "E251: Wymagana wymiana filtra kanałowego"
       },
       "e_252": {
-        "name": "Wymagana wymiana filtrów (z presostarem)"
+        "name": "E252: Wymagana wymiana filtrów (z presostarem)"
       },
       "e_99": {
-        "name": "Wymagany klucz produktu AirPack"
+        "name": "E99: Wymagany klucz produktu AirPack"
       },
       "empty_house": {
         "name": "Pusty dom"
@@ -227,70 +227,70 @@
         "name": "Zasilanie wentylatorów"
       },
       "s_10": {
-        "name": "Czujnik PPOŻ zadziałał"
+        "name": "S10: Czujnik PPOŻ zadziałał"
       },
       "s_13": {
-        "name": "Centrala zatrzymana (panel Air+/AirL+)"
+        "name": "S13: Centrala zatrzymana (panel Air+/AirL+)"
       },
       "s_14": {
-        "name": "Ochrona przeciwzamrożeniowa nagrzewnicy (limit)"
+        "name": "S14: Ochrona przeciwzamrożeniowa nagrzewnicy (limit)"
       },
       "s_15": {
-        "name": "Ochrona przeciwzamrożeniowa nagrzewnicy nieskuteczna"
+        "name": "S15: Ochrona przeciwzamrożeniowa nagrzewnicy nieskuteczna"
       },
       "s_16": {
-        "name": "Ochrona termiczna nagrzewnicy el. (FPX aktywny)"
+        "name": "S16: Ochrona termiczna nagrzewnicy el. (FPX aktywny)"
       },
       "s_17": {
-        "name": "Filtry niezmienione (z presostarem)"
+        "name": "S17: Filtry niezmienione (z presostarem)"
       },
       "s_19": {
-        "name": "Filtry niezmienione (bez presostatu)"
+        "name": "S19: Filtry niezmienione (bez presostatu)"
       },
       "s_2": {
-        "name": "Błąd komunikacji I2C"
+        "name": "S2: Błąd komunikacji I2C"
       },
       "s_20": {
-        "name": "Filtr kanałowy niezmieniony"
+        "name": "S20: Filtr kanałowy niezmieniony"
       },
       "s_22": {
-        "name": "FPX nie zadziałało"
+        "name": "S22: FPX nie zadziałało"
       },
       "s_23": {
-        "name": "Czujnik wlotu do rekuperatora uszkodzony (FPX)"
+        "name": "S23: Czujnik wlotu do rekuperatora uszkodzony (FPX)"
       },
       "s_24": {
-        "name": "Czujnik kanału nawiewnego uszkodzony"
+        "name": "S24: Czujnik kanału nawiewnego uszkodzony"
       },
       "s_25": {
-        "name": "Czujnik temperatury zewnętrznej uszkodzony"
+        "name": "S25: Czujnik temperatury zewnętrznej uszkodzony"
       },
       "s_26": {
-        "name": "Czujniki temp. zewn. i GWC uszkodzone"
+        "name": "S26: Czujniki temp. zewn. i GWC uszkodzone"
       },
       "s_29": {
-        "name": "Temperatura przed rekuperatorem zbyt wysoka"
+        "name": "S29: Temperatura przed rekuperatorem zbyt wysoka"
       },
       "s_30": {
-        "name": "Wentylator nawiewny nie działa"
+        "name": "S30: Wentylator nawiewny nie działa"
       },
       "s_31": {
-        "name": "Wentylator wywiewny nie działa"
+        "name": "S31: Wentylator wywiewny nie działa"
       },
       "s_32": {
-        "name": "Brak komunikacji z modułem TG-02"
+        "name": "S32: Brak komunikacji z modułem TG-02"
       },
       "s_6": {
-        "name": "Zabezpieczenie termiczne FPX (limit)"
+        "name": "S6: Zabezpieczenie termiczne FPX (limit)"
       },
       "s_7": {
-        "name": "Brak możliwości kalibracji (niska temp. zewn.)"
+        "name": "S7: Brak możliwości kalibracji (niska temp. zewn.)"
       },
       "s_8": {
-        "name": "Wymagany klucz produktu"
+        "name": "S8: Wymagany klucz produktu"
       },
       "s_9": {
-        "name": "Centrala zatrzymana (panel AirS)"
+        "name": "S9: Centrala zatrzymana (panel AirS)"
       },
       "water_removal_active": {
         "name": "Usuwanie wody aktywne"
@@ -299,40 +299,40 @@
         "name": "Zezwolenie pracy"
       },
       "s_28": {
-        "name": "Awaria sterowania nagrzewnicy wtórnej"
+        "name": "S28: Awaria sterowania nagrzewnicy wtórnej"
       },
       "e_108": {
-        "name": "Brak odczytu czujnika TW"
+        "name": "E108: Brak odczytu czujnika TW"
       },
       "e_140": {
-        "name": "Awaria czujnika CF filtra nawiewnego"
+        "name": "E140: Awaria czujnika CF filtra nawiewnego"
       },
       "e_141": {
-        "name": "Awaria czujnika CF filtra wywiewnego"
+        "name": "E141: Awaria czujnika CF filtra wywiewnego"
       },
       "e_144": {
-        "name": "Błąd utrzymania przepływu nawiewu"
+        "name": "E144: Błąd utrzymania przepływu nawiewu"
       },
       "e_145": {
-        "name": "Błąd utrzymania przepływu wywiewu"
+        "name": "E145: Błąd utrzymania przepływu wywiewu"
       },
       "e_148": {
-        "name": "Zużycie filtra nawiewnego (próg)"
+        "name": "E148: Zużycie filtra nawiewnego (próg)"
       },
       "e_149": {
-        "name": "Zużycie filtra wywiewnego (próg)"
+        "name": "E149: Zużycie filtra wywiewnego (próg)"
       },
       "e_150": {
-        "name": "Wymagana wymiana filtra nawiewnego"
+        "name": "E150: Wymagana wymiana filtra nawiewnego"
       },
       "e_151": {
-        "name": "Wymagana wymiana filtra wywiewnego"
+        "name": "E151: Wymagana wymiana filtra wywiewnego"
       },
       "e_156": {
-        "name": "Przekroczony czas użytkowania filtra nawiewnego"
+        "name": "E156: Przekroczony czas użytkowania filtra nawiewnego"
       },
       "e_157": {
-        "name": "Przekroczony czas użytkowania filtra wywiewnego"
+        "name": "E157: Przekroczony czas użytkowania filtra wywiewnego"
       },
       "e_196_e_199_e_196": {
         "name": "Błąd E196"
