@@ -925,6 +925,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
     )
+    # Legacy aliases retained for backward compatibility with older automations/tests.
+    hass.services.async_register(DOMAIN, "set_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, "set_intensity", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "set_special_function", set_special_mode, SET_SPECIAL_MODE_SCHEMA
+    )
     hass.services.async_register(
         DOMAIN, "set_airflow_schedule", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA
     )
@@ -972,6 +980,9 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     """Unload services for ThesslaGreen Modbus integration."""
     services = [
         "set_special_mode",
+        "set_mode",
+        "set_intensity",
+        "set_special_function",
         "set_airflow_schedule",
         "set_bypass_parameters",
         "set_gwc_parameters",

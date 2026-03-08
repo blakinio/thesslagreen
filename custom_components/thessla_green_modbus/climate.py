@@ -306,22 +306,11 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         else:
             # Turn on device first and capture result
             power_on_success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
-            success = await self.coordinator.async_write_register(
-                "on_off_panel_mode", 0, refresh=False, offset=0
-            )
-        else:
-            # Turn on device first and capture result
-            power_on_success = await self.coordinator.async_write_register(
-                "on_off_panel_mode", 1, refresh=False, offset=0
-            )
 
             # Retry once if power on failed
             if not power_on_success:
                 _LOGGER.warning("Power-on failed when setting HVAC mode to %s, retrying", hvac_mode)
                 power_on_success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
-                power_on_success = await self.coordinator.async_write_register(
-                    "on_off_panel_mode", 1, refresh=False, offset=0
-                )
 
             if not power_on_success:
                 _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
@@ -331,9 +320,8 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
             if "mode" in self.coordinator.get_register_map("holding_registers"):
                 success = await self._write_register_compat("mode", device_mode, refresh=False)
-                success = await self.coordinator.async_write_register(
-                    "mode", device_mode, refresh=False, offset=0
-                )
+            else:
+                success = True
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -435,7 +423,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     async def async_turn_off(self) -> None:  # pragma: no cover
         """Turn the climate entity off."""
         _LOGGER.debug("Turning off climate entity")
-        success = await self._write_register_compat("on_off_panel_mode", 0, refresh=False)
         success = await self.coordinator.async_write_register("on_off_panel_mode", 0, refresh=False, offset=0)
 
         if success:
@@ -445,8 +432,21 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
     @property
     def name(self) -> str:
-        base = getattr(self.coordinator, "device_name", getattr(self.coordinator, "_device_name", "ThesslaGreen"))
+        scan_name = (
+            getattr(self.coordinator, "device_scan_result", {})
+            .get("device_info", {})
+            .get("device_name")
+        )
+        base = scan_name or getattr(
+            self.coordinator,
+            "device_name",
+            getattr(self.coordinator, "_device_name", "ThesslaGreen"),
+        )
         return f"{base} Rekuperator"
+
+    @property
+    def hvac_modes(self) -> list[HVACMode]:
+        return list(getattr(self, "_attr_hvac_modes", [HVACMode.OFF, HVACMode.AUTO]))
 
     @property
     def available(self) -> bool:  # pragma: no cover
