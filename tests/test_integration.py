@@ -76,7 +76,10 @@ async def test_async_setup_entry_failure():
         )
         mock_coordinator_class.return_value = mock_coordinator
 
-        with pytest.raises(ConfigEntryNotReady):
+        import homeassistant.exceptions as _ha_exc
+
+        _ConfigEntryNotReady = _ha_exc.ConfigEntryNotReady
+        with pytest.raises(_ConfigEntryNotReady):
             await async_setup_entry(hass, entry)
 
 
