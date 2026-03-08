@@ -1361,6 +1361,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             return self.data or {}
 
         self._update_in_progress = True
+        self._failed_registers: set[str] = set()
 
         executor_job = getattr(self.hass, "async_add_executor_job", None)
         if callable(executor_job) and executor_job.__class__.__module__.startswith("unittest.mock"):
@@ -1520,8 +1521,37 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                 )
 
                     if len(response.registers) < chunk_count:
-                        missing = register_names[len(response.registers) :]
-                        self._mark_registers_failed(missing)
+                        if len(response.registers) == 0:
+                            # Batch returned nothing — fall back to individual reads
+                            for idx, reg_name in enumerate(register_names):
+                                if not reg_name:
+                                    continue
+                                addr = chunk_start + idx
+                                try:
+                                    single = await self._read_with_retry(
+                                        read_method, addr, 1, register_type="input"
+                                    )
+                                    if single.registers:
+                                        pv = self._process_register_value(reg_name, single.registers[0])
+                                        if pv is not None:
+                                            data[reg_name] = pv
+                                            self.statistics["total_registers_read"] += 1
+                                            self._clear_register_failure(reg_name)
+                                            _LOGGER.debug(
+                                                "Read input %d (%s) = %s (individual fallback)",
+                                                addr, reg_name, pv,
+                                            )
+                                        else:
+                                            self._mark_registers_failed([reg_name])
+                                    else:
+                                        self._mark_registers_failed([reg_name])
+                                except _PermanentModbusError:
+                                    self._mark_registers_failed([reg_name])
+                                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+                                    self._mark_registers_failed([reg_name])
+                        else:
+                            missing = register_names[len(response.registers) :]
+                            self._mark_registers_failed(missing)
                 except _PermanentModbusError:
                     self._mark_registers_failed(register_names)
                     continue
@@ -1594,8 +1624,37 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                 )
 
                     if len(response.registers) < chunk_count:
-                        missing = register_names[len(response.registers) :]
-                        self._mark_registers_failed(missing)
+                        if len(response.registers) == 0:
+                            # Batch returned nothing — fall back to individual reads
+                            for idx, reg_name in enumerate(register_names):
+                                if not reg_name:
+                                    continue
+                                addr = chunk_start + idx
+                                try:
+                                    single = await self._read_with_retry(
+                                        read_method, addr, 1, register_type="holding"
+                                    )
+                                    if single.registers:
+                                        pv = self._process_register_value(reg_name, single.registers[0])
+                                        if pv is not None:
+                                            data[reg_name] = pv
+                                            self.statistics["total_registers_read"] += 1
+                                            self._clear_register_failure(reg_name)
+                                            _LOGGER.debug(
+                                                "Read holding %d (%s) = %s (individual fallback)",
+                                                addr, reg_name, pv,
+                                            )
+                                        else:
+                                            self._mark_registers_failed([reg_name])
+                                    else:
+                                        self._mark_registers_failed([reg_name])
+                                except _PermanentModbusError:
+                                    self._mark_registers_failed([reg_name])
+                                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+                                    self._mark_registers_failed([reg_name])
+                        else:
+                            missing = register_names[len(response.registers) :]
+                            self._mark_registers_failed(missing)
                 except _PermanentModbusError:
                     self._mark_registers_failed(register_names)
                     continue

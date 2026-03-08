@@ -411,7 +411,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         data.pop(CONF_HOST, None)
         data.pop(CONF_PORT, None)
 
-    module = import_module("custom_components.thessla_green_modbus.scanner_core")
+    module = await hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
     scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
     capabilities_cls = DeviceCapabilities or module.DeviceCapabilities
 
@@ -757,7 +757,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
 
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the confirm step."""
-        module = import_module("custom_components.thessla_green_modbus.scanner_core")
+        module = await self.hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
@@ -983,7 +983,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             else:
                 self._abort_if_unique_id_configured()
                 if isinstance(self.hass, Mock):
-                    module = import_module("custom_components.thessla_green_modbus.scanner_core")
+                    module = await self.hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
                     cap_cls = DeviceCapabilities or module.DeviceCapabilities
                     data, options = self._prepare_entry_payload(cap_cls)
                     return self.async_create_entry(
@@ -1073,7 +1073,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Confirm reauthentication details and update the existing entry."""
-        module = import_module("custom_components.thessla_green_modbus.scanner_core")
+        module = await self.hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
