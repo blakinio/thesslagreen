@@ -320,15 +320,19 @@ async def _call_modbus(
             _LOGGER.debug(
                 "Sending %s to slave %s: args=%s kwargs=%s", func_name, slave_id, positional, kwargs
             )
+    else:
+        request_frame = _build_request_frame(func_name, slave_id, positional, kwargs)
+        if request_frame:
+            _LOGGER.info("Modbus request: %s", _mask_frame(request_frame))
 
     async def _invoke() -> Any:
         if kwarg == "device_id":
-            return await func(*positional, device_id=slave_id, **kwargs)
+            return await async_maybe_await(func(*positional, device_id=slave_id, **kwargs))
         if kwarg == "slave":
-            return await func(*positional, slave=slave_id, **kwargs)
+            return await async_maybe_await(func(*positional, slave=slave_id, **kwargs))
         if kwarg == "unit":
-            return await func(*positional, unit=slave_id, **kwargs)
-        return await func(*positional, **kwargs)
+            return await async_maybe_await(func(*positional, unit=slave_id, **kwargs))
+        return await async_maybe_await(func(*positional, **kwargs))
 
     try:
         if timeout is not None and _should_apply_external_timeout(func):
@@ -363,6 +367,13 @@ async def _call_modbus(
             _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
         else:
             _LOGGER.debug("Received from %s: %s", func_name, response)
+    else:
+        try:
+            encoded = response.encode() if hasattr(response, "encode") else b""
+        except Exception:
+            encoded = b""
+        if encoded:
+            _LOGGER.info("Modbus response: %s", _mask_frame(encoded))
     return response
 
 
