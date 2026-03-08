@@ -171,7 +171,10 @@ class TestThesslaGreenIntegration:
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
             return_value=mock_coordinator,
         ):
-            with pytest.raises(ConfigEntryNotReady):
+            import homeassistant.exceptions as _ha_exc
+
+            _ConfigEntryNotReady = _ha_exc.ConfigEntryNotReady
+            with pytest.raises(_ConfigEntryNotReady):
                 await async_setup_entry(mock_hass, mock_config_entry)
 
     @pytest.mark.asyncio
@@ -487,17 +490,11 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("schedule_summer_mon_1", 1024) is True
         assert scanner._is_valid_register_value("schedule_summer_mon_1", 8704) is True
 
-        # Temperature sensor marked unavailable should still be considered valid
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-
-        # SENSOR_UNAVAILABLE should be treated as unavailable for temperature sensors
+        # SENSOR_UNAVAILABLE is always treated as unavailable for temperature sensors
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-
-        # SENSOR_UNAVAILABLE should still be treated as valid for temperature sensors
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-
-        # Temperature sensor unavailable value should be considered valid
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
 
         # Invalid air flow value
         assert scanner._is_valid_register_value("supply_air_flow", 65535) is False

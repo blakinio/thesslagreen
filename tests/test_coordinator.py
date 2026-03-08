@@ -583,6 +583,14 @@ def test_device_info_dict_fallback(monkeypatch):
     import importlib
     import sys
 
+    import custom_components.thessla_green_modbus as _thg_pkg
+
+    # Track the coordinator package attribute so monkeypatch restores it after the test.
+    # Without this, importlib.import_module below sets thg_pkg.coordinator = M_new and
+    # subsequent tests that use string-path monkeypatching would patch the wrong module.
+    if hasattr(_thg_pkg, "coordinator"):
+        monkeypatch.setattr(_thg_pkg, "coordinator", _thg_pkg.coordinator)
+
     # Simulate missing device_registry module
     monkeypatch.delitem(sys.modules, "homeassistant.helpers.device_registry", raising=False)
     monkeypatch.delattr(helpers_pkg, "device_registry", raising=False)

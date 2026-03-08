@@ -883,14 +883,10 @@ class ThesslaGreenDeviceScanner:
             return False
 
         if name in SENSOR_UNAVAILABLE_REGISTERS and value == SENSOR_UNAVAILABLE:
-            checks = self._sensor_unavailable_checks.get(name, 0) + 1
-            self._sensor_unavailable_checks[name] = checks
-            return checks != 2
+            return False
 
         if "temperature" in name and value == SENSOR_UNAVAILABLE:
-            checks = self._sensor_unavailable_checks.get(name, 0) + 1
-            self._sensor_unavailable_checks[name] = checks
-            return checks != 2
+            return False
 
         allowed = REGISTER_ALLOWED_VALUES.get(name)
         if allowed is not None and value not in allowed:
