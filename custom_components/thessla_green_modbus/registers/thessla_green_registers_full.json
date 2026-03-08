@@ -146,8 +146,8 @@
     },
     {
       "function": "02",
-      "address_dec": 2,
-      "address_hex": "0x2",
+      "address_dec": 0,
+      "address_hex": "0x0",
       "name": "duct_heater_protection",
       "access": "R",
       "unit": null,
@@ -3455,8 +3455,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: cfgSZF_FN_new",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: cfgSZF_FN_new"
+      "description": "Stopień zużycia filtra nawiewnego",
+      "description_en": "Supply filter wear percentage"
     },
     {
       "function": "03",
@@ -3468,8 +3468,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: cfgSZF_FW_new",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: cfgSZF_FW_new"
+      "description": "Stopień zużycia filtra wywiewnego",
+      "description_en": "Exhaust filter wear percentage"
     },
     {
       "function": "03",
@@ -3481,8 +3481,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: filter_supply_date_limit_get",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: filter_supply_date_limit_get"
+      "description": "Data wymiany filtra nawiewnego",
+      "description_en": "Supply filter replacement date"
     },
     {
       "function": "03",
@@ -3494,8 +3494,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: filter_exhaust_date_limit_get",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: filter_exhaust_date_limit_get"
+      "description": "Data wymiany filtra wywiewnego",
+      "description_en": "Exhaust filter replacement date"
     },
     {
       "function": "03",
@@ -3507,8 +3507,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: postHeater_on",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: postHeater_on"
+      "description": "Status działania nagrzewnicy wtórnej systemu ERV",
+      "description_en": "Secondary heater (ERV system) active status"
     },
     {
       "function": "03",
@@ -3520,8 +3520,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: cfgPostHeaterMode",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: cfgPostHeaterMode"
+      "description": "Tryb pracy systemu ERV",
+      "description_en": "ERV system operating mode"
     },
     {
       "function": "03",
@@ -3552,8 +3552,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0"
+      "description": "Nazwa urządzenia - część 2",
+      "description_en": "Device name - part 2"
     },
     {
       "function": "03",
@@ -3565,8 +3565,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0"
+      "description": "Nazwa urządzenia - część 3",
+      "description_en": "Device name - part 3"
     },
     {
       "function": "03",
@@ -3578,8 +3578,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0"
+      "description": "Nazwa urządzenia - część 4",
+      "description_en": "Device name - part 4"
     },
     {
       "function": "03",
@@ -3591,8 +3591,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0"
+      "description": "Nazwa urządzenia - część 5",
+      "description_en": "Device name - part 5"
     },
     {
       "function": "03",
@@ -3604,8 +3604,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0"
+      "description": "Nazwa urządzenia - część 6",
+      "description_en": "Device name - part 6"
     },
     {
       "function": "03",
@@ -3617,8 +3617,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0"
+      "description": "Nazwa urządzenia - część 7",
+      "description_en": "Device name - part 7"
     },
     {
       "function": "03",
@@ -3630,8 +3630,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: 0"
+      "description": "Nazwa urządzenia - część 8",
+      "description_en": "Device name - part 8"
     },
     {
       "function": "03",
@@ -3662,8 +3662,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: lockPass2",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: lockPass2"
+      "description": "Klucz produktu użytkownika - słowo starsze",
+      "description_en": "Product key - upper word"
     },
     {
       "function": "03",
@@ -4310,8 +4310,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F142",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F142"
+      "description": "Brak filtra nawiewnego",
+      "description_en": "Supply filter missing"
     },
     {
       "function": "03",
@@ -4323,8 +4323,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F143",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F143"
+      "description": "Brak filtra wywiewnego",
+      "description_en": "Exhaust filter missing"
     },
     {
       "function": "03",
@@ -4360,8 +4360,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F146",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F146"
+      "description": "Konieczna jest wymiana filtra nawiewnego",
+      "description_en": "Supply filter replacement required"
     },
     {
       "function": "03",
@@ -4373,8 +4373,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F147",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: F147"
+      "description": "Konieczna jest wymiana filtra wywiewnego",
+      "description_en": "Exhaust filter replacement required"
     },
     {
       "function": "03",
@@ -4528,6 +4528,38 @@
       "resolution": 1.0,
       "description": "Zadziałało zabezpieczenie termiczne nagrzewnicy elektrycznej w kanale",
       "description_en": "Duct electric heater thermal protection activated"
+    },
+    {
+      "function": "03",
+      "address_dec": 8394,
+      "address_hex": "0x20CA",
+      "name": "e_202",
+      "access": "RW",
+      "unit": null,
+      "enum": {
+        "0": "brak",
+        "1": "jest"
+      },
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Awaria układu sterowania nagrzewnicy wtórnej",
+      "description_en": "Secondary heater control system failure"
+    },
+    {
+      "function": "03",
+      "address_dec": 8395,
+      "address_hex": "0x20CB",
+      "name": "e_203",
+      "access": "RW",
+      "unit": null,
+      "enum": {
+        "0": "brak",
+        "1": "jest"
+      },
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Awaria układu sterowania nagrzewnicy wtórnej",
+      "description_en": "Secondary heater control system failure (second instance)"
     },
     {
       "function": "03",
@@ -4830,8 +4862,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_2",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_2"
+      "description": "Numer seryjny sterownika - liczba 2",
+      "description_en": "Controller serial number - part 2"
     },
     {
       "function": "04",
@@ -4843,8 +4875,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_3",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_3"
+      "description": "Numer seryjny sterownika - liczba 3",
+      "description_en": "Controller serial number - part 3"
     },
     {
       "function": "04",
@@ -4856,8 +4888,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_4",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_4"
+      "description": "Numer seryjny sterownika - liczba 4",
+      "description_en": "Controller serial number - part 4"
     },
     {
       "function": "04",
@@ -4869,8 +4901,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_5",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_5"
+      "description": "Numer seryjny sterownika - liczba 5",
+      "description_en": "Controller serial number - part 5"
     },
     {
       "function": "04",
@@ -4882,8 +4914,8 @@
       "enum": null,
       "multiplier": 1,
       "resolution": 1,
-      "description": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_6",
-      "description_en": "Auto-imported from ProtokolModbusRTU_AirPack4.pdf: serial_number_6"
+      "description": "Numer seryjny sterownika - liczba 6",
+      "description_en": "Controller serial number - part 6"
     },
     {
       "function": "04",

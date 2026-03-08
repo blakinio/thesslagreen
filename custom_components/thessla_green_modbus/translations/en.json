@@ -131,58 +131,58 @@
         "name": "Water Heater Pump"
       },
       "e_100": {
-        "name": "Outdoor Air Sensor Failure (TZ1)"
+        "name": "E100: Outdoor Air Sensor Failure (TZ1)"
       },
       "e_101": {
-        "name": "Supply Air Sensor Failure (TN1)"
+        "name": "E101: Supply Air Sensor Failure (TN1)"
       },
       "e_102": {
-        "name": "Exhaust Air Sensor Failure (TP)"
+        "name": "E102: Exhaust Air Sensor Failure (TP)"
       },
       "e_103": {
-        "name": "HX Inlet Sensor Failure (TZ2)"
+        "name": "E103: HX Inlet Sensor Failure (TZ2)"
       },
       "e_104": {
-        "name": "Room Temp Sensor Failure (TO)"
+        "name": "E104: Room Temp Sensor Failure (TO)"
       },
       "e_105": {
-        "name": "Duct HX Supply Sensor Failure (TN2)"
+        "name": "E105: Duct HX Supply Sensor Failure (TN2)"
       },
       "e_106": {
-        "name": "GWC Outdoor Sensor Failure (TZ3)"
+        "name": "E106: GWC Outdoor Sensor Failure (TZ3)"
       },
       "e_138": {
-        "name": "Supply Fan CF Sensor Failure"
+        "name": "E138: Supply Fan CF Sensor Failure"
       },
       "e_139": {
-        "name": "Exhaust Fan CF Sensor Failure"
+        "name": "E139: Exhaust Fan CF Sensor Failure"
       },
       "e_152": {
-        "name": "Exhaust Air Temp Too High"
+        "name": "E152: Exhaust Air Temp Too High"
       },
       "e_196_e_199": {
         "name": "Error Flags E196–E199"
       },
       "e_200": {
-        "name": "Central Heater Overprotection"
+        "name": "E200: Central Heater Overprotection"
       },
       "e_201": {
-        "name": "Duct Heater Overprotection"
+        "name": "E201: Duct Heater Overprotection"
       },
       "e_249": {
-        "name": "No Expansion Module Communication"
+        "name": "E249: No Expansion Module Communication"
       },
       "e_250": {
-        "name": "AHU Filter Replacement Required"
+        "name": "E250: AHU Filter Replacement Required"
       },
       "e_251": {
-        "name": "Duct Filter Replacement Required"
+        "name": "E251: Duct Filter Replacement Required"
       },
       "e_252": {
-        "name": "AHU Filter Replacement Required (With Pressure Switch)"
+        "name": "E252: AHU Filter Replacement Required (With Pressure Switch)"
       },
       "e_99": {
-        "name": "AirPack Product Key Required"
+        "name": "E99: AirPack Product Key Required"
       },
       "empty_house": {
         "name": "Empty House"
@@ -227,70 +227,70 @@
         "name": "Power Supply Fans"
       },
       "s_10": {
-        "name": "Fire Protection Sensor Activated"
+        "name": "S10: Fire Protection Sensor Activated"
       },
       "s_13": {
-        "name": "AHU Stopped (Air+/AirL+ Panel)"
+        "name": "S13: AHU Stopped (Air+/AirL+ Panel)"
       },
       "s_14": {
-        "name": "Water Heater Anti-Freeze Activated"
+        "name": "S14: Water Heater Anti-Freeze Activated"
       },
       "s_15": {
-        "name": "Water Heater Anti-Freeze Not Effective"
+        "name": "S15: Water Heater Anti-Freeze Not Effective"
       },
       "s_16": {
-        "name": "Electric Heater Overprotection (FPX Active)"
+        "name": "S16: Electric Heater Overprotection (FPX Active)"
       },
       "s_17": {
-        "name": "AHU Filters Not Replaced (With Pressure Switch)"
+        "name": "S17: AHU Filters Not Replaced (With Pressure Switch)"
       },
       "s_19": {
-        "name": "AHU Filters Not Replaced (No Pressure Switch)"
+        "name": "S19: AHU Filters Not Replaced (No Pressure Switch)"
       },
       "s_2": {
-        "name": "I2C Communication Error"
+        "name": "S2: I2C Communication Error"
       },
       "s_20": {
-        "name": "Duct Filter Not Replaced"
+        "name": "S20: Duct Filter Not Replaced"
       },
       "s_22": {
-        "name": "FPX Anti-Freeze Did Not Activate"
+        "name": "S22: FPX Anti-Freeze Did Not Activate"
       },
       "s_23": {
-        "name": "HX Inlet Temp Sensor Damaged (FPX Conditions)"
+        "name": "S23: HX Inlet Temp Sensor Damaged (FPX Conditions)"
       },
       "s_24": {
-        "name": "Supply Duct Temp Sensor Damaged"
+        "name": "S24: Supply Duct Temp Sensor Damaged"
       },
       "s_25": {
-        "name": "Outdoor Air Temp Sensor Damaged"
+        "name": "S25: Outdoor Air Temp Sensor Damaged"
       },
       "s_26": {
-        "name": "Outdoor & GWC Temp Sensors Damaged"
+        "name": "S26: Outdoor & GWC Temp Sensors Damaged"
       },
       "s_29": {
-        "name": "Pre-HX Air Temperature Too High"
+        "name": "S29: Pre-HX Air Temperature Too High"
       },
       "s_30": {
-        "name": "Supply Fan Not Operating"
+        "name": "S30: Supply Fan Not Operating"
       },
       "s_31": {
-        "name": "Exhaust Fan Not Operating"
+        "name": "S31: Exhaust Fan Not Operating"
       },
       "s_32": {
-        "name": "No TG-02 Module Communication"
+        "name": "S32: No TG-02 Module Communication"
       },
       "s_6": {
-        "name": "FPX Heater Overprotection"
+        "name": "S6: FPX Heater Overprotection"
       },
       "s_7": {
-        "name": "Calibration Not Possible (Low Outdoor Temp)"
+        "name": "S7: Calibration Not Possible (Low Outdoor Temp)"
       },
       "s_8": {
-        "name": "Product Key Required"
+        "name": "S8: Product Key Required"
       },
       "s_9": {
-        "name": "AHU Stopped (AirS Panel)"
+        "name": "S9: AHU Stopped (AirS Panel)"
       },
       "water_removal_active": {
         "name": "Water Removal Active"
@@ -299,40 +299,40 @@
         "name": "Work Permit"
       },
       "s_28": {
-        "name": "Secondary Heater Control Fault"
+        "name": "S28: Secondary Heater Control Fault"
       },
       "e_108": {
-        "name": "No Reading from TW Sensor"
+        "name": "E108: No Reading from TW Sensor"
       },
       "e_140": {
-        "name": "Supply Filter CF Sensor Fault"
+        "name": "E140: Supply Filter CF Sensor Fault"
       },
       "e_141": {
-        "name": "Exhaust Filter CF Sensor Fault"
+        "name": "E141: Exhaust Filter CF Sensor Fault"
       },
       "e_144": {
-        "name": "Supply Airflow Maintenance Error"
+        "name": "E144: Supply Airflow Maintenance Error"
       },
       "e_145": {
-        "name": "Exhaust Airflow Maintenance Error"
+        "name": "E145: Exhaust Airflow Maintenance Error"
       },
       "e_148": {
-        "name": "Supply Filter Wear Above Threshold"
+        "name": "E148: Supply Filter Wear Above Threshold"
       },
       "e_149": {
-        "name": "Exhaust Filter Wear Above Threshold"
+        "name": "E149: Exhaust Filter Wear Above Threshold"
       },
       "e_150": {
-        "name": "Supply Filter Replacement Required"
+        "name": "E150: Supply Filter Replacement Required"
       },
       "e_151": {
-        "name": "Exhaust Filter Replacement Required"
+        "name": "E151: Exhaust Filter Replacement Required"
       },
       "e_156": {
-        "name": "Supply Filter Service Time Elapsed"
+        "name": "E156: Supply Filter Service Time Elapsed"
       },
       "e_157": {
-        "name": "Exhaust Filter Service Time Elapsed"
+        "name": "E157: Exhaust Filter Service Time Elapsed"
       },
       "e_196_e_199_e_196": {
         "name": "Error E196"
