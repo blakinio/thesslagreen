@@ -99,9 +99,6 @@ SAFE_REGISTERS: list[tuple[int, str]] = [
 __all__ = [
     "REGISTER_ALLOWED_VALUES",
     "SETTING_PREFIX",
-    "_decode_aatt",
-    "_format_register_value",
-    "_decode_season_mode",
     "SPECIAL_VALUE_DECODERS",
     "MAX_BATCH_REGISTERS",
     "UART_OPTIONAL_REGS",

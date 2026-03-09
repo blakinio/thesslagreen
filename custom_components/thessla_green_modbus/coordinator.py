@@ -215,7 +215,7 @@ from .registers.loader import get_all_registers
 from .scanner_core import (
     DeviceCapabilities,
     ThesslaGreenDeviceScanner,
-    _is_request_cancelled_error,
+    is_request_cancelled_error,
 )
 from .utils import resolve_connection_settings
 
@@ -1123,7 +1123,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 # Modbus error response still proves the device is reachable.
                 _LOGGER.debug("Connection test successful")
             except ModbusIOException as exc:
-                if _is_request_cancelled_error(exc):
+                if is_request_cancelled_error(exc):
                     _LOGGER.warning(
                         "Connection test skipped — device busy after scan: %s", exc
                     )

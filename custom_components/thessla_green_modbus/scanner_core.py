@@ -131,7 +131,7 @@ HOLDING_REGISTERS: dict[str, int] = {}
 COIL_REGISTERS: dict[str, int] = {}
 
 
-def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
+def is_request_cancelled_error(exc: ModbusIOException) -> bool:
     """Return True when a modbus IO error indicates a cancelled request."""
 
     message = str(exc).lower()
@@ -845,7 +845,7 @@ class ThesslaGreenDeviceScanner:
                 raise
             except ModbusIOException as exc:
                 last_error = exc
-                if _is_request_cancelled_error(exc):
+                if is_request_cancelled_error(exc):
                     _LOGGER.info("Modbus request cancelled during verify_connection.")
                     raise TimeoutError("Modbus request cancelled") from exc
             except TimeoutError as exc:
@@ -1366,13 +1366,10 @@ class ThesslaGreenDeviceScanner:
                 holding_addresses.extend(range(addr, addr + size))
 
             for start, count in self._group_registers_for_batch_read(holding_addresses):
-                
                 try:
                     holding_data = await self._read_holding(self._client, start, count) if self._client is not None else await self._read_holding(start, count)
                 except TypeError:
                     holding_data = await self._read_holding(start, count)
-
-                holding_data = await self._read_holding(self._client, start, count) if self._client is not None else await self._read_holding(start, count)
                 if holding_data is None:
                     self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
                         range(start, start + count)
@@ -1703,7 +1700,7 @@ class ThesslaGreenDeviceScanner:
                         except TimeoutError:
                             raise
                         except ModbusIOException as exc:
-                            if _is_request_cancelled_error(exc):
+                            if is_request_cancelled_error(exc):
                                 raise TimeoutError(str(exc)) from exc
                             # Other Modbus exceptions (error codes) confirm protocol is working
                         except Exception:
@@ -1983,7 +1980,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-                if _is_request_cancelled_error(exc):
+                if is_request_cancelled_error(exc):
                     aborted_transiently = True
                     break  # Treat cancellation like a timeout — stop retrying
                 if count == 1:
@@ -2244,7 +2241,7 @@ class ThesslaGreenDeviceScanner:
                         _LOGGER.warning("Device does not expose register %d", address)
                 aborted_transiently = True
             except ModbusIOException as exc:
-                if _is_request_cancelled_error(exc):
+                if is_request_cancelled_error(exc):
                     _LOGGER.debug(
                         "Cancelled reading holding registers %d-%d on attempt %d/%d: %s",
                         start,
