@@ -1639,7 +1639,13 @@ async def test_scan_falls_back_to_single_input_reads_after_failed_batch():
     assert "supply_temperature" in result["available_registers"]["input_registers"]
 
 async def test_scan_reports_diagnostic_registers_on_error():
-    """Diagnostic holding registers are reported even when reads fail."""
+    """Diagnostic registers that failed Modbus probing are NOT force-added.
+
+    When all holding register reads fail (return None), the failed addresses
+    are recorded in failed_addresses["modbus_exceptions"]["holding_registers"].
+    The force-add loop must respect these failures and skip those addresses so
+    HA does not create permanently-unavailable entities for unsupported registers.
+    """
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
     scanner._client = object()
     diag_regs = {"alarm": 0, "error": 1, "e_99": 2, "s_2": 3}
@@ -1668,7 +1674,8 @@ async def test_scan_reports_diagnostic_registers_on_error():
     ):
         result = await scanner.scan()
 
-    assert {"alarm", "error", "e_99", "s_2"} <= result["available_registers"]["holding_registers"]
+    # All four addresses (0-3) failed → none should be force-added
+    assert result["available_registers"]["holding_registers"] == set()
 
 
 @pytest.mark.parametrize("async_close", [True, False])
