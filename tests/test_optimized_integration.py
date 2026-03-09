@@ -386,8 +386,18 @@ class TestThesslaGreenConfigFlow:
 
         flow = ConfigFlow()
         flow.hass = MagicMock()
+        flow.hass.async_add_executor_job = AsyncMock(return_value=MagicMock())
 
         with (
+            patch(
+                "custom_components.thessla_green_modbus.config_flow.validate_input",
+                return_value={
+                    "title": "ThesslaGreen AirPack Test",
+                    "device_info": {"device_name": "ThesslaGreen AirPack Test", "firmware": "4.85.0"},
+                    "scan_result": {},
+                },
+            ),
+            patch.object(flow, "_prepare_entry_payload", return_value=({}, {})),
             patch.object(flow, "async_set_unique_id"),
             patch.object(flow, "_abort_if_unique_id_configured"),
         ):
