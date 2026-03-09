@@ -1810,7 +1810,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         except KeyError:
             _LOGGER.error("Unknown register name: %s", register_name)
             return False
-        definition = get_register_definition(register_name)
         if value == 32768 and definition._is_temperature():
             if _LOGGER.isEnabledFor(logging.DEBUG):
                 _LOGGER.debug(
@@ -1823,11 +1822,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         if definition._is_temperature() and isinstance(raw_value, int) and raw_value > 32767:
             raw_value -= 65536
         decoded = definition.decode(raw_value)
-
-        if value == SENSOR_UNAVAILABLE and register_name in SENSOR_UNAVAILABLE_REGISTERS:
-            if "temperature" in register_name:
-                return None
-            return SENSOR_UNAVAILABLE
 
         if value == SENSOR_UNAVAILABLE and register_name in SENSOR_UNAVAILABLE_REGISTERS:
             if "temperature" in register_name:
@@ -1856,12 +1850,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             except ValueError:
                 pass
 
-        if _LOGGER.isEnabledFor(logging.DEBUG):
-            _LOGGER.debug("Processed %s: raw=%s value=%s", register_name, value, decoded)
-        else:
-            logging.getLogger().debug(
-                "Processed %s: raw=%s value=%s", register_name, value, decoded
-            )
+        _LOGGER.debug("Processed %s: raw=%s value=%s", register_name, value, decoded)
         return decoded
 
     def calculate_power_consumption(self, data: dict[str, Any]) -> float | None:
