@@ -118,6 +118,22 @@ def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
 ThesslaGreenDeviceScanner: Any | None = None
 DeviceCapabilities: Any | None = None
 
+
+async def _load_scanner_module(hass: Any) -> Any:
+    """Import scanner_core using the HA executor when available.
+
+    Falls back to a direct synchronous import when *hass* is ``None`` or does
+    not expose ``async_add_executor_job`` (e.g. SimpleNamespace test stubs).
+    """
+    module_name = "custom_components.thessla_green_modbus.scanner_core"
+    _aej = getattr(hass, "async_add_executor_job", None)
+    if _aej is not None:
+        result = _aej(import_module, module_name)
+        if inspect.isawaitable(result):
+            return await result
+    return import_module(module_name)
+
+
 # Delay between retries when establishing the connection during the config flow.
 # Uses exponential backoff: ``backoff * 2 ** (attempt-1)``.
 CONFIG_FLOW_BACKOFF = 0.1
@@ -411,7 +427,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         data.pop(CONF_HOST, None)
         data.pop(CONF_PORT, None)
 
-    module = await hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
+    module = await _load_scanner_module(hass)
     scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
     capabilities_cls = DeviceCapabilities or module.DeviceCapabilities
 
@@ -757,7 +773,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
 
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the confirm step."""
-        module = await self.hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
+        module = await _load_scanner_module(self.hass)
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
@@ -983,7 +999,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             else:
                 self._abort_if_unique_id_configured()
                 if isinstance(self.hass, Mock):
-                    module = await self.hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
+                    module = await _load_scanner_module(self.hass)
                     cap_cls = DeviceCapabilities or module.DeviceCapabilities
                     data, options = self._prepare_entry_payload(cap_cls)
                     return self.async_create_entry(
@@ -1073,7 +1089,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Confirm reauthentication details and update the existing entry."""
-        module = await self.hass.async_add_executor_job(import_module, "custom_components.thessla_green_modbus.scanner_core")
+        module = await _load_scanner_module(self.hass)
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
