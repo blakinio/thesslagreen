@@ -169,6 +169,12 @@
       "e_201": {
         "name": "E201: Ochrona termiczna nagrzewnicy (kanał)"
       },
+      "e_202": {
+        "name": "E202: Awaria układu sterowania nagrzewnicy wtórnej"
+      },
+      "e_203": {
+        "name": "E203: Awaria układu sterowania nagrzewnicy wtórnej (2)"
+      },
       "e_249": {
         "name": "E249: Brak komunikacji z modułem Expansion"
       },
@@ -1417,6 +1423,8 @@
     "e_199": "Błąd urządzenia E 199",
     "e_200": "Błąd urządzenia E 200",
     "e_201": "Błąd urządzenia E 201",
+    "e_202": "Błąd urządzenia E 202",
+    "e_203": "Błąd urządzenia E 203",
     "e_249": "Błąd urządzenia E 249",
     "e_250": "Błąd urządzenia E 250",
     "e_251": "Błąd urządzenia E 251",

@@ -130,22 +130,6 @@
     },
     {
       "function": "02",
-      "address_dec": 1,
-      "address_hex": "0x1",
-      "name": "expansion",
-      "access": "R",
-      "unit": null,
-      "enum": {
-        "0": "brak",
-        "1": "jest"
-      },
-      "multiplier": null,
-      "resolution": null,
-      "description": "Komunikacja z modułem Expansion",
-      "description_en": "Expansion module communication state"
-    },
-    {
-      "function": "02",
       "address_dec": 0,
       "address_hex": "0x0",
       "name": "duct_heater_protection",
@@ -159,6 +143,22 @@
       "resolution": null,
       "description": "Stan wejścia zabezpieczenia termicznego elektrycznej nagrzewnicy kanałowej",
       "description_en": "Duct electric heater thermal protection input state"
+    },
+    {
+      "function": "02",
+      "address_dec": 1,
+      "address_hex": "0x1",
+      "name": "expansion",
+      "access": "R",
+      "unit": null,
+      "enum": {
+        "0": "brak",
+        "1": "jest"
+      },
+      "multiplier": null,
+      "resolution": null,
+      "description": "Komunikacja z modułem Expansion",
+      "description_en": "Expansion module communication state"
     },
     {
       "function": "02",
