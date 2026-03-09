@@ -210,7 +210,7 @@ from .modbus_transport import (
     TcpModbusTransport,
 )
 from .register_addresses import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
-from .register_map import REGISTER_MAP_VERSION, validate_register_value
+from .register_map import REGISTER_MAP_VERSION
 from .registers.loader import get_all_registers
 from .scanner_core import (
     DeviceCapabilities,
