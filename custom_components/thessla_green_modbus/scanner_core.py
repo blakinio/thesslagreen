@@ -1412,11 +1412,15 @@ class ThesslaGreenDeviceScanner:
                             self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
                             self._log_invalid_value(sorted(names)[0], value)
 
-            # Always expose diagnostic registers so error entities exist even
-            # when the device does not implement them.
-            for name in holding_registers.values():
+            # Expose diagnostic registers that responded during scanning.
+            # Skip addresses that explicitly failed with Modbus exceptions so
+            # we don't create permanently-unavailable entities for registers the
+            # device doesn't support.
+            failed_holding_addrs = self.failed_addresses["modbus_exceptions"]["holding_registers"]
+            for addr, name in holding_registers.items():
                 if name.startswith(("e_", "s_")) or name in {"alarm", "error"}:
-                    self.available_registers["holding_registers"].add(name)
+                    if addr not in failed_holding_addrs:
+                        self.available_registers["holding_registers"].add(name)
 
             # Scan Coil Registers in batches
             coil_addr_to_names: dict[int, set[str]] = {}
