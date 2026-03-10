@@ -206,6 +206,81 @@ def test_switch_definitions_single_source():
     assert "bypass" in ENTITY_MAPPINGS["switch"]
 
 
+def test_switch_is_on_register_not_in_data(mock_coordinator):
+    """is_on returns None when register_name is not in coordinator.data (line 130)."""
+    mock_coordinator.data = {}  # empty — register not present
+    switch_entity = ThesslaGreenSwitch(
+        mock_coordinator,
+        "bypass",
+        9,
+        ENTITY_MAPPINGS["switch"]["bypass"],
+    )
+    assert switch_entity.is_on is None  # nosec B101
+
+
+def test_switch_is_on_none_raw_value(mock_coordinator):
+    """is_on returns None when raw_value is None (line 136)."""
+    mock_coordinator.data["bypass"] = None
+    switch_entity = ThesslaGreenSwitch(
+        mock_coordinator,
+        "bypass",
+        9,
+        ENTITY_MAPPINGS["switch"]["bypass"],
+    )
+    assert switch_entity.is_on is None  # nosec B101
+
+
+def test_switch_is_on_with_bit(mock_coordinator):
+    """is_on uses bit mask when bit is set (line 139)."""
+    config = {
+        "register": "bypass",
+        "register_type": "holding_registers",
+        "translation_key": "bypass_bit",
+        "bit": 4,
+    }
+    mock_coordinator.data["bypass"] = 0b0011  # bit 4 (value 4) not set → False
+    switch_entity = ThesslaGreenSwitch(mock_coordinator, "bypass", 9, config)
+    assert switch_entity.is_on is False  # nosec B101
+
+    mock_coordinator.data["bypass"] = 0b0100  # bit 4 (value 4) set → True
+    assert switch_entity.is_on is True  # nosec B101
+
+
+def test_switch_turn_off_with_bit(mock_coordinator):
+    """async_turn_off with bit clears the bit from current value (lines 163-164)."""
+    config = {
+        "register": "bypass",
+        "register_type": "holding_registers",
+        "translation_key": "bypass_bit",
+        "bit": 4,
+    }
+    mock_coordinator.data["bypass"] = 0b0110  # bit 4 not set, bits 1&2 set
+    switch_entity = ThesslaGreenSwitch(mock_coordinator, "bypass", 9, config)
+    asyncio.run(switch_entity.async_turn_off())
+    # current=0b0110, ~bit=~4 → 0b0110 & ~0b0100 = 0b0010
+    mock_coordinator.async_write_register.assert_awaited_with(
+        "bypass", 0b0010, refresh=False, offset=0
+    )
+
+
+def test_switch_turn_off_exception_raises(mock_coordinator):
+    """async_turn_off re-raises Modbus exceptions (lines 170-172)."""
+    from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+
+    mock_coordinator.async_write_register = AsyncMock(
+        side_effect=ConnectionException("fail")
+    )
+    switch_entity = ThesslaGreenSwitch(
+        mock_coordinator,
+        "bypass",
+        9,
+        ENTITY_MAPPINGS["switch"]["bypass"],
+    )
+    mock_coordinator.data["bypass"] = 0
+    with pytest.raises(ConnectionException):
+        asyncio.run(switch_entity.async_turn_off())
+
+
 def test_switch_icon_fallback(hass, mock_config_entry, mock_coordinator):
     """Switch setups without an explicit icon use the default icon."""
     config = {

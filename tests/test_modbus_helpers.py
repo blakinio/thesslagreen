@@ -321,3 +321,162 @@ def test_calculate_backoff_zero_base():
     from custom_components.thessla_green_modbus.modbus_helpers import _calculate_backoff_delay
 
     assert _calculate_backoff_delay(base=0.0, attempt=5, jitter=None) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# _get_signature — TypeError/ValueError path (lines 37-38)
+# ---------------------------------------------------------------------------
+
+
+def test_get_signature_typeerror_returns_none():
+    """inspect.signature raising TypeError returns None."""
+    import inspect
+    from unittest.mock import patch
+
+    from custom_components.thessla_green_modbus.modbus_helpers import _get_signature, _SIG_CACHE
+
+    def func():
+        pass
+
+    # Ensure not in cache
+    _SIG_CACHE.pop(func, None)
+
+    with patch.object(inspect, "signature", side_effect=TypeError("no sig")):
+        result = _get_signature(func)
+    assert result is None  # nosec B101
+
+
+def test_get_signature_valueerror_returns_none():
+    """inspect.signature raising ValueError returns None."""
+    import inspect
+    from unittest.mock import patch
+
+    from custom_components.thessla_green_modbus.modbus_helpers import _get_signature, _SIG_CACHE
+
+    def func():
+        pass
+
+    _SIG_CACHE.pop(func, None)
+
+    with patch.object(inspect, "signature", side_effect=ValueError("bad sig")):
+        result = _get_signature(func)
+    assert result is None  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# async_maybe_await_close — obj=None (line 96) and no close (line 100)
+# ---------------------------------------------------------------------------
+
+
+async def test_async_maybe_await_close_none():
+    """obj=None returns immediately without error (line 96)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
+
+    await async_maybe_await_close(None)  # must not raise
+
+
+async def test_async_maybe_await_close_no_close_attr():
+    """obj without a close attribute returns immediately (line 100)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
+
+    class NoCLose:
+        pass
+
+    await async_maybe_await_close(NoCLose())  # must not raise
+
+
+async def test_async_maybe_await_close_non_callable_close():
+    """obj with non-callable close returns immediately (line 100)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
+
+    class BadClose:
+        close = "not_callable"
+
+    await async_maybe_await_close(BadClose())  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# chunk_register_range — count<=0, max=None, max<1 (lines 418, 421, 424)
+# ---------------------------------------------------------------------------
+
+
+def test_chunk_register_range_zero_count():
+    """count<=0 returns empty list (line 418)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import chunk_register_range
+
+    assert chunk_register_range(0, 0) == []  # nosec B101
+    assert chunk_register_range(5, -1) == []  # nosec B101
+
+
+def test_chunk_register_range_none_max_uses_const():
+    """max_block_size=None uses constant default (line 421)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import chunk_register_range
+
+    chunks = chunk_register_range(100, 5, None)
+    assert len(chunks) == 1  # nosec B101
+    assert chunks[0] == (100, 5)  # nosec B101
+
+
+def test_chunk_register_range_max_zero_clamped_to_one():
+    """max_block_size<=0 is clamped to 1 (line 424)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import chunk_register_range
+
+    chunks = chunk_register_range(0, 3, 0)
+    assert len(chunks) == 3  # nosec B101
+    assert all(c[1] == 1 for c in chunks)  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# chunk_register_values — empty, max=None, max<1 (lines 445, 448, 451)
+# ---------------------------------------------------------------------------
+
+
+def test_chunk_register_values_empty():
+    """Empty values list returns empty (line 445)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import chunk_register_values
+
+    assert chunk_register_values(0, []) == []  # nosec B101
+
+
+def test_chunk_register_values_none_max_uses_const():
+    """max_block_size=None uses constant default (line 448)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import chunk_register_values
+
+    chunks = chunk_register_values(10, [1, 2, 3], None)
+    assert chunks == [(10, [1, 2, 3])]  # nosec B101
+
+
+def test_chunk_register_values_max_zero_clamped_to_one():
+    """max_block_size<=0 is clamped to 1 (line 451)."""
+    from custom_components.thessla_green_modbus.modbus_helpers import chunk_register_values
+
+    chunks = chunk_register_values(0, [10, 20], 0)
+    assert len(chunks) == 2  # nosec B101
+    assert chunks[0] == (0, [10])  # nosec B101
+    assert chunks[1] == (1, [20])  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# _call_modbus — signature=None path, positional=list(args) (line 262)
+# ---------------------------------------------------------------------------
+
+
+async def test_call_modbus_no_signature_positional():
+    """When _get_signature returns None, args are passed as positional (line 262)."""
+    from unittest.mock import patch
+
+    from custom_components.thessla_green_modbus import modbus_helpers
+
+    received = []
+
+    async def func(*args, **kwargs):
+        received.append((args, kwargs))
+        return type("R", (), {"isError": lambda self: False})()
+
+    with patch.object(modbus_helpers, "_get_signature", return_value=None):
+        await modbus_helpers._call_modbus(func, 1, 100, 2)
+
+    assert len(received) == 1  # nosec B101
+    # 100 and 2 should have been forwarded as positional args
+    assert 100 in received[0][0]  # nosec B101
+    assert 2 in received[0][0]  # nosec B101

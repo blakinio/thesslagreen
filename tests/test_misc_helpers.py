@@ -149,20 +149,42 @@ def test_format_bcd_time_invalid_bcd_not_unavailable():
     assert "invalid" in str(result).lower() or result is None
 
 
-def test_format_time_register_invalid(monkeypatch):
-    """TIME_REGISTER_PREFIXES path: invalid value returns '(invalid)' (lines 47-50)."""
+def test_format_time_register_path_invalid(monkeypatch):
+    """TIME_REGISTER_PREFIXES path: invalid decoded time returns '(invalid)' (lines 47-50).
+
+    BCD_TIME_PREFIXES is cleared so the BCD branch is skipped; only the
+    TIME_REGISTER_PREFIXES branch executes.  0x1960 has hour=25 (invalid).
+    """
     from custom_components.thessla_green_modbus import scanner_helpers
 
-    # Patch TIME_REGISTER_PREFIXES to a known prefix for test isolation
-    monkeypatch.setattr(scanner_helpers, "TIME_REGISTER_PREFIXES", ("manual_airing_",))
+    monkeypatch.setattr(scanner_helpers, "BCD_TIME_PREFIXES", ())
+    monkeypatch.setattr(scanner_helpers, "TIME_REGISTER_PREFIXES", ("schedule_",))
 
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
-    import importlib
-    importlib.reload(scanner_helpers)
+    result = scanner_helpers._format_register_value("schedule_monday", 0x1960)
+    assert "invalid" in str(result)  # nosec B101
 
-    # Use manual_airing_time_to_start which has special handling
-    result = _format_register_value("manual_airing_time_to_start", SENSOR_UNAVAILABLE)
-    assert result is None
+
+def test_format_time_register_path_valid(monkeypatch):
+    """TIME_REGISTER_PREFIXES path: valid decoded time returns 'HH:MM' (lines 49-50)."""
+    from custom_components.thessla_green_modbus import scanner_helpers
+
+    monkeypatch.setattr(scanner_helpers, "BCD_TIME_PREFIXES", ())
+    monkeypatch.setattr(scanner_helpers, "TIME_REGISTER_PREFIXES", ("schedule_",))
+
+    # 0x0830: hour=8, minute=48 → "08:48"
+    result = scanner_helpers._format_register_value("schedule_monday", 0x0830)
+    assert result == "08:48"  # nosec B101
+
+
+def test_format_time_register_none_when_sensor_unavailable(monkeypatch):
+    """TIME_REGISTER_PREFIXES path: SENSOR_UNAVAILABLE returns None (line 48)."""
+    from custom_components.thessla_green_modbus import scanner_helpers
+
+    monkeypatch.setattr(scanner_helpers, "BCD_TIME_PREFIXES", ())
+    monkeypatch.setattr(scanner_helpers, "TIME_REGISTER_PREFIXES", ("schedule_",))
+
+    result = scanner_helpers._format_register_value("schedule_monday", SENSOR_UNAVAILABLE)
+    assert result is None  # nosec B101
 
 
 def test_format_setting_register_sensor_unavailable():

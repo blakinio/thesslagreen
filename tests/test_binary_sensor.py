@@ -246,3 +246,76 @@ async def test_force_full_register_list_adds_missing_binary_sensor(
         await async_setup_entry(hass, mock_config_entry, add_entities)
         created = {entity._register_name for entity in add_entities.call_args[0][0]}
         assert created == {"contamination_sensor"}  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# is_on edge cases (lines 137, 148-157)
+# ---------------------------------------------------------------------------
+
+
+def _make_sensor(mock_coordinator, name: str, sensor_def: dict) -> "ThesslaGreenBinarySensor":
+    """Helper to create a sensor with a given definition."""
+    reg_type = sensor_def["register_type"]
+    address = mock_coordinator._register_maps.get(reg_type, {}).get(name, 0)
+    return ThesslaGreenBinarySensor(mock_coordinator, name, address, sensor_def)
+
+
+def test_binary_sensor_is_on_none_value(mock_coordinator: MagicMock) -> None:
+    """is_on returns None when coordinator data value is None (line 137)."""
+    mock_coordinator.data["bypass"] = None
+    sensor_def = BINARY_SENSOR_DEFINITIONS["bypass"].copy()
+    address = mock_coordinator._register_maps[sensor_def["register_type"]]["bypass"]
+    sensor = ThesslaGreenBinarySensor(mock_coordinator, "bypass", address, sensor_def)
+    assert sensor.is_on is None  # nosec B101
+
+
+def test_binary_sensor_is_on_input_registers_with_bit(mock_coordinator: MagicMock) -> None:
+    """is_on with input_registers and bit mask (lines 148-150)."""
+    sensor_def = {
+        "register_type": "input_registers",
+        "translation_key": "test_sensor",
+        "bit": 2,
+    }
+    mock_coordinator.data["test_ir"] = 0b110  # bit 2 (value 2) is set → True
+    sensor = ThesslaGreenBinarySensor(mock_coordinator, "test_ir", 0, sensor_def)
+    assert sensor.is_on is True  # nosec B101
+
+    mock_coordinator.data["test_ir"] = 0b001  # bit 2 not set → False
+    assert sensor.is_on is False  # nosec B101
+
+
+def test_binary_sensor_is_on_input_registers_no_bit(mock_coordinator: MagicMock) -> None:
+    """is_on with input_registers and no bit mask (line 150)."""
+    sensor_def = {
+        "register_type": "input_registers",
+        "translation_key": "test_sensor",
+    }
+    mock_coordinator.data["test_ir2"] = 5
+    sensor = ThesslaGreenBinarySensor(mock_coordinator, "test_ir2", 0, sensor_def)
+    assert sensor.is_on is True  # nosec B101
+
+
+def test_binary_sensor_is_on_holding_registers_with_bit(mock_coordinator: MagicMock) -> None:
+    """is_on with holding_registers and bit mask (lines 152-154)."""
+    sensor_def = {
+        "register_type": "holding_registers",
+        "translation_key": "test_sensor",
+        "bit": 8,
+    }
+    mock_coordinator.data["test_hr"] = 0b1000  # bit 8 (value 8) set → True
+    sensor = ThesslaGreenBinarySensor(mock_coordinator, "test_hr", 0, sensor_def)
+    assert sensor.is_on is True  # nosec B101
+
+    mock_coordinator.data["test_hr"] = 0b0001  # bit 8 not set → False
+    assert sensor.is_on is False  # nosec B101
+
+
+def test_binary_sensor_is_on_else_case(mock_coordinator: MagicMock) -> None:
+    """is_on with unknown register_type returns False (lines 156-157)."""
+    sensor_def = {
+        "register_type": "unknown_type",
+        "translation_key": "test_sensor",
+    }
+    mock_coordinator.data["test_unknown"] = 1
+    sensor = ThesslaGreenBinarySensor(mock_coordinator, "test_unknown", 0, sensor_def)
+    assert sensor.is_on is False  # nosec B101
