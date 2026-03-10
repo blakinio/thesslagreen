@@ -205,3 +205,37 @@ def test_unique_id_bit_suffix():
 
     entity = ThesslaGreenEntity(coordinator, "test", 5, bit=4)
     assert entity.unique_id == "SN123_10_test_5_bit4"  # nosec
+
+
+# ---------------------------------------------------------------------------
+# ThesslaGreenEntity.__init__ TypeError fallback (lines 29-34)
+# ---------------------------------------------------------------------------
+
+
+def test_entity_init_typeerror_fallback(monkeypatch):
+    """When super().__init__ raises TypeError, the entity falls back to setting
+    self.coordinator directly (lines 29-34 of entity.py)."""
+    from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
+
+    # Find the actual CoordinatorEntity base so we can patch its __init__
+    CoordBase = ThesslaGreenEntity.__bases__[0]
+
+    call_count = [0]
+
+    def always_raise(self, *args, **kwargs):
+        call_count[0] += 1
+        raise TypeError("not supported in test stub")
+
+    monkeypatch.setattr(CoordBase, "__init__", always_raise)
+
+    coordinator = MagicMock()
+    coordinator.get_device_info.return_value = {}
+
+    # Should not raise — the inner try/except catches both TypeError variants
+    entity = ThesslaGreenEntity(coordinator, "reg", 100)
+
+    assert entity.coordinator is coordinator  # nosec B101
+    assert entity._key == "reg"  # nosec B101
+    assert entity._address == 100  # nosec B101
+    # Both super().__init__(coordinator) and super().__init__() were attempted
+    assert call_count[0] == 2  # nosec B101
