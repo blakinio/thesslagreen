@@ -843,3 +843,227 @@ async def test_raw_tcp_read_input_registers_invalid_byte_count():
         with patch.object(t, "ensure_connected", new=AsyncMock()):
             with pytest.raises(ModbusIOException, match="byte count"):
                 await t.read_input_registers(1, 100, count=1)
+
+
+# ---------------------------------------------------------------------------
+# TcpModbusTransport._connect — TCP-RTU TypeError on _build_tcp_client
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_tcp_connect_rtu_build_client_type_error():
+    """_connect for TCP-RTU raises ConnectionException when _build_tcp_client raises TypeError."""
+    t = _make_tcp(connection_type=CONNECTION_TYPE_TCP_RTU)
+    mock_framer = MagicMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+        return_value=mock_framer,
+    ):
+        with patch.object(t, "_build_tcp_client", side_effect=TypeError("framer not supported")):
+            with pytest.raises(ConnectionException, match="not supported"):
+                await t._connect()
+
+
+# ---------------------------------------------------------------------------
+# RawRtuOverTcpTransport — odd byte count in read_holding_registers (line 797)
+# and invalid length in write_registers (line 842)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_raw_tcp_read_holding_registers_invalid_byte_count():
+    """read_holding_registers raises ModbusIOException on odd data length."""
+    t = _make_raw_tcp()
+
+    async def fake_send_frame(frame, slave, func):
+        return bytes([0x00, 0x01, 0x02])  # 3 bytes = odd
+
+    with patch.object(t, "_send_frame", side_effect=fake_send_frame):
+        with patch.object(t, "ensure_connected", new=AsyncMock()):
+            with pytest.raises(ModbusIOException, match="byte count"):
+                await t.read_holding_registers(1, 100, count=1)
+
+
+@pytest.mark.asyncio
+async def test_raw_tcp_write_registers_invalid_length():
+    """write_registers raises ModbusIOException when response length != 4."""
+    t = _make_raw_tcp()
+
+    async def fake_send_frame(frame, slave, func):
+        return bytes([0x00, 0x64])  # only 2 bytes
+
+    with patch.object(t, "_send_frame", side_effect=fake_send_frame):
+        with patch.object(t, "ensure_connected", new=AsyncMock()):
+            with pytest.raises(ModbusIOException, match="length"):
+                await t.write_registers(1, 100, values=[1, 2])
+
+
+# ---------------------------------------------------------------------------
+# RtuModbusTransport tests
+# ---------------------------------------------------------------------------
+
+
+from custom_components.thessla_green_modbus.modbus_transport import RtuModbusTransport
+import custom_components.thessla_green_modbus.modbus_transport as _transport_mod
+
+
+def _make_rtu(**kwargs):
+    defaults = dict(
+        serial_port="/dev/ttyUSB0",
+        baudrate=9600,
+        parity="N",
+        stopbits=1,
+        max_retries=1,
+        base_backoff=0.0,
+        max_backoff=0.0,
+        timeout=1.0,
+    )
+    defaults.update(kwargs)
+    return RtuModbusTransport(**defaults)
+
+
+@pytest.mark.asyncio
+async def test_rtu_connect_serial_unavailable():
+    """RtuModbusTransport._connect raises ConnectionException when serial client is None."""
+    t = _make_rtu()
+    with patch.object(_transport_mod, "_AsyncModbusSerialClient", None):
+        with patch.object(_transport_mod, "SERIAL_IMPORT_ERROR", ImportError("no serial")):
+            with pytest.raises(ConnectionException, match="serial"):
+                await t._connect()
+
+
+@pytest.mark.asyncio
+async def test_rtu_connect_serial_unavailable_no_error():
+    """RtuModbusTransport._connect message works even when SERIAL_IMPORT_ERROR is None."""
+    t = _make_rtu()
+    with patch.object(_transport_mod, "_AsyncModbusSerialClient", None):
+        with patch.object(_transport_mod, "SERIAL_IMPORT_ERROR", None):
+            with pytest.raises(ConnectionException, match="unavailable"):
+                await t._connect()
+
+
+@pytest.mark.asyncio
+async def test_rtu_connect_empty_serial_port():
+    """RtuModbusTransport._connect raises ConnectionException when serial_port is empty."""
+    t = _make_rtu(serial_port="")
+    mock_client_cls = MagicMock()
+    with patch.object(_transport_mod, "_AsyncModbusSerialClient", mock_client_cls):
+        with pytest.raises(ConnectionException, match="not configured"):
+            await t._connect()
+
+
+@pytest.mark.asyncio
+async def test_rtu_connect_success_non_awaitable():
+    """RtuModbusTransport._connect succeeds when connect() is synchronous."""
+    t = _make_rtu()
+    mock_client = MagicMock()
+    mock_client.connect = MagicMock(return_value=True)
+    mock_client.connected = True
+
+    mock_cls = MagicMock(return_value=mock_client)
+    with patch.object(_transport_mod, "_AsyncModbusSerialClient", mock_cls):
+        await t._connect()
+
+    assert t.offline_state is False
+    assert t.client is mock_client
+
+
+@pytest.mark.asyncio
+async def test_rtu_connect_returns_false():
+    """RtuModbusTransport._connect raises ConnectionException when connect() returns False."""
+    t = _make_rtu()
+    mock_client = MagicMock()
+    mock_client.connect = MagicMock(return_value=False)
+
+    mock_cls = MagicMock(return_value=mock_client)
+    with patch.object(_transport_mod, "_AsyncModbusSerialClient", mock_cls):
+        with pytest.raises(ConnectionException, match="Could not connect"):
+            await t._connect()
+
+    assert t.offline_state is True
+
+
+@pytest.mark.asyncio
+async def test_rtu_reset_connection():
+    """RtuModbusTransport._reset_connection closes and clears client."""
+    t = _make_rtu()
+    mock_client = MagicMock()
+    mock_client.close = AsyncMock()
+    t.client = mock_client
+
+    await t._reset_connection()
+
+    assert t.client is None
+
+
+@pytest.mark.asyncio
+async def test_rtu_reset_connection_no_client():
+    """RtuModbusTransport._reset_connection is a no-op when client is None."""
+    t = _make_rtu()
+    t.client = None
+    await t._reset_connection()  # should not raise
+
+
+@pytest.mark.asyncio
+async def test_rtu_read_input_registers_ensures_connection():
+    """RtuModbusTransport.read_input_registers calls ensure_connected when client is None."""
+    t = _make_rtu()
+    mock_response = MagicMock()
+
+    async def fake_ensure():
+        t.client = MagicMock(connected=True)
+
+    with patch.object(t, "ensure_connected", side_effect=fake_ensure):
+        with patch.object(t, "call", new=AsyncMock(return_value=mock_response)):
+            result = await t.read_input_registers(1, 100, count=1)
+
+    assert result is mock_response
+
+
+@pytest.mark.asyncio
+async def test_rtu_read_holding_registers_ensures_connection():
+    """RtuModbusTransport.read_holding_registers calls ensure_connected when client is None."""
+    t = _make_rtu()
+    mock_response = MagicMock()
+
+    async def fake_ensure():
+        t.client = MagicMock(connected=True)
+
+    with patch.object(t, "ensure_connected", side_effect=fake_ensure):
+        with patch.object(t, "call", new=AsyncMock(return_value=mock_response)):
+            result = await t.read_holding_registers(1, 100, count=1)
+
+    assert result is mock_response
+
+
+@pytest.mark.asyncio
+async def test_rtu_write_register_ensures_connection():
+    """RtuModbusTransport.write_register calls ensure_connected when client is None."""
+    t = _make_rtu()
+    mock_response = MagicMock()
+
+    async def fake_ensure():
+        t.client = MagicMock(connected=True)
+
+    with patch.object(t, "ensure_connected", side_effect=fake_ensure):
+        with patch.object(t, "call", new=AsyncMock(return_value=mock_response)):
+            result = await t.write_register(1, 100, value=5)
+
+    assert result is mock_response
+
+
+@pytest.mark.asyncio
+async def test_rtu_write_registers_ensures_connection():
+    """RtuModbusTransport.write_registers calls ensure_connected when client is None."""
+    t = _make_rtu()
+    mock_response = MagicMock()
+
+    async def fake_ensure():
+        t.client = MagicMock(connected=True)
+
+    with patch.object(t, "ensure_connected", side_effect=fake_ensure):
+        with patch.object(t, "call", new=AsyncMock(return_value=mock_response)):
+            result = await t.write_registers(1, 100, values=[1, 2])
+
+    assert result is mock_response

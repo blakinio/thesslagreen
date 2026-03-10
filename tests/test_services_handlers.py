@@ -922,3 +922,472 @@ def test_get_coordinator_returns_none_no_registry():
 
     result = _get_coordinator_from_entity_id(hass, "sensor.unknown")
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _extract_legacy_entity_ids — line 121 (no entity_id key)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_service_no_entity_id_is_noop(monkeypatch):
+    """Handler silently exits when call.data has no entity_id key."""
+    coord = _Coordinator()
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "refresh_device_data", coord, monkeypatch)
+
+    # Pass a call with no entity_id — _extract_legacy_entity_ids returns set()
+    call = _make_call({})
+    await handler(call)
+
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _clamp_airflow_rate edge cases (lines 292-293, 296-297, 301)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_airflow_schedule_clamp_bad_min(monkeypatch):
+    """_clamp_airflow_rate falls back to 0 when min_percentage is non-numeric."""
+    coord = _Coordinator()
+    coord.data = {"min_percentage": "bad", "max_percentage": 100}
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
+
+    start = SimpleNamespace(hour=8, minute=0)
+    end = SimpleNamespace(hour=18, minute=0)
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "day": "monday",
+        "period": "1",
+        "start_time": start,
+        "end_time": end,
+        "airflow_rate": 50,
+    })
+    await handler(call)  # should not raise
+    coord.async_request_refresh.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_set_airflow_schedule_clamp_bad_max(monkeypatch):
+    """_clamp_airflow_rate falls back to 150 when max_percentage is non-numeric."""
+    coord = _Coordinator()
+    coord.data = {"min_percentage": 10, "max_percentage": "bad"}
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
+
+    start = SimpleNamespace(hour=8, minute=0)
+    end = SimpleNamespace(hour=18, minute=0)
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "day": "tuesday",
+        "period": "1",
+        "start_time": start,
+        "end_time": end,
+        "airflow_rate": 80,
+    })
+    await handler(call)  # should not raise
+    coord.async_request_refresh.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
+    """_clamp_airflow_rate clamps when max < min (max is set to min)."""
+    coord = _Coordinator()
+    coord.data = {"min_percentage": 60, "max_percentage": 30}  # inverted
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
+
+    start = SimpleNamespace(hour=8, minute=0)
+    end = SimpleNamespace(hour=18, minute=0)
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "day": "wednesday",
+        "period": "1",
+        "start_time": start,
+        "end_time": end,
+        "airflow_rate": 10,  # below both, should clamp to 60 (min==max after fix)
+    })
+    await handler(call)
+
+    flow_calls = [
+        c for c in coord.async_write_register.call_args_list
+        if "flow" in c.args[0]
+    ]
+    assert flow_calls
+    assert flow_calls[0].args[1] == 60  # clamped to min (which equals max after fix)
+
+
+# ---------------------------------------------------------------------------
+# set_special_mode — duration write failure (lines 361-366)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_special_mode_duration_write_failure(monkeypatch):
+    """set_special_mode continues when duration register write fails."""
+    coord = _Coordinator()
+    # First write (special_mode) succeeds; second (duration) fails
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
+    coord.available_registers = {"holding_registers": {"boost_duration"}}
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
+
+    call = _make_call({"entity_id": ["climate.dev"], "mode": "boost", "duration": 30})
+    await handler(call)
+
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# set_airflow_schedule — specific step write failures (lines 439-440, 448-449, 459-460)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_airflow_schedule_end_write_failure(monkeypatch):
+    """set_airflow_schedule aborts when end-time write fails (2nd write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
+
+    start = SimpleNamespace(hour=8, minute=0)
+    end = SimpleNamespace(hour=18, minute=0)
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "day": "monday",
+        "period": "1",
+        "start_time": start,
+        "end_time": end,
+        "airflow_rate": 50,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_airflow_schedule_flow_write_failure(monkeypatch):
+    """set_airflow_schedule aborts when flow write fails (3rd write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
+
+    start = SimpleNamespace(hour=8, minute=0)
+    end = SimpleNamespace(hour=18, minute=0)
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "day": "monday",
+        "period": "2",
+        "start_time": start,
+        "end_time": end,
+        "airflow_rate": 50,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
+    """set_airflow_schedule aborts when temperature write fails (4th write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, True, True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
+
+    start = SimpleNamespace(hour=8, minute=0)
+    end = SimpleNamespace(hour=18, minute=0)
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "day": "monday",
+        "period": "3",
+        "start_time": start,
+        "end_time": end,
+        "airflow_rate": 50,
+        "temperature": 22.0,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# set_bypass_parameters — min_temp write failure (lines 495-496)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_bypass_parameters_min_temp_write_failure(monkeypatch):
+    """set_bypass_parameters aborts when min_temperature write fails."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_bypass_parameters", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "mode": "auto",
+        "min_outdoor_temperature": 5.0,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# set_gwc_parameters — min/max temp write failures (lines 532-533, 543-544)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_gwc_parameters_min_temp_write_failure(monkeypatch):
+    """set_gwc_parameters aborts when min_air_temperature write fails."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_gwc_parameters", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "mode": "auto",
+        "min_air_temperature": 5.0,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_gwc_parameters_max_temp_write_failure(monkeypatch):
+    """set_gwc_parameters aborts when max_air_temperature write fails."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_gwc_parameters", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "mode": "auto",
+        "min_air_temperature": 5.0,
+        "max_air_temperature": 35.0,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# set_air_quality_thresholds — write failure path (lines 573-575, 578)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_air_quality_thresholds_write_failure(monkeypatch):
+    """set_air_quality_thresholds aborts when a register write fails."""
+    coord = _Coordinator(write_result=False)
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_air_quality_thresholds", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "co2_low": 600,
+        "co2_medium": 900,
+    })
+    await handler(call)
+
+    coord.async_request_refresh.assert_not_awaited()
+    # Only one write should have been attempted (failed on first)
+    assert coord.async_write_register.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# set_temperature_curve — step write failures (lines 610-611, 621-622, 632-633)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_curve_offset_write_failure(monkeypatch):
+    """set_temperature_curve aborts when offset write fails (2nd write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_temperature_curve", coord, monkeypatch)
+
+    call = _make_call({"entity_id": ["climate.dev"], "slope": 2.0, "offset": 1.0})
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_curve_max_supply_write_failure(monkeypatch):
+    """set_temperature_curve aborts when max_supply write fails (3rd write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_temperature_curve", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "slope": 2.0,
+        "offset": 1.0,
+        "max_supply_temp": 60.0,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_curve_min_supply_write_failure(monkeypatch):
+    """set_temperature_curve aborts when min_supply write fails (4th write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, True, True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_temperature_curve", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "slope": 2.0,
+        "offset": 1.0,
+        "max_supply_temp": 60.0,
+        "min_supply_temp": 20.0,
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# reset_settings — write failure paths (lines 677-678, 688-689)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reset_settings_user_write_failure(monkeypatch):
+    """reset_settings(user_settings) aborts on write failure."""
+    coord = _Coordinator(write_result=False)
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "reset_settings", coord, monkeypatch)
+
+    call = _make_call({"entity_id": ["climate.dev"], "reset_type": "user_settings"})
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reset_settings_schedule_write_failure(monkeypatch):
+    """reset_settings(schedule_settings) aborts on write failure."""
+    coord = _Coordinator(write_result=False)
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "reset_settings", coord, monkeypatch)
+
+    call = _make_call({"entity_id": ["climate.dev"], "reset_type": "schedule_settings"})
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reset_settings_all_first_write_failure(monkeypatch):
+    """reset_settings(all_settings) aborts when user settings write fails."""
+    coord = _Coordinator(write_result=False)
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "reset_settings", coord, monkeypatch)
+
+    call = _make_call({"entity_id": ["climate.dev"], "reset_type": "all_settings"})
+    await handler(call)
+    # Only one write attempted (user settings failed)
+    assert coord.async_write_register.call_count == 1
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# start_pressure_test — time write failure (lines 722-723)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_start_pressure_test_time_write_failure(monkeypatch):
+    """start_pressure_test aborts when pres_check_time write fails (2nd write)."""
+    import datetime
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "start_pressure_test", coord, monkeypatch)
+
+    fake_now = datetime.datetime(2024, 3, 11, 14, 30)
+    from custom_components.thessla_green_modbus import services as svc_mod
+    monkeypatch.setattr(
+        svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})()
+    )
+
+    call = _make_call({"entity_id": ["climate.dev"]})
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# set_modbus_parameters — parity/stop write failures (lines 779-780, 790-791)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_modbus_parameters_parity_write_failure(monkeypatch):
+    """set_modbus_parameters aborts when parity write fails (2nd write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "port": "air_b",
+        "baud_rate": "9600",
+        "parity": "even",
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_modbus_parameters_stop_write_failure(monkeypatch):
+    """set_modbus_parameters aborts when stop_bits write fails (3rd write)."""
+    coord = _Coordinator()
+    coord.async_write_register = AsyncMock(side_effect=[True, True, False])
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
+
+    call = _make_call({
+        "entity_id": ["climate.dev"],
+        "port": "air_b",
+        "baud_rate": "9600",
+        "parity": "none",
+        "stop_bits": "2",
+    })
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# set_device_name — write_result=False paths (lines 811-812, 827-829)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_device_name_long_write_result_false(monkeypatch):
+    """set_device_name with 16+ chars aborts when write returns False."""
+    coord = _Coordinator(write_result=False)
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_device_name", coord, monkeypatch)
+
+    call = _make_call({"entity_id": ["climate.dev"], "device_name": "ABCDEFGHIJKLMNOP"})
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_device_name_short_write_result_false(monkeypatch):
+    """set_device_name with short name aborts when a chunk write returns False."""
+    coord = _Coordinator(write_result=False)
+    hass = _make_hass()
+    handler = await _setup_and_get(hass, "set_device_name", coord, monkeypatch)
+
+    call = _make_call({"entity_id": ["climate.dev"], "device_name": "HELLO"})
+    await handler(call)
+    coord.async_request_refresh.assert_not_awaited()
