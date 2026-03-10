@@ -248,3 +248,20 @@ def test_decode_season_mode_unavailable():
     assert _decode_season_mode(SENSOR_UNAVAILABLE) is None
     assert _decode_season_mode(65280) is None
     assert _decode_season_mode(65535) is None
+
+
+# ---------------------------------------------------------------------------
+# scanner_helpers._format_register_value manual_airing_time_to_start (line 35)
+# ---------------------------------------------------------------------------
+
+
+def test_format_manual_airing_time_invalid_returns_invalid_str():
+    """manual_airing_time_to_start with invalid decoded time returns '(invalid)' (line 35)."""
+    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+
+    # raw_value = 26 (0x001A). After byte-swap: 0x1A00 = 6656.
+    # _decode_register_time(6656): hour = 26 > 23 → None.
+    # raw_value (26) != SENSOR_UNAVAILABLE (32768) → "26 (invalid)"
+    result = _format_register_value("manual_airing_time_to_start", 26)
+    assert result is not None  # nosec B101
+    assert "invalid" in str(result)  # nosec B101

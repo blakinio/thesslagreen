@@ -339,3 +339,38 @@ async def test_force_full_register_list_adds_missing_number(mock_coordinator, mo
         await async_setup_entry(hass, mock_config_entry, add_entities)
         created = {entity.register_name for entity in add_entities.call_args[0][0]}
         assert created == {"max_supply_air_flow_rate"}  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# Icon branch coverage tests (lines 164, 166, 168 of number.py)
+# ---------------------------------------------------------------------------
+
+
+def _make_number(mock_coordinator, register_name):
+    """Helper: inject a fake register and return a ThesslaGreenNumber instance."""
+    mock_coordinator._register_maps["holding_registers"][register_name] = 9990
+    return ThesslaGreenNumber(mock_coordinator, register_name, {})
+
+
+def test_number_icon_duration(mock_coordinator):
+    """Register name containing 'duration' gets mdi:timer icon (line 165)."""
+    number = _make_number(mock_coordinator, "boost_duration")
+    assert number._attr_icon == "mdi:timer"  # nosec B101
+
+
+def test_number_icon_intensity(mock_coordinator):
+    """Register name containing 'intensity' gets mdi:gauge icon (line 167)."""
+    number = _make_number(mock_coordinator, "uv_intensity")
+    assert number._attr_icon == "mdi:gauge"  # nosec B101
+
+
+def test_number_icon_coef(mock_coordinator):
+    """Register name containing 'coef' gets mdi:percent icon (line 169)."""
+    number = _make_number(mock_coordinator, "hood_exhaust_coef")
+    assert number._attr_icon == "mdi:percent"  # nosec B101
+
+
+def test_number_icon_percentage(mock_coordinator):
+    """Register name containing 'percentage' gets mdi:percent icon (line 169)."""
+    number = _make_number(mock_coordinator, "min_percentage")
+    assert number._attr_icon == "mdi:percent"  # nosec B101
