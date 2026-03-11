@@ -93,3 +93,23 @@ def test_map_legacy_entity_id_suffix_warning(monkeypatch, caplog):
         result = em.map_legacy_entity_id("number.device_predkosc")
     assert "fan" in result
     assert "Legacy entity ID" in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 — _parse_states pure-function tests
+# ---------------------------------------------------------------------------
+
+def test_parse_states_valid_entries():
+    """Valid 'value - label' parts are added to state map (line 243)."""
+    from custom_components.thessla_green_modbus.entity_mappings import _parse_states
+
+    states = _parse_states("0 - off; 1 - on")
+    assert states == {"off": 0, "on": 1}
+
+
+def test_parse_states_skips_empty_parts():
+    """Empty parts from consecutive semicolons are skipped (line 237)."""
+    from custom_components.thessla_green_modbus.entity_mappings import _parse_states
+
+    states = _parse_states("0 - off;;1 - on")
+    assert states == {"off": 0, "on": 1}

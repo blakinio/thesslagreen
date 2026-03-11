@@ -466,3 +466,128 @@ def test_multi_register_encode_string_enum_not_found_raises():
     )
     with pytest.raises(ValueError, match="Invalid enum value"):
         reg.encode("unknown")
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 — additional encode/decode edge cases
+# ---------------------------------------------------------------------------
+
+def test_multi_register_temp_sentinel_all_32768():
+    """Multi-reg temperature register with all words=32768 returns None (line 152)."""
+    reg = Register(function=3, address=0, name="inlet_temperature", access="ro", length=2)
+    assert reg.decode([32768, 32768]) is None
+
+
+def test_decode_single_register_from_sequence():
+    """Sequence passed to single-register decode extracts first element (line 192)."""
+    reg = Register(function=3, address=0, name="mode", access="ro")
+    assert reg.decode([42]) == 42
+
+
+def test_decode_enum_string_keys():
+    """Enum with string keys is found via str(raw) fallback (lines 214-215)."""
+    reg = Register(function=3, address=0, name="st", access="ro", enum={"0": "off", "1": "on"})
+    assert reg.decode(0) == "off"
+    assert reg.decode(1) == "on"
+
+
+def test_multi_register_decode_default_type():
+    """length > 1, no extra type → default int.from_bytes path (line 181)."""
+    reg = Register(function=3, address=0, name="counter", access="ro", length=2)
+    # [0, 100] → big-endian u32 = 100
+    assert reg.decode([0, 100]) == 100
+
+
+def test_multi_register_decode_with_resolution():
+    """Multi-reg decode with resolution quantises value (lines 186-187)."""
+    reg = Register(function=3, address=0, name="counter", access="ro", length=2, resolution=5)
+    # [0, 103] → 103; round(103/5)=21; 21*5=105
+    assert reg.decode([0, 103]) == 105
+
+
+def test_multi_register_encode_non_string_invalid_raises():
+    """Multi-reg encode raises when non-string value not in enum (lines 270-271)."""
+    reg = Register(
+        function=3, address=0, name="r", access="rw", length=2,
+        enum={0: "stopped", 1: "running"},
+    )
+    with pytest.raises(ValueError, match="Invalid enum value"):
+        reg.encode(99)
+
+
+def test_multi_register_encode_below_min_raises():
+    """Multi-reg encode raises when value is below minimum (line 279)."""
+    reg = Register(function=3, address=0, name="r", access="rw", length=2, min=0, max=100)
+    with pytest.raises(ValueError, match="below minimum"):
+        reg.encode(-5)
+
+
+def test_multi_register_encode_above_max_raises():
+    """Multi-reg encode raises when value is above maximum (line 281)."""
+    reg = Register(function=3, address=0, name="r", access="rw", length=2, min=0, max=100)
+    with pytest.raises(ValueError, match="above maximum"):
+        reg.encode(200)
+
+
+def test_multi_register_encode_with_resolution():
+    """Multi-reg encode applies resolution quantisation (lines 284-285)."""
+    reg = Register(function=3, address=0, name="r", access="rw", length=2, resolution=10)
+    # 15 / 10 = 1.5 → rounds to 2 → 2 * 10 = 20 → big-endian u32 → [0, 20]
+    words = reg.encode(15)
+    assert isinstance(words, list)
+    assert len(words) == 2
+    assert words == [0, 20]
+
+
+def test_multi_register_encode_with_multiplier():
+    """Multi-reg encode applies multiplier scaling (lines 287-288)."""
+    reg = Register(function=3, address=0, name="r", access="rw", length=2, multiplier=0.1)
+    # 1.0 / 0.1 = 10 → big-endian u32 → [0, 10]
+    words = reg.encode(1.0)
+    assert isinstance(words, list)
+    assert len(words) == 2
+    assert words == [0, 10]
+
+
+def test_encode_bitmask_single_string():
+    """Bitmask encode from a single string returns matching key (lines 316-319)."""
+    reg = Register(
+        function=3, address=0, name="flags", access="rw",
+        enum={1: "flag_a", 2: "flag_b"},
+        extra={"bitmask": True},
+    )
+    assert reg.encode("flag_a") == 1
+    assert reg.encode("flag_b") == 2
+
+
+def test_encode_enum_non_string_invalid_raises():
+    """Single-reg encode raises when integer not in enum (line 357)."""
+    reg = Register(function=3, address=0, name="e", access="rw", enum={0: "off", 1: "on"})
+    with pytest.raises(ValueError, match="Invalid enum value"):
+        reg.encode(99)
+
+
+def test_encode_i16_negative_to_unsigned():
+    """i16 encode converts signed negative to unsigned two's complement (line 378)."""
+    reg = Register(function=3, address=0, name="t", access="rw", extra={"type": "i16"})
+    assert reg.encode(-1) == 65535
+    assert reg.encode(-32768) == 32768
+
+
+def test_group_registers_consecutive():
+    """group_registers groups consecutive addresses into ranges (lines 674-676)."""
+    from custom_components.thessla_green_modbus.registers.loader import group_registers
+
+    result = group_registers([0, 1, 2, 10, 11])
+    assert isinstance(result, list)
+    assert len(result) == 2
+
+
+def test_encode_bitmask_integer_fallback():
+    """Bitmask encode with an integer falls back to int(value) (line 320)."""
+    reg = Register(
+        function=3, address=0, name="flags", access="rw",
+        enum={1: "flag_a", 2: "flag_b"},
+        extra={"bitmask": True},
+    )
+    assert reg.encode(3) == 3
