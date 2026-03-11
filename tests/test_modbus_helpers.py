@@ -480,3 +480,133 @@ async def test_call_modbus_no_signature_positional():
     # 100 and 2 should have been forwarded as positional args
     assert 100 in received[0][0]  # nosec B101
     assert 2 in received[0][0]  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# get_rtu_framer coverage (lines 82-89)
+# ---------------------------------------------------------------------------
+
+
+def test_get_rtu_framer_returns_framer_type_rtu(monkeypatch):
+    """get_rtu_framer() returns FramerType.RTU when FramerType is available (lines 82-84)."""
+    from custom_components.thessla_green_modbus import modbus_helpers
+
+    class FakeFramerType:
+        RTU = "RTU_FRAMER"
+
+    monkeypatch.setattr(modbus_helpers, "FramerType", FakeFramerType)
+    result = modbus_helpers.get_rtu_framer()
+    assert result == "RTU_FRAMER"  # nosec B101
+
+
+def test_get_rtu_framer_returns_modbus_rtu_framer(monkeypatch):
+    """get_rtu_framer() returns ModbusRtuFramer when FramerType is None (lines 87-88)."""
+    from custom_components.thessla_green_modbus import modbus_helpers
+
+    class FakeRtuFramer:
+        pass
+
+    monkeypatch.setattr(modbus_helpers, "FramerType", None)
+    monkeypatch.setattr(modbus_helpers, "ModbusRtuFramer", FakeRtuFramer)
+    result = modbus_helpers.get_rtu_framer()
+    assert result is FakeRtuFramer  # nosec B101
+
+
+def test_get_rtu_framer_returns_none_when_both_unavailable(monkeypatch):
+    """get_rtu_framer() returns None when both FramerType and ModbusRtuFramer are None (line 89)."""
+    from custom_components.thessla_green_modbus import modbus_helpers
+
+    monkeypatch.setattr(modbus_helpers, "FramerType", None)
+    monkeypatch.setattr(modbus_helpers, "ModbusRtuFramer", None)
+    result = modbus_helpers.get_rtu_framer()
+    assert result is None  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# _call_modbus StopIteration path (lines 253-255)
+# ---------------------------------------------------------------------------
+
+
+async def test_call_modbus_stop_iteration_extra_args_beyond_params():
+    """Extra args beyond param count are appended to positional (lines 253-255)."""
+    from custom_components.thessla_green_modbus import modbus_helpers
+
+    calls = []
+
+    async def three_param_func(a, b, *rest):
+        calls.append((a, b, rest))
+        return type("R", (), {"isError": lambda self: False})()
+
+    # 3 params (a, b, *rest); pass 4 args → 4th triggers StopIteration
+    await modbus_helpers._call_modbus(three_param_func, 1, "x1", "x2", "x3", "x4")
+    assert calls  # nosec B101
+    assert calls[0][2] == ("x3", "x4")  # rest got extra args  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# _call_modbus ModbusIOException "request cancelled" (line 350)
+# ---------------------------------------------------------------------------
+
+
+async def test_call_modbus_modbus_io_exception_request_cancelled(caplog):
+    """ModbusIOException with 'request cancelled' text triggers debug log (line 350)."""
+    import logging
+
+    from custom_components.thessla_green_modbus import modbus_helpers
+    from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
+
+    async def cancel_func(slave):
+        raise ModbusIOException("Request Cancelled by device")
+
+    with pytest.raises(ModbusIOException):
+        with caplog.at_level(logging.DEBUG, logger=modbus_helpers._LOGGER.name):
+            await modbus_helpers._call_modbus(cancel_func, 1)
+
+    assert any("cancelled" in r.message.lower() for r in caplog.records)  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# _call_modbus response logging paths (lines 369, 373-374)
+# ---------------------------------------------------------------------------
+
+
+async def test_call_modbus_debug_logs_response_object_when_no_encode(caplog):
+    """DEBUG mode logs response object when encode gives empty bytes (line 369)."""
+    import logging
+
+    from custom_components.thessla_green_modbus import modbus_helpers
+
+    class NoEncodeResponse:
+        pass  # no encode method → hasattr False → encoded = b""
+
+    async def func_no_encode(slave):
+        return NoEncodeResponse()
+
+    with caplog.at_level(logging.DEBUG, logger=modbus_helpers._LOGGER.name):
+        await modbus_helpers._call_modbus(func_no_encode, 1)
+
+    assert any("Received from" in r.message for r in caplog.records)  # nosec B101
+
+
+async def test_call_modbus_non_debug_encode_exception_sets_empty(monkeypatch):
+    """encode() exception at non-DEBUG level is silently caught (lines 373-374)."""
+    import logging
+
+    from custom_components.thessla_green_modbus import modbus_helpers
+
+    class BadEncodeResponse:
+        def encode(self):
+            raise TypeError("cannot encode this")
+
+    async def func_bad_encode(slave):
+        return BadEncodeResponse()
+
+    logger = modbus_helpers._LOGGER
+    original_level = logger.level
+    logger.setLevel(logging.WARNING)
+    try:
+        result = await modbus_helpers._call_modbus(func_bad_encode, 1)
+    finally:
+        logger.setLevel(original_level)
+
+    assert isinstance(result, BadEncodeResponse)  # returned successfully  # nosec B101

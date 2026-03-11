@@ -255,6 +255,28 @@ def test_decode_season_mode_unavailable():
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# utils.resolve_connection_settings fallback paths (lines 190, 195)
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_connection_settings_unknown_type_defaults_to_tcp():
+    """Unknown connection_type is normalised to DEFAULT_CONNECTION_TYPE (line 190)."""
+    from custom_components.thessla_green_modbus.utils import resolve_connection_settings
+
+    conn_type, mode = resolve_connection_settings("unknown_bus", "tcp", 502)
+    assert conn_type == "tcp"  # DEFAULT_CONNECTION_TYPE  # nosec B101
+
+
+def test_resolve_connection_settings_none_mode_uses_default_mode():
+    """None connection_mode falls back to default_connection_mode(port) (line 195)."""
+    from custom_components.thessla_green_modbus.utils import resolve_connection_settings
+
+    conn_type, mode = resolve_connection_settings("tcp", None, 502)
+    assert conn_type == "tcp"  # nosec B101
+    assert mode is not None  # default_connection_mode returned something  # nosec B101
+
+
 def test_format_manual_airing_time_invalid_returns_invalid_str():
     """manual_airing_time_to_start with invalid decoded time returns '(invalid)' (line 35)."""
     from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
