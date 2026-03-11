@@ -591,3 +591,10 @@ def test_encode_bitmask_integer_fallback():
         extra={"bitmask": True},
     )
     assert reg.encode(3) == 3
+
+
+def test_multi_register_decode_from_integer():
+    """length > 1 with plain integer input splits via bit-shift (line 147)."""
+    reg = Register(function=3, address=0, name="counter", access="ro", length=2)
+    # Pass a single u32 integer: 0x00010002 → words [1, 2] → big-endian int = 65538
+    assert reg.decode(0x00010002) == 65538
