@@ -273,3 +273,106 @@ def test_load_discrete_mappings_bitmask_unnamed_bit_generic_config(monkeypatch):
     # None bit triggers generic bitmask fallback
     assert "error_bitmask_p8" in binary
     assert binary["error_bitmask_p8"].get("bitmask") is True
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — _load_discrete_mappings switch/binary/select/diag/bitmask paths
+# ---------------------------------------------------------------------------
+
+def test_load_discrete_creates_switch_for_writable_2state_in_switch_keys(monkeypatch):
+    """2-state writable register in switch_keys → switch config (lines 403-410)."""
+    monkeypatch.setattr(em, "holding_registers", lambda: {"sw_reg_p9": 1})
+    monkeypatch.setattr(em, "coil_registers", lambda: {})
+    monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
+    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {
+        "sw_reg_p9": {"access": "RW", "unit": "0 - off; 1 - on",
+                      "min": None, "max": None, "scale": 1, "step": 1, "information": None}
+    })
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": {"sw_reg_p9"}, "switch": {"sw_reg_p9"}, "select": set(),
+    })
+    _, switch, _ = em._load_discrete_mappings()
+    assert "sw_reg_p9" in switch
+    assert switch["sw_reg_p9"]["register"] == "sw_reg_p9"
+
+
+def test_load_discrete_creates_binary_for_writable_2state_not_in_switch_keys(monkeypatch):
+    """2-state writable register NOT in switch_keys but in binary_keys → binary (lines 411-413)."""
+    monkeypatch.setattr(em, "holding_registers", lambda: {"bin_reg_p9": 1})
+    monkeypatch.setattr(em, "coil_registers", lambda: {})
+    monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
+    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {
+        "bin_reg_p9": {"access": "RW", "unit": "0 - off; 1 - on",
+                       "min": None, "max": None, "scale": 1, "step": 1, "information": None}
+    })
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": {"bin_reg_p9"}, "switch": set(), "select": set(),
+    })
+    binary, _, _ = em._load_discrete_mappings()
+    assert "bin_reg_p9" in binary
+
+
+def test_load_discrete_creates_select_for_multistate_register(monkeypatch):
+    """Multi-state register in select_keys → select config (lines 414-417)."""
+    monkeypatch.setattr(em, "holding_registers", lambda: {"sel_reg_p9": 1})
+    monkeypatch.setattr(em, "coil_registers", lambda: {})
+    monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
+    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {
+        "sel_reg_p9": {"access": "RW", "unit": "0 - auto; 1 - manual; 2 - off",
+                       "min": None, "max": None, "scale": 1, "step": 1, "information": None}
+    })
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": {"sel_reg_p9"},
+    })
+    _, _, select = em._load_discrete_mappings()
+    assert "sel_reg_p9" in select
+    assert "states" in select["sel_reg_p9"]
+
+
+def test_load_discrete_skips_diag_register_not_in_holding_on_second_check(monkeypatch):
+    """Diagnostic register absent from holding_registers on second check is skipped (line 427)."""
+    call_count = [0]
+
+    def holding():
+        call_count[0] += 1
+        return {"s_1": 1} if call_count[0] <= 2 else {}
+
+    monkeypatch.setattr(em, "holding_registers", holding)
+    monkeypatch.setattr(em, "coil_registers", lambda: {})
+    monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
+    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {})
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": set(),
+    })
+    binary, _, _ = em._load_discrete_mappings()
+    assert "s_1" not in binary
+
+
+def test_load_discrete_skips_diag_register_not_in_binary_keys(monkeypatch):
+    """Diagnostic register in holding but missing from binary_keys is skipped (line 429)."""
+    monkeypatch.setattr(em, "holding_registers", lambda: {"s_1_p9": 1})
+    monkeypatch.setattr(em, "coil_registers", lambda: {})
+    monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
+    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {})
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": set(),
+    })
+    binary, _, _ = em._load_discrete_mappings()
+    assert "s_1_p9" not in binary
+
+
+def test_load_discrete_bitmask_empty_bits_list_creates_generic_config(monkeypatch):
+    """Bitmask register with empty bits list creates generic config (line 483)."""
+    reg = RegisterDef(function=1, address=400, name="empty_bitmask_p9", access="ro",
+                      extra={"bitmask": True}, bits=[])
+    original_get_all = em.get_all_registers
+    monkeypatch.setattr(em, "get_all_registers",
+                        lambda *a, **kw: list(original_get_all()) + [reg])
+    binary, _, _ = em._load_discrete_mappings()
+    assert "empty_bitmask_p9" in binary
+    assert binary["empty_bitmask_p9"].get("bitmask") is True

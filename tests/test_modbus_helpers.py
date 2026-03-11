@@ -610,3 +610,60 @@ async def test_call_modbus_non_debug_encode_exception_sets_empty(monkeypatch):
         logger.setLevel(original_level)
 
     assert isinstance(result, BadEncodeResponse)  # returned successfully  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — _call_modbus backoff / debug logging paths
+# ---------------------------------------------------------------------------
+
+import logging as _logging
+from custom_components.thessla_green_modbus import modbus_helpers as _mh
+
+
+async def test_call_modbus_backoff_delay_sleep():
+    """delay > 0 on attempt >= 2 triggers the backoff sleep path (lines 295-299)."""
+    async def simple_func(**kwargs):
+        return "done"
+
+    result = await _call_modbus(simple_func, 1, attempt=2, backoff=0.001, apply_backoff=True)
+    assert result == "done"
+
+
+async def test_call_modbus_backoff_cancelled_during_sleep():
+    """CancelledError during backoff sleep is re-raised (lines 300-304)."""
+    async def simple_func(**kwargs):
+        return "done"
+
+    task = asyncio.create_task(
+        _call_modbus(simple_func, 1, attempt=2, backoff=10.0, apply_backoff=True)
+    )
+    await asyncio.sleep(0.02)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+async def test_call_modbus_logs_request_frame_at_debug(caplog):
+    """With DEBUG logger, non-None request frame is logged (line 318)."""
+    async def read_coils(address, *, count=1, **kwargs):
+        return "resp"
+
+    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+        result = await _call_modbus(read_coils, 1, 10, 2)
+    assert result == "resp"
+    assert any("Modbus request" in r.message for r in caplog.records)
+
+
+async def test_call_modbus_response_encode_error_logged(caplog):
+    """response.encode() raising ValueError is caught and logged (lines 360-362)."""
+    class BadResponse:
+        def encode(self):
+            raise ValueError("broken encode")
+
+    async def bad_func(**kwargs):
+        return BadResponse()
+
+    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+        result = await _call_modbus(bad_func, 1)
+    assert isinstance(result, BadResponse)
+    assert any("Failed to encode" in r.message for r in caplog.records)
