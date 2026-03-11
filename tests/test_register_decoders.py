@@ -350,3 +350,119 @@ def test_register_int64_encode_decode(int64_register: Register, value: int) -> N
 def test_register_uint64_encode_decode(uint64_register: Register, value: int) -> None:
     raw = uint64_register.encode(value)
     assert uint64_register.decode(raw) == value
+
+
+# ---------------------------------------------------------------------------
+# Signed 16-bit decode (line 219)
+# ---------------------------------------------------------------------------
+
+
+def test_decode_i16_negative():
+    """raw >= 32768 is converted to signed negative (line 219)."""
+    reg = Register(
+        function=3, address=0, name="test_i16", access="rw", extra={"type": "i16"}
+    )
+    assert reg.decode(65535) == -1
+    assert reg.decode(32768) == -32768
+
+
+# ---------------------------------------------------------------------------
+# BCD time encode — int and tuple inputs (lines 325-328)
+# ---------------------------------------------------------------------------
+
+
+def test_encode_bcd_time_int_total_minutes():
+    """BCD encode from int (total minutes) uses divmod (lines 325-326)."""
+    reg = Register(function=3, address=0, name="schedule_test_start", access="rw", bcd=True)
+    # 495 minutes = 8h 15m → same BCD as "08:15" = 2069
+    assert reg.encode(495) == 2069
+
+
+def test_encode_bcd_time_tuple_hours_minutes():
+    """BCD encode from (hours, minutes) tuple (lines 327-328)."""
+    reg = Register(function=3, address=0, name="schedule_test_start", access="rw", bcd=True)
+    assert reg.encode((8, 15)) == 2069
+
+
+def test_encode_bcd_time_list_hours_minutes():
+    """BCD encode from [hours, minutes] list (lines 327-328)."""
+    reg = Register(function=3, address=0, name="schedule_test_start", access="rw", bcd=True)
+    assert reg.encode([8, 15]) == 2069
+
+
+# ---------------------------------------------------------------------------
+# AATT encode — dict with airflow_pct key and scalar (lines 337-338, 342)
+# ---------------------------------------------------------------------------
+
+
+def test_encode_aatt_dict_airflow_pct_key():
+    """AATT encode uses 'airflow_pct' key from dict (lines 337-338)."""
+    reg = Register(
+        function=3, address=0, name="setting_test", access="rw", extra={"aatt": True}
+    )
+    # airflow_pct=60, temp_c=20.0 → same encoding as the roundtrip decode test
+    result = reg.encode({"airflow_pct": 60, "temp_c": 20.0})
+    assert result == 15400
+
+
+def test_encode_aatt_scalar_airflow_temp_zero():
+    """AATT encode treats scalar as airflow with temp=0 (line 342)."""
+    reg = Register(
+        function=3, address=0, name="setting_test", access="rw", extra={"aatt": True}
+    )
+    result = reg.encode(60)
+    # airflow=60, temp=0 → (60 << 8) | 0 = 15360
+    assert result == (60 << 8)
+
+
+# ---------------------------------------------------------------------------
+# Enum encode — invalid value raises ValueError (line 357)
+# ---------------------------------------------------------------------------
+
+
+def test_encode_enum_invalid_value_raises():
+    """Encoding an unknown enum value raises ValueError (line 357)."""
+    reg = Register(
+        function=3,
+        address=0,
+        name="test_enum",
+        access="rw",
+        enum={0: "off", 1: "on"},
+    )
+    with pytest.raises(ValueError, match="Invalid enum value"):
+        reg.encode("unknown_state")
+
+
+# ---------------------------------------------------------------------------
+# Multi-register encode — string enum lookup (lines 263-271)
+# ---------------------------------------------------------------------------
+
+
+def test_multi_register_encode_string_enum():
+    """Multi-reg encode resolves string value through enum (lines 263-267)."""
+    reg = Register(
+        function=3,
+        address=0,
+        name="test_multi",
+        access="rw",
+        length=2,
+        enum={0: "stopped", 1: "running"},
+    )
+    words = reg.encode("running")
+    assert isinstance(words, list)
+    # raw_val = 1 → big-endian 4-byte: [0x0000, 0x0001]
+    assert words == [0, 1]
+
+
+def test_multi_register_encode_string_enum_not_found_raises():
+    """Multi-reg encode raises ValueError when string label not in enum (line 269)."""
+    reg = Register(
+        function=3,
+        address=0,
+        name="test_multi",
+        access="rw",
+        length=2,
+        enum={0: "stopped", 1: "running"},
+    )
+    with pytest.raises(ValueError, match="Invalid enum value"):
+        reg.encode("unknown")

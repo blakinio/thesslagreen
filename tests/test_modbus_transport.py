@@ -1067,3 +1067,117 @@ async def test_rtu_write_registers_ensures_connection():
             result = await t.write_registers(1, 100, values=[1, 2])
 
     assert result is mock_response
+
+
+# ---------------------------------------------------------------------------
+# _build_tcp_client with framer kwarg (lines 314, 325)
+# ---------------------------------------------------------------------------
+
+
+def test_build_tcp_client_with_framer_first_attempt():
+    """framer kwarg included in first TCP client call (line 314)."""
+    import sys
+
+    t = _make_tcp()
+    fake_framer = object()
+    received_kwargs: dict = {}
+
+    def patched(host, **kwargs):
+        received_kwargs.update(kwargs)
+        return MagicMock()
+
+    original = sys.modules["pymodbus.client"].AsyncModbusTcpClient
+    sys.modules["pymodbus.client"].AsyncModbusTcpClient = patched
+    try:
+        t._build_tcp_client(framer=fake_framer)
+    finally:
+        sys.modules["pymodbus.client"].AsyncModbusTcpClient = original
+
+    assert received_kwargs.get("framer") is fake_framer
+
+
+def test_build_tcp_client_with_framer_fallback():
+    """framer kwarg preserved in fallback call when first attempt raises TypeError (line 325)."""
+    import sys
+
+    t = _make_tcp()
+    fake_framer = object()
+    calls: list[dict] = []
+
+    def patched(host, **kwargs):
+        calls.append(dict(kwargs))
+        if len(calls) == 1:
+            raise TypeError("no reconnect params")
+        return MagicMock()
+
+    original = sys.modules["pymodbus.client"].AsyncModbusTcpClient
+    sys.modules["pymodbus.client"].AsyncModbusTcpClient = patched
+    try:
+        t._build_tcp_client(framer=fake_framer)
+    finally:
+        sys.modules["pymodbus.client"].AsyncModbusTcpClient = original
+
+    assert len(calls) == 2
+    assert calls[1].get("framer") is fake_framer
+
+
+# ---------------------------------------------------------------------------
+# _execute — CancelledError suppresses _reset_connection exception (lines 124-125)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_execute_cancelled_suppresses_reset_exception():
+    """Exception from _reset_connection during CancelledError is swallowed (lines 124-125)."""
+    t = _make_tcp()
+    t.client = MagicMock()
+    t.client.connected = True
+
+    async def failing_reset():
+        raise RuntimeError("reset blew up")
+
+    async def cancel_func():
+        raise asyncio.CancelledError()
+
+    with patch.object(t, "_reset_connection", side_effect=failing_reset):
+        with pytest.raises(asyncio.CancelledError):
+            await t._execute(cancel_func)
+    # CancelledError propagated; RuntimeError was silently swallowed
+
+
+# ---------------------------------------------------------------------------
+# RtuModbusTransport._connect — no callable connect attr (lines 516-517)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_rtu_connect_no_callable_connect(monkeypatch):
+    """RTU _connect sets connected=True when client.connect is not callable (lines 516-517)."""
+    from custom_components.thessla_green_modbus.modbus_transport import RtuModbusTransport
+
+    class NoConnectClient:
+        connected = False
+        connect = None  # not callable
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.modbus_transport._AsyncModbusSerialClient",
+        lambda **kwargs: NoConnectClient(),
+    )
+
+    transport = RtuModbusTransport(
+        serial_port="/dev/ttyUSB0",
+        baudrate=9600,
+        parity="N",
+        stopbits=1,
+        max_retries=2,
+        base_backoff=0.1,
+        max_backoff=1.0,
+        timeout=2.0,
+    )
+    await transport._connect()
+
+    assert transport.client.connected is True
+    assert transport.offline_state is False
