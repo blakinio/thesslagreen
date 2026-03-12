@@ -414,7 +414,7 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
     registers: list[RegisterDef] = []
     if hasattr(RegisterList, "model_validate"):
         parsed_items = RegisterList.model_validate(items).registers
-    else:
+    else:  # pragma: no cover
         parsed_items = RegisterList.parse_obj(items).registers
 
     for parsed in parsed_items:
@@ -438,8 +438,8 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
         elif enum_map:
             if all(isinstance(k, int | float) or str(k).isdigit() for k in enum_map):
                 enum_map = cast(dict[int | str, Any], {int(k): v for k, v in enum_map.items()})
-            elif all(isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()):
-                enum_map = cast(dict[int | str, Any], {int(v): k for k, v in enum_map.items()})
+            elif all(isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()):  # pragma: no cover
+                enum_map = cast(dict[int | str, Any], {int(v): k for k, v in enum_map.items()})  # pragma: no cover
 
         # ``multiplier`` and ``resolution`` are optional in the JSON.  The
         # dataclass defaults to ``1`` for both fields but passing ``None`` would

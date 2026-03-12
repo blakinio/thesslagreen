@@ -41,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 
 if hasattr(pydantic, "RootModel"):
     RootModel = pydantic.RootModel
-else:
+else:  # pragma: no cover
 
     class RootModel(BaseModel):  # type: ignore[no-redef]
         """Compatibility wrapper for pydantic v1 RootModel."""
@@ -51,7 +51,7 @@ else:
 
 if hasattr(pydantic, "model_validator"):
     model_validator = pydantic.model_validator
-else:
+else:  # pragma: no cover
 
     def model_validator(*args: Any, **kwargs: Any):
         if "mode" in kwargs:
@@ -262,7 +262,7 @@ class RegisterDefinition(BaseModel):
                 raise ValueError("read-only functions must have R access")
             return self
 
-    else:
+    else:  # pragma: no cover
 
         @pydantic.root_validator
         def _check_access(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -345,7 +345,7 @@ class RegisterDefinition(BaseModel):
                     raise ValueError("default above max")
             return self
 
-    else:
+    else:  # pragma: no cover
 
         @pydantic.root_validator
         def check_consistency(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
@@ -439,7 +439,7 @@ if hasattr(pydantic, "RootModel"):
             root_val = getattr(self, "root", None)
             if root_val is not None:
                 return root_val
-            return getattr(self, "__root__")  # noqa: B009
+            return getattr(self, "__root__")  # noqa: B009  # pragma: no cover
 
         if hasattr(pydantic, "model_validator"):
 
@@ -460,7 +460,7 @@ if hasattr(pydantic, "RootModel"):
                     seen_names.add(name)
                 return self
 
-else:
+else:  # pragma: no cover
 
     class RegisterList(RootModel):
         """Container model to validate a list of registers."""
