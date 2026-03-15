@@ -762,5 +762,8 @@ def _patch_ha_internals_for_mock_hass():
     ), patch(
         "homeassistant.helpers.translation.async_get_translations",
         new=AsyncMock(return_value={}),
+    ), patch(
+        "homeassistant.helpers.frame.report_usage",
+        return_value=None,
     ):
         yield

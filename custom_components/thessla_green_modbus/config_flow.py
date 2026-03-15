@@ -1135,7 +1135,12 @@ class OptionsFlow(_BASE_OPTIONS_FLOW):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:  # pragma: no cover
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._stored_config_entry = config_entry
+
+    @property
+    def config_entry(self):  # type: ignore[override]  # pragma: no cover
+        """Return the config entry for this options flow."""
+        return self._stored_config_entry
 
     def async_show_form(self, **kwargs):  # pragma: no cover
         base = getattr(super(), "async_show_form", None)
