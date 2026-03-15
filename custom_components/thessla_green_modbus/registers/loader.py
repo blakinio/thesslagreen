@@ -25,7 +25,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import time
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import Any, cast
 
@@ -70,9 +70,11 @@ async def _async_executor(
 ) -> Any:
     """Run ``func`` in the executor or background thread."""
 
+    if kwargs:
+        func = partial(func, **kwargs)
     if hass is not None:
-        return await hass.async_add_executor_job(func, *args, **kwargs)
-    return await asyncio.to_thread(func, *args, **kwargs)
+        return await hass.async_add_executor_job(func, *args)
+    return await asyncio.to_thread(func, *args)
 
 
 async def async_compute_file_hash(hass: Any | None, path: Path, mtime: float) -> str:
