@@ -474,3 +474,16 @@ def test_active_errors_sensor_available_without_synthetic_data_key(mock_coordina
     mock_coordinator.last_update_success = True
     mock_coordinator.offline_state = True
     assert sensor.available is False  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# Coverage: _format_error_status_code fallthrough (line 55)
+# ---------------------------------------------------------------------------
+
+
+def test_format_error_status_code_no_special_prefix():
+    """_format_error_status_code returns key.upper() when key has no e_/s_ prefix (line 55)."""
+    from custom_components.thessla_green_modbus.sensor import _format_error_status_code
+
+    assert _format_error_status_code("ambient_temperature") == "AMBIENT_TEMPERATURE"  # nosec B101
+    assert _format_error_status_code("e_abc") == "E_ABC"  # nosec B101  (prefix but non-digit suffix)

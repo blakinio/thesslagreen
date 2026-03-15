@@ -738,3 +738,32 @@ def mock_coordinator():
 def fail_on_log_exception():
     """Disable log exception check from HA test plugin."""
     yield
+
+
+@pytest.fixture(autouse=True)
+def _patch_ha_internals_for_mock_hass():
+    """Patch HA internals that require full hass initialisation.
+
+    Tests that pass a plain MagicMock() as hass would fail when the real HA
+    package is installed because entity_registry.async_get tries to create a
+    real EntityRegistry (needs hass.config.config_dir) and
+    translation.async_get_translations needs hass.data['integrations'].
+    Mocking both allows the pre-existing integration tests to keep passing.
+    """
+    if not USE_REAL_HOMEASSISTANT:
+        yield
+        return
+
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    with patch(
+        "homeassistant.helpers.entity_registry.async_get",
+        return_value=MagicMock(),
+    ), patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ), patch(
+        "homeassistant.helpers.frame.report_usage",
+        return_value=None,
+    ):
+        yield

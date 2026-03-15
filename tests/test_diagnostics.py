@@ -441,3 +441,52 @@ async def test_translation_failure_handled(caplog):
 
     assert result["active_errors"] == {"e_fault": "e_fault"}
     assert any("translation" in record.message.lower() for record in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: _run_executor_job fallback (line 30) and mask_ip ValueError (lines 167-168)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_executor_job_fallback_without_ha_executor():
+    """_run_executor_job calls func(*args) directly when hass lacks async_add_executor_job (line 30)."""
+    from custom_components.thessla_green_modbus.diagnostics import _run_executor_job
+
+    calls = []
+
+    def my_func(a, b):
+        calls.append((a, b))
+        return a + b
+
+    # Minimal hass without async_add_executor_job
+    hass = SimpleNamespace()  # no async_add_executor_job attribute
+    result = await _run_executor_job(hass, my_func, 3, 4)
+    assert result == 7  # nosec B101
+    assert calls == [(3, 4)]  # nosec B101
+
+
+def test_redact_sensitive_data_invalid_ip_returns_unchanged():
+    """mask_ip returns the original string when IP is invalid (lines 167-168)."""
+    from custom_components.thessla_green_modbus.diagnostics import _redact_sensitive_data
+
+    data = {"connection": {"host": "not_a_valid_ip_address"}}
+    result = _redact_sensitive_data(data)
+    assert result["connection"]["host"] == "not_a_valid_ip_address"  # nosec B101
+
+
+@pytest.mark.asyncio
+async def test_run_executor_job_with_ha_executor():
+    """_run_executor_job uses hass.async_add_executor_job when available (diagnostics.py line 30)."""
+    from custom_components.thessla_green_modbus.diagnostics import _run_executor_job
+
+    calls = []
+
+    async def fake_executor(func, *args):
+        calls.append(args)
+        return func(*args)
+
+    hass = SimpleNamespace(async_add_executor_job=fake_executor)
+    result = await _run_executor_job(hass, lambda x: x * 3, 4)
+    assert result == 12  # nosec B101
+    assert calls == [(4,)]  # nosec B101

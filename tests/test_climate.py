@@ -298,3 +298,83 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
     await async_setup_entry(hass, mock_config_entry, add_entities)
     entities = add_entities.call_args[0][0]
     assert any(isinstance(e, ThesslaGreenClimate) for e in entities)  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# _percentage_limits — max_val < min_val (line 238)
+# ---------------------------------------------------------------------------
+
+
+def test_percentage_limits_max_below_min():
+    """When max_percentage < min_percentage, max is clamped to min (line 238)."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.data = {"min_percentage": 80, "max_percentage": 20}
+
+    climate = ThesslaGreenClimate(coordinator)
+    min_v, max_v = climate._percentage_limits()
+
+    assert max_v == min_v  # nosec B101
+    assert max_v == 80  # nosec B101
+
+
+def test_percentage_limits_invalid_types():
+    """Non-numeric min/max default to 0 and 150 respectively."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.data = {"min_percentage": "bad", "max_percentage": None}
+
+    climate = ThesslaGreenClimate(coordinator)
+    min_v, max_v = climate._percentage_limits()
+
+    assert min_v == 0  # nosec B101
+    assert max_v == 150  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# preset_mode — special_mode branches (lines 244-254)
+# ---------------------------------------------------------------------------
+
+
+def test_preset_mode_no_special_mode():
+    """preset_mode returns 'none' when special_mode is 0 (line 247)."""
+    from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP  # noqa: F401
+
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.data = {"special_mode": 0}
+
+    climate = ThesslaGreenClimate(coordinator)
+    assert climate.preset_mode == "none"  # nosec B101
+
+
+def test_preset_mode_active_special_function():
+    """preset_mode returns the matching preset name when a bit is set (lines 250-252)."""
+    from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP
+
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+
+    # Take the first defined preset and set its bit
+    first_preset, first_bit = next(iter(SPECIAL_FUNCTION_MAP.items()))
+    coordinator.data = {"special_mode": first_bit}
+
+    climate = ThesslaGreenClimate(coordinator)
+    assert climate.preset_mode == first_preset  # nosec B101
+
+
+def test_preset_mode_unknown_bits_returns_none():
+    """preset_mode returns 'none' when no SPECIAL_FUNCTION_MAP entry matches (line 254)."""
+    from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP
+    from custom_components.thessla_green_modbus import climate as climate_mod
+    from unittest.mock import patch
+
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator.data = {"special_mode": 0b11111111}
+
+    climate_entity = ThesslaGreenClimate(coordinator)
+
+    # Patch SPECIAL_FUNCTION_MAP to empty so no preset matches
+    with patch.dict(climate_mod.SPECIAL_FUNCTION_MAP, {}, clear=True):
+        assert climate_entity.preset_mode == "none"  # nosec B101

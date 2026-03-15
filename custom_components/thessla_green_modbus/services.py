@@ -553,6 +553,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
+                success = True
                 for param in [
                     "co2_low",
                     "co2_medium",

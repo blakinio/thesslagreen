@@ -169,6 +169,12 @@
       "e_201": {
         "name": "E201: Duct Heater Overprotection"
       },
+      "e_202": {
+        "name": "E202: Secondary Heater Control Failure"
+      },
+      "e_203": {
+        "name": "E203: Secondary Heater Control Failure (2)"
+      },
       "e_249": {
         "name": "E249: No Expansion Module Communication"
       },
@@ -1417,6 +1423,8 @@
     "e_199": "Device error E 199",
     "e_200": "Device error E 200",
     "e_201": "Device error E 201",
+    "e_202": "Device error E 202",
+    "e_203": "Device error E 203",
     "e_249": "Device error E 249",
     "e_250": "Device error E 250",
     "e_251": "Device error E 251",

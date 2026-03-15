@@ -6,11 +6,6 @@ import re
 from datetime import time
 
 __all__ = [
-    "_to_snake_case",
-    "_normalise_name",
-    "_decode_register_time",
-    "_decode_bcd_time",
-    "_decode_aatt",
     "BCD_TIME_PREFIXES",
     "TIME_REGISTER_PREFIXES",
     "default_connection_mode",
