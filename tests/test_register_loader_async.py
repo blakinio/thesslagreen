@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from typing import Any
 
 import pytest
@@ -17,11 +18,11 @@ pytestmark = pytest.mark.asyncio
 
 class _FakeHass:
     def __init__(self) -> None:
-        self.calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+        self.calls: list[tuple[Any, ...]] = []
 
-    async def async_add_executor_job(self, func: Any, *args: Any, **kwargs: Any) -> Any:
-        self.calls.append(((func, *args), kwargs))
-        return func(*args, **kwargs)
+    async def async_add_executor_job(self, func: Any, *args: Any) -> Any:
+        self.calls.append((func, *args))
+        return func(*args)
 
 
 async def test_async_loader_uses_executor(tmp_path):
@@ -38,8 +39,10 @@ async def test_async_loader_uses_executor(tmp_path):
     )
 
     assert registers
-    assert any(call[0][0] == tmp_json.read_bytes for call in hass.calls)
+    assert any(call[0] == tmp_json.read_bytes for call in hass.calls)
     assert any(
-        call[0][0] == tmp_json.read_text and call[1].get("encoding") == "utf-8"
+        isinstance(call[0], functools.partial)
+        and call[0].func == tmp_json.read_text
+        and call[0].keywords.get("encoding") == "utf-8"
         for call in hass.calls
     )
