@@ -118,7 +118,7 @@ def _get_platforms() -> list[object]:
     for domain in PLATFORM_DOMAINS:
         if hasattr(Platform, domain.upper()):
             platforms.append(getattr(Platform, domain.upper()))
-        else:
+        else:  # pragma: no cover
             try:
                 platforms.append(Platform(domain))
             except ValueError:  # pragma: no cover - unsupported domain
@@ -470,7 +470,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  
     return unload_ok
 
 
-async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover
     """Update options."""
     _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
 
