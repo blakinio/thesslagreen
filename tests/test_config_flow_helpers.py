@@ -270,3 +270,365 @@ async def test_build_connection_schema_tcp_rtu_connection_default():
     }
     schema = flow._build_connection_schema(defaults)
     assert schema is not None
+
+
+async def test_build_connection_schema_empty_baud_rates_bad_baud_default():
+    """Cover except (TypeError, ValueError) when int(baud_default) fails (lines 670-671)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+
+    original_baud = cf_mod.MODBUS_BAUD_RATES
+    try:
+        cf_mod.MODBUS_BAUD_RATES = []
+        flow = ConfigFlow()
+        flow.hass = None
+        schema = flow._build_connection_schema({"baud_rate": "invalid_baud"})
+        assert schema is not None
+    finally:
+        cf_mod.MODBUS_BAUD_RATES = original_baud
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage tests for config_flow utility functions
+# ---------------------------------------------------------------------------
+
+
+def test_vol_invalid_class():
+    """_VolInvalid with path argument covers lines 150-152."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    err = cf_mod._VolInvalid("test message", ["field"])
+    assert err.error_message == "test message"
+    assert err.path == ["field"]
+
+
+def test_vol_invalid_no_path():
+    """_VolInvalid without path defaults to empty list."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    err = cf_mod._VolInvalid("error")
+    assert err.path == []
+
+
+def test_normalize_baud_rate_string_zero():
+    """_normalize_baud_rate('0') → int 0 → <= 0 → ValueError (line 209)."""
+    with pytest.raises(ValueError):
+        _normalize_baud_rate("0")
+
+
+def test_denormalize_option_none():
+    """_denormalize_option with None returns None (line 249)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    result = cf_mod._denormalize_option("prefix_", None)
+    assert result is None
+
+
+def test_denormalize_option_already_prefixed():
+    """_denormalize_option with domain-prefixed value returns it unchanged (line 251)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import DOMAIN
+    val = f"{DOMAIN}.some_value"
+    result = cf_mod._denormalize_option("prefix_", val)
+    assert result == val
+
+
+def test_looks_like_hostname_empty():
+    """_looks_like_hostname with empty string returns False (line 258)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    assert cf_mod._looks_like_hostname("") is False
+
+
+def test_looks_like_hostname_starts_with_dash():
+    """_looks_like_hostname with leading dash returns False (line 264)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    assert cf_mod._looks_like_hostname("-invalid.host") is False
+
+
+# ---------------------------------------------------------------------------
+# Pass 16 — D2: _strip_translation_prefix with domain prefix (line 189)
+# ---------------------------------------------------------------------------
+
+
+def test_strip_translation_prefix_with_domain_prefix():
+    """Value with domain prefix gets stripped (line 189)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import DOMAIN
+    result = cf_mod._strip_translation_prefix(f"{DOMAIN}.some_value")
+    assert result == "some_value"
+
+
+# ---------------------------------------------------------------------------
+# Pass 16 — D3: _normalize_parity non-string non-None (line 218)
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_parity_non_string_non_none():
+    """Non-string, non-None value is str()-converted then fails validation (line 218)."""
+    with pytest.raises(ValueError):
+        _normalize_parity(42)
+
+
+# ---------------------------------------------------------------------------
+# Pass 16 — D4: _caps_to_dict branches (lines 311, 322, 326, 330)
+# ---------------------------------------------------------------------------
+
+
+def test_caps_to_dict_dataclass_no_as_dict():
+    """dataclass without as_dict uses dataclasses.asdict (line 322)."""
+    import dataclasses
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+
+    @dataclasses.dataclass
+    class Cap:
+        has_feature: bool = True
+
+    result = cf_mod._caps_to_dict(Cap())
+    assert result["has_feature"] is True
+
+
+def test_caps_to_dict_dict_with_set_value():
+    """dict input with set value converts to sorted list (lines 326, 330)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+
+    result = cf_mod._caps_to_dict({"a": 1, "b": {3, 1, 2}})
+    assert result["a"] == 1
+    assert result["b"] == [1, 2, 3]
+
+
+def test_caps_to_dict_plain_object():
+    """Object with __dict__ uses getattr fallback (line 311 else branch)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+
+    class Obj:
+        def __init__(self):
+            self.y = 42
+
+    result = cf_mod._caps_to_dict(Obj())
+    assert result.get("y") == 42
+
+
+def test_caps_to_dict_obj_with_as_dict():
+    """Object with as_dict() method uses it (line 322 elif)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+
+    class ObjWithAsDict:
+        def as_dict(self):
+            return {"x": 99}
+
+    result = cf_mod._caps_to_dict(ObjWithAsDict())
+    assert result["x"] == 99
+
+
+# ---------------------------------------------------------------------------
+# Pass 16 — D5: validate_input branches
+# ---------------------------------------------------------------------------
+
+
+async def test_validate_input_invalid_connection_type():
+    """Invalid connection_type raises exception (line 343)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import CONF_CONNECTION_TYPE, CONF_SLAVE_ID
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {CONF_CONNECTION_TYPE: "INVALID", CONF_SLAVE_ID: 1})
+
+
+async def test_validate_input_tcp_rtu_normalization():
+    """TCP_RTU normalizes to TCP + mode (lines 347-349), then fails at scanner."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE,
+        CONF_SLAVE_ID,
+        CONNECTION_TYPE_TCP_RTU,
+    )
+    from homeassistant.const import CONF_HOST
+
+    data = {
+        CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP_RTU,
+        CONF_SLAVE_ID: 1,
+        CONF_HOST: "192.168.1.1",
+    }
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, data)
+    # Data was normalized
+    from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_TCP
+    assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_TCP
+
+
+async def test_validate_input_invalid_slave_id_string():
+    """Non-numeric slave_id raises exception (lines 361-362)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE,
+        CONF_SLAVE_ID,
+        CONNECTION_TYPE_TCP,
+    )
+    from homeassistant.const import CONF_HOST
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+            CONF_SLAVE_ID: "abc",
+            CONF_HOST: "192.168.1.1",
+        })
+
+
+async def test_validate_input_slave_id_too_low():
+    """slave_id < 1 raises exception."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONNECTION_TYPE_TCP,
+    )
+    from homeassistant.const import CONF_HOST
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+            CONF_SLAVE_ID: 0,
+            CONF_HOST: "192.168.1.1",
+        })
+
+
+async def test_validate_input_invalid_port():
+    """Non-numeric port raises exception (lines 380-381)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONNECTION_TYPE_TCP,
+    )
+    from homeassistant.const import CONF_HOST, CONF_PORT
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+            CONF_SLAVE_ID: 1,
+            CONF_HOST: "192.168.1.1",
+            CONF_PORT: "bad_port",
+        })
+
+
+async def test_validate_input_empty_host():
+    """Empty host raises exception (line 383)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONNECTION_TYPE_TCP,
+    )
+    from homeassistant.const import CONF_HOST, CONF_PORT
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+            CONF_SLAVE_ID: 1,
+            CONF_HOST: "",
+            CONF_PORT: 502,
+        })
+
+
+async def test_validate_input_hostname_fails_looks_like():
+    """Hostname with no dot fails _looks_like_hostname (line 394)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONNECTION_TYPE_TCP,
+    )
+    from homeassistant.const import CONF_HOST, CONF_PORT
+
+    # "nodothost" has no dot → _looks_like_hostname returns False → raises
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+            CONF_SLAVE_ID: 1,
+            CONF_HOST: "nodothost",
+            CONF_PORT: 502,
+        })
+
+
+async def test_validate_input_rtu_invalid_baud_rate():
+    """Invalid baud rate in RTU raises exception (lines 413-414)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONF_BAUD_RATE, CONF_SERIAL_PORT,
+        CONNECTION_TYPE_RTU,
+    )
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+            CONF_SLAVE_ID: 1,
+            CONF_SERIAL_PORT: "/dev/ttyS0",
+            CONF_BAUD_RATE: 0,
+        })
+
+
+async def test_validate_input_rtu_invalid_parity():
+    """Invalid parity in RTU raises exception (lines 417-418)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONF_BAUD_RATE, CONF_SERIAL_PORT,
+        CONF_PARITY, CONNECTION_TYPE_RTU,
+    )
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+            CONF_SLAVE_ID: 1,
+            CONF_SERIAL_PORT: "/dev/ttyS0",
+            CONF_BAUD_RATE: 9600,
+            CONF_PARITY: "INVALID_PARITY",
+        })
+
+
+async def test_validate_input_rtu_invalid_stop_bits():
+    """Invalid stop_bits in RTU raises exception (lines 421-424)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONF_BAUD_RATE, CONF_SERIAL_PORT,
+        CONF_PARITY, CONF_STOP_BITS, CONNECTION_TYPE_RTU,
+    )
+
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+            CONF_SLAVE_ID: 1,
+            CONF_SERIAL_PORT: "/dev/ttyS0",
+            CONF_BAUD_RATE: 9600,
+            CONF_PARITY: "none",
+            CONF_STOP_BITS: 3,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Pass 16 — line 311: _call_with_optional_timeout sync return
+# ---------------------------------------------------------------------------
+
+
+async def test_call_with_optional_timeout_sync_function():
+    """Sync function returns result without awaiting (line 311)."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+
+    result = await cf_mod._call_with_optional_timeout(lambda: 42, timeout=5.0)
+    assert result == 42
+
+
+# ---------------------------------------------------------------------------
+# Pass 16 — lines 425-428: RTU validation success path
+# ---------------------------------------------------------------------------
+
+
+async def test_validate_input_rtu_valid_params():
+    """Valid RTU params reach scanner (lines 425-428), scanner fails with exception."""
+    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus.const import (
+        CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONF_BAUD_RATE, CONF_SERIAL_PORT,
+        CONF_PARITY, CONF_STOP_BITS, CONNECTION_TYPE_RTU,
+    )
+
+    data = {
+        CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+        CONF_SLAVE_ID: 1,
+        CONF_SERIAL_PORT: "/dev/ttyS0",
+        CONF_BAUD_RATE: 9600,
+        CONF_PARITY: "none",
+        CONF_STOP_BITS: 1,
+    }
+    with pytest.raises(Exception):
+        await cf_mod.validate_input(None, data)
+    # Confirm RTU validation passed and data was set
+    assert data[CONF_BAUD_RATE] == 9600
+    assert data[CONF_PARITY] == "none"
+    assert data[CONF_STOP_BITS] == 1
