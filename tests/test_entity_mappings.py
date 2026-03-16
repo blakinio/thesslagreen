@@ -487,3 +487,70 @@ async def test_async_setup_entity_mappings_no_hass():
     await em.async_setup_entity_mappings(hass=None)
     # Mappings should be populated
     assert isinstance(em.ENTITY_MAPPINGS, dict)
+
+
+# ---------------------------------------------------------------------------
+# No-duplicate invariants: select/switch registers must not appear in number
+# ---------------------------------------------------------------------------
+
+
+def test_select_registers_not_in_number_mappings():
+    """Registers in SELECT_ENTITY_MAPPINGS must not also appear in NUMBER_ENTITY_MAPPINGS.
+
+    Duplication causes HA to create both a Select entity and a Number entity
+    for the same register, resulting in duplicate controls visible in the UI.
+    """
+    duplicates = [
+        name
+        for name in em.SELECT_ENTITY_MAPPINGS
+        if name in em.ENTITY_MAPPINGS.get("number", {})
+    ]
+    assert duplicates == [], (
+        f"Registers in both SELECT and NUMBER mappings (would create duplicates): {duplicates}"
+    )
+
+
+def test_switch_registers_not_in_number_mappings():
+    """Registers in SWITCH_ENTITY_MAPPINGS must not also appear in NUMBER_ENTITY_MAPPINGS."""
+    duplicates = [
+        name
+        for name in em.SWITCH_ENTITY_MAPPINGS
+        if name in em.ENTITY_MAPPINGS.get("number", {})
+    ]
+    assert duplicates == [], (
+        f"Registers in both SWITCH and NUMBER mappings (would create duplicates): {duplicates}"
+    )
+
+
+def test_date_time_registers_not_in_number_mappings():
+    """BCD date/time registers (date_time_*) must not appear in NUMBER_ENTITY_MAPPINGS.
+
+    These registers store encoded year/month/day values with format-descriptor
+    'units' like 'RRMM' and 'DDTT' — not valid measurement units.
+    """
+    bad = [
+        name
+        for name in em.ENTITY_MAPPINGS.get("number", {})
+        if name.startswith("date_time")
+    ]
+    assert bad == [], (
+        f"BCD date/time registers found in NUMBER mappings: {bad}"
+    )
+
+
+def test_no_register_in_multiple_platforms():
+    """Each register should appear in at most one writable/interactive platform.
+
+    Checks all pairs: number vs select, number vs switch, select vs switch.
+    """
+    number_keys = set(em.ENTITY_MAPPINGS.get("number", {}))
+    select_keys = set(em.SELECT_ENTITY_MAPPINGS)
+    switch_keys = set(em.SWITCH_ENTITY_MAPPINGS)
+
+    num_sel = number_keys & select_keys
+    num_sw = number_keys & switch_keys
+    sel_sw = select_keys & switch_keys
+
+    assert num_sel == set(), f"number ∩ select: {num_sel}"
+    assert num_sw == set(), f"number ∩ switch: {num_sw}"
+    assert sel_sw == set(), f"select ∩ switch: {sel_sw}"

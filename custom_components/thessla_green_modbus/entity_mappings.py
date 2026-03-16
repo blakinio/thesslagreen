@@ -265,6 +265,19 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if register in SENSOR_ENTITY_MAPPINGS and "W" not in (info.get("access") or ""):
             continue
 
+        # Skip registers already handled by select/switch platforms to avoid
+        # creating a duplicate Number entity alongside the correct entity type.
+        if register in SELECT_ENTITY_MAPPINGS:
+            continue
+        if register in SWITCH_ENTITY_MAPPINGS:
+            continue
+
+        # Skip BCD date/time registers — they store encoded year/month/day
+        # fields with format-descriptor "units" (e.g. "RRMM", "DDTT") that
+        # are not valid measurement units and must not be editable numbers.
+        if register.startswith("date_time"):
+            continue
+
         # Skip diagnostic/error/fault registers (E/S/F codes and alarm/error flags)
         if re.match(r"[sef](?:_|\d)", register) or register in {"alarm", "error"}:
             continue
@@ -326,13 +339,6 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "max_gwc_air_temperature": {"icon": "mdi:thermometer-high"},
     "gwc_regen_period": {"icon": "mdi:timer"},
     "delta_t_gwc": {"icon": "mdi:thermometer-lines"},
-    # Date/time registers
-    "date_time_1": {
-        "unit": "RRMM",
-        "min": 0,
-        "max": 99,
-        "step": 1,
-    },
 }
 
 
@@ -1099,6 +1105,11 @@ def _extend_entity_mappings_from_registers() -> None:
                     "device_class": BinarySensorDeviceClass.PROBLEM,
                 },
             )
+            continue
+
+        # BCD date/time encoding registers — raw BCD year/month/day values with
+        # format-descriptor "units" (e.g. "RRMM", "DDTT"); not plain numbers.
+        if register.startswith("date_time"):
             continue
 
         # BCD time registers (schedule/airing/GWC timeslots) → read-only text

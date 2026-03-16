@@ -16,6 +16,12 @@ INTENTIONAL_OMISSIONS = {
     "serial_number_4",
     "serial_number_5",
     "serial_number_6",
+    # BCD-encoded date/time registers — not exposed as any entity platform
+    "date_time",
+    "date_time_ddtt",
+    "date_time_ggmm",
+    "date_time_sscc",
+    "date_time_1",
 }
 
 # Minimal Home Assistant stubs required to import entity mappings
