@@ -61,6 +61,9 @@ async def async_setup_entry(
         # forcibly added from the full register list.
         if register_name in available or force_create:
             address = register_map.get(register_name)
+            if address is None:
+                _LOGGER.warning("No address for binary sensor: %s, skipping", register_name)
+                continue
             entities.append(
                 ThesslaGreenBinarySensor(
                     coordinator,
@@ -183,7 +186,8 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
             or "error" in self._register_name
             or self._register_name.startswith(("s_", "e_"))
         ):
-            attrs["severity"] = "warning" if self.is_on else "normal"
+            if self.is_on is not None:
+                attrs["severity"] = "warning" if self.is_on else "normal"
 
         return attrs
 
@@ -216,6 +220,8 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
             or "error" in self._register_name
             or self._register_name.startswith(("s_", "e_"))
         ):
+            if self.is_on is None:
+                return "mdi:help-circle"
             return "mdi:alert-circle" if self.is_on else "mdi:check-circle"
 
         # Fallback icon when no icon is configured

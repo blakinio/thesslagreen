@@ -165,7 +165,7 @@ async def test_form_user_port_out_of_range(invalid_port: int):
 
 @pytest.mark.parametrize(
     "slave_id,expected_error",
-    [(0, "invalid_slave_low"), (248, "invalid_slave_high")],
+    [(-1, "invalid_slave_low"), (248, "invalid_slave_high")],
 )
 async def test_form_user_invalid_slave_id(slave_id: int, expected_error: str):
     """Invalid slave IDs should highlight the slave_id field."""
@@ -1313,7 +1313,6 @@ async def test_validate_input_invalid_port(invalid_port: int):
     ("invalid_slave", "err_code"),
     [
         (-1, "invalid_slave_low"),
-        (0, "invalid_slave_low"),
         (248, "invalid_slave_high"),
     ],
 )

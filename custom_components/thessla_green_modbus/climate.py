@@ -391,8 +391,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             # Set specific special mode
             special_mode_value = SPECIAL_FUNCTION_MAP.get(preset_mode, 0)
 
-        await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
-        success = await self._write_register_compat("special_mode", special_mode_value, refresh=False)
+        success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+        if success:
+            success = await self._write_register_compat("special_mode", special_mode_value, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()

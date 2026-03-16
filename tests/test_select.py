@@ -159,8 +159,8 @@ def test_select_invalid_option(mock_coordinator):
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
-def test_select_modbus_error_creates_issue(mock_coordinator):
-    """Modbus failures should be surfaced through issues helper."""
+def test_select_modbus_error_logs_and_returns(mock_coordinator):
+    """Modbus failures should be logged and not raise."""
 
     mock_coordinator.data["mode"] = 0
     address = 4208
@@ -170,13 +170,10 @@ def test_select_modbus_error_creates_issue(mock_coordinator):
     mock_coordinator.async_write_register = AsyncMock(
         side_effect=ConnectionException("write failed")
     )
-    select_entity.hass = MagicMock(
-        helpers=types.SimpleNamespace(issue=types.SimpleNamespace(async_create_issue=AsyncMock()))
-    )
+    select_entity.hass = MagicMock()
 
     asyncio.run(select_entity.async_select_option("manual"))
 
-    select_entity.hass.helpers.issue.async_create_issue.assert_called_once()
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 

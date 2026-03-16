@@ -103,6 +103,14 @@ class FakeCoordinator:
     async def async_shutdown(self):  # pragma: no cover - simple stub
         return None
 
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        combined = {**SENSOR_MAP, **BINARY_MAP}
+        return {
+            name: idx + 1
+            for idx, (name, cfg) in enumerate(combined.items())
+            if cfg.get("register_type") == register_type
+        }
+
     async def async_request_refresh(self):  # pragma: no cover - simple stub
         return None
 

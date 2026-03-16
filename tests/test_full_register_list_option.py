@@ -83,6 +83,13 @@ class FakeCoordinator:
     async def async_shutdown(self):
         return None
 
+    def get_register_map(self, register_type: str) -> dict[str, int]:
+        return {
+            name: idx + 1
+            for idx, (name, cfg) in enumerate(SENSOR_MAP.items())
+            if cfg.get("register_type") == register_type
+        }
+
     async def async_request_refresh(self):
         return None
 

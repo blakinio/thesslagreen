@@ -154,7 +154,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     if hasattr(hass, "async_add_executor_job"):
         import_result = hass.async_add_executor_job(import_module, ".config_flow", __name__)
-        if asyncio.iscoroutine(import_result):
+        if inspect.isawaitable(import_result):
             await import_result
     else:
         import_module(".config_flow", __name__)
@@ -401,7 +401,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     for platform in PLATFORM_DOMAINS:
         try:
             import_task = hass.async_add_executor_job(import_module, f".{platform}", __name__)
-            if asyncio.iscoroutine(import_task):
+            if inspect.isawaitable(import_task):
                 await import_task
         except (
             ImportError,
