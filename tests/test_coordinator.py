@@ -632,10 +632,12 @@ def test_reverse_lookup_performance(coordinator):
     import time
 
     addresses = list(INPUT_REGISTERS.values())
+    iterations = 1000
 
     start = time.perf_counter()
-    for addr in addresses:
-        coordinator._input_registers_rev.get(addr)
+    for _ in range(iterations):
+        for addr in addresses:
+            coordinator._input_registers_rev.get(addr)
     dict_time = time.perf_counter() - start
 
     def linear_search(register_map, address):
@@ -645,8 +647,9 @@ def test_reverse_lookup_performance(coordinator):
         return None
 
     start = time.perf_counter()
-    for addr in addresses:
-        linear_search(INPUT_REGISTERS, addr)
+    for _ in range(iterations):
+        for addr in addresses:
+            linear_search(INPUT_REGISTERS, addr)
     linear_time = time.perf_counter() - start
 
     assert dict_time < linear_time

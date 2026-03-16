@@ -1415,19 +1415,37 @@ def _extend_entity_mappings_from_registers() -> None:
         if register.startswith("date_time"):
             continue
 
-        # BCD time registers (schedule/airing/GWC timeslots) → read-only text
-        # sensors that display the decoded "HH:MM" value.
+        # BCD time registers (schedule/airing/GWC timeslots).
+        # RW schedule_*, start_gwc_regen*, and stop_gwc_regen* registers are
+        # exposed as select entities so the user can pick a time from a
+        # dropdown; all other BCD time registers remain read-only sensors.
         from .utils import BCD_TIME_PREFIXES
 
+        _TIME_SELECT_PREFIXES = ("schedule_", "start_gwc_regen", "stop_gwc_regen")
+
         if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
-            SENSOR_ENTITY_MAPPINGS.setdefault(
-                register,
-                {
-                    "translation_key": register,
-                    "icon": "mdi:clock-outline",
-                    "register_type": "holding_registers",
-                },
-            )
+            reg_access = (reg.access or "").upper()
+            if register.startswith(_TIME_SELECT_PREFIXES) and "W" in reg_access:
+                from .schedule_helpers import TIME_SELECT_STATES
+
+                SELECT_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "translation_key": register,
+                        "icon": "mdi:clock-outline",
+                        "register_type": "holding_registers",
+                        "states": TIME_SELECT_STATES,
+                    },
+                )
+            else:
+                SENSOR_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "translation_key": register,
+                        "icon": "mdi:clock-outline",
+                        "register_type": "holding_registers",
+                    },
+                )
             continue
 
         access = (reg.access or "").upper()

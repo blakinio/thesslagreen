@@ -1018,6 +1018,186 @@
           "one": "1",
           "two": "2"
         }
+      },
+      "schedule_summer_fri_1": {
+        "name": "Schedule Summer Fri 1"
+      },
+      "schedule_summer_fri_2": {
+        "name": "Schedule Summer Fri 2"
+      },
+      "schedule_summer_fri_3": {
+        "name": "Schedule Summer Fri 3"
+      },
+      "schedule_summer_fri_4": {
+        "name": "Schedule Summer Fri 4"
+      },
+      "schedule_summer_mon_1": {
+        "name": "Schedule Summer Mon 1"
+      },
+      "schedule_summer_mon_2": {
+        "name": "Schedule Summer Mon 2"
+      },
+      "schedule_summer_mon_3": {
+        "name": "Schedule Summer Mon 3"
+      },
+      "schedule_summer_mon_4": {
+        "name": "Schedule Summer Mon 4"
+      },
+      "schedule_summer_sat_1": {
+        "name": "Schedule Summer Sat 1"
+      },
+      "schedule_summer_sat_2": {
+        "name": "Schedule Summer Sat 2"
+      },
+      "schedule_summer_sat_3": {
+        "name": "Schedule Summer Sat 3"
+      },
+      "schedule_summer_sat_4": {
+        "name": "Schedule Summer Sat 4"
+      },
+      "schedule_summer_sun_1": {
+        "name": "Schedule Summer Sun 1"
+      },
+      "schedule_summer_sun_2": {
+        "name": "Schedule Summer Sun 2"
+      },
+      "schedule_summer_sun_3": {
+        "name": "Schedule Summer Sun 3"
+      },
+      "schedule_summer_sun_4": {
+        "name": "Schedule Summer Sun 4"
+      },
+      "schedule_summer_thu_1": {
+        "name": "Schedule Summer Thu 1"
+      },
+      "schedule_summer_thu_2": {
+        "name": "Schedule Summer Thu 2"
+      },
+      "schedule_summer_thu_3": {
+        "name": "Schedule Summer Thu 3"
+      },
+      "schedule_summer_thu_4": {
+        "name": "Schedule Summer Thu 4"
+      },
+      "schedule_summer_tue_1": {
+        "name": "Schedule Summer Tue 1"
+      },
+      "schedule_summer_tue_2": {
+        "name": "Schedule Summer Tue 2"
+      },
+      "schedule_summer_tue_3": {
+        "name": "Schedule Summer Tue 3"
+      },
+      "schedule_summer_tue_4": {
+        "name": "Schedule Summer Tue 4"
+      },
+      "schedule_summer_wed_1": {
+        "name": "Schedule Summer Wed 1"
+      },
+      "schedule_summer_wed_2": {
+        "name": "Schedule Summer Wed 2"
+      },
+      "schedule_summer_wed_3": {
+        "name": "Schedule Summer Wed 3"
+      },
+      "schedule_summer_wed_4": {
+        "name": "Schedule Summer Wed 4"
+      },
+      "schedule_winter_fri_1": {
+        "name": "Schedule Winter Fri 1"
+      },
+      "schedule_winter_fri_2": {
+        "name": "Schedule Winter Fri 2"
+      },
+      "schedule_winter_fri_3": {
+        "name": "Schedule Winter Fri 3"
+      },
+      "schedule_winter_fri_4": {
+        "name": "Schedule Winter Fri 4"
+      },
+      "schedule_winter_mon_1": {
+        "name": "Schedule Winter Mon 1"
+      },
+      "schedule_winter_mon_2": {
+        "name": "Schedule Winter Mon 2"
+      },
+      "schedule_winter_mon_3": {
+        "name": "Schedule Winter Mon 3"
+      },
+      "schedule_winter_mon_4": {
+        "name": "Schedule Winter Mon 4"
+      },
+      "schedule_winter_sat_1": {
+        "name": "Schedule Winter Sat 1"
+      },
+      "schedule_winter_sat_2": {
+        "name": "Schedule Winter Sat 2"
+      },
+      "schedule_winter_sat_3": {
+        "name": "Schedule Winter Sat 3"
+      },
+      "schedule_winter_sat_4": {
+        "name": "Schedule Winter Sat 4"
+      },
+      "schedule_winter_sun_1": {
+        "name": "Schedule Winter Sun 1"
+      },
+      "schedule_winter_sun_2": {
+        "name": "Schedule Winter Sun 2"
+      },
+      "schedule_winter_sun_3": {
+        "name": "Schedule Winter Sun 3"
+      },
+      "schedule_winter_sun_4": {
+        "name": "Schedule Winter Sun 4"
+      },
+      "schedule_winter_thu_1": {
+        "name": "Schedule Winter Thu 1"
+      },
+      "schedule_winter_thu_2": {
+        "name": "Schedule Winter Thu 2"
+      },
+      "schedule_winter_thu_3": {
+        "name": "Schedule Winter Thu 3"
+      },
+      "schedule_winter_thu_4": {
+        "name": "Schedule Winter Thu 4"
+      },
+      "schedule_winter_tue_1": {
+        "name": "Schedule Winter Tue 1"
+      },
+      "schedule_winter_tue_2": {
+        "name": "Schedule Winter Tue 2"
+      },
+      "schedule_winter_tue_3": {
+        "name": "Schedule Winter Tue 3"
+      },
+      "schedule_winter_tue_4": {
+        "name": "Schedule Winter Tue 4"
+      },
+      "schedule_winter_wed_1": {
+        "name": "Schedule Winter Wed 1"
+      },
+      "schedule_winter_wed_2": {
+        "name": "Schedule Winter Wed 2"
+      },
+      "schedule_winter_wed_3": {
+        "name": "Schedule Winter Wed 3"
+      },
+      "schedule_winter_wed_4": {
+        "name": "Schedule Winter Wed 4"
+      },
+      "start_gwc_regen_summer_time": {
+        "name": "Start Gwc Regen Summer Time"
+      },
+      "start_gwc_regen_winter_time": {
+        "name": "Start Gwc Regen Winter Time"
+      },
+      "stop_gwc_regen_summer_time": {
+        "name": "Stop Gwc Regen Summer Time"
+      },
+      "stop_gwc_regen_winter_time": {
+        "name": "Stop Gwc Regen Winter Time"
       }
     },
     "sensor": {
@@ -1208,188 +1388,8 @@
       "pres_check_time_ggmm": {
         "name": "Godzina kontroli filtrów (roz.)"
       },
-      "schedule_summer_fri_1": {
-        "name": "Schedule Summer Fri 1"
-      },
-      "schedule_summer_fri_2": {
-        "name": "Schedule Summer Fri 2"
-      },
-      "schedule_summer_fri_3": {
-        "name": "Schedule Summer Fri 3"
-      },
-      "schedule_summer_fri_4": {
-        "name": "Schedule Summer Fri 4"
-      },
-      "schedule_summer_mon_1": {
-        "name": "Schedule Summer Mon 1"
-      },
-      "schedule_summer_mon_2": {
-        "name": "Schedule Summer Mon 2"
-      },
-      "schedule_summer_mon_3": {
-        "name": "Schedule Summer Mon 3"
-      },
-      "schedule_summer_mon_4": {
-        "name": "Schedule Summer Mon 4"
-      },
-      "schedule_summer_sat_1": {
-        "name": "Schedule Summer Sat 1"
-      },
-      "schedule_summer_sat_2": {
-        "name": "Schedule Summer Sat 2"
-      },
-      "schedule_summer_sat_3": {
-        "name": "Schedule Summer Sat 3"
-      },
-      "schedule_summer_sat_4": {
-        "name": "Schedule Summer Sat 4"
-      },
-      "schedule_summer_sun_1": {
-        "name": "Schedule Summer Sun 1"
-      },
-      "schedule_summer_sun_2": {
-        "name": "Schedule Summer Sun 2"
-      },
-      "schedule_summer_sun_3": {
-        "name": "Schedule Summer Sun 3"
-      },
-      "schedule_summer_sun_4": {
-        "name": "Schedule Summer Sun 4"
-      },
-      "schedule_summer_thu_1": {
-        "name": "Schedule Summer Thu 1"
-      },
-      "schedule_summer_thu_2": {
-        "name": "Schedule Summer Thu 2"
-      },
-      "schedule_summer_thu_3": {
-        "name": "Schedule Summer Thu 3"
-      },
-      "schedule_summer_thu_4": {
-        "name": "Schedule Summer Thu 4"
-      },
-      "schedule_summer_tue_1": {
-        "name": "Schedule Summer Tue 1"
-      },
-      "schedule_summer_tue_2": {
-        "name": "Schedule Summer Tue 2"
-      },
-      "schedule_summer_tue_3": {
-        "name": "Schedule Summer Tue 3"
-      },
-      "schedule_summer_tue_4": {
-        "name": "Schedule Summer Tue 4"
-      },
-      "schedule_summer_wed_1": {
-        "name": "Schedule Summer Wed 1"
-      },
-      "schedule_summer_wed_2": {
-        "name": "Schedule Summer Wed 2"
-      },
-      "schedule_summer_wed_3": {
-        "name": "Schedule Summer Wed 3"
-      },
-      "schedule_summer_wed_4": {
-        "name": "Schedule Summer Wed 4"
-      },
-      "schedule_winter_fri_1": {
-        "name": "Schedule Winter Fri 1"
-      },
-      "schedule_winter_fri_2": {
-        "name": "Schedule Winter Fri 2"
-      },
-      "schedule_winter_fri_3": {
-        "name": "Schedule Winter Fri 3"
-      },
-      "schedule_winter_fri_4": {
-        "name": "Schedule Winter Fri 4"
-      },
-      "schedule_winter_mon_1": {
-        "name": "Schedule Winter Mon 1"
-      },
-      "schedule_winter_mon_2": {
-        "name": "Schedule Winter Mon 2"
-      },
-      "schedule_winter_mon_3": {
-        "name": "Schedule Winter Mon 3"
-      },
-      "schedule_winter_mon_4": {
-        "name": "Schedule Winter Mon 4"
-      },
-      "schedule_winter_sat_1": {
-        "name": "Schedule Winter Sat 1"
-      },
-      "schedule_winter_sat_2": {
-        "name": "Schedule Winter Sat 2"
-      },
-      "schedule_winter_sat_3": {
-        "name": "Schedule Winter Sat 3"
-      },
-      "schedule_winter_sat_4": {
-        "name": "Schedule Winter Sat 4"
-      },
-      "schedule_winter_sun_1": {
-        "name": "Schedule Winter Sun 1"
-      },
-      "schedule_winter_sun_2": {
-        "name": "Schedule Winter Sun 2"
-      },
-      "schedule_winter_sun_3": {
-        "name": "Schedule Winter Sun 3"
-      },
-      "schedule_winter_sun_4": {
-        "name": "Schedule Winter Sun 4"
-      },
-      "schedule_winter_thu_1": {
-        "name": "Schedule Winter Thu 1"
-      },
-      "schedule_winter_thu_2": {
-        "name": "Schedule Winter Thu 2"
-      },
-      "schedule_winter_thu_3": {
-        "name": "Schedule Winter Thu 3"
-      },
-      "schedule_winter_thu_4": {
-        "name": "Schedule Winter Thu 4"
-      },
-      "schedule_winter_tue_1": {
-        "name": "Schedule Winter Tue 1"
-      },
-      "schedule_winter_tue_2": {
-        "name": "Schedule Winter Tue 2"
-      },
-      "schedule_winter_tue_3": {
-        "name": "Schedule Winter Tue 3"
-      },
-      "schedule_winter_tue_4": {
-        "name": "Schedule Winter Tue 4"
-      },
-      "schedule_winter_wed_1": {
-        "name": "Schedule Winter Wed 1"
-      },
-      "schedule_winter_wed_2": {
-        "name": "Schedule Winter Wed 2"
-      },
-      "schedule_winter_wed_3": {
-        "name": "Schedule Winter Wed 3"
-      },
-      "schedule_winter_wed_4": {
-        "name": "Schedule Winter Wed 4"
-      },
       "serial_number": {
         "name": "Numer seryjny"
-      },
-      "start_gwc_regen_summer_time": {
-        "name": "Start Gwc Regen Summer Time"
-      },
-      "start_gwc_regen_winter_time": {
-        "name": "Start Gwc Regen Winter Time"
-      },
-      "stop_gwc_regen_summer_time": {
-        "name": "Stop Gwc Regen Summer Time"
-      },
-      "stop_gwc_regen_winter_time": {
-        "name": "Stop Gwc Regen Winter Time"
       },
       "supply_air_flow": {
         "name": "Strumień powietrza nawiewnego"

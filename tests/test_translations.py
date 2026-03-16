@@ -160,7 +160,14 @@ try:
             if _name not in BINARY_KEYS:
                 BINARY_KEYS.append(_name)
         if any(_name.startswith(_p) for _p in BCD_TIME_PREFIXES):
-            if _name not in SENSOR_KEYS:
+            # RW schedule_*, start_gwc_regen*, and stop_gwc_regen* registers
+            # are select entities; all other BCD time registers remain sensors.
+            _access = (_r.get("access") or "").upper()
+            _time_select_prefixes = ("schedule_", "start_gwc_regen", "stop_gwc_regen")
+            if _name.startswith(_time_select_prefixes) and "W" in _access:
+                if _name not in SELECT_KEYS:
+                    SELECT_KEYS.append(_name)
+            elif _name not in SENSOR_KEYS:
                 SENSOR_KEYS.append(_name)
         # Bitmask registers with named bits generate individual binary sensor keys
         _extra = _r.get("extra") or {}

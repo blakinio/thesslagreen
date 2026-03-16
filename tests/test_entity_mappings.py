@@ -571,3 +571,48 @@ def test_all_number_entities_have_translation_key():
     number_keys = set(json.loads(en.read_text(encoding="utf-8")).get("entity", {}).get("number", {}).keys())
     unnamed = [k for k in em.ENTITY_MAPPINGS.get("number", {}) if k not in number_keys]
     assert unnamed == [], f"Number entities without translation key (would show as 'Rekuperator'): {unnamed}"
+
+
+def test_rw_schedule_registers_mapped_as_select(monkeypatch):
+    """RW schedule_* BCD time registers should end up in SELECT_ENTITY_MAPPINGS."""
+    sched_reg = RegisterDef(
+        function=3, address=16, name="schedule_summer_mon_1", access="RW", min=0, max=2359
+    )
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sched_reg])
+    em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    try:
+        em._extend_entity_mappings_from_registers()
+        assert "schedule_summer_mon_1" in em.SELECT_ENTITY_MAPPINGS, (
+            "RW schedule register should be a select entity"
+        )
+        assert "schedule_summer_mon_1" not in em.SENSOR_ENTITY_MAPPINGS, (
+            "RW schedule register must not also be a sensor"
+        )
+        defn = em.SELECT_ENTITY_MAPPINGS["schedule_summer_mon_1"]
+        assert "states" in defn
+        assert "04:00" in defn["states"]
+        assert defn["states"]["04:00"] == "04:00"
+        assert defn["icon"] == "mdi:clock-outline"
+    finally:
+        em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+        em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+
+
+def test_ro_schedule_registers_mapped_as_sensor(monkeypatch):
+    """Read-only schedule_* BCD time registers remain sensors."""
+    sched_reg = RegisterDef(
+        function=3, address=16, name="schedule_summer_mon_1", access="R", min=0, max=2359
+    )
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sched_reg])
+    em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    try:
+        em._extend_entity_mappings_from_registers()
+        assert "schedule_summer_mon_1" in em.SENSOR_ENTITY_MAPPINGS, (
+            "RO schedule register should remain a sensor"
+        )
+        assert "schedule_summer_mon_1" not in em.SELECT_ENTITY_MAPPINGS
+    finally:
+        em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+        em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
