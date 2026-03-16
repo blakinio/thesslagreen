@@ -23,14 +23,13 @@ async def test_async_write_registers_calls_modbus():
     coordinator._ensure_connection = AsyncMock()
     response = MagicMock()
     response.isError.return_value = False
-    client = MagicMock()
-    client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
-    coordinator._transport = AsyncMock()
-    coordinator._transport.call = AsyncMock(return_value=response)
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(return_value=response)
+    coordinator._transport = transport
 
     assert await coordinator.async_write_registers(100, [1, 2, 3]) is True
-    coordinator._transport.call.assert_called_once()
+    transport.write_registers.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -46,15 +45,14 @@ async def test_async_write_registers_chunks_oversize():
     coordinator._ensure_connection = AsyncMock()
     response = MagicMock()
     response.isError.return_value = False
-    client = MagicMock()
-    client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
-    coordinator._transport = AsyncMock()
-    coordinator._transport.call = AsyncMock(return_value=response)
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(return_value=response)
+    coordinator._transport = transport
 
     oversized = list(range(17))
     assert await coordinator.async_write_registers(100, oversized) is True
-    assert coordinator._transport.call.await_count == 2
+    assert transport.write_registers.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -73,12 +71,14 @@ async def test_async_write_registers_passes_attempt():
     response_error.isError.return_value = True
     response_ok = MagicMock()
     response_ok.isError.return_value = False
-    coordinator.client = MagicMock(connected=True)
-    coordinator._transport = AsyncMock()
-    coordinator._transport.call = AsyncMock(side_effect=[response_error, response_ok])
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(side_effect=[response_error, response_ok])
+    coordinator._transport = transport
+    coordinator._disconnect = AsyncMock()
 
     assert await coordinator.async_write_registers(100, [1, 2]) is True
-    attempts = [call.kwargs.get("attempt") for call in coordinator._transport.call.await_args_list]
+    attempts = [call.kwargs.get("attempt") for call in transport.write_registers.await_args_list]
     assert attempts == [1, 2]
 
 

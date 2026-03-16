@@ -110,24 +110,9 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
             )
         except (ModbusException, ConnectionException) as err:
             _LOGGER.error("Error setting %s to %s: %s", self._register_name, option, err)
-            self.hass.helpers.issue.async_create_issue(
-                DOMAIN,
-                "modbus_write_failed",
-                translation_key="modbus_write_failed",
-                translation_placeholders={
-                    "register": self._register_name,
-                    "error": str(err),
-                },
-            )
             return
 
         if success:
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set %s to %s", self._register_name, option)
-            self.hass.helpers.issue.async_create_issue(
-                DOMAIN,
-                "modbus_write_failed",
-                translation_key="modbus_write_failed",
-                translation_placeholders={"register": self._register_name},
-            )

@@ -351,6 +351,27 @@
       },
       "e_196_e_199_e_199": {
         "name": "Error E199"
+      },
+      "gwc_regen_flag": {
+        "name": "GWC Regeneration Active"
+      },
+      "stop_ahu_code": {
+        "name": "AHU Stop Alarm"
+      },
+      "f_142": {
+        "name": "Supply Filter Missing"
+      },
+      "f_143": {
+        "name": "Exhaust Filter Missing"
+      },
+      "f_146": {
+        "name": "Supply Filter Replacement Required"
+      },
+      "f_147": {
+        "name": "Exhaust Filter Replacement Required"
+      },
+      "post_heater_on": {
+        "name": "Secondary Heater (ERV) Active"
       }
     },
     "climate": {
@@ -380,9 +401,6 @@
       }
     },
     "number": {
-      "access_level": {
-        "name": "Access Level"
-      },
       "air_flow_rate_manual": {
         "name": "Air Flow Rate Manual"
       },
@@ -403,9 +421,6 @@
       },
       "air_temperature_summer_free_heating": {
         "name": "Air Temperature Summer Free Heating"
-      },
-      "airflow_rate_change_flag": {
-        "name": "Airflow Rate Change Flag"
       },
       "airing_bathroom_coef": {
         "name": "Airing Bathroom Coef"
@@ -428,29 +443,11 @@
       "airing_switch_mode_time": {
         "name": "Airing Switch Mode Time"
       },
-      "alarm": {
-        "name": "Alarm"
-      },
-      "antifreez_stage": {
-        "name": "Antifreez Stage"
-      },
-      "antifreeze_mode": {
-        "name": "Antifreeze Mode"
-      },
       "bypass_coef_1": {
         "name": "Bypass Coef 1"
       },
       "bypass_coef_2": {
         "name": "Bypass Coef 2"
-      },
-      "bypass_mode": {
-        "name": "Bypass Mode"
-      },
-      "bypass_off": {
-        "name": "Bypass Off"
-      },
-      "bypass_user_mode": {
-        "name": "Bypass User Mode"
       },
       "cf_version": {
         "name": "Cf Version"
@@ -460,15 +457,6 @@
       },
       "cfg_mode_2": {
         "name": "Cfg Mode 2"
-      },
-      "comfort_mode": {
-        "name": "Comfort Mode"
-      },
-      "comfort_mode_panel": {
-        "name": "Comfort Mode Panel"
-      },
-      "configuration_mode": {
-        "name": "Configuration Mode"
       },
       "contamination_coef": {
         "name": "Contamination Coef"
@@ -515,36 +503,6 @@
       "device_name": {
         "name": "Device Name"
       },
-      "e_100": {
-        "name": "E 100"
-      },
-      "e_101": {
-        "name": "E 101"
-      },
-      "e_102": {
-        "name": "E 102"
-      },
-      "e_103": {
-        "name": "E 103"
-      },
-      "e_104": {
-        "name": "E 104"
-      },
-      "e_105": {
-        "name": "E 105"
-      },
-      "e_106": {
-        "name": "E 106"
-      },
-      "e_138": {
-        "name": "E 138"
-      },
-      "e_139": {
-        "name": "E 139"
-      },
-      "e_152": {
-        "name": "E 152"
-      },
       "e_196": {
         "name": "E 196"
       },
@@ -557,32 +515,8 @@
       "e_199": {
         "name": "E 199"
       },
-      "e_200": {
-        "name": "E 200"
-      },
-      "e_201": {
-        "name": "E 201"
-      },
-      "e_249": {
-        "name": "E 249"
-      },
-      "e_250": {
-        "name": "E 250"
-      },
-      "e_251": {
-        "name": "E 251"
-      },
-      "e_252": {
-        "name": "E 252"
-      },
-      "e_99": {
-        "name": "E 99"
-      },
       "empty_house_coef": {
         "name": "Empty House Coef"
-      },
-      "error": {
-        "name": "Error"
       },
       "exhaust_air_flow": {
         "name": "Exhaust Air Flow"
@@ -599,44 +533,20 @@
       "fan_speed_3_coef": {
         "name": "Fan Speed 3 Coef"
       },
-      "filter_change": {
-        "name": "Filter Change"
-      },
       "fireplace_mode_time": {
         "name": "Fireplace Mode Time"
       },
       "fireplace_supply_coef": {
         "name": "Fireplace Supply Coef"
       },
-      "gwc_mode": {
-        "name": "Gwc Mode"
-      },
-      "gwc_off": {
-        "name": "Gwc Off"
-      },
-      "gwc_regen": {
-        "name": "Gwc Regen"
-      },
-      "gwc_regen_flag": {
-        "name": "Gwc Regen Flag"
-      },
       "gwc_regen_period": {
         "name": "Gwc Regen Period"
-      },
-      "hard_reset_schedule": {
-        "name": "Hard Reset Schedule"
-      },
-      "hard_reset_settings": {
-        "name": "Hard Reset Settings"
       },
       "hood_exhaust_coef": {
         "name": "Hood Exhaust Coef"
       },
       "hood_supply_coef": {
         "name": "Hood Supply Coef"
-      },
-      "language": {
-        "name": "Language"
       },
       "lock_date": {
         "name": "Product Key Lock Date (Year)"
@@ -655,9 +565,6 @@
       },
       "lock_date_3": {
         "name": "Lock Date 3"
-      },
-      "lock_flag": {
-        "name": "Lock Flag"
       },
       "lock_pass": {
         "name": "Lock Pass"
@@ -683,9 +590,6 @@
       "min_gwc_air_temperature": {
         "name": "Min Gwc Air Temperature"
       },
-      "mode": {
-        "name": "Mode"
-      },
       "nominal_exhaust_air_flow": {
         "name": "Nominal Exhaust Air Flow"
       },
@@ -698,14 +602,8 @@
       "nominal_supply_air_flow_gwc": {
         "name": "Nominal Supply Air Flow Gwc"
       },
-      "on_off_panel_mode": {
-        "name": "On Off Panel Mode"
-      },
       "open_window_coef": {
         "name": "Open Window Coef"
-      },
-      "pres_check_day": {
-        "name": "Filter Check Day of Week"
       },
       "pres_check_day_1": {
         "name": "Pres Check Day 1"
@@ -713,17 +611,11 @@
       "pres_check_day_2": {
         "name": "Pres Check Day 2"
       },
-      "pres_check_day_4432": {
-        "name": "Filter Check Day of Week (Ext.)"
-      },
       "required_temperature": {
         "name": "Required Temperature"
       },
       "rtc_cal": {
         "name": "Rtc Cal"
-      },
-      "season_mode": {
-        "name": "Season Mode"
       },
       "setting_summer_fri_1": {
         "name": "Setting Summer Fri 1"
@@ -893,12 +785,6 @@
       "setting_winter_wed_4": {
         "name": "Setting Winter Wed 4"
       },
-      "special_mode": {
-        "name": "Special Mode"
-      },
-      "stop_ahu_code": {
-        "name": "Stop Ahu Code"
-      },
       "supply_air_flow": {
         "name": "Supply Air Flow"
       },
@@ -917,14 +803,11 @@
       "supply_air_temperature_temporary_4404": {
         "name": "Temporary Supply Air Temperature (Ext.)"
       },
-      "temperature_change_flag": {
-        "name": "Temperature Change Flag"
-      },
       "uart_0_baud": {
         "name": "Uart 0 Baud"
       },
       "uart_0_id": {
-        "name": "Uart 0 Id"
+        "name": "Port 0 Device ID"
       },
       "uart_0_parity": {
         "name": "Uart 0 Parity"
@@ -936,13 +819,22 @@
         "name": "Uart 1 Baud"
       },
       "uart_1_id": {
-        "name": "Uart 1 Id"
+        "name": "Port 1 Device ID"
       },
       "uart_1_parity": {
         "name": "Uart 1 Parity"
       },
       "uart_1_stop": {
         "name": "Uart 1 Stop"
+      },
+      "cfgszf_fn_new": {
+        "name": "Supply Filter Wear"
+      },
+      "cfgszf_fw_new": {
+        "name": "Exhaust Filter Wear"
+      },
+      "cfg_post_heater_mode": {
+        "name": "ERV Operating Mode"
       }
     },
     "select": {
@@ -968,6 +860,163 @@
           "flat_filters": "Flat Filters",
           "cleanpad": "CleanPad",
           "cleanpad_pure": "CleanPad Pure"
+        }
+      },
+      "gwc_regen": {
+        "name": "GWC Regeneration",
+        "state": {
+          "inactive": "Inactive",
+          "daily_schedule": "Daily Schedule",
+          "temperature_diff": "Temperature Differential"
+        }
+      },
+      "bypass_user_mode": {
+        "name": "Bypass User Mode",
+        "state": {
+          "mode_1": "Mode 1: Damper position only",
+          "mode_2": "Mode 2: Damper + flow differential",
+          "mode_3": "Mode 3: Damper + exhaust fan off"
+        }
+      },
+      "cfg_mode1": {
+        "name": "Configuration Mode 1",
+        "state": {
+          "auto": "Auto",
+          "manual": "Manual",
+          "temporary": "Temporary"
+        }
+      },
+      "cfg_mode2": {
+        "name": "Configuration Mode 2",
+        "state": {
+          "auto": "Auto",
+          "manual": "Manual",
+          "temporary": "Temporary"
+        }
+      },
+      "configuration_mode": {
+        "name": "Configuration Mode",
+        "state": {
+          "normal": "Normal Operation",
+          "duct_filter_pressure": "Duct Filter Pressure Check",
+          "afc_filter_pressure": "AFC + Duct Filter Pressure Check"
+        }
+      },
+      "pres_check_day": {
+        "name": "Filter Check Day of Week",
+        "state": {
+          "monday": "Monday",
+          "tuesday": "Tuesday",
+          "wednesday": "Wednesday",
+          "thursday": "Thursday",
+          "friday": "Friday",
+          "saturday": "Saturday",
+          "sunday": "Sunday"
+        }
+      },
+      "pres_check_day_4432": {
+        "name": "Filter Check Day of Week (Ext.)",
+        "state": {
+          "monday": "Monday",
+          "tuesday": "Tuesday",
+          "wednesday": "Wednesday",
+          "thursday": "Thursday",
+          "friday": "Friday",
+          "saturday": "Saturday",
+          "sunday": "Sunday"
+        }
+      },
+      "access_level": {
+        "name": "Access Level",
+        "state": {
+          "user": "User",
+          "service": "Service / Installer",
+          "manufacturer": "Manufacturer"
+        }
+      },
+      "special_mode": {
+        "name": "Special Mode",
+        "state": {
+          "none": "None",
+          "hood": "Hood",
+          "fireplace": "Fireplace",
+          "airing_doorbell": "Airing (Doorbell)",
+          "airing_switch": "Airing (ON/OFF Switch)",
+          "airing_hygrostat": "Airing (Hygrostat)",
+          "airing_air_quality": "Airing (Air Quality Sensor)",
+          "airing_manual": "Airing (Manual Activation)",
+          "airing_auto": "Airing (Auto Mode)",
+          "airing_manual_timed": "Airing (Manual Mode)",
+          "open_windows": "Open Windows",
+          "empty_house": "Empty House"
+        }
+      },
+      "language": {
+        "name": "Language",
+        "state": {
+          "pl": "Polish",
+          "en": "English",
+          "ru": "Russian",
+          "uk": "Ukrainian",
+          "sk": "Slovak"
+        }
+      },
+      "uart_0_baud": {
+        "name": "Port 0 Baud Rate",
+        "state": {
+          "baud_4800": "4800",
+          "baud_9600": "9600",
+          "baud_14400": "14400",
+          "baud_19200": "19200",
+          "baud_28800": "28800",
+          "baud_38400": "38400",
+          "baud_57600": "57600",
+          "baud_76800": "76800",
+          "baud_115200": "115200"
+        }
+      },
+      "uart_0_parity": {
+        "name": "Port 0 Parity",
+        "state": {
+          "none": "None",
+          "even": "Even",
+          "odd": "Odd"
+        }
+      },
+      "uart_0_stop": {
+        "name": "Port 0 Stop Bits",
+        "state": {
+          "one": "1",
+          "two": "2"
+        }
+      },
+      "uart_1_baud": {
+        "name": "Port 1 Baud Rate",
+        "state": {
+          "baud_4800": "4800",
+          "baud_9600": "9600",
+          "baud_14400": "14400",
+          "baud_19200": "19200",
+          "baud_28800": "28800",
+          "baud_38400": "38400",
+          "baud_57600": "57600",
+          "baud_76800": "76800",
+          "baud_115200": "115200"
+        }
+      },
+      "uart_1_parity": {
+        "name": "Port 1 Parity",
+        "state": {
+          "none": "None",
+          "even": "Even",
+          "odd": "Odd"
+        }
+      },
+      "uart_1_stop": {
+        "name": "Port 1 Stop Bits",
+        "state": {
+          "one": "1",
+          "two": "2"
         }
       }
     },
@@ -1365,6 +1414,15 @@
       },
       "version_patch": {
         "name": "Patch Version"
+      },
+      "antifreez_stage": {
+        "name": "Antifreeze Stage"
+      },
+      "filter_supply_date_limit_get": {
+        "name": "Supply Filter Replacement Date"
+      },
+      "filter_exhaust_date_limit_get": {
+        "name": "Exhaust Filter Replacement Date"
       }
     },
     "switch": {
@@ -1403,6 +1461,30 @@
       },
       "winter": {
         "name": "Winter"
+      },
+      "bypass_off": {
+        "name": "Bypass Active"
+      },
+      "gwc_off": {
+        "name": "GWC Active"
+      },
+      "hard_reset_settings": {
+        "name": "Hard Reset Settings"
+      },
+      "hard_reset_schedule": {
+        "name": "Hard Reset Schedule"
+      },
+      "comfort_mode_panel": {
+        "name": "Comfort Mode"
+      },
+      "airflow_rate_change_flag": {
+        "name": "Airflow Rate Change Flag"
+      },
+      "temperature_change_flag": {
+        "name": "Temperature Change Flag"
+      },
+      "lock_flag": {
+        "name": "Lock"
       }
     }
   },

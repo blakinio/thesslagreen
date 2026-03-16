@@ -355,9 +355,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         if success:
             success = await self._write_register_compat("required_temperature", temperature, refresh=False)
-            success = await self.coordinator.async_write_register(
-                "required_temperature", temperature, refresh=False, offset=0
-            )
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -375,9 +372,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             min_pct, max_pct = self._percentage_limits()
             airflow = max(min_pct, min(max_pct, airflow))
             success = await self._write_register_compat("air_flow_rate_manual", airflow, refresh=False)
-            success = await self.coordinator.async_write_register(
-                "air_flow_rate_manual", airflow, refresh=False, offset=0
-            )
 
             if success:
                 await self.coordinator.async_request_refresh()
@@ -397,12 +391,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             # Set specific special mode
             special_mode_value = SPECIAL_FUNCTION_MAP.get(preset_mode, 0)
 
-        await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
-        success = await self._write_register_compat("special_mode", special_mode_value, refresh=False)
-        await self.coordinator.async_write_register("on_off_panel_mode", 1, refresh=False, offset=0)
-        success = await self.coordinator.async_write_register(
-            "special_mode", special_mode_value, refresh=False, offset=0
-        )
+        success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+        if success:
+            success = await self._write_register_compat("special_mode", special_mode_value, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -413,7 +404,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         """Turn the climate entity on."""
         _LOGGER.debug("Turning on climate entity")
         success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
-        success = await self.coordinator.async_write_register("on_off_panel_mode", 1, refresh=False, offset=0)
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -423,7 +413,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     async def async_turn_off(self) -> None:  # pragma: no cover
         """Turn the climate entity off."""
         _LOGGER.debug("Turning off climate entity")
-        success = await self.coordinator.async_write_register("on_off_panel_mode", 0, refresh=False, offset=0)
+        success = await self._write_register_compat("on_off_panel_mode", 0, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()

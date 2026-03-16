@@ -1672,7 +1672,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             return data
 
         client = self.client
-        if client is None or not client.connected:
+        if client is None or not getattr(client, "connected", True):
             raise ConnectionException("Modbus client is not connected")
 
         failed: set[str] = getattr(self, "_failed_registers", set())
@@ -1737,7 +1737,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             return data
 
         client = self.client
-        if client is None or not client.connected:
+        if client is None or not getattr(client, "connected", True):
             raise ConnectionException("Modbus client is not connected")
 
         failed: set[str] = getattr(self, "_failed_registers", set())
@@ -2054,6 +2054,13 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                             address=chunk_start,
                                             values=[int(v) for v in chunk],
                                         )
+                                    elif self._transport is not None:
+                                        response = await self._transport.write_registers(
+                                            self.slave_id,
+                                            chunk_start,
+                                            values=[int(v) for v in chunk],
+                                            attempt=attempt,
+                                        )
                                     else:
                                         response = await self._call_modbus(
                                             self._get_client_method("write_registers"),
@@ -2078,6 +2085,12 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                 if self._transport is None and self.client is not None:
                                     response = await self.client.write_register(
                                         address=address,
+                                        value=int(value),
+                                    )
+                                elif self._transport is not None:
+                                    response = await self._transport.write_register(
+                                        self.slave_id,
+                                        address,
                                         value=int(value),
                                     )
                                 else:
@@ -2206,7 +2219,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                     address=start_address,
                                     values=[int(v) for v in values],
                                 )
-                            elif self.connection_type == CONNECTION_TYPE_RTU and self._transport is not None:
+                            elif self._transport is not None:
                                 response = await self._transport.write_registers(
                                     self.slave_id,
                                     start_address,
@@ -2231,7 +2244,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                         address=chunk_start,
                                         values=[int(v) for v in chunk],
                                     )
-                                elif self.connection_type == CONNECTION_TYPE_RTU and self._transport is not None:
+                                elif self._transport is not None:
                                     response = await self._transport.write_registers(
                                         self.slave_id,
                                         chunk_start,

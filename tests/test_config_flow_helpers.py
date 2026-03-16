@@ -471,7 +471,7 @@ async def test_validate_input_invalid_slave_id_string():
 
 
 async def test_validate_input_slave_id_too_low():
-    """slave_id < 1 raises exception."""
+    """slave_id < 0 raises exception; 0 is valid per Modbus broadcast spec."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
     from custom_components.thessla_green_modbus.const import (
         CONF_CONNECTION_TYPE, CONF_SLAVE_ID, CONNECTION_TYPE_TCP,
@@ -481,7 +481,7 @@ async def test_validate_input_slave_id_too_low():
     with pytest.raises(Exception):
         await cf_mod.validate_input(None, {
             CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
-            CONF_SLAVE_ID: 0,
+            CONF_SLAVE_ID: -1,
             CONF_HOST: "192.168.1.1",
         })
 
