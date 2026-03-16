@@ -293,6 +293,10 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if _parse_states(info.get("unit")):
             continue
 
+        # Skip registers with JSON enum field — handled as select/switch/binary_sensor
+        if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
+            continue
+
         # Only expose registers that have a Number translation entry.
         # This mirrors the whitelist approach used by binary_sensor/switch/select
         # and prevents unnamed "Rekuperator" entities for reserved or
@@ -328,7 +332,6 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "min_bypass_temperature": {"icon": "mdi:thermometer-low"},
     "air_temperature_summer_free_heating": {"icon": "mdi:thermometer"},
     "air_temperature_summer_free_cooling": {"icon": "mdi:thermometer"},
-    "bypass_off": {"icon": "mdi:thermometer-off"},
     # Air flow control
     "air_flow_rate_manual": {"icon": "mdi:fan"},
     "max_supply_air_flow_rate": {"icon": "mdi:fan-plus"},
@@ -913,6 +916,64 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         },
         "register_type": "holding_registers",
     },
+    "gwc_regen": {
+        "icon": "mdi:heat-wave",
+        "translation_key": "gwc_regen",
+        "states": {"inactive": 0, "daily_schedule": 1, "temperature_diff": 2},
+        "register_type": "holding_registers",
+    },
+    "bypass_user_mode": {
+        "icon": "mdi:pipe-valve",
+        "translation_key": "bypass_user_mode",
+        "states": {"mode_1": 1, "mode_2": 2, "mode_3": 3},
+        "register_type": "holding_registers",
+    },
+    "cfg_mode1": {
+        "icon": "mdi:tune",
+        "translation_key": "cfg_mode1",
+        "states": {"auto": 0, "manual": 1, "temporary": 2},
+        "register_type": "holding_registers",
+    },
+    "cfg_mode2": {
+        "icon": "mdi:tune",
+        "translation_key": "cfg_mode2",
+        "states": {"auto": 0, "manual": 1, "temporary": 2},
+        "register_type": "holding_registers",
+    },
+    "configuration_mode": {
+        "icon": "mdi:cog-outline",
+        "translation_key": "configuration_mode",
+        "states": {"normal": 0, "duct_filter_pressure": 47, "afc_filter_pressure": 65},
+        "register_type": "holding_registers",
+    },
+    "pres_check_day": {
+        "icon": "mdi:calendar-week",
+        "translation_key": "pres_check_day",
+        "states": {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
+        },
+        "register_type": "holding_registers",
+    },
+    "pres_check_day_4432": {
+        "icon": "mdi:calendar-week",
+        "translation_key": "pres_check_day_4432",
+        "states": {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
+        },
+        "register_type": "holding_registers",
+    },
 }
 
 BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
@@ -1072,6 +1133,12 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     },
     # on_off_panel_mode is covered by SWITCH_ENTITY_MAPPINGS which provides
     # both read and control capability — no separate binary sensor needed.
+    "gwc_regen_flag": {
+        "translation_key": "gwc_regen_flag",
+        "icon": "mdi:heat-wave",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "register_type": "holding_registers",
+    },
 }
 
 SPECIAL_MODE_ICONS = {
@@ -1096,6 +1163,41 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "register_type": "holding_registers",
         "category": None,
         "translation_key": "on_off_panel_mode",
+    },
+    "bypass_off": {
+        "icon": "mdi:pipe-valve",
+        "register": "bypass_off",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "bypass_off",
+    },
+    "gwc_off": {
+        "icon": "mdi:heat-wave",
+        "register": "gwc_off",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "gwc_off",
+    },
+    "hard_reset_settings": {
+        "icon": "mdi:restore",
+        "register": "hard_reset_settings",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "hard_reset_settings",
+    },
+    "hard_reset_schedule": {
+        "icon": "mdi:restore-alert",
+        "register": "hard_reset_schedule",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "hard_reset_schedule",
+    },
+    "comfort_mode_panel": {
+        "icon": "mdi:sofa",
+        "register": "comfort_mode_panel",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "comfort_mode_panel",
     },
 }
 
@@ -1167,6 +1269,51 @@ def _extend_entity_mappings_from_registers() -> None:
         info_text = reg.information or ""
         scale = reg.multiplier or 1
         step = reg.resolution or scale
+
+        # Registers with JSON enum field — classify as switch/binary_sensor/select
+        if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
+            enum_states = {_to_snake_case(str(v)): int(k) for k, v in reg.enum.items()}
+            if len(reg.enum) == 2 and set(int(k) for k in reg.enum) == {0, 1}:
+                if "W" in access:
+                    SWITCH_ENTITY_MAPPINGS.setdefault(
+                        register,
+                        {
+                            "icon": "mdi:toggle-switch",
+                            "register": register,
+                            "register_type": "holding_registers",
+                            "category": None,
+                            "translation_key": register,
+                        },
+                    )
+                else:
+                    BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
+                        register,
+                        {
+                            "translation_key": register,
+                            "icon": "mdi:checkbox-marked-circle-outline",
+                            "register_type": "holding_registers",
+                        },
+                    )
+            elif "W" in access:
+                SELECT_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "icon": "mdi:format-list-bulleted",
+                        "translation_key": register,
+                        "states": enum_states,
+                        "register_type": "holding_registers",
+                    },
+                )
+            else:
+                SENSOR_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "translation_key": register,
+                        "icon": "mdi:information-outline",
+                        "register_type": "holding_registers",
+                    },
+                )
+            continue
 
         if min_val is not None and max_val is not None:
             if max_val <= 1:

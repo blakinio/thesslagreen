@@ -237,7 +237,7 @@ def test_number_set_value_other_errors(mock_coordinator, exc_cls):
     "register,value",
     [
         ("max_supply_air_flow_rate", 250),
-        ("bypass_off", 10),
+        ("min_bypass_temperature", 10),
     ],
 )
 def test_new_number_entities(mock_coordinator, register, value):
@@ -254,14 +254,14 @@ async def test_async_setup_creates_new_numbers(mock_coordinator, mock_config_ent
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_coordinator.available_registers.setdefault("holding_registers", set()).update(
-        {"max_supply_air_flow_rate", "bypass_off"}
+        {"max_supply_air_flow_rate", "min_bypass_temperature"}
     )
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
     entities = add_entities.call_args[0][0]
     names = {entity.register_name for entity in entities}
-    assert {"max_supply_air_flow_rate", "bypass_off"} <= names
+    assert {"max_supply_air_flow_rate", "min_bypass_temperature"} <= names
 
 
 @pytest.mark.asyncio

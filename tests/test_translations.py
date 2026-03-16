@@ -275,21 +275,23 @@ def test_translation_structures_match():
 
 def test_new_translation_keys_present():
     """Ensure translations exist for newly added registers."""
-    new_keys = [
+    new_number_keys = [
         "max_supply_air_flow_rate",
         "max_exhaust_air_flow_rate",
         "nominal_supply_air_flow",
         "nominal_exhaust_air_flow",
-        "bypass_off",
         "air_flow_rate_manual",
         "air_flow_rate_temporary_2",
     ]
+    new_switch_keys = ["bypass_off"]
     new_binary_keys = ["water_removal_active"]
     new_sensor_keys = ["constant_flow_active"]
     for trans in (EN, PL):
-        for key in new_keys:
-            assert key in trans["entity"]["sensor"]
+        for key in new_number_keys:
             assert key in trans["entity"]["number"]
+        for key in new_switch_keys:
+            assert key in trans["entity"]["switch"]
+            assert key in trans["entity"]["sensor"]
         for key in new_binary_keys:
             assert key in trans["entity"]["binary_sensor"]
         for key in new_sensor_keys:

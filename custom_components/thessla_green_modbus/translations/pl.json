@@ -351,6 +351,9 @@
       },
       "e_196_e_199_e_199": {
         "name": "Błąd E199"
+      },
+      "gwc_regen_flag": {
+        "name": "Regeneracja GWC aktywna"
       }
     },
     "climate": {
@@ -446,12 +449,6 @@
       "bypass_mode": {
         "name": "Bypass Mode"
       },
-      "bypass_off": {
-        "name": "Bypass Off"
-      },
-      "bypass_user_mode": {
-        "name": "Bypass User Mode"
-      },
       "cf_version": {
         "name": "Cf Version"
       },
@@ -463,12 +460,6 @@
       },
       "comfort_mode": {
         "name": "Comfort Mode"
-      },
-      "comfort_mode_panel": {
-        "name": "Comfort Mode Panel"
-      },
-      "configuration_mode": {
-        "name": "Configuration Mode"
       },
       "contamination_coef": {
         "name": "Contamination Coef"
@@ -611,23 +602,8 @@
       "gwc_mode": {
         "name": "Gwc Mode"
       },
-      "gwc_off": {
-        "name": "Gwc Off"
-      },
-      "gwc_regen": {
-        "name": "Gwc Regen"
-      },
-      "gwc_regen_flag": {
-        "name": "Gwc Regen Flag"
-      },
       "gwc_regen_period": {
         "name": "Gwc Regen Period"
-      },
-      "hard_reset_schedule": {
-        "name": "Hard Reset Schedule"
-      },
-      "hard_reset_settings": {
-        "name": "Hard Reset Settings"
       },
       "hood_exhaust_coef": {
         "name": "Hood Exhaust Coef"
@@ -704,17 +680,11 @@
       "open_window_coef": {
         "name": "Open Window Coef"
       },
-      "pres_check_day": {
-        "name": "Dzień kontroli filtrów"
-      },
       "pres_check_day_1": {
         "name": "Pres Check Day 1"
       },
       "pres_check_day_2": {
         "name": "Pres Check Day 2"
-      },
-      "pres_check_day_4432": {
-        "name": "Dzień kontroli filtrów (roz.)"
       },
       "required_temperature": {
         "name": "Temperatura zadana"
@@ -968,6 +938,70 @@
           "flat_filters": "Filtry płaskie",
           "cleanpad": "CleanPad",
           "cleanpad_pure": "CleanPad Pure"
+        }
+      },
+      "gwc_regen": {
+        "name": "Regeneracja GWC",
+        "state": {
+          "inactive": "Nieaktywna",
+          "daily_schedule": "Harmonogram dobowy",
+          "temperature_diff": "Różnica temperatur"
+        }
+      },
+      "bypass_user_mode": {
+        "name": "Tryb użytkownika bypass",
+        "state": {
+          "mode_1": "Tryb 1: zmiana położenia przepustnicy",
+          "mode_2": "Tryb 2: przepustnica + różnicowanie strumieni",
+          "mode_3": "Tryb 3: przepustnica + wyłączenie wentylatora wywiewu"
+        }
+      },
+      "cfg_mode1": {
+        "name": "Tryb konfiguracji 1",
+        "state": {
+          "auto": "Automatyczny",
+          "manual": "Manualny",
+          "temporary": "Chwilowy"
+        }
+      },
+      "cfg_mode2": {
+        "name": "Tryb konfiguracji 2",
+        "state": {
+          "auto": "Automatyczny",
+          "manual": "Manualny",
+          "temporary": "Chwilowy"
+        }
+      },
+      "configuration_mode": {
+        "name": "Tryb konfiguracyjny",
+        "state": {
+          "normal": "Normalna praca",
+          "duct_filter_pressure": "Kontrola filtra wtórnego kanałowego",
+          "afc_filter_pressure": "Kontrola filtrów AFC + filtra kanałowego"
+        }
+      },
+      "pres_check_day": {
+        "name": "Dzień kontroli filtrów",
+        "state": {
+          "monday": "Poniedziałek",
+          "tuesday": "Wtorek",
+          "wednesday": "Środa",
+          "thursday": "Czwartek",
+          "friday": "Piątek",
+          "saturday": "Sobota",
+          "sunday": "Niedziela"
+        }
+      },
+      "pres_check_day_4432": {
+        "name": "Dzień kontroli filtrów (roz.)",
+        "state": {
+          "monday": "Poniedziałek",
+          "tuesday": "Wtorek",
+          "wednesday": "Środa",
+          "thursday": "Czwartek",
+          "friday": "Piątek",
+          "saturday": "Sobota",
+          "sunday": "Niedziela"
         }
       }
     },
@@ -1403,6 +1437,21 @@
       },
       "winter": {
         "name": "Zima"
+      },
+      "bypass_off": {
+        "name": "Bypass aktywny"
+      },
+      "gwc_off": {
+        "name": "GWC aktywny"
+      },
+      "hard_reset_settings": {
+        "name": "Reset ustawień do domyślnych"
+      },
+      "hard_reset_schedule": {
+        "name": "Reset harmonogramu do domyślnych"
+      },
+      "comfort_mode_panel": {
+        "name": "Tryb komfort (panel)"
       }
     }
   },
