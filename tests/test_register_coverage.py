@@ -22,6 +22,25 @@ INTENTIONAL_OMISSIONS = {
     "date_time_ggmm",
     "date_time_sscc",
     "date_time_1",
+    # Reserved / internal registers — device name parts, security keys, and
+    # undocumented registers that have no translation key and must not appear
+    # as unnamed "Rekuperator" entities in the HA UI.
+    "reserved_8145",
+    "reserved_8146",
+    "reserved_8147",
+    "reserved_8148",
+    "reserved_8149",
+    "reserved_8150",
+    "reserved_8151",
+    "lock_pass_2",
+    # Read-only status / date registers not yet mapped to a platform
+    "filter_supply_date_limit_get",
+    "filter_exhaust_date_limit_get",
+    "post_heater_on",
+    # RW configuration registers not yet assigned to a platform
+    "cfg_post_heater_mode",
+    "cfgszf_fn_new",
+    "cfgszf_fw_new",
 }
 
 # Minimal Home Assistant stubs required to import entity mappings

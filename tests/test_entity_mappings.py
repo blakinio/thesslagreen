@@ -177,6 +177,8 @@ def test_load_number_mappings_includes_min_max_when_present(monkeypatch):
                           unit="%", min=0, max=100)
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [bounded])
     monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", None)
+    # Allow this synthetic register through the translation-key whitelist.
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: {"speed_reg_p8"})
 
     result = em._load_number_mappings()
     assert "speed_reg_p8" in result
@@ -554,3 +556,18 @@ def test_no_register_in_multiple_platforms():
     assert num_sel == set(), f"number ∩ select: {num_sel}"
     assert num_sw == set(), f"number ∩ switch: {num_sw}"
     assert sel_sw == set(), f"select ∩ switch: {sel_sw}"
+
+
+def test_all_number_entities_have_translation_key():
+    """Every Number entity must have a matching translation key in en.json.
+
+    Without a translation key the entity falls back to the device name
+    ("Rekuperator"), producing unnamed controls in the HA UI.
+    """
+    import json
+    from pathlib import Path
+
+    en = Path(em.__file__).with_name("translations") / "en.json"
+    number_keys = set(json.loads(en.read_text(encoding="utf-8")).get("entity", {}).get("number", {}).keys())
+    unnamed = [k for k in em.ENTITY_MAPPINGS.get("number", {}) if k not in number_keys]
+    assert unnamed == [], f"Number entities without translation key (would show as 'Rekuperator'): {unnamed}"

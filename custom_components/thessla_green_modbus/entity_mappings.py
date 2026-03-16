@@ -293,6 +293,13 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if _parse_states(info.get("unit")):
             continue
 
+        # Only expose registers that have a Number translation entry.
+        # This mirrors the whitelist approach used by binary_sensor/switch/select
+        # and prevents unnamed "Rekuperator" entities for reserved or
+        # undocumented registers (e.g. reserved_8145–reserved_8151, lock_pass_2).
+        if register not in _number_translation_keys():
+            continue
+
         cfg: dict[str, Any] = {
             "unit": info.get("unit"),
             "step": info.get("step", 1),
@@ -340,6 +347,29 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "gwc_regen_period": {"icon": "mdi:timer"},
     "delta_t_gwc": {"icon": "mdi:thermometer-lines"},
 }
+
+
+def _number_translation_keys() -> set[str]:
+    """Return register names that have a Number translation entry in en.json.
+
+    Used as a whitelist: only registers present here will produce a Number
+    entity, preventing unnamed "Rekuperator" fallback entries for reserved or
+    undocumented registers (e.g. ``reserved_8145``–``reserved_8151``).
+    """
+    try:
+        with (Path(__file__).with_name("translations") / "en.json").open(encoding="utf-8") as f:
+            data = json.load(f)
+        return set(data.get("entity", {}).get("number", {}).keys())
+    except (
+        OSError,
+        json.JSONDecodeError,
+        ValueError,
+    ) as err:  # pragma: no cover - fallback when translations missing
+        _LOGGER.debug("Failed to load number translation keys: %s", err)
+        return set()
+    except Exception as err:  # pragma: no cover - unexpected
+        _LOGGER.exception("Unexpected error loading number translation keys: %s", err)
+        return set()
 
 
 def _load_translation_keys() -> dict[str, set[str]]:
