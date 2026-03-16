@@ -181,3 +181,64 @@ def test_select_definitions_single_source():
     """Ensure select definitions come from central ENTITY_MAPPINGS."""
     assert not hasattr(select, "SELECT_DEFINITIONS")
     assert "mode" in ENTITY_MAPPINGS["select"]
+
+
+def test_schedule_time_select_current_option(mock_coordinator):
+    """Schedule select entities decode stored 'HH:MM' strings as current option."""
+    from custom_components.thessla_green_modbus.schedule_helpers import TIME_SELECT_STATES
+
+    defn = {
+        "translation_key": "schedule_summer_mon_1",
+        "icon": "mdi:clock-outline",
+        "register_type": "holding_registers",
+        "states": TIME_SELECT_STATES,
+    }
+    mock_coordinator.data["schedule_summer_mon_1"] = "04:00"
+    entity = ThesslaGreenSelect(mock_coordinator, "schedule_summer_mon_1", 16, defn)
+    assert entity.current_option == "04:00"
+    assert "04:00" in entity._attr_options
+    assert "23:30" in entity._attr_options
+
+
+def test_schedule_time_select_write(mock_coordinator):
+    """Selecting a time slot writes the decoded HH:MM string to the register."""
+    from custom_components.thessla_green_modbus.schedule_helpers import TIME_SELECT_STATES
+
+    defn = {
+        "translation_key": "schedule_summer_mon_1",
+        "icon": "mdi:clock-outline",
+        "register_type": "holding_registers",
+        "states": TIME_SELECT_STATES,
+    }
+    mock_coordinator.data["schedule_summer_mon_1"] = "04:00"
+    entity = ThesslaGreenSelect(mock_coordinator, "schedule_summer_mon_1", 16, defn)
+    asyncio.run(entity.async_select_option("06:30"))
+    mock_coordinator.async_write_register.assert_awaited_with(
+        "schedule_summer_mon_1", "06:30", refresh=False
+    )
+
+
+def test_schedule_time_select_unknown_for_disabled_slot(mock_coordinator):
+    """A disabled slot (raw int 65535) that is not in options returns None."""
+    from custom_components.thessla_green_modbus.schedule_helpers import TIME_SELECT_STATES
+
+    defn = {
+        "translation_key": "schedule_summer_mon_1",
+        "icon": "mdi:clock-outline",
+        "register_type": "holding_registers",
+        "states": TIME_SELECT_STATES,
+    }
+    mock_coordinator.data["schedule_summer_mon_1"] = 65535
+    entity = ThesslaGreenSelect(mock_coordinator, "schedule_summer_mon_1", 16, defn)
+    assert entity.current_option is None
+
+
+def test_schedule_registers_in_entity_mappings_select():
+    """Real schedule registers resolved from JSON should land in ENTITY_MAPPINGS select."""
+    select_keys = ENTITY_MAPPINGS.get("select", {})
+    assert "schedule_summer_mon_1" in select_keys, (
+        "schedule_summer_mon_1 should be a select entity (RW BCD time register)"
+    )
+    assert "schedule_summer_mon_1" not in ENTITY_MAPPINGS.get("sensor", {}), (
+        "schedule_summer_mon_1 must not also be a sensor"
+    )

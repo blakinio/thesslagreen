@@ -6,6 +6,17 @@ from datetime import time
 
 from .utils import decode_bcd_time, encode_bcd_time
 
+# Mapping of "HH:MM" label → "HH:MM" value for every 30-minute slot.
+# Used as the ``states`` dict for select entities backed by BCD time registers.
+# The coordinator stores decoded "HH:MM" strings for these registers, so both
+# key and value are strings; the register loader's encode() handles the
+# string → BCD int conversion when writing.
+TIME_SELECT_STATES: dict[str, str] = {
+    f"{h:02d}:{m:02d}": f"{h:02d}:{m:02d}"
+    for h in range(24)
+    for m in (0, 30)
+}
+
 
 def time_to_bcd(t: time) -> int:
     """Convert ``datetime.time`` to BCD encoded HHMM value."""
