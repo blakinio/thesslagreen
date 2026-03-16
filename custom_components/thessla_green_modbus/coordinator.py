@@ -1672,7 +1672,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             return data
 
         client = self.client
-        if client is None or not client.connected:
+        if client is None or not getattr(client, "connected", True):
             raise ConnectionException("Modbus client is not connected")
 
         failed: set[str] = getattr(self, "_failed_registers", set())
@@ -1737,7 +1737,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             return data
 
         client = self.client
-        if client is None or not client.connected:
+        if client is None or not getattr(client, "connected", True):
             raise ConnectionException("Modbus client is not connected")
 
         failed: set[str] = getattr(self, "_failed_registers", set())
