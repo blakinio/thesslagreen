@@ -533,7 +533,8 @@ async def async_registers_sha256(hass: Any | None, json_path: Path | str) -> str
     """Return the SHA256 hash of ``json_path`` asynchronously."""
 
     path = Path(json_path)
-    mtime = path.stat().st_mtime
+    stat_result = await _async_executor(hass, path.stat)
+    mtime = stat_result.st_mtime
     path_str = str(path)
     cached = _cached_file_info.get(path_str)
     if cached and cached[0] == mtime:
