@@ -699,7 +699,7 @@
         "name": "Nominal Supply Air Flow Gwc"
       },
       "on_off_panel_mode": {
-        "name": "On Off Panel Mode"
+        "name": "Włącz/Wyłącz Panel"
       },
       "open_window_coef": {
         "name": "Open Window Coef"
@@ -1369,10 +1369,10 @@
     },
     "switch": {
       "away": {
-        "name": "Away"
+        "name": "Nieobecność"
       },
       "bathroom": {
-        "name": "Bathroom"
+        "name": "Łazienka"
       },
       "boost": {
         "name": "Boost"
@@ -1381,28 +1381,28 @@
         "name": "Eco"
       },
       "fireplace": {
-        "name": "Fireplace"
+        "name": "Kominek"
       },
       "hood": {
-        "name": "Hood"
+        "name": "Okap"
       },
       "kitchen": {
-        "name": "Kitchen"
+        "name": "Kuchnia"
       },
       "on_off_panel_mode": {
-        "name": "On/Off Panel Mode"
+        "name": "Włącz/Wyłącz Panel"
       },
       "party": {
-        "name": "Party"
+        "name": "Impreza"
       },
       "sleep": {
-        "name": "Sleep"
+        "name": "Sen"
       },
       "summer": {
-        "name": "Summer"
+        "name": "Lato"
       },
       "winter": {
-        "name": "Winter"
+        "name": "Zima"
       }
     }
   },

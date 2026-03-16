@@ -72,6 +72,7 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     MAX_BATCH_REGISTERS,
+    MIN_SCAN_INTERVAL,
     MODBUS_BAUD_RATES,
     MODBUS_PARITY,
     MODBUS_STOP_BITS,
@@ -360,7 +361,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         slave_id = int(data[CONF_SLAVE_ID])
     except (KeyError, TypeError, ValueError) as exc:
         raise VOL_INVALID("invalid_slave", path=[CONF_SLAVE_ID]) from exc
-    if slave_id < 1:
+    if slave_id < 0:
         raise VOL_INVALID("invalid_slave_low", path=[CONF_SLAVE_ID])
     if slave_id > 247:
         raise VOL_INVALID("invalid_slave_high", path=[CONF_SLAVE_ID])
@@ -712,7 +713,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
                 },
             ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
             _required(CONF_SLAVE_ID, default=slave_default): vol.All(
-                vol.Coerce(int), vol.Range(min=1, max=247)
+                vol.Coerce(int), vol.Range(min=0, max=247)
             ),
             vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
             vol.Optional(
@@ -1230,7 +1231,7 @@ class OptionsFlow(_BASE_OPTIONS_FLOW):
         data_schema = _schema(
             {
                 vol.Optional(CONF_SCAN_INTERVAL, default=current_scan_interval): vol.All(
-                    vol.Coerce(int), vol.Range(min=10, max=300)
+                    vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=300)
                 ),
                 vol.Optional(CONF_TIMEOUT, default=current_timeout): vol.All(
                     vol.Coerce(int), vol.Range(min=5, max=60)

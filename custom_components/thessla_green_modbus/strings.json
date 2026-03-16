@@ -699,7 +699,7 @@
         "name": "Nominal Supply Air Flow Gwc"
       },
       "on_off_panel_mode": {
-        "name": "On Off Panel Mode"
+        "name": "On/Off Panel Mode"
       },
       "open_window_coef": {
         "name": "Open Window Coef"
