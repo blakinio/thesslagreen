@@ -1448,6 +1448,35 @@ def _extend_entity_mappings_from_registers() -> None:
                 )
             continue
 
+        # Schedule intensity/airflow setting registers (setting_summer_* and
+        # setting_winter_*).  These store a 0–100 % airflow value paired with
+        # each BCD time slot and are exposed as select entities with 10 %
+        # increment steps so that users can easily pick a preset level.
+        if register.startswith(("setting_summer_", "setting_winter_")):
+            reg_access = (reg.access or "").upper()
+            if "W" in reg_access:
+                from .schedule_helpers import PERCENT_10_SELECT_STATES
+
+                SELECT_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "translation_key": register,
+                        "icon": "mdi:fan",
+                        "register_type": "holding_registers",
+                        "states": PERCENT_10_SELECT_STATES,
+                    },
+                )
+            else:
+                SENSOR_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "translation_key": register,
+                        "icon": "mdi:fan",
+                        "register_type": "holding_registers",
+                    },
+                )
+            continue
+
         access = (reg.access or "").upper()
         min_val = reg.min
         max_val = reg.max

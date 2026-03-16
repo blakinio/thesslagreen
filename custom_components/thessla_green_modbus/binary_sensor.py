@@ -131,6 +131,29 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
             register_name,
         )
 
+    # Prefixes that identify diagnostic alarm/error/status registers.
+    _DIAG_PREFIXES = ("s_", "e_", "f_")
+    _DIAG_NAMES = {"alarm", "error"}
+
+    @property
+    def available(self) -> bool:  # pragma: no cover
+        """Return if entity is available.
+
+        Alarm, error and fault status registers (alarm, error, s_*, e_*, f_*)
+        are considered available as long as the coordinator is connected.
+        When data is temporarily missing the entity shows «unknown» instead of
+        «unavailable», which is less alarming and more accurate.
+        """
+        if (
+            self._register_name in self._DIAG_NAMES
+            or self._register_name.startswith(self._DIAG_PREFIXES)
+        ):
+            return (
+                self.coordinator.last_update_success
+                and not getattr(self.coordinator, "offline_state", False)
+            )
+        return super().available
+
     @property
     def is_on(self) -> bool | None:
         """Return True if the binary sensor is on."""

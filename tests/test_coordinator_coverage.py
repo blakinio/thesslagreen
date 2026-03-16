@@ -1005,7 +1005,7 @@ def test_process_register_value_sensor_unavailable_non_temperature():
 
 
 def test_process_register_value_schedule_hh_mm():
-    """schedule_ register with HH:MM decoded → converts to minutes."""
+    """schedule_ register with HH:MM decoded → stored as HH:MM string (not minutes)."""
     from custom_components.thessla_green_modbus.coordinator import get_register_definition
     coord = _make_coordinator()
     mock_def = MagicMock()
@@ -1017,7 +1017,7 @@ def test_process_register_value_schedule_hh_mm():
         return_value=mock_def,
     ):
         result = coord._process_register_value("schedule_on_1", 390)
-    assert result == 6 * 60 + 30  # 390 minutes
+    assert result == "06:30"
 
 
 # ---------------------------------------------------------------------------

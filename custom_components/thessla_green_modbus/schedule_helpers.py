@@ -17,6 +17,15 @@ TIME_SELECT_STATES: dict[str, str] = {
     for m in (0, 30)
 }
 
+# Prefixes for schedule intensity/airflow setting registers.
+SETTING_SCHEDULE_PREFIXES: tuple[str, ...] = ("setting_summer_", "setting_winter_")
+
+# Mapping of "0%" … "100%" labels → integer values for schedule intensity
+# select entities (step 10 %).
+PERCENT_10_SELECT_STATES: dict[str, int] = {
+    f"{pct}%": pct for pct in range(0, 101, 10)
+}
+
 
 def time_to_bcd(t: time) -> int:
     """Convert ``datetime.time`` to BCD encoded HHMM value."""
