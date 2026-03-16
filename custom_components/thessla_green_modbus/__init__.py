@@ -248,7 +248,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     )
 
     # Create coordinator for managing device communication
-    coordinator_mod = import_module(".coordinator", __name__)
+    # Use cached module from sys.modules if available (avoids re-importing),
+    # otherwise offload the blocking import to the executor.
+    _coordinator_key = f"{__name__}.coordinator"
+    coordinator_mod = sys.modules.get(_coordinator_key)
+    if coordinator_mod is None:
+        if hasattr(hass, "async_add_executor_job"):
+            coordinator_mod = await hass.async_add_executor_job(
+                import_module, ".coordinator", __name__
+            )
+        else:
+            coordinator_mod = import_module(".coordinator", __name__)
     ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
 
     coordinator_kwargs = {

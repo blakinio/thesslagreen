@@ -1843,13 +1843,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         if definition.enum is not None and isinstance(decoded, str) and isinstance(value, int):
             decoded = value
 
-        if isinstance(decoded, str) and register_name.startswith("schedule_") and ":" in decoded:
-            try:
-                hour_str, minute_str = decoded.split(":", 1)
-                decoded = int(hour_str) * 60 + int(minute_str)
-            except ValueError:
-                pass
-
         _LOGGER.debug("Processed %s: raw=%s value=%s", register_name, value, decoded)
         return decoded
 

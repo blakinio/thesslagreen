@@ -303,7 +303,7 @@ async def _call_modbus(
             )
             raise
 
-    _LOGGER.info(
+    _LOGGER.debug(
         "Calling %s on slave %s (batch=%s attempt %s/%s)",
         func_name,
         slave_id,
@@ -323,7 +323,7 @@ async def _call_modbus(
     else:
         request_frame = _build_request_frame(func_name, slave_id, positional, kwargs)
         if request_frame:
-            _LOGGER.info("Modbus request: %s", _mask_frame(request_frame))
+            _LOGGER.debug("Modbus request: %s", _mask_frame(request_frame))
 
     async def _invoke() -> Any:
         if kwarg == "device_id":
@@ -373,7 +373,7 @@ async def _call_modbus(
         except Exception:
             encoded = b""
         if encoded:
-            _LOGGER.info("Modbus response: %s", _mask_frame(encoded))
+            _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
     return response
 
 

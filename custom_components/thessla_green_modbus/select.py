@@ -21,6 +21,8 @@ from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
+from .schedule_helpers import SETTING_SCHEDULE_PREFIXES
+from .utils import BCD_TIME_PREFIXES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,6 +89,23 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._states = definition["states"]
         self._reverse_states = {v: k for k, v in self._states.items()}
         self._attr_options = list(self._states.keys())  # pragma: no cover
+
+    @property
+    def available(self) -> bool:  # pragma: no cover
+        """Return if entity is available.
+
+        Time-based schedule selects (BCD time registers) are considered
+        available whenever the coordinator is connected, even when no time
+        value is currently stored.  This lets users configure a slot that
+        the device reports as «not set» (e.g. BCD sentinel 0xFFFF) without
+        the entity disappearing as «unavailable».
+        """
+        if self._register_name.startswith(BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES):
+            return (
+                self.coordinator.last_update_success
+                and not getattr(self.coordinator, "offline_state", False)
+            )
+        return super().available
 
     @property
     def current_option(self) -> str | None:  # pragma: no cover
