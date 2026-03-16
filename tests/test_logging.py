@@ -26,7 +26,7 @@ async def test_call_modbus_logs(caplog):
     async def read_holding_registers(address, *, count, unit=None):
         return Response()
 
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus_helpers")
     await _call_modbus(
         read_holding_registers,
         1,
@@ -38,7 +38,7 @@ async def test_call_modbus_logs(caplog):
     assert any(
         "batch=2" in r.message and "attempt 1/2" in r.message
         for r in caplog.records
-        if r.levelno == logging.INFO
+        if r.levelno == logging.DEBUG
     )
     assert any("Modbus request" in r.message and "**" in r.message for r in caplog.records)
     assert any("Modbus response" in r.message and "**" in r.message for r in caplog.records)
@@ -106,7 +106,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
         coord._register_groups["input_registers"] = [(0, 2)]
         coord._process_register_value = lambda name, value: value
 
-        caplog.set_level(logging.DEBUG)
+        caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus_helpers")
         data = await coord._read_input_registers_optimized()
         assert data == {"reg0": 1, "reg1": 1}
         assert any(
@@ -118,7 +118,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
             "attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING
         )
         assert (
-            sum(1 for r in caplog.records if r.levelno == logging.INFO and "batch=2" in r.message)
+            sum(1 for r in caplog.records if r.levelno == logging.DEBUG and "batch=2" in r.message)
             == 2
         )
     finally:
