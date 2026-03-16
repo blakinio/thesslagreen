@@ -342,8 +342,6 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "max_exhaust_air_flow_rate_gwc": {"icon": "mdi:fan-minus"},
     "nominal_supply_air_flow_gwc": {"icon": "mdi:fan-clock"},
     "nominal_exhaust_air_flow_gwc": {"icon": "mdi:fan-clock"},
-    # Access and timing
-    "access_level": {"icon": "mdi:account-key"},
     # GWC parameters
     "min_gwc_air_temperature": {"icon": "mdi:thermometer-low"},
     "max_gwc_air_temperature": {"icon": "mdi:thermometer-high"},
@@ -717,6 +715,11 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:snowflake-alert",
         "register_type": "holding_registers",
     },
+    "antifreez_stage": {
+        "translation_key": "antifreez_stage",
+        "icon": "mdi:snowflake-thermometer",
+        "register_type": "holding_registers",
+    },
     # gwc_mode and bypass_mode are read-only status registers (access="R") that
     # report the device's automatically-determined state. They are exposed as
     # sensors with a value_map rather than select entities so that HA does not
@@ -974,6 +977,93 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         },
         "register_type": "holding_registers",
     },
+    "access_level": {
+        "icon": "mdi:account-key",
+        "translation_key": "access_level",
+        "states": {"user": 0, "service": 1, "manufacturer": 3},
+        "register_type": "holding_registers",
+    },
+    "special_mode": {
+        "icon": "mdi:lightning-bolt",
+        "translation_key": "special_mode",
+        "states": {
+            "none": 0,
+            "hood": 1,
+            "fireplace": 2,
+            "airing_doorbell": 3,
+            "airing_switch": 4,
+            "airing_hygrostat": 5,
+            "airing_air_quality": 6,
+            "airing_manual": 7,
+            "airing_auto": 8,
+            "airing_manual_timed": 9,
+            "open_windows": 10,
+            "empty_house": 11,
+        },
+        "register_type": "holding_registers",
+    },
+    "language": {
+        "icon": "mdi:translate",
+        "translation_key": "language",
+        "states": {"pl": 0, "en": 1, "ru": 2, "uk": 3, "sk": 4},
+        "register_type": "holding_registers",
+    },
+    "uart0_baud": {
+        "icon": "mdi:serial-port",
+        "translation_key": "uart0_baud",
+        "states": {
+            "baud_4800": 0,
+            "baud_9600": 1,
+            "baud_14400": 2,
+            "baud_19200": 3,
+            "baud_28800": 4,
+            "baud_38400": 5,
+            "baud_57600": 6,
+            "baud_76800": 7,
+            "baud_115200": 8,
+        },
+        "register_type": "holding_registers",
+    },
+    "uart0_parity": {
+        "icon": "mdi:serial-port",
+        "translation_key": "uart0_parity",
+        "states": {"none": 0, "even": 1, "odd": 2},
+        "register_type": "holding_registers",
+    },
+    "uart0_stop": {
+        "icon": "mdi:serial-port",
+        "translation_key": "uart0_stop",
+        "states": {"one": 0, "two": 1},
+        "register_type": "holding_registers",
+    },
+    "uart1_baud": {
+        "icon": "mdi:serial-port",
+        "translation_key": "uart1_baud",
+        "states": {
+            "baud_4800": 0,
+            "baud_9600": 1,
+            "baud_14400": 2,
+            "baud_19200": 3,
+            "baud_28800": 4,
+            "baud_38400": 5,
+            "baud_57600": 6,
+            "baud_76800": 7,
+            "baud_115200": 8,
+        },
+        "register_type": "holding_registers",
+    },
+    "uart1_parity": {
+        "icon": "mdi:serial-port",
+        "translation_key": "uart1_parity",
+        "states": {"none": 0, "even": 1, "odd": 2},
+        "register_type": "holding_registers",
+    },
+    "uart1_stop": {
+        "icon": "mdi:serial-port",
+        "translation_key": "uart1_stop",
+        "states": {"one": 0, "two": 1},
+        "register_type": "holding_registers",
+    },
 }
 
 BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
@@ -1139,6 +1229,12 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "holding_registers",
     },
+    "stop_ahu_code": {
+        "translation_key": "stop_ahu_code",
+        "icon": "mdi:alert-circle",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "holding_registers",
+    },
 }
 
 SPECIAL_MODE_ICONS = {
@@ -1198,6 +1294,27 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "register_type": "holding_registers",
         "category": None,
         "translation_key": "comfort_mode_panel",
+    },
+    "airflow_rate_change_flag": {
+        "icon": "mdi:air-filter",
+        "register": "airflow_rate_change_flag",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "airflow_rate_change_flag",
+    },
+    "temperature_change_flag": {
+        "icon": "mdi:thermometer-alert",
+        "register": "temperature_change_flag",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "temperature_change_flag",
+    },
+    "lock_flag": {
+        "icon": "mdi:lock",
+        "register": "lock_flag",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "lock_flag",
     },
 }
 

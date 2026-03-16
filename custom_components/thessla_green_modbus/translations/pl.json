@@ -354,6 +354,9 @@
       },
       "gwc_regen_flag": {
         "name": "Regeneracja GWC aktywna"
+      },
+      "stop_ahu_code": {
+        "name": "Alarm blokujący centrali"
       }
     },
     "climate": {
@@ -383,9 +386,6 @@
       }
     },
     "number": {
-      "access_level": {
-        "name": "Poziom dostępu"
-      },
       "air_flow_rate_manual": {
         "name": "Przepływ powietrza manualnie"
       },
@@ -406,9 +406,6 @@
       },
       "air_temperature_summer_free_heating": {
         "name": "Temperatura lato grzanie free"
-      },
-      "airflow_rate_change_flag": {
-        "name": "Airflow Rate Change Flag"
       },
       "airing_bathroom_coef": {
         "name": "Airing Bathroom Coef"
@@ -431,23 +428,11 @@
       "airing_switch_mode_time": {
         "name": "Airing Switch Mode Time"
       },
-      "alarm": {
-        "name": "Alarm"
-      },
-      "antifreez_stage": {
-        "name": "Antifreez Stage"
-      },
-      "antifreeze_mode": {
-        "name": "Antifreeze Mode"
-      },
       "bypass_coef_1": {
         "name": "Bypass Coef 1"
       },
       "bypass_coef_2": {
         "name": "Bypass Coef 2"
-      },
-      "bypass_mode": {
-        "name": "Bypass Mode"
       },
       "cf_version": {
         "name": "Cf Version"
@@ -457,9 +442,6 @@
       },
       "cfg_mode_2": {
         "name": "Cfg Mode 2"
-      },
-      "comfort_mode": {
-        "name": "Comfort Mode"
       },
       "contamination_coef": {
         "name": "Contamination Coef"
@@ -506,36 +488,6 @@
       "device_name": {
         "name": "Device Name"
       },
-      "e_100": {
-        "name": "E 100"
-      },
-      "e_101": {
-        "name": "E 101"
-      },
-      "e_102": {
-        "name": "E 102"
-      },
-      "e_103": {
-        "name": "E 103"
-      },
-      "e_104": {
-        "name": "E 104"
-      },
-      "e_105": {
-        "name": "E 105"
-      },
-      "e_106": {
-        "name": "E 106"
-      },
-      "e_138": {
-        "name": "E 138"
-      },
-      "e_139": {
-        "name": "E 139"
-      },
-      "e_152": {
-        "name": "E 152"
-      },
       "e_196": {
         "name": "E 196"
       },
@@ -548,32 +500,8 @@
       "e_199": {
         "name": "E 199"
       },
-      "e_200": {
-        "name": "E 200"
-      },
-      "e_201": {
-        "name": "E 201"
-      },
-      "e_249": {
-        "name": "E 249"
-      },
-      "e_250": {
-        "name": "E 250"
-      },
-      "e_251": {
-        "name": "E 251"
-      },
-      "e_252": {
-        "name": "E 252"
-      },
-      "e_99": {
-        "name": "E 99"
-      },
       "empty_house_coef": {
         "name": "Empty House Coef"
-      },
-      "error": {
-        "name": "Error"
       },
       "exhaust_air_flow": {
         "name": "Exhaust Air Flow"
@@ -590,17 +518,11 @@
       "fan_speed_3_coef": {
         "name": "Fan Speed 3 Coef"
       },
-      "filter_change": {
-        "name": "Filter Change"
-      },
       "fireplace_mode_time": {
         "name": "Fireplace Mode Time"
       },
       "fireplace_supply_coef": {
         "name": "Fireplace Supply Coef"
-      },
-      "gwc_mode": {
-        "name": "Gwc Mode"
       },
       "gwc_regen_period": {
         "name": "Gwc Regen Period"
@@ -610,9 +532,6 @@
       },
       "hood_supply_coef": {
         "name": "Hood Supply Coef"
-      },
-      "language": {
-        "name": "Language"
       },
       "lock_date": {
         "name": "Data blokady kluczem (rok)"
@@ -631,9 +550,6 @@
       },
       "lock_date_3": {
         "name": "Lock Date 3"
-      },
-      "lock_flag": {
-        "name": "Lock Flag"
       },
       "lock_pass": {
         "name": "Lock Pass"
@@ -659,9 +575,6 @@
       "min_gwc_air_temperature": {
         "name": "Min Gwc Air Temperature"
       },
-      "mode": {
-        "name": "Mode"
-      },
       "nominal_exhaust_air_flow": {
         "name": "Nominal Exhaust Air Flow"
       },
@@ -673,9 +586,6 @@
       },
       "nominal_supply_air_flow_gwc": {
         "name": "Nominal Supply Air Flow Gwc"
-      },
-      "on_off_panel_mode": {
-        "name": "Włącz/Wyłącz Panel"
       },
       "open_window_coef": {
         "name": "Open Window Coef"
@@ -691,9 +601,6 @@
       },
       "rtc_cal": {
         "name": "Rtc Cal"
-      },
-      "season_mode": {
-        "name": "Season Mode"
       },
       "setting_summer_fri_1": {
         "name": "Setting Summer Fri 1"
@@ -863,12 +770,6 @@
       "setting_winter_wed_4": {
         "name": "Setting Winter Wed 4"
       },
-      "special_mode": {
-        "name": "Special Mode"
-      },
-      "stop_ahu_code": {
-        "name": "Stop Ahu Code"
-      },
       "supply_air_flow": {
         "name": "Supply Air Flow"
       },
@@ -886,9 +787,6 @@
       },
       "supply_air_temperature_temporary_4404": {
         "name": "Temperatura nawiewu (tryb chwilowy, roz.)"
-      },
-      "temperature_change_flag": {
-        "name": "Temperature Change Flag"
       },
       "uart_0_baud": {
         "name": "Uart 0 Baud"
@@ -1002,6 +900,99 @@
           "friday": "Piątek",
           "saturday": "Sobota",
           "sunday": "Niedziela"
+        }
+      },
+      "access_level": {
+        "name": "Poziom dostępu",
+        "state": {
+          "user": "Użytkownik",
+          "service": "Serwis / Instalator",
+          "manufacturer": "Producent"
+        }
+      },
+      "special_mode": {
+        "name": "Tryb specjalny",
+        "state": {
+          "none": "Brak",
+          "hood": "Okap",
+          "fireplace": "Kominek",
+          "airing_doorbell": "Wietrzenie (przeł. dzwonkowy)",
+          "airing_switch": "Wietrzenie (przełącznik ON/OFF)",
+          "airing_hygrostat": "Wietrzenie (higrostat)",
+          "airing_air_quality": "Wietrzenie (czujnik jakości pow.)",
+          "airing_manual": "Wietrzenie (aktywacja ręczna)",
+          "airing_auto": "Wietrzenie (tryb automatyczny)",
+          "airing_manual_timed": "Wietrzenie (tryb manualny)",
+          "open_windows": "Otwarte okna",
+          "empty_house": "Pusty dom"
+        }
+      },
+      "language": {
+        "name": "Język",
+        "state": {
+          "pl": "Polski",
+          "en": "Angielski",
+          "ru": "Rosyjski",
+          "uk": "Ukraiński",
+          "sk": "Słowacki"
+        }
+      },
+      "uart0_baud": {
+        "name": "Prędkość portu 0",
+        "state": {
+          "baud_4800": "4800",
+          "baud_9600": "9600",
+          "baud_14400": "14400",
+          "baud_19200": "19200",
+          "baud_28800": "28800",
+          "baud_38400": "38400",
+          "baud_57600": "57600",
+          "baud_76800": "76800",
+          "baud_115200": "115200"
+        }
+      },
+      "uart0_parity": {
+        "name": "Parzystość portu 0",
+        "state": {
+          "none": "Brak",
+          "even": "Parzysty",
+          "odd": "Nieparzysty"
+        }
+      },
+      "uart0_stop": {
+        "name": "Bity stopu portu 0",
+        "state": {
+          "one": "1",
+          "two": "2"
+        }
+      },
+      "uart1_baud": {
+        "name": "Prędkość portu 1",
+        "state": {
+          "baud_4800": "4800",
+          "baud_9600": "9600",
+          "baud_14400": "14400",
+          "baud_19200": "19200",
+          "baud_28800": "28800",
+          "baud_38400": "38400",
+          "baud_57600": "57600",
+          "baud_76800": "76800",
+          "baud_115200": "115200"
+        }
+      },
+      "uart1_parity": {
+        "name": "Parzystość portu 1",
+        "state": {
+          "none": "Brak",
+          "even": "Parzysty",
+          "odd": "Nieparzysty"
+        }
+      },
+      "uart1_stop": {
+        "name": "Bity stopu portu 1",
+        "state": {
+          "one": "1",
+          "two": "2"
         }
       }
     },
@@ -1399,6 +1390,9 @@
       },
       "version_patch": {
         "name": "Wersja łatki"
+      },
+      "antifreez_stage": {
+        "name": "Faza ochrony przeciwzamrożeniowej"
       }
     },
     "switch": {
@@ -1452,6 +1446,15 @@
       },
       "comfort_mode_panel": {
         "name": "Tryb komfort (panel)"
+      },
+      "airflow_rate_change_flag": {
+        "name": "Zmiana strumienia powietrza"
+      },
+      "temperature_change_flag": {
+        "name": "Zmiana temperatury"
+      },
+      "lock_flag": {
+        "name": "Blokada"
       }
     }
   },
