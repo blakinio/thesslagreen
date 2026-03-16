@@ -128,9 +128,9 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_fan_speed_3_coef": ("sensor", "rekuperator_fan_speed_3_coef"),
     # Legacy status sensors migrated to select/switch controls.
     "rekuperator_mode": ("select", "rekuperator_mode"),
-    "rekuperator_gwc_mode": ("select", "rekuperator_gwc_mode"),
+    "rekuperator_gwc_mode": ("sensor", "rekuperator_gwc_mode"),
     "rekuperator_season_mode": ("select", "rekuperator_season_mode"),
-    "rekuperator_bypass_mode_status": ("select", "rekuperator_bypass_mode"),
+    "rekuperator_bypass_mode_status": ("sensor", "rekuperator_bypass_mode"),
     "rekuperator_on_off_panel_mode": ("switch", "rekuperator_on_off_panel_mode"),
     # Legacy aliases for historical register naming.
     "rekuperator_bypass_coef_1": ("number", "rekuperator_bypass_coef1"),
@@ -714,8 +714,23 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:snowflake-alert",
         "register_type": "holding_registers",
     },
-    # mode, season_mode, gwc_mode and bypass_mode are covered by SELECT_ENTITY_MAPPINGS
-    # which already provides both read and write capability — no separate sensor needed.
+    # gwc_mode and bypass_mode are read-only status registers (access="R") that
+    # report the device's automatically-determined state. They are exposed as
+    # sensors with a value_map rather than select entities so that HA does not
+    # present a writable dropdown for registers that cannot accept writes.
+    "gwc_mode": {
+        "translation_key": "gwc_mode",
+        "icon": "mdi:pipe",
+        "register_type": "holding_registers",
+        "value_map": {0: "off", 1: "auto", 2: "forced"},
+    },
+    "bypass_mode": {
+        "translation_key": "bypass_mode",
+        "icon": "mdi:pipe-leak",
+        "register_type": "holding_registers",
+        "value_map": {0: "auto", 1: "open", 2: "closed"},
+    },
+    # mode and season_mode are covered by SELECT_ENTITY_MAPPINGS (writable).
     "comfort_mode": {
         "translation_key": "comfort_mode",
         "icon": "mdi:home-heart",
@@ -879,18 +894,6 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:cog",
         "translation_key": "mode",
         "states": {"auto": 0, "manual": 1, "temporary": 2},
-        "register_type": "holding_registers",
-    },
-    "bypass_mode": {
-        "icon": "mdi:pipe-leak",
-        "translation_key": "bypass_mode",
-        "states": {"auto": 0, "open": 1, "closed": 2},
-        "register_type": "holding_registers",
-    },
-    "gwc_mode": {
-        "icon": "mdi:pipe",
-        "translation_key": "gwc_mode",
-        "states": {"off": 0, "auto": 1, "forced": 2},
         "register_type": "holding_registers",
     },
     "season_mode": {

@@ -389,18 +389,18 @@ Register = RegisterDef
 # ---------------------------------------------------------------------------
 
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
-_SPECIAL_MODES_ENUM: dict[str, int] = {}
+_SPECIAL_MODES_ENUM: dict[int, str] = {}
 try:  # pragma: no cover - defensive
     _SPECIAL_MODES_ENUM = {
-        key.split("_")[-1]: idx
+        idx: key.split("_")[-1]
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
 except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
     _LOGGER.debug("Failed to load special modes: %s", err)
-    _SPECIAL_MODES_ENUM = {}
+    _SPECIAL_MODES_ENUM = {}  # type: ignore[assignment]
 except Exception as err:  # pragma: no cover - unexpected
     _LOGGER.exception("Unexpected error loading special modes: %s", err)
-    _SPECIAL_MODES_ENUM = {}
+    _SPECIAL_MODES_ENUM = {}  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------

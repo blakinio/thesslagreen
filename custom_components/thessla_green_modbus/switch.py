@@ -136,6 +136,8 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             return None
 
         if self.bit is not None:
+            if self.register_name == "special_mode":
+                return raw_value == self.bit
             return bool(raw_value & self.bit)
 
         # Convert to boolean
@@ -145,8 +147,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         """Turn the switch on."""
         try:
             if self.bit is not None:
-                current = self.coordinator.data.get(self.register_name, 0)
-                value = current | self.bit
+                if self.register_name == "special_mode":
+                    value = self.bit
+                else:
+                    current = self.coordinator.data.get(self.register_name, 0)
+                    value = current | self.bit
             else:
                 value = 1
             await self._write_register(self.register_name, value)
@@ -160,8 +165,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         """Turn the switch off."""
         try:
             if self.bit is not None:
-                current = self.coordinator.data.get(self.register_name, 0)
-                value = current & ~self.bit
+                if self.register_name == "special_mode":
+                    value = 0
+                else:
+                    current = self.coordinator.data.get(self.register_name, 0)
+                    value = current & ~self.bit
             else:
                 value = 0
             await self._write_register(self.register_name, value)
