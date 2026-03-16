@@ -152,7 +152,10 @@ def test_pdf_register_enum_values() -> None:
 def test_local_airpack4_pdf_fn_addr_coverage() -> None:
     """Ensure each function/address pair from local AirPack4 PDF exists in JSON."""
 
-    pypdf = pytest.importorskip("pypdf")
+    try:
+        pypdf = pytest.importorskip("pypdf")
+    except BaseException as exc:
+        pytest.skip(f"pypdf not usable: {exc}")
 
     pdf_path = Path(__file__).resolve().parents[1] / "ProtokolModbusRTU_AirPack4.pdf"
     reader = pypdf.PdfReader(str(pdf_path))
