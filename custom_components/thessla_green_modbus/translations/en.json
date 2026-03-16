@@ -357,6 +357,21 @@
       },
       "stop_ahu_code": {
         "name": "AHU Stop Alarm"
+      },
+      "f_142": {
+        "name": "Supply Filter Missing"
+      },
+      "f_143": {
+        "name": "Exhaust Filter Missing"
+      },
+      "f_146": {
+        "name": "Supply Filter Replacement Required"
+      },
+      "f_147": {
+        "name": "Exhaust Filter Replacement Required"
+      },
+      "post_heater_on": {
+        "name": "Secondary Heater (ERV) Active"
       }
     },
     "climate": {
@@ -792,7 +807,7 @@
         "name": "Uart 0 Baud"
       },
       "uart_0_id": {
-        "name": "Uart 0 Id"
+        "name": "Port 0 Device ID"
       },
       "uart_0_parity": {
         "name": "Uart 0 Parity"
@@ -804,13 +819,22 @@
         "name": "Uart 1 Baud"
       },
       "uart_1_id": {
-        "name": "Uart 1 Id"
+        "name": "Port 1 Device ID"
       },
       "uart_1_parity": {
         "name": "Uart 1 Parity"
       },
       "uart_1_stop": {
         "name": "Uart 1 Stop"
+      },
+      "cfgszf_fn_new": {
+        "name": "Supply Filter Wear"
+      },
+      "cfgszf_fw_new": {
+        "name": "Exhaust Filter Wear"
+      },
+      "cfg_post_heater_mode": {
+        "name": "ERV Operating Mode"
       }
     },
     "select": {
@@ -937,7 +961,7 @@
           "sk": "Slovak"
         }
       },
-      "uart0_baud": {
+      "uart_0_baud": {
         "name": "Port 0 Baud Rate",
         "state": {
           "baud_4800": "4800",
@@ -951,7 +975,7 @@
           "baud_115200": "115200"
         }
       },
-      "uart0_parity": {
+      "uart_0_parity": {
         "name": "Port 0 Parity",
         "state": {
           "none": "None",
@@ -959,14 +983,14 @@
           "odd": "Odd"
         }
       },
-      "uart0_stop": {
+      "uart_0_stop": {
         "name": "Port 0 Stop Bits",
         "state": {
           "one": "1",
           "two": "2"
         }
       },
-      "uart1_baud": {
+      "uart_1_baud": {
         "name": "Port 1 Baud Rate",
         "state": {
           "baud_4800": "4800",
@@ -980,7 +1004,7 @@
           "baud_115200": "115200"
         }
       },
-      "uart1_parity": {
+      "uart_1_parity": {
         "name": "Port 1 Parity",
         "state": {
           "none": "None",
@@ -988,7 +1012,7 @@
           "odd": "Odd"
         }
       },
-      "uart1_stop": {
+      "uart_1_stop": {
         "name": "Port 1 Stop Bits",
         "state": {
           "one": "1",
@@ -1393,6 +1417,12 @@
       },
       "antifreez_stage": {
         "name": "Antifreeze Stage"
+      },
+      "filter_supply_date_limit_get": {
+        "name": "Supply Filter Replacement Date"
+      },
+      "filter_exhaust_date_limit_get": {
+        "name": "Exhaust Filter Replacement Date"
       }
     },
     "switch": {

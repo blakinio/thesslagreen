@@ -347,6 +347,14 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "max_gwc_air_temperature": {"icon": "mdi:thermometer-high"},
     "gwc_regen_period": {"icon": "mdi:timer"},
     "delta_t_gwc": {"icon": "mdi:thermometer-lines"},
+    # Modbus port device IDs
+    "uart_0_id": {"icon": "mdi:identifier"},
+    "uart_1_id": {"icon": "mdi:identifier"},
+    # Filter wear percentages
+    "cfgszf_fn_new": {"icon": "mdi:filter-check"},
+    "cfgszf_fw_new": {"icon": "mdi:filter-check"},
+    # ERV (secondary heater) operating mode
+    "cfg_post_heater_mode": {"icon": "mdi:radiator"},
 }
 
 
@@ -747,6 +755,17 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:waves",
         "register_type": "input_registers",
     },
+    # Filter replacement dates (read-only holding registers)
+    "filter_supply_date_limit_get": {
+        "translation_key": "filter_supply_date_limit_get",
+        "icon": "mdi:calendar-filter",
+        "register_type": "holding_registers",
+    },
+    "filter_exhaust_date_limit_get": {
+        "translation_key": "filter_exhaust_date_limit_get",
+        "icon": "mdi:calendar-filter",
+        "register_type": "holding_registers",
+    },
     # Configuration sensors from holding registers
     "supply_air_temperature_manual": {
         "translation_key": "supply_air_temperature_manual",
@@ -1008,9 +1027,9 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"pl": 0, "en": 1, "ru": 2, "uk": 3, "sk": 4},
         "register_type": "holding_registers",
     },
-    "uart0_baud": {
+    "uart_0_baud": {
         "icon": "mdi:serial-port",
-        "translation_key": "uart0_baud",
+        "translation_key": "uart_0_baud",
         "states": {
             "baud_4800": 0,
             "baud_9600": 1,
@@ -1024,21 +1043,21 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         },
         "register_type": "holding_registers",
     },
-    "uart0_parity": {
+    "uart_0_parity": {
         "icon": "mdi:serial-port",
-        "translation_key": "uart0_parity",
+        "translation_key": "uart_0_parity",
         "states": {"none": 0, "even": 1, "odd": 2},
         "register_type": "holding_registers",
     },
-    "uart0_stop": {
+    "uart_0_stop": {
         "icon": "mdi:serial-port",
-        "translation_key": "uart0_stop",
+        "translation_key": "uart_0_stop",
         "states": {"one": 0, "two": 1},
         "register_type": "holding_registers",
     },
-    "uart1_baud": {
+    "uart_1_baud": {
         "icon": "mdi:serial-port",
-        "translation_key": "uart1_baud",
+        "translation_key": "uart_1_baud",
         "states": {
             "baud_4800": 0,
             "baud_9600": 1,
@@ -1052,15 +1071,15 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         },
         "register_type": "holding_registers",
     },
-    "uart1_parity": {
+    "uart_1_parity": {
         "icon": "mdi:serial-port",
-        "translation_key": "uart1_parity",
+        "translation_key": "uart_1_parity",
         "states": {"none": 0, "even": 1, "odd": 2},
         "register_type": "holding_registers",
     },
-    "uart1_stop": {
+    "uart_1_stop": {
         "icon": "mdi:serial-port",
-        "translation_key": "uart1_stop",
+        "translation_key": "uart_1_stop",
         "states": {"one": 0, "two": 1},
         "register_type": "holding_registers",
     },
@@ -1233,6 +1252,38 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "stop_ahu_code",
         "icon": "mdi:alert-circle",
         "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "holding_registers",
+    },
+    # Filter alarm flags (f_ prefix → diagnostic binary sensors)
+    "f_142": {
+        "translation_key": "f_142",
+        "icon": "mdi:filter-remove",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "holding_registers",
+    },
+    "f_143": {
+        "translation_key": "f_143",
+        "icon": "mdi:filter-remove",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "holding_registers",
+    },
+    "f_146": {
+        "translation_key": "f_146",
+        "icon": "mdi:filter-alert",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "holding_registers",
+    },
+    "f_147": {
+        "translation_key": "f_147",
+        "icon": "mdi:filter-alert",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "holding_registers",
+    },
+    # Secondary heater (ERV) status
+    "post_heater_on": {
+        "translation_key": "post_heater_on",
+        "icon": "mdi:radiator",
+        "device_class": BinarySensorDeviceClass.HEAT,
         "register_type": "holding_registers",
     },
 }
