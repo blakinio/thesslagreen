@@ -954,22 +954,6 @@
           "temporary": "Tymczasowy"
         }
       },
-      "bypass_mode": {
-        "name": "Tryb bypassu",
-        "state": {
-          "auto": "Automatyczny",
-          "open": "Otwarty",
-          "closed": "Zamknięty"
-        }
-      },
-      "gwc_mode": {
-        "name": "Tryb GWC",
-        "state": {
-          "auto": "Automatyczny",
-          "forced": "Wymuszony",
-          "off": "Wyłączony"
-        }
-      },
       "season_mode": {
         "name": "Tryb sezonowy",
         "state": {
@@ -1048,6 +1032,14 @@
       "antifreeze_mode": {
         "name": "Tryb antyzamrożeniowy"
       },
+      "bypass_mode": {
+        "name": "Tryb bypassu",
+        "state": {
+          "auto": "Automatyczny",
+          "open": "Otwarty",
+          "closed": "Zamknięty"
+        }
+      },
       "bypass_off": {
         "name": "Wyłączenie bypass"
       },
@@ -1110,6 +1102,14 @@
       },
       "fpx_temperature": {
         "name": "Temperatura FPX"
+      },
+      "gwc_mode": {
+        "name": "Tryb GWC",
+        "state": {
+          "auto": "Automatyczny",
+          "forced": "Wymuszony",
+          "off": "Wyłączony"
+        }
       },
       "gwc_temperature": {
         "name": "Temperatura GWC"

@@ -128,9 +128,9 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_fan_speed_3_coef": ("sensor", "rekuperator_fan_speed_3_coef"),
     # Legacy status sensors migrated to select/switch controls.
     "rekuperator_mode": ("select", "rekuperator_mode"),
-    "rekuperator_gwc_mode": ("select", "rekuperator_gwc_mode"),
+    "rekuperator_gwc_mode": ("sensor", "rekuperator_gwc_mode"),
     "rekuperator_season_mode": ("select", "rekuperator_season_mode"),
-    "rekuperator_bypass_mode_status": ("select", "rekuperator_bypass_mode"),
+    "rekuperator_bypass_mode_status": ("sensor", "rekuperator_bypass_mode"),
     "rekuperator_on_off_panel_mode": ("switch", "rekuperator_on_off_panel_mode"),
     # Legacy aliases for historical register naming.
     "rekuperator_bypass_coef_1": ("number", "rekuperator_bypass_coef1"),
@@ -265,6 +265,19 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if register in SENSOR_ENTITY_MAPPINGS and "W" not in (info.get("access") or ""):
             continue
 
+        # Skip registers already handled by select/switch platforms to avoid
+        # creating a duplicate Number entity alongside the correct entity type.
+        if register in SELECT_ENTITY_MAPPINGS:
+            continue
+        if register in SWITCH_ENTITY_MAPPINGS:
+            continue
+
+        # Skip BCD date/time registers — they store encoded year/month/day
+        # fields with format-descriptor "units" (e.g. "RRMM", "DDTT") that
+        # are not valid measurement units and must not be editable numbers.
+        if register.startswith("date_time"):
+            continue
+
         # Skip diagnostic/error/fault registers (E/S/F codes and alarm/error flags)
         if re.match(r"[sef](?:_|\d)", register) or register in {"alarm", "error"}:
             continue
@@ -278,6 +291,13 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
 
         # Skip registers with enumerated states – handled as binary/select
         if _parse_states(info.get("unit")):
+            continue
+
+        # Only expose registers that have a Number translation entry.
+        # This mirrors the whitelist approach used by binary_sensor/switch/select
+        # and prevents unnamed "Rekuperator" entities for reserved or
+        # undocumented registers (e.g. reserved_8145–reserved_8151, lock_pass_2).
+        if register not in _number_translation_keys():
             continue
 
         cfg: dict[str, Any] = {
@@ -326,14 +346,30 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "max_gwc_air_temperature": {"icon": "mdi:thermometer-high"},
     "gwc_regen_period": {"icon": "mdi:timer"},
     "delta_t_gwc": {"icon": "mdi:thermometer-lines"},
-    # Date/time registers
-    "date_time_1": {
-        "unit": "RRMM",
-        "min": 0,
-        "max": 99,
-        "step": 1,
-    },
 }
+
+
+def _number_translation_keys() -> set[str]:
+    """Return register names that have a Number translation entry in en.json.
+
+    Used as a whitelist: only registers present here will produce a Number
+    entity, preventing unnamed "Rekuperator" fallback entries for reserved or
+    undocumented registers (e.g. ``reserved_8145``–``reserved_8151``).
+    """
+    try:
+        with (Path(__file__).with_name("translations") / "en.json").open(encoding="utf-8") as f:
+            data = json.load(f)
+        return set(data.get("entity", {}).get("number", {}).keys())
+    except (
+        OSError,
+        json.JSONDecodeError,
+        ValueError,
+    ) as err:  # pragma: no cover - fallback when translations missing
+        _LOGGER.debug("Failed to load number translation keys: %s", err)
+        return set()
+    except Exception as err:  # pragma: no cover - unexpected
+        _LOGGER.exception("Unexpected error loading number translation keys: %s", err)
+        return set()
 
 
 def _load_translation_keys() -> dict[str, set[str]]:
@@ -678,8 +714,23 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:snowflake-alert",
         "register_type": "holding_registers",
     },
-    # mode, season_mode, gwc_mode and bypass_mode are covered by SELECT_ENTITY_MAPPINGS
-    # which already provides both read and write capability — no separate sensor needed.
+    # gwc_mode and bypass_mode are read-only status registers (access="R") that
+    # report the device's automatically-determined state. They are exposed as
+    # sensors with a value_map rather than select entities so that HA does not
+    # present a writable dropdown for registers that cannot accept writes.
+    "gwc_mode": {
+        "translation_key": "gwc_mode",
+        "icon": "mdi:pipe",
+        "register_type": "holding_registers",
+        "value_map": {0: "off", 1: "auto", 2: "forced"},
+    },
+    "bypass_mode": {
+        "translation_key": "bypass_mode",
+        "icon": "mdi:pipe-leak",
+        "register_type": "holding_registers",
+        "value_map": {0: "auto", 1: "open", 2: "closed"},
+    },
+    # mode and season_mode are covered by SELECT_ENTITY_MAPPINGS (writable).
     "comfort_mode": {
         "translation_key": "comfort_mode",
         "icon": "mdi:home-heart",
@@ -843,18 +894,6 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:cog",
         "translation_key": "mode",
         "states": {"auto": 0, "manual": 1, "temporary": 2},
-        "register_type": "holding_registers",
-    },
-    "bypass_mode": {
-        "icon": "mdi:pipe-leak",
-        "translation_key": "bypass_mode",
-        "states": {"auto": 0, "open": 1, "closed": 2},
-        "register_type": "holding_registers",
-    },
-    "gwc_mode": {
-        "icon": "mdi:pipe",
-        "translation_key": "gwc_mode",
-        "states": {"off": 0, "auto": 1, "forced": 2},
         "register_type": "holding_registers",
     },
     "season_mode": {
@@ -1099,6 +1138,11 @@ def _extend_entity_mappings_from_registers() -> None:
                     "device_class": BinarySensorDeviceClass.PROBLEM,
                 },
             )
+            continue
+
+        # BCD date/time encoding registers — raw BCD year/month/day values with
+        # format-descriptor "units" (e.g. "RRMM", "DDTT"); not plain numbers.
+        if register.startswith("date_time"):
             continue
 
         # BCD time registers (schedule/airing/GWC timeslots) → read-only text

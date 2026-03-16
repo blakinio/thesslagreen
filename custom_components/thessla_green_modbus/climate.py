@@ -248,7 +248,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         # Check for active special function
         for preset, bit_value in SPECIAL_FUNCTION_MAP.items():
-            if special_mode & bit_value:
+            if special_mode == bit_value:
                 return preset
 
         return "none"

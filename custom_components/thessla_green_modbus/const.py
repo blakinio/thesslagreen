@@ -454,17 +454,18 @@ except (ImportError, ValueError):
 if not _HAS_HA or "pytest" in sys.modules:  # pragma: no cover - test env
     _sync_setup_options()
 
-# Special function bit mappings for services
+# Special function enum index mappings for services.
+# Values match the sequential enum indices in special_modes.json (0=none, 1=boost, ...).
 SPECIAL_FUNCTION_MAP = {
     "boost": 1,
     "eco": 2,
-    "away": 4,
-    "fireplace": 8,
-    "hood": 16,
-    "sleep": 32,  # alias for night
-    "party": 64,
-    "bathroom": 128,
-    "kitchen": 256,
-    "summer": 512,
-    "winter": 1024,
+    "away": 3,
+    "sleep": 4,
+    "fireplace": 5,
+    "hood": 6,
+    "party": 7,
+    "bathroom": 8,
+    "kitchen": 9,
+    "summer": 10,
+    "winter": 11,
 }

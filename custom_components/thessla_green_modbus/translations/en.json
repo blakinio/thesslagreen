@@ -954,22 +954,6 @@
           "temporary": "Temporary"
         }
       },
-      "bypass_mode": {
-        "name": "Bypass Mode",
-        "state": {
-          "auto": "Automatic",
-          "open": "Open",
-          "closed": "Closed"
-        }
-      },
-      "gwc_mode": {
-        "name": "GWC Mode",
-        "state": {
-          "auto": "Automatic",
-          "forced": "Forced",
-          "off": "Off"
-        }
-      },
       "season_mode": {
         "name": "Season Mode",
         "state": {
@@ -1048,6 +1032,14 @@
       "antifreeze_mode": {
         "name": "Antifreeze Mode"
       },
+      "bypass_mode": {
+        "name": "Bypass Mode",
+        "state": {
+          "auto": "Automatic",
+          "open": "Open",
+          "closed": "Closed"
+        }
+      },
       "bypass_off": {
         "name": "Bypass Off"
       },
@@ -1110,6 +1102,14 @@
       },
       "fpx_temperature": {
         "name": "FPX Temperature"
+      },
+      "gwc_mode": {
+        "name": "GWC Mode",
+        "state": {
+          "auto": "Automatic",
+          "forced": "Forced",
+          "off": "Off"
+        }
       },
       "gwc_temperature": {
         "name": "GWC Temperature"

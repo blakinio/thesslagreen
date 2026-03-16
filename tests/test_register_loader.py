@@ -66,7 +66,7 @@ def test_enum_multiplier_resolution_handling() -> None:
     holding_regs = get_registers_by_function("03")
 
     special_mode = next(r for r in holding_regs if r.name == "special_mode")
-    assert special_mode.enum and special_mode.enum["boost"] == 1
+    assert special_mode.enum and special_mode.enum[1] == "boost"
 
     required = next(r for r in holding_regs if r.name == "required_temperature")
     assert required.multiplier == 0.5
