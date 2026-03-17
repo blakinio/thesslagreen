@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover - Python < 3.11 compatibility
 from typing import Any, Literal
 
 import pydantic
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict
 
 from ..utils import _normalise_name
 
@@ -164,8 +164,12 @@ class RegisterDefinition(BaseModel):
     bits: list[Any] | None = None
     type: RegisterType | None = None
 
-    class Config:  # pragma: no cover - keep behaviour aligned with v2 version
-        extra = "allow"
+    if hasattr(pydantic, "field_validator"):
+        model_config = ConfigDict(extra="allow")
+    else:  # pragma: no cover
+
+        class Config:
+            extra = "allow"
 
     # ------------------------------------------------------------------
     # Normalisation helpers
@@ -248,11 +252,22 @@ class RegisterDefinition(BaseModel):
 
         return data
 
-    @validator("function")
-    def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
-        if v not in {1, 2, 3, 4}:
-            raise ValueError("function code must be between 1 and 4")
-        return v
+    if hasattr(pydantic, "field_validator"):
+
+        @pydantic.field_validator("function")
+        @classmethod
+        def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
+            if v not in {1, 2, 3, 4}:
+                raise ValueError("function code must be between 1 and 4")
+            return v
+
+    else:  # pragma: no cover
+
+        @pydantic.validator("function")  # type: ignore[no-redef]
+        def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
+            if v not in {1, 2, 3, 4}:
+                raise ValueError("function code must be between 1 and 4")
+            return v
 
     if hasattr(pydantic, "model_validator"):
 
@@ -422,11 +437,22 @@ class RegisterDefinition(BaseModel):
                     raise ValueError("default above max")
             return values
 
-    @validator("name")
-    def name_is_snake(cls, v: str) -> str:  # pragma: no cover
-        if not re.fullmatch(r"[a-z0-9_]+", v):
-            raise ValueError("name must be snake_case")
-        return v
+    if hasattr(pydantic, "field_validator"):
+
+        @pydantic.field_validator("name")
+        @classmethod
+        def name_is_snake(cls, v: str) -> str:  # pragma: no cover
+            if not re.fullmatch(r"[a-z0-9_]+", v):
+                raise ValueError("name must be snake_case")
+            return v
+
+    else:  # pragma: no cover
+
+        @pydantic.validator("name")  # type: ignore[no-redef]
+        def name_is_snake(cls, v: str) -> str:  # pragma: no cover
+            if not re.fullmatch(r"[a-z0-9_]+", v):
+                raise ValueError("name must be snake_case")
+            return v
 
 
 if hasattr(pydantic, "RootModel"):
