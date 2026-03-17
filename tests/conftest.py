@@ -723,10 +723,10 @@ def mock_coordinator():
         "calculated": {"estimated_power", "total_energy"},
     }
     coordinator._register_maps = {
-        "input_registers": input_registers(),
-        "holding_registers": holding_registers(),
-        "coil_registers": coil_registers(),
-        "discrete_inputs": discrete_input_registers(),
+        "input_registers": input_registers().copy(),
+        "holding_registers": holding_registers().copy(),
+        "coil_registers": coil_registers().copy(),
+        "discrete_inputs": discrete_input_registers().copy(),
     }
     coordinator.force_full_register_list = False
     coordinator.async_write_register = AsyncMock(return_value=True)
