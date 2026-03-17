@@ -10,7 +10,6 @@ from pathlib import Path
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 INTENTIONAL_OMISSIONS = {
-    "exp_version",
     "serial_number_2",
     "serial_number_3",
     "serial_number_4",
@@ -33,14 +32,6 @@ INTENTIONAL_OMISSIONS = {
     "reserved_8150",
     "reserved_8151",
     "lock_pass_2",
-    # Read-only status / date registers not yet mapped to a platform
-    "filter_supply_date_limit_get",
-    "filter_exhaust_date_limit_get",
-    "post_heater_on",
-    # RW configuration registers not yet assigned to a platform
-    "cfg_post_heater_mode",
-    "cfgszf_fn_new",
-    "cfgszf_fw_new",
 }
 
 # Minimal Home Assistant stubs required to import entity mappings
@@ -103,3 +94,22 @@ def test_all_registers_covered() -> None:
 
     missing = registers - exposed - diagnostic_regs - INTENTIONAL_OMISSIONS
     assert not missing, f"Unmapped registers: {sorted(missing)}"
+
+
+def test_number_translations_match() -> None:
+    """Ensure NUMBER_ENTITY_MAPPINGS keys match entity.number in translation files."""
+    import json as _json
+
+    from pathlib import Path as _Path
+
+    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
+    number_keys = set(entity_mod.NUMBER_ENTITY_MAPPINGS.keys())
+
+    trans_root = _Path("custom_components/thessla_green_modbus/translations")
+    for lang in ("en", "pl"):
+        data = _json.loads((trans_root / f"{lang}.json").read_text(encoding="utf-8"))
+        trans_keys = set(data.get("entity", {}).get("number", {}).keys())
+        missing = number_keys - trans_keys
+        extra = trans_keys - number_keys
+        assert not missing, f"[{lang}] Missing number translations: {sorted(missing)}"
+        assert not extra, f"[{lang}] Extra/unused number translations: {sorted(extra)}"

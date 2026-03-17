@@ -293,7 +293,6 @@ def test_new_translation_keys_present():
         "nominal_supply_air_flow",
         "nominal_exhaust_air_flow",
         "air_flow_rate_manual",
-        "air_flow_rate_temporary_2",
     ]
     new_switch_keys = ["bypass_off"]
     new_binary_keys = ["water_removal_active"]
