@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -54,8 +54,9 @@ async def test_input_range_read_after_block_failure():
         patch("custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS", {}),
         patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
     ):
-        mock_client = AsyncMock()
-        mock_client.connect.return_value = True
+        mock_client = MagicMock()
+        mock_client.connect = AsyncMock(return_value=True)
+        mock_client.close = AsyncMock()
         mock_client_class.return_value = mock_client
 
         with (
@@ -121,8 +122,9 @@ async def test_block_exception_allows_single_register_reads():
         ),
         patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
     ):
-        mock_client = AsyncMock()
-        mock_client.connect.return_value = True
+        mock_client = MagicMock()
+        mock_client.connect = AsyncMock(return_value=True)
+        mock_client.close = AsyncMock()
         mock_client_class.return_value = mock_client
 
         with (

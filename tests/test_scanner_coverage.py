@@ -23,8 +23,6 @@ from custom_components.thessla_green_modbus.scanner_core import (
     _build_register_maps,
 )
 
-pytestmark = pytest.mark.asyncio
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -85,6 +83,7 @@ def test_build_register_maps_direct():
     assert isinstance(REGISTER_DEFINITIONS, dict)
 
 
+@pytest.mark.asyncio
 async def test_maybe_retry_yield_backoff_positive():
     """Cover line 145: backoff > 0 causes early return without sleeping."""
     from custom_components.thessla_green_modbus.scanner_core import _maybe_retry_yield
@@ -95,6 +94,7 @@ async def test_maybe_retry_yield_backoff_positive():
         mock_sleep.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_compat_type_error_reraise():
     """Cover line 182: TypeError with non-'unexpected keyword' message is re-raised."""
     from custom_components.thessla_green_modbus.scanner_core import _call_modbus_compat
@@ -117,66 +117,77 @@ async def test_call_modbus_compat_type_error_reraise():
 # Group E: Parameter coercion in __init__ (lines 446-501)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_param_coerce_backoff_invalid():
     """Lines 446-447: backoff='invalid' falls back to 0.0."""
     scanner = await _make_scanner(backoff="invalid")
     assert scanner.backoff == 0.0
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_backoff_jitter_string_valid():
     """Lines 451-452: backoff_jitter='3.14' parsed to float."""
     scanner = await _make_scanner(backoff_jitter="3.14")
     assert scanner.backoff_jitter == pytest.approx(3.14)
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_backoff_jitter_string_invalid():
     """Lines 453-454: backoff_jitter='bad' → jitter=None."""
     scanner = await _make_scanner(backoff_jitter="bad")
     assert scanner.backoff_jitter is None
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_backoff_jitter_list():
     """Lines 455-458: backoff_jitter=[1.0, 2.0] → tuple."""
     scanner = await _make_scanner(backoff_jitter=[1.0, 2.0])
     assert scanner.backoff_jitter == (1.0, 2.0)
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_backoff_jitter_list_invalid():
     """Lines 458-459: backoff_jitter=[None, 'x'] → jitter=None."""
     scanner = await _make_scanner(backoff_jitter=[None, "x"])
     assert scanner.backoff_jitter is None
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_backoff_jitter_zero():
     """Lines 462-463: backoff_jitter=0 → jitter=0.0."""
     scanner = await _make_scanner(backoff_jitter=0)
     assert scanner.backoff_jitter == 0.0
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_max_registers_string():
     """Lines 472-473: max_registers_per_request='16' parsed to int."""
     scanner = await _make_scanner(max_registers_per_request="16")
     assert scanner.effective_batch == 16
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_max_registers_zero():
     """Lines 475-476: max_registers_per_request=0 → effective_batch=1."""
     scanner = await _make_scanner(max_registers_per_request=0)
     assert scanner.effective_batch == 1
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_baud_rate_none():
     """Lines 490-491: baud_rate=None → DEFAULT_BAUD_RATE."""
     scanner = await _make_scanner(baud_rate=None)
     assert scanner.baud_rate == DEFAULT_BAUD_RATE
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_parity_invalid():
     """Lines 493-494: parity='xyz' → DEFAULT_PARITY."""
     scanner = await _make_scanner(parity="xyz")
     assert scanner.parity == DEFAULT_PARITY.lower()
 
 
+@pytest.mark.asyncio
 async def test_param_coerce_stop_bits_invalid():
     """Lines 500-501: stop_bits=99 → DEFAULT_STOP_BITS."""
     scanner = await _make_scanner(stop_bits=99)
@@ -187,6 +198,7 @@ async def test_param_coerce_stop_bits_invalid():
 # Group F: close() exception handling (lines 686-687, 697-698)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_close_transport_raises_oserror():
     """Lines 686-687: OSError from transport.close() is caught and logged."""
     scanner = await _make_scanner()
@@ -196,6 +208,7 @@ async def test_close_transport_raises_oserror():
     assert scanner._transport is None
 
 
+@pytest.mark.asyncio
 async def test_close_transport_raises_connection_exception():
     """Lines 686-687: ConnectionException from transport.close() is caught."""
     scanner = await _make_scanner()
@@ -204,6 +217,7 @@ async def test_close_transport_raises_connection_exception():
     assert scanner._transport is None
 
 
+@pytest.mark.asyncio
 async def test_close_client_raises_oserror():
     """Lines 697-698: OSError from client.close() is caught and logged."""
     scanner = await _make_scanner()
@@ -215,6 +229,7 @@ async def test_close_client_raises_oserror():
     assert scanner._client is None
 
 
+@pytest.mark.asyncio
 async def test_close_client_raises_modbus_io_exception():
     """Lines 697-698: ModbusIOException from client.close() is caught."""
     scanner = await _make_scanner()
@@ -230,6 +245,7 @@ async def test_close_client_raises_modbus_io_exception():
 # Group G: verify_connection safe holding registers (lines 824-829)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_verify_connection_safe_holding_registers():
     """Lines 824-829: safe_holding is non-empty when date_time_rrmm is in REGISTER_DEFINITIONS."""
     from custom_components.thessla_green_modbus.scanner_core import REGISTER_DEFINITIONS
@@ -250,6 +266,7 @@ async def test_verify_connection_safe_holding_registers():
 # Group H: verify_connection exception paths (lines 844-865)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_verify_connection_cancelled_error_reraises():
     """Line 845: asyncio.CancelledError is re-raised."""
     scanner = await _make_scanner()
@@ -259,6 +276,7 @@ async def test_verify_connection_cancelled_error_reraises():
             await scanner.verify_connection()
 
 
+@pytest.mark.asyncio
 async def test_verify_connection_modbus_io_cancelled_raises_timeout():
     """Lines 847-850: ModbusIOException with 'cancelled' raises TimeoutError."""
     scanner = await _make_scanner()
@@ -269,6 +287,7 @@ async def test_verify_connection_modbus_io_cancelled_raises_timeout():
             await scanner.verify_connection()
 
 
+@pytest.mark.asyncio
 async def test_verify_connection_timeout_error_logs_warning(caplog):
     """Lines 852-853: TimeoutError logs a warning."""
     scanner = await _make_scanner()
@@ -282,6 +301,7 @@ async def test_verify_connection_timeout_error_logs_warning(caplog):
     assert "Timeout during verify_connection" in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_verify_connection_transport_close_exception_in_finally(caplog):
     """Lines 862-865: Exception during transport.close() in finally is logged."""
     scanner = await _make_scanner()
@@ -301,6 +321,7 @@ async def test_verify_connection_transport_close_exception_in_finally(caplog):
 # Group I: _is_valid_register_value BCD time (lines 889, 897)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_is_valid_temperature_sensor_unavailable():
     """Line 889: temperature register with SENSOR_UNAVAILABLE is invalid."""
     scanner = await _make_scanner()
@@ -310,6 +331,7 @@ async def test_is_valid_temperature_sensor_unavailable():
     assert result is False
 
 
+@pytest.mark.asyncio
 async def test_is_valid_bcd_time_invalid_value():
     """Lines 895-897: schedule register with invalid BCD time is invalid."""
     scanner = await _make_scanner()
@@ -319,6 +341,7 @@ async def test_is_valid_bcd_time_invalid_value():
     assert result is False
 
 
+@pytest.mark.asyncio
 async def test_is_valid_bcd_time_valid_value():
     """Lines 895-897: schedule register with valid BCD time passes."""
     scanner = await _make_scanner()
@@ -332,6 +355,7 @@ async def test_is_valid_bcd_time_valid_value():
 # Group J: safe_scan=True forces single-register batches (line 994)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_safe_scan_group_registers():
     """Line 994: safe_scan=True → single-register batches."""
     scanner = await _make_scanner(safe_scan=True)
@@ -343,6 +367,7 @@ async def test_safe_scan_group_registers():
 # Group K: scan() raises ConnectionException without transport/client
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_raises_without_transport_and_client():
     """Lines 1027-1028: transport=None and client=None raises ConnectionException."""
     scanner = await _make_scanner()
@@ -352,6 +377,7 @@ async def test_scan_raises_without_transport_and_client():
         await scanner.scan()
 
 
+@pytest.mark.asyncio
 async def test_scan_raises_when_transport_disconnected_and_no_client():
     """Lines 1029-1030: transport not connected and client=None raises."""
     scanner = await _make_scanner()
@@ -367,6 +393,7 @@ async def test_scan_raises_when_transport_disconnected_and_no_client():
 # Group U: _read_input two-arg forms (lines 1878-1885)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_input_two_arg_count_none(caplog):
     """Lines 1878-1881: _read_input(address, count) — count=None path."""
     scanner = await _make_scanner(retry=1)
@@ -378,6 +405,7 @@ async def test_read_input_two_arg_count_none(caplog):
     assert result == [42]
 
 
+@pytest.mark.asyncio
 async def test_read_input_two_arg_int_address():
     """Lines 1882-1885: _read_input(int, count, count) — int address path."""
     scanner = await _make_scanner(retry=1)
@@ -393,6 +421,7 @@ async def test_read_input_two_arg_int_address():
 # Group W: _read_input timeout/CancelledError/OSError (lines 1983-2041)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_input_modbus_io_cancelled(caplog):
     """Lines 1983-1985: ModbusIOException with 'cancelled' aborts."""
     scanner = await _make_scanner(retry=2)
@@ -413,6 +442,7 @@ async def test_read_input_modbus_io_cancelled(caplog):
     assert "Aborted reading input registers" in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_read_input_timeout_error(caplog):
     """Lines 1993-2003: TimeoutError aborts and logs warning."""
     scanner = await _make_scanner(retry=2)
@@ -432,6 +462,7 @@ async def test_read_input_timeout_error(caplog):
     assert "Aborted reading input registers" in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_read_input_oserror(caplog):
     """Lines 2004-2012: OSError causes break, not abort_transiently."""
     scanner = await _make_scanner(retry=2)
@@ -456,6 +487,7 @@ async def test_read_input_oserror(caplog):
 # Group X: _read_input_block no client path (line 2075)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_input_block_no_client():
     """Line 2075: when active_client=None, delegates to _read_input(chunk_start, chunk_count)."""
     scanner = await _make_scanner()
@@ -474,6 +506,7 @@ async def test_read_input_block_no_client():
     assert len(args) == 2  # (chunk_start, chunk_count), no client
 
 
+@pytest.mark.asyncio
 async def test_read_input_block_int_start():
     """Lines 2063-2066: int start path."""
     scanner = await _make_scanner()
@@ -489,6 +522,7 @@ async def test_read_input_block_int_start():
 # Group Y: _read_holding_block two-arg forms (lines 2090-2106)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_block_no_client():
     """Lines 2105-2106: when active_client=None, delegates to _read_holding."""
     scanner = await _make_scanner()
@@ -506,6 +540,7 @@ async def test_read_holding_block_no_client():
     assert len(args) == 2  # (chunk_start, chunk_count), no client
 
 
+@pytest.mark.asyncio
 async def test_read_holding_block_int_start():
     """Lines 2094-2097: int start path."""
     scanner = await _make_scanner()
@@ -521,6 +556,7 @@ async def test_read_holding_block_int_start():
 # Group Z: _read_holding two-arg forms (lines 2129-2136)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_two_arg_count_none():
     """Lines 2129-2132: _read_holding(address, count) — count=None path."""
     scanner = await _make_scanner(retry=1)
@@ -532,6 +568,7 @@ async def test_read_holding_two_arg_count_none():
     assert result == [55]
 
 
+@pytest.mark.asyncio
 async def test_read_holding_two_arg_int_address():
     """Lines 2133-2136: _read_holding(int, count, count) — int address path."""
     scanner = await _make_scanner(retry=1)
@@ -547,6 +584,7 @@ async def test_read_holding_two_arg_int_address():
 # Group AA: Holding failure counter skips (lines 2157-2161)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_skips_when_failures_exceed_retry():
     """Lines 2158-2161: When failures >= retry, skip register immediately."""
     scanner = await _make_scanner(retry=2)
@@ -567,6 +605,7 @@ async def test_read_holding_skips_when_failures_exceed_retry():
 # Group AB: Holding success clears failure counter (line 2217)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_success_clears_failure_counter():
     """Line 2217: Successful read removes address from _holding_failures."""
     scanner = await _make_scanner(retry=3)
@@ -591,6 +630,7 @@ async def test_read_holding_success_clears_failure_counter():
 # Group AC: Holding CancelledError/OSError (lines 2286-2302)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_cancelled_error_reraises():
     """Lines 2286-2293: asyncio.CancelledError is re-raised."""
     scanner = await _make_scanner(retry=1)
@@ -607,6 +647,7 @@ async def test_read_holding_cancelled_error_reraises():
             await scanner._read_holding(mock_client, 0, 1)
 
 
+@pytest.mark.asyncio
 async def test_read_holding_oserror_breaks(caplog):
     """Lines 2294-2302: OSError breaks retry loop."""
     scanner = await _make_scanner(retry=2)
@@ -630,6 +671,7 @@ async def test_read_holding_oserror_breaks(caplog):
 # Group AD: _read_coil two-arg forms (lines 2340-2347)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_coil_two_arg_count_none():
     """Lines 2340-2343: _read_coil(address, count) — count=None path uses self._client."""
     scanner = await _make_scanner(retry=1)
@@ -648,6 +690,7 @@ async def test_read_coil_two_arg_count_none():
     assert result == [True]
 
 
+@pytest.mark.asyncio
 async def test_read_coil_two_arg_int_address():
     """Lines 2344-2347: _read_coil(int, count, count) — int address path."""
     scanner = await _make_scanner(retry=1)
@@ -670,6 +713,7 @@ async def test_read_coil_two_arg_int_address():
 # Group AE: _read_coil client None raises (line 2352-2353)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_coil_no_client_raises():
     """Lines 2352-2353: client=None raises ConnectionException."""
     scanner = await _make_scanner()
@@ -684,6 +728,7 @@ async def test_read_coil_no_client_raises():
 # Group AF: _read_coil TimeoutError (lines 2381-2388)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_coil_timeout_error(caplog):
     """Lines 2381-2388: TimeoutError logged, retries exhausted → None."""
     scanner = await _make_scanner(retry=2)
@@ -708,6 +753,7 @@ async def test_read_coil_timeout_error(caplog):
 # Group AG: _read_coil ModbusException triggers transport reconnect (2389-2405)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_coil_modbus_exception_with_transport_reconnect(caplog):
     """Lines 2389-2405: ModbusException triggers transport ensure_connected."""
     scanner = await _make_scanner(retry=2)
@@ -747,6 +793,7 @@ async def test_read_coil_modbus_exception_with_transport_reconnect(caplog):
 # Group AH: _read_coil CancelledError/OSError (lines 2406-2421)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_coil_cancelled_error_reraises():
     """Lines 2406-2412: asyncio.CancelledError is re-raised."""
     scanner = await _make_scanner(retry=1)
@@ -763,6 +810,7 @@ async def test_read_coil_cancelled_error_reraises():
             await scanner._read_coil(mock_client, 0, 1)
 
 
+@pytest.mark.asyncio
 async def test_read_coil_oserror_breaks(caplog):
     """Lines 2413-2421: OSError breaks retry loop."""
     scanner = await _make_scanner(retry=2)
@@ -787,6 +835,7 @@ async def test_read_coil_oserror_breaks(caplog):
 # Group AI: _read_discrete two-arg forms (lines 2443-2453)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_discrete_two_arg_count_none():
     """Lines 2443-2446: _read_discrete(address, count) — count=None path."""
     scanner = await _make_scanner(retry=1)
@@ -805,6 +854,7 @@ async def test_read_discrete_two_arg_count_none():
     assert result == [True]
 
 
+@pytest.mark.asyncio
 async def test_read_discrete_two_arg_int_address():
     """Lines 2447-2450: _read_discrete(int, count, count) — int address path."""
     scanner = await _make_scanner(retry=1)
@@ -823,6 +873,7 @@ async def test_read_discrete_two_arg_int_address():
     assert result == [False]
 
 
+@pytest.mark.asyncio
 async def test_read_discrete_no_client_raises():
     """Lines 2455-2456: client=None raises ConnectionException."""
     scanner = await _make_scanner()
@@ -837,6 +888,7 @@ async def test_read_discrete_no_client_raises():
 # Group AJ: _read_discrete TimeoutError/exceptions (lines 2484-2524)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_discrete_timeout_error(caplog):
     """Lines 2484-2491: TimeoutError logged."""
     scanner = await _make_scanner(retry=2)
@@ -857,6 +909,7 @@ async def test_read_discrete_timeout_error(caplog):
     assert "Timeout reading discrete" in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_read_discrete_modbus_exception_with_transport_reconnect():
     """Lines 2492-2508: ModbusException triggers transport ensure_connected."""
     scanner = await _make_scanner(retry=2)
@@ -890,6 +943,7 @@ async def test_read_discrete_modbus_exception_with_transport_reconnect():
     mock_transport.ensure_connected.assert_called()
 
 
+@pytest.mark.asyncio
 async def test_read_discrete_cancelled_error_reraises():
     """Lines 2509-2515: asyncio.CancelledError is re-raised."""
     scanner = await _make_scanner(retry=1)
@@ -906,6 +960,7 @@ async def test_read_discrete_cancelled_error_reraises():
             await scanner._read_discrete(mock_client, 0, 1)
 
 
+@pytest.mark.asyncio
 async def test_read_discrete_oserror_breaks(caplog):
     """Lines 2516-2524: OSError breaks retry loop."""
     scanner = await _make_scanner(retry=2)
@@ -953,6 +1008,7 @@ async def _run_minimal_scan(scanner, *, input_return=None, holding_return=None,
 # Group O: Normal scan batch failure recovery (lines 1302-1341)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_skip_known_missing_input_register():
     """Line 1302-1303: skip_known_missing=True skips 'compilation_days'."""
     scanner = await _make_scanner(skip_known_missing=True)
@@ -968,6 +1024,7 @@ async def test_scan_skip_known_missing_input_register():
     assert "compilation_days" not in missing
 
 
+@pytest.mark.asyncio
 async def test_scan_input_batch_fail_probe_success():
     """Lines 1313-1341: batch read fails, probe individual succeeds."""
     scanner = await _make_scanner(retry=1)
@@ -1004,6 +1061,7 @@ async def test_scan_input_batch_fail_probe_success():
     assert "available_registers" in result
 
 
+@pytest.mark.asyncio
 async def test_scan_input_batch_fail_probe_fail(caplog):
     """Lines 1332-1334: batch fails, individual probe returns falsy → warning."""
     scanner = await _make_scanner(retry=1)
@@ -1040,6 +1098,7 @@ async def test_scan_input_batch_fail_probe_fail(caplog):
 # Group P: Holding batch failure recovery (lines 1368-1410)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_holding_batch_fail_probe_success():
     """Lines 1373-1400: holding batch fails, probe succeeds."""
     scanner = await _make_scanner(retry=1)
@@ -1075,6 +1134,7 @@ async def test_scan_holding_batch_fail_probe_success():
 # Group Q: deep_scan=True (line 1548)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_deep_scan_skips_none_result():
     """Line 1548: deep_scan=True with None read results → continue."""
     scanner = await _make_scanner(deep_scan=True)
@@ -1094,6 +1154,7 @@ async def test_deep_scan_skips_none_result():
     assert result["raw_registers"] == {}
 
 
+@pytest.mark.asyncio
 async def test_deep_scan_collects_values():
     """Line 1547-1550: deep_scan=True with data collects raw_registers."""
     scanner = await _make_scanner(deep_scan=True)
@@ -1117,6 +1178,7 @@ async def test_deep_scan_collects_values():
 # Group M: full_register_scan with invalid holding values (lines 1229-1253)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_full_register_scan_input_returns_none():
     """Lines 1198-1202: full_register_scan input read returns None."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1136,6 +1198,7 @@ async def test_full_register_scan_input_returns_none():
     assert result["failed_addresses"]["modbus_exceptions"]["input_registers"]
 
 
+@pytest.mark.asyncio
 async def test_full_register_scan_holding_invalid_value():
     """Lines 1248-1253: full_register_scan holding has invalid value (65535)."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1161,6 +1224,7 @@ async def test_full_register_scan_holding_invalid_value():
 # Group N: full_register_scan coil/discrete (lines 1258-1296)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_full_register_scan_coil_returns_none():
     """Lines 1261-1265: full_register_scan coil read returns None."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1180,6 +1244,7 @@ async def test_full_register_scan_coil_returns_none():
     assert result["failed_addresses"]["modbus_exceptions"]["coil_registers"]
 
 
+@pytest.mark.asyncio
 async def test_full_register_scan_discrete_returns_value():
     """Lines 1280-1296: full_register_scan discrete reads a value."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1205,6 +1270,7 @@ async def test_full_register_scan_discrete_returns_value():
 # Group S: RTU in scan_device (lines 1669-1675)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_device_rtu_no_serial_port_raises():
     """Line 1669-1670: scan_device with RTU and no serial_port raises."""
     scanner = await _make_scanner(connection_type=CONNECTION_TYPE_RTU)
@@ -1214,6 +1280,7 @@ async def test_scan_device_rtu_no_serial_port_raises():
         await scanner.scan_device()
 
 
+@pytest.mark.asyncio
 async def test_scan_device_rtu_creates_transport():
     """Lines 1671-1684: scan_device with RTU creates RtuModbusTransport."""
     scanner = await _make_scanner(connection_type=CONNECTION_TYPE_RTU, serial_port="/dev/ttyUSB0")
@@ -1245,6 +1312,7 @@ async def test_scan_device_rtu_creates_transport():
 # Group T: Auto-detect mode all attempts fail (lines 1721-1724)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_device_auto_detect_all_fail():
     """Lines 1721-1724: all auto-detect attempts fail → ConnectionException."""
     scanner = await _make_scanner(connection_mode="auto")
@@ -1268,6 +1336,7 @@ async def test_scan_device_auto_detect_all_fail():
 # Group R: scan_device legacy compat path (line 1663)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_device_scan_returns_non_dict_raises():
     """Line 1663: scan() returning non-dict raises TypeError (legacy compat path)."""
     scanner = await _make_scanner()
@@ -1304,6 +1373,7 @@ async def test_scan_device_scan_returns_non_dict_raises():
 # Lines 473-474: max_registers_per_request ValueError fallback
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_param_coerce_max_registers_invalid_string():
     """Lines 473-474: max_registers_per_request='bad' → MAX_BATCH_REGISTERS."""
     from custom_components.thessla_green_modbus.scanner_helpers import MAX_BATCH_REGISTERS
@@ -1315,6 +1385,7 @@ async def test_param_coerce_max_registers_invalid_string():
 # Lines 697-698: close() catches exception from async_maybe_await_close
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_close_client_async_maybe_await_raises():
     """Lines 697-698: async_maybe_await_close raises → caught and logged."""
     scanner = await _make_scanner()
@@ -1368,6 +1439,7 @@ def _sized_read_mock(value=1):
     return _mock
 
 
+@pytest.mark.asyncio
 async def test_full_register_scan_input_no_alias_path():
     """Line 1217: input register not in _names_by_address → add by reg_name."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1390,6 +1462,7 @@ async def test_full_register_scan_input_no_alias_path():
     assert "fake_input_reg" in result["available_registers"]["input_registers"]
 
 
+@pytest.mark.asyncio
 async def test_full_register_scan_input_invalid_value():
     """Lines 1221-1222: input register returns invalid value (65535)."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1415,6 +1488,7 @@ async def test_full_register_scan_input_invalid_value():
 # Line 1248: full_register_scan holding no-alias path
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_full_register_scan_holding_no_alias_path():
     """Line 1248: holding register not in _names_by_address → add by reg_name."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1439,6 +1513,7 @@ async def test_full_register_scan_holding_no_alias_path():
 # Lines 1266-1275: full_register_scan coil valid response
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_full_register_scan_coil_valid_with_name():
     """Lines 1266-1275: full_register_scan coil returns data, register in map."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1471,6 +1546,7 @@ async def test_full_register_scan_coil_valid_with_name():
 # Lines 1283-1286, 1294-1296: full_register_scan discrete None and valid
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_full_register_scan_discrete_none():
     """Lines 1283-1286: full_register_scan discrete returns None."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1490,6 +1566,7 @@ async def test_full_register_scan_discrete_none():
     assert 0 in result["failed_addresses"]["modbus_exceptions"]["discrete_inputs"]
 
 
+@pytest.mark.asyncio
 async def test_full_register_scan_discrete_valid():
     """Lines 1294-1296: full_register_scan discrete returns valid data."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -1522,6 +1599,7 @@ async def test_full_register_scan_discrete_valid():
 # Line 1325: input probe fails → warning
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_input_probe_always_fails(caplog):
     """Line 1325: batch fails, individual probe returns falsy → warning."""
     scanner = await _make_scanner(retry=1)
@@ -1547,6 +1625,7 @@ async def test_scan_input_probe_always_fails(caplog):
 # Lines 1339-1340: input probe returns invalid value
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_input_probe_returns_invalid_value():
     """Lines 1339-1340: batch fails, probe returns invalid value (65535)."""
     scanner = await _make_scanner(retry=1)
@@ -1593,6 +1672,7 @@ async def test_scan_input_probe_returns_invalid_value():
 # Line 1357: holding scan skips UART-optional registers
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_holding_skips_uart_optional_registers():
     """Line 1357: scan_uart_settings=False skips UART optional registers."""
     scanner = await _make_scanner(scan_uart_settings=False, retry=1)
@@ -1624,6 +1704,7 @@ async def test_scan_holding_skips_uart_optional_registers():
 # Lines 1362-1363: holding multi-register (MULTI_REGISTER_SIZES > 1)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_holding_multiregister_alias():
     """Lines 1362-1363: two names share same holding address."""
     scanner = await _make_scanner(retry=1)
@@ -1670,6 +1751,7 @@ async def test_scan_holding_multiregister_alias():
 # Lines 1371-1372: holding TypeError fallback in batch read
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_holding_type_error_fallback():
     """Lines 1371-1372: _read_holding raises TypeError → fallback to 2-arg."""
     scanner = await _make_scanner(retry=1)
@@ -1702,6 +1784,7 @@ async def test_scan_holding_type_error_fallback():
 # Lines 1384, 1398-1399: holding probe addr not in map / invalid probe value
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_holding_probe_addr_not_in_info():
     """Line 1384: addr in batch range but not in holding_info → continue."""
     # To get a batch range wider than holding_info, we need _group_reads to
@@ -1738,6 +1821,7 @@ async def test_scan_holding_probe_addr_not_in_info():
         sc.MULTI_REGISTER_SIZES.update(original_multi)
 
 
+@pytest.mark.asyncio
 async def test_scan_holding_probe_invalid_value():
     """Lines 1398-1399: batch fails, probe returns invalid value → tracking."""
     scanner = await _make_scanner(retry=1)
@@ -1770,6 +1854,7 @@ async def test_scan_holding_probe_invalid_value():
 # Lines 1389-1390: TypeError in holding probe → fallback
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_holding_probe_type_error_fallback():
     """Lines 1389-1390: individual probe raises TypeError → 2-arg fallback."""
     scanner = await _make_scanner(retry=1)
@@ -1805,6 +1890,7 @@ async def test_scan_holding_probe_type_error_fallback():
 # Line 1634: scan_device legacy path returns non-tuple dict
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_device_legacy_returns_dict():
     """Line 1634: overridden scan() returns a plain dict → cast and return."""
     scanner = await _make_scanner()
@@ -1825,6 +1911,7 @@ async def test_scan_device_legacy_returns_dict():
 # Lines 1643-1644: importlib.import_module raises → legacy_ctor = None
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_device_importlib_fails():
     """Lines 1643-1644: importlib.import_module raises → legacy_ctor = None."""
     scanner = await _make_scanner()
@@ -1853,6 +1940,7 @@ async def test_scan_device_importlib_fails():
 # Lines 1701, 1703-1704: auto-detect probe TimeoutError / ModbusIOException
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_device_auto_detect_probe_timeout():
     """Lines 1700-1701: read_input_registers raises TimeoutError → re-raised → retry next."""
     scanner = await _make_scanner(connection_mode="auto")
@@ -1884,6 +1972,7 @@ async def test_scan_device_auto_detect_probe_timeout():
     assert "available_registers" in result
 
 
+@pytest.mark.asyncio
 async def test_scan_device_auto_detect_probe_modbus_io_cancelled():
     """Lines 1703-1704: ModbusIOException with 'cancelled' → TimeoutError → retry next."""
     scanner = await _make_scanner(connection_mode="auto")
@@ -1918,6 +2007,7 @@ async def test_scan_device_auto_detect_probe_modbus_io_cancelled():
 # Line 1738: scan_device main path scan() returns non-dict
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_device_main_scan_non_dict_raises():
     """Line 1738: scan_device main path — scan() returns non-dict → TypeError."""
     scanner = await _make_scanner()
@@ -1939,6 +2029,7 @@ async def test_scan_device_main_scan_non_dict_raises():
 # Lines 1754, 1757: _load_registers populates register_ranges for min/max regs
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_load_registers_with_min_max():
     """Lines 1754-1757: registers with min/max populate _register_ranges."""
     from unittest.mock import MagicMock
@@ -1967,6 +2058,7 @@ async def test_load_registers_with_min_max():
 # Lines 1921, 1923: _read_input client fallback from self._client
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_input_client_fallback_from_self():
     """Line 1921: two-arg _read_input with _transport=None → uses self._client."""
     scanner = await _make_scanner(retry=1)
@@ -1986,6 +2078,7 @@ async def test_read_input_client_fallback_from_self():
     assert result == [88]
 
 
+@pytest.mark.asyncio
 async def test_read_input_no_transport_no_client_raises():
     """Line 1923: _read_input with no transport and no client raises."""
     scanner = await _make_scanner()
@@ -2000,6 +2093,7 @@ async def test_read_input_no_transport_no_client_raises():
 # Lines 2064-2066: _read_input_block int start with explicit count
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_input_block_int_start_explicit_count():
     """Lines 2064-2066: _read_input_block(int, count, count) — int path."""
     scanner = await _make_scanner(retry=1)
@@ -2015,6 +2109,7 @@ async def test_read_input_block_int_start_explicit_count():
 # Lines 2094-2100: _read_holding_block int start with explicit count
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_block_int_start_explicit_count():
     """Lines 2094-2100: _read_holding_block(int, count, count) — int path."""
     scanner = await _make_scanner(retry=1)
@@ -2030,6 +2125,7 @@ async def test_read_holding_block_int_start_explicit_count():
 # Line 2110: _read_holding_block returns None when chunk returns None
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_block_returns_none_on_chunk_fail():
     """Line 2110: _read_holding_block returns None when any chunk fails."""
     scanner = await _make_scanner(retry=1)
@@ -2047,6 +2143,7 @@ async def test_read_holding_block_returns_none_on_chunk_fail():
 # Lines 2165, 2167: _read_holding client fallback from self._client
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_holding_client_fallback_from_self():
     """Line 2165: two-arg _read_holding with _transport=None → uses self._client."""
     scanner = await _make_scanner(retry=1)
@@ -2066,6 +2163,7 @@ async def test_read_holding_client_fallback_from_self():
     assert result == [77]
 
 
+@pytest.mark.asyncio
 async def test_read_holding_no_transport_no_client_raises():
     """Line 2167: _read_holding with no transport and no client raises."""
     scanner = await _make_scanner()
@@ -2080,6 +2178,7 @@ async def test_read_holding_no_transport_no_client_raises():
 # Lines 1848: _mark_holding_unsupported partial overlap (end+1 to exist_end)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_mark_holding_unsupported_partial_overlap():
     """Line 1848: new range partially overlaps existing range (right side)."""
     scanner = await _make_scanner()
@@ -2113,6 +2212,7 @@ def test_ensure_pymodbus_import_fails():
 # Line 501: stop_bits clamped to DEFAULT_STOP_BITS when map returns invalid
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_stop_bits_map_returns_out_of_range():
     """Line 501: SERIAL_STOP_BITS_MAP returns 3 → clamped to DEFAULT_STOP_BITS."""
     with patch(
@@ -2127,6 +2227,7 @@ async def test_stop_bits_map_returns_out_of_range():
 # Line 581: _update_known_missing_addresses continue when name not in mapping
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_update_known_missing_name_not_in_mapping():
     """Line 581: continue when register name is not in the global mapping."""
     scanner = await _make_scanner()
@@ -2148,6 +2249,7 @@ async def test_update_known_missing_name_not_in_mapping():
 # Lines 594-595: _async_setup else branch when _load_registers returns plain dict
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_async_setup_load_registers_returns_plain_dict():
     """Lines 594-595: _async_setup when _load_registers returns a plain dict (not tuple)."""
     scanner = await _make_scanner()
@@ -2170,6 +2272,7 @@ async def test_async_setup_load_registers_returns_plain_dict():
 # Lines 795-796: verify_connection else (TCP explicit mode) path
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_verify_connection_tcp_explicit_mode():
     """Lines 795-796: else branch in verify_connection with connection_mode=tcp."""
     from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP
@@ -2188,6 +2291,7 @@ async def test_verify_connection_tcp_explicit_mode():
 # Lines 766, 824-829: verify_connection safe_holding non-empty
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_verify_connection_safe_holding_with_patched_definitions():
     """Lines 766, 824-829: safe_holding populated when REGISTER_DEFINITIONS has holding reg."""
     from custom_components.thessla_green_modbus.scanner_core import SAFE_REGISTERS, REGISTER_DEFINITIONS
@@ -2225,6 +2329,7 @@ async def test_verify_connection_safe_holding_with_patched_definitions():
 # Lines 770-776: verify_connection RTU path with serial_port set
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_verify_connection_rtu_no_serial_port_raises():
     """Line 771: RTU path in verify_connection raises when serial_port is empty."""
     scanner = await _make_scanner(connection_type=CONNECTION_TYPE_RTU, serial_port="")
@@ -2233,6 +2338,7 @@ async def test_verify_connection_rtu_no_serial_port_raises():
         await scanner.verify_connection()
 
 
+@pytest.mark.asyncio
 async def test_verify_connection_rtu_with_serial_port():
     """Lines 770, 772-776: RTU path in verify_connection creates RtuModbusTransport."""
     scanner = await _make_scanner(
@@ -2253,6 +2359,7 @@ async def test_verify_connection_rtu_with_serial_port():
 # Lines 1271, 1275: full_register_scan coil alias path and unknown address
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_full_register_scan_coil_alias_path():
     """Line 1271: full_register_scan coil with alias names updates all aliases."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -2282,6 +2389,7 @@ async def test_full_register_scan_coil_alias_path():
     assert "fake_coil_alias" in result["available_registers"]["coil_registers"]
 
 
+@pytest.mark.asyncio
 async def test_full_register_scan_coil_unknown_addr():
     """Line 1275: full_register_scan coil with address not in _registers[1]."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -2316,6 +2424,7 @@ async def test_full_register_scan_coil_unknown_addr():
 # Line 1296: full_register_scan discrete unknown address
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_full_register_scan_discrete_unknown_addr():
     """Line 1296: full_register_scan discrete with address not in _registers[2]."""
     scanner = await _make_scanner(full_register_scan=True, retry=1)
@@ -2349,6 +2458,7 @@ async def test_full_register_scan_discrete_unknown_addr():
 # Lines 1339-1340: input probe returns invalid value (fixed mock)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_scan_input_probe_returns_invalid_value_v2():
     """Lines 1339-1340: batch fails, probe returns 65535 (invalid) — fixed mock."""
     scanner = await _make_scanner(retry=1)
@@ -2396,6 +2506,7 @@ async def test_scan_input_probe_returns_invalid_value_v2():
 # Line 1754: _load_registers continue when reg.name is empty
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_load_registers_empty_name():
     """Line 1754: _load_registers skips registers with empty name."""
     scanner = await _make_scanner()
@@ -2430,6 +2541,7 @@ async def test_load_registers_empty_name():
 # Line 1824: _mark_input_supported partial range overlap
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_mark_input_supported_partial_range():
     """Line 1824: _mark_input_supported splits range when start < address."""
     scanner = await _make_scanner()
@@ -2446,6 +2558,7 @@ async def test_mark_input_supported_partial_range():
 # Lines 2404-2405: coil transport reconnect ensure_connected raises
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_coil_transport_reconnect_ensure_raises():
     """Lines 2404-2405: except Exception: pass when ensure_connected raises."""
     scanner = await _make_scanner(retry=2)
@@ -2483,6 +2596,7 @@ async def test_read_coil_transport_reconnect_ensure_raises():
 # Lines 2507-2508: discrete transport reconnect ensure_connected raises
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 async def test_read_discrete_transport_reconnect_ensure_raises():
     """Lines 2507-2508: except Exception: pass when ensure_connected raises for discrete."""
     scanner = await _make_scanner(retry=2)

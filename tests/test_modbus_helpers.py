@@ -5,6 +5,7 @@ import asyncio
 import gc
 import sys
 import types
+import warnings
 import weakref
 
 import pytest
@@ -42,9 +43,8 @@ if original_registers is not None:
 else:
     sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
 
-pytestmark = pytest.mark.asyncio
 
-
+@pytest.mark.asyncio
 async def test_call_modbus_supports_unit_keyword():
     """Functions expecting ``unit`` should be handled."""
 
@@ -55,6 +55,7 @@ async def test_call_modbus_supports_unit_keyword():
     assert result == (10, 2, 1)  # nosec B101
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_supports_slave_keyword():
     """Functions expecting ``slave`` should be handled."""
 
@@ -65,6 +66,7 @@ async def test_call_modbus_supports_slave_keyword():
     assert result == (20, 3, 1)  # nosec B101
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_supports_no_slave_or_unit():
     """Functions expecting neither keyword should be handled."""
 
@@ -75,6 +77,7 @@ async def test_call_modbus_supports_no_slave_or_unit():
     assert result == (30, 4)  # nosec B101
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_skips_external_timeout_for_pymodbus_callables():
     """Pymodbus callables should rely on their own internal timeout handling."""
 
@@ -88,6 +91,7 @@ async def test_call_modbus_skips_external_timeout_for_pymodbus_callables():
     assert result == (20, 3, 1)  # nosec B101
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_propagates_cancelled_error():
     """Cancelled errors should propagate without being mapped."""
 
@@ -98,12 +102,14 @@ async def test_call_modbus_propagates_cancelled_error():
         await _call_modbus(func, 1, 30, 4)
 
 
+@pytest.mark.asyncio
 async def test_group_reads_merges_sequential_addresses():
     """Sequential addresses are merged into contiguous blocks."""
 
     assert group_reads([0, 1, 2, 4, 5]) == [(0, 3), (4, 2)]
 
 
+@pytest.mark.asyncio
 async def test_group_reads_honours_block_size():
     """Groups are split when exceeding ``max_block_size``."""
 
@@ -114,6 +120,7 @@ async def test_group_reads_honours_block_size():
     ]
 
 
+@pytest.mark.asyncio
 async def test_modbus_cache_entries_removed_on_gc():
     """Cached entries should disappear when functions are garbage collected."""
 
@@ -129,13 +136,16 @@ async def test_modbus_cache_entries_removed_on_gc():
 
     func_ref = weakref.ref(func)
     del func
-    gc.collect()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ResourceWarning)
+        gc.collect()
 
     assert func_ref() is None
     assert len(_KWARG_CACHE) == 0
     assert len(_SIG_CACHE) == 0
 
 
+@pytest.mark.asyncio
 async def test_async_close_client_with_sync_close():
     """Synchronous close should be handled without awaiting."""
 
@@ -152,6 +162,7 @@ async def test_async_close_client_with_sync_close():
     assert client.closed is True  # nosec B101
 
 
+@pytest.mark.asyncio
 async def test_async_close_client_with_async_close():
     """Async close should be awaited."""
 
@@ -368,6 +379,7 @@ def test_get_signature_valueerror_returns_none():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_async_maybe_await_close_none():
     """obj=None returns immediately without error (line 96)."""
     from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
@@ -375,6 +387,7 @@ async def test_async_maybe_await_close_none():
     await async_maybe_await_close(None)  # must not raise
 
 
+@pytest.mark.asyncio
 async def test_async_maybe_await_close_no_close_attr():
     """obj without a close attribute returns immediately (line 100)."""
     from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
@@ -385,6 +398,7 @@ async def test_async_maybe_await_close_no_close_attr():
     await async_maybe_await_close(NoCLose())  # must not raise
 
 
+@pytest.mark.asyncio
 async def test_async_maybe_await_close_non_callable_close():
     """obj with non-callable close returns immediately (line 100)."""
     from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
@@ -461,6 +475,7 @@ def test_chunk_register_values_max_zero_clamped_to_one():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_no_signature_positional():
     """When _get_signature returns None, args are passed as positional (line 262)."""
     from unittest.mock import patch
@@ -527,6 +542,7 @@ def test_get_rtu_framer_returns_none_when_both_unavailable(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_stop_iteration_extra_args_beyond_params():
     """Extra args beyond param count are appended to positional (lines 253-255)."""
     from custom_components.thessla_green_modbus import modbus_helpers
@@ -548,6 +564,7 @@ async def test_call_modbus_stop_iteration_extra_args_beyond_params():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_modbus_io_exception_request_cancelled(caplog):
     """ModbusIOException with 'request cancelled' text triggers debug log (line 350)."""
     import logging
@@ -570,6 +587,7 @@ async def test_call_modbus_modbus_io_exception_request_cancelled(caplog):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_debug_logs_response_object_when_no_encode(caplog):
     """DEBUG mode logs response object when encode gives empty bytes (line 369)."""
     import logging
@@ -588,6 +606,7 @@ async def test_call_modbus_debug_logs_response_object_when_no_encode(caplog):
     assert any("Received from" in r.message for r in caplog.records)  # nosec B101
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_non_debug_encode_exception_sets_empty(monkeypatch):
     """encode() exception at non-DEBUG level is silently caught (lines 373-374)."""
     import logging
@@ -620,6 +639,7 @@ import logging as _logging
 from custom_components.thessla_green_modbus import modbus_helpers as _mh
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_backoff_delay_sleep():
     """delay > 0 on attempt >= 2 triggers the backoff sleep path (lines 295-299)."""
     async def simple_func(**kwargs):
@@ -629,6 +649,7 @@ async def test_call_modbus_backoff_delay_sleep():
     assert result == "done"
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_backoff_cancelled_during_sleep():
     """CancelledError during backoff sleep is re-raised (lines 300-304)."""
     async def simple_func(**kwargs):
@@ -643,6 +664,7 @@ async def test_call_modbus_backoff_cancelled_during_sleep():
         await task
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_logs_request_frame_at_debug(caplog):
     """With DEBUG logger, non-None request frame is logged (line 318)."""
     async def read_coils(address, *, count=1, **kwargs):
@@ -654,6 +676,7 @@ async def test_call_modbus_logs_request_frame_at_debug(caplog):
     assert any("Modbus request" in r.message for r in caplog.records)
 
 
+@pytest.mark.asyncio
 async def test_call_modbus_response_encode_error_logged(caplog):
     """response.encode() raising ValueError is caught and logged (lines 360-362)."""
     class BadResponse:

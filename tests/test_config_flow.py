@@ -115,8 +115,6 @@ DEFAULT_USER_INPUT = {
     CONF_NAME: "My Device",
 }
 
-pytestmark = pytest.mark.asyncio
-
 
 class AbortFlow(Exception):
     """Mock AbortFlow to simulate Home Assistant aborts."""
@@ -126,6 +124,7 @@ class AbortFlow(Exception):
         self.reason = reason
 
 
+@pytest.mark.asyncio
 async def test_form_user():
     """Test we get the initial form."""
     flow = ConfigFlow()
@@ -148,6 +147,7 @@ async def test_form_user():
 
 
 @pytest.mark.parametrize("invalid_port", [0, 65536])
+@pytest.mark.asyncio
 async def test_form_user_port_out_of_range(invalid_port: int):
     """Ports outside valid range should highlight the port field."""
     flow = ConfigFlow()
@@ -167,6 +167,7 @@ async def test_form_user_port_out_of_range(invalid_port: int):
     "slave_id,expected_error",
     [(-1, "invalid_slave_low"), (248, "invalid_slave_high")],
 )
+@pytest.mark.asyncio
 async def test_form_user_invalid_slave_id(slave_id: int, expected_error: str):
     """Invalid slave IDs should highlight the slave_id field."""
     flow = ConfigFlow()
@@ -182,6 +183,7 @@ async def test_form_user_invalid_slave_id(slave_id: int, expected_error: str):
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_form_user_invalid_domain():
     """Test invalid domain names produce a helpful error."""
     flow = ConfigFlow()
@@ -197,6 +199,7 @@ async def test_form_user_invalid_domain():
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_form_user_invalid_ipv4():
     """Test invalid IPv4 addresses are rejected."""
     flow = ConfigFlow()
@@ -214,6 +217,7 @@ async def test_form_user_invalid_ipv4():
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_form_user_rtu_requires_serial_port():
     """Modbus RTU requires a serial port path."""
     flow = ConfigFlow()
@@ -237,6 +241,7 @@ async def test_form_user_rtu_requires_serial_port():
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_form_user_rtu_invalid_baud_rate():
     """Invalid RTU baud rate should be rejected."""
     flow = ConfigFlow()
@@ -261,6 +266,7 @@ async def test_form_user_rtu_invalid_baud_rate():
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_form_user_invalid_ipv6():
     """Test invalid IPv6 addresses are rejected."""
     flow = ConfigFlow()
@@ -283,6 +289,7 @@ async def test_form_user_invalid_ipv6():
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_form_user_valid_ipv6():
     """Test IPv6 addresses are accepted."""
     flow = ConfigFlow()
@@ -322,6 +329,7 @@ async def test_form_user_valid_ipv6():
     assert result["step_id"] == "confirm"
 
 
+@pytest.mark.asyncio
 async def test_form_user_valid_domain():
     """Test domain names are accepted."""
     flow = ConfigFlow()
@@ -361,6 +369,7 @@ async def test_form_user_valid_domain():
     assert result["step_id"] == "confirm"
 
 
+@pytest.mark.asyncio
 async def test_form_user_success():
     """Test successful configuration with confirm step."""
     flow = ConfigFlow()
@@ -432,6 +441,7 @@ async def test_form_user_success():
     assert result2["options"][CONF_MAX_REGISTERS_PER_REQUEST] == 5
 
 
+@pytest.mark.asyncio
 async def test_form_user_rtu_success_creates_serial_entry():
     """RTU configuration should persist serial settings."""
     flow = ConfigFlow()
@@ -484,6 +494,7 @@ async def test_form_user_rtu_success_creates_serial_entry():
     assert data.get(CONF_PORT) == DEFAULT_USER_INPUT[CONF_PORT]
 
 
+@pytest.mark.asyncio
 async def test_form_user_tcp_rtu_success_creates_tcp_rtu_entry():
     """TCP RTU configuration should normalize to TCP with TCP RTU mode."""
     flow = ConfigFlow()
@@ -532,6 +543,7 @@ async def test_form_user_tcp_rtu_success_creates_tcp_rtu_entry():
     assert data[CONF_PORT] == DEFAULT_USER_INPUT[CONF_PORT]
 
 
+@pytest.mark.asyncio
 async def test_duplicate_entry_aborts():
     """Attempting to add a duplicate entry should abort the flow."""
     flow = ConfigFlow()
@@ -561,6 +573,7 @@ async def test_duplicate_entry_aborts():
             await flow.async_step_confirm({})
 
 
+@pytest.mark.asyncio
 async def test_user_step_duplicate_entry_aborts_silently(caplog):
     """Duplicate device during user step should abort without logging errors."""
     flow = ConfigFlow()
@@ -599,6 +612,7 @@ async def test_user_step_duplicate_entry_aborts_silently(caplog):
         (None, "auto_detected_note_limited"),
     ],
 )
+@pytest.mark.asyncio
 async def test_async_step_confirm_auto_detected_note(registers, expected_note):
     """Test confirm step auto detected note for different register counts."""
     flow = ConfigFlow()
@@ -637,6 +651,7 @@ async def test_async_step_confirm_auto_detected_note(registers, expected_note):
     assert result["description_placeholders"]["auto_detected_note"] == translations[expected_note]
 
 
+@pytest.mark.asyncio
 async def test_async_step_confirm_capabilities_only_bool():
     """Ensure capabilities list includes only boolean fields."""
     flow = ConfigFlow()
@@ -671,6 +686,7 @@ async def test_async_step_confirm_capabilities_only_bool():
     assert placeholders["capabilities_count"] == "1"
 
 
+@pytest.mark.asyncio
 async def test_unique_id_sanitized():
     """Ensure unique ID replaces colons in host with hyphens."""
     flow = ConfigFlow()
@@ -707,12 +723,14 @@ async def test_unique_id_sanitized():
     mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
 
 
+@pytest.mark.asyncio
 async def test_duplicate_configuration_aborts():
     """Test configuring same host/port/slave twice aborts the flow."""
     flow = ConfigFlow()
     flow.hass = None
 
 
+@pytest.mark.asyncio
 async def test_confirm_step_aborts_on_existing_entry():
     """Ensure confirming a second flow aborts if unique ID already configured."""
 
@@ -807,6 +825,7 @@ async def test_confirm_step_aborts_on_existing_entry():
         assert err.value.reason == "already_configured"
 
 
+@pytest.mark.asyncio
 async def test_form_user_cannot_connect():
     """Test we handle cannot connect error."""
     flow = ConfigFlow()
@@ -829,6 +848,7 @@ async def test_form_user_cannot_connect():
     assert result["errors"] == {"base": "cannot_connect"}
 
 
+@pytest.mark.asyncio
 async def test_form_user_modbus_exception():
     """Test Modbus communication error during user step."""
     flow = ConfigFlow()
@@ -851,6 +871,7 @@ async def test_form_user_modbus_exception():
     assert result["errors"] == {"base": "cannot_connect"}
 
 
+@pytest.mark.asyncio
 async def test_form_user_connection_exception():
     """Test Modbus connection error during user step."""
     flow = ConfigFlow()
@@ -873,6 +894,7 @@ async def test_form_user_connection_exception():
     assert result["errors"] == {"base": "cannot_connect"}
 
 
+@pytest.mark.asyncio
 async def test_form_user_attribute_error_scanner():
     """AttributeError during scanning should return missing_method error."""
     flow = ConfigFlow()
@@ -899,6 +921,7 @@ async def test_form_user_attribute_error_scanner():
     assert result["errors"] == {"base": "missing_method"}
 
 
+@pytest.mark.asyncio
 async def test_form_user_invalid_auth():
     """Test we handle invalid auth error."""
     flow = ConfigFlow()
@@ -921,6 +944,7 @@ async def test_form_user_invalid_auth():
     assert result["errors"] == {"base": "invalid_auth"}
 
 
+@pytest.mark.asyncio
 async def test_reauth_flow_success():
     """Successful reauthentication should update the existing entry."""
     flow = ConfigFlow()
@@ -1028,6 +1052,7 @@ async def test_reauth_flow_success():
     assert manager.reload_calls == 1
 
 
+@pytest.mark.asyncio
 async def test_reauth_flow_missing_entry_aborts():
     """Missing config entry during reauth confirm should abort."""
     flow = ConfigFlow()
@@ -1069,6 +1094,7 @@ async def test_reauth_flow_missing_entry_aborts():
     assert result["reason"] == "reauth_entry_missing"
 
 
+@pytest.mark.asyncio
 async def test_reauth_flow_invalid_auth_error():
     """Invalid auth during reauth should show error on the form."""
     flow = ConfigFlow()
@@ -1116,6 +1142,7 @@ async def test_reauth_flow_invalid_auth_error():
     assert result["errors"] == {"base": "invalid_auth"}
 
 
+@pytest.mark.asyncio
 async def test_form_user_invalid_value():
     """Test we handle invalid value error."""
     flow = ConfigFlow()
@@ -1142,6 +1169,7 @@ async def test_form_user_invalid_value():
     logger_mock.error.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_form_user_missing_key():
     """Test we handle missing key error."""
     flow = ConfigFlow()
@@ -1168,6 +1196,7 @@ async def test_form_user_missing_key():
     logger_mock.error.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_form_user_unexpected_exception():
     """Test unexpected exceptions are raised."""
     flow = ConfigFlow()
@@ -1193,6 +1222,7 @@ async def test_form_user_unexpected_exception():
     logger_mock.exception.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_success():
     """Test validate_input with successful connection."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1227,6 +1257,7 @@ async def test_validate_input_success():
     scanner_instance.verify_connection.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_domain():
     """Test validate_input rejects invalid domain values."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1247,6 +1278,7 @@ async def test_validate_input_invalid_domain():
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_ipv4():
     """Test validate_input rejects invalid IPv4 addresses."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1267,6 +1299,7 @@ async def test_validate_input_invalid_ipv4():
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_ipv6():
     """Test validate_input rejects invalid IPv6 addresses."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1288,6 +1321,7 @@ async def test_validate_input_invalid_ipv6():
 
 
 @pytest.mark.parametrize("invalid_port", [0, 65536])
+@pytest.mark.asyncio
 async def test_validate_input_invalid_port(invalid_port: int):
     """Test validate_input rejects ports outside valid range."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1316,6 +1350,7 @@ async def test_validate_input_invalid_port(invalid_port: int):
         (248, "invalid_slave_high"),
     ],
 )
+@pytest.mark.asyncio
 async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
     """Test validate_input rejects Device IDs outside valid range."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1337,6 +1372,7 @@ async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
     create_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_valid_ipv6():
     """Test validate_input accepts IPv6 addresses."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1368,6 +1404,7 @@ async def test_validate_input_valid_ipv6():
     scanner_instance.verify_connection.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_valid_domain():
     """Test validate_input accepts domain names."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1399,6 +1436,7 @@ async def test_validate_input_valid_domain():
     scanner_instance.verify_connection.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_no_data():
     """Test validate_input with no device data."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1426,6 +1464,7 @@ async def test_validate_input_no_data():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_modbus_exception():
     """Test validate_input with Modbus exception."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1453,6 +1492,7 @@ async def test_validate_input_modbus_exception():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_scanner_closed_on_exception():
     """Ensure scanner is closed when scan_device raises an exception."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1481,6 +1521,7 @@ async def test_validate_input_scanner_closed_on_exception():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_attribute_error():
     """AttributeError during validation should be reported as missing_method."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1509,6 +1550,7 @@ async def test_validate_input_attribute_error():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_uses_scan_device_and_closes():
     """Test validate_input uses scan_device when available and closes scanner."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1545,6 +1587,7 @@ async def test_validate_input_uses_scan_device_and_closes():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_serializes_device_capabilities():
     """DeviceCapabilities from scanner should be converted to a dict."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1581,6 +1624,7 @@ async def test_validate_input_serializes_device_capabilities():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_verify_connection_failure():
     """Connection errors during verify_connection should raise CannotConnect."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1609,6 +1653,7 @@ async def test_validate_input_verify_connection_failure():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_capabilities():
     """Non-dict capabilities should abort the flow."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1643,6 +1688,7 @@ async def test_validate_input_invalid_capabilities():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_scan_result_format():
     """Non-dict scan result should raise invalid_format."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1671,6 +1717,7 @@ async def test_validate_input_invalid_scan_result_format():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_dataclass_capabilities_serialization():
     """Dataclass capabilities without mapping should serialize correctly."""
     from dataclasses import dataclass
@@ -1711,6 +1758,7 @@ async def test_validate_input_dataclass_capabilities_serialization():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_missing_capabilities():
     """Missing capabilities should raise CannotConnect."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1745,6 +1793,7 @@ async def test_validate_input_missing_capabilities():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_capabilities_missing_fields():
     """Missing dataclass fields should raise CannotConnect."""
     import dataclasses
@@ -1797,6 +1846,7 @@ async def test_validate_input_capabilities_missing_fields():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_slotted_capabilities_missing_fields():
     """Slotted DeviceCapabilities object missing fields should raise CannotConnect."""
     from dataclasses import dataclass
@@ -1847,6 +1897,7 @@ async def test_validate_input_slotted_capabilities_missing_fields():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_scan_device_connection_exception():
     """ConnectionException during scan_device should raise CannotConnect."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1875,6 +1926,7 @@ async def test_validate_input_scan_device_connection_exception():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_scan_device_modbus_exception():
     """ModbusException during scan_device should raise CannotConnect."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1903,6 +1955,7 @@ async def test_validate_input_scan_device_modbus_exception():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_scan_device_attribute_error():
     """AttributeError during scan_device should raise CannotConnect."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -1931,6 +1984,7 @@ async def test_validate_input_scan_device_attribute_error():
     scanner_instance.close.assert_awaited_once()
 
 
+@pytest.mark.asyncio
 async def test_validate_input_retries_transient_failures():
     """Transient failures during setup should be retried with backoff."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
@@ -1981,6 +2035,7 @@ async def test_validate_input_retries_transient_failures():
 @pytest.mark.parametrize(
     "exc,err_key", [(asyncio.TimeoutError, "timeout"), (ModbusIOException, "io_error")]
 )
+@pytest.mark.asyncio
 async def test_validate_input_timeout_errors(exc, err_key):
     """Timeout and IO errors should map to appropriate UI errors."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -2015,6 +2070,7 @@ async def test_validate_input_timeout_errors(exc, err_key):
 
 
 
+@pytest.mark.asyncio
 async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
     """Cancelled request timeout should not emit traceback debug logs."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -2049,6 +2105,7 @@ async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
     assert "Traceback:" not in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_validate_input_cancelled_modbus_io_suppresses_traceback(caplog):
     """Cancelled ModbusIOException should not emit traceback debug logs."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -2082,6 +2139,7 @@ async def test_validate_input_cancelled_modbus_io_suppresses_traceback(caplog):
     assert "Timeout during device validation: Modbus request cancelled" in caplog.text
     assert "Traceback:" not in caplog.text
 
+@pytest.mark.asyncio
 async def test_validate_input_dns_failure():
     """DNS resolution failures should raise a specific error."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -2103,6 +2161,7 @@ async def test_validate_input_dns_failure():
     assert err.value.args[0] == "dns_failure"
 
 
+@pytest.mark.asyncio
 async def test_validate_input_connection_refused():
     """Connection refused errors should raise a specific error."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -2148,6 +2207,7 @@ def test_device_capabilities_serialization():
     assert list(caps.values()) == list(serialized.values())
 
 
+@pytest.mark.asyncio
 async def test_config_flow_max_registers_per_request_validated():
     """Config flow validates max registers per request."""
     flow = ConfigFlow()
@@ -2220,10 +2280,12 @@ async def test_config_flow_max_registers_per_request_validated():
         mock_validate.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_options_flow_max_registers_per_request_validation():
     """Options flow validates max registers per request within range."""
 
 
+@pytest.mark.asyncio
 async def test_options_flow_max_registers_per_request_validated():
     """Options flow should validate max registers per request range."""
     config_entry = SimpleNamespace(options={})

@@ -741,6 +741,18 @@ def fail_on_log_exception():
 
 
 @pytest.fixture(autouse=True)
+def close_dangling_event_loops():
+    """Close any dangling event loops after each test to prevent ResourceWarning."""
+    yield
+    try:
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        if loop and not loop.is_closed():
+            loop.close()
+    except RuntimeError:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def _patch_ha_internals_for_mock_hass():
     """Patch HA internals that require full hass initialisation.
 

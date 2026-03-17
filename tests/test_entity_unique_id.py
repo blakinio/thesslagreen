@@ -125,7 +125,7 @@ async def test_migrate_entity_unique_ids(hass):
     hass.config_entries.async_forward_entry_setups = AsyncMock()
     hass.config_entries.async_reload = AsyncMock()
     hass.services = MagicMock()
-    hass.services.async_register = AsyncMock()
+    hass.services.async_register = MagicMock()
     hass.data = {}
     hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *args: func(*args))
     host = "fd00:1:2::1"
