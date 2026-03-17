@@ -114,6 +114,14 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         if value is None:
             return None
 
+        # AATT registers (setting_summer_*, setting_winter_*) decode to a
+        # dict with "airflow_pct" and "temp_c" keys.  The select entity only
+        # cares about the airflow percentage.
+        if isinstance(value, dict):
+            value = value.get("airflow_pct")
+            if value is None:
+                return None
+
         return self._reverse_states.get(value)
 
     async def async_select_option(self, option: str) -> None:  # pragma: no cover

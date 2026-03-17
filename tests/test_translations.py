@@ -169,6 +169,11 @@ try:
                     SELECT_KEYS.append(_name)
             elif _name not in SENSOR_KEYS:
                 SENSOR_KEYS.append(_name)
+        # setting_summer_* and setting_winter_* RW registers are select entities
+        if _name.startswith(("setting_summer_", "setting_winter_")):
+            _access = (_r.get("access") or "").upper()
+            if "W" in _access and _name not in SELECT_KEYS:
+                SELECT_KEYS.append(_name)
         # Bitmask registers with named bits generate individual binary sensor keys
         _extra = _r.get("extra") or {}
         if _extra.get("bitmask") and _r.get("bits"):

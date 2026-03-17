@@ -233,9 +233,10 @@ class RegisterDef:
         if self._is_bcd_time():
             from ..utils import decode_bcd_time
 
-            decoded = decode_bcd_time(raw)
-            if decoded is not None:
-                return decoded
+            # Returns None for disabled/unset slots (e.g. raw == 0xFFFF).
+            # Propagate None so the coordinator stores None and the select
+            # entity correctly reports the slot as unset ("unknown").
+            return decode_bcd_time(raw)
 
         if self.multiplier not in (None, 1):
             value *= self.multiplier

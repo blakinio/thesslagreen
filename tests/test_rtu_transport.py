@@ -65,7 +65,7 @@ async def test_coordinator_uses_rtu_transport_for_read_write():
     coordinator.client = MagicMock(connected=True)
     response = MagicMock()
     response.isError.return_value = False
-    coordinator._transport = AsyncMock()
+    coordinator._transport = MagicMock()
     coordinator._transport.is_connected.return_value = True
     coordinator._transport.read_input_registers = AsyncMock(return_value=response)
     coordinator._transport.write_registers = AsyncMock(return_value=response)

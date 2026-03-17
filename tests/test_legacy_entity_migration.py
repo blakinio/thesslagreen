@@ -71,7 +71,7 @@ async def test_legacy_fan_entity_migrated(hass, caplog):
     hass.config_entries.async_forward_entry_setups = AsyncMock()
     hass.config_entries.async_reload = AsyncMock()
     hass.services = MagicMock()
-    hass.services.async_register = AsyncMock()
+    hass.services.async_register = MagicMock()
     hass.data = {DOMAIN: {"existing": object()}}
 
     dummy_module = types.ModuleType("coordinator")

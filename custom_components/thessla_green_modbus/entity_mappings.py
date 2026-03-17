@@ -289,6 +289,12 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
             continue
 
+        # Skip schedule intensity/airflow setting registers — they store AATT
+        # packed values and are exposed as select entities (0–100 % in 10 %
+        # increments), not editable number inputs.
+        if register.startswith(("setting_summer_", "setting_winter_")):
+            continue
+
         # Skip registers with enumerated states – handled as binary/select
         if _parse_states(info.get("unit")):
             continue
@@ -696,26 +702,31 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "version_major",
         "icon": "mdi:information",
         "register_type": "input_registers",
+        "entity_category": "diagnostic",
     },
     "version_minor": {
         "translation_key": "version_minor",
         "icon": "mdi:information",
         "register_type": "input_registers",
+        "entity_category": "diagnostic",
     },
     "version_patch": {
         "translation_key": "version_patch",
         "icon": "mdi:information",
         "register_type": "input_registers",
+        "entity_category": "diagnostic",
     },
     "serial_number": {
         "translation_key": "serial_number",
         "icon": "mdi:barcode",
         "register_type": "input_registers",
+        "entity_category": "diagnostic",
     },
     "cf_version": {
         "translation_key": "cf_version",
         "icon": "mdi:information",
         "register_type": "holding_registers",
+        "entity_category": "diagnostic",
     },
     # Mode and status sensors
     "antifreeze_mode": {

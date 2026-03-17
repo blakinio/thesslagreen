@@ -58,8 +58,6 @@ from custom_components.thessla_green_modbus.config_flow import (  # noqa: E402
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 
 
-pytestmark = pytest.mark.asyncio
-
 
 # ---------------------------------------------------------------------------
 # _normalize_baud_rate
@@ -161,6 +159,7 @@ def test_normalize_stop_bits_bad_string():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_run_with_retry_cancelled_error_propagates():
     """CancelledError must not be swallowed by the retry loop."""
 
@@ -171,6 +170,7 @@ async def test_run_with_retry_cancelled_error_propagates():
         await _run_with_retry(failing, retries=3, backoff=0)
 
 
+@pytest.mark.asyncio
 async def test_run_with_retry_timeout_exhausted():
     """After all retries, TimeoutError is re-raised."""
     call_count = 0
@@ -186,6 +186,7 @@ async def test_run_with_retry_timeout_exhausted():
     assert call_count == 2
 
 
+@pytest.mark.asyncio
 async def test_run_with_retry_modbus_io_success_on_second():
     """Succeeds on second attempt after ModbusIOException."""
     attempt = 0
@@ -202,6 +203,7 @@ async def test_run_with_retry_modbus_io_success_on_second():
     assert attempt == 2
 
 
+@pytest.mark.asyncio
 async def test_run_with_retry_modbus_io_cancelled_request_raises_timeout():
     """ModbusIOException with 'cancelled' message converts to TimeoutError."""
 
@@ -212,6 +214,7 @@ async def test_run_with_retry_modbus_io_cancelled_request_raises_timeout():
         await _run_with_retry(failing, retries=3, backoff=0)
 
 
+@pytest.mark.asyncio
 async def test_run_with_retry_sync_func_returns_value():
     """Synchronous callables work (no await needed)."""
 
@@ -227,6 +230,7 @@ async def test_run_with_retry_sync_func_returns_value():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_build_connection_schema_empty_option_lists():
     """Cover the fallback branches when MODBUS_BAUD_RATES/PARITY/STOP_BITS are empty."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -251,6 +255,7 @@ async def test_build_connection_schema_empty_option_lists():
         cf_mod.MODBUS_STOP_BITS = original_stop_bits
 
 
+@pytest.mark.asyncio
 async def test_build_connection_schema_tcp_rtu_connection_default():
     """Cover connection_default = CONNECTION_TYPE_TCP_RTU branch (line 642)."""
     from custom_components.thessla_green_modbus.const import (
@@ -272,6 +277,7 @@ async def test_build_connection_schema_tcp_rtu_connection_default():
     assert schema is not None
 
 
+@pytest.mark.asyncio
 async def test_build_connection_schema_empty_baud_rates_bad_baud_default():
     """Cover except (TypeError, ValueError) when int(baud_default) fails (lines 670-671)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -421,6 +427,7 @@ def test_caps_to_dict_obj_with_as_dict():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_connection_type():
     """Invalid connection_type raises exception (line 343)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -430,6 +437,7 @@ async def test_validate_input_invalid_connection_type():
         await cf_mod.validate_input(None, {CONF_CONNECTION_TYPE: "INVALID", CONF_SLAVE_ID: 1})
 
 
+@pytest.mark.asyncio
 async def test_validate_input_tcp_rtu_normalization():
     """TCP_RTU normalizes to TCP + mode (lines 347-349), then fails at scanner."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -452,6 +460,7 @@ async def test_validate_input_tcp_rtu_normalization():
     assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_TCP
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_slave_id_string():
     """Non-numeric slave_id raises exception (lines 361-362)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -470,6 +479,7 @@ async def test_validate_input_invalid_slave_id_string():
         })
 
 
+@pytest.mark.asyncio
 async def test_validate_input_slave_id_too_low():
     """slave_id < 0 raises exception; 0 is valid per Modbus broadcast spec."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -486,6 +496,7 @@ async def test_validate_input_slave_id_too_low():
         })
 
 
+@pytest.mark.asyncio
 async def test_validate_input_invalid_port():
     """Non-numeric port raises exception (lines 380-381)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -503,6 +514,7 @@ async def test_validate_input_invalid_port():
         })
 
 
+@pytest.mark.asyncio
 async def test_validate_input_empty_host():
     """Empty host raises exception (line 383)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -520,6 +532,7 @@ async def test_validate_input_empty_host():
         })
 
 
+@pytest.mark.asyncio
 async def test_validate_input_hostname_fails_looks_like():
     """Hostname with no dot fails _looks_like_hostname (line 394)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -538,6 +551,7 @@ async def test_validate_input_hostname_fails_looks_like():
         })
 
 
+@pytest.mark.asyncio
 async def test_validate_input_rtu_invalid_baud_rate():
     """Invalid baud rate in RTU raises exception (lines 413-414)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -555,6 +569,7 @@ async def test_validate_input_rtu_invalid_baud_rate():
         })
 
 
+@pytest.mark.asyncio
 async def test_validate_input_rtu_invalid_parity():
     """Invalid parity in RTU raises exception (lines 417-418)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -573,6 +588,7 @@ async def test_validate_input_rtu_invalid_parity():
         })
 
 
+@pytest.mark.asyncio
 async def test_validate_input_rtu_invalid_stop_bits():
     """Invalid stop_bits in RTU raises exception (lines 421-424)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -597,6 +613,7 @@ async def test_validate_input_rtu_invalid_stop_bits():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_call_with_optional_timeout_sync_function():
     """Sync function returns result without awaiting (line 311)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -610,6 +627,7 @@ async def test_call_with_optional_timeout_sync_function():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
 async def test_validate_input_rtu_valid_params():
     """Valid RTU params reach scanner (lines 425-428), scanner fails with exception."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod

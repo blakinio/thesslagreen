@@ -617,174 +617,6 @@
       "rtc_cal": {
         "name": "Rtc Cal"
       },
-      "setting_summer_fri_1": {
-        "name": "Setting Summer Fri 1"
-      },
-      "setting_summer_fri_2": {
-        "name": "Setting Summer Fri 2"
-      },
-      "setting_summer_fri_3": {
-        "name": "Setting Summer Fri 3"
-      },
-      "setting_summer_fri_4": {
-        "name": "Setting Summer Fri 4"
-      },
-      "setting_summer_mon_1": {
-        "name": "Setting Summer Mon 1"
-      },
-      "setting_summer_mon_2": {
-        "name": "Setting Summer Mon 2"
-      },
-      "setting_summer_mon_3": {
-        "name": "Setting Summer Mon 3"
-      },
-      "setting_summer_mon_4": {
-        "name": "Setting Summer Mon 4"
-      },
-      "setting_summer_sat_1": {
-        "name": "Setting Summer Sat 1"
-      },
-      "setting_summer_sat_2": {
-        "name": "Setting Summer Sat 2"
-      },
-      "setting_summer_sat_3": {
-        "name": "Setting Summer Sat 3"
-      },
-      "setting_summer_sat_4": {
-        "name": "Setting Summer Sat 4"
-      },
-      "setting_summer_sun_1": {
-        "name": "Setting Summer Sun 1"
-      },
-      "setting_summer_sun_2": {
-        "name": "Setting Summer Sun 2"
-      },
-      "setting_summer_sun_3": {
-        "name": "Setting Summer Sun 3"
-      },
-      "setting_summer_sun_4": {
-        "name": "Setting Summer Sun 4"
-      },
-      "setting_summer_thu_1": {
-        "name": "Setting Summer Thu 1"
-      },
-      "setting_summer_thu_2": {
-        "name": "Setting Summer Thu 2"
-      },
-      "setting_summer_thu_3": {
-        "name": "Setting Summer Thu 3"
-      },
-      "setting_summer_thu_4": {
-        "name": "Setting Summer Thu 4"
-      },
-      "setting_summer_tue_1": {
-        "name": "Setting Summer Tue 1"
-      },
-      "setting_summer_tue_2": {
-        "name": "Setting Summer Tue 2"
-      },
-      "setting_summer_tue_3": {
-        "name": "Setting Summer Tue 3"
-      },
-      "setting_summer_tue_4": {
-        "name": "Setting Summer Tue 4"
-      },
-      "setting_summer_wed_1": {
-        "name": "Setting Summer Wed 1"
-      },
-      "setting_summer_wed_2": {
-        "name": "Setting Summer Wed 2"
-      },
-      "setting_summer_wed_3": {
-        "name": "Setting Summer Wed 3"
-      },
-      "setting_summer_wed_4": {
-        "name": "Setting Summer Wed 4"
-      },
-      "setting_winter_fri_1": {
-        "name": "Setting Winter Fri 1"
-      },
-      "setting_winter_fri_2": {
-        "name": "Setting Winter Fri 2"
-      },
-      "setting_winter_fri_3": {
-        "name": "Setting Winter Fri 3"
-      },
-      "setting_winter_fri_4": {
-        "name": "Setting Winter Fri 4"
-      },
-      "setting_winter_mon_1": {
-        "name": "Setting Winter Mon 1"
-      },
-      "setting_winter_mon_2": {
-        "name": "Setting Winter Mon 2"
-      },
-      "setting_winter_mon_3": {
-        "name": "Setting Winter Mon 3"
-      },
-      "setting_winter_mon_4": {
-        "name": "Setting Winter Mon 4"
-      },
-      "setting_winter_sat_1": {
-        "name": "Setting Winter Sat 1"
-      },
-      "setting_winter_sat_2": {
-        "name": "Setting Winter Sat 2"
-      },
-      "setting_winter_sat_3": {
-        "name": "Setting Winter Sat 3"
-      },
-      "setting_winter_sat_4": {
-        "name": "Setting Winter Sat 4"
-      },
-      "setting_winter_sun_1": {
-        "name": "Setting Winter Sun 1"
-      },
-      "setting_winter_sun_2": {
-        "name": "Setting Winter Sun 2"
-      },
-      "setting_winter_sun_3": {
-        "name": "Setting Winter Sun 3"
-      },
-      "setting_winter_sun_4": {
-        "name": "Setting Winter Sun 4"
-      },
-      "setting_winter_thu_1": {
-        "name": "Setting Winter Thu 1"
-      },
-      "setting_winter_thu_2": {
-        "name": "Setting Winter Thu 2"
-      },
-      "setting_winter_thu_3": {
-        "name": "Setting Winter Thu 3"
-      },
-      "setting_winter_thu_4": {
-        "name": "Setting Winter Thu 4"
-      },
-      "setting_winter_tue_1": {
-        "name": "Setting Winter Tue 1"
-      },
-      "setting_winter_tue_2": {
-        "name": "Setting Winter Tue 2"
-      },
-      "setting_winter_tue_3": {
-        "name": "Setting Winter Tue 3"
-      },
-      "setting_winter_tue_4": {
-        "name": "Setting Winter Tue 4"
-      },
-      "setting_winter_wed_1": {
-        "name": "Setting Winter Wed 1"
-      },
-      "setting_winter_wed_2": {
-        "name": "Setting Winter Wed 2"
-      },
-      "setting_winter_wed_3": {
-        "name": "Setting Winter Wed 3"
-      },
-      "setting_winter_wed_4": {
-        "name": "Setting Winter Wed 4"
-      },
       "supply_air_flow": {
         "name": "Supply Air Flow"
       },
@@ -1198,6 +1030,174 @@
       },
       "stop_gwc_regen_winter_time": {
         "name": "Stop Gwc Regen Winter Time"
+      },
+      "setting_summer_fri_1": {
+        "name": "Setting Summer Fri 1"
+      },
+      "setting_summer_fri_2": {
+        "name": "Setting Summer Fri 2"
+      },
+      "setting_summer_fri_3": {
+        "name": "Setting Summer Fri 3"
+      },
+      "setting_summer_fri_4": {
+        "name": "Setting Summer Fri 4"
+      },
+      "setting_summer_mon_1": {
+        "name": "Setting Summer Mon 1"
+      },
+      "setting_summer_mon_2": {
+        "name": "Setting Summer Mon 2"
+      },
+      "setting_summer_mon_3": {
+        "name": "Setting Summer Mon 3"
+      },
+      "setting_summer_mon_4": {
+        "name": "Setting Summer Mon 4"
+      },
+      "setting_summer_sat_1": {
+        "name": "Setting Summer Sat 1"
+      },
+      "setting_summer_sat_2": {
+        "name": "Setting Summer Sat 2"
+      },
+      "setting_summer_sat_3": {
+        "name": "Setting Summer Sat 3"
+      },
+      "setting_summer_sat_4": {
+        "name": "Setting Summer Sat 4"
+      },
+      "setting_summer_sun_1": {
+        "name": "Setting Summer Sun 1"
+      },
+      "setting_summer_sun_2": {
+        "name": "Setting Summer Sun 2"
+      },
+      "setting_summer_sun_3": {
+        "name": "Setting Summer Sun 3"
+      },
+      "setting_summer_sun_4": {
+        "name": "Setting Summer Sun 4"
+      },
+      "setting_summer_thu_1": {
+        "name": "Setting Summer Thu 1"
+      },
+      "setting_summer_thu_2": {
+        "name": "Setting Summer Thu 2"
+      },
+      "setting_summer_thu_3": {
+        "name": "Setting Summer Thu 3"
+      },
+      "setting_summer_thu_4": {
+        "name": "Setting Summer Thu 4"
+      },
+      "setting_summer_tue_1": {
+        "name": "Setting Summer Tue 1"
+      },
+      "setting_summer_tue_2": {
+        "name": "Setting Summer Tue 2"
+      },
+      "setting_summer_tue_3": {
+        "name": "Setting Summer Tue 3"
+      },
+      "setting_summer_tue_4": {
+        "name": "Setting Summer Tue 4"
+      },
+      "setting_summer_wed_1": {
+        "name": "Setting Summer Wed 1"
+      },
+      "setting_summer_wed_2": {
+        "name": "Setting Summer Wed 2"
+      },
+      "setting_summer_wed_3": {
+        "name": "Setting Summer Wed 3"
+      },
+      "setting_summer_wed_4": {
+        "name": "Setting Summer Wed 4"
+      },
+      "setting_winter_fri_1": {
+        "name": "Setting Winter Fri 1"
+      },
+      "setting_winter_fri_2": {
+        "name": "Setting Winter Fri 2"
+      },
+      "setting_winter_fri_3": {
+        "name": "Setting Winter Fri 3"
+      },
+      "setting_winter_fri_4": {
+        "name": "Setting Winter Fri 4"
+      },
+      "setting_winter_mon_1": {
+        "name": "Setting Winter Mon 1"
+      },
+      "setting_winter_mon_2": {
+        "name": "Setting Winter Mon 2"
+      },
+      "setting_winter_mon_3": {
+        "name": "Setting Winter Mon 3"
+      },
+      "setting_winter_mon_4": {
+        "name": "Setting Winter Mon 4"
+      },
+      "setting_winter_sat_1": {
+        "name": "Setting Winter Sat 1"
+      },
+      "setting_winter_sat_2": {
+        "name": "Setting Winter Sat 2"
+      },
+      "setting_winter_sat_3": {
+        "name": "Setting Winter Sat 3"
+      },
+      "setting_winter_sat_4": {
+        "name": "Setting Winter Sat 4"
+      },
+      "setting_winter_sun_1": {
+        "name": "Setting Winter Sun 1"
+      },
+      "setting_winter_sun_2": {
+        "name": "Setting Winter Sun 2"
+      },
+      "setting_winter_sun_3": {
+        "name": "Setting Winter Sun 3"
+      },
+      "setting_winter_sun_4": {
+        "name": "Setting Winter Sun 4"
+      },
+      "setting_winter_thu_1": {
+        "name": "Setting Winter Thu 1"
+      },
+      "setting_winter_thu_2": {
+        "name": "Setting Winter Thu 2"
+      },
+      "setting_winter_thu_3": {
+        "name": "Setting Winter Thu 3"
+      },
+      "setting_winter_thu_4": {
+        "name": "Setting Winter Thu 4"
+      },
+      "setting_winter_tue_1": {
+        "name": "Setting Winter Tue 1"
+      },
+      "setting_winter_tue_2": {
+        "name": "Setting Winter Tue 2"
+      },
+      "setting_winter_tue_3": {
+        "name": "Setting Winter Tue 3"
+      },
+      "setting_winter_tue_4": {
+        "name": "Setting Winter Tue 4"
+      },
+      "setting_winter_wed_1": {
+        "name": "Setting Winter Wed 1"
+      },
+      "setting_winter_wed_2": {
+        "name": "Setting Winter Wed 2"
+      },
+      "setting_winter_wed_3": {
+        "name": "Setting Winter Wed 3"
+      },
+      "setting_winter_wed_4": {
+        "name": "Setting Winter Wed 4"
       }
     },
     "sensor": {

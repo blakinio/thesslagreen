@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -58,8 +58,9 @@ async def test_full_register_scan_batches_reads() -> None:
         patch.object(scanner, "_read_discrete", AsyncMock(return_value=[False])),
         patch.object(scanner, "_is_valid_register_value", return_value=True),
     ):
-        mock_client = AsyncMock()
-        mock_client.connect.return_value = True
+        mock_client = MagicMock()
+        mock_client.connect = AsyncMock(return_value=True)
+        mock_client.close = AsyncMock()
         mock_client_class.return_value = mock_client
         await scanner.scan_device()
 
