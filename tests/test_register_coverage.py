@@ -22,6 +22,10 @@ INTENTIONAL_OMISSIONS = {
     "date_time_ggmm",
     "date_time_sscc",
     "date_time_1",
+    # String-type holding registers — the scanner reads these specially during
+    # device discovery (e.g. device_name is stored in coordinator.device_info).
+    # They cannot be represented as a Number entity and have no other mapping.
+    "device_name",
     # Reserved / internal registers — device name parts, security keys, and
     # undocumented registers that have no translation key and must not appear
     # as unnamed "Rekuperator" entities in the HA UI.
