@@ -579,8 +579,8 @@ def test_rw_schedule_registers_mapped_as_select(monkeypatch):
         function=3, address=16, name="schedule_summer_mon_1", access="RW", min=0, max=2359
     )
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sched_reg])
-    em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-    em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    orig_select = em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    orig_sensor = em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
     try:
         em._extend_entity_mappings_from_registers()
         assert "schedule_summer_mon_1" in em.SELECT_ENTITY_MAPPINGS, (
@@ -597,6 +597,10 @@ def test_rw_schedule_registers_mapped_as_select(monkeypatch):
     finally:
         em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
         em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+        if orig_select is not None:
+            em.SELECT_ENTITY_MAPPINGS["schedule_summer_mon_1"] = orig_select
+        if orig_sensor is not None:
+            em.SENSOR_ENTITY_MAPPINGS["schedule_summer_mon_1"] = orig_sensor
 
 
 def test_ro_schedule_registers_mapped_as_sensor(monkeypatch):
@@ -605,8 +609,8 @@ def test_ro_schedule_registers_mapped_as_sensor(monkeypatch):
         function=3, address=16, name="schedule_summer_mon_1", access="R", min=0, max=2359
     )
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sched_reg])
-    em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-    em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    orig_select = em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    orig_sensor = em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
     try:
         em._extend_entity_mappings_from_registers()
         assert "schedule_summer_mon_1" in em.SENSOR_ENTITY_MAPPINGS, (
@@ -616,3 +620,7 @@ def test_ro_schedule_registers_mapped_as_sensor(monkeypatch):
     finally:
         em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
         em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+        if orig_select is not None:
+            em.SELECT_ENTITY_MAPPINGS["schedule_summer_mon_1"] = orig_select
+        if orig_sensor is not None:
+            em.SENSOR_ENTITY_MAPPINGS["schedule_summer_mon_1"] = orig_sensor
