@@ -819,9 +819,6 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    # supply_air_temperature_temporary_1 and _2 were register_type="calculated"
-    # and are never instantiated by the sensor platform — removed until a
-    # computed-register mechanism is implemented.
     "min_bypass_temperature": {
         "translation_key": "min_bypass_temperature",
         "icon": "mdi:thermometer-low",
