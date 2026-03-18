@@ -755,7 +755,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
             if coordinator:
-                port_prefix = "uart0" if port == "air_b" else "uart1"
+                port_prefix = "uart_0" if port == "air_b" else "uart_1"
 
                 if baud_rate:
                     if not await _write_register(

@@ -133,9 +133,6 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_season_mode": ("select", "rekuperator_season_mode"),
     "rekuperator_bypass_mode_status": ("sensor", "rekuperator_bypass_mode"),
     "rekuperator_on_off_panel_mode": ("switch", "rekuperator_on_off_panel_mode"),
-    # Legacy aliases for historical register naming.
-    "rekuperator_bypass_coef_1": ("number", "rekuperator_bypass_coef1"),
-    "rekuperator_bypass_coef_2": ("number", "rekuperator_bypass_coef2"),
 }
 
 _alias_warning_logged = False

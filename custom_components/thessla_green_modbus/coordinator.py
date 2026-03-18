@@ -2350,7 +2350,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         """Write temporary airflow settings using the 3-register block."""
 
         try:
-            mode_def = get_register_definition("cfg_mode1")
+            mode_def = get_register_definition("cfg_mode_1")
             value_def = get_register_definition("air_flow_rate_temporary_4401")
             flag_def = get_register_definition("airflow_rate_change_flag")
         except KeyError as exc:
@@ -2375,7 +2375,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         """Write temporary temperature settings using the 3-register block."""
 
         try:
-            mode_def = get_register_definition("cfg_mode2")
+            mode_def = get_register_definition("cfg_mode_2")
             value_def = get_register_definition("supply_air_temperature_temporary_4404")
             flag_def = get_register_definition("temperature_change_flag")
         except KeyError as exc:

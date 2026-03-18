@@ -19,13 +19,16 @@ def test_map_legacy_entity_id_for_migrated_domains() -> None:
 
 
 def test_map_legacy_entity_id_for_historical_register_renames() -> None:
-    """Legacy entity IDs should handle renamed register suffixes."""
+    """Legacy entity IDs that were never produced (broken register names) should pass through unchanged."""
 
+    # bypass_coef_1 / bypass_coef_2 entities were never actually created in HA
+    # because the JSON register was named bypass_coef1/2 (without underscore) and the
+    # address lookup failed.  The aliases have been removed; the name passes through.
     assert (
         map_legacy_entity_id("number.rekuperator_bypass_coef_1")
-        == "number.rekuperator_bypass_coef1"
+        == "number.rekuperator_bypass_coef_1"
     )
     assert (
         map_legacy_entity_id("number.rekuperator_bypass_coef_2")
-        == "number.rekuperator_bypass_coef2"
+        == "number.rekuperator_bypass_coef_2"
     )
