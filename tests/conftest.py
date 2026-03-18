@@ -102,6 +102,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         VOLTAGE = "voltage"
         POWER = "power"
         ENERGY = "energy"
+        VOLUME_FLOW_RATE = "volume_flow_rate"
 
     class SensorStateClass:  # pragma: no cover - enum stub
         MEASUREMENT = "measurement"
@@ -146,6 +147,9 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     class HVACAction:  # pragma: no cover - enum stub
         OFF = "off"
         FAN = "fan"
+        HEATING = "heating"
+        COOLING = "cooling"
+        IDLE = "idle"
 
     climate_comp.ClimateEntity = ClimateEntity
     climate_comp.ClimateEntityFeature = ClimateEntityFeature
