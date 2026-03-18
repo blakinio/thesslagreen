@@ -20,7 +20,6 @@ INTENTIONAL_OMISSIONS = {
     "date_time_ddtt",
     "date_time_ggmm",
     "date_time_sscc",
-    "date_time_1",
     # Reserved / internal registers — device name parts, security keys, and
     # undocumented registers that have no translation key and must not appear
     # as unnamed "Rekuperator" entities in the HA UI.
@@ -94,6 +93,37 @@ def test_all_registers_covered() -> None:
 
     missing = registers - exposed - diagnostic_regs - INTENTIONAL_OMISSIONS
     assert not missing, f"Unmapped registers: {sorted(missing)}"
+
+
+def test_intentional_omissions_are_valid() -> None:
+    """Every entry in INTENTIONAL_OMISSIONS must:
+    1. Exist as a real register (no typos).
+    2. NOT already have an entity mapping (no stale entries).
+    """
+    json_file = (
+        Path("custom_components/thessla_green_modbus/registers")
+        / "thessla_green_registers_full.json"
+    )
+    registers = {
+        _to_snake_case(r["name"])
+        for r in json.loads(json_file.read_text(encoding="utf-8"))["registers"]
+        if r.get("name")
+    }
+
+    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
+    exposed: set[str] = set()
+    for mapping in entity_mod.ENTITY_MAPPINGS.values():
+        exposed.update(mapping.keys())
+
+    phantom = INTENTIONAL_OMISSIONS - registers
+    assert not phantom, (
+        f"INTENTIONAL_OMISSIONS zawiera nieistniejące rejestry (literówki?): {sorted(phantom)}"
+    )
+
+    stale = INTENTIONAL_OMISSIONS & exposed
+    assert not stale, (
+        f"INTENTIONAL_OMISSIONS zawiera rejestry które już mają encje (stale): {sorted(stale)}"
+    )
 
 
 def test_number_translations_match() -> None:
