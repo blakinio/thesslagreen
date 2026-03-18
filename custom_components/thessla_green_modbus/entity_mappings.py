@@ -44,6 +44,7 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tes
         POWER = "power"
         ENERGY = "energy"
         EFFICIENCY = "efficiency"
+        VOLUME_FLOW_RATE = "volume_flow_rate"
 
     class SensorStateClass:  # type: ignore[no-redef]
         MEASUREMENT = "measurement"
@@ -656,6 +657,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "supply_flow_rate": {
         "translation_key": "supply_flow_rate_m3h",
         "icon": "mdi:fan-plus",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
@@ -663,6 +665,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "exhaust_flow_rate": {
         "translation_key": "exhaust_flow_rate_m3h",
         "icon": "mdi:fan-minus",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "input_registers",
@@ -670,6 +673,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "supply_air_flow": {
         "translation_key": "supply_air_flow",
         "icon": "mdi:fan-plus",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
@@ -677,6 +681,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "exhaust_air_flow": {
         "translation_key": "exhaust_air_flow",
         "icon": "mdi:fan-minus",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",

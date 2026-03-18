@@ -11,7 +11,11 @@ import homeassistant.components as ha_components
 climate_component = getattr(ha_components, "climate", None)
 ClimateEntity = getattr(climate_component, "ClimateEntity", object)
 ClimateEntityFeature = getattr(climate_component, "ClimateEntityFeature", int)
-HVACAction = getattr(climate_component, "HVACAction", type("HVACAction", (), {"OFF": "off", "FAN": "fan"}))
+HVACAction = getattr(
+    climate_component,
+    "HVACAction",
+    type("HVACAction", (), {"OFF": "off", "FAN": "fan", "HEATING": "heating", "COOLING": "cooling", "IDLE": "idle"}),
+)
 HVACMode = getattr(climate_component, "HVACMode", type("HVACMode", (), {"OFF": "off", "AUTO": "auto", "FAN_ONLY": "fan_only"}))
 from homeassistant.config_entries import ConfigEntry
 from homeassistant import const as ha_const
@@ -124,8 +128,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         else:
             self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO]  # pragma: no cover
 
-        # Fan modes (airflow rates)
-        self._attr_fan_modes = []  # pragma: no cover
+        # Fan modes are computed dynamically via the fan_modes property
 
         # Preset modes
         self._attr_preset_modes = PRESET_MODES  # pragma: no cover
