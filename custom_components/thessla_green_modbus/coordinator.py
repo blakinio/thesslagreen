@@ -825,6 +825,15 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     self.device_info = self.device_scan_result.get("device_info", {})
                     self.device_info.setdefault("device_name", self._device_name)
 
+                    # Ensure serial_number entity is created even if address 24
+                    # failed individual-register validation during the scan.
+                    # The scanner already assembled the full serial from 6 registers.
+                    if (
+                        self.device_info.get("serial_number")
+                        and self.device_info["serial_number"] != "Unknown"
+                    ):
+                        self.available_registers["input_registers"].add("serial_number")
+
                     caps_obj = self.device_scan_result.get("capabilities")
                     if isinstance(caps_obj, DeviceCapabilities):
                         self.capabilities = caps_obj
@@ -994,6 +1003,14 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             except (TypeError, ValueError):
                 _LOGGER.debug("Invalid cached capabilities", exc_info=True)
         self.device_scan_result = cache
+
+        # Ensure serial_number entity is available when serial is known from cache.
+        if (
+            self.device_info.get("serial_number")
+            and self.device_info["serial_number"] != "Unknown"
+        ):
+            self.available_registers["input_registers"].add("serial_number")
+
         return True
 
     def _store_scan_cache(self) -> None:  # pragma: no cover
@@ -1875,6 +1892,12 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
     def _post_process_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Post-process data to calculate derived values."""
+        # Expose the full serial number (assembled from 6 registers by the scanner)
+        # as a sensor value so the serial_number entity has a meaningful state.
+        device_serial = (self.device_info or {}).get("serial_number")
+        if device_serial and device_serial != "Unknown":
+            data["serial_number"] = device_serial
+
         # Calculate heat recovery efficiency if temperatures available
         if all(
             k in data for k in ["outside_temperature", "supply_temperature", "exhaust_temperature"]

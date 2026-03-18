@@ -411,40 +411,40 @@
         "name": "Intensywność wentylacji (tryb chwilowy, roz.)"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Temperatura lato chłodzenie free"
+        "name": "Temperatura bypassa (wolne chłodzenie)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Temperatura lato grzanie free"
+        "name": "Temperatura bypassa (wolne grzanie)"
       },
       "airing_bathroom_coef": {
-        "name": "Airing Bathroom Coef"
+        "name": "Współczynnik przewietrzania łazienki"
       },
       "airing_coef": {
-        "name": "Airing Coef"
+        "name": "Współczynnik przewietrzania"
       },
       "airing_panel_mode_time": {
-        "name": "Airing Panel Mode Time"
+        "name": "Czas trybu przewietrzania (panel)"
       },
       "airing_switch_coef": {
-        "name": "Airing Switch Coef"
+        "name": "Współczynnik przewietrzania (przełącznik)"
       },
       "airing_switch_mode_off_delay": {
-        "name": "Airing Switch Mode Off Delay"
+        "name": "Opóźnienie wyłączenia przewietrzania"
       },
       "airing_switch_mode_on_delay": {
-        "name": "Airing Switch Mode On Delay"
+        "name": "Opóźnienie włączenia przewietrzania"
       },
       "airing_switch_mode_time": {
-        "name": "Airing Switch Mode Time"
+        "name": "Czas trybu przewietrzania (przełącznik)"
       },
       "contamination_coef": {
-        "name": "Contamination Coef"
+        "name": "Współczynnik zanieczyszczenia"
       },
       "delta_t_gwc": {
         "name": "Delta T aktywacji GWC"
       },
       "empty_house_coef": {
-        "name": "Empty House Coef"
+        "name": "Współczynnik pustego domu"
       },
       "fan_speed_1_coef": {
         "name": "Współczynnik prędkości 1"
@@ -456,13 +456,13 @@
         "name": "Współczynnik prędkości 3"
       },
       "fireplace_mode_time": {
-        "name": "Fireplace Mode Time"
+        "name": "Czas trybu kominka"
       },
       "fireplace_supply_coef": {
-        "name": "Fireplace Supply Coef"
+        "name": "Współczynnik nawiewu (kominek)"
       },
       "gwc_regen_period": {
-        "name": "Gwc Regen Period"
+        "name": "Okres regeneracji GWC"
       },
       "hood_exhaust_coef": {
         "name": "Współczynnik okapu wywiew"
@@ -471,46 +471,46 @@
         "name": "Współczynnik okapu nawiew"
       },
       "lock_pass": {
-        "name": "Lock Pass"
+        "name": "Hasło blokady"
       },
       "max_exhaust_air_flow_rate": {
         "name": "Maksymalny przepływ wywiewu"
       },
       "max_exhaust_air_flow_rate_gwc": {
-        "name": "Max Exhaust Air Flow Rate Gwc"
+        "name": "Maks. przepływ wywiewu GWC"
       },
       "max_gwc_air_temperature": {
-        "name": "Max Gwc Air Temperature"
+        "name": "Maks. temperatura powietrza GWC"
       },
       "max_supply_air_flow_rate": {
         "name": "Maksymalny przepływ nawiewu"
       },
       "max_supply_air_flow_rate_gwc": {
-        "name": "Max Supply Air Flow Rate Gwc"
+        "name": "Maks. przepływ nawiewu GWC"
       },
       "min_bypass_temperature": {
         "name": "Minimalna temperatura bypass"
       },
       "min_gwc_air_temperature": {
-        "name": "Min Gwc Air Temperature"
+        "name": "Min. temperatura powietrza GWC"
       },
       "nominal_exhaust_air_flow": {
-        "name": "Nominal Exhaust Air Flow"
+        "name": "Nominalny przepływ wywiewu"
       },
       "nominal_exhaust_air_flow_gwc": {
-        "name": "Nominal Exhaust Air Flow Gwc"
+        "name": "Nominalny przepływ wywiewu GWC"
       },
       "nominal_supply_air_flow": {
-        "name": "Nominal Supply Air Flow"
+        "name": "Nominalny przepływ nawiewu"
       },
       "nominal_supply_air_flow_gwc": {
-        "name": "Nominal Supply Air Flow Gwc"
+        "name": "Nominalny przepływ nawiewu GWC"
       },
       "open_window_coef": {
-        "name": "Open Window Coef"
+        "name": "Współczynnik otwartego okna"
       },
       "rtc_cal": {
-        "name": "Rtc Cal"
+        "name": "Kalibracja zegara RTC"
       },
       "supply_air_temperature_manual": {
         "name": "Temperatura nawiewu manualnie"
@@ -534,10 +534,10 @@
         "name": "Zużycie filtra wywiewnego"
       },
       "bypass_coef_1": {
-        "name": "Bypass Coef 1"
+        "name": "Współczynnik bypassa 1"
       },
       "bypass_coef_2": {
-        "name": "Bypass Coef 2"
+        "name": "Współczynnik bypassa 2"
       }
     },
     "select": {
@@ -723,172 +723,172 @@
         }
       },
       "setting_summer_fri_1": {
-        "name": "Setting Summer Fri 1"
+        "name": "Ustawienie lato Piątek 1"
       },
       "setting_summer_fri_2": {
-        "name": "Setting Summer Fri 2"
+        "name": "Ustawienie lato Piątek 2"
       },
       "setting_summer_fri_3": {
-        "name": "Setting Summer Fri 3"
+        "name": "Ustawienie lato Piątek 3"
       },
       "setting_summer_fri_4": {
-        "name": "Setting Summer Fri 4"
+        "name": "Ustawienie lato Piątek 4"
       },
       "setting_summer_mon_1": {
-        "name": "Setting Summer Mon 1"
+        "name": "Ustawienie lato Poniedziałek 1"
       },
       "setting_summer_mon_2": {
-        "name": "Setting Summer Mon 2"
+        "name": "Ustawienie lato Poniedziałek 2"
       },
       "setting_summer_mon_3": {
-        "name": "Setting Summer Mon 3"
+        "name": "Ustawienie lato Poniedziałek 3"
       },
       "setting_summer_mon_4": {
-        "name": "Setting Summer Mon 4"
+        "name": "Ustawienie lato Poniedziałek 4"
       },
       "setting_summer_sat_1": {
-        "name": "Setting Summer Sat 1"
+        "name": "Ustawienie lato Sobota 1"
       },
       "setting_summer_sat_2": {
-        "name": "Setting Summer Sat 2"
+        "name": "Ustawienie lato Sobota 2"
       },
       "setting_summer_sat_3": {
-        "name": "Setting Summer Sat 3"
+        "name": "Ustawienie lato Sobota 3"
       },
       "setting_summer_sat_4": {
-        "name": "Setting Summer Sat 4"
+        "name": "Ustawienie lato Sobota 4"
       },
       "setting_summer_sun_1": {
-        "name": "Setting Summer Sun 1"
+        "name": "Ustawienie lato Niedziela 1"
       },
       "setting_summer_sun_2": {
-        "name": "Setting Summer Sun 2"
+        "name": "Ustawienie lato Niedziela 2"
       },
       "setting_summer_sun_3": {
-        "name": "Setting Summer Sun 3"
+        "name": "Ustawienie lato Niedziela 3"
       },
       "setting_summer_sun_4": {
-        "name": "Setting Summer Sun 4"
+        "name": "Ustawienie lato Niedziela 4"
       },
       "setting_summer_thu_1": {
-        "name": "Setting Summer Thu 1"
+        "name": "Ustawienie lato Czwartek 1"
       },
       "setting_summer_thu_2": {
-        "name": "Setting Summer Thu 2"
+        "name": "Ustawienie lato Czwartek 2"
       },
       "setting_summer_thu_3": {
-        "name": "Setting Summer Thu 3"
+        "name": "Ustawienie lato Czwartek 3"
       },
       "setting_summer_thu_4": {
-        "name": "Setting Summer Thu 4"
+        "name": "Ustawienie lato Czwartek 4"
       },
       "setting_summer_tue_1": {
-        "name": "Setting Summer Tue 1"
+        "name": "Ustawienie lato Wtorek 1"
       },
       "setting_summer_tue_2": {
-        "name": "Setting Summer Tue 2"
+        "name": "Ustawienie lato Wtorek 2"
       },
       "setting_summer_tue_3": {
-        "name": "Setting Summer Tue 3"
+        "name": "Ustawienie lato Wtorek 3"
       },
       "setting_summer_tue_4": {
-        "name": "Setting Summer Tue 4"
+        "name": "Ustawienie lato Wtorek 4"
       },
       "setting_summer_wed_1": {
-        "name": "Setting Summer Wed 1"
+        "name": "Ustawienie lato Środa 1"
       },
       "setting_summer_wed_2": {
-        "name": "Setting Summer Wed 2"
+        "name": "Ustawienie lato Środa 2"
       },
       "setting_summer_wed_3": {
-        "name": "Setting Summer Wed 3"
+        "name": "Ustawienie lato Środa 3"
       },
       "setting_summer_wed_4": {
-        "name": "Setting Summer Wed 4"
+        "name": "Ustawienie lato Środa 4"
       },
       "setting_winter_fri_1": {
-        "name": "Setting Winter Fri 1"
+        "name": "Ustawienie zima Piątek 1"
       },
       "setting_winter_fri_2": {
-        "name": "Setting Winter Fri 2"
+        "name": "Ustawienie zima Piątek 2"
       },
       "setting_winter_fri_3": {
-        "name": "Setting Winter Fri 3"
+        "name": "Ustawienie zima Piątek 3"
       },
       "setting_winter_fri_4": {
-        "name": "Setting Winter Fri 4"
+        "name": "Ustawienie zima Piątek 4"
       },
       "setting_winter_mon_1": {
-        "name": "Setting Winter Mon 1"
+        "name": "Ustawienie zima Poniedziałek 1"
       },
       "setting_winter_mon_2": {
-        "name": "Setting Winter Mon 2"
+        "name": "Ustawienie zima Poniedziałek 2"
       },
       "setting_winter_mon_3": {
-        "name": "Setting Winter Mon 3"
+        "name": "Ustawienie zima Poniedziałek 3"
       },
       "setting_winter_mon_4": {
-        "name": "Setting Winter Mon 4"
+        "name": "Ustawienie zima Poniedziałek 4"
       },
       "setting_winter_sat_1": {
-        "name": "Setting Winter Sat 1"
+        "name": "Ustawienie zima Sobota 1"
       },
       "setting_winter_sat_2": {
-        "name": "Setting Winter Sat 2"
+        "name": "Ustawienie zima Sobota 2"
       },
       "setting_winter_sat_3": {
-        "name": "Setting Winter Sat 3"
+        "name": "Ustawienie zima Sobota 3"
       },
       "setting_winter_sat_4": {
-        "name": "Setting Winter Sat 4"
+        "name": "Ustawienie zima Sobota 4"
       },
       "setting_winter_sun_1": {
-        "name": "Setting Winter Sun 1"
+        "name": "Ustawienie zima Niedziela 1"
       },
       "setting_winter_sun_2": {
-        "name": "Setting Winter Sun 2"
+        "name": "Ustawienie zima Niedziela 2"
       },
       "setting_winter_sun_3": {
-        "name": "Setting Winter Sun 3"
+        "name": "Ustawienie zima Niedziela 3"
       },
       "setting_winter_sun_4": {
-        "name": "Setting Winter Sun 4"
+        "name": "Ustawienie zima Niedziela 4"
       },
       "setting_winter_thu_1": {
-        "name": "Setting Winter Thu 1"
+        "name": "Ustawienie zima Czwartek 1"
       },
       "setting_winter_thu_2": {
-        "name": "Setting Winter Thu 2"
+        "name": "Ustawienie zima Czwartek 2"
       },
       "setting_winter_thu_3": {
-        "name": "Setting Winter Thu 3"
+        "name": "Ustawienie zima Czwartek 3"
       },
       "setting_winter_thu_4": {
-        "name": "Setting Winter Thu 4"
+        "name": "Ustawienie zima Czwartek 4"
       },
       "setting_winter_tue_1": {
-        "name": "Setting Winter Tue 1"
+        "name": "Ustawienie zima Wtorek 1"
       },
       "setting_winter_tue_2": {
-        "name": "Setting Winter Tue 2"
+        "name": "Ustawienie zima Wtorek 2"
       },
       "setting_winter_tue_3": {
-        "name": "Setting Winter Tue 3"
+        "name": "Ustawienie zima Wtorek 3"
       },
       "setting_winter_tue_4": {
-        "name": "Setting Winter Tue 4"
+        "name": "Ustawienie zima Wtorek 4"
       },
       "setting_winter_wed_1": {
-        "name": "Setting Winter Wed 1"
+        "name": "Ustawienie zima Środa 1"
       },
       "setting_winter_wed_2": {
-        "name": "Setting Winter Wed 2"
+        "name": "Ustawienie zima Środa 2"
       },
       "setting_winter_wed_3": {
-        "name": "Setting Winter Wed 3"
+        "name": "Ustawienie zima Środa 3"
       },
       "setting_winter_wed_4": {
-        "name": "Setting Winter Wed 4"
+        "name": "Ustawienie zima Środa 4"
       },
       "cfg_post_heater_mode": {
         "name": "Tryb pracy ERV",
@@ -916,10 +916,10 @@
         "name": "Przepływ powietrza manualnie"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Temperatura lato chłodzenie free"
+        "name": "Temperatura bypassa (wolne chłodzenie)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Temperatura lato grzanie free"
+        "name": "Temperatura bypassa (wolne grzanie)"
       },
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
@@ -1137,229 +1137,229 @@
         "name": "Godzina kontroli filtrów (roz.)"
       },
       "manual_airing_time_to_start": {
-        "name": "Manual Airing Time To Start"
+        "name": "Godzina startu przewietrzania ręcznego"
       },
       "airing_summer_mon": {
-        "name": "Airing Summer Mon"
+        "name": "Przewietrzanie lato Poniedziałek"
       },
       "airing_summer_tue": {
-        "name": "Airing Summer Tue"
+        "name": "Przewietrzanie lato Wtorek"
       },
       "airing_summer_wed": {
-        "name": "Airing Summer Wed"
+        "name": "Przewietrzanie lato Środa"
       },
       "airing_summer_thu": {
-        "name": "Airing Summer Thu"
+        "name": "Przewietrzanie lato Czwartek"
       },
       "airing_summer_fri": {
-        "name": "Airing Summer Fri"
+        "name": "Przewietrzanie lato Piątek"
       },
       "airing_summer_sat": {
-        "name": "Airing Summer Sat"
+        "name": "Przewietrzanie lato Sobota"
       },
       "airing_summer_sun": {
-        "name": "Airing Summer Sun"
+        "name": "Przewietrzanie lato Niedziela"
       },
       "airing_winter_mon": {
-        "name": "Airing Winter Mon"
+        "name": "Przewietrzanie zima Poniedziałek"
       },
       "airing_winter_tue": {
-        "name": "Airing Winter Tue"
+        "name": "Przewietrzanie zima Wtorek"
       },
       "airing_winter_wed": {
-        "name": "Airing Winter Wed"
+        "name": "Przewietrzanie zima Środa"
       },
       "airing_winter_thu": {
-        "name": "Airing Winter Thu"
+        "name": "Przewietrzanie zima Czwartek"
       },
       "airing_winter_fri": {
-        "name": "Airing Winter Fri"
+        "name": "Przewietrzanie zima Piątek"
       },
       "airing_winter_sat": {
-        "name": "Airing Winter Sat"
+        "name": "Przewietrzanie zima Sobota"
       },
       "airing_winter_sun": {
-        "name": "Airing Winter Sun"
+        "name": "Przewietrzanie zima Niedziela"
       },
       "start_gwc_regen_summer_time": {
-        "name": "Start Gwc Regen Summer Time"
+        "name": "Start regeneracji GWC (lato)"
       },
       "stop_gwc_regen_summer_time": {
-        "name": "Stop Gwc Regen Summer Time"
+        "name": "Stop regeneracji GWC (lato)"
       },
       "start_gwc_regen_winter_time": {
-        "name": "Start Gwc Regen Winter Time"
+        "name": "Start regeneracji GWC (zima)"
       },
       "stop_gwc_regen_winter_time": {
-        "name": "Stop Gwc Regen Winter Time"
+        "name": "Stop regeneracji GWC (zima)"
       },
       "schedule_summer_fri_1": {
-        "name": "Schedule Summer Fri 1"
+        "name": "Harmonogram lato Piątek 1"
       },
       "schedule_summer_fri_2": {
-        "name": "Schedule Summer Fri 2"
+        "name": "Harmonogram lato Piątek 2"
       },
       "schedule_summer_fri_3": {
-        "name": "Schedule Summer Fri 3"
+        "name": "Harmonogram lato Piątek 3"
       },
       "schedule_summer_fri_4": {
-        "name": "Schedule Summer Fri 4"
+        "name": "Harmonogram lato Piątek 4"
       },
       "schedule_summer_mon_1": {
-        "name": "Schedule Summer Mon 1"
+        "name": "Harmonogram lato Poniedziałek 1"
       },
       "schedule_summer_mon_2": {
-        "name": "Schedule Summer Mon 2"
+        "name": "Harmonogram lato Poniedziałek 2"
       },
       "schedule_summer_mon_3": {
-        "name": "Schedule Summer Mon 3"
+        "name": "Harmonogram lato Poniedziałek 3"
       },
       "schedule_summer_mon_4": {
-        "name": "Schedule Summer Mon 4"
+        "name": "Harmonogram lato Poniedziałek 4"
       },
       "schedule_summer_sat_1": {
-        "name": "Schedule Summer Sat 1"
+        "name": "Harmonogram lato Sobota 1"
       },
       "schedule_summer_sat_2": {
-        "name": "Schedule Summer Sat 2"
+        "name": "Harmonogram lato Sobota 2"
       },
       "schedule_summer_sat_3": {
-        "name": "Schedule Summer Sat 3"
+        "name": "Harmonogram lato Sobota 3"
       },
       "schedule_summer_sat_4": {
-        "name": "Schedule Summer Sat 4"
+        "name": "Harmonogram lato Sobota 4"
       },
       "schedule_summer_sun_1": {
-        "name": "Schedule Summer Sun 1"
+        "name": "Harmonogram lato Niedziela 1"
       },
       "schedule_summer_sun_2": {
-        "name": "Schedule Summer Sun 2"
+        "name": "Harmonogram lato Niedziela 2"
       },
       "schedule_summer_sun_3": {
-        "name": "Schedule Summer Sun 3"
+        "name": "Harmonogram lato Niedziela 3"
       },
       "schedule_summer_sun_4": {
-        "name": "Schedule Summer Sun 4"
+        "name": "Harmonogram lato Niedziela 4"
       },
       "schedule_summer_thu_1": {
-        "name": "Schedule Summer Thu 1"
+        "name": "Harmonogram lato Czwartek 1"
       },
       "schedule_summer_thu_2": {
-        "name": "Schedule Summer Thu 2"
+        "name": "Harmonogram lato Czwartek 2"
       },
       "schedule_summer_thu_3": {
-        "name": "Schedule Summer Thu 3"
+        "name": "Harmonogram lato Czwartek 3"
       },
       "schedule_summer_thu_4": {
-        "name": "Schedule Summer Thu 4"
+        "name": "Harmonogram lato Czwartek 4"
       },
       "schedule_summer_tue_1": {
-        "name": "Schedule Summer Tue 1"
+        "name": "Harmonogram lato Wtorek 1"
       },
       "schedule_summer_tue_2": {
-        "name": "Schedule Summer Tue 2"
+        "name": "Harmonogram lato Wtorek 2"
       },
       "schedule_summer_tue_3": {
-        "name": "Schedule Summer Tue 3"
+        "name": "Harmonogram lato Wtorek 3"
       },
       "schedule_summer_tue_4": {
-        "name": "Schedule Summer Tue 4"
+        "name": "Harmonogram lato Wtorek 4"
       },
       "schedule_summer_wed_1": {
-        "name": "Schedule Summer Wed 1"
+        "name": "Harmonogram lato Środa 1"
       },
       "schedule_summer_wed_2": {
-        "name": "Schedule Summer Wed 2"
+        "name": "Harmonogram lato Środa 2"
       },
       "schedule_summer_wed_3": {
-        "name": "Schedule Summer Wed 3"
+        "name": "Harmonogram lato Środa 3"
       },
       "schedule_summer_wed_4": {
-        "name": "Schedule Summer Wed 4"
+        "name": "Harmonogram lato Środa 4"
       },
       "schedule_winter_fri_1": {
-        "name": "Schedule Winter Fri 1"
+        "name": "Harmonogram zima Piątek 1"
       },
       "schedule_winter_fri_2": {
-        "name": "Schedule Winter Fri 2"
+        "name": "Harmonogram zima Piątek 2"
       },
       "schedule_winter_fri_3": {
-        "name": "Schedule Winter Fri 3"
+        "name": "Harmonogram zima Piątek 3"
       },
       "schedule_winter_fri_4": {
-        "name": "Schedule Winter Fri 4"
+        "name": "Harmonogram zima Piątek 4"
       },
       "schedule_winter_mon_1": {
-        "name": "Schedule Winter Mon 1"
+        "name": "Harmonogram zima Poniedziałek 1"
       },
       "schedule_winter_mon_2": {
-        "name": "Schedule Winter Mon 2"
+        "name": "Harmonogram zima Poniedziałek 2"
       },
       "schedule_winter_mon_3": {
-        "name": "Schedule Winter Mon 3"
+        "name": "Harmonogram zima Poniedziałek 3"
       },
       "schedule_winter_mon_4": {
-        "name": "Schedule Winter Mon 4"
+        "name": "Harmonogram zima Poniedziałek 4"
       },
       "schedule_winter_sat_1": {
-        "name": "Schedule Winter Sat 1"
+        "name": "Harmonogram zima Sobota 1"
       },
       "schedule_winter_sat_2": {
-        "name": "Schedule Winter Sat 2"
+        "name": "Harmonogram zima Sobota 2"
       },
       "schedule_winter_sat_3": {
-        "name": "Schedule Winter Sat 3"
+        "name": "Harmonogram zima Sobota 3"
       },
       "schedule_winter_sat_4": {
-        "name": "Schedule Winter Sat 4"
+        "name": "Harmonogram zima Sobota 4"
       },
       "schedule_winter_sun_1": {
-        "name": "Schedule Winter Sun 1"
+        "name": "Harmonogram zima Niedziela 1"
       },
       "schedule_winter_sun_2": {
-        "name": "Schedule Winter Sun 2"
+        "name": "Harmonogram zima Niedziela 2"
       },
       "schedule_winter_sun_3": {
-        "name": "Schedule Winter Sun 3"
+        "name": "Harmonogram zima Niedziela 3"
       },
       "schedule_winter_sun_4": {
-        "name": "Schedule Winter Sun 4"
+        "name": "Harmonogram zima Niedziela 4"
       },
       "schedule_winter_thu_1": {
-        "name": "Schedule Winter Thu 1"
+        "name": "Harmonogram zima Czwartek 1"
       },
       "schedule_winter_thu_2": {
-        "name": "Schedule Winter Thu 2"
+        "name": "Harmonogram zima Czwartek 2"
       },
       "schedule_winter_thu_3": {
-        "name": "Schedule Winter Thu 3"
+        "name": "Harmonogram zima Czwartek 3"
       },
       "schedule_winter_thu_4": {
-        "name": "Schedule Winter Thu 4"
+        "name": "Harmonogram zima Czwartek 4"
       },
       "schedule_winter_tue_1": {
-        "name": "Schedule Winter Tue 1"
+        "name": "Harmonogram zima Wtorek 1"
       },
       "schedule_winter_tue_2": {
-        "name": "Schedule Winter Tue 2"
+        "name": "Harmonogram zima Wtorek 2"
       },
       "schedule_winter_tue_3": {
-        "name": "Schedule Winter Tue 3"
+        "name": "Harmonogram zima Wtorek 3"
       },
       "schedule_winter_tue_4": {
-        "name": "Schedule Winter Tue 4"
+        "name": "Harmonogram zima Wtorek 4"
       },
       "schedule_winter_wed_1": {
-        "name": "Schedule Winter Wed 1"
+        "name": "Harmonogram zima Środa 1"
       },
       "schedule_winter_wed_2": {
-        "name": "Schedule Winter Wed 2"
+        "name": "Harmonogram zima Środa 2"
       },
       "schedule_winter_wed_3": {
-        "name": "Schedule Winter Wed 3"
+        "name": "Harmonogram zima Środa 3"
       },
       "schedule_winter_wed_4": {
-        "name": "Schedule Winter Wed 4"
+        "name": "Harmonogram zima Środa 4"
       }
     }
   },
