@@ -51,7 +51,10 @@ async def async_setup_entry(
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
             continue
         if register_name in available or force_create:
-            address = register_map[register_name]
+            address = register_map.get(register_name)
+            if address is None:
+                _LOGGER.warning("No address for select: %s, skipping", register_name)
+                continue
             entities.append(ThesslaGreenSelect(coordinator, register_name, address, select_def))
 
     if entities:

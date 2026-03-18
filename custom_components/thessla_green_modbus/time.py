@@ -50,7 +50,10 @@ async def async_setup_entry(
             continue
 
         if register_name in available or force_create:
-            address = register_map[register_name]
+            address = register_map.get(register_name)
+            if address is None:
+                _LOGGER.warning("No address for time entity: %s, skipping", register_name)
+                continue
             entities.append(ThesslaGreenTime(coordinator, register_name, address, time_def))
 
     if entities:
