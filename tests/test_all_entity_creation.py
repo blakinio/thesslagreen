@@ -388,10 +388,10 @@ async def test_entity_counts_per_platform(
     # Dropping below these means a regression (e.g. lazy-init dict left empty,
     # stale mappings removed en-masse, or a new capability gate introduced).
     MIN_COUNTS = {
-        "sensor": 50,
+        "sensor": 45,
         "binary_sensor": 70,
         "select": 70,
-        "number": 40,
+        "number": 45,
         "switch": 15,
         "time": 56,
     }

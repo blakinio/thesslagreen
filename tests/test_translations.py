@@ -322,7 +322,6 @@ def test_new_translation_keys_present():
             assert key in trans["entity"]["number"]
         for key in new_switch_keys:
             assert key in trans["entity"]["switch"]
-            assert key in trans["entity"]["sensor"]
         for key in new_binary_keys:
             assert key in trans["entity"]["binary_sensor"]
         for key in new_sensor_keys:

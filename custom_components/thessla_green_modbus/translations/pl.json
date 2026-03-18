@@ -355,9 +355,6 @@
       "gwc_regen_flag": {
         "name": "Regeneracja GWC aktywna"
       },
-      "stop_ahu_code": {
-        "name": "Alarm blokujący centrali"
-      },
       "f_142": {
         "name": "Brak filtra nawiewnego"
       },
@@ -372,6 +369,9 @@
       },
       "post_heater_on": {
         "name": "Nagrzewnica wtórna (ERV) aktywna"
+      },
+      "antifreeze_mode": {
+        "name": "Tryb antyzamrożeniowy"
       }
     },
     "climate": {
@@ -450,13 +450,13 @@
         "name": "Empty House Coef"
       },
       "fan_speed_1_coef": {
-        "name": "Fan Speed 1 Coef"
+        "name": "Współczynnik prędkości 1"
       },
       "fan_speed_2_coef": {
-        "name": "Fan Speed 2 Coef"
+        "name": "Współczynnik prędkości 2"
       },
       "fan_speed_3_coef": {
-        "name": "Fan Speed 3 Coef"
+        "name": "Współczynnik prędkości 3"
       },
       "fireplace_mode_time": {
         "name": "Fireplace Mode Time"
@@ -468,10 +468,10 @@
         "name": "Gwc Regen Period"
       },
       "hood_exhaust_coef": {
-        "name": "Hood Exhaust Coef"
+        "name": "Współczynnik okapu wywiew"
       },
       "hood_supply_coef": {
-        "name": "Hood Supply Coef"
+        "name": "Współczynnik okapu nawiew"
       },
       "lock_date": {
         "name": "Data blokady kluczem (rok)"
@@ -553,9 +553,6 @@
       },
       "cfgszf_fw_new": {
         "name": "Zużycie filtra wywiewnego"
-      },
-      "cfg_post_heater_mode": {
-        "name": "Tryb pracy ERV"
       },
       "bypass_coef_1": {
         "name": "Bypass Coef 1"
@@ -913,6 +910,14 @@
       },
       "setting_winter_wed_4": {
         "name": "Setting Winter Wed 4"
+      },
+      "cfg_post_heater_mode": {
+        "name": "Tryb pracy ERV",
+        "state": {
+          "off": "Wyłączony",
+          "mode_1": "Tryb 1",
+          "mode_2": "Tryb 2"
+        }
       }
     },
     "sensor": {
@@ -928,9 +933,6 @@
       "ambient_temperature": {
         "name": "Temperatura otoczenia"
       },
-      "antifreeze_mode": {
-        "name": "Tryb antyzamrożeniowy"
-      },
       "bypass_mode": {
         "name": "Tryb bypassu",
         "state": {
@@ -938,9 +940,6 @@
           "open": "Otwarty",
           "closed": "Zamknięty"
         }
-      },
-      "bypass_off": {
-        "name": "Wyłączenie bypass"
       },
       "cf_version": {
         "name": "Wersja modułu CF"
@@ -993,15 +992,6 @@
       "exhaust_temperature": {
         "name": "Temperatura wywiewu"
       },
-      "fan_speed_1_coef": {
-        "name": "Współczynnik prędkości 1"
-      },
-      "fan_speed_2_coef": {
-        "name": "Współczynnik prędkości 2"
-      },
-      "fan_speed_3_coef": {
-        "name": "Współczynnik prędkości 3"
-      },
       "fpx_temperature": {
         "name": "Temperatura FPX"
       },
@@ -1019,20 +1009,8 @@
       "heating_temperature": {
         "name": "Temperatura ogrzewania"
       },
-      "hood_exhaust_coef": {
-        "name": "Współczynnik okapu wywiew"
-      },
-      "hood_supply_coef": {
-        "name": "Współczynnik okapu nawiew"
-      },
-      "max_exhaust_air_flow_rate": {
-        "name": "Maksymalny przepływ wywiewu"
-      },
       "max_percentage": {
         "name": "Maksymalny procent"
-      },
-      "max_supply_air_flow_rate": {
-        "name": "Maksymalny przepływ nawiewu"
       },
       "min_bypass_temperature": {
         "name": "Minimalna temperatura bypass"
@@ -1087,6 +1065,15 @@
       },
       "filter_exhaust_date_limit_get": {
         "name": "Data wymiany filtra wywiewnego"
+      },
+      "stop_ahu_code": {
+        "name": "Kod alarmu blokującego"
+      },
+      "max_supply_air_flow_rate": {
+        "name": "Maksymalny przepływ nawiewu"
+      },
+      "max_exhaust_air_flow_rate": {
+        "name": "Maksymalny przepływ wywiewu"
       }
     },
     "switch": {

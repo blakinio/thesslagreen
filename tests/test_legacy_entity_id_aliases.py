@@ -6,7 +6,7 @@ def test_map_legacy_entity_id_for_migrated_domains() -> None:
 
     assert (
         map_legacy_entity_id("number.rekuperator_antifreeze_mode")
-        == "sensor.rekuperator_antifreeze_mode"
+        == "binary_sensor.rekuperator_antifreeze_mode"
     )
     assert (
         map_legacy_entity_id("sensor.rekuperator_bypass_mode_status")

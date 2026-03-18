@@ -113,7 +113,7 @@ LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {
 # common suffixes like ``_mode``.
 LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     # Legacy number entities migrated to read-only sensors.
-    "rekuperator_antifreeze_mode": ("sensor", "rekuperator_antifreeze_mode"),
+    "rekuperator_antifreeze_mode": ("binary_sensor", "rekuperator_antifreeze_mode"),
     "rekuperator_comfort_mode": ("sensor", "rekuperator_comfort_mode"),
     "rekuperator_dac_supply": ("sensor", "rekuperator_dac_supply"),
     "rekuperator_dac_exhaust": ("sensor", "rekuperator_dac_exhaust"),
@@ -121,11 +121,11 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_dac_cooler": ("sensor", "rekuperator_dac_cooler"),
     "rekuperator_supply_air_flow": ("sensor", "rekuperator_supply_air_flow"),
     "rekuperator_exhaust_air_flow": ("sensor", "rekuperator_exhaust_air_flow"),
-    "rekuperator_hood_supply_coef": ("sensor", "rekuperator_hood_supply_coef"),
-    "rekuperator_hood_exhaust_coef": ("sensor", "rekuperator_hood_exhaust_coef"),
-    "rekuperator_fan_speed_1_coef": ("sensor", "rekuperator_fan_speed_1_coef"),
-    "rekuperator_fan_speed_2_coef": ("sensor", "rekuperator_fan_speed_2_coef"),
-    "rekuperator_fan_speed_3_coef": ("sensor", "rekuperator_fan_speed_3_coef"),
+    "rekuperator_hood_supply_coef": ("number", "rekuperator_hood_supply_coef"),
+    "rekuperator_hood_exhaust_coef": ("number", "rekuperator_hood_exhaust_coef"),
+    "rekuperator_fan_speed_1_coef": ("number", "rekuperator_fan_speed_1_coef"),
+    "rekuperator_fan_speed_2_coef": ("number", "rekuperator_fan_speed_2_coef"),
+    "rekuperator_fan_speed_3_coef": ("number", "rekuperator_fan_speed_3_coef"),
     # Legacy status sensors migrated to select/switch controls.
     "rekuperator_mode": ("select", "rekuperator_mode"),
     "rekuperator_gwc_mode": ("sensor", "rekuperator_gwc_mode"),
@@ -359,8 +359,13 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Filter wear percentages
     "cfgszf_fn_new": {"icon": "mdi:filter-check"},
     "cfgszf_fw_new": {"icon": "mdi:filter-check"},
-    # ERV (secondary heater) operating mode
-    "cfg_post_heater_mode": {"icon": "mdi:radiator"},
+    # Fan speed setpoints for AirS panel (bieg 1/2/3)
+    "fan_speed_1_coef": {"icon": "mdi:speedometer"},
+    "fan_speed_2_coef": {"icon": "mdi:speedometer"},
+    "fan_speed_3_coef": {"icon": "mdi:speedometer"},
+    # Hood ventilation intensity setpoints
+    "hood_supply_coef": {"icon": "mdi:stove"},
+    "hood_exhaust_coef": {"icon": "mdi:stove"},
 }
 
 
@@ -735,11 +740,6 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "entity_category": "diagnostic",
     },
     # Mode and status sensors
-    "antifreeze_mode": {
-        "translation_key": "antifreeze_mode",
-        "icon": "mdi:snowflake-alert",
-        "register_type": "holding_registers",
-    },
     "antifreez_stage": {
         "translation_key": "antifreez_stage",
         "icon": "mdi:snowflake-thermometer",
@@ -824,15 +824,13 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
         "icon": "mdi:fan-plus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "max_exhaust_air_flow_rate": {
         "translation_key": "max_exhaust_air_flow_rate",
         "icon": "mdi:fan-minus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "nominal_supply_air_flow": {
@@ -847,11 +845,6 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:fan-clock",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "bypass_off": {
-        "translation_key": "bypass_off",
-        "icon": "mdi:thermometer-off",
         "register_type": "holding_registers",
     },
     # PWM control values (napięcia wentylatorów)
@@ -890,40 +883,10 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # estimated_power and total_energy were register_type="calculated" and are
     # never instantiated by the sensor platform — removed until a
     # computed-register mechanism is implemented.
-    # Coefficients and intensive settings
-    "fan_speed_1_coef": {
-        "translation_key": "fan_speed_1_coef",
-        "icon": "mdi:speedometer",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "fan_speed_2_coef": {
-        "translation_key": "fan_speed_2_coef",
-        "icon": "mdi:speedometer",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "fan_speed_3_coef": {
-        "translation_key": "fan_speed_3_coef",
-        "icon": "mdi:speedometer",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "hood_supply_coef": {
-        "translation_key": "hood_supply_coef",
-        "icon": "mdi:stove",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "hood_exhaust_coef": {
-        "translation_key": "hood_exhaust_coef",
-        "icon": "mdi:stove",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
+    # AHU stop alarm code (0 = no alarm, 1–98 = specific alarm type S code)
+    "stop_ahu_code": {
+        "translation_key": "stop_ahu_code",
+        "icon": "mdi:alert-circle",
         "register_type": "holding_registers",
     },
     # intensive_supply, intensive_exhaust and calculated_efficiency were
@@ -1100,6 +1063,13 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"one": 0, "two": 1},
         "register_type": "holding_registers",
     },
+    # ERV (secondary heater) operating mode — 3 fixed options
+    "cfg_post_heater_mode": {
+        "icon": "mdi:radiator",
+        "translation_key": "cfg_post_heater_mode",
+        "states": {"off": 0, "mode_1": 1, "mode_2": 2},
+        "register_type": "holding_registers",
+    },
 }
 
 BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
@@ -1265,10 +1235,11 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "holding_registers",
     },
-    "stop_ahu_code": {
-        "translation_key": "stop_ahu_code",
-        "icon": "mdi:alert-circle",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+    # Antifreeze (FPX) activation flag — read-only boolean holding register
+    "antifreeze_mode": {
+        "translation_key": "antifreeze_mode",
+        "icon": "mdi:snowflake-alert",
+        "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "holding_registers",
     },
     # Filter alarm flags (f_ prefix → diagnostic binary sensors)
