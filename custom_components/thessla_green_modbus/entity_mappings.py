@@ -728,6 +728,12 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "register_type": "holding_registers",
         "entity_category": "diagnostic",
     },
+    "exp_version": {
+        "translation_key": "exp_version",
+        "icon": "mdi:information-outline",
+        "register_type": "holding_registers",
+        "entity_category": "diagnostic",
+    },
     # Mode and status sensors
     "antifreeze_mode": {
         "translation_key": "antifreeze_mode",
@@ -961,15 +967,15 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"mode_1": 1, "mode_2": 2, "mode_3": 3},
         "register_type": "holding_registers",
     },
-    "cfg_mode1": {
+    "cfg_mode_1": {
         "icon": "mdi:tune",
-        "translation_key": "cfg_mode1",
+        "translation_key": "cfg_mode_1",
         "states": {"auto": 0, "manual": 1, "temporary": 2},
         "register_type": "holding_registers",
     },
-    "cfg_mode2": {
+    "cfg_mode_2": {
         "icon": "mdi:tune",
-        "translation_key": "cfg_mode2",
+        "translation_key": "cfg_mode_2",
         "states": {"auto": 0, "manual": 1, "temporary": 2},
         "register_type": "holding_registers",
     },

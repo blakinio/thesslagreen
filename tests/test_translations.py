@@ -130,7 +130,12 @@ SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") 
     ROOT / "const.py", "SPECIAL_FUNCTION_MAP"
 )
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
-NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
+try:
+    import importlib as _importlib
+    _em = _importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
+    NUMBER_KEYS = list(_em.NUMBER_ENTITY_MAPPINGS.keys())
+except Exception:  # pragma: no cover - fallback to AST if import fails
+    NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
 # Error/status code translations are not currently enforced
 CODE_KEYS: list[str] = []
 
@@ -255,8 +260,10 @@ def test_translation_keys_present():
         _assert_keys(trans, "binary_sensor", BINARY_KEYS)
         _assert_keys(trans, "switch", SWITCH_KEYS)
         _assert_keys(trans, "select", SELECT_KEYS)
-        if NUMBER_KEYS:
-            _assert_keys(trans, "number", NUMBER_KEYS)
+        assert NUMBER_KEYS, (
+            "NUMBER_KEYS jest puste — entity_mappings nie załadował mapowań number"
+        )
+        _assert_keys(trans, "number", NUMBER_KEYS)
         if "codes" in trans:
             _assert_code_keys(trans, CODE_KEYS)
         _assert_issue_keys(trans, ISSUE_KEYS)
@@ -293,7 +300,6 @@ def test_new_translation_keys_present():
         "nominal_supply_air_flow",
         "nominal_exhaust_air_flow",
         "air_flow_rate_manual",
-        "air_flow_rate_temporary_2",
     ]
     new_switch_keys = ["bypass_off"]
     new_binary_keys = ["water_removal_active"]

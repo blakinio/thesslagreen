@@ -407,12 +407,6 @@
       "air_flow_rate_temporary": {
         "name": "Intensywność wentylacji (tryb chwilowy)"
       },
-      "air_flow_rate_temporary_1": {
-        "name": "Air Flow Rate Temporary 1"
-      },
-      "air_flow_rate_temporary_2": {
-        "name": "Air Flow Rate Temporary 2"
-      },
       "air_flow_rate_temporary_4401": {
         "name": "Intensywność wentylacji (tryb chwilowy, roz.)"
       },
@@ -449,53 +443,8 @@
       "bypass_coef_2": {
         "name": "Bypass Coef 2"
       },
-      "cf_version": {
-        "name": "Cf Version"
-      },
-      "cfg_mode_1": {
-        "name": "Cfg Mode 1"
-      },
-      "cfg_mode_2": {
-        "name": "Cfg Mode 2"
-      },
       "contamination_coef": {
         "name": "Contamination Coef"
-      },
-      "dac_cooler": {
-        "name": "Dac Cooler"
-      },
-      "dac_exhaust": {
-        "name": "Dac Exhaust"
-      },
-      "dac_heater": {
-        "name": "Dac Heater"
-      },
-      "dac_supply": {
-        "name": "Dac Supply"
-      },
-      "date_time": {
-        "name": "Data i godzina (RRMM)"
-      },
-      "date_time_1": {
-        "name": "Date Time 1"
-      },
-      "date_time_2": {
-        "name": "Date Time 2"
-      },
-      "date_time_3": {
-        "name": "Date Time 3"
-      },
-      "date_time_4": {
-        "name": "Date Time 4"
-      },
-      "date_time_ddtt": {
-        "name": "Data i godzina (dzień/tydzień)"
-      },
-      "date_time_ggmm": {
-        "name": "Data i godzina (GGmm)"
-      },
-      "date_time_sscc": {
-        "name": "Data i godzina (sekundy)"
       },
       "delta_t_gwc": {
         "name": "Delta T aktywacji GWC"
@@ -503,26 +452,8 @@
       "device_name": {
         "name": "Device Name"
       },
-      "e_196": {
-        "name": "E 196"
-      },
-      "e_197": {
-        "name": "E 197"
-      },
-      "e_198": {
-        "name": "E 198"
-      },
-      "e_199": {
-        "name": "E 199"
-      },
       "empty_house_coef": {
         "name": "Empty House Coef"
-      },
-      "exhaust_air_flow": {
-        "name": "Exhaust Air Flow"
-      },
-      "exp_version": {
-        "name": "Wersja oprogramowania modułu Expansion"
       },
       "fan_speed_1_coef": {
         "name": "Fan Speed 1 Coef"
@@ -556,15 +487,6 @@
       },
       "lock_date_00mm": {
         "name": "Data blokady kluczem (miesiąc)"
-      },
-      "lock_date_1": {
-        "name": "Lock Date 1"
-      },
-      "lock_date_2": {
-        "name": "Lock Date 2"
-      },
-      "lock_date_3": {
-        "name": "Lock Date 3"
       },
       "lock_pass": {
         "name": "Lock Pass"
@@ -605,20 +527,11 @@
       "open_window_coef": {
         "name": "Open Window Coef"
       },
-      "pres_check_day_1": {
-        "name": "Pres Check Day 1"
-      },
-      "pres_check_day_2": {
-        "name": "Pres Check Day 2"
-      },
       "required_temperature": {
         "name": "Temperatura zadana"
       },
       "rtc_cal": {
         "name": "Rtc Cal"
-      },
-      "supply_air_flow": {
-        "name": "Supply Air Flow"
       },
       "supply_air_temperature_manual": {
         "name": "Temperatura nawiewu manualnie"
@@ -635,29 +548,11 @@
       "supply_air_temperature_temporary_4404": {
         "name": "Temperatura nawiewu (tryb chwilowy, roz.)"
       },
-      "uart_0_baud": {
-        "name": "Uart 0 Baud"
-      },
       "uart_0_id": {
         "name": "ID urządzenia portu 0"
       },
-      "uart_0_parity": {
-        "name": "Uart 0 Parity"
-      },
-      "uart_0_stop": {
-        "name": "Uart 0 Stop"
-      },
-      "uart_1_baud": {
-        "name": "Uart 1 Baud"
-      },
       "uart_1_id": {
         "name": "ID urządzenia portu 1"
-      },
-      "uart_1_parity": {
-        "name": "Uart 1 Parity"
-      },
-      "uart_1_stop": {
-        "name": "Uart 1 Stop"
       },
       "cfgszf_fn_new": {
         "name": "Zużycie filtra nawiewnego"
@@ -710,7 +605,7 @@
           "mode_3": "Tryb 3: przepustnica + wyłączenie wentylatora wywiewu"
         }
       },
-      "cfg_mode1": {
+      "cfg_mode_1": {
         "name": "Tryb konfiguracji 1",
         "state": {
           "auto": "Automatyczny",
@@ -718,7 +613,7 @@
           "temporary": "Chwilowy"
         }
       },
-      "cfg_mode2": {
+      "cfg_mode_2": {
         "name": "Tryb konfiguracji 2",
         "state": {
           "auto": "Automatyczny",
@@ -1204,9 +1099,6 @@
       "air_flow_rate_manual": {
         "name": "Przepływ powietrza manualnie"
       },
-      "air_flow_rate_temporary_2": {
-        "name": "Air Flow Rate Temporary 2"
-      },
       "air_temperature_summer_free_cooling": {
         "name": "Temperatura lato chłodzenie free"
       },
@@ -1274,6 +1166,9 @@
       },
       "cf_version": {
         "name": "Wersja modułu CF"
+      },
+      "exp_version": {
+        "name": "Wersja modułu rozszerzenia"
       },
       "comfort_mode": {
         "name": "Tryb komfort"

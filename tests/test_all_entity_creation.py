@@ -369,6 +369,22 @@ async def test_entity_counts_per_platform(
         f"sensor: {counts['sensor']} < definitions({sensor_defs})+1"
     )
 
+    # Minimum thresholds — each value is ~80% of the expected count.
+    # Dropping below these means a regression (e.g. lazy-init dict left empty,
+    # stale mappings removed en-masse, or a new capability gate introduced).
+    MIN_COUNTS = {
+        "sensor": 50,
+        "binary_sensor": 70,
+        "select": 100,
+        "number": 40,
+        "switch": 15,
+    }
+    for platform_name, minimum in MIN_COUNTS.items():
+        assert counts[platform_name] >= minimum, (  # nosec B101
+            f"Platform '{platform_name}': got {counts[platform_name]}, minimum={minimum} "
+            "(regresja — sprawdź entity_mappings i _build_entity_mappings)"
+        )
+
     # print counts for visibility in -v output
     print("\nEntity counts per platform:")
     for platform_name, count in counts.items():

@@ -18,7 +18,7 @@ from tests.test_translations import (
 )
 from tests.test_translations import SWITCH_KEYS as SWITCH_ENTITY_KEYS
 
-SENSOR_KEYS = SENSOR_ENTITY_KEYS + ["air_flow_rate_manual", "air_flow_rate_temporary_2"]
+SENSOR_KEYS = SENSOR_ENTITY_KEYS + ["air_flow_rate_manual"]
 
 SWITCH_KEYS = SWITCH_ENTITY_KEYS + ["on_off_panel_mode"] + list(SPECIAL_FUNCTION_MAP.keys())
 
