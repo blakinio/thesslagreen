@@ -381,6 +381,62 @@ views:
             entity: switch.rekuperator_airflow_rate_change_flag
           - type: tile
             entity: switch.rekuperator_temperature_change_flag
+          - type: tile
+            entity: switch.rekuperator_bypass_off
+          - type: tile
+            entity: switch.rekuperator_gwc_off
+          - type: tile
+            entity: switch.rekuperator_comfort_mode_panel
+          - type: tile
+            entity: switch.rekuperator_lock_flag
+          - type: tile
+            entity: number.rekuperator_air_flow_rate_temporary
+          - type: tile
+            entity: number.rekuperator_air_flow_rate_temporary_4401
+          - type: tile
+            entity: number.rekuperator_supply_air_temperature_temporary
+          - type: tile
+            entity: number.rekuperator_supply_air_temperature_temporary_4404
+          - type: tile
+            entity: number.rekuperator_delta_t_gwc
+          - type: tile
+            entity: number.rekuperator_uart_0_id
+          - type: tile
+            entity: number.rekuperator_uart_1_id
+          - type: tile
+            entity: number.rekuperator_cfgszf_fn_new
+          - type: tile
+            entity: number.rekuperator_cfgszf_fw_new
+          - type: tile
+            entity: select.rekuperator_cfg_mode_1
+          - type: tile
+            entity: select.rekuperator_cfg_mode_2
+          - type: tile
+            entity: select.rekuperator_pres_check_day
+          - type: tile
+            entity: select.rekuperator_pres_check_day_4432
+          - type: tile
+            entity: select.rekuperator_filter_change
+          - type: tile
+            entity: select.rekuperator_gwc_regen
+          - type: tile
+            entity: select.rekuperator_uart_0_baud
+          - type: tile
+            entity: select.rekuperator_uart_0_parity
+          - type: tile
+            entity: select.rekuperator_uart_0_stop
+          - type: tile
+            entity: select.rekuperator_uart_1_baud
+          - type: tile
+            entity: select.rekuperator_uart_1_parity
+          - type: tile
+            entity: select.rekuperator_uart_1_stop
+          - type: tile
+            entity: select.rekuperator_cfg_post_heater_mode
+          - type: tile
+            entity: time.rekuperator_pres_check_time
+          - type: tile
+            entity: time.rekuperator_pres_check_time_ggmm
         title: Rekuperator
       - type: grid
         cards:
@@ -644,6 +700,178 @@ views:
             entity: binary_sensor.rekuperator_power_supply_fans
           - type: tile
             entity: binary_sensor.rekuperator_work_permit
+          - type: tile
+            entity: binary_sensor.rekuperator_alarm
+          - type: tile
+            entity: binary_sensor.rekuperator_bypass
+          - type: tile
+            entity: binary_sensor.rekuperator_error
+          - type: tile
+            entity: binary_sensor.rekuperator_info
+          - type: tile
+            entity: binary_sensor.rekuperator_e_99
+          - type: tile
+            entity: binary_sensor.rekuperator_e_100
+          - type: tile
+            entity: binary_sensor.rekuperator_e_101
+          - type: tile
+            entity: binary_sensor.rekuperator_e_102
+          - type: tile
+            entity: binary_sensor.rekuperator_e_103
+          - type: tile
+            entity: binary_sensor.rekuperator_e_104
+          - type: tile
+            entity: binary_sensor.rekuperator_e_105
+          - type: tile
+            entity: binary_sensor.rekuperator_e_106
+          - type: tile
+            entity: binary_sensor.rekuperator_e_108
+          - type: tile
+            entity: binary_sensor.rekuperator_e_138
+          - type: tile
+            entity: binary_sensor.rekuperator_e_139
+          - type: tile
+            entity: binary_sensor.rekuperator_e_140
+          - type: tile
+            entity: binary_sensor.rekuperator_e_141
+          - type: tile
+            entity: binary_sensor.rekuperator_e_144
+          - type: tile
+            entity: binary_sensor.rekuperator_e_145
+          - type: tile
+            entity: binary_sensor.rekuperator_e_148
+          - type: tile
+            entity: binary_sensor.rekuperator_e_149
+          - type: tile
+            entity: binary_sensor.rekuperator_e_150
+          - type: tile
+            entity: binary_sensor.rekuperator_e_151
+          - type: tile
+            entity: binary_sensor.rekuperator_e_152
+          - type: tile
+            entity: binary_sensor.rekuperator_e_156
+          - type: tile
+            entity: binary_sensor.rekuperator_e_157
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_196
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_197
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_198
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_199
+          - type: tile
+            entity: binary_sensor.rekuperator_e_200
+          - type: tile
+            entity: binary_sensor.rekuperator_e_201
+          - type: tile
+            entity: binary_sensor.rekuperator_e_202
+          - type: tile
+            entity: binary_sensor.rekuperator_e_203
+          - type: tile
+            entity: binary_sensor.rekuperator_e_249
+          - type: tile
+            entity: binary_sensor.rekuperator_e_250
+          - type: tile
+            entity: binary_sensor.rekuperator_e_251
+          - type: tile
+            entity: binary_sensor.rekuperator_e_252
+          - type: tile
+            entity: binary_sensor.rekuperator_s_2
+          - type: tile
+            entity: binary_sensor.rekuperator_s_6
+          - type: tile
+            entity: binary_sensor.rekuperator_s_7
+          - type: tile
+            entity: binary_sensor.rekuperator_s_8
+          - type: tile
+            entity: binary_sensor.rekuperator_s_9
+          - type: tile
+            entity: binary_sensor.rekuperator_s_10
+          - type: tile
+            entity: binary_sensor.rekuperator_s_13
+          - type: tile
+            entity: binary_sensor.rekuperator_s_14
+          - type: tile
+            entity: binary_sensor.rekuperator_s_15
+          - type: tile
+            entity: binary_sensor.rekuperator_s_16
+          - type: tile
+            entity: binary_sensor.rekuperator_s_17
+          - type: tile
+            entity: binary_sensor.rekuperator_s_19
+          - type: tile
+            entity: binary_sensor.rekuperator_s_20
+          - type: tile
+            entity: binary_sensor.rekuperator_s_22
+          - type: tile
+            entity: binary_sensor.rekuperator_s_23
+          - type: tile
+            entity: binary_sensor.rekuperator_s_24
+          - type: tile
+            entity: binary_sensor.rekuperator_s_25
+          - type: tile
+            entity: binary_sensor.rekuperator_s_26
+          - type: tile
+            entity: binary_sensor.rekuperator_s_28
+          - type: tile
+            entity: binary_sensor.rekuperator_s_29
+          - type: tile
+            entity: binary_sensor.rekuperator_s_30
+          - type: tile
+            entity: binary_sensor.rekuperator_s_31
+          - type: tile
+            entity: binary_sensor.rekuperator_s_32
+          - type: tile
+            entity: binary_sensor.rekuperator_f_142
+          - type: tile
+            entity: binary_sensor.rekuperator_f_143
+          - type: tile
+            entity: binary_sensor.rekuperator_f_146
+          - type: tile
+            entity: binary_sensor.rekuperator_f_147
+          - type: tile
+            entity: binary_sensor.rekuperator_gwc_regen_flag
+          - type: tile
+            entity: binary_sensor.rekuperator_post_heater_on
+          - type: tile
+            entity: binary_sensor.rekuperator_water_removal_active
+          - type: tile
+            entity: binary_sensor.rekuperator_duct_water_heater_pump
+          - type: tile
+            entity: binary_sensor.rekuperator_dp_ahu_filter_overflow
+          - type: tile
+            entity: binary_sensor.rekuperator_dp_duct_filter_overflow
+          - type: tile
+            entity: sensor.rekuperator_cf_version
+          - type: tile
+            entity: sensor.rekuperator_exp_version
+          - type: tile
+            entity: sensor.rekuperator_gwc_temperature
+          - type: tile
+            entity: sensor.rekuperator_duct_supply_temperature
+          - type: tile
+            entity: sensor.rekuperator_compilation_seconds
+          - type: tile
+            entity: sensor.rekuperator_serial_number
+          - type: tile
+            entity: sensor.rekuperator_version_major
+          - type: tile
+            entity: sensor.rekuperator_version_minor
+          - type: tile
+            entity: sensor.rekuperator_version_patch
+          - type: tile
+            entity: sensor.rekuperator_filter_supply_date_limit_get
+          - type: tile
+            entity: sensor.rekuperator_filter_exhaust_date_limit_get
+          - type: tile
+            entity: sensor.rekuperator_lock_date
+          - type: tile
+            entity: sensor.rekuperator_lock_date_00mm
+          - type: tile
+            entity: sensor.rekuperator_lock_date_00dd
         title: Rekuperator
       - type: grid
         cards:
