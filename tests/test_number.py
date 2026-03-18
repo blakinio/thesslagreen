@@ -282,14 +282,16 @@ def test_number_invalid_register_raises(mock_coordinator):
         ThesslaGreenNumber(mock_coordinator, "invalid_register", {})
 
 
-def test_number_mappings_include_writable_sensor_registers_only():
-    """Writable sensor-backed holding registers should still expose numbers."""
+def test_number_mappings_include_writable_registers():
+    """Writable holding registers should expose number controls."""
 
     number_keys = ENTITY_MAPPINGS["number"]
 
-    # Writable and sensor-backed registers must expose number controls.
-    assert "hood_exhaust_coef" in SENSOR_ENTITY_MAPPINGS
+    # Writable registers exposed only as numbers (not duplicated as sensors).
     assert "hood_exhaust_coef" in number_keys
+    assert "hood_exhaust_coef" not in SENSOR_ENTITY_MAPPINGS
+    assert "hood_supply_coef" in number_keys
+    assert "fan_speed_1_coef" in number_keys
 
     # Read-only sensor registers must not expose number controls.
     assert "dac_supply" in SENSOR_ENTITY_MAPPINGS

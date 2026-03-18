@@ -113,7 +113,7 @@ LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {
 # common suffixes like ``_mode``.
 LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     # Legacy number entities migrated to read-only sensors.
-    "rekuperator_antifreeze_mode": ("sensor", "rekuperator_antifreeze_mode"),
+    "rekuperator_antifreeze_mode": ("binary_sensor", "rekuperator_antifreeze_mode"),
     "rekuperator_comfort_mode": ("sensor", "rekuperator_comfort_mode"),
     "rekuperator_dac_supply": ("sensor", "rekuperator_dac_supply"),
     "rekuperator_dac_exhaust": ("sensor", "rekuperator_dac_exhaust"),
@@ -121,11 +121,11 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_dac_cooler": ("sensor", "rekuperator_dac_cooler"),
     "rekuperator_supply_air_flow": ("sensor", "rekuperator_supply_air_flow"),
     "rekuperator_exhaust_air_flow": ("sensor", "rekuperator_exhaust_air_flow"),
-    "rekuperator_hood_supply_coef": ("sensor", "rekuperator_hood_supply_coef"),
-    "rekuperator_hood_exhaust_coef": ("sensor", "rekuperator_hood_exhaust_coef"),
-    "rekuperator_fan_speed_1_coef": ("sensor", "rekuperator_fan_speed_1_coef"),
-    "rekuperator_fan_speed_2_coef": ("sensor", "rekuperator_fan_speed_2_coef"),
-    "rekuperator_fan_speed_3_coef": ("sensor", "rekuperator_fan_speed_3_coef"),
+    "rekuperator_hood_supply_coef": ("number", "rekuperator_hood_supply_coef"),
+    "rekuperator_hood_exhaust_coef": ("number", "rekuperator_hood_exhaust_coef"),
+    "rekuperator_fan_speed_1_coef": ("number", "rekuperator_fan_speed_1_coef"),
+    "rekuperator_fan_speed_2_coef": ("number", "rekuperator_fan_speed_2_coef"),
+    "rekuperator_fan_speed_3_coef": ("number", "rekuperator_fan_speed_3_coef"),
     # Legacy status sensors migrated to select/switch controls.
     "rekuperator_mode": ("select", "rekuperator_mode"),
     "rekuperator_gwc_mode": ("sensor", "rekuperator_gwc_mode"),
@@ -330,37 +330,70 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
 
 # Manual overrides for number entities (icons, custom units, etc.)
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
-    # Temperature control
-    "required_temperature": {"icon": "mdi:thermometer"},
-    "supply_air_temperature_manual": {"icon": "mdi:thermometer-plus"},
-    "supply_air_temperature_temporary_1": {"icon": "mdi:thermometer-plus"},
-    "supply_air_temperature_temporary_2": {"icon": "mdi:thermometer-plus"},
-    "min_bypass_temperature": {"icon": "mdi:thermometer-low"},
-    "air_temperature_summer_free_heating": {"icon": "mdi:thermometer"},
-    "air_temperature_summer_free_cooling": {"icon": "mdi:thermometer"},
-    # Air flow control
-    "air_flow_rate_manual": {"icon": "mdi:fan"},
-    "max_supply_air_flow_rate": {"icon": "mdi:fan-plus"},
-    "max_exhaust_air_flow_rate": {"icon": "mdi:fan-minus"},
-    "nominal_supply_air_flow": {"icon": "mdi:fan-clock"},
-    "nominal_exhaust_air_flow": {"icon": "mdi:fan-clock"},
-    "max_supply_air_flow_rate_gwc": {"icon": "mdi:fan-plus"},
-    "max_exhaust_air_flow_rate_gwc": {"icon": "mdi:fan-minus"},
-    "nominal_supply_air_flow_gwc": {"icon": "mdi:fan-clock"},
-    "nominal_exhaust_air_flow_gwc": {"icon": "mdi:fan-clock"},
-    # GWC parameters
-    "min_gwc_air_temperature": {"icon": "mdi:thermometer-low"},
-    "max_gwc_air_temperature": {"icon": "mdi:thermometer-high"},
-    "gwc_regen_period": {"icon": "mdi:timer"},
-    "delta_t_gwc": {"icon": "mdi:thermometer-lines"},
+    # Temperature setpoints — multiplier=0.5, so physical = raw × 0.5 (°C)
+    # PDF raw range 20–90 → physical 10–45 °C, step 0.5 °C
+    "required_temperature": {"icon": "mdi:thermometer", "min": 10, "max": 45, "step": 0.5},
+    "supply_air_temperature_manual": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
+    "supply_air_temperature_temporary": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
+    "supply_air_temperature_temporary_1": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
+    "supply_air_temperature_temporary_2": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
+    "supply_air_temperature_temporary_4404": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
+    # PDF raw 10–40 → physical 5–20 °C
+    "min_bypass_temperature": {"icon": "mdi:thermometer-low", "min": 5, "max": 20, "step": 0.5},
+    # PDF raw 30–60 → physical 15–30 °C
+    "air_temperature_summer_free_heating": {"icon": "mdi:thermometer", "min": 15, "max": 30, "step": 0.5},
+    "air_temperature_summer_free_cooling": {"icon": "mdi:thermometer", "min": 15, "max": 30, "step": 0.5},
+    # PDF raw 0–20 → physical 0–10 °C
+    "min_gwc_air_temperature": {"icon": "mdi:thermometer-low", "min": 0, "max": 10, "step": 0.5},
+    # PDF raw 30–80 → physical 15–40 °C
+    "max_gwc_air_temperature": {"icon": "mdi:thermometer-high", "min": 15, "max": 40, "step": 0.5},
+    # PDF raw 0–10 → physical 0–5 °C
+    "delta_t_gwc": {"icon": "mdi:thermometer-lines", "min": 0, "max": 5, "step": 0.5},
+    # Air flow intensity setpoints (%), multiplier=1
+    "air_flow_rate_manual": {"icon": "mdi:fan", "min": 10, "max": 100, "step": 1},
+    "air_flow_rate_temporary": {"icon": "mdi:fan", "min": 10, "max": 100, "step": 1},
+    "air_flow_rate_temporary_4401": {"icon": "mdi:fan", "min": 10, "max": 100, "step": 1},
+    "max_supply_air_flow_rate": {"icon": "mdi:fan-plus", "min": 100, "max": 150, "step": 1},
+    "max_exhaust_air_flow_rate": {"icon": "mdi:fan-minus", "min": 100, "max": 150, "step": 1},
+    "max_supply_air_flow_rate_gwc": {"icon": "mdi:fan-plus", "min": 100, "max": 150, "step": 1},
+    "max_exhaust_air_flow_rate_gwc": {"icon": "mdi:fan-minus", "min": 100, "max": 150, "step": 1},
+    # Nominal (calibrated) air flow (m³/h)
+    "nominal_supply_air_flow": {"icon": "mdi:fan-clock", "min": 110, "max": 1900, "step": 1},
+    "nominal_exhaust_air_flow": {"icon": "mdi:fan-clock", "min": 110, "max": 1900, "step": 1},
+    "nominal_supply_air_flow_gwc": {"icon": "mdi:fan-clock", "min": 110, "max": 1900, "step": 1},
+    "nominal_exhaust_air_flow_gwc": {"icon": "mdi:fan-clock", "min": 110, "max": 1900, "step": 1},
+    # GWC timing
+    "gwc_regen_period": {"icon": "mdi:timer", "min": 4, "max": 8, "step": 1},
+    # Fan speed setpoints for AirS panel — speed 1/2/3 non-overlapping ranges
+    "fan_speed_1_coef": {"icon": "mdi:speedometer", "min": 10, "max": 45, "step": 1},
+    "fan_speed_2_coef": {"icon": "mdi:speedometer", "min": 46, "max": 75, "step": 1},
+    "fan_speed_3_coef": {"icon": "mdi:speedometer", "min": 76, "max": 100, "step": 1},
+    # Special-function intensity setpoints (%)
+    "hood_supply_coef": {"icon": "mdi:stove", "min": 100, "max": 150, "step": 1},
+    "hood_exhaust_coef": {"icon": "mdi:stove", "min": 100, "max": 150, "step": 1},
+    "fireplace_supply_coef": {"icon": "mdi:fireplace", "min": 5, "max": 50, "step": 1},
+    "airing_bathroom_coef": {"icon": "mdi:shower", "min": 100, "max": 150, "step": 1},
+    "airing_coef": {"icon": "mdi:window-open", "min": 100, "max": 150, "step": 1},
+    "contamination_coef": {"icon": "mdi:air-filter", "min": 100, "max": 150, "step": 1},
+    "empty_house_coef": {"icon": "mdi:home-off", "min": 10, "max": 50, "step": 1},
+    "airing_switch_coef": {"icon": "mdi:toggle-switch", "min": 100, "max": 150, "step": 1},
+    "open_window_coef": {"icon": "mdi:window-open-variant", "min": 10, "max": 100, "step": 1},
+    "bypass_coef_1": {"icon": "mdi:transfer", "min": 10, "max": 100, "step": 1},
+    "bypass_coef_2": {"icon": "mdi:transfer", "min": 10, "max": 150, "step": 1},
+    # Special-function timing (min)
+    "airing_panel_mode_time": {"icon": "mdi:timer", "min": 1, "max": 45, "step": 1},
+    "airing_switch_mode_time": {"icon": "mdi:timer", "min": 1, "max": 45, "step": 1},
+    "airing_switch_mode_on_delay": {"icon": "mdi:timer-plus-outline", "min": 0, "max": 20, "step": 1},
+    "airing_switch_mode_off_delay": {"icon": "mdi:timer-minus-outline", "min": 0, "max": 20, "step": 1},
+    "fireplace_mode_time": {"icon": "mdi:timer", "min": 1, "max": 10, "step": 1},
     # Modbus port device IDs
-    "uart_0_id": {"icon": "mdi:identifier"},
-    "uart_1_id": {"icon": "mdi:identifier"},
-    # Filter wear percentages
-    "cfgszf_fn_new": {"icon": "mdi:filter-check"},
-    "cfgszf_fw_new": {"icon": "mdi:filter-check"},
-    # ERV (secondary heater) operating mode
-    "cfg_post_heater_mode": {"icon": "mdi:radiator"},
+    "uart_0_id": {"icon": "mdi:identifier", "min": 10, "max": 19, "step": 1},
+    "uart_1_id": {"icon": "mdi:identifier", "min": 10, "max": 19, "step": 1},
+    # Filter wear thresholds (0–127 %)
+    "cfgszf_fn_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
+    "cfgszf_fw_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
+    # RTC calibration register (0–255, signed offset encoded as unsigned)
+    "rtc_cal": {"icon": "mdi:clock-edit", "min": 0, "max": 255, "step": 1},
 }
 
 
@@ -735,11 +768,6 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "entity_category": "diagnostic",
     },
     # Mode and status sensors
-    "antifreeze_mode": {
-        "translation_key": "antifreeze_mode",
-        "icon": "mdi:snowflake-alert",
-        "register_type": "holding_registers",
-    },
     "antifreez_stage": {
         "translation_key": "antifreez_stage",
         "icon": "mdi:snowflake-thermometer",
@@ -824,15 +852,13 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
         "icon": "mdi:fan-plus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "max_exhaust_air_flow_rate": {
         "translation_key": "max_exhaust_air_flow_rate",
         "icon": "mdi:fan-minus",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "nominal_supply_air_flow": {
@@ -847,11 +873,6 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:fan-clock",
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "bypass_off": {
-        "translation_key": "bypass_off",
-        "icon": "mdi:thermometer-off",
         "register_type": "holding_registers",
     },
     # PWM control values (napięcia wentylatorów)
@@ -890,40 +911,10 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # estimated_power and total_energy were register_type="calculated" and are
     # never instantiated by the sensor platform — removed until a
     # computed-register mechanism is implemented.
-    # Coefficients and intensive settings
-    "fan_speed_1_coef": {
-        "translation_key": "fan_speed_1_coef",
-        "icon": "mdi:speedometer",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "fan_speed_2_coef": {
-        "translation_key": "fan_speed_2_coef",
-        "icon": "mdi:speedometer",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "fan_speed_3_coef": {
-        "translation_key": "fan_speed_3_coef",
-        "icon": "mdi:speedometer",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "hood_supply_coef": {
-        "translation_key": "hood_supply_coef",
-        "icon": "mdi:stove",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
-        "register_type": "holding_registers",
-    },
-    "hood_exhaust_coef": {
-        "translation_key": "hood_exhaust_coef",
-        "icon": "mdi:stove",
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": PERCENTAGE,
+    # AHU stop alarm code (0 = no alarm, 1–98 = specific alarm type S code)
+    "stop_ahu_code": {
+        "translation_key": "stop_ahu_code",
+        "icon": "mdi:alert-circle",
         "register_type": "holding_registers",
     },
     # intensive_supply, intensive_exhaust and calculated_efficiency were
@@ -1100,6 +1091,13 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"one": 0, "two": 1},
         "register_type": "holding_registers",
     },
+    # ERV (secondary heater) operating mode — 3 fixed options
+    "cfg_post_heater_mode": {
+        "icon": "mdi:radiator",
+        "translation_key": "cfg_post_heater_mode",
+        "states": {"off": 0, "mode_1": 1, "mode_2": 2},
+        "register_type": "holding_registers",
+    },
 }
 
 BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
@@ -1265,10 +1263,11 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "holding_registers",
     },
-    "stop_ahu_code": {
-        "translation_key": "stop_ahu_code",
-        "icon": "mdi:alert-circle",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
+    # Antifreeze (FPX) activation flag — read-only boolean holding register
+    "antifreeze_mode": {
+        "translation_key": "antifreeze_mode",
+        "icon": "mdi:snowflake-alert",
+        "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "holding_registers",
     },
     # Filter alarm flags (f_ prefix → diagnostic binary sensors)
@@ -1388,6 +1387,9 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
 
 # Discrete entity mappings and special modes are populated during setup
 
+# Time entity mappings for writable BCD HHMM registers
+TIME_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
+
 # Aggregated entity mappings for all platforms
 ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {}
 
@@ -1408,6 +1410,8 @@ def _extend_entity_mappings_from_registers() -> None:
         if register in SWITCH_ENTITY_MAPPINGS:
             continue
         if register in SELECT_ENTITY_MAPPINGS:
+            continue
+        if register in TIME_ENTITY_MAPPINGS:
             continue
 
         if (
@@ -1433,25 +1437,32 @@ def _extend_entity_mappings_from_registers() -> None:
             continue
 
         # BCD time registers (schedule/airing/GWC timeslots).
-        # RW schedule_*, start_gwc_regen*, and stop_gwc_regen* registers are
-        # exposed as select entities so the user can pick a time from a
-        # dropdown; all other BCD time registers remain read-only sensors.
+        # RW schedule_* registers → select entity (time-slot picker).
+        # RW start_gwc_regen* / stop_gwc_regen* → select entity (preset times).
+        # RW pres_check_time*, airing_summer_*, airing_winter_*,
+        #   manual_airing_time_to_start → native HA time entity (HH:MM picker).
+        # Read-only BCD time registers remain sensors.
         from .utils import BCD_TIME_PREFIXES
 
-        _TIME_SELECT_PREFIXES = ("schedule_", "start_gwc_regen", "stop_gwc_regen")
+        _TIME_ENTITY_PREFIXES = (
+            "schedule_",
+            "pres_check_time",
+            "airing_summer_",
+            "airing_winter_",
+            "manual_airing_time_to_start",
+            "start_gwc_regen",
+            "stop_gwc_regen",
+        )
 
         if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
             reg_access = (reg.access or "").upper()
-            if register.startswith(_TIME_SELECT_PREFIXES) and "W" in reg_access:
-                from .schedule_helpers import TIME_SELECT_STATES
-
-                SELECT_ENTITY_MAPPINGS.setdefault(
+            if register.startswith(_TIME_ENTITY_PREFIXES) and "W" in reg_access:
+                TIME_ENTITY_MAPPINGS.setdefault(
                     register,
                     {
                         "translation_key": register,
                         "icon": "mdi:clock-outline",
                         "register_type": "holding_registers",
-                        "states": TIME_SELECT_STATES,
                     },
                 )
             else:
@@ -1612,9 +1623,10 @@ def _build_entity_mappings() -> None:
     """Populate entity mapping dictionaries."""
 
     global NUMBER_ENTITY_MAPPINGS, BINARY_SENSOR_ENTITY_MAPPINGS
-    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, ENTITY_MAPPINGS
+    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, TIME_ENTITY_MAPPINGS, ENTITY_MAPPINGS
 
     NUMBER_ENTITY_MAPPINGS = _load_number_mappings()
+    TIME_ENTITY_MAPPINGS = {}
 
     _gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
     for key in BINARY_SENSOR_ENTITY_MAPPINGS:
@@ -1649,6 +1661,7 @@ def _build_entity_mappings() -> None:
         "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
         "switch": SWITCH_ENTITY_MAPPINGS,
         "select": SELECT_ENTITY_MAPPINGS,
+        "time": TIME_ENTITY_MAPPINGS,
     }
 
 

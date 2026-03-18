@@ -130,6 +130,7 @@ SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") 
     ROOT / "const.py", "SPECIAL_FUNCTION_MAP"
 )
 SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
+TIME_KEYS: list[str] = []
 try:
     import importlib as _importlib
     _em = _importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
@@ -165,13 +166,24 @@ try:
             if _name not in BINARY_KEYS:
                 BINARY_KEYS.append(_name)
         if any(_name.startswith(_p) for _p in BCD_TIME_PREFIXES):
-            # RW schedule_*, start_gwc_regen*, and stop_gwc_regen* registers
-            # are select entities; all other BCD time registers remain sensors.
+            # RW schedule_* → select entities (slot picker).
+            # RW pres_check_time*, airing_summer_*, airing_winter_*,
+            # manual_airing_time_to_start, start_gwc_regen*, stop_gwc_regen*
+            # → native HA time entities (HH:MM picker).
+            # All other BCD time registers remain read-only sensors.
             _access = (_r.get("access") or "").upper()
-            _time_select_prefixes = ("schedule_", "start_gwc_regen", "stop_gwc_regen")
-            if _name.startswith(_time_select_prefixes) and "W" in _access:
-                if _name not in SELECT_KEYS:
-                    SELECT_KEYS.append(_name)
+            _time_entity_prefixes = (
+                "schedule_",
+                "pres_check_time",
+                "airing_summer_",
+                "airing_winter_",
+                "manual_airing_time_to_start",
+                "start_gwc_regen",
+                "stop_gwc_regen",
+            )
+            if _name.startswith(_time_entity_prefixes) and "W" in _access:
+                if _name not in TIME_KEYS:
+                    TIME_KEYS.append(_name)
             elif _name not in SENSOR_KEYS:
                 SENSOR_KEYS.append(_name)
         # setting_summer_* and setting_winter_* RW registers are select entities
@@ -264,6 +276,7 @@ def test_translation_keys_present():
             "NUMBER_KEYS jest puste — entity_mappings nie załadował mapowań number"
         )
         _assert_keys(trans, "number", NUMBER_KEYS)
+        _assert_keys(trans, "time", TIME_KEYS)
         if "codes" in trans:
             _assert_code_keys(trans, CODE_KEYS)
         _assert_issue_keys(trans, ISSUE_KEYS)
@@ -309,7 +322,6 @@ def test_new_translation_keys_present():
             assert key in trans["entity"]["number"]
         for key in new_switch_keys:
             assert key in trans["entity"]["switch"]
-            assert key in trans["entity"]["sensor"]
         for key in new_binary_keys:
             assert key in trans["entity"]["binary_sensor"]
         for key in new_sensor_keys:
