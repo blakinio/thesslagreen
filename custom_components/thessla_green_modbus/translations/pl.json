@@ -443,9 +443,6 @@
       "delta_t_gwc": {
         "name": "Delta T aktywacji GWC"
       },
-      "device_name": {
-        "name": "Device Name"
-      },
       "empty_house_coef": {
         "name": "Empty House Coef"
       },
@@ -472,15 +469,6 @@
       },
       "hood_supply_coef": {
         "name": "Współczynnik okapu nawiew"
-      },
-      "lock_date": {
-        "name": "Data blokady kluczem (rok)"
-      },
-      "lock_date_00dd": {
-        "name": "Data blokady kluczem (dzień)"
-      },
-      "lock_date_00mm": {
-        "name": "Data blokady kluczem (miesiąc)"
       },
       "lock_pass": {
         "name": "Lock Pass"
@@ -521,9 +509,6 @@
       "open_window_coef": {
         "name": "Open Window Coef"
       },
-      "required_temperature": {
-        "name": "Temperatura zadana"
-      },
       "rtc_cal": {
         "name": "Rtc Cal"
       },
@@ -532,12 +517,6 @@
       },
       "supply_air_temperature_temporary": {
         "name": "Temperatura nawiewu (tryb chwilowy)"
-      },
-      "supply_air_temperature_temporary_1": {
-        "name": "Supply Air Temperature Temporary 1"
-      },
-      "supply_air_temperature_temporary_2": {
-        "name": "Supply Air Temperature Temporary 2"
       },
       "supply_air_temperature_temporary_4404": {
         "name": "Temperatura nawiewu (tryb chwilowy, roz.)"
@@ -921,6 +900,18 @@
       }
     },
     "sensor": {
+      "lock_date": {
+        "name": "Data blokady kluczem (rok)"
+      },
+      "lock_date_00dd": {
+        "name": "Data blokady kluczem (dzień)"
+      },
+      "lock_date_00mm": {
+        "name": "Data blokady kluczem (miesiąc)"
+      },
+      "required_temperature": {
+        "name": "Temperatura zadana"
+      },
       "air_flow_rate_manual": {
         "name": "Przepływ powietrza manualnie"
       },

@@ -449,9 +449,6 @@
       "delta_t_gwc": {
         "name": "GWC Activation Temperature Differential"
       },
-      "device_name": {
-        "name": "Device Name"
-      },
       "empty_house_coef": {
         "name": "Empty House Coef"
       },
@@ -478,15 +475,6 @@
       },
       "hood_supply_coef": {
         "name": "Hood Supply Coefficient"
-      },
-      "lock_date": {
-        "name": "Product Key Lock Date (Year)"
-      },
-      "lock_date_00dd": {
-        "name": "Product Key Lock Date (Day)"
-      },
-      "lock_date_00mm": {
-        "name": "Product Key Lock Date (Month)"
       },
       "lock_pass": {
         "name": "Lock Pass"
@@ -527,9 +515,6 @@
       "open_window_coef": {
         "name": "Open Window Coef"
       },
-      "required_temperature": {
-        "name": "Required Temperature"
-      },
       "rtc_cal": {
         "name": "Rtc Cal"
       },
@@ -538,12 +523,6 @@
       },
       "supply_air_temperature_temporary": {
         "name": "Temporary Supply Air Temperature"
-      },
-      "supply_air_temperature_temporary_1": {
-        "name": "Supply Air Temperature Temporary 1"
-      },
-      "supply_air_temperature_temporary_2": {
-        "name": "Supply Air Temperature Temporary 2"
       },
       "supply_air_temperature_temporary_4404": {
         "name": "Temporary Supply Air Temperature (Ext.)"
@@ -921,6 +900,18 @@
       }
     },
     "sensor": {
+      "lock_date": {
+        "name": "Product Key Lock Date (Year)"
+      },
+      "lock_date_00dd": {
+        "name": "Product Key Lock Date (Day)"
+      },
+      "lock_date_00mm": {
+        "name": "Product Key Lock Date (Month)"
+      },
+      "required_temperature": {
+        "name": "Required Temperature"
+      },
       "air_flow_rate_manual": {
         "name": "Air Flow Rate Manual"
       },
