@@ -193,6 +193,7 @@ PLATFORMS = [
     "select",
     "number",
     "switch",
+    "time",
 ]
 
 

@@ -117,6 +117,19 @@ class _SelectEntity:  # pragma: no cover - stub
 
 _ensure_attr(_sel_mod, "SelectEntity", _SelectEntity)
 
+# -- components.time (TimeEntity used by time.py) ----------------------------
+_time_mod = sys.modules.setdefault(
+    "homeassistant.components.time",
+    types.ModuleType("homeassistant.components.time"),
+)
+
+
+class _TimeEntity:  # pragma: no cover - stub
+    pass
+
+
+_ensure_attr(_time_mod, "TimeEntity", _TimeEntity)
+
 # -- helpers.entity (EntityCategory used by number.py) ----------------------
 _he_mod = sys.modules.setdefault(
     "homeassistant.helpers.entity",
@@ -325,6 +338,7 @@ async def test_entity_counts_per_platform(
         select,
         sensor,
         switch,
+        time as time_platform,
     )
 
     platforms = [
@@ -335,6 +349,7 @@ async def test_entity_counts_per_platform(
         ("select", select),
         ("number", number),
         ("switch", switch),
+        ("time", time_platform),
     ]
 
     counts: dict[str, int] = {}
@@ -368,6 +383,23 @@ async def test_entity_counts_per_platform(
     assert counts["sensor"] >= sensor_defs + 1, (  # nosec B101
         f"sensor: {counts['sensor']} < definitions({sensor_defs})+1"
     )
+
+    # Minimum thresholds — each value is ~80% of the expected count.
+    # Dropping below these means a regression (e.g. lazy-init dict left empty,
+    # stale mappings removed en-masse, or a new capability gate introduced).
+    MIN_COUNTS = {
+        "sensor": 45,
+        "binary_sensor": 70,
+        "select": 70,
+        "number": 45,
+        "switch": 15,
+        "time": 56,
+    }
+    for platform_name, minimum in MIN_COUNTS.items():
+        assert counts[platform_name] >= minimum, (  # nosec B101
+            f"Platform '{platform_name}': got {counts[platform_name]}, minimum={minimum} "
+            "(regresja — sprawdź entity_mappings i _build_entity_mappings)"
+        )
 
     # print counts for visibility in -v output
     print("\nEntity counts per platform:")
