@@ -233,12 +233,15 @@ def test_schedule_time_select_unknown_for_disabled_slot(mock_coordinator):
     assert entity.current_option is None
 
 
-def test_schedule_registers_in_entity_mappings_select():
-    """Real schedule registers resolved from JSON should land in ENTITY_MAPPINGS select."""
-    select_keys = ENTITY_MAPPINGS.get("select", {})
-    assert "schedule_summer_mon_1" in select_keys, (
-        "schedule_summer_mon_1 should be a select entity (RW BCD time register)"
+def test_schedule_registers_in_entity_mappings_time():
+    """Real schedule registers resolved from JSON should land in ENTITY_MAPPINGS time."""
+    time_keys = ENTITY_MAPPINGS.get("time", {})
+    assert "schedule_summer_mon_1" in time_keys, (
+        "schedule_summer_mon_1 should be a time entity (RW BCD time register)"
     )
     assert "schedule_summer_mon_1" not in ENTITY_MAPPINGS.get("sensor", {}), (
         "schedule_summer_mon_1 must not also be a sensor"
+    )
+    assert "schedule_summer_mon_1" not in ENTITY_MAPPINGS.get("select", {}), (
+        "schedule_summer_mon_1 must not also be a select"
     )

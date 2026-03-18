@@ -172,8 +172,8 @@ try:
             # → native HA time entities (HH:MM picker).
             # All other BCD time registers remain read-only sensors.
             _access = (_r.get("access") or "").upper()
-            _time_select_prefixes = ("schedule_",)
             _time_entity_prefixes = (
+                "schedule_",
                 "pres_check_time",
                 "airing_summer_",
                 "airing_winter_",
@@ -181,10 +181,7 @@ try:
                 "start_gwc_regen",
                 "stop_gwc_regen",
             )
-            if _name.startswith(_time_select_prefixes) and "W" in _access:
-                if _name not in SELECT_KEYS:
-                    SELECT_KEYS.append(_name)
-            elif _name.startswith(_time_entity_prefixes) and "W" in _access:
+            if _name.startswith(_time_entity_prefixes) and "W" in _access:
                 if _name not in TIME_KEYS:
                     TIME_KEYS.append(_name)
             elif _name not in SENSOR_KEYS:
