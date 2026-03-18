@@ -1445,12 +1445,14 @@ def _extend_entity_mappings_from_registers() -> None:
         # Read-only BCD time registers remain sensors.
         from .utils import BCD_TIME_PREFIXES
 
-        _TIME_SELECT_PREFIXES = ("schedule_", "start_gwc_regen", "stop_gwc_regen")
+        _TIME_SELECT_PREFIXES = ("schedule_",)
         _TIME_ENTITY_PREFIXES = (
             "pres_check_time",
             "airing_summer_",
             "airing_winter_",
             "manual_airing_time_to_start",
+            "start_gwc_regen",
+            "stop_gwc_regen",
         )
 
         if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):

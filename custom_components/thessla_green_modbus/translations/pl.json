@@ -914,18 +914,6 @@
       "schedule_winter_wed_4": {
         "name": "Schedule Winter Wed 4"
       },
-      "start_gwc_regen_summer_time": {
-        "name": "Start Gwc Regen Summer Time"
-      },
-      "start_gwc_regen_winter_time": {
-        "name": "Start Gwc Regen Winter Time"
-      },
-      "stop_gwc_regen_summer_time": {
-        "name": "Stop Gwc Regen Summer Time"
-      },
-      "stop_gwc_regen_winter_time": {
-        "name": "Stop Gwc Regen Winter Time"
-      },
       "setting_summer_fri_1": {
         "name": "Setting Summer Fri 1"
       },
@@ -1382,6 +1370,18 @@
       },
       "airing_winter_sun": {
         "name": "Airing Winter Sun"
+      },
+      "start_gwc_regen_summer_time": {
+        "name": "Start Gwc Regen Summer Time"
+      },
+      "stop_gwc_regen_summer_time": {
+        "name": "Stop Gwc Regen Summer Time"
+      },
+      "start_gwc_regen_winter_time": {
+        "name": "Start Gwc Regen Winter Time"
+      },
+      "stop_gwc_regen_winter_time": {
+        "name": "Stop Gwc Regen Winter Time"
       }
     }
   },

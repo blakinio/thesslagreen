@@ -166,17 +166,20 @@ try:
             if _name not in BINARY_KEYS:
                 BINARY_KEYS.append(_name)
         if any(_name.startswith(_p) for _p in BCD_TIME_PREFIXES):
-            # RW schedule_*, start_gwc_regen*, stop_gwc_regen* → select entities.
+            # RW schedule_* → select entities (slot picker).
             # RW pres_check_time*, airing_summer_*, airing_winter_*,
-            # manual_airing_time_to_start → native HA time entities.
+            # manual_airing_time_to_start, start_gwc_regen*, stop_gwc_regen*
+            # → native HA time entities (HH:MM picker).
             # All other BCD time registers remain read-only sensors.
             _access = (_r.get("access") or "").upper()
-            _time_select_prefixes = ("schedule_", "start_gwc_regen", "stop_gwc_regen")
+            _time_select_prefixes = ("schedule_",)
             _time_entity_prefixes = (
                 "pres_check_time",
                 "airing_summer_",
                 "airing_winter_",
                 "manual_airing_time_to_start",
+                "start_gwc_regen",
+                "stop_gwc_regen",
             )
             if _name.startswith(_time_select_prefixes) and "W" in _access:
                 if _name not in SELECT_KEYS:
