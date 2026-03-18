@@ -476,12 +476,6 @@
       "lock_date": {
         "name": "Product Key Lock Date (Year)"
       },
-      "lock_date_00dd": {
-        "name": "Product Key Lock Date (Day)"
-      },
-      "lock_date_00mm": {
-        "name": "Product Key Lock Date (Month)"
-      },
       "lock_pass": {
         "name": "Lock Pass"
       },
@@ -520,9 +514,6 @@
       },
       "open_window_coef": {
         "name": "Open Window Coef"
-      },
-      "required_temperature": {
-        "name": "Required Temperature"
       },
       "rtc_cal": {
         "name": "Rtc Cal"
@@ -921,6 +912,15 @@
       }
     },
     "sensor": {
+      "lock_date_00dd": {
+        "name": "Product Key Lock Date (Day)"
+      },
+      "lock_date_00mm": {
+        "name": "Product Key Lock Date (Month)"
+      },
+      "required_temperature": {
+        "name": "Required Temperature"
+      },
       "air_flow_rate_manual": {
         "name": "Air Flow Rate Manual"
       },

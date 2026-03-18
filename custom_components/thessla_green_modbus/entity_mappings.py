@@ -332,7 +332,6 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Temperature setpoints — multiplier=0.5, so physical = raw × 0.5 (°C)
     # PDF raw range 20–90 → physical 10–45 °C, step 0.5 °C
-    "required_temperature": {"icon": "mdi:thermometer", "min": 10, "max": 45, "step": 0.5},
     "supply_air_temperature_manual": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
     "supply_air_temperature_temporary": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
     "supply_air_temperature_temporary_1": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
@@ -392,8 +391,10 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Filter wear thresholds (0–127 %)
     "cfgszf_fn_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
     "cfgszf_fw_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
-    # RTC calibration register (0–255, signed offset encoded as unsigned)
-    "rtc_cal": {"icon": "mdi:clock-edit", "min": 0, "max": 255, "step": 1},
+    # RTC calibration register (0–255, signed offset encoded as unsigned; no SI unit)
+    "rtc_cal": {"icon": "mdi:clock-edit", "min": 0, "max": 255, "step": 1, "unit": None},
+    # lock_date year register — clear the long description text stored in the unit field
+    "lock_date": {"icon": "mdi:calendar-lock", "unit": None},
 }
 
 
@@ -847,8 +848,26 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": UnitOfTemperature.CELSIUS,
         "register_type": "holding_registers",
     },
-    # required_temp was register_type="calculated" and is never instantiated
-    # by the sensor platform — removed until a computed-register mechanism exists.
+    # required_temperature — read-only comfort-mode temperature setpoint display
+    "required_temperature": {
+        "translation_key": "required_temperature",
+        "icon": "mdi:thermometer",
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
+    # lock_date fields — product-key expiry date (read-only)
+    "lock_date_00dd": {
+        "translation_key": "lock_date_00dd",
+        "icon": "mdi:calendar-lock",
+        "register_type": "holding_registers",
+    },
+    "lock_date_00mm": {
+        "translation_key": "lock_date_00mm",
+        "icon": "mdi:calendar-lock",
+        "register_type": "holding_registers",
+    },
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
         "icon": "mdi:fan-plus",
