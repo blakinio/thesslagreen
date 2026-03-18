@@ -121,7 +121,7 @@ def _get_platforms() -> list[object]:
         else:  # pragma: no cover
             try:
                 platforms.append(Platform(domain))
-            except ValueError:  # pragma: no cover - unsupported domain
+            except (ValueError, TypeError):  # pragma: no cover - unsupported domain
                 _LOGGER.warning("Skipping unsupported platform: %s", domain)
     _platform_cache = platforms
     return platforms

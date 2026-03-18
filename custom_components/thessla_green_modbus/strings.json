@@ -1105,48 +1105,6 @@
       "air_temperature_summer_free_heating": {
         "name": "Air Temperature Summer Free Heating"
       },
-      "airing_summer_fri": {
-        "name": "Airing Summer Fri"
-      },
-      "airing_summer_mon": {
-        "name": "Airing Summer Mon"
-      },
-      "airing_summer_sat": {
-        "name": "Airing Summer Sat"
-      },
-      "airing_summer_sun": {
-        "name": "Airing Summer Sun"
-      },
-      "airing_summer_thu": {
-        "name": "Airing Summer Thu"
-      },
-      "airing_summer_tue": {
-        "name": "Airing Summer Tue"
-      },
-      "airing_summer_wed": {
-        "name": "Airing Summer Wed"
-      },
-      "airing_winter_fri": {
-        "name": "Airing Winter Fri"
-      },
-      "airing_winter_mon": {
-        "name": "Airing Winter Mon"
-      },
-      "airing_winter_sat": {
-        "name": "Airing Winter Sat"
-      },
-      "airing_winter_sun": {
-        "name": "Airing Winter Sun"
-      },
-      "airing_winter_thu": {
-        "name": "Airing Winter Thu"
-      },
-      "airing_winter_tue": {
-        "name": "Airing Winter Tue"
-      },
-      "airing_winter_wed": {
-        "name": "Airing Winter Wed"
-      },
       "ambient_temperature": {
         "name": "Ambient Temperature"
       },
@@ -1247,9 +1205,6 @@
       "hood_supply_coef": {
         "name": "Hood Supply Coefficient"
       },
-      "manual_airing_time_to_start": {
-        "name": "Manual Airing Time To Start"
-      },
       "max_exhaust_air_flow_rate": {
         "name": "Maximum Exhaust Air Flow Rate"
       },
@@ -1276,12 +1231,6 @@
       },
       "period": {
         "name": "Time Period"
-      },
-      "pres_check_time": {
-        "name": "Filter Check Start Time"
-      },
-      "pres_check_time_ggmm": {
-        "name": "Filter Check Start Time (Ext.)"
       },
       "serial_number": {
         "name": "Serial Number"
@@ -1380,6 +1329,59 @@
       },
       "lock_flag": {
         "name": "Lock"
+      }
+    },
+    "time": {
+      "pres_check_time": {
+        "name": "Filter Check Start Time"
+      },
+      "pres_check_time_ggmm": {
+        "name": "Filter Check Start Time (Ext.)"
+      },
+      "manual_airing_time_to_start": {
+        "name": "Manual Airing Time To Start"
+      },
+      "airing_summer_mon": {
+        "name": "Airing Summer Mon"
+      },
+      "airing_summer_tue": {
+        "name": "Airing Summer Tue"
+      },
+      "airing_summer_wed": {
+        "name": "Airing Summer Wed"
+      },
+      "airing_summer_thu": {
+        "name": "Airing Summer Thu"
+      },
+      "airing_summer_fri": {
+        "name": "Airing Summer Fri"
+      },
+      "airing_summer_sat": {
+        "name": "Airing Summer Sat"
+      },
+      "airing_summer_sun": {
+        "name": "Airing Summer Sun"
+      },
+      "airing_winter_mon": {
+        "name": "Airing Winter Mon"
+      },
+      "airing_winter_tue": {
+        "name": "Airing Winter Tue"
+      },
+      "airing_winter_wed": {
+        "name": "Airing Winter Wed"
+      },
+      "airing_winter_thu": {
+        "name": "Airing Winter Thu"
+      },
+      "airing_winter_fri": {
+        "name": "Airing Winter Fri"
+      },
+      "airing_winter_sat": {
+        "name": "Airing Winter Sat"
+      },
+      "airing_winter_sun": {
+        "name": "Airing Winter Sun"
       }
     }
   },

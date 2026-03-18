@@ -1388,6 +1388,9 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
 
 # Discrete entity mappings and special modes are populated during setup
 
+# Time entity mappings for writable BCD HHMM registers
+TIME_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
+
 # Aggregated entity mappings for all platforms
 ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {}
 
@@ -1408,6 +1411,8 @@ def _extend_entity_mappings_from_registers() -> None:
         if register in SWITCH_ENTITY_MAPPINGS:
             continue
         if register in SELECT_ENTITY_MAPPINGS:
+            continue
+        if register in TIME_ENTITY_MAPPINGS:
             continue
 
         if (
@@ -1433,12 +1438,20 @@ def _extend_entity_mappings_from_registers() -> None:
             continue
 
         # BCD time registers (schedule/airing/GWC timeslots).
-        # RW schedule_*, start_gwc_regen*, and stop_gwc_regen* registers are
-        # exposed as select entities so the user can pick a time from a
-        # dropdown; all other BCD time registers remain read-only sensors.
+        # RW schedule_* registers → select entity (time-slot picker).
+        # RW start_gwc_regen* / stop_gwc_regen* → select entity (preset times).
+        # RW pres_check_time*, airing_summer_*, airing_winter_*,
+        #   manual_airing_time_to_start → native HA time entity (HH:MM picker).
+        # Read-only BCD time registers remain sensors.
         from .utils import BCD_TIME_PREFIXES
 
         _TIME_SELECT_PREFIXES = ("schedule_", "start_gwc_regen", "stop_gwc_regen")
+        _TIME_ENTITY_PREFIXES = (
+            "pres_check_time",
+            "airing_summer_",
+            "airing_winter_",
+            "manual_airing_time_to_start",
+        )
 
         if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
             reg_access = (reg.access or "").upper()
@@ -1452,6 +1465,15 @@ def _extend_entity_mappings_from_registers() -> None:
                         "icon": "mdi:clock-outline",
                         "register_type": "holding_registers",
                         "states": TIME_SELECT_STATES,
+                    },
+                )
+            elif register.startswith(_TIME_ENTITY_PREFIXES) and "W" in reg_access:
+                TIME_ENTITY_MAPPINGS.setdefault(
+                    register,
+                    {
+                        "translation_key": register,
+                        "icon": "mdi:clock-outline",
+                        "register_type": "holding_registers",
                     },
                 )
             else:
@@ -1612,9 +1634,10 @@ def _build_entity_mappings() -> None:
     """Populate entity mapping dictionaries."""
 
     global NUMBER_ENTITY_MAPPINGS, BINARY_SENSOR_ENTITY_MAPPINGS
-    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, ENTITY_MAPPINGS
+    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, TIME_ENTITY_MAPPINGS, ENTITY_MAPPINGS
 
     NUMBER_ENTITY_MAPPINGS = _load_number_mappings()
+    TIME_ENTITY_MAPPINGS = {}
 
     _gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
     for key in BINARY_SENSOR_ENTITY_MAPPINGS:
@@ -1649,6 +1672,7 @@ def _build_entity_mappings() -> None:
         "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
         "switch": SWITCH_ENTITY_MAPPINGS,
         "select": SELECT_ENTITY_MAPPINGS,
+        "time": TIME_ENTITY_MAPPINGS,
     }
 
 
