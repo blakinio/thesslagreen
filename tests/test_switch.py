@@ -297,7 +297,9 @@ def test_switch_icon_fallback(hass, mock_config_entry, mock_coordinator):
     def async_add_entities(entities, update=False):  # pragma: no cover - test helper
         added.extend(entities)
 
-    with patch.dict(ENTITY_MAPPINGS["switch"], {"mock_switch_no_icon": config}):
+    with patch.dict(ENTITY_MAPPINGS["switch"], {"mock_switch_no_icon": config}), \
+         patch("custom_components.thessla_green_modbus.switch.coil_registers",
+               return_value={"mock_register": 42}):
         asyncio.run(switch.async_setup_entry(hass, mock_config_entry, async_add_entities))
 
     assert len(added) == 1

@@ -411,11 +411,15 @@ def test_extend_entity_mappings_select_continue(monkeypatch):
 
 
 def test_extend_entity_mappings_generic_writable_binary(monkeypatch):
-    """Register with max_val<=1 and write access creates switch entry (lines 1119-1149)."""
+    """Register with max_val<=1, write access and a matching switch translation key
+    creates a switch entry."""
     reg = RegisterDef(function=3, address=902, name="p10_new_switch", access="rw",
                       min=0, max=1)
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
-    # Make sure this name is not pre-populated
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": {"p10_new_switch"}, "select": set(),
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: set())
     em.SWITCH_ENTITY_MAPPINGS.pop("p10_new_switch", None)
     em.NUMBER_ENTITY_MAPPINGS.pop("p10_new_switch", None)
     em.BINARY_SENSOR_ENTITY_MAPPINGS.pop("p10_new_switch", None)
@@ -425,11 +429,30 @@ def test_extend_entity_mappings_generic_writable_binary(monkeypatch):
     em.SWITCH_ENTITY_MAPPINGS.pop("p10_new_switch", None)
 
 
+def test_extend_entity_mappings_generic_writable_binary_no_translation(monkeypatch):
+    """Register without a matching translation key is NOT added to SWITCH_ENTITY_MAPPINGS."""
+    reg = RegisterDef(function=3, address=902, name="p10_no_translation_switch", access="rw",
+                      min=0, max=1)
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": set(),
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: set())
+    em.SWITCH_ENTITY_MAPPINGS.pop("p10_no_translation_switch", None)
+    em._extend_entity_mappings_from_registers()
+    assert "p10_no_translation_switch" not in em.SWITCH_ENTITY_MAPPINGS
+
+
 def test_extend_entity_mappings_generic_readonly_binary(monkeypatch):
-    """Register with max_val<=1 and read-only access creates binary sensor (lines 1140-1149)."""
+    """Register with max_val<=1, read-only access and a matching binary_sensor translation
+    key creates a binary sensor entry."""
     reg = RegisterDef(function=3, address=903, name="p10_new_binary", access="ro",
                       min=0, max=1)
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": {"p10_new_binary"}, "switch": set(), "select": set(),
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: set())
     em.BINARY_SENSOR_ENTITY_MAPPINGS.pop("p10_new_binary", None)
     em._extend_entity_mappings_from_registers()
     assert "p10_new_binary" in em.BINARY_SENSOR_ENTITY_MAPPINGS
@@ -437,10 +460,14 @@ def test_extend_entity_mappings_generic_readonly_binary(monkeypatch):
 
 
 def test_extend_entity_mappings_generic_select_from_info(monkeypatch):
-    """Register with info text containing states creates select entry (lines 1151-1172)."""
+    """Register with info text and a matching select translation key creates a select entry."""
     reg = RegisterDef(function=3, address=904, name="p10_gen_select", access="rw",
                       min=0, max=3, information="0 - off; 1 - low; 2 - high")
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": {"p10_gen_select"},
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: set())
     em.SELECT_ENTITY_MAPPINGS.pop("p10_gen_select", None)
     em._extend_entity_mappings_from_registers()
     assert "p10_gen_select" in em.SELECT_ENTITY_MAPPINGS
@@ -448,10 +475,14 @@ def test_extend_entity_mappings_generic_select_from_info(monkeypatch):
 
 
 def test_extend_entity_mappings_select_skips_parts_without_dash(monkeypatch):
-    """Parts in info_text without ' - ' are skipped (line 1156 continue)."""
+    """Parts in info_text without ' - ' are skipped."""
     reg = RegisterDef(function=3, address=906, name="p10_gen_select_skip", access="rw",
                       min=0, max=3, information="bad_part; 0 - off; 1 - on")
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": {"p10_gen_select_skip"},
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: set())
     em.SELECT_ENTITY_MAPPINGS.pop("p10_gen_select_skip", None)
     em._extend_entity_mappings_from_registers()
     assert "p10_gen_select_skip" in em.SELECT_ENTITY_MAPPINGS
@@ -459,10 +490,14 @@ def test_extend_entity_mappings_select_skips_parts_without_dash(monkeypatch):
 
 
 def test_extend_entity_mappings_select_skips_non_int_value(monkeypatch):
-    """Non-integer value in info_text triggers ValueError continue (lines 1160-1161)."""
+    """Non-integer value in info_text triggers ValueError continue."""
     reg = RegisterDef(function=3, address=907, name="p10_gen_select_badval", access="rw",
                       min=0, max=3, information="abc - off; 1 - on")
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": {"p10_gen_select_badval"},
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: set())
     em.SELECT_ENTITY_MAPPINGS.pop("p10_gen_select_badval", None)
     em._extend_entity_mappings_from_registers()
     # Only "on" entry (value 1) should be in the states, "abc" was skipped
@@ -474,14 +509,33 @@ def test_extend_entity_mappings_select_skips_non_int_value(monkeypatch):
 
 
 def test_extend_entity_mappings_generic_number(monkeypatch):
-    """Register with wider range and write access creates number entry (line 1174-1185)."""
+    """Register with wider range, write access and a matching number translation key
+    creates a number entry."""
     reg = RegisterDef(function=3, address=905, name="p10_gen_number", access="rw",
                       min=0, max=100, unit="%")
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": set(),
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: {"p10_gen_number"})
     em.NUMBER_ENTITY_MAPPINGS.pop("p10_gen_number", None)
     em._extend_entity_mappings_from_registers()
     assert "p10_gen_number" in em.NUMBER_ENTITY_MAPPINGS
     em.NUMBER_ENTITY_MAPPINGS.pop("p10_gen_number", None)
+
+
+def test_extend_entity_mappings_generic_number_no_translation(monkeypatch):
+    """Register without a matching number translation key is NOT added."""
+    reg = RegisterDef(function=3, address=905, name="p10_gen_number_notrans", access="rw",
+                      min=0, max=100, unit="%")
+    monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [reg])
+    monkeypatch.setattr(em, "_load_translation_keys", lambda: {
+        "binary_sensor": set(), "switch": set(), "select": set(),
+    })
+    monkeypatch.setattr(em, "_number_translation_keys", lambda: set())
+    em.NUMBER_ENTITY_MAPPINGS.pop("p10_gen_number_notrans", None)
+    em._extend_entity_mappings_from_registers()
+    assert "p10_gen_number_notrans" not in em.NUMBER_ENTITY_MAPPINGS
 
 
 async def test_async_setup_entity_mappings_no_hass():

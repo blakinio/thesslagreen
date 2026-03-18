@@ -60,11 +60,15 @@ async def async_setup_entry(
                 is_available = True
 
         if is_available:
-            address = (
-                holding_map.get(register_name, 0)
-                if config["register_type"] == "holding_registers"
-                else coil_map.get(register_name, 0)
-            )
+            if config["register_type"] == "holding_registers":
+                address = holding_map.get(register_name)
+            else:
+                address = coil_map.get(register_name)
+            if address is None:
+                _LOGGER.warning(
+                    "No register address for switch '%s', skipping", register_name
+                )
+                continue
             entities.append(
                 ThesslaGreenSwitch(
                     coordinator=coordinator,

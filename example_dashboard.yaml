@@ -12,57 +12,207 @@ views:
       - type: grid
         cards:
           - type: tile
-            entity: select.rekuperator_access_level
-          - type: tile
-            entity: number.rekuperator_air_flow_rate_manual
-          - type: tile
-            entity: number.rekuperator_air_temperature_summer_free_cooling
-          - type: tile
-            entity: number.rekuperator_air_temperature_summer_free_heating
-          - type: tile
-            entity: switch.rekuperator_airflow_rate_change_flag
-          - type: tile
-            entity: number.rekuperator_airing_panel_mode_time
-          - type: tile
-            entity: number.rekuperator_airing_switch_mode_off_delay
-          - type: tile
-            entity: number.rekuperator_airing_switch_mode_on_delay
-          - type: tile
-            entity: number.rekuperator_airing_switch_mode_time
-          - type: tile
-            entity: switch.rekuperator_away
-          - type: tile
-            entity: switch.rekuperator_bathroom
+            entity: switch.rekuperator_lock
           - type: tile
             entity: switch.rekuperator_boost
           - type: tile
             entity: switch.rekuperator_bypass_active
           - type: tile
-            entity: select.rekuperator_bypass_user_mode
+            entity: number.rekuperator_fireplace_mode_time
           - type: tile
-            entity: switch.rekuperator_comfort_mode
+            entity: number.rekuperator_airing_panel_mode_time
           - type: tile
-            entity: select.rekuperator_configuration_mode
+            entity: number.rekuperator_airing_switch_mode_time
           - type: tile
-            entity: number.rekuperator_device_name
-          - type: tile
-            entity: switch.rekuperator_eco
+            entity: number.rekuperator_12
           - type: tile
             entity: select.rekuperator_filter_check_day_of_week
           - type: tile
             entity: select.rekuperator_filter_check_day_of_week_ext
           - type: tile
-            entity: select.rekuperator_filter_type
+            entity: switch.rekuperator_eco
           - type: tile
-            entity: switch.rekuperator_fireplace
+            entity: time.rekuperator_filter_check_start_time
           - type: tile
-            entity: number.rekuperator_fireplace_mode_time
+            entity: time.rekuperator_filter_check_start_time_ext
           - type: tile
-            entity: number.rekuperator_12
+            entity: time.rekuperator_manual_airing_time_to_start
           - type: tile
             entity: switch.rekuperator_gwc_active
           - type: tile
+            entity: time.rekuperator_schedule_summer_thu_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_4
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_4
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_4
+          - type: tile
+            entity: time.rekuperator_schedule_summer_mon_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_mon_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_mon_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_mon_4
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_4
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_4
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_4
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_4
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_4
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_4
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_4
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_4
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_4
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_4
+          - type: tile
+            entity: number.rekuperator_lock_pass
+          - type: tile
+            entity: switch.rekuperator_party
+          - type: tile
+            entity: number.rekuperator_13
+          - type: tile
+            entity: number.rekuperator_8
+          - type: tile
+            entity: select.rekuperator_language
+          - type: tile
+            entity: number.rekuperator_rtc_cal
+          - type: tile
+            entity: switch.rekuperator_fireplace
+          - type: tile
+            entity: switch.rekuperator_kitchen
+          - type: tile
+            entity: switch.rekuperator_summer
+          - type: tile
+            entity: switch.rekuperator_bathroom
+          - type: tile
+            entity: switch.rekuperator_away
+          - type: tile
+            entity: switch.rekuperator_hood
+          - type: tile
             entity: number.rekuperator_gwc_regen_period
+          - type: tile
+            entity: number.rekuperator_airing_switch_mode_on_delay
+          - type: tile
+            entity: number.rekuperator_airing_switch_mode_off_delay
+          - type: tile
+            entity: select.rekuperator_access_level
+          - type: tile
+            entity: number.rekuperator_air_flow_rate_manual
+          - type: tile
+            entity: time.rekuperator_airing_summer_thu
+          - type: tile
+            entity: time.rekuperator_airing_summer_sun
+          - type: tile
+            entity: time.rekuperator_airing_summer_fri
+          - type: tile
+            entity: time.rekuperator_airing_summer_mon
+          - type: tile
+            entity: time.rekuperator_airing_summer_sat
+          - type: tile
+            entity: time.rekuperator_airing_summer_wed
+          - type: tile
+            entity: time.rekuperator_airing_summer_tue
+          - type: tile
+            entity: time.rekuperator_airing_winter_thu
+          - type: tile
+            entity: time.rekuperator_airing_winter_sun
+          - type: tile
+            entity: time.rekuperator_airing_winter_fri
+          - type: tile
+            entity: time.rekuperator_airing_winter_mon
+          - type: tile
+            entity: time.rekuperator_airing_winter_sat
+          - type: tile
+            entity: time.rekuperator_airing_winter_wed
+          - type: tile
+            entity: time.rekuperator_airing_winter_tue
           - type: tile
             entity: select.rekuperator_gwc_regeneration
           - type: tile
@@ -70,149 +220,61 @@ views:
           - type: tile
             entity: switch.rekuperator_hard_reset_settings
           - type: tile
-            entity: switch.rekuperator_hood
+            entity: switch.rekuperator_sleep
           - type: tile
-            entity: switch.rekuperator_kitchen
+            entity: time.rekuperator_start_gwc_regen_summer_time
           - type: tile
-            entity: select.rekuperator_language
+            entity: time.rekuperator_start_gwc_regen_winter_time
           - type: tile
-            entity: switch.rekuperator_lock
+            entity: time.rekuperator_stop_gwc_regen_summer_time
           - type: tile
-            entity: number.rekuperator_lock_pass
+            entity: time.rekuperator_stop_gwc_regen_winter_time
           - type: tile
-            entity: select.rekuperator_mode
+            entity: number.rekuperator_air_temperature_summer_free_cooling
           - type: tile
-            entity: switch.rekuperator_on_off_panel_mode
+            entity: number.rekuperator_air_temperature_summer_free_heating
           - type: tile
-            entity: switch.rekuperator_party
+            entity: number.rekuperator_14
           - type: tile
-            entity: number.rekuperator_7
+            entity: number.rekuperator_9
           - type: tile
-            entity: number.rekuperator_6
+            entity: number.rekuperator_supply_air_temperature_manual
           - type: tile
-            entity: number.rekuperator_5
+            entity: climate.rekuperator_climate_control
+          - type: tile
+            entity: switch.rekuperator_comfort_mode
           - type: tile
             entity: select.rekuperator
           - type: tile
             entity: select.rekuperator_2
           - type: tile
-            entity: number.rekuperator_required_temperature
+            entity: select.rekuperator_configuration_mode
           - type: tile
-            entity: number.rekuperator_rtc_cal
-          - type: tile
-            entity: select.rekuperator_schedule_summer_fri_1
-          - type: tile
-            entity: select.rekuperator_schedule_summer_fri_2
-          - type: tile
-            entity: select.rekuperator_schedule_summer_fri_3
-          - type: tile
-            entity: select.rekuperator_schedule_summer_fri_4
-          - type: tile
-            entity: select.rekuperator_schedule_summer_mon_1
-          - type: tile
-            entity: select.rekuperator_schedule_summer_mon_2
-          - type: tile
-            entity: select.rekuperator_schedule_summer_mon_3
-          - type: tile
-            entity: select.rekuperator_schedule_summer_mon_4
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sat_1
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sat_2
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sat_3
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sat_4
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sun_1
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sun_2
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sun_3
-          - type: tile
-            entity: select.rekuperator_schedule_summer_sun_4
-          - type: tile
-            entity: select.rekuperator_schedule_summer_thu_1
-          - type: tile
-            entity: select.rekuperator_schedule_summer_thu_2
-          - type: tile
-            entity: select.rekuperator_schedule_summer_thu_3
-          - type: tile
-            entity: select.rekuperator_schedule_summer_thu_4
-          - type: tile
-            entity: select.rekuperator_schedule_summer_tue_1
-          - type: tile
-            entity: select.rekuperator_schedule_summer_tue_2
-          - type: tile
-            entity: select.rekuperator_schedule_summer_tue_3
-          - type: tile
-            entity: select.rekuperator_schedule_summer_tue_4
-          - type: tile
-            entity: select.rekuperator_schedule_summer_wed_1
-          - type: tile
-            entity: select.rekuperator_schedule_summer_wed_2
-          - type: tile
-            entity: select.rekuperator_schedule_summer_wed_3
-          - type: tile
-            entity: select.rekuperator_schedule_summer_wed_4
-          - type: tile
-            entity: select.rekuperator_schedule_winter_fri_1
-          - type: tile
-            entity: select.rekuperator_schedule_winter_fri_2
-          - type: tile
-            entity: select.rekuperator_schedule_winter_fri_3
-          - type: tile
-            entity: select.rekuperator_schedule_winter_fri_4
-          - type: tile
-            entity: select.rekuperator_schedule_winter_mon_1
-          - type: tile
-            entity: select.rekuperator_schedule_winter_mon_2
-          - type: tile
-            entity: select.rekuperator_schedule_winter_mon_3
-          - type: tile
-            entity: select.rekuperator_schedule_winter_mon_4
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sat_1
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sat_2
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sat_3
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sat_4
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sun_1
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sun_2
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sun_3
-          - type: tile
-            entity: select.rekuperator_schedule_winter_sun_4
-          - type: tile
-            entity: select.rekuperator_schedule_winter_thu_1
-          - type: tile
-            entity: select.rekuperator_schedule_winter_thu_2
-          - type: tile
-            entity: select.rekuperator_schedule_winter_thu_3
-          - type: tile
-            entity: select.rekuperator_schedule_winter_thu_4
-          - type: tile
-            entity: select.rekuperator_schedule_winter_tue_1
-          - type: tile
-            entity: select.rekuperator_schedule_winter_tue_2
-          - type: tile
-            entity: select.rekuperator_schedule_winter_tue_3
-          - type: tile
-            entity: select.rekuperator_schedule_winter_tue_4
-          - type: tile
-            entity: select.rekuperator_schedule_winter_wed_1
-          - type: tile
-            entity: select.rekuperator_schedule_winter_wed_2
-          - type: tile
-            entity: select.rekuperator_schedule_winter_wed_3
-          - type: tile
-            entity: select.rekuperator_schedule_winter_wed_4
+            entity: select.rekuperator_mode
           - type: tile
             entity: select.rekuperator_season_mode
+          - type: tile
+            entity: select.rekuperator_special_mode
+          - type: tile
+            entity: select.rekuperator_bypass_user_mode
+          - type: tile
+            entity: select.rekuperator_filter_type
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_1
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_2
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_3
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_4
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_1
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_2
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_3
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_4
           - type: tile
             entity: select.rekuperator_setting_summer_fri_1
           - type: tile
@@ -238,21 +300,13 @@ views:
           - type: tile
             entity: select.rekuperator_setting_summer_sat_4
           - type: tile
-            entity: select.rekuperator_setting_summer_sun_1
+            entity: select.rekuperator_setting_summer_wed_1
           - type: tile
-            entity: select.rekuperator_setting_summer_sun_2
+            entity: select.rekuperator_setting_summer_wed_2
           - type: tile
-            entity: select.rekuperator_setting_summer_sun_3
+            entity: select.rekuperator_setting_summer_wed_3
           - type: tile
-            entity: select.rekuperator_setting_summer_sun_4
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_4
+            entity: select.rekuperator_setting_summer_wed_4
           - type: tile
             entity: select.rekuperator_setting_summer_tue_1
           - type: tile
@@ -262,13 +316,21 @@ views:
           - type: tile
             entity: select.rekuperator_setting_summer_tue_4
           - type: tile
-            entity: select.rekuperator_setting_summer_wed_1
+            entity: select.rekuperator_setting_winter_thu_1
           - type: tile
-            entity: select.rekuperator_setting_summer_wed_2
+            entity: select.rekuperator_setting_winter_thu_2
           - type: tile
-            entity: select.rekuperator_setting_summer_wed_3
+            entity: select.rekuperator_setting_winter_thu_3
           - type: tile
-            entity: select.rekuperator_setting_summer_wed_4
+            entity: select.rekuperator_setting_winter_thu_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_4
           - type: tile
             entity: select.rekuperator_setting_winter_fri_1
           - type: tile
@@ -294,21 +356,13 @@ views:
           - type: tile
             entity: select.rekuperator_setting_winter_sat_4
           - type: tile
-            entity: select.rekuperator_setting_winter_sun_1
+            entity: select.rekuperator_setting_winter_wed_1
           - type: tile
-            entity: select.rekuperator_setting_winter_sun_2
+            entity: select.rekuperator_setting_winter_wed_2
           - type: tile
-            entity: select.rekuperator_setting_winter_sun_3
+            entity: select.rekuperator_setting_winter_wed_3
           - type: tile
-            entity: select.rekuperator_setting_winter_sun_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_4
+            entity: select.rekuperator_setting_winter_wed_4
           - type: tile
             entity: select.rekuperator_setting_winter_tue_1
           - type: tile
@@ -318,122 +372,108 @@ views:
           - type: tile
             entity: select.rekuperator_setting_winter_tue_4
           - type: tile
-            entity: select.rekuperator_setting_winter_wed_1
+            entity: fan.rekuperator_ventilation
           - type: tile
-            entity: select.rekuperator_setting_winter_wed_2
+            entity: switch.rekuperator_on_off_panel_mode
           - type: tile
-            entity: select.rekuperator_setting_winter_wed_3
+            entity: switch.rekuperator_winter
           - type: tile
-            entity: select.rekuperator_setting_winter_wed_4
-          - type: tile
-            entity: switch.rekuperator_sleep
-          - type: tile
-            entity: select.rekuperator_special_mode
-          - type: tile
-            entity: select.rekuperator_start_gwc_regen_summer_time
-          - type: tile
-            entity: select.rekuperator_start_gwc_regen_winter_time
-          - type: tile
-            entity: select.rekuperator_stop_gwc_regen_summer_time
-          - type: tile
-            entity: select.rekuperator_stop_gwc_regen_winter_time
-          - type: tile
-            entity: switch.rekuperator_summer
-          - type: tile
-            entity: number.rekuperator_supply_air_temperature_manual
+            entity: switch.rekuperator_airflow_rate_change_flag
           - type: tile
             entity: switch.rekuperator_temperature_change_flag
           - type: tile
-            entity: number.rekuperator_8
+            entity: switch.rekuperator_bypass_off
           - type: tile
-            entity: number.rekuperator_13
+            entity: switch.rekuperator_gwc_off
           - type: tile
-            entity: number.rekuperator_9
+            entity: switch.rekuperator_comfort_mode_panel
           - type: tile
-            entity: number.rekuperator_14
+            entity: switch.rekuperator_lock_flag
           - type: tile
-            entity: climate.rekuperator_climate_control
+            entity: number.rekuperator_air_flow_rate_temporary
           - type: tile
-            entity: fan.rekuperator_ventilation
+            entity: number.rekuperator_air_flow_rate_temporary_4401
           - type: tile
-            entity: switch.rekuperator_winter
+            entity: number.rekuperator_supply_air_temperature_temporary
+          - type: tile
+            entity: number.rekuperator_supply_air_temperature_temporary_4404
+          - type: tile
+            entity: number.rekuperator_delta_t_gwc
+          - type: tile
+            entity: number.rekuperator_uart_0_id
+          - type: tile
+            entity: number.rekuperator_uart_1_id
+          - type: tile
+            entity: number.rekuperator_cfgszf_fn_new
+          - type: tile
+            entity: number.rekuperator_cfgszf_fw_new
+          - type: tile
+            entity: select.rekuperator_cfg_mode_1
+          - type: tile
+            entity: select.rekuperator_cfg_mode_2
+          - type: tile
+            entity: select.rekuperator_pres_check_day
+          - type: tile
+            entity: select.rekuperator_pres_check_day_4432
+          - type: tile
+            entity: select.rekuperator_filter_change
+          - type: tile
+            entity: select.rekuperator_gwc_regen
+          - type: tile
+            entity: select.rekuperator_uart_0_baud
+          - type: tile
+            entity: select.rekuperator_uart_0_parity
+          - type: tile
+            entity: select.rekuperator_uart_0_stop
+          - type: tile
+            entity: select.rekuperator_uart_1_baud
+          - type: tile
+            entity: select.rekuperator_uart_1_parity
+          - type: tile
+            entity: select.rekuperator_uart_1_stop
+          - type: tile
+            entity: select.rekuperator_cfg_post_heater_mode
+          - type: tile
+            entity: time.rekuperator_pres_check_time
+          - type: tile
+            entity: time.rekuperator_pres_check_time_ggmm
         title: Rekuperator
       - type: grid
         cards:
           - type: tile
             entity: sensor.rekuperator_active_errors
           - type: tile
-            entity: binary_sensor.rekuperator_ahu_filter_overflow
+            entity: binary_sensor.rekuperator_problem
           - type: tile
-            entity: binary_sensor.rekuperator_ahu_filter_protection
+            entity: binary_sensor.rekuperator_fire_alarm
           - type: tile
-            entity: binary_sensor.rekuperator_ahu_stop_alarm
+            entity: binary_sensor.rekuperator_error_e196
           - type: tile
-            entity: sensor.rekuperator_air_temperature_summer_free_cooling
+            entity: binary_sensor.rekuperator_error_e197
           - type: tile
-            entity: sensor.rekuperator_air_temperature_summer_free_heating
+            entity: binary_sensor.rekuperator_error_e198
           - type: tile
-            entity: binary_sensor.rekuperator_airing_mini
+            entity: binary_sensor.rekuperator_error_e199
           - type: tile
-            entity: binary_sensor.rekuperator_airing_sensor
+            entity: binary_sensor.rekuperator_problem_2
           - type: tile
-            entity: sensor.rekuperator_airing_summer_fri
+            entity: binary_sensor.rekuperator_problem_37
           - type: tile
-            entity: sensor.rekuperator_airing_summer_mon
-          - type: tile
-            entity: sensor.rekuperator_airing_summer_sat
-          - type: tile
-            entity: sensor.rekuperator_airing_summer_sun
-          - type: tile
-            entity: sensor.rekuperator_airing_summer_thu
-          - type: tile
-            entity: sensor.rekuperator_airing_summer_tue
-          - type: tile
-            entity: sensor.rekuperator_airing_summer_wed
-          - type: tile
-            entity: binary_sensor.rekuperator_airing_switch
-          - type: tile
-            entity: sensor.rekuperator_airing_winter_fri
-          - type: tile
-            entity: sensor.rekuperator_airing_winter_mon
-          - type: tile
-            entity: sensor.rekuperator_airing_winter_sat
-          - type: tile
-            entity: sensor.rekuperator_airing_winter_sun
-          - type: tile
-            entity: sensor.rekuperator_airing_winter_thu
-          - type: tile
-            entity: sensor.rekuperator_airing_winter_tue
-          - type: tile
-            entity: sensor.rekuperator_airing_winter_wed
-          - type: tile
-            entity: sensor.rekuperator_ambient_temperature
-          - type: tile
-            entity: sensor.rekuperator_antifreeze_mode
-          - type: tile
-            entity: sensor.rekuperator_antifreeze_stage
+            entity: binary_sensor.rekuperator_problem_38
           - type: tile
             entity: binary_sensor.rekuperator_bypass_2
           - type: tile
-            entity: sensor.rekuperator_bypass_mode_status
-          - type: tile
-            entity: sensor.rekuperator_bypass_off
-          - type: tile
-            entity: sensor.rekuperator_comfort_mode_status
-          - type: tile
-            entity: sensor.rekuperator_constant_flow_active
+            entity: binary_sensor.rekuperator_airing_sensor
           - type: tile
             entity: binary_sensor.rekuperator_contamination_sensor
           - type: tile
-            entity: sensor.rekuperator_cooler_voltage
+            entity: sensor.rekuperator_product_key_lock_date_day
+          - type: tile
+            entity: sensor.rekuperator_product_key_lock_date_month
+          - type: tile
+            entity: sensor.rekuperator_product_key_lock_date_year
           - type: tile
             entity: sensor.rekuperator_day_of_week
-          - type: tile
-            entity: binary_sensor.rekuperator_duct_filter_overflow
-          - type: tile
-            entity: binary_sensor.rekuperator_duct_heater_protection
-          - type: tile
-            entity: binary_sensor.rekuperator_problem
           - type: tile
             entity: binary_sensor.rekuperator_problem_25
           - type: tile
@@ -495,99 +535,79 @@ views:
           - type: tile
             entity: binary_sensor.rekuperator_problem_42
           - type: tile
-            entity: binary_sensor.rekuperator_empty_house
+            entity: binary_sensor.rekuperator_expansion
           - type: tile
-            entity: sensor.rekuperator_error_and_status_codes
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e196
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e197
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e198
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e199
+            entity: sensor.rekuperator_antifreeze_stage
           - type: tile
             entity: binary_sensor.rekuperator_problem_36
           - type: tile
-            entity: sensor.rekuperator_exhaust_air_flow
-          - type: tile
-            entity: sensor.rekuperator_exhaust_fan_voltage
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_38
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_56
-          - type: tile
-            entity: sensor.rekuperator_exhaust_flow_rate_m3_h
-          - type: tile
-            entity: sensor.rekuperator_exhaust_percentage
-          - type: tile
-            entity: sensor.rekuperator_exhaust_temperature
-          - type: tile
-            entity: binary_sensor.rekuperator_expansion
-          - type: tile
-            entity: binary_sensor.rekuperator_fan_speed_1
-          - type: tile
-            entity: sensor.rekuperator_fan_speed_1_coefficient
-          - type: tile
-            entity: binary_sensor.rekuperator_fan_speed_2
-          - type: tile
-            entity: sensor.rekuperator_fan_speed_2_coefficient
-          - type: tile
-            entity: binary_sensor.rekuperator_fan_speed_3
-          - type: tile
-            entity: sensor.rekuperator_fan_speed_3_coefficient
-          - type: tile
-            entity: sensor.rekuperator_filter_check_start_time
-          - type: tile
-            entity: sensor.rekuperator_filter_check_start_time_ext
-          - type: tile
-            entity: binary_sensor.rekuperator_fire_alarm
-          - type: tile
-            entity: binary_sensor.rekuperator_fireplace
-          - type: tile
-            entity: sensor.rekuperator_fpx_temperature
-          - type: tile
             entity: binary_sensor.rekuperator_gwc
           - type: tile
-            entity: sensor.rekuperator_gwc_mode
-          - type: tile
-            entity: binary_sensor.rekuperator_gwc_regeneration_active
-          - type: tile
-            entity: sensor.rekuperator_heater_voltage
+            entity: binary_sensor.rekuperator_unit_operation_confirmation
           - type: tile
             entity: binary_sensor.rekuperator_heating_cable
           - type: tile
-            entity: sensor.rekuperator_heating_temperature
+            entity: sensor.rekuperator_ahu_stop_alarm_code
           - type: tile
-            entity: sensor.rekuperator_hood_exhaust_coefficient
+            entity: sensor.rekuperator_error_and_status_codes
           - type: tile
-            entity: binary_sensor.rekuperator_hood_output
-          - type: tile
-            entity: sensor.rekuperator_hood_supply_coefficient
-          - type: tile
-            entity: binary_sensor.rekuperator_hood_switch
-          - type: tile
-            entity: sensor.rekuperator_manual_airing_time_to_start
-          - type: tile
-            entity: sensor.rekuperator_maximum_exhaust_air_flow_rate
+            entity: binary_sensor.rekuperator_fireplace
           - type: tile
             entity: sensor.rekuperator_maximum_percentage
           - type: tile
             entity: sensor.rekuperator_maximum_supply_air_flow_rate
           - type: tile
+            entity: sensor.rekuperator_maximum_exhaust_air_flow_rate
+          - type: tile
             entity: sensor.rekuperator_minimum_bypass_temperature
           - type: tile
             entity: sensor.rekuperator_minimum_percentage
           - type: tile
-            entity: sensor.rekuperator_nominal_exhaust_air_flow
+            entity: sensor.rekuperator_cooler_voltage
+          - type: tile
+            entity: sensor.rekuperator_heater_voltage
+          - type: tile
+            entity: sensor.rekuperator_supply_fan_voltage
+          - type: tile
+            entity: sensor.rekuperator_exhaust_fan_voltage
           - type: tile
             entity: sensor.rekuperator_nominal_supply_air_flow
           - type: tile
-            entity: sensor.rekuperator_outside_temperature
+            entity: sensor.rekuperator_nominal_exhaust_air_flow
           - type: tile
-            entity: binary_sensor.rekuperator_power_supply_fans
+            entity: binary_sensor.rekuperator_ahu_filter_protection
           - type: tile
-            entity: binary_sensor.rekuperator_problem_2
+            entity: binary_sensor.rekuperator_duct_heater_protection
+          - type: tile
+            entity: sensor.rekuperator_time_period
+          - type: tile
+            entity: binary_sensor.rekuperator_water_heater_pump
+          - type: tile
+            entity: binary_sensor.rekuperator_fan_speed_1
+          - type: tile
+            entity: binary_sensor.rekuperator_fan_speed_2
+          - type: tile
+            entity: binary_sensor.rekuperator_fan_speed_3
+          - type: tile
+            entity: sensor.rekuperator_supply_percentage
+          - type: tile
+            entity: sensor.rekuperator_exhaust_percentage
+          - type: tile
+            entity: binary_sensor.rekuperator_hood_switch
+          - type: tile
+            entity: binary_sensor.rekuperator_airing_switch
+          - type: tile
+            entity: binary_sensor.rekuperator_ahu_filter_overflow
+          - type: tile
+            entity: binary_sensor.rekuperator_duct_filter_overflow
+          - type: tile
+            entity: sensor.rekuperator_supply_flow_rate_m3_h
+          - type: tile
+            entity: sensor.rekuperator_exhaust_flow_rate_m3_h
+          - type: tile
+            entity: binary_sensor.rekuperator_empty_house
+          - type: tile
+            entity: binary_sensor.rekuperator_gwc_regeneration_active
           - type: tile
             entity: binary_sensor.rekuperator_problem_3
           - type: tile
@@ -635,60 +655,228 @@ views:
           - type: tile
             entity: binary_sensor.rekuperator_problem_24
           - type: tile
+            entity: sensor.rekuperator_constant_flow_active
+          - type: tile
             entity: sensor.rekuperator_supply_air_flow
           - type: tile
-            entity: sensor.rekuperator_supply_air_temperature_manual
+            entity: sensor.rekuperator_exhaust_air_flow
           - type: tile
-            entity: sensor.rekuperator_supply_fan_voltage
+            entity: sensor.rekuperator_air_temperature_summer_free_cooling
           - type: tile
-            entity: binary_sensor.rekuperator_problem_37
+            entity: sensor.rekuperator_air_temperature_summer_free_heating
           - type: tile
-            entity: binary_sensor.rekuperator_problem_55
-          - type: tile
-            entity: sensor.rekuperator_supply_flow_rate_m3_h
-          - type: tile
-            entity: sensor.rekuperator_supply_percentage
+            entity: sensor.rekuperator_fpx_temperature
           - type: tile
             entity: sensor.rekuperator_supply_temperature
           - type: tile
-            entity: sensor.rekuperator_time_period
+            entity: sensor.rekuperator_supply_air_temperature_manual
           - type: tile
-            entity: binary_sensor.rekuperator_unit_operation_confirmation
+            entity: sensor.rekuperator_heating_temperature
           - type: tile
-            entity: binary_sensor.rekuperator_water_heater_pump
+            entity: sensor.rekuperator_ambient_temperature
+          - type: tile
+            entity: sensor.rekuperator_exhaust_temperature
+          - type: tile
+            entity: sensor.rekuperator_required_temperature
+          - type: tile
+            entity: sensor.rekuperator_outside_temperature
+          - type: tile
+            entity: binary_sensor.rekuperator_antifreeze_mode
+          - type: tile
+            entity: sensor.rekuperator_bypass_mode_status
+          - type: tile
+            entity: sensor.rekuperator_gwc_mode
+          - type: tile
+            entity: sensor.rekuperator_comfort_mode_status
+          - type: tile
+            entity: binary_sensor.rekuperator_airing_mini
+          - type: tile
+            entity: binary_sensor.rekuperator_hood_output
+          - type: tile
+            entity: binary_sensor.rekuperator_problem_55
+          - type: tile
+            entity: binary_sensor.rekuperator_problem_56
+          - type: tile
+            entity: binary_sensor.rekuperator_power_supply_fans
           - type: tile
             entity: binary_sensor.rekuperator_work_permit
+          - type: tile
+            entity: binary_sensor.rekuperator_alarm
+          - type: tile
+            entity: binary_sensor.rekuperator_bypass
+          - type: tile
+            entity: binary_sensor.rekuperator_error
+          - type: tile
+            entity: binary_sensor.rekuperator_info
+          - type: tile
+            entity: binary_sensor.rekuperator_e_99
+          - type: tile
+            entity: binary_sensor.rekuperator_e_100
+          - type: tile
+            entity: binary_sensor.rekuperator_e_101
+          - type: tile
+            entity: binary_sensor.rekuperator_e_102
+          - type: tile
+            entity: binary_sensor.rekuperator_e_103
+          - type: tile
+            entity: binary_sensor.rekuperator_e_104
+          - type: tile
+            entity: binary_sensor.rekuperator_e_105
+          - type: tile
+            entity: binary_sensor.rekuperator_e_106
+          - type: tile
+            entity: binary_sensor.rekuperator_e_108
+          - type: tile
+            entity: binary_sensor.rekuperator_e_138
+          - type: tile
+            entity: binary_sensor.rekuperator_e_139
+          - type: tile
+            entity: binary_sensor.rekuperator_e_140
+          - type: tile
+            entity: binary_sensor.rekuperator_e_141
+          - type: tile
+            entity: binary_sensor.rekuperator_e_144
+          - type: tile
+            entity: binary_sensor.rekuperator_e_145
+          - type: tile
+            entity: binary_sensor.rekuperator_e_148
+          - type: tile
+            entity: binary_sensor.rekuperator_e_149
+          - type: tile
+            entity: binary_sensor.rekuperator_e_150
+          - type: tile
+            entity: binary_sensor.rekuperator_e_151
+          - type: tile
+            entity: binary_sensor.rekuperator_e_152
+          - type: tile
+            entity: binary_sensor.rekuperator_e_156
+          - type: tile
+            entity: binary_sensor.rekuperator_e_157
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_196
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_197
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_198
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_199
+          - type: tile
+            entity: binary_sensor.rekuperator_e_200
+          - type: tile
+            entity: binary_sensor.rekuperator_e_201
+          - type: tile
+            entity: binary_sensor.rekuperator_e_202
+          - type: tile
+            entity: binary_sensor.rekuperator_e_203
+          - type: tile
+            entity: binary_sensor.rekuperator_e_249
+          - type: tile
+            entity: binary_sensor.rekuperator_e_250
+          - type: tile
+            entity: binary_sensor.rekuperator_e_251
+          - type: tile
+            entity: binary_sensor.rekuperator_e_252
+          - type: tile
+            entity: binary_sensor.rekuperator_s_2
+          - type: tile
+            entity: binary_sensor.rekuperator_s_6
+          - type: tile
+            entity: binary_sensor.rekuperator_s_7
+          - type: tile
+            entity: binary_sensor.rekuperator_s_8
+          - type: tile
+            entity: binary_sensor.rekuperator_s_9
+          - type: tile
+            entity: binary_sensor.rekuperator_s_10
+          - type: tile
+            entity: binary_sensor.rekuperator_s_13
+          - type: tile
+            entity: binary_sensor.rekuperator_s_14
+          - type: tile
+            entity: binary_sensor.rekuperator_s_15
+          - type: tile
+            entity: binary_sensor.rekuperator_s_16
+          - type: tile
+            entity: binary_sensor.rekuperator_s_17
+          - type: tile
+            entity: binary_sensor.rekuperator_s_19
+          - type: tile
+            entity: binary_sensor.rekuperator_s_20
+          - type: tile
+            entity: binary_sensor.rekuperator_s_22
+          - type: tile
+            entity: binary_sensor.rekuperator_s_23
+          - type: tile
+            entity: binary_sensor.rekuperator_s_24
+          - type: tile
+            entity: binary_sensor.rekuperator_s_25
+          - type: tile
+            entity: binary_sensor.rekuperator_s_26
+          - type: tile
+            entity: binary_sensor.rekuperator_s_28
+          - type: tile
+            entity: binary_sensor.rekuperator_s_29
+          - type: tile
+            entity: binary_sensor.rekuperator_s_30
+          - type: tile
+            entity: binary_sensor.rekuperator_s_31
+          - type: tile
+            entity: binary_sensor.rekuperator_s_32
+          - type: tile
+            entity: binary_sensor.rekuperator_f_142
+          - type: tile
+            entity: binary_sensor.rekuperator_f_143
+          - type: tile
+            entity: binary_sensor.rekuperator_f_146
+          - type: tile
+            entity: binary_sensor.rekuperator_f_147
+          - type: tile
+            entity: binary_sensor.rekuperator_gwc_regen_flag
+          - type: tile
+            entity: binary_sensor.rekuperator_post_heater_on
+          - type: tile
+            entity: binary_sensor.rekuperator_water_removal_active
+          - type: tile
+            entity: binary_sensor.rekuperator_duct_water_heater_pump
+          - type: tile
+            entity: binary_sensor.rekuperator_dp_ahu_filter_overflow
+          - type: tile
+            entity: binary_sensor.rekuperator_dp_duct_filter_overflow
+          - type: tile
+            entity: sensor.rekuperator_cf_version
+          - type: tile
+            entity: sensor.rekuperator_exp_version
+          - type: tile
+            entity: sensor.rekuperator_gwc_temperature
+          - type: tile
+            entity: sensor.rekuperator_duct_supply_temperature
+          - type: tile
+            entity: sensor.rekuperator_compilation_seconds
+          - type: tile
+            entity: sensor.rekuperator_serial_number
+          - type: tile
+            entity: sensor.rekuperator_version_major
+          - type: tile
+            entity: sensor.rekuperator_version_minor
+          - type: tile
+            entity: sensor.rekuperator_version_patch
+          - type: tile
+            entity: sensor.rekuperator_filter_supply_date_limit_get
+          - type: tile
+            entity: sensor.rekuperator_filter_exhaust_date_limit_get
+          - type: tile
+            entity: sensor.rekuperator_lock_date
+          - type: tile
+            entity: sensor.rekuperator_lock_date_00mm
+          - type: tile
+            entity: sensor.rekuperator_lock_date_00dd
         title: Rekuperator
       - type: grid
         cards:
           - type: tile
-            entity: number.rekuperator_airing_bathroom_coef
-          - type: tile
-            entity: number.rekuperator_airing_coef
-          - type: tile
-            entity: number.rekuperator_airing_switch_coef
-          - type: tile
-            entity: number.rekuperator_bypass_coef_1
-          - type: tile
-            entity: number.rekuperator_bypass_coef_2
-          - type: tile
-            entity: number.rekuperator_contamination_coef
-          - type: tile
-            entity: number.rekuperator_empty_house_coef
-          - type: tile
-            entity: number.rekuperator_fan_speed_1_coef
-          - type: tile
-            entity: number.rekuperator_fan_speed_2_coef
-          - type: tile
-            entity: number.rekuperator_fan_speed_3_coef
-          - type: tile
-            entity: number.rekuperator_fireplace_supply_coef
-          - type: tile
-            entity: number.rekuperator_hood_exhaust_coef
-          - type: tile
-            entity: number.rekuperator_hood_supply_coef
-          - type: tile
-            entity: number.rekuperator_max_exhaust_air_flow_rate
+            entity: number.rekuperator_max_supply_air_flow_rate_gwc
           - type: tile
             entity: number.rekuperator_max_exhaust_air_flow_rate_gwc
           - type: tile
@@ -696,19 +884,45 @@ views:
           - type: tile
             entity: number.rekuperator_max_supply_air_flow_rate
           - type: tile
-            entity: number.rekuperator_max_supply_air_flow_rate_gwc
-          - type: tile
-            entity: number.rekuperator_min_bypass_temperature
+            entity: number.rekuperator_max_exhaust_air_flow_rate
           - type: tile
             entity: number.rekuperator_min_gwc_air_temperature
           - type: tile
-            entity: number.rekuperator_nominal_exhaust_air_flow
-          - type: tile
-            entity: number.rekuperator_nominal_exhaust_air_flow_gwc
+            entity: number.rekuperator_min_bypass_temperature
           - type: tile
             entity: number.rekuperator_nominal_supply_air_flow
           - type: tile
             entity: number.rekuperator_nominal_supply_air_flow_gwc
           - type: tile
+            entity: number.rekuperator_nominal_exhaust_air_flow
+          - type: tile
+            entity: number.rekuperator_nominal_exhaust_air_flow_gwc
+          - type: tile
+            entity: number.rekuperator_bypass_coef_1
+          - type: tile
+            entity: number.rekuperator_bypass_coef_2
+          - type: tile
+            entity: number.rekuperator_fireplace_supply_coef
+          - type: tile
+            entity: number.rekuperator_hood_supply_coef
+          - type: tile
+            entity: number.rekuperator_hood_exhaust_coef
+          - type: tile
             entity: number.rekuperator_open_window_coef
+          - type: tile
+            entity: number.rekuperator_fan_speed_1_coef
+          - type: tile
+            entity: number.rekuperator_fan_speed_2_coef
+          - type: tile
+            entity: number.rekuperator_fan_speed_3_coef
+          - type: tile
+            entity: number.rekuperator_airing_coef
+          - type: tile
+            entity: number.rekuperator_airing_switch_coef
+          - type: tile
+            entity: number.rekuperator_airing_bathroom_coef
+          - type: tile
+            entity: number.rekuperator_empty_house_coef
+          - type: tile
+            entity: number.rekuperator_contamination_coef
         title: Rekuperator
