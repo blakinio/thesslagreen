@@ -340,8 +340,8 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "air_temperature_summer_free_cooling": {"icon": "mdi:thermometer"},
     # Air flow control
     "air_flow_rate_manual": {"icon": "mdi:fan"},
-    "max_supply_air_flow_rate": {"icon": "mdi:fan-plus"},
-    "max_exhaust_air_flow_rate": {"icon": "mdi:fan-minus"},
+    "max_supply_air_flow_rate": {"icon": "mdi:fan-plus", "min": 100, "max": 150, "step": 1},
+    "max_exhaust_air_flow_rate": {"icon": "mdi:fan-minus", "min": 100, "max": 150, "step": 1},
     "nominal_supply_air_flow": {"icon": "mdi:fan-clock"},
     "nominal_exhaust_air_flow": {"icon": "mdi:fan-clock"},
     "max_supply_air_flow_rate_gwc": {"icon": "mdi:fan-plus"},
