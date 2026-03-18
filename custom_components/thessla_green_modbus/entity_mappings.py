@@ -1420,7 +1420,18 @@ ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {}
 
 
 def _extend_entity_mappings_from_registers() -> None:
-    """Populate entity mappings for registers not explicitly defined."""
+    """Populate entity mappings for registers not explicitly defined.
+
+    Only registers that have a corresponding translation entry are added to
+    avoid creating unnamed "Rekuperator" fallback entities for reserved or
+    undocumented registers.
+    """
+
+    translations = _load_translation_keys()
+    binary_keys = translations["binary_sensor"]
+    switch_keys = translations["switch"]
+    select_keys = translations["select"]
+    number_keys = _number_translation_keys()
 
     for reg in get_all_registers():
         if reg.function != 3 or not reg.name:
@@ -1445,6 +1456,8 @@ def _extend_entity_mappings_from_registers() -> None:
             or register.startswith("e_")
             or register.startswith("f_")
         ):
+            if register not in binary_keys:
+                continue
             BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
                 register,
                 {
@@ -1543,6 +1556,8 @@ def _extend_entity_mappings_from_registers() -> None:
             enum_states = {_to_snake_case(str(v)): int(k) for k, v in reg.enum.items()}
             if len(reg.enum) == 2 and set(int(k) for k in reg.enum) == {0, 1}:
                 if "W" in access:
+                    if register not in switch_keys:
+                        continue
                     SWITCH_ENTITY_MAPPINGS.setdefault(
                         register,
                         {
@@ -1554,6 +1569,8 @@ def _extend_entity_mappings_from_registers() -> None:
                         },
                     )
                 else:
+                    if register not in binary_keys:
+                        continue
                     BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
                         register,
                         {
@@ -1563,6 +1580,8 @@ def _extend_entity_mappings_from_registers() -> None:
                         },
                     )
             elif "W" in access:
+                if register not in select_keys:
+                    continue
                 SELECT_ENTITY_MAPPINGS.setdefault(
                     register,
                     {
@@ -1573,6 +1592,9 @@ def _extend_entity_mappings_from_registers() -> None:
                     },
                 )
             else:
+                # Read-only enum sensor — no translation key check needed since
+                # sensor.py skips entities without a recognised translation_key
+                # and these are rarely present in the register spec.
                 SENSOR_ENTITY_MAPPINGS.setdefault(
                     register,
                     {
@@ -1586,6 +1608,8 @@ def _extend_entity_mappings_from_registers() -> None:
         if min_val is not None and max_val is not None:
             if max_val <= 1:
                 if "W" in access:
+                    if register not in switch_keys:
+                        continue
                     SWITCH_ENTITY_MAPPINGS.setdefault(
                         register,
                         {
@@ -1597,6 +1621,8 @@ def _extend_entity_mappings_from_registers() -> None:
                         },
                     )
                 else:
+                    if register not in binary_keys:
+                        continue
                     BINARY_SENSOR_ENTITY_MAPPINGS.setdefault(
                         register,
                         {
@@ -1619,6 +1645,8 @@ def _extend_entity_mappings_from_registers() -> None:
                     except ValueError:
                         continue
                 if states:
+                    if register not in select_keys:
+                        continue
                     SELECT_ENTITY_MAPPINGS.setdefault(
                         register,
                         {
@@ -1631,6 +1659,8 @@ def _extend_entity_mappings_from_registers() -> None:
                     continue
 
             if "W" in access:
+                if register not in number_keys:
+                    continue
                 NUMBER_ENTITY_MAPPINGS.setdefault(
                     register,
                     {
