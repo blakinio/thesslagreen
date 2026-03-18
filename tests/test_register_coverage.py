@@ -23,6 +23,8 @@ INTENTIONAL_OMISSIONS = {
     # Reserved / internal registers — device name parts, security keys, and
     # undocumented registers that have no translation key and must not appear
     # as unnamed "Rekuperator" entities in the HA UI.
+    # device_name stores raw ASCII pairs in Modbus registers — not a number
+    "device_name",
     "reserved_8145",
     "reserved_8146",
     "reserved_8147",

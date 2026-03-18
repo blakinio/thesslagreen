@@ -334,8 +334,6 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # PDF raw range 20–90 → physical 10–45 °C, step 0.5 °C
     "supply_air_temperature_manual": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
     "supply_air_temperature_temporary": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
-    "supply_air_temperature_temporary_1": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
-    "supply_air_temperature_temporary_2": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
     "supply_air_temperature_temporary_4404": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
     # PDF raw 10–40 → physical 5–20 °C
     "min_bypass_temperature": {"icon": "mdi:thermometer-low", "min": 5, "max": 20, "step": 0.5},
@@ -393,8 +391,8 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "cfgszf_fw_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
     # RTC calibration register (0–255, signed offset encoded as unsigned; no SI unit)
     "rtc_cal": {"icon": "mdi:clock-edit", "min": 0, "max": 255, "step": 1, "unit": None},
-    # lock_date year register — clear the long description text stored in the unit field
-    "lock_date": {"icon": "mdi:calendar-lock", "unit": None},
+    # lock_pass — product key passphrase, first 16-bit word (0–0x423f = 16959)
+    "lock_pass": {"icon": "mdi:lock", "min": 0, "max": 16959, "step": 1},
 }
 
 
@@ -846,6 +844,12 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": SensorDeviceClass.TEMPERATURE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfTemperature.CELSIUS,
+        "register_type": "holding_registers",
+    },
+    # lock_date — product-key expiry year (BCD-encoded, read-only)
+    "lock_date": {
+        "translation_key": "lock_date",
+        "icon": "mdi:calendar-lock",
         "register_type": "holding_registers",
     },
     # required_temperature — read-only comfort-mode temperature setpoint display
