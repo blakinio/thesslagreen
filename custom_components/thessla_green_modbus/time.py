@@ -104,19 +104,23 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
         """Return the current time value decoded from the register."""
         raw = self.coordinator.data.get(self._register_name)
         if raw is None:
-            return None
+            # Sentinel 0xFFFF means the slot is not configured on the device.
+            # Returning dt_time(0, 0) keeps the HA frontend input interactive
+            # so users can set an initial value (unknown-state inputs are
+            # read-only in the HA lovelace UI).
+            return dt_time(0, 0)
         if isinstance(raw, str) and ":" in raw:
             try:
                 hours, minutes = (int(x) for x in raw.split(":"))
                 return dt_time(hours, minutes)
             except (ValueError, TypeError):
-                return None
+                return dt_time(0, 0)
         if isinstance(raw, int):
             try:
                 return dt_time(raw // 60, raw % 60)
             except (ValueError, TypeError):
-                return None
-        return None
+                return dt_time(0, 0)
+        return dt_time(0, 0)
 
     async def async_set_value(self, value: dt_time) -> None:  # pragma: no cover
         """Set a new time value.
