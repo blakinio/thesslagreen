@@ -25,7 +25,7 @@ def _prepare_environment() -> None:
     sys.modules.setdefault("custom_components", types.ModuleType("custom_components"))
     tg_pkg = types.ModuleType("custom_components.thessla_green_modbus")
     tg_pkg.__path__ = [str(ROOT / "custom_components" / "thessla_green_modbus")]
-    sys.modules["custom_components.thessla_green_modbus"] = tg_pkg
+    sys.modules.setdefault("custom_components.thessla_green_modbus", tg_pkg)
 
     # Stub modules required for importing the registers loader without pulling
     # in the rest of the integration (which would otherwise create circular

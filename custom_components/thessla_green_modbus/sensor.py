@@ -94,7 +94,12 @@ async def async_setup_entry(
 
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in register_map
+        # serial_number is always force-created: it reads from device_info (assembled
+        # during scan from 6 registers) rather than via per-register polling, so it
+        # works even when the device rejects block reads at those addresses.
+        force_create = (
+            coordinator.force_full_register_list and register_name in register_map
+        ) or (register_name == "serial_number" and register_name in register_map)
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
@@ -103,7 +108,10 @@ async def async_setup_entry(
             if address is None:
                 _LOGGER.warning("No address for sensor: %s, skipping", register_name)
                 continue
-            entities.append(ThesslaGreenSensor(coordinator, register_name, address, sensor_def))
+            if register_name == "serial_number":
+                entities.append(ThesslaGreenSerialNumberSensor(coordinator, register_name, address, sensor_def))
+            else:
+                entities.append(ThesslaGreenSensor(coordinator, register_name, address, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
             if is_temp:
                 temp_created += 1
@@ -263,6 +271,35 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         if isinstance(nominal, int | float) and nominal:
             return nominal
         return None
+
+
+class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
+    """Diagnostic sensor that reads the serial number from device_info.
+
+    The serial number spans 6 input registers (addresses 24-29) and is
+    assembled by the scanner during device discovery.  Some devices reject
+    block reads for that address range, so this sensor reads the pre-assembled
+    value from ``coordinator.device_info["serial_number"]`` instead of polling
+    the registers individually on every update cycle.
+    """
+
+    @property
+    def native_value(self) -> str | None:  # pragma: no cover
+        """Return the serial number string assembled during device scan."""
+        sn = (self.coordinator.device_info or {}).get("serial_number")
+        if sn and sn != "Unknown":
+            return sn
+        return None
+
+    @property
+    def available(self) -> bool:  # pragma: no cover
+        """Return True when the coordinator has a valid serial number."""
+        if not self.coordinator.last_update_success:
+            return False
+        if getattr(self.coordinator, "offline_state", False):
+            return False
+        sn = (self.coordinator.device_info or {}).get("serial_number")
+        return bool(sn and sn != "Unknown")
 
 
 class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):

@@ -763,13 +763,13 @@ def test_process_register_value_dac_boundaries(coordinator, register_name, value
 def test_register_value_logging(coordinator, caplog):
     """Test debug and warning logging for register processing."""
 
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.coordinator"):
         caplog.clear()
         coordinator._process_register_value("outside_temperature", 250)
         assert "raw=250" in caplog.text
         assert "value=25.0" in caplog.text
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING, logger="custom_components.thessla_green_modbus.coordinator"):
         caplog.clear()
         coordinator._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
         assert not caplog.records

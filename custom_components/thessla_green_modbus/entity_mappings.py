@@ -252,6 +252,11 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
     for reg in get_all_registers():
         if reg.function != 3 or not reg.name:
             continue
+        # String-type registers span multiple registers and store ASCII data.
+        # They cannot be meaningfully represented as a single numeric value,
+        # so skip them here (e.g. ``device_name`` at holding address 8144).
+        if reg.extra and reg.extra.get("type") == "string":
+            continue
         register = reg.name
         info = _get_register_info(register)
         if not info:
