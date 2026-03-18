@@ -411,10 +411,10 @@
         "name": "Intensywność wentylacji (tryb chwilowy, roz.)"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Temperatura lato chłodzenie free"
+        "name": "Temperatura bypassa (wolne chłodzenie)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Temperatura lato grzanie free"
+        "name": "Temperatura bypassa (wolne grzanie)"
       },
       "airing_bathroom_coef": {
         "name": "Airing Bathroom Coef"
@@ -916,10 +916,10 @@
         "name": "Przepływ powietrza manualnie"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Temperatura lato chłodzenie free"
+        "name": "Temperatura bypassa (wolne chłodzenie)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Temperatura lato grzanie free"
+        "name": "Temperatura bypassa (wolne grzanie)"
       },
       "ambient_temperature": {
         "name": "Temperatura otoczenia"

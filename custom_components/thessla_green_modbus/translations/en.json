@@ -411,10 +411,10 @@
         "name": "Temporary Air Flow Rate (Ext.)"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Air Temperature Summer Free Cooling"
+        "name": "Bypass Temperature (Free Cooling)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Air Temperature Summer Free Heating"
+        "name": "Bypass Temperature (Free Heating)"
       },
       "airing_bathroom_coef": {
         "name": "Airing Bathroom Coef"
@@ -916,10 +916,10 @@
         "name": "Air Flow Rate Manual"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Air Temperature Summer Free Cooling"
+        "name": "Bypass Temperature (Free Cooling)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Air Temperature Summer Free Heating"
+        "name": "Bypass Temperature (Free Heating)"
       },
       "ambient_temperature": {
         "name": "Ambient Temperature"
