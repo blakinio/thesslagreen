@@ -1361,6 +1361,11 @@
       "schedule_winter_wed_4": {
         "name": "Schedule Winter Wed 4"
       }
+    },
+    "text": {
+      "device_name": {
+        "name": "Device Name"
+      }
     }
   },
   "codes": {

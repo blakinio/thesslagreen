@@ -19,7 +19,7 @@ SPECIAL_PATH = (
 
 def build():
     regs = {r["name"]: r for r in json.loads(REG.read_text(encoding="utf-8"))["registers"]}
-    baud = [str(v) for v in regs["uart0_baud"]["enum"].values()]
+    baud = [str(v) for v in regs["uart_0_baud"]["enum"].values()]
     baud_opt = {f"thessla_green_modbus.modbus_baud_rate_{v}": v for v in baud}
     parity_map = {
         "brak": ("none", "None", "Brak"),
@@ -28,16 +28,16 @@ def build():
     }
     parity_en = {
         f"thessla_green_modbus.modbus_parity_{parity_map[v][0]}": parity_map[v][1]
-        for v in regs["uart0_parity"]["enum"].values()
+        for v in regs["uart_0_parity"]["enum"].values()
     }
     parity_pl = {
         f"thessla_green_modbus.modbus_parity_{parity_map[v][0]}": parity_map[v][2]
-        for v in regs["uart0_parity"]["enum"].values()
+        for v in regs["uart_0_parity"]["enum"].values()
     }
     stop_map = {"jeden": ("1", "1"), "dwa": ("2", "2")}
     stop_opt = {
         f"thessla_green_modbus.modbus_stop_bits_{stop_map[v][0]}": stop_map[v][1]
-        for v in regs["uart0_stop"]["enum"].values()
+        for v in regs["uart_0_stop"]["enum"].values()
     }
     port_opt = {
         "thessla_green_modbus.modbus_port_air_b": "Air-B",

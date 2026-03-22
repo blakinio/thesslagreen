@@ -454,7 +454,7 @@ async def test_async_write_temporary_airflow_missing_register():
     coord = _make_coordinator()
     with patch(
         "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        side_effect=KeyError("cfg_mode1"),
+        side_effect=KeyError("cfg_mode_1"),
     ):
         result = await coord.async_write_temporary_airflow(50.0)
     assert result is False
@@ -482,7 +482,7 @@ async def test_async_write_temporary_temperature_missing_register():
     coord = _make_coordinator()
     with patch(
         "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        side_effect=KeyError("cfg_mode2"),
+        side_effect=KeyError("cfg_mode_2"),
     ):
         result = await coord.async_write_temporary_temperature(22.0)
     assert result is False

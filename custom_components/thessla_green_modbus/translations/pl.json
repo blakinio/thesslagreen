@@ -1361,6 +1361,11 @@
       "schedule_winter_wed_4": {
         "name": "Harmonogram zima Środa 4"
       }
+    },
+    "text": {
+      "device_name": {
+        "name": "Nazwa urządzenia"
+      }
     }
   },
   "codes": {

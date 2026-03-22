@@ -247,13 +247,13 @@ async def test_close_client_raises_modbus_io_exception():
 
 @pytest.mark.asyncio
 async def test_verify_connection_safe_holding_registers():
-    """Lines 824-829: safe_holding is non-empty when date_time_rrmm is in REGISTER_DEFINITIONS."""
+    """Lines 824-829: safe_holding is non-empty when date_time is in REGISTER_DEFINITIONS."""
     from custom_components.thessla_green_modbus.scanner_core import REGISTER_DEFINITIONS
 
     scanner = await _make_scanner()
-    # date_time_rrmm is a holding register in SAFE_REGISTERS
-    if "date_time_rrmm" not in REGISTER_DEFINITIONS:
-        pytest.skip("date_time_rrmm not in REGISTER_DEFINITIONS")
+    # date_time is a holding register in SAFE_REGISTERS
+    if "date_time" not in REGISTER_DEFINITIONS:
+        pytest.skip("date_time not in REGISTER_DEFINITIONS")
 
     fake_transport = _make_transport()
     with patch.object(scanner, "_build_tcp_transport", return_value=fake_transport):

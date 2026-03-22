@@ -93,7 +93,7 @@ UART_OPTIONAL_REGS = range(4452, 4460)
 SAFE_REGISTERS: list[tuple[int, str]] = [
     (4, "version_major"),
     (4, "version_minor"),
-    (3, "date_time_rrmm"),
+    (3, "date_time"),
 ]
 
 __all__ = [

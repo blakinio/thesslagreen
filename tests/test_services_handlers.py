@@ -685,8 +685,8 @@ async def test_set_modbus_parameters_baud_rate(monkeypatch):
     await handler(call)
 
     written = {c.args[0]: c.args[1] for c in coord.async_write_register.call_args_list}
-    assert "uart0_baud" in written
-    assert written["uart0_baud"] == 1  # 9600 → index 1
+    assert "uart_0_baud" in written
+    assert written["uart_0_baud"] == 1  # 9600 → index 1
     coord.async_request_refresh.assert_awaited_once()
 
 
@@ -707,10 +707,10 @@ async def test_set_modbus_parameters_all_params(monkeypatch):
     await handler(call)
 
     written = {c.args[0]: c.args[1] for c in coord.async_write_register.call_args_list}
-    assert "uart1_baud" in written
-    assert "uart1_parity" in written
-    assert "uart1_stop" in written
-    assert written["uart1_parity"] == 1  # even
+    assert "uart_1_baud" in written
+    assert "uart_1_parity" in written
+    assert "uart_1_stop" in written
+    assert written["uart_1_parity"] == 1  # even
 
 
 @pytest.mark.asyncio

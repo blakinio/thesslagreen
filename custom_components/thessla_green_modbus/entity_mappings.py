@@ -133,9 +133,6 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_season_mode": ("select", "rekuperator_season_mode"),
     "rekuperator_bypass_mode_status": ("sensor", "rekuperator_bypass_mode"),
     "rekuperator_on_off_panel_mode": ("switch", "rekuperator_on_off_panel_mode"),
-    # Legacy aliases for historical register naming.
-    "rekuperator_bypass_coef_1": ("number", "rekuperator_bypass_coef1"),
-    "rekuperator_bypass_coef_2": ("number", "rekuperator_bypass_coef2"),
 }
 
 _alias_warning_logged = False
@@ -1420,6 +1417,16 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
 # Time entity mappings for writable BCD HHMM registers
 TIME_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}
 
+# Text entities — ASCII string registers exposed as HA text controls
+TEXT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
+    "device_name": {
+        "translation_key": "device_name",
+        "icon": "mdi:rename",
+        "register_type": "holding_registers",
+        "max_length": 16,
+    },
+}
+
 # Aggregated entity mappings for all platforms
 ENTITY_MAPPINGS: dict[str, dict[str, dict[str, Any]]] = {}
 
@@ -1451,6 +1458,8 @@ def _extend_entity_mappings_from_registers() -> None:
         if register in SWITCH_ENTITY_MAPPINGS:
             continue
         if register in SELECT_ENTITY_MAPPINGS:
+            continue
+        if register in TEXT_ENTITY_MAPPINGS:
             continue
         if register in TIME_ENTITY_MAPPINGS:
             continue
@@ -1683,7 +1692,8 @@ def _build_entity_mappings() -> None:
     """Populate entity mapping dictionaries."""
 
     global NUMBER_ENTITY_MAPPINGS, BINARY_SENSOR_ENTITY_MAPPINGS
-    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, TIME_ENTITY_MAPPINGS, ENTITY_MAPPINGS
+    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, TIME_ENTITY_MAPPINGS
+    global TEXT_ENTITY_MAPPINGS, ENTITY_MAPPINGS
 
     NUMBER_ENTITY_MAPPINGS = _load_number_mappings()
     TIME_ENTITY_MAPPINGS = {}
@@ -1721,6 +1731,7 @@ def _build_entity_mappings() -> None:
         "binary_sensor": BINARY_SENSOR_ENTITY_MAPPINGS,
         "switch": SWITCH_ENTITY_MAPPINGS,
         "select": SELECT_ENTITY_MAPPINGS,
+        "text": TEXT_ENTITY_MAPPINGS,
         "time": TIME_ENTITY_MAPPINGS,
     }
 
