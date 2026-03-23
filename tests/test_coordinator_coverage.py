@@ -407,6 +407,15 @@ def test_post_process_data_flow_balance_balanced():
     assert result["flow_balance_status"] == "balanced"
 
 
+def test_post_process_data_flow_balance_string_values():
+    """flow_balance must not crash when register returns a string value."""
+    coord = _make_coordinator()
+    data = {"supply_flow_rate": "invalid", "exhaust_flow_rate": 75}
+    result = coord._post_process_data(data)
+    # Should silently skip — no crash, no flow_balance key
+    assert "flow_balance" not in result
+
+
 def test_post_process_data_power_calculation():
     """Power is estimated and energy accumulated when DAC values provided."""
     coord = _make_coordinator()

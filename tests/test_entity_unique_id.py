@@ -207,6 +207,24 @@ def test_unique_id_bit_suffix():
     assert entity.unique_id == "SN123_10_test_5_bit4"  # nosec
 
 
+def test_unique_id_calculated_sensor_no_none():
+    """Calculated sensors (address=None) must not produce '_None' in unique_id."""
+    coordinator = _create_coordinator(serial="SN123", host="192.0.2.10", port=502)
+
+    entity = ThesslaGreenEntity(coordinator, "heat_recovery_efficiency", None)
+    assert "_None" not in entity.unique_id  # nosec
+    assert entity.unique_id == "SN123_10_heat_recovery_efficiency_calc"  # nosec
+
+
+def test_unique_id_calculated_and_addressed_differ():
+    """Calculated sensor unique_id must differ from an addressed entity with the same key."""
+    coordinator = _create_coordinator(serial="SN123", host="192.0.2.10", port=502)
+
+    calc = ThesslaGreenEntity(coordinator, "heat_recovery_power", None)
+    addressed = ThesslaGreenEntity(coordinator, "heat_recovery_power", 0)
+    assert calc.unique_id != addressed.unique_id  # nosec
+
+
 # ---------------------------------------------------------------------------
 # ThesslaGreenEntity.__init__ TypeError fallback (lines 29-34)
 # ---------------------------------------------------------------------------

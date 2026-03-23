@@ -50,7 +50,8 @@ class ThesslaGreenEntity(CoordinatorEntity):
             getattr(self.coordinator, "host", ""),
             getattr(self.coordinator, "port", 0),
         )
-        return f"{prefix}_{self.coordinator.slave_id}_{self._key}_{self._address}{bit_suffix}"
+        addr_part = "calc" if self._address is None else self._address
+        return f"{prefix}_{self.coordinator.slave_id}_{self._key}_{addr_part}{bit_suffix}"
 
     @property
     def available(self) -> bool:  # pragma: no cover

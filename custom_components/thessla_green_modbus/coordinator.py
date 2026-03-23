@@ -1987,12 +1987,16 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
         # Calculate flow balance
         if "supply_flow_rate" in data and "exhaust_flow_rate" in data:
-            data["flow_balance"] = data["supply_flow_rate"] - data["exhaust_flow_rate"]
-            data["flow_balance_status"] = (
-                "balanced"
-                if abs(data["flow_balance"]) < 10
-                else "supply_dominant" if data["flow_balance"] > 0 else "exhaust_dominant"
-            )
+            try:
+                balance = float(data["supply_flow_rate"]) - float(data["exhaust_flow_rate"])
+                data["flow_balance"] = balance
+                data["flow_balance_status"] = (
+                    "balanced"
+                    if abs(balance) < 10
+                    else "supply_dominant" if balance > 0 else "exhaust_dominant"
+                )
+            except (TypeError, ValueError) as exc:
+                _LOGGER.debug("Could not calculate flow balance: %s", exc)
         power = self.calculate_power_consumption(data)
         if power is not None:
             data["estimated_power"] = power
