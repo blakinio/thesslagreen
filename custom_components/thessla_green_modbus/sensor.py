@@ -185,6 +185,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self._attr_device_class = sensor_definition.get("device_class")  # pragma: no cover
         self._attr_state_class = sensor_definition.get("state_class")  # pragma: no cover
         self._attr_entity_category = sensor_definition.get("entity_category")  # pragma: no cover
+        if "suggested_display_precision" in sensor_definition:  # pragma: no cover
+            self._attr_suggested_display_precision = sensor_definition["suggested_display_precision"]  # pragma: no cover
 
         # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover

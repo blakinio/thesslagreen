@@ -1969,8 +1969,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 exhaust = data["exhaust_temperature"]
 
                 if exhaust != outside:
-                    efficiency = ((supply - outside) / (exhaust - outside)) * 100
-                    data["calculated_efficiency"] = max(0, min(100, efficiency))
+                    efficiency = round(((supply - outside) / (exhaust - outside)) * 100, 1)
+                    data["calculated_efficiency"] = max(0.0, min(100.0, efficiency))
                     data["heat_recovery_efficiency"] = data["calculated_efficiency"]
             except (ZeroDivisionError, TypeError) as exc:
                 _LOGGER.debug("Could not calculate efficiency: %s", exc)
