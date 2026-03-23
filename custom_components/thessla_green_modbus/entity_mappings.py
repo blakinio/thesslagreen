@@ -879,18 +879,21 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
         "icon": "mdi:fan-plus",
+        "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "max_exhaust_air_flow_rate": {
         "translation_key": "max_exhaust_air_flow_rate",
         "icon": "mdi:fan-minus",
+        "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "nominal_supply_air_flow": {
         "translation_key": "nominal_supply_air_flow",
         "icon": "mdi:fan-clock",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
@@ -898,6 +901,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "nominal_exhaust_air_flow": {
         "translation_key": "nominal_exhaust_air_flow",
         "icon": "mdi:fan-clock",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
