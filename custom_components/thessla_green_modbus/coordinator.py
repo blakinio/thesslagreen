@@ -1989,7 +1989,10 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 # outside must be colder than the room (exhaust > outside).
                 # In summer/freecooling the bypass should be open, but if the
                 # bypass register hasn't caught up yet, skip gracefully.
-                if exhaust > outside:
+                # EN 308 also requires ΔT ≥ 5 K for a statistically reliable
+                # measurement; below that threshold sensor noise dominates.
+                _MIN_DELTA_T = 5.0
+                if exhaust - outside >= _MIN_DELTA_T:
                     q_supply = data.get("supply_flow_rate")
                     q_exhaust = data.get("exhaust_flow_rate")
                     if q_supply is not None and q_exhaust is not None:
