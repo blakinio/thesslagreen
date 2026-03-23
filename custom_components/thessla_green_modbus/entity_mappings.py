@@ -54,6 +54,7 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tes
 try:  # pragma: no cover - use HA constants when available
     from homeassistant.const import (
         UnitOfElectricPotential,
+        UnitOfPower,
         UnitOfTemperature,
         UnitOfTime,
         UnitOfVolumeFlowRate,
@@ -62,6 +63,9 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only i
 
     class UnitOfElectricPotential:  # type: ignore[no-redef]
         VOLT = "V"
+
+    class UnitOfPower:  # type: ignore[no-redef]
+        WATT = "W"
 
     class UnitOfTemperature:  # type: ignore[no-redef]
         CELSIUS = "°C"
@@ -948,9 +952,24 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:alert-circle",
         "register_type": "holding_registers",
     },
-    # intensive_supply, intensive_exhaust and calculated_efficiency were
-    # register_type="calculated" and are never instantiated by the sensor
-    # platform — removed until a computed-register mechanism is implemented.
+    # Derived / calculated sensors — values are produced by the coordinator's
+    # _post_process_data and do not correspond to a single Modbus register.
+    "heat_recovery_efficiency": {
+        "translation_key": "heat_recovery_efficiency",
+        "icon": "mdi:heat-wave",
+        "device_class": SensorDeviceClass.EFFICIENCY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "calculated",
+    },
+    "heat_recovery_power": {
+        "translation_key": "heat_recovery_power",
+        "icon": "mdi:radiator",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "calculated",
+    },
 }
 
 SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {

@@ -92,6 +92,12 @@ async def async_setup_entry(
                 temp_skipped += 1
             continue
 
+        # Calculated sensors are derived from coordinator data and have no Modbus address.
+        if register_type == "calculated":
+            entities.append(ThesslaGreenSensor(coordinator, register_name, None, sensor_def))
+            _LOGGER.debug("Created calculated sensor: %s", sensor_def["translation_key"])
+            continue
+
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.available_registers.get(register_type, set())
         # serial_number is always force-created: it reads from device_info (assembled

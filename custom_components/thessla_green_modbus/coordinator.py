@@ -1910,8 +1910,19 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 if exhaust != outside:
                     efficiency = ((supply - outside) / (exhaust - outside)) * 100
                     data["calculated_efficiency"] = max(0, min(100, efficiency))
+                    data["heat_recovery_efficiency"] = data["calculated_efficiency"]
             except (ZeroDivisionError, TypeError) as exc:
                 _LOGGER.debug("Could not calculate efficiency: %s", exc)
+
+        # Calculate heat recovery power: P[W] = ρ·Cp·Q·ΔT
+        # ρ=1.2 kg/m³, Cp=1005 J/(kg·K) → coefficient = 1.2*1005/3600 ≈ 0.335 W/(m³/h·K)
+        if all(k in data for k in ["supply_flow_rate", "outside_temperature", "supply_temperature"]):
+            try:
+                flow = float(data["supply_flow_rate"])
+                delta_t = float(data["supply_temperature"]) - float(data["outside_temperature"])
+                data["heat_recovery_power"] = round(max(0.0, 0.335 * flow * delta_t), 1)
+            except (TypeError, ValueError) as exc:
+                _LOGGER.debug("Could not calculate heat recovery power: %s", exc)
 
         # Calculate flow balance
         if "supply_flow_rate" in data and "exhaust_flow_rate" in data:
