@@ -1057,6 +1057,15 @@
       "filter_exhaust_date_limit_get": {
         "name": "Exhaust Filter Replacement Date"
       },
+      "heat_recovery_efficiency": {
+        "name": "Heat Recovery Efficiency"
+      },
+      "heat_recovery_power": {
+        "name": "Heat Recovery Power"
+      },
+      "electrical_power": {
+        "name": "Electrical Power Consumption"
+      },
       "stop_ahu_code": {
         "name": "AHU Stop Alarm Code"
       },

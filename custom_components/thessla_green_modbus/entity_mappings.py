@@ -54,6 +54,7 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tes
 try:  # pragma: no cover - use HA constants when available
     from homeassistant.const import (
         UnitOfElectricPotential,
+        UnitOfPower,
         UnitOfTemperature,
         UnitOfTime,
         UnitOfVolumeFlowRate,
@@ -62,6 +63,9 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only i
 
     class UnitOfElectricPotential:  # type: ignore[no-redef]
         VOLT = "V"
+
+    class UnitOfPower:  # type: ignore[no-redef]
+        WATT = "W"
 
     class UnitOfTemperature:  # type: ignore[no-redef]
         CELSIUS = "°C"
@@ -879,18 +883,21 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "max_supply_air_flow_rate": {
         "translation_key": "max_supply_air_flow_rate",
         "icon": "mdi:fan-plus",
+        "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "max_exhaust_air_flow_rate": {
         "translation_key": "max_exhaust_air_flow_rate",
         "icon": "mdi:fan-minus",
+        "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
         "register_type": "holding_registers",
     },
     "nominal_supply_air_flow": {
         "translation_key": "nominal_supply_air_flow",
         "icon": "mdi:fan-clock",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
@@ -898,6 +905,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "nominal_exhaust_air_flow": {
         "translation_key": "nominal_exhaust_air_flow",
         "icon": "mdi:fan-clock",
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         "register_type": "holding_registers",
@@ -944,9 +952,32 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:alert-circle",
         "register_type": "holding_registers",
     },
-    # intensive_supply, intensive_exhaust and calculated_efficiency were
-    # register_type="calculated" and are never instantiated by the sensor
-    # platform — removed until a computed-register mechanism is implemented.
+    # Derived / calculated sensors — values are produced by the coordinator's
+    # _post_process_data and do not correspond to a single Modbus register.
+    "heat_recovery_efficiency": {
+        "translation_key": "heat_recovery_efficiency",
+        "icon": "mdi:heat-wave",
+        "device_class": SensorDeviceClass.EFFICIENCY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": PERCENTAGE,
+        "register_type": "calculated",
+    },
+    "heat_recovery_power": {
+        "translation_key": "heat_recovery_power",
+        "icon": "mdi:radiator",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "calculated",
+    },
+    "electrical_power": {
+        "translation_key": "electrical_power",
+        "icon": "mdi:lightning-bolt",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "calculated",
+    },
 }
 
 SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {

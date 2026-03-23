@@ -816,6 +816,104 @@ def test_post_process_data(coordinator):
     assert "total_energy" in processed_data
     assert processed_data["total_energy"] > 0
 
+    # New derived sensors must be present
+    assert "heat_recovery_efficiency" in processed_data
+    assert processed_data["heat_recovery_efficiency"] == processed_data["calculated_efficiency"]
+    assert "heat_recovery_power" in processed_data
+    assert processed_data["heat_recovery_power"] >= 0
+    assert "electrical_power" in processed_data
+    assert processed_data["electrical_power"] == processed_data["estimated_power"]
+
+
+def test_lookup_model_power_exact(coordinator):
+    """Known nominal flows return the correct specs."""
+    assert coordinator._lookup_model_power(300) == (105.0, 1150.0)
+    assert coordinator._lookup_model_power(400) == (170.0, 1500.0)
+    assert coordinator._lookup_model_power(420) == (94.0, 1449.0)
+    assert coordinator._lookup_model_power(500) == (255.0, 1850.0)
+    assert coordinator._lookup_model_power(550) == (345.0, 1950.0)
+
+
+def test_lookup_model_power_within_tolerance(coordinator):
+    """Flows within ±15 m³/h of a known entry should match."""
+    # 410 is within 15 of 420 (AirPack Home 400h) and within 15 of 400 (AirPack4 400V).
+    # Closest match is 420 (diff=10) over 400 (diff=10)... let's check 430 which is closest to 420.
+    result = coordinator._lookup_model_power(430)
+    assert result == (94.0, 1449.0)  # closest to 420
+
+
+def test_lookup_model_power_unknown(coordinator):
+    """Flows far from any known entry return None."""
+    assert coordinator._lookup_model_power(200) is None
+    assert coordinator._lookup_model_power(700) is None
+
+
+def test_calculate_power_model_aware(coordinator):
+    """Flow-based calculation uses fan affinity law + standby power."""
+    data = {
+        "nominal_supply_air_flow": 420,
+        "supply_flow_rate": 420,   # 100% flow
+        "exhaust_flow_rate": 420,
+        "dac_heater": 0.0,
+    }
+    power = coordinator.calculate_power_consumption(data)
+    # At 100% flow: fans = 94 W, heater = 0, standby = 10 W → 104 W
+    assert power == pytest.approx(104.0, abs=0.5)
+
+
+def test_calculate_power_partial_flow(coordinator):
+    """Fan affinity law: at 50% flow power is (0.5)³ = 12.5% of max per fan."""
+    data = {
+        "nominal_supply_air_flow": 420,
+        "supply_flow_rate": 210,   # 50%
+        "exhaust_flow_rate": 210,
+        "dac_heater": 0.0,
+    }
+    power = coordinator.calculate_power_consumption(data)
+    # Each fan: 47 × 0.125 = 5.875 W × 2 = 11.75 W, + 10 W standby = 21.75 W
+    assert power == pytest.approx(21.75, abs=0.5)
+
+
+def test_calculate_power_with_heater(coordinator):
+    """Heater contributes linearly: 50% DAC → 50% of heater_max."""
+    data = {
+        "nominal_supply_air_flow": 420,
+        "supply_flow_rate": 420,
+        "exhaust_flow_rate": 420,
+        "dac_heater": 5.0,   # 50%
+    }
+    power = coordinator.calculate_power_consumption(data)
+    # fans=94 W, heater=1449×0.5=724.5 W, standby=10 W → 828.5 W
+    assert power == pytest.approx(828.5, abs=1.0)
+
+
+def test_calculate_power_standby_always_included(coordinator):
+    """Standby power is always added regardless of fans or heater."""
+    data = {
+        "nominal_supply_air_flow": 420,
+        "supply_flow_rate": 0,
+        "exhaust_flow_rate": 0,
+        "dac_heater": 0.0,
+    }
+    power = coordinator.calculate_power_consumption(data)
+    assert power == pytest.approx(10.0, abs=0.1)
+
+
+def test_calculate_power_fallback_dac(coordinator):
+    """Falls back to DAC estimate when nominal flow is absent."""
+    data = {
+        "dac_supply": 10.0,
+        "dac_exhaust": 10.0,
+    }
+    power = coordinator.calculate_power_consumption(data)
+    # DAC fallback: 2 fans × (10/10)³ × 80 W = 160 W
+    assert power == pytest.approx(160.0, abs=1.0)
+
+
+def test_calculate_power_fallback_missing_dac(coordinator):
+    """Returns None when neither flow data nor DAC values are available."""
+    assert coordinator.calculate_power_consumption({}) is None
+
 
 @pytest.mark.asyncio
 async def test_reconfigure_does_not_leak_connections(coordinator):

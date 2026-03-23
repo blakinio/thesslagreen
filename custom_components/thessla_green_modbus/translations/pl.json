@@ -1057,6 +1057,15 @@
       "filter_exhaust_date_limit_get": {
         "name": "Data wymiany filtra wywiewnego"
       },
+      "heat_recovery_efficiency": {
+        "name": "Sprawność rekuperatora"
+      },
+      "heat_recovery_power": {
+        "name": "Moc odzysku ciepła"
+      },
+      "electrical_power": {
+        "name": "Pobór mocy elektrycznej"
+      },
       "stop_ahu_code": {
         "name": "Kod alarmu blokującego"
       },
