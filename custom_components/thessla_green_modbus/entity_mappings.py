@@ -721,11 +721,15 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "day_of_week",
         "icon": "mdi:calendar-week",
         "register_type": "input_registers",
+        # Register 2: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+        "value_map": {0: "monday", 1: "tuesday", 2: "wednesday", 3: "thursday", 4: "friday", 5: "saturday", 6: "sunday"},
     },
     "period": {
         "translation_key": "period",
         "icon": "mdi:clock-outline",
         "register_type": "input_registers",
+        # Register 3: 0=slot 1, 1=slot 2, 2=slot 3, 3=slot 4
+        "value_map": {0: "slot_1", 1: "slot_2", 2: "slot_3", 3: "slot_4"},
     },
     "compilation_days": {
         "translation_key": "compilation_days",
@@ -782,6 +786,8 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "antifreez_stage",
         "icon": "mdi:snowflake-thermometer",
         "register_type": "holding_registers",
+        # Register 4198: 0=FPX off, 1=FPX mode 1, 2=FPX mode 2
+        "value_map": {0: "off", 1: "fpx1", 2: "fpx2"},
     },
     # gwc_mode and bypass_mode are read-only status registers (access="R") that
     # report the device's automatically-determined state. They are exposed as
@@ -797,18 +803,24 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "bypass_mode",
         "icon": "mdi:pipe-leak",
         "register_type": "holding_registers",
-        "value_map": {0: "auto", 1: "open", 2: "closed"},
+        # Register 4330: 0=bypass inactive (HX active), 1=freeheating, 2=freecooling.
+        # Both 1 and 2 mean the bypass damper is physically open.
+        "value_map": {0: "inactive", 1: "freeheating", 2: "freecooling"},
     },
     # mode and season_mode are covered by SELECT_ENTITY_MAPPINGS (writable).
     "comfort_mode": {
         "translation_key": "comfort_mode",
         "icon": "mdi:home-heart",
         "register_type": "holding_registers",
+        # Register 4305: 0=inactive, 1=heating function, 2=cooling function
+        "value_map": {0: "inactive", 1: "heating", 2: "cooling"},
     },
     "constant_flow_active": {
         "translation_key": "constant_flow_active",
         "icon": "mdi:waves",
         "register_type": "input_registers",
+        # Register 271: 0=inactive, 1=active
+        "value_map": {0: "inactive", 1: "active"},
     },
     # Filter replacement dates (read-only holding registers)
     "filter_supply_date_limit_get": {
@@ -946,11 +958,13 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # estimated_power and total_energy were register_type="calculated" and are
     # never instantiated by the sensor platform — removed until a
     # computed-register mechanism is implemented.
-    # AHU stop alarm code (0 = no alarm, 1–98 = specific alarm type S code)
+    # AHU stop alarm code (0 = no alarm, 1 = alarm type S active)
     "stop_ahu_code": {
         "translation_key": "stop_ahu_code",
         "icon": "mdi:alert-circle",
         "register_type": "holding_registers",
+        # Register 4384: 0=no blocking alarm, 1=type S alarm (code 98)
+        "value_map": {0: "none", 1: "alarm_s"},
     },
     # Derived / calculated sensors — values are produced by the coordinator's
     # _post_process_data and do not correspond to a single Modbus register.

@@ -927,9 +927,9 @@
       "bypass_mode": {
         "name": "Tryb bypassu",
         "state": {
-          "auto": "Automatyczny",
-          "open": "Otwarty",
-          "closed": "Zamknięty"
+          "inactive": "Nieaktywny",
+          "freeheating": "Wolne grzanie",
+          "freecooling": "Wolne chłodzenie"
         }
       },
       "cf_version": {
@@ -939,7 +939,12 @@
         "name": "Wersja modułu rozszerzenia"
       },
       "comfort_mode": {
-        "name": "Tryb komfort"
+        "name": "Tryb komfort",
+        "state": {
+          "inactive": "Nieaktywny",
+          "heating": "Funkcja grzania",
+          "cooling": "Funkcja chłodzenia"
+        }
       },
       "compilation_days": {
         "name": "Dni kompilacji"
@@ -948,7 +953,11 @@
         "name": "Sekundy kompilacji"
       },
       "constant_flow_active": {
-        "name": "Stały przepływ aktywny"
+        "name": "Stały przepływ aktywny",
+        "state": {
+          "inactive": "Nieaktywny",
+          "active": "Aktywny"
+        }
       },
       "dac_cooler": {
         "name": "Napięcie chłodnicy"
@@ -963,7 +972,16 @@
         "name": "Napięcie wentylatora nawiewnego"
       },
       "day_of_week": {
-        "name": "Dzień tygodnia"
+        "name": "Dzień tygodnia",
+        "state": {
+          "monday": "Poniedziałek",
+          "tuesday": "Wtorek",
+          "wednesday": "Środa",
+          "thursday": "Czwartek",
+          "friday": "Piątek",
+          "saturday": "Sobota",
+          "sunday": "Niedziela"
+        }
       },
       "duct_supply_temperature": {
         "name": "Temperatura kanału nawiewnego"
@@ -1019,7 +1037,13 @@
         "name": "Temperatura zewnętrzna"
       },
       "period": {
-        "name": "Okres czasowy"
+        "name": "Okres czasowy",
+        "state": {
+          "slot_1": "Odcinek 1",
+          "slot_2": "Odcinek 2",
+          "slot_3": "Odcinek 3",
+          "slot_4": "Odcinek 4"
+        }
       },
       "serial_number": {
         "name": "Numer seryjny"
@@ -1049,7 +1073,12 @@
         "name": "Wersja łatki"
       },
       "antifreez_stage": {
-        "name": "Faza ochrony przeciwzamrożeniowej"
+        "name": "Faza ochrony przeciwzamrożeniowej",
+        "state": {
+          "off": "Wyłączona",
+          "fpx1": "Tryb FPX1",
+          "fpx2": "Tryb FPX2"
+        }
       },
       "filter_supply_date_limit_get": {
         "name": "Data wymiany filtra nawiewnego"
@@ -1067,7 +1096,11 @@
         "name": "Pobór mocy elektrycznej"
       },
       "stop_ahu_code": {
-        "name": "Kod alarmu blokującego"
+        "name": "Kod alarmu blokującego",
+        "state": {
+          "none": "Brak alarmu",
+          "alarm_s": "Alarm typ S (kod 98)"
+        }
       },
       "max_supply_air_flow_rate": {
         "name": "Maksymalny przepływ nawiewu"

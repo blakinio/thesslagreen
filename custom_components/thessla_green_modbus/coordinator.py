@@ -1960,9 +1960,10 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             data["serial_number"] = device_serial
 
         # Calculate heat recovery efficiency.
-        # bypass_mode raw values: 0=auto, 1=open, 2=closed.
-        # When bypass is fully open the air bypasses the heat exchanger so any
-        # temperature-based formula yields a meaningless near-zero result — skip.
+        # bypass_mode register 4330: 0=inactive (HX active), 1=freeheating, 2=freecooling.
+        # Both freeheating and freecooling open the bypass damper, routing air
+        # around the heat exchanger, so any temperature-based efficiency formula
+        # yields a meaningless result — skip for both active states.
         #
         # Formula selection (per EN 308 / ASHRAE Standard 84):
         #   • With flow rates: thermodynamic effectiveness ε (ASHRAE 84 ε-NTU):
@@ -1976,7 +1977,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         #     the exhaust-outlet sensor TW is absent, so EN 308 η_exhaust and the
         #     Belgian mean-efficiency (η_epbd) cannot be computed.
         bypass_raw = data.get("bypass_mode")
-        bypass_open = bypass_raw == 1
+        bypass_open = bypass_raw in (1, 2)
         if all(
             k in data for k in ["outside_temperature", "supply_temperature", "exhaust_temperature"]
         ) and not bypass_open:
@@ -1989,7 +1990,10 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 # outside must be colder than the room (exhaust > outside).
                 # In summer/freecooling the bypass should be open, but if the
                 # bypass register hasn't caught up yet, skip gracefully.
-                if exhaust > outside:
+                # EN 308 also requires ΔT ≥ 5 K for a statistically reliable
+                # measurement; below that threshold sensor noise dominates.
+                _MIN_DELTA_T = 5.0
+                if exhaust - outside >= _MIN_DELTA_T:
                     q_supply = data.get("supply_flow_rate")
                     q_exhaust = data.get("exhaust_flow_rate")
                     if q_supply is not None and q_exhaust is not None:
