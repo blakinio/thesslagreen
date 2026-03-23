@@ -970,6 +970,14 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": UnitOfPower.WATT,
         "register_type": "calculated",
     },
+    "electrical_power": {
+        "translation_key": "electrical_power",
+        "icon": "mdi:lightning-bolt",
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "unit": UnitOfPower.WATT,
+        "register_type": "calculated",
+    },
 }
 
 SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {

@@ -1063,6 +1063,9 @@
       "heat_recovery_power": {
         "name": "Moc odzysku ciepła"
       },
+      "electrical_power": {
+        "name": "Pobór mocy elektrycznej"
+      },
       "stop_ahu_code": {
         "name": "Kod alarmu blokującego"
       },
