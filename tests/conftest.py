@@ -102,6 +102,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         VOLTAGE = "voltage"
         POWER = "power"
         ENERGY = "energy"
+        EFFICIENCY = "efficiency"
         VOLUME_FLOW_RATE = "volume_flow_rate"
 
     class SensorStateClass:  # pragma: no cover - enum stub
