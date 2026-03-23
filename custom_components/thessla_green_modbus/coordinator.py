@@ -1863,6 +1863,11 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         _LOGGER.debug("Processed %s: raw=%s value=%s", register_name, value, decoded)
         return decoded
 
+    # Constant power draw of the control board, sensors and auxiliary electronics.
+    # Estimated from the F2/F3/F5 fuses on the nameplate (≤ 1 A each at 230 V).
+    # This baseline is always present whenever the device is powered on.
+    _STANDBY_POWER_W: float = 10.0
+
     # Known model specs: nominal_flow_m3h → (fan_total_max_W, heater_max_W)
     # fan_total_max_W is the combined power of both fans at nominal airflow.
     # heater_max_W is derived from the F4 fuse (6.3 A × 230 V) on the label or
@@ -1922,7 +1927,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     dac_h = max(0.0, min(10.0, dac_h))
                     p_heater = heater_max * (dac_h / 10.0)
 
-                    return round(p_fans + p_heater, 1)
+                    return round(p_fans + p_heater + self._STANDBY_POWER_W, 1)
             except (TypeError, ValueError):
                 pass
 
