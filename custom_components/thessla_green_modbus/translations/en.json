@@ -927,9 +927,9 @@
       "bypass_mode": {
         "name": "Bypass Mode",
         "state": {
-          "auto": "Automatic",
-          "open": "Open",
-          "closed": "Closed"
+          "inactive": "Inactive",
+          "freeheating": "Free Heating",
+          "freecooling": "Free Cooling"
         }
       },
       "cf_version": {

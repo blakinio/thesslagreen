@@ -797,7 +797,9 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "bypass_mode",
         "icon": "mdi:pipe-leak",
         "register_type": "holding_registers",
-        "value_map": {0: "auto", 1: "open", 2: "closed"},
+        # Register 4330: 0=bypass inactive (HX active), 1=freeheating, 2=freecooling.
+        # Both 1 and 2 mean the bypass damper is physically open.
+        "value_map": {0: "inactive", 1: "freeheating", 2: "freecooling"},
     },
     # mode and season_mode are covered by SELECT_ENTITY_MAPPINGS (writable).
     "comfort_mode": {

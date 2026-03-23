@@ -927,9 +927,9 @@
       "bypass_mode": {
         "name": "Tryb bypassu",
         "state": {
-          "auto": "Automatyczny",
-          "open": "Otwarty",
-          "closed": "Zamknięty"
+          "inactive": "Nieaktywny",
+          "freeheating": "Wolne grzanie",
+          "freecooling": "Wolne chłodzenie"
         }
       },
       "cf_version": {
