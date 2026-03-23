@@ -1,713 +1,653 @@
-# Example Home Assistant Lovelace dashboard configuration for ThesslaGreen Modbus Integration
-# This file provides a ready-to-use dashboard view with all rekuperator entities organized into sections.
-# To use: copy the contents into your Lovelace dashboard (raw config editor) or save as a dashboard YAML file.
+# ============================================================
+# Dashboard Thessla Green / AirPack4 – Home Assistant 2026
+# ============================================================
+# Prefix encji zależy od nazwy urządzenia nadanej podczas
+# konfiguracji. Ten plik zakłada nazwę "Rekuperator".
+# Jeśli Twoje encje mają inny prefix, zamień "rekuperator_"
+# na właściwy (np. "airpack_") za pomocą globalnego Znajdź/Zamień.
+# ============================================================
 
 views:
-  - type: sections
+
+  # ============================================================
+  # WIDOK 1 – PRZEGLĄD
+  # ============================================================
+  - title: Przegląd
+    path: overview
+    icon: mdi:home-thermometer
+    type: sections
+
     sections:
+
+      # --- Główne sterowanie ---
       - type: grid
-        cards:
-          - type: heading
-            heading: Nowa sekcja
-      - type: grid
+        title: Sterowanie
         cards:
           - type: tile
-            entity: switch.rekuperator_lock
+            entity: switch.rekuperator_on_off_panel_mode
+            name: Zasilanie
+            icon: mdi:power
+            color: red
+          - type: tile
+            entity: select.rekuperator_mode
+            name: Tryb pracy
+          - type: tile
+            entity: select.rekuperator_season_mode
+            name: Sezon
+          - type: tile
+            entity: select.rekuperator_special_mode
+            name: Tryb specjalny
+          - type: tile
+            entity: climate.rekuperator_climate_control
+            name: Klimat
+          - type: tile
+            entity: fan.rekuperator_ventilation
+            name: Wentylacja
+
+      # --- Kluczowe temperatury ---
+      - type: grid
+        title: Temperatury
+        cards:
+          - type: gauge
+            entity: sensor.rekuperator_outside_temperature
+            name: Na zewnątrz
+            min: -25
+            max: 45
+            needle: true
+            severity:
+              green: 15
+              yellow: 0
+              red: -25
+          - type: gauge
+            entity: sensor.rekuperator_supply_temperature
+            name: Nawiew
+            min: 5
+            max: 50
+            needle: true
+            severity:
+              green: 18
+              yellow: 12
+              red: 5
+          - type: gauge
+            entity: sensor.rekuperator_exhaust_temperature
+            name: Wywiew
+            min: 5
+            max: 35
+            needle: true
+            severity:
+              green: 20
+              yellow: 18
+              red: 5
+          - type: tile
+            entity: sensor.rekuperator_required_temperature
+            name: Zadana temperatura
+
+      # --- Przepływy i sprawność ---
+      - type: grid
+        title: Wentylacja
+        cards:
+          - type: gauge
+            entity: sensor.rekuperator_heat_recovery_efficiency
+            name: Sprawność odzysku
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              green: 70
+              yellow: 50
+              red: 0
+          - type: tile
+            entity: sensor.rekuperator_supply_flow_rate_m3_h
+            name: Nawiew
+            icon: mdi:fan-plus
+          - type: tile
+            entity: sensor.rekuperator_exhaust_flow_rate_m3_h
+            name: Wywiew
+            icon: mdi:fan-minus
+          - type: tile
+            entity: sensor.rekuperator_heat_recovery_power
+            name: Moc odzysku
+          - type: tile
+            entity: sensor.rekuperator_supply_percentage
+            name: Nawiew %
+          - type: tile
+            entity: sensor.rekuperator_exhaust_percentage
+            name: Wywiew %
+
+      # --- Status aktywny ---
+      - type: grid
+        title: Status
+        cards:
+          - type: tile
+            entity: sensor.rekuperator_bypass_mode_status
+            name: Bypass
+            icon: mdi:pipe-leak
+          - type: tile
+            entity: sensor.rekuperator_gwc_mode
+            name: GWC
+            icon: mdi:pipe
+          - type: tile
+            entity: sensor.rekuperator_comfort_mode_status
+            name: Komfort
+            icon: mdi:home-heart
+          - type: tile
+            entity: sensor.rekuperator_antifreeze_stage
+            name: Antyzamrożenie
+            icon: mdi:snowflake-thermometer
+          - type: tile
+            entity: sensor.rekuperator_day_of_week
+            name: Dzień
+          - type: tile
+            entity: sensor.rekuperator_time_period
+            name: Odcinek
+
+      # --- Szybkie tryby specjalne ---
+      - type: grid
+        title: Tryby specjalne
+        cards:
           - type: tile
             entity: switch.rekuperator_boost
-          - type: tile
-            entity: switch.rekuperator_bypass_active
-          - type: tile
-            entity: number.rekuperator_fireplace_mode_time
-          - type: tile
-            entity: number.rekuperator_airing_panel_mode_time
-          - type: tile
-            entity: number.rekuperator_airing_switch_mode_time
-          - type: tile
-            entity: number.rekuperator_12
-          - type: tile
-            entity: select.rekuperator_filter_check_day_of_week
-          - type: tile
-            entity: select.rekuperator_filter_check_day_of_week_ext
+            name: Turbo
+            icon: mdi:rocket-launch
+            color: deep-orange
           - type: tile
             entity: switch.rekuperator_eco
-          - type: tile
-            entity: time.rekuperator_filter_check_start_time
-          - type: tile
-            entity: time.rekuperator_filter_check_start_time_ext
-          - type: tile
-            entity: time.rekuperator_manual_airing_time_to_start
-          - type: tile
-            entity: switch.rekuperator_gwc_active
-          - type: tile
-            entity: time.rekuperator_schedule_summer_thu_1
-          - type: tile
-            entity: time.rekuperator_schedule_summer_thu_2
-          - type: tile
-            entity: time.rekuperator_schedule_summer_thu_3
-          - type: tile
-            entity: time.rekuperator_schedule_summer_thu_4
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sun_1
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sun_2
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sun_3
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sun_4
-          - type: tile
-            entity: time.rekuperator_schedule_summer_fri_1
-          - type: tile
-            entity: time.rekuperator_schedule_summer_fri_2
-          - type: tile
-            entity: time.rekuperator_schedule_summer_fri_3
-          - type: tile
-            entity: time.rekuperator_schedule_summer_fri_4
-          - type: tile
-            entity: time.rekuperator_schedule_summer_mon_1
-          - type: tile
-            entity: time.rekuperator_schedule_summer_mon_2
-          - type: tile
-            entity: time.rekuperator_schedule_summer_mon_3
-          - type: tile
-            entity: time.rekuperator_schedule_summer_mon_4
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sat_1
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sat_2
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sat_3
-          - type: tile
-            entity: time.rekuperator_schedule_summer_sat_4
-          - type: tile
-            entity: time.rekuperator_schedule_summer_wed_1
-          - type: tile
-            entity: time.rekuperator_schedule_summer_wed_2
-          - type: tile
-            entity: time.rekuperator_schedule_summer_wed_3
-          - type: tile
-            entity: time.rekuperator_schedule_summer_wed_4
-          - type: tile
-            entity: time.rekuperator_schedule_summer_tue_1
-          - type: tile
-            entity: time.rekuperator_schedule_summer_tue_2
-          - type: tile
-            entity: time.rekuperator_schedule_summer_tue_3
-          - type: tile
-            entity: time.rekuperator_schedule_summer_tue_4
-          - type: tile
-            entity: time.rekuperator_schedule_winter_thu_1
-          - type: tile
-            entity: time.rekuperator_schedule_winter_thu_2
-          - type: tile
-            entity: time.rekuperator_schedule_winter_thu_3
-          - type: tile
-            entity: time.rekuperator_schedule_winter_thu_4
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sun_1
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sun_2
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sun_3
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sun_4
-          - type: tile
-            entity: time.rekuperator_schedule_winter_fri_1
-          - type: tile
-            entity: time.rekuperator_schedule_winter_fri_2
-          - type: tile
-            entity: time.rekuperator_schedule_winter_fri_3
-          - type: tile
-            entity: time.rekuperator_schedule_winter_fri_4
-          - type: tile
-            entity: time.rekuperator_schedule_winter_mon_1
-          - type: tile
-            entity: time.rekuperator_schedule_winter_mon_2
-          - type: tile
-            entity: time.rekuperator_schedule_winter_mon_3
-          - type: tile
-            entity: time.rekuperator_schedule_winter_mon_4
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sat_1
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sat_2
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sat_3
-          - type: tile
-            entity: time.rekuperator_schedule_winter_sat_4
-          - type: tile
-            entity: time.rekuperator_schedule_winter_wed_1
-          - type: tile
-            entity: time.rekuperator_schedule_winter_wed_2
-          - type: tile
-            entity: time.rekuperator_schedule_winter_wed_3
-          - type: tile
-            entity: time.rekuperator_schedule_winter_wed_4
-          - type: tile
-            entity: time.rekuperator_schedule_winter_tue_1
-          - type: tile
-            entity: time.rekuperator_schedule_winter_tue_2
-          - type: tile
-            entity: time.rekuperator_schedule_winter_tue_3
-          - type: tile
-            entity: time.rekuperator_schedule_winter_tue_4
-          - type: tile
-            entity: number.rekuperator_lock_pass
-          - type: tile
-            entity: switch.rekuperator_party
-          - type: tile
-            entity: number.rekuperator_13
-          - type: tile
-            entity: number.rekuperator_8
-          - type: tile
-            entity: select.rekuperator_language
-          - type: tile
-            entity: number.rekuperator_rtc_cal
-          - type: tile
-            entity: switch.rekuperator_fireplace
-          - type: tile
-            entity: switch.rekuperator_kitchen
-          - type: tile
-            entity: switch.rekuperator_summer
-          - type: tile
-            entity: switch.rekuperator_bathroom
+            name: Eco
+            icon: mdi:leaf
+            color: green
           - type: tile
             entity: switch.rekuperator_away
-          - type: tile
-            entity: switch.rekuperator_hood
-          - type: tile
-            entity: number.rekuperator_gwc_regen_period
-          - type: tile
-            entity: number.rekuperator_airing_switch_mode_on_delay
-          - type: tile
-            entity: number.rekuperator_airing_switch_mode_off_delay
-          - type: tile
-            entity: select.rekuperator_access_level
-          - type: tile
-            entity: number.rekuperator_air_flow_rate_manual
-          - type: tile
-            entity: time.rekuperator_airing_summer_thu
-          - type: tile
-            entity: time.rekuperator_airing_summer_sun
-          - type: tile
-            entity: time.rekuperator_airing_summer_fri
-          - type: tile
-            entity: time.rekuperator_airing_summer_mon
-          - type: tile
-            entity: time.rekuperator_airing_summer_sat
-          - type: tile
-            entity: time.rekuperator_airing_summer_wed
-          - type: tile
-            entity: time.rekuperator_airing_summer_tue
-          - type: tile
-            entity: time.rekuperator_airing_winter_thu
-          - type: tile
-            entity: time.rekuperator_airing_winter_sun
-          - type: tile
-            entity: time.rekuperator_airing_winter_fri
-          - type: tile
-            entity: time.rekuperator_airing_winter_mon
-          - type: tile
-            entity: time.rekuperator_airing_winter_sat
-          - type: tile
-            entity: time.rekuperator_airing_winter_wed
-          - type: tile
-            entity: time.rekuperator_airing_winter_tue
-          - type: tile
-            entity: select.rekuperator_gwc_regeneration
-          - type: tile
-            entity: switch.rekuperator_hard_reset_schedule
-          - type: tile
-            entity: switch.rekuperator_hard_reset_settings
+            name: Nieobecność
+            icon: mdi:airplane
+            color: blue
           - type: tile
             entity: switch.rekuperator_sleep
+            name: Sen
+            icon: mdi:weather-night
+            color: indigo
           - type: tile
-            entity: time.rekuperator_start_gwc_regen_summer_time
+            entity: switch.rekuperator_fireplace
+            name: Kominek
+            icon: mdi:fireplace
+            color: orange
           - type: tile
-            entity: time.rekuperator_start_gwc_regen_winter_time
+            entity: switch.rekuperator_hood
+            name: Okap
+            icon: mdi:range-hood
+            color: amber
           - type: tile
-            entity: time.rekuperator_stop_gwc_regen_summer_time
+            entity: switch.rekuperator_party
+            name: Impreza
+            icon: mdi:party-popper
+            color: pink
           - type: tile
-            entity: time.rekuperator_stop_gwc_regen_winter_time
+            entity: switch.rekuperator_bathroom
+            name: Łazienka
+            icon: mdi:shower
+            color: cyan
           - type: tile
-            entity: number.rekuperator_air_temperature_summer_free_cooling
+            entity: switch.rekuperator_kitchen
+            name: Kuchnia
+            icon: mdi:chef-hat
+            color: teal
           - type: tile
-            entity: number.rekuperator_air_temperature_summer_free_heating
+            entity: switch.rekuperator_comfort_mode_panel
+            name: Komfort
+            icon: mdi:sofa
+            color: purple
+
+      # --- Aktywne alarmy ---
+      - type: grid
+        title: Alarmy
+        cards:
           - type: tile
-            entity: number.rekuperator_14
+            entity: binary_sensor.rekuperator_alarm
+            name: Alarm E
+            color: red
           - type: tile
-            entity: number.rekuperator_9
+            entity: binary_sensor.rekuperator_error
+            name: Błąd S
+            color: orange
           - type: tile
-            entity: number.rekuperator_supply_air_temperature_manual
+            entity: binary_sensor.rekuperator_fire_alarm
+            name: Alarm pożarowy
+            color: red
+          - type: tile
+            entity: binary_sensor.rekuperator_f_146
+            name: Filtr nawiewu
+            icon: mdi:filter-alert
+            color: yellow
+          - type: tile
+            entity: binary_sensor.rekuperator_f_147
+            name: Filtr wywiewu
+            icon: mdi:filter-alert
+            color: yellow
+          - type: tile
+            entity: sensor.rekuperator_ahu_stop_alarm_code
+            name: Kod alarmu
+            icon: mdi:alert-circle
+
+  # ============================================================
+  # WIDOK 2 – KLIMAT I TEMPERATURY
+  # ============================================================
+  - title: Klimat
+    path: climate
+    icon: mdi:thermometer
+    type: sections
+
+    sections:
+
+      # --- Główna kontrola klimatu ---
+      - type: grid
+        title: Kontrola
+        cards:
           - type: tile
             entity: climate.rekuperator_climate_control
           - type: tile
-            entity: switch.rekuperator_comfort_mode
-          - type: tile
-            entity: select.rekuperator
-          - type: tile
-            entity: select.rekuperator_2
-          - type: tile
-            entity: select.rekuperator_configuration_mode
-          - type: tile
-            entity: select.rekuperator_mode
-          - type: tile
-            entity: select.rekuperator_season_mode
-          - type: tile
-            entity: select.rekuperator_special_mode
-          - type: tile
-            entity: select.rekuperator_bypass_user_mode
-          - type: tile
-            entity: select.rekuperator_filter_type
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_thu_4
-          - type: tile
-            entity: select.rekuperator_setting_summer_sun_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_sun_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_sun_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_sun_4
-          - type: tile
-            entity: select.rekuperator_setting_summer_fri_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_fri_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_fri_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_fri_4
-          - type: tile
-            entity: select.rekuperator_setting_summer_mon_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_mon_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_mon_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_mon_4
-          - type: tile
-            entity: select.rekuperator_setting_summer_sat_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_sat_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_sat_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_sat_4
-          - type: tile
-            entity: select.rekuperator_setting_summer_wed_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_wed_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_wed_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_wed_4
-          - type: tile
-            entity: select.rekuperator_setting_summer_tue_1
-          - type: tile
-            entity: select.rekuperator_setting_summer_tue_2
-          - type: tile
-            entity: select.rekuperator_setting_summer_tue_3
-          - type: tile
-            entity: select.rekuperator_setting_summer_tue_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_thu_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_sun_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_sun_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_sun_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_sun_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_fri_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_fri_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_fri_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_fri_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_mon_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_mon_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_mon_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_mon_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_sat_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_sat_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_sat_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_sat_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_wed_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_wed_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_wed_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_wed_4
-          - type: tile
-            entity: select.rekuperator_setting_winter_tue_1
-          - type: tile
-            entity: select.rekuperator_setting_winter_tue_2
-          - type: tile
-            entity: select.rekuperator_setting_winter_tue_3
-          - type: tile
-            entity: select.rekuperator_setting_winter_tue_4
-          - type: tile
-            entity: fan.rekuperator_ventilation
-          - type: tile
-            entity: switch.rekuperator_on_off_panel_mode
-          - type: tile
-            entity: switch.rekuperator_winter
-          - type: tile
-            entity: switch.rekuperator_airflow_rate_change_flag
-          - type: tile
-            entity: switch.rekuperator_temperature_change_flag
-          - type: tile
-            entity: switch.rekuperator_bypass_off
-          - type: tile
-            entity: switch.rekuperator_gwc_off
-          - type: tile
-            entity: switch.rekuperator_comfort_mode_panel
-          - type: tile
-            entity: switch.rekuperator_lock_flag
-          - type: tile
-            entity: number.rekuperator_air_flow_rate_temporary
-          - type: tile
-            entity: number.rekuperator_air_flow_rate_temporary_4401
+            entity: sensor.rekuperator_required_temperature
+            name: Temperatura zadana
+          - type: tile
+            entity: number.rekuperator_supply_air_temperature_manual
+            name: Nawiew – ręczny
           - type: tile
             entity: number.rekuperator_supply_air_temperature_temporary
-          - type: tile
-            entity: number.rekuperator_supply_air_temperature_temporary_4404
-          - type: tile
-            entity: number.rekuperator_delta_t_gwc
-          - type: tile
-            entity: number.rekuperator_uart_0_id
-          - type: tile
-            entity: number.rekuperator_uart_1_id
-          - type: tile
-            entity: number.rekuperator_cfgszf_fn_new
-          - type: tile
-            entity: number.rekuperator_cfgszf_fw_new
-          - type: tile
-            entity: select.rekuperator_cfg_mode_1
-          - type: tile
-            entity: select.rekuperator_cfg_mode_2
-          - type: tile
-            entity: select.rekuperator_pres_check_day
-          - type: tile
-            entity: select.rekuperator_pres_check_day_4432
-          - type: tile
-            entity: select.rekuperator_filter_change
-          - type: tile
-            entity: select.rekuperator_gwc_regen
-          - type: tile
-            entity: select.rekuperator_uart_0_baud
-          - type: tile
-            entity: select.rekuperator_uart_0_parity
-          - type: tile
-            entity: select.rekuperator_uart_0_stop
-          - type: tile
-            entity: select.rekuperator_uart_1_baud
-          - type: tile
-            entity: select.rekuperator_uart_1_parity
-          - type: tile
-            entity: select.rekuperator_uart_1_stop
-          - type: tile
-            entity: select.rekuperator_cfg_post_heater_mode
-          - type: tile
-            entity: time.rekuperator_pres_check_time
-          - type: tile
-            entity: time.rekuperator_pres_check_time_ggmm
-        title: Rekuperator
+            name: Nawiew – tymczasowy
+
+      # --- Odczyty temperatur ---
       - type: grid
+        title: Odczyty temperatur
         cards:
           - type: tile
-            entity: sensor.rekuperator_active_errors
-          - type: tile
-            entity: binary_sensor.rekuperator_problem
-          - type: tile
-            entity: binary_sensor.rekuperator_fire_alarm
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e196
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e197
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e198
-          - type: tile
-            entity: binary_sensor.rekuperator_error_e199
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_2
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_37
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_38
-          - type: tile
-            entity: binary_sensor.rekuperator_bypass_2
-          - type: tile
-            entity: binary_sensor.rekuperator_airing_sensor
-          - type: tile
-            entity: binary_sensor.rekuperator_contamination_sensor
-          - type: tile
-            entity: sensor.rekuperator_product_key_lock_date_day
-          - type: tile
-            entity: sensor.rekuperator_product_key_lock_date_month
-          - type: tile
-            entity: sensor.rekuperator_product_key_lock_date_year
-          - type: tile
-            entity: sensor.rekuperator_day_of_week
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_25
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_26
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_27
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_28
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_29
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_30
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_31
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_32
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_44
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_33
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_34
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_45
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_46
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_47
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_48
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_49
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_50
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_51
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_52
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_35
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_53
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_54
-          - type: tile
-            entity: binary_sensor.rekuperator_central_heater_overprotection
-          - type: tile
-            entity: binary_sensor.rekuperator_duct_heater_overprotection
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_57
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_58
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_39
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_40
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_41
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_42
-          - type: tile
-            entity: binary_sensor.rekuperator_expansion
-          - type: tile
-            entity: sensor.rekuperator_antifreeze_stage
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_36
-          - type: tile
-            entity: binary_sensor.rekuperator_gwc
-          - type: tile
-            entity: binary_sensor.rekuperator_unit_operation_confirmation
-          - type: tile
-            entity: binary_sensor.rekuperator_heating_cable
-          - type: tile
-            entity: sensor.rekuperator_ahu_stop_alarm_code
-          - type: tile
-            entity: sensor.rekuperator_error_and_status_codes
-          - type: tile
-            entity: binary_sensor.rekuperator_fireplace
-          - type: tile
-            entity: sensor.rekuperator_maximum_percentage
-          - type: tile
-            entity: sensor.rekuperator_maximum_supply_air_flow_rate
-          - type: tile
-            entity: sensor.rekuperator_maximum_exhaust_air_flow_rate
-          - type: tile
-            entity: sensor.rekuperator_minimum_bypass_temperature
-          - type: tile
-            entity: sensor.rekuperator_minimum_percentage
-          - type: tile
-            entity: sensor.rekuperator_cooler_voltage
-          - type: tile
-            entity: sensor.rekuperator_heater_voltage
-          - type: tile
-            entity: sensor.rekuperator_supply_fan_voltage
-          - type: tile
-            entity: sensor.rekuperator_exhaust_fan_voltage
-          - type: tile
-            entity: sensor.rekuperator_nominal_supply_air_flow
-          - type: tile
-            entity: sensor.rekuperator_nominal_exhaust_air_flow
-          - type: tile
-            entity: binary_sensor.rekuperator_ahu_filter_protection
-          - type: tile
-            entity: binary_sensor.rekuperator_duct_heater_protection
-          - type: tile
-            entity: sensor.rekuperator_time_period
-          - type: tile
-            entity: binary_sensor.rekuperator_water_heater_pump
-          - type: tile
-            entity: binary_sensor.rekuperator_fan_speed_1
-          - type: tile
-            entity: binary_sensor.rekuperator_fan_speed_2
-          - type: tile
-            entity: binary_sensor.rekuperator_fan_speed_3
-          - type: tile
-            entity: sensor.rekuperator_supply_percentage
-          - type: tile
-            entity: sensor.rekuperator_exhaust_percentage
-          - type: tile
-            entity: binary_sensor.rekuperator_hood_switch
-          - type: tile
-            entity: binary_sensor.rekuperator_airing_switch
-          - type: tile
-            entity: binary_sensor.rekuperator_ahu_filter_overflow
-          - type: tile
-            entity: binary_sensor.rekuperator_duct_filter_overflow
-          - type: tile
-            entity: sensor.rekuperator_supply_flow_rate_m3_h
-          - type: tile
-            entity: sensor.rekuperator_exhaust_flow_rate_m3_h
-          - type: tile
-            entity: binary_sensor.rekuperator_empty_house
-          - type: tile
-            entity: binary_sensor.rekuperator_gwc_regeneration_active
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_3
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_4
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_5
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_6
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_7
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_8
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_9
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_10
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_11
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_12
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_13
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_14
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_15
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_16
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_17
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_18
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_19
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_20
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_43
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_21
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_22
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_23
-          - type: tile
-            entity: binary_sensor.rekuperator_problem_24
-          - type: tile
-            entity: sensor.rekuperator_constant_flow_active
-          - type: tile
-            entity: sensor.rekuperator_supply_air_flow
-          - type: tile
-            entity: sensor.rekuperator_exhaust_air_flow
-          - type: tile
-            entity: sensor.rekuperator_air_temperature_summer_free_cooling
-          - type: tile
-            entity: sensor.rekuperator_air_temperature_summer_free_heating
-          - type: tile
-            entity: sensor.rekuperator_fpx_temperature
+            entity: sensor.rekuperator_outside_temperature
+            name: Zewnętrzna
           - type: tile
             entity: sensor.rekuperator_supply_temperature
-          - type: tile
-            entity: sensor.rekuperator_supply_air_temperature_manual
-          - type: tile
-            entity: sensor.rekuperator_heating_temperature
-          - type: tile
-            entity: sensor.rekuperator_ambient_temperature
+            name: Nawiewna
           - type: tile
             entity: sensor.rekuperator_exhaust_temperature
+            name: Wywiewna
           - type: tile
-            entity: sensor.rekuperator_required_temperature
+            entity: sensor.rekuperator_duct_supply_temperature
+            name: Kanał nawiewny
           - type: tile
-            entity: sensor.rekuperator_outside_temperature
+            entity: sensor.rekuperator_fpx_temperature
+            name: Temperatura FPX
           - type: tile
-            entity: binary_sensor.rekuperator_antifreeze_mode
+            entity: sensor.rekuperator_gwc_temperature
+            name: Temperatura GWC
+          - type: tile
+            entity: sensor.rekuperator_ambient_temperature
+            name: Otoczenia
+          - type: tile
+            entity: sensor.rekuperator_heating_temperature
+            name: Grzewcza
+          - type: tile
+            entity: sensor.rekuperator_supply_air_temperature_manual
+            name: Nawiew (odczyt)
+
+      # --- Historia temperatur ---
+      - type: grid
+        title: Historia (24h)
+        cards:
+          - type: history-graph
+            title: Temperatury powietrza
+            hours_to_show: 24
+            entities:
+              - entity: sensor.rekuperator_outside_temperature
+                name: Zewnętrzna
+              - entity: sensor.rekuperator_supply_temperature
+                name: Nawiew
+              - entity: sensor.rekuperator_exhaust_temperature
+                name: Wywiew
+              - entity: sensor.rekuperator_duct_supply_temperature
+                name: Kanał
+
+      # --- Sprawność ---
+      - type: grid
+        title: Sprawność i moc
+        cards:
+          - type: gauge
+            entity: sensor.rekuperator_heat_recovery_efficiency
+            name: Sprawność odzysku ciepła
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              green: 70
+              yellow: 50
+              red: 0
+          - type: tile
+            entity: sensor.rekuperator_heat_recovery_power
+            name: Moc odzysku
+          - type: tile
+            entity: sensor.rekuperator_electrical_power
+            name: Pobór mocy
+
+      # --- Bypass ---
+      - type: grid
+        title: Bypass (obejście)
+        cards:
           - type: tile
             entity: sensor.rekuperator_bypass_mode_status
+            name: Status bypass
+          - type: tile
+            entity: switch.rekuperator_bypass_off
+            name: Bypass aktywny
+          - type: tile
+            entity: select.rekuperator_bypass_user_mode
+            name: Tryb bypass
+          - type: tile
+            entity: sensor.rekuperator_minimum_bypass_temperature
+            name: Min. temp. bypass
+          - type: tile
+            entity: number.rekuperator_min_bypass_temperature
+            name: Min. temp. bypass (nastawa)
+          - type: tile
+            entity: number.rekuperator_air_temperature_summer_free_heating
+            name: Free Heating – próg
+          - type: tile
+            entity: number.rekuperator_air_temperature_summer_free_cooling
+            name: Free Cooling – próg
+          - type: tile
+            entity: sensor.rekuperator_air_temperature_summer_free_heating
+            name: Free Heating (odczyt)
+          - type: tile
+            entity: sensor.rekuperator_air_temperature_summer_free_cooling
+            name: Free Cooling (odczyt)
+
+  # ============================================================
+  # WIDOK 3 – WENTYLACJA I GWC
+  # ============================================================
+  - title: Wentylacja
+    path: ventilation
+    icon: mdi:fan
+    type: sections
+
+    sections:
+
+      # --- Aktualny stan ---
+      - type: grid
+        title: Aktualny przepływ
+        cards:
+          - type: gauge
+            entity: sensor.rekuperator_supply_percentage
+            name: Nawiew %
+            min: 0
+            max: 150
+            needle: true
+            severity:
+              green: 40
+              yellow: 80
+              red: 100
+          - type: gauge
+            entity: sensor.rekuperator_exhaust_percentage
+            name: Wywiew %
+            min: 0
+            max: 150
+            needle: true
+            severity:
+              green: 40
+              yellow: 80
+              red: 100
+          - type: tile
+            entity: sensor.rekuperator_supply_flow_rate_m3_h
+            name: Przepływ nawiewu
+          - type: tile
+            entity: sensor.rekuperator_exhaust_flow_rate_m3_h
+            name: Przepływ wywiewu
+          - type: tile
+            entity: sensor.rekuperator_supply_air_flow
+            name: Nawiew (rzeczywisty)
+          - type: tile
+            entity: sensor.rekuperator_exhaust_air_flow
+            name: Wywiew (rzeczywisty)
+          - type: tile
+            entity: sensor.rekuperator_minimum_percentage
+            name: Minimum %
+          - type: tile
+            entity: sensor.rekuperator_maximum_percentage
+            name: Maksimum %
+
+      # --- Nastawy przepływu ---
+      - type: grid
+        title: Nastawy przepływu
+        cards:
+          - type: tile
+            entity: number.rekuperator_air_flow_rate_manual
+            name: Intensywność – ręczna
+          - type: tile
+            entity: number.rekuperator_air_flow_rate_temporary
+            name: Intensywność – tymczasowa
+          - type: tile
+            entity: number.rekuperator_nominal_supply_air_flow
+            name: Nom. nawiew [m³/h]
+          - type: tile
+            entity: number.rekuperator_nominal_exhaust_air_flow
+            name: Nom. wywiew [m³/h]
+          - type: tile
+            entity: number.rekuperator_max_supply_air_flow_rate
+            name: Maks. nawiew %
+          - type: tile
+            entity: number.rekuperator_max_exhaust_air_flow_rate
+            name: Maks. wywiew %
+          - type: tile
+            entity: sensor.rekuperator_nominal_supply_air_flow
+            name: Nom. nawiew (odczyt)
+          - type: tile
+            entity: sensor.rekuperator_nominal_exhaust_air_flow
+            name: Nom. wywiew (odczyt)
+
+      # --- Historia przepływów ---
+      - type: grid
+        title: Historia przepływów (24h)
+        cards:
+          - type: history-graph
+            title: Przepływy i wydajność
+            hours_to_show: 24
+            entities:
+              - entity: sensor.rekuperator_supply_flow_rate_m3_h
+                name: Nawiew
+              - entity: sensor.rekuperator_exhaust_flow_rate_m3_h
+                name: Wywiew
+              - entity: sensor.rekuperator_heat_recovery_efficiency
+                name: Sprawność
+
+      # --- Napięcia sterujące (diagnostyka) ---
+      - type: grid
+        title: Napięcia sterujące
+        cards:
+          - type: tile
+            entity: sensor.rekuperator_supply_fan_voltage
+            name: Wentylator nawiewu
+            icon: mdi:sine-wave
+          - type: tile
+            entity: sensor.rekuperator_exhaust_fan_voltage
+            name: Wentylator wywiewu
+            icon: mdi:sine-wave
+          - type: tile
+            entity: sensor.rekuperator_heater_voltage
+            name: Nagrzewnica
+            icon: mdi:sine-wave
+          - type: tile
+            entity: sensor.rekuperator_cooler_voltage
+            name: Chłodnica
+            icon: mdi:sine-wave
+
+      # --- GWC (Gruntowy Wymiennik Ciepła) ---
+      - type: grid
+        title: GWC – Gruntowy Wymiennik Ciepła
+        cards:
           - type: tile
             entity: sensor.rekuperator_gwc_mode
+            name: Tryb GWC
           - type: tile
-            entity: sensor.rekuperator_comfort_mode_status
+            entity: switch.rekuperator_gwc_off
+            name: GWC aktywny
           - type: tile
-            entity: binary_sensor.rekuperator_airing_mini
+            entity: select.rekuperator_gwc_regen
+            name: Regeneracja GWC
           - type: tile
-            entity: binary_sensor.rekuperator_hood_output
+            entity: binary_sensor.rekuperator_gwc
+            name: GWC (status)
           - type: tile
-            entity: binary_sensor.rekuperator_problem_55
+            entity: binary_sensor.rekuperator_gwc_regeneration_active
+            name: Regeneracja aktywna
           - type: tile
-            entity: binary_sensor.rekuperator_problem_56
+            entity: sensor.rekuperator_gwc_temperature
+            name: Temperatura GWC
           - type: tile
-            entity: binary_sensor.rekuperator_power_supply_fans
+            entity: number.rekuperator_min_gwc_air_temperature
+            name: Min. temp. GWC
           - type: tile
-            entity: binary_sensor.rekuperator_work_permit
+            entity: number.rekuperator_max_gwc_air_temperature
+            name: Maks. temp. GWC
+          - type: tile
+            entity: number.rekuperator_delta_t_gwc
+            name: Delta T GWC
+          - type: tile
+            entity: number.rekuperator_gwc_regen_period
+            name: Czas regeneracji [h]
+          - type: tile
+            entity: number.rekuperator_nominal_supply_air_flow_gwc
+            name: Nawiew GWC [m³/h]
+          - type: tile
+            entity: number.rekuperator_nominal_exhaust_air_flow_gwc
+            name: Wywiew GWC [m³/h]
+          - type: tile
+            entity: number.rekuperator_max_supply_air_flow_rate_gwc
+            name: Maks. nawiew GWC %
+          - type: tile
+            entity: number.rekuperator_max_exhaust_air_flow_rate_gwc
+            name: Maks. wywiew GWC %
+          - type: tile
+            entity: time.rekuperator_start_gwc_regen_summer_time
+            name: Start regen. lato
+          - type: tile
+            entity: time.rekuperator_stop_gwc_regen_summer_time
+            name: Stop regen. lato
+          - type: tile
+            entity: time.rekuperator_start_gwc_regen_winter_time
+            name: Start regen. zima
+          - type: tile
+            entity: time.rekuperator_stop_gwc_regen_winter_time
+            name: Stop regen. zima
+
+      # --- ERV (dogrzewacz wtórny) ---
+      - type: grid
+        title: ERV – Dogrzewacz
+        cards:
+          - type: tile
+            entity: select.rekuperator_cfg_post_heater_mode
+            name: Tryb ERV
+          - type: tile
+            entity: binary_sensor.rekuperator_post_heater_on
+            name: ERV aktywny
+
+  # ============================================================
+  # WIDOK 4 – ALARMY I FILTRY
+  # ============================================================
+  - title: Alarmy
+    path: alarms
+    icon: mdi:alert-circle
+    type: sections
+
+    sections:
+
+      # --- Filtry ---
+      - type: grid
+        title: Filtry
+        cards:
+          - type: tile
+            entity: binary_sensor.rekuperator_f_142
+            name: Brak filtru nawiewu
+            color: red
+          - type: tile
+            entity: binary_sensor.rekuperator_f_143
+            name: Brak filtru wywiewu
+            color: red
+          - type: tile
+            entity: binary_sensor.rekuperator_f_146
+            name: Filtr nawiewu – wymiana
+            color: orange
+          - type: tile
+            entity: binary_sensor.rekuperator_f_147
+            name: Filtr wywiewu – wymiana
+            color: orange
+          - type: tile
+            entity: sensor.rekuperator_filter_supply_date_limit_get
+            name: Data wymiany – nawiew
+            icon: mdi:calendar-filter
+          - type: tile
+            entity: sensor.rekuperator_filter_exhaust_date_limit_get
+            name: Data wymiany – wywiew
+            icon: mdi:calendar-filter
+          - type: tile
+            entity: select.rekuperator_filter_change
+            name: Typ filtrów
+          - type: tile
+            entity: select.rekuperator_filter_check_day_of_week
+            name: Dzień kontroli
+          - type: tile
+            entity: time.rekuperator_filter_check_start_time
+            name: Godzina kontroli
+          - type: tile
+            entity: binary_sensor.rekuperator_dp_ahu_filter_overflow
+            name: Przepełnienie filtru AHU
+          - type: tile
+            entity: binary_sensor.rekuperator_dp_duct_filter_overflow
+            name: Przepełnienie filtru kanałowego
+          - type: tile
+            entity: binary_sensor.rekuperator_ahu_filter_protection
+            name: Blokada filtru AHU
+
+      # --- Alarmy systemowe ---
+      - type: grid
+        title: Alarmy systemowe
+        cards:
           - type: tile
             entity: binary_sensor.rekuperator_alarm
-          - type: tile
-            entity: binary_sensor.rekuperator_bypass
+            name: Alarm E (ogólny)
+            color: red
           - type: tile
             entity: binary_sensor.rekuperator_error
+            name: Błąd S (ogólny)
+            color: orange
           - type: tile
-            entity: binary_sensor.rekuperator_info
+            entity: binary_sensor.rekuperator_fire_alarm
+            name: Alarm pożarowy
+            color: red
+          - type: tile
+            entity: sensor.rekuperator_ahu_stop_alarm_code
+            name: Kod zatrzymania
+          - type: tile
+            entity: sensor.rekuperator_active_errors
+            name: Aktywne błędy
+          - type: tile
+            entity: sensor.rekuperator_error_and_status_codes
+            name: Kody błędów i statusów
+          - type: tile
+            entity: binary_sensor.rekuperator_contamination_sensor
+            name: Czujnik zanieczyszczeń
+          - type: tile
+            entity: binary_sensor.rekuperator_duct_heater_protection
+            name: Zabezpieczenie nagrzewnicy
+          - type: tile
+            entity: binary_sensor.rekuperator_central_heater_overprotection
+            name: Overprotection – centralna
+          - type: tile
+            entity: binary_sensor.rekuperator_duct_heater_overprotection
+            name: Overprotection – kanałowa
+          - type: tile
+            entity: binary_sensor.rekuperator_antifreeze_mode
+            name: Antyzamrożenie aktywne
+          - type: tile
+            entity: binary_sensor.rekuperator_water_removal_active
+            name: Usuwanie wody aktywne
+
+      # --- Kody błędów E ---
+      - type: grid
+        title: Kody błędów (E)
+        cards:
           - type: tile
             entity: binary_sensor.rekuperator_e_99
           - type: tile
@@ -753,16 +693,6 @@ views:
           - type: tile
             entity: binary_sensor.rekuperator_e_157
           - type: tile
-            entity: binary_sensor.rekuperator_e_196_e_199
-          - type: tile
-            entity: binary_sensor.rekuperator_e_196_e_199_e_196
-          - type: tile
-            entity: binary_sensor.rekuperator_e_196_e_199_e_197
-          - type: tile
-            entity: binary_sensor.rekuperator_e_196_e_199_e_198
-          - type: tile
-            entity: binary_sensor.rekuperator_e_196_e_199_e_199
-          - type: tile
             entity: binary_sensor.rekuperator_e_200
           - type: tile
             entity: binary_sensor.rekuperator_e_201
@@ -778,6 +708,11 @@ views:
             entity: binary_sensor.rekuperator_e_251
           - type: tile
             entity: binary_sensor.rekuperator_e_252
+
+      # --- Kody statusu S ---
+      - type: grid
+        title: Kody statusu (S)
+        cards:
           - type: tile
             entity: binary_sensor.rekuperator_s_2
           - type: tile
@@ -824,105 +759,410 @@ views:
             entity: binary_sensor.rekuperator_s_31
           - type: tile
             entity: binary_sensor.rekuperator_s_32
-          - type: tile
-            entity: binary_sensor.rekuperator_f_142
-          - type: tile
-            entity: binary_sensor.rekuperator_f_143
-          - type: tile
-            entity: binary_sensor.rekuperator_f_146
-          - type: tile
-            entity: binary_sensor.rekuperator_f_147
-          - type: tile
-            entity: binary_sensor.rekuperator_gwc_regen_flag
-          - type: tile
-            entity: binary_sensor.rekuperator_post_heater_on
-          - type: tile
-            entity: binary_sensor.rekuperator_water_removal_active
-          - type: tile
-            entity: binary_sensor.rekuperator_duct_water_heater_pump
-          - type: tile
-            entity: binary_sensor.rekuperator_dp_ahu_filter_overflow
-          - type: tile
-            entity: binary_sensor.rekuperator_dp_duct_filter_overflow
-          - type: tile
-            entity: sensor.rekuperator_cf_version
-          - type: tile
-            entity: sensor.rekuperator_exp_version
-          - type: tile
-            entity: sensor.rekuperator_gwc_temperature
-          - type: tile
-            entity: sensor.rekuperator_duct_supply_temperature
-          - type: tile
-            entity: sensor.rekuperator_compilation_seconds
-          - type: tile
-            entity: sensor.rekuperator_serial_number
-          - type: tile
-            entity: sensor.rekuperator_version_major
-          - type: tile
-            entity: sensor.rekuperator_version_minor
-          - type: tile
-            entity: sensor.rekuperator_version_patch
-          - type: tile
-            entity: sensor.rekuperator_filter_supply_date_limit_get
-          - type: tile
-            entity: sensor.rekuperator_filter_exhaust_date_limit_get
-          - type: tile
-            entity: sensor.rekuperator_lock_date
-          - type: tile
-            entity: sensor.rekuperator_lock_date_00mm
-          - type: tile
-            entity: sensor.rekuperator_lock_date_00dd
-        title: Rekuperator
+
+  # ============================================================
+  # WIDOK 5 – USTAWIENIA I HARMONOGRAM
+  # ============================================================
+  - title: Ustawienia
+    path: settings
+    icon: mdi:cog
+    type: sections
+
+    sections:
+
+      # --- Konfiguracja trybu ---
       - type: grid
+        title: Konfiguracja ogólna
         cards:
           - type: tile
-            entity: number.rekuperator_max_supply_air_flow_rate_gwc
+            entity: select.rekuperator_configuration_mode
+            name: Tryb konfiguracji
           - type: tile
-            entity: number.rekuperator_max_exhaust_air_flow_rate_gwc
+            entity: select.rekuperator_access_level
+            name: Poziom dostępu
           - type: tile
-            entity: number.rekuperator_max_gwc_air_temperature
+            entity: select.rekuperator_language
+            name: Język
           - type: tile
-            entity: number.rekuperator_max_supply_air_flow_rate
+            entity: select.rekuperator_cfg_mode_1
+            name: Tryb cfg. 1
           - type: tile
-            entity: number.rekuperator_max_exhaust_air_flow_rate
+            entity: select.rekuperator_cfg_mode_2
+            name: Tryb cfg. 2
           - type: tile
-            entity: number.rekuperator_min_gwc_air_temperature
+            entity: select.rekuperator_cfg_post_heater_mode
+            name: Tryb ERV
+
+      # --- Harmonogram letni ---
+      - type: grid
+        title: Harmonogram – Lato
+        cards:
+          - type: heading
+            heading: Poniedziałek
+            icon: mdi:calendar
           - type: tile
-            entity: number.rekuperator_min_bypass_temperature
+            entity: time.rekuperator_schedule_summer_mon_1
           - type: tile
-            entity: number.rekuperator_nominal_supply_air_flow
+            entity: time.rekuperator_schedule_summer_mon_2
           - type: tile
-            entity: number.rekuperator_nominal_supply_air_flow_gwc
+            entity: time.rekuperator_schedule_summer_mon_3
           - type: tile
-            entity: number.rekuperator_nominal_exhaust_air_flow
+            entity: time.rekuperator_schedule_summer_mon_4
           - type: tile
-            entity: number.rekuperator_nominal_exhaust_air_flow_gwc
+            entity: select.rekuperator_setting_summer_mon_1
           - type: tile
-            entity: number.rekuperator_bypass_coef_1
+            entity: select.rekuperator_setting_summer_mon_2
           - type: tile
-            entity: number.rekuperator_bypass_coef_2
+            entity: select.rekuperator_setting_summer_mon_3
           - type: tile
-            entity: number.rekuperator_fireplace_supply_coef
+            entity: select.rekuperator_setting_summer_mon_4
+
+          - type: heading
+            heading: Wtorek
+            icon: mdi:calendar
           - type: tile
-            entity: number.rekuperator_hood_supply_coef
+            entity: time.rekuperator_schedule_summer_tue_1
           - type: tile
-            entity: number.rekuperator_hood_exhaust_coef
+            entity: time.rekuperator_schedule_summer_tue_2
           - type: tile
-            entity: number.rekuperator_open_window_coef
+            entity: time.rekuperator_schedule_summer_tue_3
           - type: tile
-            entity: number.rekuperator_fan_speed_1_coef
+            entity: time.rekuperator_schedule_summer_tue_4
           - type: tile
-            entity: number.rekuperator_fan_speed_2_coef
+            entity: select.rekuperator_setting_summer_tue_1
           - type: tile
-            entity: number.rekuperator_fan_speed_3_coef
+            entity: select.rekuperator_setting_summer_tue_2
           - type: tile
-            entity: number.rekuperator_airing_coef
+            entity: select.rekuperator_setting_summer_tue_3
           - type: tile
-            entity: number.rekuperator_airing_switch_coef
+            entity: select.rekuperator_setting_summer_tue_4
+
+          - type: heading
+            heading: Środa
+            icon: mdi:calendar
           - type: tile
-            entity: number.rekuperator_airing_bathroom_coef
+            entity: time.rekuperator_schedule_summer_wed_1
           - type: tile
-            entity: number.rekuperator_empty_house_coef
+            entity: time.rekuperator_schedule_summer_wed_2
           - type: tile
-            entity: number.rekuperator_contamination_coef
-        title: Rekuperator
+            entity: time.rekuperator_schedule_summer_wed_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_4
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_1
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_2
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_3
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_4
+
+          - type: heading
+            heading: Czwartek
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_4
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_1
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_2
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_3
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_4
+
+          - type: heading
+            heading: Piątek
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_4
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_1
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_2
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_3
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_4
+
+          - type: heading
+            heading: Sobota
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_4
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_1
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_2
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_3
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_4
+
+          - type: heading
+            heading: Niedziela
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_1
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_2
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_3
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_4
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_1
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_2
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_3
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_4
+
+      # --- Harmonogram zimowy ---
+      - type: grid
+        title: Harmonogram – Zima
+        cards:
+          - type: heading
+            heading: Poniedziałek
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_mon_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_mon_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_mon_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_mon_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_mon_4
+
+          - type: heading
+            heading: Wtorek
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_4
+
+          - type: heading
+            heading: Środa
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_4
+
+          - type: heading
+            heading: Czwartek
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_4
+
+          - type: heading
+            heading: Piątek
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_4
+
+          - type: heading
+            heading: Sobota
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_4
+
+          - type: heading
+            heading: Niedziela
+            icon: mdi:calendar
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_1
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_2
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_3
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_4
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_1
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_2
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_3
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_4
+
+      # --- Timery wietrzenia ---
+      - type: grid
+        title: Wietrzenie – czasy
+        cards:
+          - type: tile
+            entity: time.rekuperator_manual_airing_time_to_start
+            name: Czas startu wietrzenia
+          - type: tile
+            entity: number.rekuperator_airing_panel_mode_time
+            name: Czas wietrzenia (panel) [min]
+          - type: tile
+            entity: number.rekuperator_airing_switch_mode_time
+            name: Czas wietrzenia (przełącznik) [min]
+          - type: tile
+            entity: number.rekuperator_airing_switch_mode_on_delay
+            name: Opóźnienie włączenia [min]
+          - type: tile
+            entity: number.rekuperator_airing_switch_mode_off_delay
+            name: Opóźnienie wyłączenia [min]
+          - type: tile
+            entity: number.rekuperator_fireplace_mode_time
+            name: Czas trybu kominek [min]
+
+      # --- Modbus i komunikacja ---
+      - type: grid
+        title: Komunikacja Modbus
+        cards:
+          - type: tile
+            entity: select.rekuperator_uart_0_baud
+            name: Port 0 – Prędkość
+          - type: tile
+            entity: select.rekuperator_uart_0_parity
+            name: Port 0 – Parzystość
+          - type: tile
+            entity: select.rekuperator_uart_0_stop
+            name: Port 0 – Bity stopu
+          - type: tile
+            entity: number.rekuperator_uart_0_id
+            name: Port 0 – ID urządzenia
+          - type: tile
+            entity: select.rekuperator_uart_1_baud
+            name: Port 1 – Prędkość
+          - type: tile
+            entity: select.rekuperator_uart_1_parity
+            name: Port 1 – Parzystość
+          - type: tile
+            entity: select.rekuperator_uart_1_stop
+            name: Port 1 – Bity stopu
+          - type: tile
+            entity: number.rekuperator_uart_1_id
+            name: Port 1 – ID urządzenia
+
+      # --- Diagnostyka i informacje ---
+      - type: grid
+        title: Diagnostyka
+        cards:
+          - type: tile
+            entity: sensor.rekuperator_serial_number
+            name: Numer seryjny
+          - type: tile
+            entity: sensor.rekuperator_version_major
+            name: Wersja główna
+          - type: tile
+            entity: sensor.rekuperator_version_minor
+            name: Wersja poboczna
+          - type: tile
+            entity: sensor.rekuperator_version_patch
+            name: Patch
+          - type: tile
+            entity: sensor.rekuperator_cf_version
+            name: Wersja CF
+          - type: tile
+            entity: sensor.rekuperator_exp_version
+            name: Wersja EXP
+          - type: tile
+            entity: sensor.rekuperator_compilation_seconds
+            name: Czas pracy [s]
+          - type: tile
+            entity: switch.rekuperator_hard_reset_settings
+            name: Reset ustawień
+            color: red
+          - type: tile
+            entity: switch.rekuperator_hard_reset_schedule
+            name: Reset harmonogramu
+            color: red
