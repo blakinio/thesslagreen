@@ -3517,7 +3517,11 @@
       "name": "cfg_post_heater_mode",
       "access": "RW",
       "unit": null,
-      "enum": null,
+      "enum": {
+        "0": "wyłączony",
+        "1": "tryb 1",
+        "2": "tryb 2"
+      },
       "multiplier": 1,
       "resolution": 1,
       "description": "Tryb pracy systemu ERV",
