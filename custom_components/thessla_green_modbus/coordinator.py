@@ -1985,7 +1985,11 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 supply = float(data["supply_temperature"])
                 exhaust = float(data["exhaust_temperature"])
 
-                if exhaust != outside:
+                # Heat recovery only makes sense in heating mode:
+                # outside must be colder than the room (exhaust > outside).
+                # In summer/freecooling the bypass should be open, but if the
+                # bypass register hasn't caught up yet, skip gracefully.
+                if exhaust > outside:
                     q_supply = data.get("supply_flow_rate")
                     q_exhaust = data.get("exhaust_flow_rate")
                     if q_supply is not None and q_exhaust is not None:
