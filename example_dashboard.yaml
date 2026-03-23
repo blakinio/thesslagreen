@@ -131,7 +131,7 @@ views:
             name: Komfort
             icon: mdi:home-heart
           - type: tile
-            entity: sensor.rekuperator_antifreeze_stage
+            entity: sensor.rekuperator_antifreez_stage
             name: Antyzamrożenie
             icon: mdi:snowflake-thermometer
           - type: tile
@@ -490,7 +490,7 @@ views:
             entity: binary_sensor.rekuperator_gwc
             name: GWC (status)
           - type: tile
-            entity: binary_sensor.rekuperator_gwc_regeneration_active
+            entity: binary_sensor.rekuperator_gwc_regen_flag
             name: Regeneracja aktywna
           - type: tile
             entity: sensor.rekuperator_gwc_temperature
@@ -585,7 +585,7 @@ views:
             entity: select.rekuperator_filter_change
             name: Typ filtrów
           - type: tile
-            entity: select.rekuperator_filter_check_day_of_week
+            entity: select.rekuperator_pres_check_day
             name: Dzień kontroli
           - type: tile
             entity: time.rekuperator_filter_check_start_time
@@ -632,11 +632,8 @@ views:
             entity: binary_sensor.rekuperator_duct_heater_protection
             name: Zabezpieczenie nagrzewnicy
           - type: tile
-            entity: binary_sensor.rekuperator_central_heater_overprotection
-            name: Overprotection – centralna
-          - type: tile
-            entity: binary_sensor.rekuperator_duct_heater_overprotection
-            name: Overprotection – kanałowa
+            entity: binary_sensor.rekuperator_duct_heater_protection
+            name: Zabezpieczenie nagrzewnicy kanałowej
           - type: tile
             entity: binary_sensor.rekuperator_antifreeze_mode
             name: Antyzamrożenie aktywne
