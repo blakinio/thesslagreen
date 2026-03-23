@@ -961,6 +961,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
         "register_type": "calculated",
+        "suggested_display_precision": 1,
     },
     "heat_recovery_power": {
         "translation_key": "heat_recovery_power",
