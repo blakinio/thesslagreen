@@ -957,7 +957,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "heat_recovery_efficiency": {
         "translation_key": "heat_recovery_efficiency",
         "icon": "mdi:heat-wave",
-        "device_class": SensorDeviceClass.EFFICIENCY,
+        "device_class": getattr(SensorDeviceClass, "EFFICIENCY", None),
         "state_class": SensorStateClass.MEASUREMENT,
         "unit": PERCENTAGE,
         "register_type": "calculated",
