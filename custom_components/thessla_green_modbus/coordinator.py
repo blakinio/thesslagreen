@@ -1959,10 +1959,13 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         if device_serial and device_serial != "Unknown":
             data["serial_number"] = device_serial
 
-        # Calculate heat recovery efficiency if temperatures available.
+        # Calculate heat recovery supply-side temperature efficiency (EN 308 η_supply):
+        #   η = (T_supply − T_outside) / (T_exhaust − T_outside)
+        # This is the correct 3-sensor formula per EN 308 when the exhaust outlet
+        # temperature (TW) is not available on this device.
         # bypass_mode raw values: 0=auto, 1=open, 2=closed.
-        # When bypass is fully open the air bypasses the heat exchanger so
-        # the temperature-based formula is meaningless — skip in that case.
+        # When bypass is fully open the air bypasses the heat exchanger so the
+        # temperature-based formula yields a meaningless near-zero value — skip it.
         bypass_raw = data.get("bypass_mode")
         bypass_open = bypass_raw == 1
         if all(
@@ -1974,27 +1977,9 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 exhaust = float(data["exhaust_temperature"])
 
                 if exhaust != outside:
-                    # Base temperature efficiency (η_temp)
-                    eta_temp = (supply - outside) / (exhaust - outside)
-
-                    # If both flow rates are available, apply flow-rate correction:
-                    # ε = Q_supply·(T_supply - T_outside) / (Q_min·(T_exhaust - T_outside))
-                    # This follows EN 308 / ASHRAE methodology for unbalanced flows.
-                    q_supply = data.get("supply_flow_rate")
-                    q_exhaust = data.get("exhaust_flow_rate")
-                    if q_supply is not None and q_exhaust is not None:
-                        q_s = float(q_supply)
-                        q_e = float(q_exhaust)
-                        q_min = min(q_s, q_e)
-                        if q_min > 0:
-                            efficiency = round(
-                                (q_s * (supply - outside) / (q_min * (exhaust - outside))) * 100, 1
-                            )
-                        else:
-                            efficiency = round(eta_temp * 100, 1)
-                    else:
-                        efficiency = round(eta_temp * 100, 1)
-
+                    efficiency = round(
+                        ((supply - outside) / (exhaust - outside)) * 100, 1
+                    )
                     data["calculated_efficiency"] = max(0.0, min(100.0, efficiency))
                     data["heat_recovery_efficiency"] = data["calculated_efficiency"]
             except (ZeroDivisionError, TypeError, ValueError) as exc:
