@@ -39,6 +39,8 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
 
 
 
+_LOGGER = logging.getLogger(__name__)
+
 try:
     _pymodbus = importlib.import_module("pymodbus")
     _pymodbus_client = importlib.import_module("pymodbus.client")
@@ -107,8 +109,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
 else:
     AsyncModbusSerialClientType = Any
-
-_LOGGER = logging.getLogger(__name__)
 
 
 def _ensure_pymodbus_client_module() -> None:
