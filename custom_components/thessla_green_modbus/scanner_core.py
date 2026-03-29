@@ -1828,6 +1828,51 @@ class ThesslaGreenDeviceScanner:
 
         self._unsupported_input_ranges[(start, end)] = code or 0
 
+    def _unpack_read_args(
+        self,
+        client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        address_or_count: int,
+        count: int | None,
+    ) -> tuple[AsyncModbusTcpClient | AsyncModbusSerialClientType | None, int, int]:
+        """Unpack the overloaded (client, address, count) / (address, count) signatures."""
+        if count is None or isinstance(client_or_address, int):
+            return None, int(client_or_address), address_or_count
+        return client_or_address, address_or_count, count  # type: ignore[return-value]
+
+    def _resolve_transport_and_client(
+        self,
+        client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None,
+    ) -> tuple[Any, Any]:
+        """Return (transport, client) ready for reads. Raises if neither available."""
+        transport = self._transport if client is None else None
+        if client is None and transport is None:
+            client = self._client
+        if client is None and transport is None:
+            raise ConnectionException("Modbus transport is not connected")
+        return transport, client
+
+    def _track_input_failure(self, count: int, address: int) -> None:
+        """Increment the failure counter for an input register (only for single-reg reads)."""
+        if count != 1:
+            return
+        failures = self._input_failures.get(address, 0) + 1
+        self._input_failures[address] = failures
+        if failures >= self.retry and address not in self._failed_input:
+            self._failed_input.add(address)
+            self.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
+            _LOGGER.warning("Device does not expose register %d", address)
+
+    def _track_holding_failure(self, count: int, address: int) -> None:
+        """Increment the failure counter for a holding register (only for single-reg reads)."""
+        if count != 1:
+            return
+        failures = self._holding_failures.get(address, 0) + 1
+        self._holding_failures[address] = failures
+        if failures >= self.retry and address not in self._failed_holding:
+            self._failed_holding.add(address)
+            self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
+            _LOGGER.warning("Device does not expose register %d", address)
+
     async def _read_input(
         self,
         client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -1843,18 +1888,7 @@ class ThesslaGreenDeviceScanner:
         checked, allowing each register to be queried once before being cached
         as missing.
         """
-        if count is None:
-            address = int(client_or_address)
-            count = address_or_count
-            client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
-        elif isinstance(client_or_address, int):
-            address = client_or_address
-            count = address_or_count
-            client = None
-        else:
-            client = client_or_address
-            address = address_or_count
-
+        client, address, count = self._unpack_read_args(client_or_address, address_or_count, count)
         start = address
         end = address + count - 1
 
@@ -1884,11 +1918,7 @@ class ThesslaGreenDeviceScanner:
             )
             return None
 
-        transport = self._transport if client is None else None
-        if client is None and transport is None:
-            client = self._client
-        if client is None and transport is None:
-            raise ConnectionException("Modbus transport is not connected")
+        transport, client = self._resolve_transport_and_client(client)
 
         attempted_reads = 0
         aborted_transiently = False
@@ -1951,13 +1981,7 @@ class ThesslaGreenDeviceScanner:
                 if is_request_cancelled_error(exc):
                     aborted_transiently = True
                     break  # Treat cancellation like a timeout — stop retrying
-                if count == 1:
-                    failures = self._input_failures.get(address, 0) + 1
-                    self._input_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_input:
-                        self._failed_input.add(address)
-                        self.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register %d", address)
+                self._track_input_failure(count, address)
             except TimeoutError as exc:
                 _LOGGER.warning(
                     "Timeout reading input registers %d-%d on attempt %d: %s",
@@ -1987,16 +2011,9 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-                if count == 1:
-                    failures = self._input_failures.get(address, 0) + 1
-                    self._input_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_input:
-                        self._failed_input.add(address)
-                        self.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register %d", address)
+                self._track_input_failure(count, address)
 
             await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
-
 
         if aborted_transiently:
             _LOGGER.warning(
@@ -2094,18 +2111,7 @@ class ThesslaGreenDeviceScanner:
         failed registers are ignored, allowing each register to be queried
         once before being cached again.
         """
-        if count is None:
-            address = int(client_or_address)
-            count = address_or_count
-            client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
-        elif isinstance(client_or_address, int):
-            address = client_or_address
-            count = address_or_count
-            client = None
-        else:
-            client = client_or_address
-            address = address_or_count
-
+        client, address, count = self._unpack_read_args(client_or_address, address_or_count, count)
         start = address
         end = address + count - 1
 
@@ -2128,11 +2134,7 @@ class ThesslaGreenDeviceScanner:
             self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
             return None
 
-        transport = self._transport if client is None else None
-        if client is None and transport is None:
-            client = self._client
-        if client is None and transport is None:
-            raise ConnectionException("Modbus transport is not connected")
+        transport, client = self._resolve_transport_and_client(client)
 
         attempted_reads = 0
         aborted_transiently = False
@@ -2200,13 +2202,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-                if count == 1:
-                    failures = self._holding_failures.get(address, 0) + 1
-                    self._holding_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_holding:
-                        self._failed_holding.add(address)
-                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register %d", address)
+                self._track_holding_failure(count, address)
                 aborted_transiently = True
             except ModbusIOException as exc:
                 if is_request_cancelled_error(exc):
@@ -2228,13 +2224,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-                if count == 1:
-                    failures = self._holding_failures.get(address, 0) + 1
-                    self._holding_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_holding:
-                        self._failed_holding.add(address)
-                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register %d", address)
+                self._track_holding_failure(count, address)
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
                     "Failed to read holding %d (attempt %d/%d): %s",
@@ -2244,13 +2234,7 @@ class ThesslaGreenDeviceScanner:
                     exc,
                     exc_info=True,
                 )
-                if count == 1:
-                    failures = self._holding_failures.get(address, 0) + 1
-                    self._holding_failures[address] = failures
-                    if failures >= self.retry and address not in self._failed_holding:
-                        self._failed_holding.add(address)
-                        self.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
-                        _LOGGER.warning("Device does not expose register %d", address)
+                self._track_holding_failure(count, address)
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading holding %d on attempt %d/%d",
