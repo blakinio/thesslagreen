@@ -698,6 +698,167 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             attempt=attempt,
         )
 
+    def _build_scanner_kwargs(self) -> dict[str, Any]:  # pragma: no cover
+        """Return constructor kwargs shared by all scanner creation paths."""
+        return {
+            "host": self.host,
+            "port": self.port,
+            "slave_id": self.slave_id,
+            "timeout": self.timeout,
+            "retry": self.retry,
+            "backoff": self.backoff,
+            "backoff_jitter": self.backoff_jitter,
+            "scan_uart_settings": self.scan_uart_settings,
+            "skip_known_missing": self.skip_missing_registers,
+            "deep_scan": self.deep_scan,
+            "max_registers_per_request": self.effective_batch,
+            "safe_scan": self.safe_scan,
+            "connection_type": self.connection_type,
+            "connection_mode": self._resolved_connection_mode or self.connection_mode,
+            "serial_port": self.serial_port,
+            "baud_rate": self.baud_rate,
+            "parity": self.parity,
+            "stop_bits": self.stop_bits,
+            "hass": self.hass,
+        }
+
+    async def _create_scanner(self) -> Any:  # pragma: no cover
+        """Instantiate a ThesslaGreenDeviceScanner using the appropriate factory."""
+        scanner_cls = getattr(
+            import_module(__name__), "ThesslaGreenDeviceScanner", ThesslaGreenDeviceScanner
+        )
+        kwargs = self._build_scanner_kwargs()
+        if not inspect.isclass(scanner_cls):
+            return scanner_cls(**kwargs)
+        scanner_factory = getattr(scanner_cls, "create", None)
+        if callable(scanner_factory):
+            result = scanner_factory(**kwargs)
+            if inspect.isawaitable(result):
+                result = await result
+            return result
+        return scanner_cls(**kwargs)
+
+    def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:  # pragma: no cover
+        """Store and process a completed device scan result."""
+        self.device_scan_result = cast(dict[str, Any], scan_result)
+        if self.connection_mode == CONNECTION_MODE_AUTO:
+            if resolved := self.device_scan_result.get("resolved_connection_mode"):
+                self._resolved_connection_mode = resolved
+        self.last_scan = _utcnow()
+
+        scan_registers = self.device_scan_result.get("available_registers", {})
+        self.available_registers = self._normalise_available_registers(
+            {
+                "input_registers": scan_registers.get("input_registers", []),
+                "holding_registers": scan_registers.get("holding_registers", []),
+                "coil_registers": scan_registers.get("coil_registers", []),
+                "discrete_inputs": scan_registers.get("discrete_inputs", []),
+            }
+        )
+        if self.skip_missing_registers:
+            for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+                self.available_registers[reg_type].difference_update(names)
+
+        self.device_info = self.device_scan_result.get("device_info", {})
+        self.device_info.setdefault("device_name", self._device_name)
+
+        # Ensure serial_number entity is created even if address 24
+        # failed individual-register validation during the scan.
+        # The scanner already assembled the full serial from 6 registers.
+        if (
+            self.device_info.get("serial_number")
+            and self.device_info["serial_number"] != "Unknown"
+        ):
+            self.available_registers["input_registers"].add("serial_number")
+
+        caps_obj = self.device_scan_result.get("capabilities")
+        if isinstance(caps_obj, DeviceCapabilities):
+            self.capabilities = caps_obj
+        elif isinstance(caps_obj, dict):
+            self.capabilities = DeviceCapabilities(**caps_obj)
+        elif caps_obj is None:
+            self.capabilities = DeviceCapabilities()
+        else:
+            _LOGGER.error(
+                "Invalid capabilities format: expected dict, got %s",
+                type(caps_obj).__name__,
+            )
+            raise CannotConnect("invalid_capabilities")
+
+        self.unknown_registers = self.device_scan_result.get("unknown_registers", {})
+        self.scanned_registers = self.device_scan_result.get("scanned_registers", {})
+        self._store_scan_cache()
+
+        _LOGGER.info(
+            "Device scan completed: %d registers found, model: %s, firmware: %s",
+            self.device_scan_result.get("register_count", 0),
+            self.device_info.get("model", UNKNOWN_MODEL),
+            self.device_info.get("firmware", "Unknown"),
+        )
+
+    async def _run_device_scan(self) -> None:  # pragma: no cover
+        """Run a full device scan and apply the result."""
+        _LOGGER.info("Scanning device for available registers...")
+        scanner = None
+        try:
+            scanner = await self._create_scanner()
+            scan_result = scanner.scan_device()
+            if inspect.isawaitable(scan_result):
+                scan_result = await scan_result
+            self._apply_scan_result(scan_result)
+        except asyncio.CancelledError:
+            _LOGGER.warning("Device scan cancelled")
+            raise
+        except (ModbusException, ConnectionException) as exc:
+            _LOGGER.exception("Device scan failed: %s", exc)
+            raise
+        except TimeoutError as exc:
+            _LOGGER.warning("Device scan timed out: %s", exc)
+            raise
+        except (OSError, ValueError) as exc:
+            _LOGGER.exception("Unexpected error during device scan: %s", exc)
+            raise
+        finally:
+            if scanner is not None:
+                close_result = scanner.close()
+                if inspect.isawaitable(close_result):
+                    await close_result
+
+    def _warn_missing_device_info(self) -> None:  # pragma: no cover
+        """Log warnings when model or firmware could not be identified."""
+        model = self.device_info.get("model", UNKNOWN_MODEL)
+        firmware = self.device_info.get("firmware", "Unknown")
+        if model != UNKNOWN_MODEL and firmware != "Unknown":
+            return
+        missing: list[str] = []
+        if model == "Unknown":
+            missing.append("model")
+            _LOGGER.debug(
+                "Device model missing for %s:%s%s",
+                self.host,
+                self.port,
+                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+            )
+        if firmware == "Unknown":
+            missing.append("firmware")
+            _LOGGER.debug(
+                "Device firmware missing for %s:%s%s",
+                self.host,
+                self.port,
+                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+            )
+        if missing:
+            device_details = f"{self.host}:{self.port}"
+            if self.slave_id is not None:
+                device_details += f", slave {self.slave_id}"
+            _LOGGER.warning(
+                "Device %s missing %s (%s). "
+                "Verify Modbus connectivity or ensure your firmware is supported.",
+                self._device_name,
+                " and ".join(missing),
+                device_details,
+            )
+
     async def async_setup(self) -> bool:  # pragma: no cover
         """Set up the coordinator by scanning the device."""
         if self.connection_type == CONNECTION_TYPE_RTU:
@@ -710,209 +871,22 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             self.connection_type.upper(),
         )
 
-        # Scan device to discover available registers and capabilities
-        if not self.force_full_register_list:
-            if not self.enable_device_scan:
-                cache = {}
-                if self.entry is not None:
-                    cache = self.entry.options.get("device_scan_cache", {})  # type: ignore[assignment]
-                if cache and self._apply_scan_cache(cache):
-                    _LOGGER.info("Using cached device scan results")
-                else:
-                    _LOGGER.info("Device scan disabled; falling back to full register list")
-                    self._load_full_register_list()
-            else:
-                _LOGGER.info("Scanning device for available registers...")
-                scanner = None
-                try:
-                    scanner_cls = getattr(import_module(__name__), "ThesslaGreenDeviceScanner", ThesslaGreenDeviceScanner)
-                    scanner_factory = getattr(scanner_cls, "create", None)
-                    if not inspect.isclass(scanner_cls):
-                        scanner = scanner_cls(
-                            host=self.host,
-                            port=self.port,
-                            slave_id=self.slave_id,
-                            timeout=self.timeout,
-                            retry=self.retry,
-                            backoff=self.backoff,
-                            backoff_jitter=self.backoff_jitter,
-                            scan_uart_settings=self.scan_uart_settings,
-                            skip_known_missing=self.skip_missing_registers,
-                            deep_scan=self.deep_scan,
-                            max_registers_per_request=self.effective_batch,
-                            safe_scan=self.safe_scan,
-                            connection_type=self.connection_type,
-                            connection_mode=self._resolved_connection_mode or self.connection_mode,
-                            serial_port=self.serial_port,
-                            baud_rate=self.baud_rate,
-                            parity=self.parity,
-                            stop_bits=self.stop_bits,
-                            hass=self.hass,
-                        )
-                    elif callable(scanner_factory):
-                        scanner = scanner_factory(
-                            host=self.host,
-                            port=self.port,
-                            slave_id=self.slave_id,
-                            timeout=self.timeout,
-                            retry=self.retry,
-                            backoff=self.backoff,
-                            backoff_jitter=self.backoff_jitter,
-                            scan_uart_settings=self.scan_uart_settings,
-                            skip_known_missing=self.skip_missing_registers,
-                            deep_scan=self.deep_scan,
-                            max_registers_per_request=self.effective_batch,
-                            safe_scan=self.safe_scan,
-                            connection_type=self.connection_type,
-                            connection_mode=self._resolved_connection_mode or self.connection_mode,
-                            serial_port=self.serial_port,
-                            baud_rate=self.baud_rate,
-                            parity=self.parity,
-                            stop_bits=self.stop_bits,
-                            hass=self.hass,
-                        )
-                        if inspect.isawaitable(scanner):
-                            scanner = await scanner
-                    else:
-                        scanner = scanner_cls(
-                            host=self.host,
-                            port=self.port,
-                            slave_id=self.slave_id,
-                            timeout=self.timeout,
-                            retry=self.retry,
-                            backoff=self.backoff,
-                            backoff_jitter=self.backoff_jitter,
-                            scan_uart_settings=self.scan_uart_settings,
-                            skip_known_missing=self.skip_missing_registers,
-                            deep_scan=self.deep_scan,
-                            max_registers_per_request=self.effective_batch,
-                            safe_scan=self.safe_scan,
-                            connection_type=self.connection_type,
-                            connection_mode=self._resolved_connection_mode or self.connection_mode,
-                            serial_port=self.serial_port,
-                            baud_rate=self.baud_rate,
-                            parity=self.parity,
-                            stop_bits=self.stop_bits,
-                            hass=self.hass,
-                        )
-
-                    scan_result = scanner.scan_device()
-                    if inspect.isawaitable(scan_result):
-                        scan_result = await scan_result
-                    self.device_scan_result = cast(dict[str, Any], scan_result)
-                    if self.connection_mode == CONNECTION_MODE_AUTO:
-                        if resolved := self.device_scan_result.get("resolved_connection_mode"):
-                            self._resolved_connection_mode = resolved
-                    self.last_scan = _utcnow()
-                    scan_registers = self.device_scan_result.get("available_registers", {})
-                    self.available_registers = self._normalise_available_registers(
-                        {
-                            "input_registers": scan_registers.get("input_registers", []),
-                            "holding_registers": scan_registers.get("holding_registers", []),
-                            "coil_registers": scan_registers.get("coil_registers", []),
-                            "discrete_inputs": scan_registers.get("discrete_inputs", []),
-                        }
-                    )
-                    if self.skip_missing_registers:
-                        for reg_type, names in KNOWN_MISSING_REGISTERS.items():
-                            self.available_registers[reg_type].difference_update(names)
-
-                    self.device_info = self.device_scan_result.get("device_info", {})
-                    self.device_info.setdefault("device_name", self._device_name)
-
-                    # Ensure serial_number entity is created even if address 24
-                    # failed individual-register validation during the scan.
-                    # The scanner already assembled the full serial from 6 registers.
-                    if (
-                        self.device_info.get("serial_number")
-                        and self.device_info["serial_number"] != "Unknown"
-                    ):
-                        self.available_registers["input_registers"].add("serial_number")
-
-                    caps_obj = self.device_scan_result.get("capabilities")
-                    if isinstance(caps_obj, DeviceCapabilities):
-                        self.capabilities = caps_obj
-                    elif isinstance(caps_obj, dict):
-                        self.capabilities = DeviceCapabilities(**caps_obj)
-                    elif caps_obj is None:
-                        self.capabilities = DeviceCapabilities()
-                    else:
-                        _LOGGER.error(
-                            "Invalid capabilities format: expected dict, got %s",
-                            type(caps_obj).__name__,
-                        )
-                        raise CannotConnect("invalid_capabilities")
-
-                    self.unknown_registers = self.device_scan_result.get("unknown_registers", {})
-                    self.scanned_registers = self.device_scan_result.get("scanned_registers", {})
-                    self._store_scan_cache()
-
-                    _LOGGER.info(
-                        "Device scan completed: %d registers found, model: %s, firmware: %s",
-                        self.device_scan_result.get("register_count", 0),
-                        self.device_info.get("model", UNKNOWN_MODEL),
-                        self.device_info.get("firmware", "Unknown"),
-                    )
-                except asyncio.CancelledError:
-                    _LOGGER.warning("Device scan cancelled")
-                    if scanner is not None:
-                        close_result = scanner.close()
-                        if inspect.isawaitable(close_result):
-                            await close_result
-                        scanner = None
-                    raise
-                except (ModbusException, ConnectionException) as exc:
-                    _LOGGER.exception("Device scan failed: %s", exc)
-                    raise
-                except TimeoutError as exc:
-                    _LOGGER.warning("Device scan timed out: %s", exc)
-                    raise
-                except (OSError, ValueError) as exc:
-                    _LOGGER.exception("Unexpected error during device scan: %s", exc)
-                    raise
-                finally:
-                    if scanner is not None:
-                        close_result = scanner.close()
-                        if inspect.isawaitable(close_result):
-                            await close_result
-        else:
+        if self.force_full_register_list:
             _LOGGER.info("Using full register list (skipping scan)")
-            # Load all registers if forced
             self._load_full_register_list()
+        elif not self.enable_device_scan:
+            cache: dict[str, Any] = {}
+            if self.entry is not None:
+                cache = self.entry.options.get("device_scan_cache", {})  # type: ignore[assignment]
+            if cache and self._apply_scan_cache(cache):
+                _LOGGER.info("Using cached device scan results")
+            else:
+                _LOGGER.info("Device scan disabled; falling back to full register list")
+                self._load_full_register_list()
+        else:
+            await self._run_device_scan()
 
-        model = self.device_info.get("model", UNKNOWN_MODEL)
-        firmware = self.device_info.get("firmware", "Unknown")
-        # Warn when any key identification fields are missing
-        if model == UNKNOWN_MODEL or firmware == "Unknown":
-            missing: list[str] = []
-            if model == "Unknown":
-                missing.append("model")
-                _LOGGER.debug(
-                    "Device model missing for %s:%s%s",
-                    self.host,
-                    self.port,
-                    f" (slave {self.slave_id})" if self.slave_id is not None else "",
-                )
-            if firmware == "Unknown":
-                missing.append("firmware")
-                _LOGGER.debug(
-                    "Device firmware missing for %s:%s%s",
-                    self.host,
-                    self.port,
-                    f" (slave {self.slave_id})" if self.slave_id is not None else "",
-                )
-            if missing:
-                device_details = f"{self.host}:{self.port}"
-                if self.slave_id is not None:
-                    device_details += f", slave {self.slave_id}"
-                missing_str = " and ".join(missing)
-                _LOGGER.warning(
-                    "Device %s missing %s (%s). "
-                    "Verify Modbus connectivity or ensure your firmware is supported.",
-                    self._device_name,
-                    missing_str,
-                    device_details,
-                )
+        self._warn_missing_device_info()
 
         # Pre-compute register groups for batch reading
         self._compute_register_groups()
