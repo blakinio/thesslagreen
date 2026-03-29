@@ -1236,8 +1236,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 self.client = legacy_client
                 self._transport = None
                 return
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOGGER.debug("Legacy client connect attempt failed, trying transports: %s", exc)
 
         for mode, timeout in attempts:
             transport = self._build_tcp_transport(mode)
@@ -1250,8 +1250,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     )
                 except (ModbusIOException, ConnectionException):
                     raise  # timeout / no connection = wrong protocol, reject transport
-                except ModbusException:
-                    pass  # device returned Modbus error code = valid protocol, accept transport
+                except ModbusException as exc:
+                    _LOGGER.debug("Protocol probe: Modbus error code = valid protocol (%s)", exc)
             except Exception as exc:  # pragma: no cover - network dependent
                 last_error = exc
                 await transport.close()
@@ -1285,8 +1285,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 self.client = legacy_client
                 self._transport = None
                 return
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOGGER.debug("Legacy client connect attempt failed: %s", exc)
 
         raise ConnectionException("Auto-detect Modbus transport failed") from last_error
 
@@ -1916,8 +1916,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     p_heater = heater_max * (dac_h / 10.0)
 
                     return round(p_fans + p_heater + self._STANDBY_POWER_W, 1)
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as exc:
+                _LOGGER.debug("Power calculation via flow/DAC unavailable: %s", exc)
 
         # Fallback: DAC-voltage cubic estimate (model unknown or flow unavailable).
         try:

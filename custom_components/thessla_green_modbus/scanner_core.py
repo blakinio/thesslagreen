@@ -44,8 +44,8 @@ try:
     _pymodbus_client = importlib.import_module("pymodbus.client")
     if not hasattr(_pymodbus, "client"):
         setattr(_pymodbus, "client", _pymodbus_client)  # pragma: no cover
-except Exception:  # pragma: no cover
-    pass
+except Exception as _exc:  # pragma: no cover
+    _LOGGER.debug("Could not attach pymodbus.client submodule: %s", _exc)
 
 from . import modbus_helpers as _mh
 from .capability_rules import CAPABILITY_PATTERNS
@@ -1671,8 +1671,8 @@ class ThesslaGreenDeviceScanner:
                             if is_request_cancelled_error(exc):
                                 raise TimeoutError(str(exc)) from exc
                             # Other Modbus exceptions (error codes) confirm protocol is working
-                        except Exception:
-                            pass  # Non-timeout, non-cancelled response confirms protocol is working
+                        except Exception as exc:
+                            _LOGGER.debug("Protocol probe non-critical exception (protocol ok): %s", exc)
                     except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
                         last_error = exc
                         await transport.close()
@@ -2369,8 +2369,8 @@ class ThesslaGreenDeviceScanner:
                         if transport_client is not None:
                             client = transport_client
                             self._client = transport_client
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        _LOGGER.debug("Transport client refresh failed during coil read: %s", exc)
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading coil %d on attempt %d",
@@ -2472,8 +2472,8 @@ class ThesslaGreenDeviceScanner:
                         if transport_client is not None:
                             client = transport_client
                             self._client = transport_client
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        _LOGGER.debug("Transport client refresh failed during discrete read: %s", exc)
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading discrete %d on attempt %d",
