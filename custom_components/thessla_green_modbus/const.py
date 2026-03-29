@@ -25,6 +25,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # The registers loader previously created a circular dependency with
 # ``modbus_helpers`` but this has been resolved, allowing the import to
 # appear before this constant.
+# AirPack4 firmware limit: max 16 registers per FC03/FC04 request
+# (per ProtokolModbusRTU_AirPack4.pdf — device-specific constraint,
+# lower than the Modbus spec maximum of 125).
 MAX_REGISTERS_PER_REQUEST = 16
 MAX_REGS_PER_REQUEST = MAX_REGISTERS_PER_REQUEST
 MAX_BATCH_REGISTERS = MAX_REGISTERS_PER_REQUEST
