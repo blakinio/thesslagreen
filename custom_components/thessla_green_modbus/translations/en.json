@@ -92,6 +92,15 @@
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
+      },
+      "reconfigure": {
+        "title": "Reconfigure ThesslaGreen",
+        "description": "Update the connection settings for your AirPack device.",
+        "data": {
+          "host": "IP Address",
+          "port": "Port",
+          "slave_id": "Modbus Slave ID"
+        }
       }
     }
   },
@@ -1072,7 +1081,7 @@
       "version_patch": {
         "name": "Patch Version"
       },
-      "antifreez_stage": {
+      "antifreeze_stage": {
         "name": "Antifreeze Stage",
         "state": {
           "off": "Off",

@@ -74,7 +74,7 @@ async def async_setup_entry(
 
     This is invoked by Home Assistant during platform setup.
     """
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
     temp_created = 0

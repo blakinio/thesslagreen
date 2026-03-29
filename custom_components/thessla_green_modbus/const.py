@@ -25,6 +25,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # The registers loader previously created a circular dependency with
 # ``modbus_helpers`` but this has been resolved, allowing the import to
 # appear before this constant.
+# AirPack4 firmware limit: max 16 registers per FC03/FC04 request
+# (per ProtokolModbusRTU_AirPack4.pdf — device-specific constraint,
+# lower than the Modbus spec maximum of 125).
 MAX_REGISTERS_PER_REQUEST = 16
 MAX_REGS_PER_REQUEST = MAX_REGISTERS_PER_REQUEST
 MAX_BATCH_REGISTERS = MAX_REGISTERS_PER_REQUEST
@@ -185,17 +188,32 @@ KNOWN_MISSING_REGISTERS = {
 
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
-PLATFORMS = [
-    "sensor",
-    "binary_sensor",
-    "climate",
-    "fan",
-    "select",
-    "number",
-    "switch",
-    "text",
-    "time",
-]
+try:  # pragma: no cover - optional during isolated tests
+    from homeassistant.const import Platform as _Platform
+
+    PLATFORMS: list[_Platform] = [
+        _Platform.SENSOR,
+        _Platform.BINARY_SENSOR,
+        _Platform.CLIMATE,
+        _Platform.FAN,
+        _Platform.SELECT,
+        _Platform.NUMBER,
+        _Platform.SWITCH,
+        _Platform.TEXT,
+        _Platform.TIME,
+    ]
+except (ImportError, Exception):  # pragma: no cover - fallback for test environments
+    PLATFORMS = [  # type: ignore[assignment]
+        "sensor",
+        "binary_sensor",
+        "climate",
+        "fan",
+        "select",
+        "number",
+        "switch",
+        "text",
+        "time",
+    ]
 
 
 # Migration helpers
@@ -409,8 +427,11 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
     else:
         results = [_load_json_option(fn) for fn, _ in filenames]
 
-    for (_, name), value in zip(filenames, results, strict=False):
-        globals()[name] = value
+    (
+        SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES,
+        FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES,
+        MODBUS_PARITY, MODBUS_STOP_BITS,
+    ) = results
 
 
 def _sync_setup_options() -> None:

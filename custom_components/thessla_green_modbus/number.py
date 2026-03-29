@@ -14,7 +14,6 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capability_rules import capability_block_reason
-from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
@@ -42,7 +41,7 @@ async def async_setup_entry(
 
     This hook is invoked by Home Assistant during platform setup.
     """
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
 
     entities = []
 

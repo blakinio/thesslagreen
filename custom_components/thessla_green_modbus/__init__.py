@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, cast
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from typing import TypeAlias
+
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
@@ -77,6 +79,9 @@ except Exception:  # pragma: no cover
 
 _LOGGER = logging.getLogger(__name__)
 
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    ThesslaGreenConfigEntry: TypeAlias = ConfigEntry["ThesslaGreenModbusCoordinator"]
+
 # Compatibility shim for tests patching "custom_components.thessla_green_modbus.__init__.er".
 _init_alias = sys.modules.setdefault(f"{__name__}.__init__", sys.modules[__name__])
 setattr(_init_alias, "er", er)
@@ -126,10 +131,6 @@ def _get_platforms() -> list[object]:
     _platform_cache = platforms
     return platforms
 
-
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    hass.data.setdefault(DOMAIN, {})
-    return True
 
 
 def _apply_log_level(log_level: str) -> None:
@@ -387,9 +388,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     if not hasattr(coordinator, "force_full_register_list"):
         coordinator.force_full_register_list = bool(force_full_register_list)
 
-    # Store coordinator in hass data
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    # Store coordinator on entry (HA 2024.6+ pattern)
+    entry.runtime_data = coordinator
 
     # Clean up legacy entity IDs left from early versions
     await _async_cleanup_legacy_fan_entity(hass, coordinator)
@@ -433,16 +433,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         raise
 
     # Setup services (only once for first entry)
-    if len(hass.data[DOMAIN]) == 1:
+    if len(hass.config_entries.async_entries(DOMAIN)) == 1:
         from .services import async_setup_services
 
         await async_setup_services(hass)
 
     # Setup entry update listener
-    add_listener = getattr(entry, "add_update_listener", None)
-    async_on_unload = getattr(entry, "async_on_unload", None)
-    if callable(add_listener) and callable(async_on_unload):
-        async_on_unload(add_listener(async_update_options))
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     _LOGGER.info("ThesslaGreen Modbus integration setup completed successfully")
     return True
@@ -462,16 +459,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  
 
     if unload_ok:
         # Shutdown coordinator
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator = entry.runtime_data
         await coordinator.async_shutdown()
 
-        # Remove from hass data
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-        # Clean up domain data if no more entries
-        if not hass.data[DOMAIN]:
-            hass.data.pop(DOMAIN)
-            # Unload services when last entry is removed
+        # Unload services when last entry is removed
+        if not hass.config_entries.async_entries(DOMAIN):
             from .services import async_unload_services
 
             await async_unload_services(hass)
@@ -484,7 +476,7 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update options."""
     _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
 
-    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    coordinator = getattr(entry, "runtime_data", None)
     if coordinator:
         new_interval = int(entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
         coordinator.scan_interval = new_interval
@@ -548,7 +540,7 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
     from homeassistant.helpers import entity_registry as er  # type: ignore
 
     registry = er.async_get(hass)
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     device_info = getattr(coordinator, "device_info", None)
     if not isinstance(device_info, dict):
         getter = getattr(coordinator, "get_device_info", None)

@@ -152,6 +152,8 @@ def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
     async def run_test() -> None:
         hass = MagicMock()
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+        mock_config_entry.runtime_data = mock_coordinator
+
 
         available = {
             "input_registers": set(),
@@ -182,6 +184,8 @@ def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
     async def run_test() -> None:
         hass = MagicMock()
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+        mock_config_entry.runtime_data = mock_coordinator
+
 
         available = {
             "input_registers": set(),
@@ -213,6 +217,8 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
         hass = MagicMock()
         hass.config.language = "en"
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+        mock_config_entry.runtime_data = mock_coordinator
+
         mock_coordinator.data["s_2"] = 1
         mock_coordinator.available_registers.setdefault("holding_registers", set()).add("s_2")
         add_entities = MagicMock()
@@ -234,6 +240,8 @@ async def test_force_full_register_list_adds_missing_entities(mock_coordinator, 
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
 
     # Simulate no registers discovered
     mock_coordinator.available_registers = {
@@ -399,6 +407,8 @@ def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
     async def run_test() -> None:
         hass = MagicMock()
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+        mock_config_entry.runtime_data = mock_coordinator
+
 
         mock_coordinator.available_registers = {
             "input_registers": set(),
@@ -428,6 +438,8 @@ def test_active_errors_sensor(mock_coordinator, mock_config_entry):
     async def run_test() -> None:
         hass = MagicMock()
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+        mock_config_entry.runtime_data = mock_coordinator
+
         hass.config = types.SimpleNamespace(language="en")
 
         mock_coordinator.available_registers = {

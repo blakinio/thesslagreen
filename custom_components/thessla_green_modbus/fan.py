@@ -15,7 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, holding_registers
+from .const import holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -32,7 +32,7 @@ async def async_setup_entry(
 
     This is a Home Assistant callback invoked during platform setup.
     """
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
 
     # Check if fan control is available based on registers discovered by
     # ThesslaGreenDeviceScanner.scan_device()

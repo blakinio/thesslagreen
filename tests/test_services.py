@@ -249,11 +249,21 @@ def test_air_quality_register_map():
 
 
 def test_get_coordinator_from_entity_id_multiple_devices():
-    """Ensure coordinator lookup maps entities to correct coordinators."""
+    """Ensure coordinator lookup maps entities to correct coordinators via runtime_data."""
     hass = core.HomeAssistant()
     coord1 = object()
     coord2 = object()
-    hass.data = {services_module.DOMAIN: {"entry1": coord1, "entry2": coord2}}
+
+    entry1 = SimpleNamespace(runtime_data=coord1)
+    entry2 = SimpleNamespace(runtime_data=coord2)
+
+    class DummyConfigEntries:
+        _entries = {"entry1": entry1, "entry2": entry2}
+
+        def async_get_entry(self, entry_id):
+            return self._entries.get(entry_id)
+
+    hass.config_entries = DummyConfigEntries()
 
     class DummyRegistry:
         def __init__(self, mapping):

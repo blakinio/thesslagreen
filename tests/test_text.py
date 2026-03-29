@@ -267,6 +267,8 @@ async def test_async_setup_entry_creates_entity(mock_coordinator, mock_config_en
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
     mock_coordinator.available_registers["holding_registers"].add("device_name")
 
     add_entities = MagicMock()
@@ -283,6 +285,8 @@ async def test_async_setup_entry_skips_when_not_available(mock_coordinator, mock
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
     mock_coordinator.available_registers["holding_registers"].discard("device_name")
     mock_coordinator.force_full_register_list = False
 

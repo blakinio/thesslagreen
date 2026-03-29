@@ -38,16 +38,13 @@ def _patch_entity_registry(er_stub):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_async_setup_initialises_domain_data():
-    """async_setup sets hass.data[DOMAIN] = {} if absent."""
-    from custom_components.thessla_green_modbus import async_setup
+def test_async_setup_removed():
+    """async_setup is no longer exported — coordinator lives in entry.runtime_data."""
+    import custom_components.thessla_green_modbus as mod
 
-    hass = MagicMock()
-    hass.data = {}
-    result = await async_setup(hass, {})
-    assert result is True  # nosec B101
-    assert DOMAIN in hass.data  # nosec B101
+    assert not hasattr(mod, "async_setup"), (
+        "async_setup should have been removed; use entry.runtime_data instead of hass.data"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +117,7 @@ async def test_migrate_unique_ids_coroutine_get_device_info():
     class FakeEntry:
         entry_id: str = "test_entry"
         data: dict = field(default_factory=dict)
+        runtime_data: object = None
 
     async def coro_get_device_info():
         return {"serial_number": "CORTEST"}
@@ -131,6 +129,7 @@ async def test_migrate_unique_ids_coroutine_get_device_info():
     hass = MagicMock()
     hass.data = {DOMAIN: {"test_entry": coordinator}}
     entry = FakeEntry()
+    entry.runtime_data = coordinator
 
     class FakeRegistry:
         def async_get(self, entity_id):
@@ -159,12 +158,14 @@ async def test_migrate_unique_ids_entries_not_callable_returns_early():
     class FakeEntry:
         entry_id: str = "test_entry"
         data: dict = field(default_factory=dict)
+        runtime_data: object = None
 
     coordinator = MagicMock()
     coordinator.device_info = {"serial_number": "TESTSERIAL"}
     hass = MagicMock()
     hass.data = {DOMAIN: {"test_entry": coordinator}}
     entry = FakeEntry()
+    entry.runtime_data = coordinator
 
     class FakeRegistry:
         pass
@@ -192,6 +193,7 @@ async def test_migrate_unique_ids_async_get_returns_none_skips():
     class FakeEntry:
         entry_id: str = "test_entry"
         data: dict = field(default_factory=dict)
+        runtime_data: object = None
 
     @dataclass
     class FakeRegEntry:
@@ -205,6 +207,7 @@ async def test_migrate_unique_ids_async_get_returns_none_skips():
     hass = MagicMock()
     hass.data = {DOMAIN: {"test_entry": coordinator}}
     entry = FakeEntry()
+    entry.runtime_data = coordinator
 
     reg_entry = FakeRegEntry(entity_id="sensor.test_xyz", unique_id="old_unique_id")
     get_call_count = [0]

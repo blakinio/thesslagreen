@@ -92,6 +92,15 @@
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
         },
         "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP lub Modbus RTU. Integracja automatycznie wykryje funkcje i rejestry urządzenia."
+      },
+      "reconfigure": {
+        "title": "Zmień konfigurację ThesslaGreen",
+        "description": "Zaktualizuj ustawienia połączenia z rekuperatorem AirPack.",
+        "data": {
+          "host": "Adres IP",
+          "port": "Port",
+          "slave_id": "Adres Modbus (Slave ID)"
+        }
       }
     }
   },
@@ -1072,7 +1081,7 @@
       "version_patch": {
         "name": "Wersja łatki"
       },
-      "antifreez_stage": {
+      "antifreeze_stage": {
         "name": "Faza ochrony przeciwzamrożeniowej",
         "state": {
           "off": "Wyłączona",

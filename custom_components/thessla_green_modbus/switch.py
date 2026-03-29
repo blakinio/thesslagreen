@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capability_rules import capability_block_reason
-from .const import DOMAIN, coil_registers, holding_registers
+from .const import coil_registers, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .entity_mappings import ENTITY_MAPPINGS
@@ -30,7 +30,7 @@ async def async_setup_entry(
 
     Home Assistant invokes this during platform setup.
     """
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
 
     entities = []
 

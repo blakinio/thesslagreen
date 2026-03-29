@@ -39,6 +39,8 @@ class TestThesslaGreenIntegration:
         hass.services.has_service = MagicMock(return_value=False)
         hass.services.async_register = MagicMock()
         hass.services.async_remove = MagicMock()
+        # Simulate a single registered entry so service setup is triggered
+        hass.config_entries.async_entries.return_value = [MagicMock()]
         return hass
 
     @pytest.fixture
@@ -152,8 +154,7 @@ class TestThesslaGreenIntegration:
             result = await async_setup_entry(mock_hass, mock_config_entry)
 
             assert result is True
-            assert DOMAIN in mock_hass.data
-            assert mock_config_entry.entry_id in mock_hass.data[DOMAIN]
+            assert mock_config_entry.runtime_data is mock_coordinator
             mock_hass.config_entries.async_forward_entry_setups.assert_called_once()
             mock_coordinator.async_config_entry_first_refresh.assert_called_once()
 
@@ -184,7 +185,7 @@ class TestThesslaGreenIntegration:
         from custom_components.thessla_green_modbus.const import DOMAIN
 
         # Setup initial state
-        mock_hass.data[DOMAIN] = {mock_config_entry.entry_id: mock_coordinator}
+        mock_config_entry.runtime_data = mock_coordinator
 
         result = await async_unload_entry(mock_hass, mock_config_entry)
 
@@ -250,29 +251,50 @@ class TestThesslaGreenModbusCoordinator:
             "on_off_panel_mode": 1,
         }
 
-        with patch.object(
-            coordinator_data.hass,
-            "async_add_executor_job",
-            AsyncMock(return_value=mock_data),
-        ) as mock_executor:
+        coordinator_data.client = MagicMock()  # ensure client is not None
+        with (
+            patch.object(coordinator_data, "_ensure_connection", AsyncMock()),
+            patch.object(
+                coordinator_data,
+                "_read_input_registers_optimized",
+                AsyncMock(return_value=mock_data),
+            ),
+            patch.object(
+                coordinator_data,
+                "_read_holding_registers_optimized",
+                AsyncMock(return_value={}),
+            ),
+            patch.object(
+                coordinator_data,
+                "_read_coil_registers_optimized",
+                AsyncMock(return_value={}),
+            ),
+            patch.object(
+                coordinator_data,
+                "_read_discrete_inputs_optimized",
+                AsyncMock(return_value={}),
+            ),
+            patch.object(
+                coordinator_data, "_post_process_data", side_effect=lambda d: d
+            ),
+        ):
             result = await coordinator_data._async_update_data()
 
-        mock_executor.assert_awaited_once_with(coordinator_data._update_data_sync)
-        assert result == mock_data
         assert "outside_temperature" in result
         assert result["outside_temperature"] == 20.5
 
     @pytest.mark.asyncio
     async def test_coordinator_write_register(self, coordinator_data):
         """Test register writing functionality."""
-        with patch.object(
-            coordinator_data.hass,
-            "async_add_executor_job",
-            AsyncMock(return_value=True),
-        ) as mock_executor:
+        mock_response = MagicMock()
+        mock_response.isError.return_value = False
+        mock_client = AsyncMock()
+        mock_client.write_register.return_value = mock_response
+
+        with patch.object(coordinator_data, "_ensure_connection", AsyncMock()):
+            coordinator_data.client = mock_client
             result = await coordinator_data.async_write_register("mode", 1)
 
-        mock_executor.assert_awaited_once()
         assert result is True
 
     @pytest.mark.asyncio
@@ -400,6 +422,11 @@ class TestThesslaGreenConfigFlow:
             patch.object(flow, "_prepare_entry_payload", return_value=({}, {})),
             patch.object(flow, "async_set_unique_id"),
             patch.object(flow, "_abort_if_unique_id_configured"),
+            patch.object(
+                flow,
+                "async_step_confirm",
+                AsyncMock(return_value={"type": "create_entry", "title": "ThesslaGreen AirPack Test", "data": {}, "options": {}}),
+            ),
         ):
             result = await flow.async_step_user(
                 {

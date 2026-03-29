@@ -92,6 +92,15 @@
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
+      },
+      "reconfigure": {
+        "title": "Reconfigure ThesslaGreen",
+        "description": "Update the connection settings for your AirPack device.",
+        "data": {
+          "host": "IP Address",
+          "port": "Port",
+          "slave_id": "Modbus Slave ID"
+        }
       }
     }
   },
@@ -927,9 +936,9 @@
       "bypass_mode": {
         "name": "Bypass Mode",
         "state": {
-          "auto": "Automatic",
-          "open": "Open",
-          "closed": "Closed"
+          "inactive": "Inactive",
+          "freeheating": "Free Heating",
+          "freecooling": "Free Cooling"
         }
       },
       "cf_version": {
@@ -939,7 +948,12 @@
         "name": "Expansion Module Firmware Version"
       },
       "comfort_mode": {
-        "name": "Comfort Mode Status"
+        "name": "Comfort Mode Status",
+        "state": {
+          "inactive": "Inactive",
+          "heating": "Heating Function",
+          "cooling": "Cooling Function"
+        }
       },
       "compilation_days": {
         "name": "Compilation Days"
@@ -948,7 +962,11 @@
         "name": "Compilation Seconds"
       },
       "constant_flow_active": {
-        "name": "Constant Flow Active"
+        "name": "Constant Flow Active",
+        "state": {
+          "inactive": "Inactive",
+          "active": "Active"
+        }
       },
       "dac_cooler": {
         "name": "Cooler Voltage"
@@ -963,7 +981,16 @@
         "name": "Supply Fan Voltage"
       },
       "day_of_week": {
-        "name": "Day of Week"
+        "name": "Day of Week",
+        "state": {
+          "monday": "Monday",
+          "tuesday": "Tuesday",
+          "wednesday": "Wednesday",
+          "thursday": "Thursday",
+          "friday": "Friday",
+          "saturday": "Saturday",
+          "sunday": "Sunday"
+        }
       },
       "duct_supply_temperature": {
         "name": "Duct Supply Temperature"
@@ -1019,7 +1046,13 @@
         "name": "Outside Temperature"
       },
       "period": {
-        "name": "Time Period"
+        "name": "Time Period",
+        "state": {
+          "slot_1": "Time Slot 1",
+          "slot_2": "Time Slot 2",
+          "slot_3": "Time Slot 3",
+          "slot_4": "Time Slot 4"
+        }
       },
       "serial_number": {
         "name": "Serial Number"
@@ -1048,8 +1081,13 @@
       "version_patch": {
         "name": "Patch Version"
       },
-      "antifreez_stage": {
-        "name": "Antifreeze Stage"
+      "antifreeze_stage": {
+        "name": "Antifreeze Stage",
+        "state": {
+          "off": "Off",
+          "fpx1": "FPX Mode 1",
+          "fpx2": "FPX Mode 2"
+        }
       },
       "filter_supply_date_limit_get": {
         "name": "Supply Filter Replacement Date"
@@ -1067,7 +1105,11 @@
         "name": "Electrical Power Consumption"
       },
       "stop_ahu_code": {
-        "name": "AHU Stop Alarm Code"
+        "name": "AHU Stop Alarm Code",
+        "state": {
+          "none": "No alarm",
+          "alarm_s": "Alarm type S (code 98)"
+        }
       },
       "max_supply_air_flow_rate": {
         "name": "Maximum Supply Air Flow Rate"

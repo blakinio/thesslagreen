@@ -69,7 +69,7 @@ async def async_get_config_entry_diagnostics(
     Home Assistant calls this coroutine when the diagnostics panel is
     requested; it is part of the integration contract.
     """
-    coordinator: ThesslaGreenModbusCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
 
     diagnostics = coordinator.get_diagnostic_data()
     diagnostics.setdefault("effective_batch", coordinator.effective_batch)

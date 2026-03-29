@@ -12,13 +12,26 @@ import traceback
 from collections.abc import Awaitable, Callable
 from importlib import import_module
 from typing import Any
-from unittest.mock import Mock
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
+
+try:  # pragma: no cover - optional HA component
+    from homeassistant.components.dhcp import DhcpServiceInfo
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
+    DhcpServiceInfo = None  # type: ignore[assignment,misc]
+
+try:  # pragma: no cover - optional HA component
+    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
+    ZeroconfServiceInfo = None  # type: ignore[assignment,misc]
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResult
+
+try:  # pragma: no cover - available since HA 2023.9
+    from homeassistant.config_entries import ConfigFlowResult
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
+    ConfigFlowResult = dict  # type: ignore[assignment,misc]
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 from homeassistant.util.network import is_host_valid
@@ -461,23 +474,11 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         if not callable(verify_cb):
             raise AttributeError("verify_connection")
 
-        # In some lightweight tests scan_device is patched while verify_connection
-        # remains the real network implementation. Skip the pre-check in that case.
-        verify_is_real_method = inspect.ismethod(verify_cb) and getattr(
-            getattr(verify_cb, "__func__", None), "__name__", ""
-        ) == "verify_connection"
-        scan_cb = getattr(scanner, "scan_device", None)
-        scan_is_mocked = (
-            callable(scan_cb)
-            and getattr(scan_cb, "__module__", "").startswith("unittest.mock")
+        await _run_with_retry(
+            lambda: _call_with_optional_timeout(verify_cb, short_timeout),
+            retries=DEFAULT_RETRY,
+            backoff=CONFIG_FLOW_BACKOFF,
         )
-
-        if not (verify_is_real_method and scan_is_mocked):
-            await _run_with_retry(
-                lambda: _call_with_optional_timeout(verify_cb, short_timeout),
-                retries=DEFAULT_RETRY,
-                backoff=CONFIG_FLOW_BACKOFF,
-            )
 
         # Perform full device scan
         scan_result = await _run_with_retry(
@@ -583,6 +584,43 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
         self._scan_result: dict[str, Any] = {}
         self._tg_flow_reauth_entry_id: str | None = None
         self._tg_flow_reauth_existing_data: dict[str, Any] = {}
+        self._discovered_host: str | None = None
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Allow user to update host/port/slave_id without removing the entry."""
+        entry = self._get_reconfigure_entry()
+
+        if user_input is not None:
+            return self.async_update_reload_and_abort(
+                entry,
+                data_updates={
+                    CONF_HOST: user_input[CONF_HOST],
+                    CONF_PORT: user_input[CONF_PORT],
+                    CONF_SLAVE_ID: user_input.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
+                },
+            )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_HOST,
+                        default=entry.data.get(CONF_HOST, ""),
+                    ): str,
+                    vol.Required(
+                        CONF_PORT,
+                        default=entry.data.get(CONF_PORT, DEFAULT_PORT),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                    vol.Required(
+                        CONF_SLAVE_ID,
+                        default=entry.data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
+                }
+            ),
+        )
 
     async def async_set_unique_id(self, *args, **kwargs):  # pragma: no cover
         base = getattr(super(), "async_set_unique_id", None)
@@ -593,10 +631,10 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             return result
         return None
 
-    def _abort_if_unique_id_configured(self):  # pragma: no cover
+    def _abort_if_unique_id_configured(self, **kwargs):  # pragma: no cover
         base = getattr(super(), "_abort_if_unique_id_configured", None)
         if callable(base):
-            return base()
+            return base(**kwargs)
         return None
 
     def async_show_form(self, **kwargs):  # pragma: no cover
@@ -631,7 +669,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             return target
 
         connection_default = current_values.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        host_default = current_values.get(CONF_HOST, "")
+        host_default = current_values.get(CONF_HOST, self._discovered_host or "")
         port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
         slave_default = current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
         connection_mode_default = current_values.get(CONF_CONNECTION_MODE)
@@ -772,7 +810,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
         unique_host = host.replace(":", "-") if host else ""
         return f"{unique_host}:{port}:{slave_id}"
 
-    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the confirm step."""
         module = await _load_scanner_module(self.hass)
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
@@ -846,7 +884,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
 
         return entry_data, options
 
-    async def _async_show_confirmation(self, cap_cls: Any, step_id: str) -> FlowResult:
+    async def _async_show_confirmation(self, cap_cls: Any, step_id: str) -> ConfigFlowResult:
         """Render confirmation step with device details."""
         device_name = self._device_info.get("device_name", "Unknown")
         firmware_version = self._device_info.get("firmware", "Unknown")
@@ -955,9 +993,31 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             description_placeholders=description_placeholders,
         )
 
+    async def async_step_dhcp(
+        self, discovery_info: DhcpServiceInfo
+    ) -> ConfigFlowResult:
+        """Handle DHCP discovery of AirPack device."""
+        await self.async_set_unique_id(discovery_info.macaddress.upper())
+        self._abort_if_unique_id_configured(
+            updates={CONF_HOST: discovery_info.ip}
+        )
+        self._discovered_host = discovery_info.ip
+        return await self.async_step_user()
+
+    async def async_step_zeroconf(
+        self, discovery_info: ZeroconfServiceInfo
+    ) -> ConfigFlowResult:
+        """Handle Zeroconf discovery of AirPack device."""
+        await self.async_set_unique_id(discovery_info.host)
+        self._abort_if_unique_id_configured(
+            updates={CONF_HOST: discovery_info.host}
+        )
+        self._discovered_host = discovery_info.host
+        return await self.async_step_user()
+
     async def async_step_user(  # pragma: no cover
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
@@ -999,19 +1059,6 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
                 errors["base"] = "invalid_input"
             else:
                 self._abort_if_unique_id_configured()
-                if isinstance(self.hass, Mock):
-                    module = await _load_scanner_module(self.hass)
-                    cap_cls = DeviceCapabilities or module.DeviceCapabilities
-                    data, options = self._prepare_entry_payload(cap_cls)
-                    return self.async_create_entry(
-                        title=str(
-                            self._device_info.get(
-                                "device_name", self._data.get(CONF_NAME, DEFAULT_NAME)
-                            )
-                        ),
-                        data=data,
-                        options=options,
-                    )
                 return await self.async_step_confirm()
 
         return self.async_show_form(
@@ -1022,7 +1069,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
 
     async def async_step_reauth(  # pragma: no cover
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle reauthentication by collecting updated connection details."""
         errors: dict[str, str] = {}
         entry = None
@@ -1090,7 +1137,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
 
     async def async_step_reauth_confirm(  # pragma: no cover
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Confirm reauthentication details and update the existing entry."""
         module = await _load_scanner_module(self.hass)
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
@@ -1163,7 +1210,7 @@ class OptionsFlow(_BASE_OPTIONS_FLOW):
 
     async def async_step_init(  # pragma: no cover
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle options flow."""
         errors: dict[str, str] = {}
 
