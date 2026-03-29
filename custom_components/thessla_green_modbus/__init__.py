@@ -18,6 +18,8 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
+    from .coordinator import ThesslaGreenModbusCoordinator
+
 from .const import (
     CONF_BACKOFF,
     CONF_BACKOFF_JITTER,
@@ -80,7 +82,7 @@ except Exception:  # pragma: no cover
 _LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    ThesslaGreenConfigEntry: TypeAlias = ConfigEntry["ThesslaGreenModbusCoordinator"]
+    ThesslaGreenConfigEntry: TypeAlias = ConfigEntry[ThesslaGreenModbusCoordinator]
 
 # Compatibility shim for tests patching "custom_components.thessla_green_modbus.__init__.er".
 _init_alias = sys.modules.setdefault(f"{__name__}.__init__", sys.modules[__name__])

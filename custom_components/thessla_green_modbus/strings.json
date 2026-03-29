@@ -477,7 +477,7 @@
         "name": "Fireplace Supply Coef"
       },
       "gwc_regen_period": {
-        "name": "Gwc Regen Period"
+        "name": "GWC Regeneration Period"
       },
       "hood_exhaust_coef": {
         "name": "Hood Exhaust Coefficient"
@@ -492,34 +492,34 @@
         "name": "Max Exhaust Air Flow Rate"
       },
       "max_exhaust_air_flow_rate_gwc": {
-        "name": "Max Exhaust Air Flow Rate Gwc"
+        "name": "Max Exhaust Air Flow Rate (GWC)"
       },
       "max_gwc_air_temperature": {
-        "name": "Max Gwc Air Temperature"
+        "name": "Max GWC Air Temperature"
       },
       "max_supply_air_flow_rate": {
         "name": "Max Supply Air Flow Rate"
       },
       "max_supply_air_flow_rate_gwc": {
-        "name": "Max Supply Air Flow Rate Gwc"
+        "name": "Max Supply Air Flow Rate (GWC)"
       },
       "min_bypass_temperature": {
         "name": "Min Bypass Temperature"
       },
       "min_gwc_air_temperature": {
-        "name": "Min Gwc Air Temperature"
+        "name": "Min GWC Air Temperature"
       },
       "nominal_exhaust_air_flow": {
         "name": "Nominal Exhaust Air Flow"
       },
       "nominal_exhaust_air_flow_gwc": {
-        "name": "Nominal Exhaust Air Flow Gwc"
+        "name": "Nominal Exhaust Air Flow (GWC)"
       },
       "nominal_supply_air_flow": {
         "name": "Nominal Supply Air Flow"
       },
       "nominal_supply_air_flow_gwc": {
-        "name": "Nominal Supply Air Flow Gwc"
+        "name": "Nominal Supply Air Flow (GWC)"
       },
       "open_window_coef": {
         "name": "Open Window Coef"
@@ -1233,16 +1233,16 @@
         "name": "Airing Winter Sun"
       },
       "start_gwc_regen_summer_time": {
-        "name": "Start Gwc Regen Summer Time"
+        "name": "GWC Regeneration Start (Summer)"
       },
       "stop_gwc_regen_summer_time": {
-        "name": "Stop Gwc Regen Summer Time"
+        "name": "GWC Regeneration Stop (Summer)"
       },
       "start_gwc_regen_winter_time": {
-        "name": "Start Gwc Regen Winter Time"
+        "name": "GWC Regeneration Start (Winter)"
       },
       "stop_gwc_regen_winter_time": {
-        "name": "Stop Gwc Regen Winter Time"
+        "name": "GWC Regeneration Stop (Winter)"
       },
       "schedule_summer_fri_1": {
         "name": "Schedule Summer Fri 1"

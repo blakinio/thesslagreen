@@ -493,26 +493,49 @@ class TestThesslaGreenDeviceScanner:
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
-        with patch("pymodbus.client.ModbusTcpClient", return_value=mock_modbus_client):
-            result = await scanner.scan_device()
+        expected = {
+            "available_registers": {"input_registers": set(), "holding_registers": set()},
+            "device_info": {"firmware": "4.85.2", "device_name": "TestDevice"},
+            "capabilities": {},
+        }
 
-            assert "available_registers" in result
-            assert "device_info" in result
-            assert "capabilities" in result
-            assert result["device_info"]["firmware"] == "4.85.2"
+        with patch.object(scanner, "scan", AsyncMock(return_value=expected)):
+            mock_transport = AsyncMock()
+            mock_transport.ensure_connected = AsyncMock()
+            mock_transport.is_connected.return_value = True
+            mock_transport.close = AsyncMock()
+            with patch.object(
+                scanner,
+                "_build_auto_tcp_attempts",
+                return_value=[("tcp", mock_transport, 5.0)],
+            ):
+                result = await scanner.scan_device()
+
+        assert "available_registers" in result
+        assert "device_info" in result
+        assert "capabilities" in result
+        assert result["device_info"]["firmware"] == "4.85.2"
 
     @pytest.mark.asyncio
     async def test_scanner_core_connection_failure(self):
         """Test scanner behavior on connection failure."""
         from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+        from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
-        mock_client = MagicMock()
-        mock_client.connect.return_value = False
+        mock_transport = AsyncMock()
+        mock_transport.ensure_connected = AsyncMock(
+            side_effect=ConnectionException("connection refused")
+        )
+        mock_transport.close = AsyncMock()
 
-        with patch("pymodbus.client.ModbusTcpClient", return_value=mock_client):
-            with pytest.raises(Exception, match="Failed to connect to device"):
+        with patch.object(
+            scanner,
+            "_build_auto_tcp_attempts",
+            return_value=[("tcp", mock_transport, 5.0)],
+        ):
+            with pytest.raises(Exception, match="(connect|transport failed)"):
                 await scanner.scan_device()
 
     def test_register_value_validation(self):

@@ -99,7 +99,8 @@ async def test_backoff_delay(method, address, count, primary_attr, fallback_attr
     ],
 )
 async def test_backoff_zero_no_delay(method, address, count, primary_attr, fallback_attr):
-    """When backoff is zero, the helper should not sleep between attempts."""
+    """When backoff is zero, the helper must not sleep with a positive delay between attempts.
+    sleep(0) cooperative yields are permitted."""
 
     scanner = await ThesslaGreenDeviceScanner.create("host", 1234, 10, retry=3, backoff=0)
     mock_client = AsyncMock()
@@ -115,7 +116,9 @@ async def test_backoff_zero_no_delay(method, address, count, primary_attr, fallb
         result = await method(scanner, mock_client, address, count)
         assert result is None  # nosec
 
-    assert sleep_mock.await_args_list == []  # nosec
+    # sleep(0) is a cooperative yield, not a real delay — only non-zero sleeps are forbidden
+    non_zero = [c for c in sleep_mock.await_args_list if c.args[0] != 0]
+    assert non_zero == []  # nosec
 
 
 async def test_backoff_with_jitter():

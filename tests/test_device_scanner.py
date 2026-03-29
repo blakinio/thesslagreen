@@ -240,7 +240,8 @@ async def test_read_default_delay(method, address):
         result = await getattr(scanner, method)(mock_client, address, 1)
         assert result is None
 
-    assert sleep_mock.await_args_list == []
+    non_zero = [c for c in sleep_mock.await_args_list if c.args[0] != 0]
+    assert non_zero == []
 
 
 @pytest.mark.parametrize(
@@ -294,7 +295,8 @@ async def test_read_binary_default_delay(func, address):
         result = await func(scanner, mock_client, address, 1)
         assert result is None
 
-    assert sleep_mock.await_args_list == []
+    non_zero = [c for c in sleep_mock.await_args_list if c.args[0] != 0]
+    assert non_zero == []
 
 
 async def test_read_input_logs_warning_on_failure(caplog):
