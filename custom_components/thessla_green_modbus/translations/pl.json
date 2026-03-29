@@ -1233,16 +1233,16 @@
         "name": "Przewietrzanie zima Niedziela"
       },
       "start_gwc_regen_summer_time": {
-        "name": "Start regeneracji GWC (lato)"
+        "name": "Czas rozpoczęcia regeneracji GWC (lato)"
       },
       "stop_gwc_regen_summer_time": {
-        "name": "Stop regeneracji GWC (lato)"
+        "name": "Czas zakończenia regeneracji GWC (lato)"
       },
       "start_gwc_regen_winter_time": {
-        "name": "Start regeneracji GWC (zima)"
+        "name": "Czas rozpoczęcia regeneracji GWC (zima)"
       },
       "stop_gwc_regen_winter_time": {
-        "name": "Stop regeneracji GWC (zima)"
+        "name": "Czas zakończenia regeneracji GWC (zima)"
       },
       "schedule_summer_fri_1": {
         "name": "Harmonogram lato Piątek 1"
