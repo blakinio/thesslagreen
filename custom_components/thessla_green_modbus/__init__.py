@@ -132,10 +132,6 @@ def _get_platforms() -> list[object]:
     return platforms
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    hass.data.setdefault(DOMAIN, {})
-    return True
-
 
 def _apply_log_level(log_level: str) -> None:
     """Adjust the integration logger level dynamically."""
@@ -394,7 +390,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     # Store coordinator on entry (HA 2024.6+ pattern)
     entry.runtime_data = coordinator
-    hass.data.setdefault(DOMAIN, {})
 
     # Clean up legacy entity IDs left from early versions
     await _async_cleanup_legacy_fan_entity(hass, coordinator)

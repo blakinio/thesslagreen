@@ -38,16 +38,13 @@ def _patch_entity_registry(er_stub):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_async_setup_initialises_domain_data():
-    """async_setup sets hass.data[DOMAIN] = {} if absent."""
-    from custom_components.thessla_green_modbus import async_setup
+def test_async_setup_removed():
+    """async_setup is no longer exported — coordinator lives in entry.runtime_data."""
+    import custom_components.thessla_green_modbus as mod
 
-    hass = MagicMock()
-    hass.data = {}
-    result = await async_setup(hass, {})
-    assert result is True  # nosec B101
-    assert DOMAIN in hass.data  # nosec B101
+    assert not hasattr(mod, "async_setup"), (
+        "async_setup should have been removed; use entry.runtime_data instead of hass.data"
+    )
 
 
 # ---------------------------------------------------------------------------

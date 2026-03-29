@@ -1021,7 +1021,7 @@ def _get_coordinator_from_entity_id(
     entry = entity_registry.async_get(mapped_entity_id) if entity_registry else None
     if not entry:
         return None
-    return cast(
-        "ThesslaGreenModbusCoordinator | None",
-        hass.data.get(DOMAIN, {}).get(entry.config_entry_id),
-    )
+    config_entry = hass.config_entries.async_get_entry(entry.config_entry_id)
+    if config_entry is None:
+        return None
+    return getattr(config_entry, "runtime_data", None)
