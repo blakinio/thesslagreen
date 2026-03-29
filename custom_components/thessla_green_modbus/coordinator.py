@@ -2069,6 +2069,107 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         """Legacy sync update hook retained for compatibility tests."""
         return {}
 
+    def _encode_write_value(
+        self,
+        register_name: str,
+        definition: Any,
+        value: float | list[int] | tuple[int, ...],
+        offset: int,
+    ) -> tuple[list[int] | None, Any]:
+        """Encode *value* for writing. Returns (encoded_values, scalar_value).
+
+        For multi-register definitions, returns (list[int], original_value).
+        For single-register definitions, returns (None, int_value).
+        Logs an error and returns (None, None) on validation failure.
+        """
+        if definition.length > 1:
+            if isinstance(value, list | tuple) and not isinstance(value, bytes | bytearray | str):
+                if len(value) + offset > definition.length:
+                    _LOGGER.error(
+                        "Register %s expects at most %d values starting at offset %d",
+                        register_name,
+                        definition.length - offset,
+                        offset,
+                    )
+                    return None, None
+                if offset == 0 and len(value) != definition.length:
+                    _LOGGER.error(
+                        "Register %s requires exactly %d values",
+                        register_name,
+                        definition.length,
+                    )
+                    return None, None
+                try:
+                    return [int(v) for v in value], value
+                except (TypeError, ValueError):
+                    _LOGGER.error("Register %s expects integer values", register_name)
+                    return None, None
+            else:
+                encoded = definition.encode(value)
+                if isinstance(encoded, list):
+                    encoded_values: list[int] = [int(v) for v in encoded]
+                else:
+                    encoded_values = [int(encoded)]
+                if offset >= definition.length:
+                    _LOGGER.error(
+                        "Register %s expects at most %d values starting at offset %d",
+                        register_name,
+                        definition.length - offset,
+                        offset,
+                    )
+                    return None, None
+                return encoded_values[offset:], value
+        else:
+            if isinstance(value, list | tuple) and not isinstance(value, bytes | bytearray | str):
+                _LOGGER.error("Register %s expects a single value", register_name)
+                return None, None
+            return None, int(definition.encode(value))
+
+    async def _write_holding_multi(
+        self,
+        address: int,
+        encoded_values: list[int],
+        attempt: int,
+    ) -> tuple[Any, bool]:
+        """Write multiple holding registers in chunks. Returns (last_response, success)."""
+        response = None
+        for chunk_start, chunk in chunk_register_values(address, encoded_values, self.effective_batch):
+            if self._transport is None and self.client is not None:
+                response = await self.client.write_registers(
+                    address=chunk_start,
+                    values=[int(v) for v in chunk],
+                )
+            elif self._transport is not None:
+                response = await self._transport.write_registers(
+                    self.slave_id,
+                    chunk_start,
+                    values=[int(v) for v in chunk],
+                    attempt=attempt,
+                )
+            else:
+                response = await self._call_modbus(
+                    self._get_client_method("write_registers"),
+                    chunk_start,
+                    values=[int(v) for v in chunk],
+                    attempt=attempt,
+                )
+            if response is None or response.isError():
+                return response, False
+        return response, True
+
+    async def _write_holding_single(self, address: int, value: Any, attempt: int) -> Any:
+        """Write a single holding register."""
+        if self._transport is None and self.client is not None:
+            return await self.client.write_register(address=address, value=int(value))
+        if self._transport is not None:
+            return await self._transport.write_register(self.slave_id, address, value=int(value))
+        return await self._call_modbus(
+            self._get_client_method("write_register"),
+            address,
+            value=int(value),
+            attempt=attempt,
+        )
+
     async def async_write_register(
         self,
         register_name: str,
@@ -2101,90 +2202,21 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     _LOGGER.error("Unknown register name: %s", register_name)
                     return False
 
-                encoded_values: list[int] | None = None
+                encoded_values, scalar_value = self._encode_write_value(
+                    register_name, definition, value, offset
+                )
+                if encoded_values is None and scalar_value is None:
+                    return False
+
                 address = definition.address + offset
-
-                if definition.length > 1:
-                    if isinstance(value, list | tuple) and not isinstance(
-                        value, bytes | bytearray | str
-                    ):
-                        if len(value) + offset > definition.length:
-                            _LOGGER.error(
-                                "Register %s expects at most %d values starting at offset %d",
-                                register_name,
-                                definition.length - offset,
-                                offset,
-                            )
-                            return False
-                        if offset == 0 and len(value) != definition.length:
-                            _LOGGER.error(
-                                "Register %s requires exactly %d values",
-                                register_name,
-                                definition.length,
-                            )
-                            return False
-                        try:
-                            encoded_values = [int(v) for v in value]
-                        except (TypeError, ValueError):
-                            _LOGGER.error("Register %s expects integer values", register_name)
-                            return False
-                    else:
-                        encoded = definition.encode(value)
-                        if isinstance(encoded, list):
-                            encoded_values = [int(v) for v in encoded]
-                        else:
-                            encoded_values = [int(encoded)]
-
-                        if offset >= definition.length:
-                            _LOGGER.error(
-                                "Register %s expects at most %d values starting at offset %d",
-                                register_name,
-                                definition.length - offset,
-                                offset,
-                            )
-                            return False
-
-                        encoded_values = encoded_values[offset:]
-                else:
-                    if isinstance(value, list | tuple) and not isinstance(
-                        value, bytes | bytearray | str
-                    ):
-                        _LOGGER.error("Register %s expects a single value", register_name)
-                        return False
-                    value = int(definition.encode(value))
 
                 for attempt in range(1, self.retry + 1):
                     try:
                         if definition.function == 3:
                             if encoded_values is not None:
-                                success = True
-                                for _index, (chunk_start, chunk) in enumerate(
-                                    chunk_register_values(
-                                        address, encoded_values, self.effective_batch
-                                    )
-                                ):
-                                    if self._transport is None and self.client is not None:
-                                        response = await self.client.write_registers(
-                                            address=chunk_start,
-                                            values=[int(v) for v in chunk],
-                                        )
-                                    elif self._transport is not None:
-                                        response = await self._transport.write_registers(
-                                            self.slave_id,
-                                            chunk_start,
-                                            values=[int(v) for v in chunk],
-                                            attempt=attempt,
-                                        )
-                                    else:
-                                        response = await self._call_modbus(
-                                            self._get_client_method("write_registers"),
-                                            chunk_start,
-                                            values=[int(v) for v in chunk],
-                                            attempt=attempt,
-                                        )
-                                    if response is None or response.isError():
-                                        success = False
-                                        break
+                                response, success = await self._write_holding_multi(
+                                    address, encoded_values, attempt
+                                )
                                 if not success:
                                     if attempt == self.retry:
                                         _LOGGER.error(
@@ -2196,29 +2228,14 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                                     _LOGGER.info("Retrying write to register %s", register_name)
                                     continue
                             else:
-                                if self._transport is None and self.client is not None:
-                                    response = await self.client.write_register(
-                                        address=address,
-                                        value=int(value),
-                                    )
-                                elif self._transport is not None:
-                                    response = await self._transport.write_register(
-                                        self.slave_id,
-                                        address,
-                                        value=int(value),
-                                    )
-                                else:
-                                    response = await self._call_modbus(
-                                        self._get_client_method("write_register"),
-                                        address,
-                                        value=int(value),
-                                        attempt=attempt,
-                                    )
+                                response = await self._write_holding_single(
+                                    address, scalar_value, attempt
+                                )
                         elif definition.function == 1:
                             response = await self._call_modbus(
                                 self._get_client_method("write_coil"),
                                 address=address,
-                                value=bool(value),
+                                value=bool(scalar_value),
                                 attempt=attempt,
                             )
                         else:
