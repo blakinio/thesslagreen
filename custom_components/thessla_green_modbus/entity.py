@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+_LOGGER = logging.getLogger(__name__)
+
 from homeassistant.helpers import update_coordinator as update_coordinator_helper
 
 CoordinatorEntity = getattr(update_coordinator_helper, "CoordinatorEntity", object)
@@ -30,7 +34,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
             try:
                 super().__init__()
             except TypeError:
-                pass
+                _LOGGER.debug("CoordinatorEntity MRO fallback: super().__init__() also failed")
             self.coordinator = coordinator
         self._key = key
         self._address = address

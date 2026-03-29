@@ -121,8 +121,8 @@ class BaseModbusTransport(ABC):
             self.offline_state = True
             try:
                 await self._reset_connection()
-            except Exception:
-                pass
+            except Exception as exc:
+                _LOGGER.debug("Reset connection failed during CancelledError handling: %s", exc)
             raise
         except ModbusException as exc:
             _LOGGER.error("Permanent Modbus error: %s", exc)

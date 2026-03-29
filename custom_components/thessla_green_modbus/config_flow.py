@@ -345,31 +345,26 @@ def _caps_to_dict(obj: Any) -> dict[str, Any]:
     return data
 
 
-async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect."""
-
+def _normalize_connection_type(data: dict[str, Any]) -> str:
+    """Normalize connection_type in data dict and return the canonical type string."""
     connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (
-        CONNECTION_TYPE_TCP,
-        CONNECTION_TYPE_TCP_RTU,
-        CONNECTION_TYPE_RTU,
-    ):
+    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU):
         raise VOL_INVALID("invalid_transport", path=[CONF_CONNECTION_TYPE])
-
-    # Normalize: TCP_RTU is stored as TCP + connection_mode=TCP_RTU
     if connection_type == CONNECTION_TYPE_TCP_RTU:
         data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
         data[CONF_CONNECTION_MODE] = CONNECTION_MODE_TCP_RTU
-        connection_type = CONNECTION_TYPE_TCP
-    elif connection_type == CONNECTION_TYPE_TCP:
+        return CONNECTION_TYPE_TCP
+    if connection_type == CONNECTION_TYPE_TCP:
         data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
         data.pop(CONF_CONNECTION_MODE, None)
-        connection_type = CONNECTION_TYPE_TCP
-    else:
-        data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_RTU
-        data.pop(CONF_CONNECTION_MODE, None)
-        connection_type = CONNECTION_TYPE_RTU
+        return CONNECTION_TYPE_TCP
+    data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_RTU
+    data.pop(CONF_CONNECTION_MODE, None)
+    return CONNECTION_TYPE_RTU
 
+
+def _validate_slave_id(data: dict[str, Any]) -> int:
+    """Validate and normalise slave_id in data. Returns the integer value."""
     try:
         slave_id = int(data[CONF_SLAVE_ID])
     except (KeyError, TypeError, ValueError) as exc:
@@ -379,67 +374,106 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
     if slave_id > 247:
         raise VOL_INVALID("invalid_slave_high", path=[CONF_SLAVE_ID])
     data[CONF_SLAVE_ID] = slave_id
+    return slave_id
+
+
+def _validate_tcp_config(data: dict[str, Any]) -> tuple[str, int]:
+    """Validate and normalise TCP fields in data. Returns (host, port)."""
+    host = str(data.get(CONF_HOST, "") or "").strip()
+    if not host:
+        raise VOL_INVALID("missing_host", path=[CONF_HOST])
+    port_raw = data.get(CONF_PORT, DEFAULT_PORT)
+    try:
+        port = int(port_raw)
+    except (TypeError, ValueError) as exc:
+        raise VOL_INVALID("invalid_port", path=[CONF_PORT]) from exc
+    if not 1 <= port <= 65535:
+        raise VOL_INVALID("invalid_port", path=[CONF_PORT])
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        if not _looks_like_hostname(host):
+            raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
+        if not is_host_valid(host):
+            raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None  # pragma: no cover
+    data[CONF_HOST] = host
+    data[CONF_PORT] = port
+    data.pop(CONF_SERIAL_PORT, None)
+    data.pop(CONF_BAUD_RATE, None)
+    data.pop(CONF_PARITY, None)
+    data.pop(CONF_STOP_BITS, None)
+    return host, port
+
+
+def _validate_rtu_config(data: dict[str, Any]) -> None:
+    """Validate and normalise RTU serial fields in data."""
+    serial_port = str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT) or "").strip()
+    if not serial_port:
+        raise VOL_INVALID("invalid_serial_port", path=[CONF_SERIAL_PORT])
+    data[CONF_SERIAL_PORT] = serial_port
+    try:
+        baud_rate = _normalize_baud_rate(data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE))
+    except ValueError as err:
+        raise VOL_INVALID("invalid_baud_rate", path=[CONF_BAUD_RATE]) from err
+    data[CONF_BAUD_RATE] = baud_rate
+    try:
+        parity = _normalize_parity(data.get(CONF_PARITY, DEFAULT_PARITY))
+    except ValueError as err:
+        raise VOL_INVALID("invalid_parity", path=[CONF_PARITY]) from err
+    data[CONF_PARITY] = parity
+    try:
+        stop_bits = _normalize_stop_bits(data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS))
+    except ValueError as err:
+        raise VOL_INVALID("invalid_stop_bits", path=[CONF_STOP_BITS]) from err
+    data[CONF_STOP_BITS] = stop_bits
+    data.pop(CONF_HOST, None)
+    data.pop(CONF_PORT, None)
+
+
+def _process_scan_capabilities(
+    scan_result: dict[str, Any],
+    capabilities_cls: type,
+) -> dict[str, Any]:
+    """Extract and validate capabilities from a scan result dict."""
+    caps_obj = scan_result.get("capabilities")
+    if caps_obj is None:
+        raise CannotConnect("invalid_capabilities")
+    if dataclasses.is_dataclass(caps_obj):
+        try:
+            caps_dict = _caps_to_dict(caps_obj)
+        except (TypeError, ValueError, AttributeError) as err:
+            _LOGGER.error("Capabilities missing required fields: %s", err)
+            raise CannotConnect("invalid_capabilities") from err
+        if isinstance(caps_obj, capabilities_cls):
+            required_fields = {
+                field.name
+                for field in dataclasses.fields(capabilities_cls)
+                if not field.name.startswith("_")
+            }
+            missing = [f for f in required_fields if f not in caps_dict]
+            if missing:
+                _LOGGER.error("Capabilities missing required fields: %s", set(missing))
+                raise CannotConnect("invalid_capabilities")
+    elif isinstance(caps_obj, dict):
+        caps_dict = _caps_to_dict(caps_obj)
+    else:
+        raise CannotConnect("invalid_capabilities")
+    return caps_dict
+
+
+async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> dict[str, Any]:
+    """Validate the user input allows us to connect."""
+    connection_type = _normalize_connection_type(data)
+    slave_id = _validate_slave_id(data)
 
     name = data.get(CONF_NAME, DEFAULT_NAME)
     timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-
     host = ""
     port = DEFAULT_PORT
-
     if connection_type == CONNECTION_TYPE_TCP:
-        host = str(data.get(CONF_HOST, "") or "").strip()
-        port_raw = data.get(CONF_PORT, DEFAULT_PORT)
-        try:
-            port = int(port_raw)
-        except (TypeError, ValueError) as exc:
-            raise VOL_INVALID("invalid_port", path=[CONF_PORT]) from exc
-        if not host:
-            raise VOL_INVALID("missing_host", path=[CONF_HOST])
-        data[CONF_HOST] = host
-        if not 1 <= port <= 65535:
-            raise VOL_INVALID("invalid_port", path=[CONF_PORT])
-        data[CONF_PORT] = port
-
-        # Validate host is either an IP address or a valid hostname
-        try:
-            ipaddress.ip_address(host)
-        except ValueError:
-            if not _looks_like_hostname(host):
-                raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
-            if not is_host_valid(host):
-                raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None  # pragma: no cover
-
-        data.pop(CONF_SERIAL_PORT, None)
-        data.pop(CONF_BAUD_RATE, None)
-        data.pop(CONF_PARITY, None)
-        data.pop(CONF_STOP_BITS, None)
-
+        host, port = _validate_tcp_config(data)
     else:
-        serial_port = str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT) or "").strip()
-        if not serial_port:
-            raise VOL_INVALID("invalid_serial_port", path=[CONF_SERIAL_PORT])
-        data[CONF_SERIAL_PORT] = serial_port
-
-        try:
-            baud_rate = _normalize_baud_rate(data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE))
-        except ValueError as err:
-            raise VOL_INVALID("invalid_baud_rate", path=[CONF_BAUD_RATE]) from err
-        data[CONF_BAUD_RATE] = baud_rate
-
-        try:
-            parity = _normalize_parity(data.get(CONF_PARITY, DEFAULT_PARITY))
-        except ValueError as err:
-            raise VOL_INVALID("invalid_parity", path=[CONF_PARITY]) from err
-        data[CONF_PARITY] = parity
-
-        try:
-            stop_bits = _normalize_stop_bits(data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS))
-        except ValueError as err:
-            raise VOL_INVALID("invalid_stop_bits", path=[CONF_STOP_BITS]) from err
-        data[CONF_STOP_BITS] = stop_bits
-
-        data.pop(CONF_HOST, None)
-        data.pop(CONF_PORT, None)
+        _validate_rtu_config(data)
 
     module = await _load_scanner_module(hass)
     scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
@@ -469,7 +503,6 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         )
 
         short_timeout = max(2, timeout)
-
         verify_cb = getattr(scanner, "verify_connection", None)
         if not callable(verify_cb):
             raise AttributeError("verify_connection")
@@ -490,32 +523,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         if not isinstance(scan_result, dict) or not scan_result:
             raise CannotConnect("invalid_format")
 
-        caps_obj = scan_result.get("capabilities")
-        if caps_obj is None:
-            raise CannotConnect("invalid_capabilities")
-
-        if dataclasses.is_dataclass(caps_obj):
-            try:
-                caps_dict = _caps_to_dict(caps_obj)
-            except (TypeError, ValueError, AttributeError) as err:
-                _LOGGER.error("Capabilities missing required fields: %s", err)
-                raise CannotConnect("invalid_capabilities") from err
-            if isinstance(caps_obj, capabilities_cls):
-                required_fields = {
-                    field.name
-                    for field in dataclasses.fields(capabilities_cls)
-                    if not field.name.startswith("_")
-                }
-                missing = [f for f in required_fields if f not in caps_dict]
-                if missing:
-                    _LOGGER.error("Capabilities missing required fields: %s", set(missing))
-                    raise CannotConnect("invalid_capabilities")
-        elif isinstance(caps_obj, dict):
-            caps_dict = _caps_to_dict(caps_obj)
-        else:
-            raise CannotConnect("invalid_capabilities")
-
-        # Store dictionary form of capabilities for serialization
+        caps_dict = _process_scan_capabilities(scan_result, capabilities_cls)
         scan_result["capabilities"] = caps_dict
         device_info = scan_result.get("device_info", {})
 
