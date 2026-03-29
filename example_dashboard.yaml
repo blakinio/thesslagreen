@@ -261,7 +261,7 @@ views:
               columns: 3
 
           - type: tile
-            entity: switch.rekuperator_comfort_mode_panel
+            entity: switch.rekuperator_comfort_mode
             name: Komfort
             icon: mdi:sofa
             color: purple
@@ -274,7 +274,7 @@ views:
         cards:
 
           - type: tile
-            entity: sensor.rekuperator_alarm
+            entity: binary_sensor.rekuperator_e_alarm
             name: Alarm E
             icon: mdi:alert-circle
             color: red
@@ -282,7 +282,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_error
+            entity: binary_sensor.rekuperator_s_error
             name: Błąd S
             icon: mdi:alert
             color: orange
@@ -298,7 +298,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: binary_sensor.rekuperator_dp_ahu_filter_overflow
+            entity: binary_sensor.rekuperator_ahu_filter_overflow
             name: Filtr nawiewu
             icon: mdi:filter-alert
             color: yellow
@@ -306,7 +306,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: binary_sensor.rekuperator_dp_duct_filter_overflow
+            entity: binary_sensor.rekuperator_duct_filter_overflow
             name: Filtr kanałowy
             icon: mdi:filter-alert
             color: yellow
@@ -314,7 +314,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_stop_ahu_code
+            entity: sensor.rekuperator_ahu_stop_alarm_code
             name: Kod zatrzymania
             icon: mdi:information-outline
             grid_options:
@@ -354,7 +354,7 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_antifreez_stage
+            entity: sensor.rekuperator_antifreeze_stage
             name: Antyzamrożenie (FPX)
             icon: mdi:snowflake-thermometer
             grid_options:
@@ -368,7 +368,7 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_comfort_mode
+            entity: sensor.rekuperator_comfort_mode_status
             name: Status komfort
             icon: mdi:home-heart
             grid_options:
@@ -489,7 +489,7 @@ views:
               columns: 6
 
           - type: tile
-            entity: switch.rekuperator_bypass_off
+            entity: switch.rekuperator_bypass_active
             name: Zablokuj bypass
             icon: mdi:pipe-off
             color: orange
@@ -497,28 +497,28 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_min_bypass_temperature
+            entity: sensor.rekuperator_minimum_bypass_temperature
             name: Min. temp. bypass (odczyt)
             icon: mdi:thermometer-minus
             grid_options:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_air_temperature_summer_free_heating
+            entity: number.rekuperator_bypass_temperature_free_heating
             name: Próg Free Heating
             icon: mdi:sun-thermometer
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_air_temperature_summer_free_cooling
+            entity: number.rekuperator_bypass_temperature_free_cooling
             name: Próg Free Cooling
             icon: mdi:snowflake
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_bypass_coef_2
+            entity: number.rekuperator_bypass_coef_2
             name: Intensywność nawiewu – bypass tryb 2/3
             icon: mdi:percent
             grid_options:
@@ -530,7 +530,7 @@ views:
         cards:
 
           - type: gauge
-            entity: sensor.rekuperator_dac_heater
+            entity: sensor.rekuperator_heater_voltage
             name: Sygnał nagrzewnicy
             min: 0
             max: 10
@@ -545,7 +545,7 @@ views:
               rows: 3
 
           - type: gauge
-            entity: sensor.rekuperator_dac_cooler
+            entity: sensor.rekuperator_cooler_voltage
             name: Sygnał chłodnicy
             min: 0
             max: 10
@@ -680,14 +680,14 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_min_percentage
+            entity: sensor.rekuperator_minimum_percentage
             name: Minimum %
             icon: mdi:arrow-collapse-down
             grid_options:
               columns: 3
 
           - type: tile
-            entity: sensor.rekuperator_max_percentage
+            entity: sensor.rekuperator_maximum_percentage
             name: Maksimum %
             icon: mdi:arrow-collapse-up
             grid_options:
@@ -713,7 +713,7 @@ views:
         cards:
 
           - type: gauge
-            entity: sensor.rekuperator_dac_supply
+            entity: sensor.rekuperator_supply_fan_voltage
             name: Wentylator nawiewny
             min: 0
             max: 10
@@ -728,7 +728,7 @@ views:
               rows: 3
 
           - type: gauge
-            entity: sensor.rekuperator_dac_exhaust
+            entity: sensor.rekuperator_exhaust_fan_voltage
             name: Wentylator wywiewny
             min: 0
             max: 10
@@ -746,11 +746,11 @@ views:
             title: PWM wentylatorów – 6h
             hours_to_show: 6
             entities:
-              - entity: sensor.rekuperator_dac_supply
+              - entity: sensor.rekuperator_supply_fan_voltage
                 name: Nawiew PWM
-              - entity: sensor.rekuperator_dac_exhaust
+              - entity: sensor.rekuperator_exhaust_fan_voltage
                 name: Wywiew PWM
-              - entity: sensor.rekuperator_dac_heater
+              - entity: sensor.rekuperator_heater_voltage
                 name: Nagrzewnica PWM
             grid_options:
               columns: 12
@@ -769,7 +769,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: switch.rekuperator_gwc_off
+            entity: switch.rekuperator_gwc_active
             name: Zablokuj GWC
             icon: mdi:pipe-off
             color: orange
@@ -777,7 +777,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_gwc_regen_flag
+            entity: binary_sensor.rekuperator_gwc_regeneration_active
             name: Regeneracja aktywna
             icon: mdi:restore
             grid_options:
@@ -791,28 +791,28 @@ views:
               columns: 4
 
           - type: tile
-            entity: select.rekuperator_gwc_regen
+            entity: select.rekuperator_gwc_regeneration
             name: Typ regeneracji
             icon: mdi:autorenew
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_delta_t_gwc
+            entity: number.rekuperator_gwc_activation_temperature_differential
             name: Delta T regeneracji
             icon: mdi:delta
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_min_gwc_air_temperature
+            entity: number.rekuperator_min_gwc_air_temperature
             name: Min. temp. GWC
             icon: mdi:thermometer-minus
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_max_gwc_air_temperature
+            entity: number.rekuperator_max_gwc_air_temperature
             name: Maks. temp. GWC
             icon: mdi:thermometer-plus
             grid_options:
@@ -863,7 +863,7 @@ views:
         cards:
 
           - type: tile
-            entity: binary_sensor.rekuperator_dp_ahu_filter_overflow
+            entity: binary_sensor.rekuperator_ahu_filter_overflow
             name: Filtr nawiewu – przepełnienie
             icon: mdi:filter-alert
             color: orange
@@ -872,7 +872,7 @@ views:
               rows: 2
 
           - type: tile
-            entity: binary_sensor.rekuperator_dp_duct_filter_overflow
+            entity: binary_sensor.rekuperator_duct_filter_overflow
             name: Filtr kanałowy – przepełnienie
             icon: mdi:filter-alert
             color: orange
@@ -881,14 +881,14 @@ views:
               rows: 2
 
           - type: tile
-            entity: sensor.rekuperator_filter_supply_date_limit_get
+            entity: sensor.rekuperator_supply_filter_replacement_date
             name: Wymiana filtra nawiewu
             icon: mdi:calendar-filter
             grid_options:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_filter_exhaust_date_limit_get
+            entity: sensor.rekuperator_exhaust_filter_replacement_date
             name: Wymiana filtra wywiewu
             icon: mdi:calendar-filter
             grid_options:
@@ -903,21 +903,21 @@ views:
               columns: 6
 
           - type: tile
-            entity: select.rekuperator_filter_change
+            entity: select.rekuperator_filter_type
             name: Typ filtrów
             icon: mdi:filter-cog
             grid_options:
               columns: 6
 
           - type: tile
-            entity: select.rekuperator_pres_check_day
+            entity: select.rekuperator_filter_check_day_of_week
             name: Dzień kontroli filtrów
             icon: mdi:calendar-check
             grid_options:
               columns: 6
 
           - type: tile
-            entity: time.rekuperator_pres_check_time
+            entity: time.rekuperator_filter_check_start_time
             name: Godzina kontroli filtrów
             icon: mdi:clock-check
             grid_options:
@@ -929,7 +929,7 @@ views:
         cards:
 
           - type: tile
-            entity: sensor.rekuperator_alarm
+            entity: binary_sensor.rekuperator_e_alarm
             name: Alarm E (ostrzeżenie)
             icon: mdi:alert-circle
             color: red
@@ -938,7 +938,7 @@ views:
               rows: 2
 
           - type: tile
-            entity: sensor.rekuperator_error
+            entity: binary_sensor.rekuperator_s_error
             name: Błąd S (awaria)
             icon: mdi:alert
             color: deep-orange
@@ -956,7 +956,7 @@ views:
               rows: 2
 
           - type: tile
-            entity: sensor.rekuperator_stop_ahu_code
+            entity: sensor.rekuperator_ahu_stop_alarm_code
             name: Kod zatrzymania AHU
             icon: mdi:stop-circle
             grid_options:
@@ -979,7 +979,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_antifreez_stage
+            entity: sensor.rekuperator_antifreeze_stage
             name: Stopień antyzamrożenia
             icon: mdi:snowflake-thermometer
             grid_options:
@@ -990,94 +990,94 @@ views:
         title: Kody błędów E – diagnostyka
         cards:
           - type: tile
-            entity: binary_sensor.rekuperator_e_99
+            entity: binary_sensor.rekuperator_e99_airpack_product_key_required
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_100
+            entity: binary_sensor.rekuperator_e100_outdoor_air_sensor_failure_tz1
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_101
+            entity: binary_sensor.rekuperator_e101_supply_air_sensor_failure_tn1
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_102
+            entity: binary_sensor.rekuperator_e102_exhaust_air_sensor_failure_tp
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_103
+            entity: binary_sensor.rekuperator_e103_hx_inlet_sensor_failure_tz2
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_104
+            entity: binary_sensor.rekuperator_e104_room_temp_sensor_failure_to
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_105
+            entity: binary_sensor.rekuperator_e105_duct_hx_supply_sensor_failure_tn2
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_106
+            entity: binary_sensor.rekuperator_e106_gwc_outdoor_sensor_failure_tz3
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_108
+            entity: binary_sensor.rekuperator_e108_no_reading_from_tw_sensor
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_138
+            entity: binary_sensor.rekuperator_e138_supply_fan_cf_sensor_failure
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_139
+            entity: binary_sensor.rekuperator_e139_exhaust_fan_cf_sensor_failure
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_140
+            entity: binary_sensor.rekuperator_e140_supply_filter_cf_sensor_fault
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_141
+            entity: binary_sensor.rekuperator_e141_exhaust_filter_cf_sensor_fault
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_144
+            entity: binary_sensor.rekuperator_e144_supply_airflow_maintenance_error
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_145
+            entity: binary_sensor.rekuperator_e145_exhaust_airflow_maintenance_error
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_148
+            entity: binary_sensor.rekuperator_e148_supply_filter_wear_above_threshold
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_149
+            entity: binary_sensor.rekuperator_e149_exhaust_filter_wear_above_threshold
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_150
+            entity: binary_sensor.rekuperator_e150_supply_filter_replacement_required
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_151
+            entity: binary_sensor.rekuperator_e151_exhaust_filter_replacement_required
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_152
+            entity: binary_sensor.rekuperator_e152_exhaust_air_temp_too_high
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_156
+            entity: binary_sensor.rekuperator_e156_supply_filter_service_time_elapsed
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_157
+            entity: binary_sensor.rekuperator_e157_exhaust_filter_service_time_elapsed
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_200
+            entity: binary_sensor.rekuperator_e200_central_heater_overprotection
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_201
+            entity: binary_sensor.rekuperator_e201_duct_heater_overprotection
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_202
+            entity: binary_sensor.rekuperator_e202_secondary_heater_control_failure
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_203
+            entity: binary_sensor.rekuperator_e203_secondary_heater_control_failure_2
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_249
+            entity: binary_sensor.rekuperator_e249_no_expansion_module_communication
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_250
+            entity: binary_sensor.rekuperator_e250_ahu_filter_replacement_required
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_251
+            entity: binary_sensor.rekuperator_e251_duct_filter_replacement_required
             grid_options: {columns: 3}
           - type: tile
-            entity: binary_sensor.rekuperator_e_252
+            entity: binary_sensor.rekuperator_e252_ahu_filter_replacement_required_with_pressure_switch
             grid_options: {columns: 3}
 
 
@@ -1119,7 +1119,7 @@ views:
               columns: 6
 
           - type: tile
-            entity: switch.rekuperator_comfort_mode_panel
+            entity: switch.rekuperator_comfort_mode
             name: Tryb komfort
             icon: mdi:sofa
             color: purple
@@ -1134,7 +1134,7 @@ views:
               columns: 6
 
           - type: tile
-            entity: select.rekuperator_gwc_regen
+            entity: select.rekuperator_gwc_regeneration
             name: Regeneracja GWC
             icon: mdi:autorenew
             grid_options:
@@ -1174,21 +1174,21 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_airing_coef
+            entity: number.rekuperator_airing_coef
             name: Współczynnik wietrzenia (pokoje) [%]
             icon: mdi:percent
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_airing_bathroom_coef
+            entity: number.rekuperator_airing_bathroom_coef
             name: Współczynnik wietrzenia (łazienka) [%]
             icon: mdi:percent
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_hood_exhaust_coef
+            entity: number.rekuperator_hood_exhaust_coefficient
             name: Wywiew okap [%]
             icon: mdi:range-hood
             grid_options:
@@ -1324,28 +1324,28 @@ views:
             icon: mdi:serial-port
 
           - type: tile
-            entity: select.rekuperator_uart_0_baud
+            entity: select.rekuperator_port_0_baud_rate
             name: Prędkość transmisji
             icon: mdi:speedometer
             grid_options:
               columns: 3
 
           - type: tile
-            entity: select.rekuperator_uart_0_parity
+            entity: select.rekuperator_port_0_parity
             name: Parzystość
             icon: mdi:sine-wave
             grid_options:
               columns: 3
 
           - type: tile
-            entity: select.rekuperator_uart_0_stop
+            entity: select.rekuperator_port_0_stop_bits
             name: Bity stopu
             icon: mdi:stop-circle-outline
             grid_options:
               columns: 3
 
           - type: tile
-            entity: number.rekuperator_uart_0_id
+            entity: number.rekuperator_port_0_device_id
             name: ID urządzenia
             icon: mdi:identifier
             grid_options:
@@ -1356,28 +1356,28 @@ views:
             icon: mdi:serial-port
 
           - type: tile
-            entity: select.rekuperator_uart_1_baud
+            entity: select.rekuperator_port_1_baud_rate
             name: Prędkość transmisji
             icon: mdi:speedometer
             grid_options:
               columns: 3
 
           - type: tile
-            entity: select.rekuperator_uart_1_parity
+            entity: select.rekuperator_port_1_parity
             name: Parzystość
             icon: mdi:sine-wave
             grid_options:
               columns: 3
 
           - type: tile
-            entity: select.rekuperator_uart_1_stop
+            entity: select.rekuperator_port_1_stop_bits
             name: Bity stopu
             icon: mdi:stop-circle-outline
             grid_options:
               columns: 3
 
           - type: tile
-            entity: number.rekuperator_uart_1_id
+            entity: number.rekuperator_port_1_device_id
             name: ID urządzenia
             icon: mdi:identifier
             grid_options:
@@ -1396,35 +1396,35 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_version_major
+            entity: sensor.rekuperator_major_version
             name: Wersja główna
             icon: mdi:tag
             grid_options:
               columns: 2
 
           - type: tile
-            entity: sensor.rekuperator_version_minor
+            entity: sensor.rekuperator_minor_version
             name: Wersja poboczna
             icon: mdi:tag-outline
             grid_options:
               columns: 2
 
           - type: tile
-            entity: sensor.rekuperator_version_patch
+            entity: sensor.rekuperator_patch_version
             name: Patch
             icon: mdi:tag-text-outline
             grid_options:
               columns: 2
 
           - type: tile
-            entity: sensor.rekuperator_cf_version
+            entity: sensor.rekuperator_cf_module_version
             name: Wersja CF
             icon: mdi:chip
             grid_options:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_exp_version
+            entity: sensor.rekuperator_expansion_module_firmware_version
             name: Wersja Expansion
             icon: mdi:expansion-card
             grid_options:
