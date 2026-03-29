@@ -173,6 +173,8 @@ async def test_async_setup_creates_all_binary_sensors(
     """Ensure entities are created for all available binary sensor registers."""
     hass: MagicMock = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
 
     # Build available register sets from definitions
     available: dict[str, set[str]] = {
@@ -203,6 +205,8 @@ async def test_dynamic_register_entity_creation(
     """Dynamic S_/E_ registers should create entities when available."""
     hass: MagicMock = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
 
     mock_coordinator.available_registers = {
         "holding_registers": {"alarm", "e_99"},
@@ -224,6 +228,8 @@ async def test_force_full_register_list_adds_missing_binary_sensor(
 
     hass: MagicMock = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
 
     mock_coordinator.available_registers = {
         "input_registers": set(),

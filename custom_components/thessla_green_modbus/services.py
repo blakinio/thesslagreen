@@ -18,19 +18,19 @@ from homeassistant.helpers.service import async_extract_entity_ids
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
 except (ModuleNotFoundError, ImportError):  # pragma: no cover
-    from datetime import datetime
+    import datetime as _datetime_module
 
     class _DTUtil:
         """Fallback minimal dt util."""
 
         @staticmethod
-        def now() -> datetime:
-            return datetime.now()
+        def now() -> _datetime_module.datetime:
+            return _datetime_module.datetime.now()
 
         @staticmethod
-        def utcnow() -> datetime:
-            utc = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
-            return datetime.now(utc)
+        def utcnow() -> _datetime_module.datetime:
+            utc = _datetime_module.datetime.UTC if hasattr(_datetime_module.datetime, "UTC") else timezone.utc
+            return _datetime_module.datetime.now(utc)
 
     dt_util = _DTUtil()
 

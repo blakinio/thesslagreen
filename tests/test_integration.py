@@ -46,8 +46,7 @@ async def test_async_setup_entry_success():
         result = await async_setup_entry(hass, entry)
 
         assert result is True
-        assert DOMAIN in hass.data
-        assert entry.entry_id in hass.data[DOMAIN]
+        assert entry.runtime_data is mock_coordinator
         hass.config_entries.async_forward_entry_setups.assert_called_once()
 
 
@@ -186,8 +185,9 @@ async def test_async_setup_entry_custom_port():
 async def test_async_unload_entry_success():
     """Test successful unload entry."""
     hass = MagicMock()
-    hass.data = {DOMAIN: {"test_entry": MagicMock()}}
+    hass.data = {}
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
+    hass.config_entries.async_entries.return_value = []
 
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
@@ -195,7 +195,7 @@ async def test_async_unload_entry_success():
     # Mock coordinator with shutdown method
     mock_coordinator = MagicMock()
     mock_coordinator.async_shutdown = AsyncMock()
-    hass.data[DOMAIN]["test_entry"] = mock_coordinator
+    entry.runtime_data = mock_coordinator
 
     result = await async_unload_entry(hass, entry)
 
@@ -207,11 +207,12 @@ async def test_async_unload_entry_success():
 async def test_async_unload_entry_failure():
     """Test unload entry with platform unload failure."""
     hass = MagicMock()
-    hass.data = {DOMAIN: {"test_entry": MagicMock()}}
+    hass.data = {}
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=False)
 
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
+    entry.runtime_data = MagicMock()
 
     result = await async_unload_entry(hass, entry)
 
@@ -299,6 +300,10 @@ async def test_unload_and_reload_entry():
     coordinator2.async_setup = AsyncMock(return_value=True)
     coordinator2.async_shutdown = AsyncMock()
 
+    # Configure async_entries: returns [entry] during setup (→ services set up once),
+    # returns [] during unload (→ services unloaded), then [entry] on reload.
+    hass.config_entries.async_entries.side_effect = [[entry], [], [entry]]
+
     with (
         patch(
             "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
@@ -320,7 +325,7 @@ async def test_unload_and_reload_entry():
     ):
         # Initial setup
         assert await async_setup_entry(hass, entry)
-        assert hass.data[DOMAIN][entry.entry_id] is coordinator1
+        assert entry.runtime_data is coordinator1
         hass.config_entries.async_forward_entry_setups.assert_called_once()
         mock_setup_services.assert_called_once()
 
@@ -328,7 +333,6 @@ async def test_unload_and_reload_entry():
         assert await async_unload_entry(hass, entry)
         mock_unload_services.assert_called_once()
         coordinator1.async_shutdown.assert_called_once()
-        assert DOMAIN not in hass.data
 
         # Reset mocks for reload
         hass.config_entries.async_forward_entry_setups.reset_mock()
@@ -336,7 +340,7 @@ async def test_unload_and_reload_entry():
 
         # Reload
         assert await async_setup_entry(hass, entry)
-        assert hass.data[DOMAIN][entry.entry_id] is coordinator2
+        assert entry.runtime_data is coordinator2
         assert hass.config_entries.async_forward_entry_setups.call_count == 1
         mock_setup_services.assert_called_once()
         assert mock_coordinator_class.call_count == 2

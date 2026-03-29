@@ -25,7 +25,7 @@ UnitOfTemperature = getattr(ha_const, "UnitOfTemperature", type("UnitOfTemperatu
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP, holding_registers
+from .const import SPECIAL_FUNCTION_MAP, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
@@ -76,7 +76,7 @@ async def async_setup_entry(
     Home Assistant calls this during platform setup even though it is not
     referenced elsewhere in the source tree.
     """
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     # Create climate entity only when basic control is reported by capabilities.
     if coordinator.capabilities.basic_control:

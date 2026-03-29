@@ -20,16 +20,15 @@ INTENTIONAL_OMISSIONS = {
     "date_time_ddtt",
     "date_time_ggmm",
     "date_time_sscc",
-    # Reserved / internal registers — security keys and undocumented registers
-    # that have no translation key and must not appear as unnamed "Rekuperator"
-    # entities in the HA UI.
-    "reserved_8145",
-    "reserved_8146",
-    "reserved_8147",
-    "reserved_8148",
-    "reserved_8149",
-    "reserved_8150",
-    "reserved_8151",
+    # device_name_2..8 are sub-parts of the device name string decoded by the
+    # scanner as a single combined string — no individual entity mappings needed.
+    "device_name_2",
+    "device_name_3",
+    "device_name_4",
+    "device_name_5",
+    "device_name_6",
+    "device_name_7",
+    "device_name_8",
     "lock_pass_2",
 }
 

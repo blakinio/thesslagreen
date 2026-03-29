@@ -152,7 +152,7 @@ async def test_last_scan_in_diagnostics():
             return {}
 
     coord = DummyCoordinator()
-    entry = SimpleNamespace(entry_id="test")
+    entry = SimpleNamespace(entry_id="test", runtime_data=coord)
     hass = SimpleNamespace(
         data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en")
     )
@@ -192,7 +192,7 @@ async def test_additional_diagnostic_fields():
             return {}
 
     coord = DummyCoordinator()
-    entry = SimpleNamespace(entry_id="test")
+    entry = SimpleNamespace(entry_id="test", runtime_data=coord)
     hass = SimpleNamespace(
         data={DOMAIN: {entry.entry_id: coord}},
         config=SimpleNamespace(language="en"),
@@ -255,7 +255,7 @@ async def test_unknown_registers_in_diagnostics():
             return {}
 
     coord = DummyCoordinator()
-    entry = SimpleNamespace(entry_id="test")
+    entry = SimpleNamespace(entry_id="test", runtime_data=coord)
     hass = SimpleNamespace(
         data={DOMAIN: {entry.entry_id: coord}},
         config=SimpleNamespace(language="en"),
@@ -302,7 +302,7 @@ async def test_raw_registers_in_diagnostics():
             return {}
 
     coord = DummyCoordinator()
-    entry = SimpleNamespace(entry_id="test")
+    entry = SimpleNamespace(entry_id="test", runtime_data=coord)
     hass = SimpleNamespace(
         data={DOMAIN: {entry.entry_id: coord}},
         config=SimpleNamespace(language="en"),
@@ -346,7 +346,7 @@ async def test_anomalies_in_diagnostics():
             return {}
 
     coord = DummyCoordinator()
-    entry = SimpleNamespace(entry_id="test")
+    entry = SimpleNamespace(entry_id="test", runtime_data=coord)
     hass = SimpleNamespace(
         data={DOMAIN: {entry.entry_id: coord}},
         config=SimpleNamespace(language="en"),
@@ -387,7 +387,7 @@ async def test_diagnostics_json_serializable():
             return {}
 
     coord = DummyCoordinator()
-    entry = SimpleNamespace(entry_id="test")
+    entry = SimpleNamespace(entry_id="test", runtime_data=coord)
     hass = SimpleNamespace(
         data={DOMAIN: {entry.entry_id: coord}},
         config=SimpleNamespace(language="en"),
@@ -426,7 +426,7 @@ async def test_translation_failure_handled(caplog):
             return {}
 
     coord = DummyCoordinator()
-    entry = SimpleNamespace(entry_id="test")
+    entry = SimpleNamespace(entry_id="test", runtime_data=coord)
     hass = SimpleNamespace(
         data={DOMAIN: {entry.entry_id: coord}},
         config=SimpleNamespace(language="en"),

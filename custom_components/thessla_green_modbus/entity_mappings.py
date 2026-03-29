@@ -137,6 +137,8 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_season_mode": ("select", "rekuperator_season_mode"),
     "rekuperator_bypass_mode_status": ("sensor", "rekuperator_bypass_mode"),
     "rekuperator_on_off_panel_mode": ("switch", "rekuperator_on_off_panel_mode"),
+    # Typo fix: antifreez_stage → antifreeze_stage (version 2.3.0)
+    "rekuperator_antifreez_stage": ("sensor", "rekuperator_antifreeze_stage"),
 }
 
 _alias_warning_logged = False
@@ -782,8 +784,8 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "entity_category": "diagnostic",
     },
     # Mode and status sensors
-    "antifreez_stage": {
-        "translation_key": "antifreez_stage",
+    "antifreeze_stage": {
+        "translation_key": "antifreeze_stage",
         "icon": "mdi:snowflake-thermometer",
         "register_type": "holding_registers",
         # Register 4198: 0=FPX off, 1=FPX mode 1, 2=FPX mode 2
@@ -1737,9 +1739,7 @@ def _extend_entity_mappings_from_registers() -> None:
 def _build_entity_mappings() -> None:
     """Populate entity mapping dictionaries."""
 
-    global NUMBER_ENTITY_MAPPINGS, BINARY_SENSOR_ENTITY_MAPPINGS
-    global SWITCH_ENTITY_MAPPINGS, SELECT_ENTITY_MAPPINGS, TIME_ENTITY_MAPPINGS
-    global TEXT_ENTITY_MAPPINGS, ENTITY_MAPPINGS
+    global NUMBER_ENTITY_MAPPINGS, TIME_ENTITY_MAPPINGS, ENTITY_MAPPINGS
 
     NUMBER_ENTITY_MAPPINGS = _load_number_mappings()
     TIME_ENTITY_MAPPINGS = {}

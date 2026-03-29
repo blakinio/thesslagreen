@@ -243,6 +243,7 @@ async def test_all_platforms_create_at_least_one_entity(
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
 
     mock_coordinator.force_full_register_list = True
     mock_coordinator.capabilities = _make_full_capabilities()
@@ -321,6 +322,8 @@ async def test_entity_counts_per_platform(
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
     mock_coordinator.force_full_register_list = True
     mock_coordinator.capabilities = _make_full_capabilities()
 

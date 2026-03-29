@@ -253,6 +253,8 @@ async def test_async_setup_creates_new_numbers(mock_coordinator, mock_config_ent
     """Ensure setup creates number entities for new registers."""
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
     mock_coordinator.available_registers.setdefault("holding_registers", set()).update(
         {"max_supply_air_flow_rate", "min_bypass_temperature"}
     )
@@ -269,6 +271,8 @@ async def test_async_setup_skips_missing_numbers(mock_coordinator, mock_config_e
     """Ensure no number entities are created when registers aren't detected."""
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
     mock_coordinator.available_registers = {"holding_registers": set()}
 
     add_entities = MagicMock()
@@ -304,6 +308,8 @@ async def test_async_setup_skips_unknown_register(mock_coordinator, mock_config_
     """Ensure setup skips registers missing from HOLDING_REGISTERS."""
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
     mock_coordinator.available_registers["holding_registers"] = {"invalid_register"}
 
     add_entities = MagicMock()
@@ -317,6 +323,7 @@ async def test_force_full_register_list_adds_missing_number(mock_coordinator, mo
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
 
     mock_coordinator.available_registers = {
         "input_registers": set(),

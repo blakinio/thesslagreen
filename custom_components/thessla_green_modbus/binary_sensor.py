@@ -17,7 +17,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capability_rules import capability_block_reason
-from .const import DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
@@ -39,7 +38,7 @@ async def async_setup_entry(
     This coroutine is a Home Assistant platform setup hook and is invoked
     by the framework; it is not called directly within this repository.
     """
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
 

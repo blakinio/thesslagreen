@@ -283,6 +283,8 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
+    mock_config_entry.runtime_data = mock_coordinator
+
 
     mock_coordinator.available_registers = {
         "input_registers": set(),

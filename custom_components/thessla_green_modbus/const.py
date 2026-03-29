@@ -185,17 +185,32 @@ KNOWN_MISSING_REGISTERS = {
 
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
-PLATFORMS = [
-    "sensor",
-    "binary_sensor",
-    "climate",
-    "fan",
-    "select",
-    "number",
-    "switch",
-    "text",
-    "time",
-]
+try:  # pragma: no cover - optional during isolated tests
+    from homeassistant.const import Platform as _Platform
+
+    PLATFORMS: list[_Platform] = [
+        _Platform.SENSOR,
+        _Platform.BINARY_SENSOR,
+        _Platform.CLIMATE,
+        _Platform.FAN,
+        _Platform.SELECT,
+        _Platform.NUMBER,
+        _Platform.SWITCH,
+        _Platform.TEXT,
+        _Platform.TIME,
+    ]
+except (ImportError, Exception):  # pragma: no cover - fallback for test environments
+    PLATFORMS = [  # type: ignore[assignment]
+        "sensor",
+        "binary_sensor",
+        "climate",
+        "fan",
+        "select",
+        "number",
+        "switch",
+        "text",
+        "time",
+    ]
 
 
 # Migration helpers
@@ -409,8 +424,11 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
     else:
         results = [_load_json_option(fn) for fn, _ in filenames]
 
-    for (_, name), value in zip(filenames, results, strict=False):
-        globals()[name] = value
+    (
+        SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES,
+        FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES,
+        MODBUS_PARITY, MODBUS_STOP_BITS,
+    ) = results
 
 
 def _sync_setup_options() -> None:

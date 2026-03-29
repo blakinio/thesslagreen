@@ -11,7 +11,6 @@ import sys
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, cast
-from unittest.mock import Mock
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
     from homeassistant.util import dt as dt_util
@@ -586,8 +585,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     await disconnect_cb()  # pragma: no cover
                 elif isinstance(exc, ConnectionException) and callable(disconnect_cb):  # pragma: no cover
                     await disconnect_cb()
-                elif callable(disconnect_cb) and disconnect_cb.__class__.__name__ == "AsyncMock":
-                    await disconnect_cb()
                 if attempt >= self.retry:
                     raise  # pragma: no cover
                 _LOGGER.warning(
@@ -625,8 +622,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 if self._transport is not None and callable(disconnect_cb):
                     await disconnect_cb()  # pragma: no cover
                 elif isinstance(exc, ConnectionException) and callable(disconnect_cb):  # pragma: no cover
-                    await disconnect_cb()
-                elif callable(disconnect_cb) and disconnect_cb.__class__.__name__ == "AsyncMock":  # pragma: no cover
                     await disconnect_cb()
                 if attempt >= self.retry:
                     raise
@@ -732,7 +727,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 try:
                     scanner_cls = getattr(import_module(__name__), "ThesslaGreenDeviceScanner", ThesslaGreenDeviceScanner)
                     scanner_factory = getattr(scanner_cls, "create", None)
-                    if isinstance(scanner_cls, Mock) or hasattr(scanner_cls, "return_value"):
+                    if not inspect.isclass(scanner_cls):
                         scanner = scanner_cls(
                             host=self.host,
                             port=self.port,
@@ -1379,13 +1374,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
         self._update_in_progress = True
         self._failed_registers: set[str] = set()
-
-        executor_job = getattr(self.hass, "async_add_executor_job", None)
-        if callable(executor_job) and executor_job.__class__.__module__.startswith("unittest.mock"):
-            maybe_result = executor_job(self._update_data_sync)
-            compat_result = await maybe_result if inspect.isawaitable(maybe_result) else maybe_result
-            if isinstance(compat_result, dict) and compat_result:
-                return compat_result
 
         async with self._write_lock:
             try:
@@ -2097,13 +2085,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         """
 
         refresh_after_write = False
-        executor_job = getattr(self.hass, "async_add_executor_job", None)
-        if callable(executor_job) and executor_job.__class__.__module__.startswith("unittest.mock"):
-            maybe_result = executor_job(lambda: True)
-            compat_result = await maybe_result if inspect.isawaitable(maybe_result) else maybe_result
-            if isinstance(compat_result, bool):
-                return compat_result
-
         async with self._write_lock:
             try:
                 await self._ensure_connection()

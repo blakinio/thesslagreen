@@ -199,7 +199,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         return func
 
     class ConfigEntry:  # type: ignore[override]
-        pass
+        runtime_data: object = None
 
     class ConfigFlow:  # type: ignore[override]
         def __init_subclass__(cls, **kwargs):
@@ -671,6 +671,7 @@ def mock_config_entry():
         "retry": 3,
         "scan_uart_settings": False,
     }
+    config_entry.runtime_data = MagicMock()
     return config_entry
 
 
