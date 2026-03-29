@@ -139,14 +139,12 @@ def is_request_cancelled_error(exc: ModbusIOException) -> bool:
 
 
 async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
-    """Yield between retries only for mocked call paths to propagate cancellation."""
+    """Yield control between retries to allow cancellation to propagate."""
 
     if attempt >= retry or backoff > 0:
         return
 
-    module_name = getattr(_call_modbus, "__module__", "")
-    if module_name.startswith("unittest.mock"):
-        await asyncio.sleep(0)
+    await asyncio.sleep(0)
 
 
 async def _call_modbus_compat(
@@ -1632,36 +1630,6 @@ class ThesslaGreenDeviceScanner:
                         "unknown_registers": unknown,
                     }
                 return cast(dict[str, Any], result)
-            finally:
-                await self.close()
-
-        # Compatibility path for tests that patch the legacy synchronous
-        # pymodbus client constructor.
-        try:
-            client_mod = importlib.import_module("pymodbus.client")
-            legacy_ctor = getattr(client_mod, "ModbusTcpClient", None)
-        except Exception:
-            legacy_ctor = None
-        if (
-            self.connection_type != CONNECTION_TYPE_RTU
-            and legacy_ctor is not None
-            and legacy_ctor.__class__.__module__.startswith("unittest.mock")
-        ):
-            client = legacy_ctor(self.host, port=self.port, timeout=self.timeout)
-            connect = getattr(client, "connect", None)
-            connected = True
-            if callable(connect):
-                result = connect()
-                connected = await result if inspect.isawaitable(result) else result
-            if not connected:
-                raise ConnectionException("Failed to connect to device")
-            self._client = client
-            self._transport = None
-            try:
-                result = await self.scan()
-                if not isinstance(result, dict):
-                    raise TypeError("scan() must return a dict")
-                return result
             finally:
                 await self.close()
 
