@@ -1780,11 +1780,35 @@ class ThesslaGreenDeviceScanner:
             )
             _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
 
+        # Build addr->name reverse maps from module-level register dicts
+        _addr_to_name: dict[str, dict[int, str]] = {
+            "input_registers": {addr: name for name, addr in INPUT_REGISTERS.items()},
+            "holding_registers": {addr: name for name, addr in HOLDING_REGISTERS.items()},
+            "coil_registers": {addr: name for name, addr in COIL_REGISTERS.items()},
+            "discrete_inputs": {addr: name for name, addr in DISCRETE_INPUT_REGISTERS.items()},
+        }
+
         for reg_type, addrs in self.failed_addresses["modbus_exceptions"].items():
             filtered = self._filter_unsupported_addresses(reg_type, addrs)
-            if filtered:
-                decimals = ", ".join(str(addr) for addr in sorted(filtered))
+            if not filtered:
+                continue
+            # Exclude addresses successfully recovered via individual probe fallback
+            reverse_map = _addr_to_name.get(reg_type, {})
+            available = self.available_registers.get(reg_type, set())
+            truly_failed = {
+                addr for addr in filtered
+                if reverse_map.get(addr) not in available
+            }
+            if truly_failed:
+                decimals = ", ".join(str(addr) for addr in sorted(truly_failed))
                 _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
+            elif filtered:
+                # Batch failed but individual probe recovered all — log at debug only
+                decimals = ", ".join(str(addr) for addr in sorted(filtered))
+                _LOGGER.debug(
+                    "Batch read failed for %s at %s but individual probes succeeded",
+                    reg_type, decimals,
+                )
 
         for reg_type, addrs in self.failed_addresses["invalid_values"].items():
             if addrs:
