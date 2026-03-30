@@ -258,65 +258,69 @@ SET_LOG_LEVEL_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup_services(hass: HomeAssistant) -> None:
-    """Set up services for ThesslaGreen Modbus integration."""
+def _normalize_option(value: str) -> str:
+    """Convert translation keys to internal option values."""
+    if value and value.startswith(f"{DOMAIN}."):
+        value = value.split(".", 1)[1]
+    prefixes = [
+        "special_mode_",
+        "day_",
+        "period_",
+        "bypass_mode_",
+        "gwc_mode_",
+        "filter_type_",
+        "reset_type_",
+        "modbus_port_",
+        "modbus_baud_rate_",
+        "modbus_parity_",
+        "modbus_stop_bits_",
+    ]
+    for prefix in prefixes:
+        if value.startswith(prefix):
+            return value[len(prefix) :]  # noqa: E203
+    return value
 
-    def _normalize_option(value: str) -> str:
-        """Convert translation keys to internal option values."""
-        if value and value.startswith(f"{DOMAIN}."):
-            value = value.split(".", 1)[1]
-        prefixes = [
-            "special_mode_",
-            "day_",
-            "period_",
-            "bypass_mode_",
-            "gwc_mode_",
-            "filter_type_",
-            "reset_type_",
-            "modbus_port_",
-            "modbus_baud_rate_",
-            "modbus_parity_",
-            "modbus_stop_bits_",
-        ]
-        for prefix in prefixes:
-            if value.startswith(prefix):
-                return value[len(prefix) :]  # noqa: E203
-        return value
 
-    def _clamp_airflow_rate(coordinator: Any, airflow_rate: int) -> int:
-        data = getattr(coordinator, "data", {}) or {}
-        min_pct = data.get("min_percentage")
-        max_pct = data.get("max_percentage")
-        try:
-            min_val = int(min_pct) if min_pct is not None else 0
-        except (TypeError, ValueError):
-            min_val = 0
-        try:
-            max_val = int(max_pct) if max_pct is not None else 150
-        except (TypeError, ValueError):
-            max_val = 150
-        min_val = max(0, min_val)
-        max_val = min(150, max_val)
-        if max_val < min_val:
-            max_val = min_val
-        return max(min_val, min(max_val, int(airflow_rate)))
+def _clamp_airflow_rate(coordinator: Any, airflow_rate: int) -> int:
+    """Clamp airflow_rate to the coordinator's reported min/max percentages."""
+    data = getattr(coordinator, "data", {}) or {}
+    min_pct = data.get("min_percentage")
+    max_pct = data.get("max_percentage")
+    try:
+        min_val = int(min_pct) if min_pct is not None else 0
+    except (TypeError, ValueError):
+        min_val = 0
+    try:
+        max_val = int(max_pct) if max_pct is not None else 150
+    except (TypeError, ValueError):
+        max_val = 150
+    min_val = max(0, min_val)
+    max_val = min(150, max_val)
+    if max_val < min_val:
+        max_val = min_val
+    return max(min_val, min(max_val, int(airflow_rate)))
 
-    async def _write_register(
-        coordinator: ThesslaGreenModbusCoordinator,
-        register: str,
-        value: Any,
-        entity_id: str,
-        action: str,
-    ) -> bool:
-        """Write to a register with error handling.
 
-        Returns ``True`` if the register write succeeds, ``False`` otherwise.
-        """
-        try:
-            return bool(await coordinator.async_write_register(register, value, refresh=False))
-        except (ModbusException, ConnectionException) as err:
-            _LOGGER.error("Failed to %s for %s: %s", action, entity_id, err)
-            return False
+async def _write_register(
+    coordinator: "ThesslaGreenModbusCoordinator",
+    register: str,
+    value: Any,
+    entity_id: str,
+    action: str,
+) -> bool:
+    """Write to a register with error handling.
+
+    Returns ``True`` if the register write succeeds, ``False`` otherwise.
+    """
+    try:
+        return bool(await coordinator.async_write_register(register, value, refresh=False))
+    except (ModbusException, ConnectionException) as err:
+        _LOGGER.error("Failed to %s for %s: %s", action, entity_id, err)
+        return False
+
+
+def _register_mode_services(hass: HomeAssistant) -> None:
+    """Register set_special_mode and its legacy aliases."""
 
     async def set_special_mode(call: ServiceCall) -> None:
         """Service to set special mode."""
@@ -367,6 +371,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set special mode %s for %s", mode, entity_id)
+
+    hass.services.async_register(DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_special_function", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
+
+
+def _register_schedule_services(hass: HomeAssistant) -> None:
+    """Register set_airflow_schedule and its legacy alias."""
 
     async def set_airflow_schedule(call: ServiceCall) -> None:
         """Service to set airflow schedule."""
@@ -461,6 +473,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set airflow schedule for %s", entity_id)
+
+    hass.services.async_register(DOMAIN, "set_airflow_schedule", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_intensity", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA)
+
+
+def _register_parameter_services(hass: HomeAssistant) -> None:
+    """Register bypass, GWC, air quality and temperature curve services."""
 
     async def set_bypass_parameters(call: ServiceCall) -> None:
         """Service to set bypass parameters."""
@@ -634,6 +653,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set temperature curve for %s", entity_id)
+
+    hass.services.async_register(DOMAIN, "set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_gwc_parameters", set_gwc_parameters, SET_GWC_PARAMETERS_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_air_quality_thresholds", set_air_quality_thresholds, SET_AIR_QUALITY_THRESHOLDS_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA)
+
+
+def _register_maintenance_services(hass: HomeAssistant) -> None:
+    """Register reset, pressure test, Modbus and device-name services."""
 
     async def reset_filters(call: ServiceCall) -> None:
         """Service to reset filter counter."""
@@ -837,6 +865,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set device name to '%s' for %s", device_name, entity_id)
 
+    hass.services.async_register(DOMAIN, "reset_filters", reset_filters, RESET_FILTERS_SCHEMA)
+    hass.services.async_register(DOMAIN, "reset_settings", reset_settings, RESET_SETTINGS_SCHEMA)
+    hass.services.async_register(DOMAIN, "start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_modbus_parameters", set_modbus_parameters, SET_MODBUS_PARAMETERS_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_device_name", set_device_name, SET_DEVICE_NAME_SCHEMA)
+
+
+def _register_data_services(hass: HomeAssistant) -> None:
+    """Register refresh, scan and debug-logging services."""
+
     async def refresh_device_data(call: ServiceCall) -> None:
         """Service to refresh device data."""
         entity_ids = _extract_legacy_entity_ids(hass, call)
@@ -922,58 +960,19 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         )
         manager.set_level(level_value, duration)
 
-    # Register all services
-    hass.services.async_register(
-        DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
-    )
-    # Legacy aliases retained for backward compatibility with older automations/tests.
-    hass.services.async_register(DOMAIN, "set_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
-    hass.services.async_register(
-        DOMAIN, "set_intensity", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "set_special_function", set_special_mode, SET_SPECIAL_MODE_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "set_airflow_schedule", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "set_gwc_parameters", set_gwc_parameters, SET_GWC_PARAMETERS_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN,
-        "set_air_quality_thresholds",
-        set_air_quality_thresholds,
-        SET_AIR_QUALITY_THRESHOLDS_SCHEMA,
-    )  # noqa: E501
-    hass.services.async_register(
-        DOMAIN, "set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA
-    )
-    hass.services.async_register(DOMAIN, "reset_filters", reset_filters, RESET_FILTERS_SCHEMA)
-    hass.services.async_register(DOMAIN, "reset_settings", reset_settings, RESET_SETTINGS_SCHEMA)
-    hass.services.async_register(
-        DOMAIN, "start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "set_modbus_parameters", set_modbus_parameters, SET_MODBUS_PARAMETERS_SCHEMA
-    )
-    hass.services.async_register(DOMAIN, "set_device_name", set_device_name, SET_DEVICE_NAME_SCHEMA)
-    hass.services.async_register(
-        DOMAIN, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA
-    )
+    hass.services.async_register(DOMAIN, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA)
+    hass.services.async_register(DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA)
+    hass.services.async_register(DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA)
+    hass.services.async_register(DOMAIN, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA)
 
+
+async def async_setup_services(hass: HomeAssistant) -> None:
+    """Set up services for ThesslaGreen Modbus integration."""
+    _register_mode_services(hass)
+    _register_schedule_services(hass)
+    _register_parameter_services(hass)
+    _register_maintenance_services(hass)
+    _register_data_services(hass)
     _LOGGER.info("ThesslaGreen Modbus services registered successfully")
 
 
