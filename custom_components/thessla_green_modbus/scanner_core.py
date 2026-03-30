@@ -2074,13 +2074,14 @@ class ThesslaGreenDeviceScanner:
         )
         return None
 
-    async def _read_input_block(
+    async def _read_register_block(
         self,
+        read_fn: Any,
         client_or_start: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
         start_or_count: int,
         count: int | None = None,
     ) -> list[int] | None:
-        """Read a contiguous input register block in MAX-sized chunks."""
+        """Read a contiguous register block in MAX-sized chunks using read_fn."""
         if count is None:
             start = int(client_or_start)
             count = start_or_count
@@ -2096,14 +2097,24 @@ class ThesslaGreenDeviceScanner:
         results: list[int] = []
         active_client = client or self._client
         for chunk_start, chunk_count in chunk_register_range(start, count, self.effective_batch):
-            if active_client is None:
-                block = await self._read_input(chunk_start, chunk_count)
-            else:
-                block = await self._read_input(active_client, chunk_start, chunk_count)
+            block = await (
+                read_fn(chunk_start, chunk_count)
+                if active_client is None
+                else read_fn(active_client, chunk_start, chunk_count)
+            )
             if block is None:
                 return None
             results.extend(block)
         return results
+
+    async def _read_input_block(
+        self,
+        client_or_start: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        start_or_count: int,
+        count: int | None = None,
+    ) -> list[int] | None:
+        """Read a contiguous input register block in MAX-sized chunks."""
+        return await self._read_register_block(self._read_input, client_or_start, start_or_count, count)
 
     async def _read_holding_block(
         self,
@@ -2112,29 +2123,7 @@ class ThesslaGreenDeviceScanner:
         count: int | None = None,
     ) -> list[int] | None:
         """Read a contiguous holding register block in MAX-sized chunks."""
-        if count is None:
-            start = int(client_or_start)
-            count = start_or_count
-            client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None = None
-        elif isinstance(client_or_start, int):
-            start = client_or_start
-            count = start_or_count
-            client = None
-        else:
-            client = client_or_start
-            start = start_or_count
-
-        results: list[int] = []
-        active_client = client or self._client
-        for chunk_start, chunk_count in chunk_register_range(start, count, self.effective_batch):
-            if active_client is None:
-                block = await self._read_holding(chunk_start, chunk_count)
-            else:
-                block = await self._read_holding(active_client, chunk_start, chunk_count)
-            if block is None:
-                return None
-            results.extend(block)
-        return results
+        return await self._read_register_block(self._read_holding, client_or_start, start_or_count, count)
 
     async def _read_holding(
         self,
@@ -2322,13 +2311,16 @@ class ThesslaGreenDeviceScanner:
         )
         return None
 
-    async def _read_coil(
+    async def _read_bit_registers(
         self,
+        method_name: str,
+        failed_key: str,
+        type_name: str,
         client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
         address_or_count: int,
         count: int | None = None,
     ) -> list[bool] | None:
-        """Read coil registers with retry and backoff."""
+        """Shared implementation for coil and discrete input reads with retry and backoff."""
         if count is None:
             address = int(client_or_address)
             count = address_or_count
@@ -2351,7 +2343,7 @@ class ThesslaGreenDeviceScanner:
         for attempt in range(1, self.retry + 1):
             try:
                 response: Any = await _call_modbus_compat(
-                    client.read_coils,
+                    getattr(client, method_name),
                     self.slave_id,
                     address,
                     count=count,
@@ -2364,7 +2356,8 @@ class ThesslaGreenDeviceScanner:
                 if response is not None and not response.isError():
                     bits = cast(list[bool], response.bits[:count])
                     _LOGGER.debug(
-                        "Read coil registers %d-%d: %s",
+                        "Read %s registers %d-%d: %s",
+                        type_name,
                         address,
                         address + count - 1,
                         bits,
@@ -2372,7 +2365,8 @@ class ThesslaGreenDeviceScanner:
                     return bits
             except TimeoutError as exc:
                 _LOGGER.warning(
-                    "Timeout reading coil %d on attempt %d: %s",
+                    "Timeout reading %s %d on attempt %d: %s",
+                    type_name,
                     address,
                     attempt,
                     exc,
@@ -2380,7 +2374,8 @@ class ThesslaGreenDeviceScanner:
                 )
             except (ModbusException, ConnectionException) as exc:
                 _LOGGER.debug(
-                    "Failed to read coil %d on attempt %d: %s",
+                    "Failed to read %s %d on attempt %d: %s",
+                    type_name,
                     address,
                     attempt,
                     exc,
@@ -2394,17 +2389,19 @@ class ThesslaGreenDeviceScanner:
                             client = transport_client
                             self._client = transport_client
                     except Exception as exc:
-                        _LOGGER.debug("Transport client refresh failed during coil read: %s", exc)
+                        _LOGGER.debug("Transport client refresh failed during %s read: %s", type_name, exc)
             except asyncio.CancelledError:
                 _LOGGER.debug(
-                    "Cancelled reading coil %d on attempt %d",
+                    "Cancelled reading %s %d on attempt %d",
+                    type_name,
                     address,
                     attempt,
                 )
                 raise
             except OSError as exc:
                 _LOGGER.error(
-                    "Unexpected error reading coil %d on attempt %d: %s",
+                    "Unexpected error reading %s %d on attempt %d: %s",
+                    type_name,
                     address,
                     attempt,
                     exc,
@@ -2414,16 +2411,29 @@ class ThesslaGreenDeviceScanner:
 
             await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
 
-        self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
+        self.failed_addresses["modbus_exceptions"][failed_key].update(
             range(address, address + count)
         )
         _LOGGER.error(
-            "Failed to read coil registers %d-%d after %d retries",
+            "Failed to read %s registers %d-%d after %d retries",
+            type_name,
             address,
             address + count - 1,
             self.retry,
         )
         return None
+
+    async def _read_coil(
+        self,
+        client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+        address_or_count: int,
+        count: int | None = None,
+    ) -> list[bool] | None:
+        """Read coil registers with retry and backoff."""
+        return await self._read_bit_registers(
+            "read_coils", "coil_registers", "coil",
+            client_or_address, address_or_count, count,
+        )
 
     async def _read_discrete(
         self,
@@ -2432,98 +2442,7 @@ class ThesslaGreenDeviceScanner:
         count: int | None = None,
     ) -> list[bool] | None:
         """Read discrete input registers with retry and backoff."""
-        if count is None:
-            address = int(client_or_address)
-            count = address_or_count
-            client = self._client
-        elif isinstance(client_or_address, int):
-            address = client_or_address
-            count = address_or_count
-            client = self._client
-        else:
-            client = client_or_address
-            address = address_or_count
-
-        if client is None:
-            raise ConnectionException("Modbus client is not connected")
-        # Refresh client from transport in case transport reconnected since scan start
-        if client is self._client and self._transport is not None:
-            fresh = getattr(self._transport, "client", None)
-            if fresh is not None:
-                client = fresh
-        for attempt in range(1, self.retry + 1):
-            try:
-                response: Any = await _call_modbus_compat(
-                    client.read_discrete_inputs,
-                    self.slave_id,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                    retry=self.retry,
-                    timeout=self.timeout,
-                    backoff=self.backoff,
-                    backoff_jitter=self.backoff_jitter,
-                )
-                if response is not None and not response.isError():
-                    bits = cast(list[bool], response.bits[:count])
-                    _LOGGER.debug(
-                        "Read discrete inputs %d-%d: %s",
-                        address,
-                        address + count - 1,
-                        bits,
-                    )
-                    return bits
-            except TimeoutError as exc:
-                _LOGGER.warning(
-                    "Timeout reading discrete %d on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.debug(
-                    "Failed to read discrete %d on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                if self._transport is not None:
-                    try:
-                        await self._transport.ensure_connected()
-                        transport_client = getattr(self._transport, "client", None)
-                        if transport_client is not None:
-                            client = transport_client
-                            self._client = transport_client
-                    except Exception as exc:
-                        _LOGGER.debug("Transport client refresh failed during discrete read: %s", exc)
-            except asyncio.CancelledError:
-                _LOGGER.debug(
-                    "Cancelled reading discrete %d on attempt %d",
-                    address,
-                    attempt,
-                )
-                raise
-            except OSError as exc:
-                _LOGGER.error(
-                    "Unexpected error reading discrete %d on attempt %d: %s",
-                    address,
-                    attempt,
-                    exc,
-                    exc_info=True,
-                )
-                break
-
-            await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
-
-        self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
-            range(address, address + count)
+        return await self._read_bit_registers(
+            "read_discrete_inputs", "discrete_inputs", "discrete",
+            client_or_address, address_or_count, count,
         )
-        _LOGGER.error(
-            "Failed to read discrete inputs %d-%d after %d retries",
-            address,
-            address + count - 1,
-            self.retry,
-        )
-        return None
