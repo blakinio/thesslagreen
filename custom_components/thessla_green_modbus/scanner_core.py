@@ -1276,69 +1276,76 @@ class ThesslaGreenDeviceScanner:
                 else:
                     unknown_registers["discrete_inputs"][addr] = value
 
-    async def _run_named_scan(
+    async def _scan_register_batch(
         self,
-        input_registers: dict[int, str],
-        holding_registers: dict[int, str],
-        coil_registers: dict[int, str],
-        discrete_registers: dict[int, str],
+        reg_type: str,
+        addr_to_names: dict[int, set[str]],
+        addresses: list[int],
+        read_fn,
     ) -> None:
-        """Scan only named/known registers (normal scan mode)."""
-        # Scan Input Registers in batches
-        input_addr_to_names: dict[int, set[str]] = {}
-        input_addresses: list[int] = []
-        for addr, name in input_registers.items():
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
-                continue
-            input_addr_to_names.setdefault(addr, set()).add(name)
-            input_addresses.append(addr)
-
-        for start, count in self._group_registers_for_batch_read(input_addresses):
+        """Read a batch of registers of one FC type, with per-address fallback."""
+        for start, count in self._group_registers_for_batch_read(addresses):
             try:
-                input_data = await self._read_input(self._client, start, count) if self._client is not None else await self._read_input(start, count)
+                data = await read_fn(start, count)
             except TypeError:
-                input_data = await self._read_input(start, count)
+                data = None
 
-            if input_data is None:
-                self.failed_addresses["modbus_exceptions"]["input_registers"].update(
+            if data is None:
+                self.failed_addresses["modbus_exceptions"][reg_type].update(
                     range(start, start + count)
                 )
                 _LOGGER.debug(
-                    "Input batch read %d-%d failed; probing addresses individually",
-                    start,
-                    start + count - 1,
+                    "%s batch read %d-%d failed; probing individually",
+                    reg_type, start, start + count - 1,
                 )
                 for addr in range(start, start + count):
-                    reg_names = input_addr_to_names.get(addr)
+                    reg_names = addr_to_names.get(addr)
                     if not reg_names:
-                        continue  # pragma: no cover
-
+                        continue
                     try:
-                        probe = await self._read_input(self._client, addr, 1, skip_cache=True) if self._client is not None else await self._read_input(addr, 1, skip_cache=True)
+                        probe = await read_fn(addr, 1, skip_cache=True)
                     except TypeError:
-                        probe = await self._read_input(addr, 1, skip_cache=True)
-
+                        probe = None
                     if not probe:
-                        _LOGGER.warning("Failed to read input_registers register %d", addr)
+                        _LOGGER.warning("Failed to read %s register %d", reg_type, addr)
                         continue
                     value = probe[0]
-                    if any(self._is_valid_register_value(name, value) for name in reg_names):
-                        self.available_registers["input_registers"].update(reg_names)
+                    if any(self._is_valid_register_value(n, value) for n in reg_names):
+                        self.available_registers[reg_type].update(reg_names)
                     else:
-                        self.failed_addresses["invalid_values"]["input_registers"].add(addr)
+                        self.failed_addresses["invalid_values"][reg_type].add(addr)
                         self._log_invalid_value(sorted(reg_names)[0], value)
                 continue
 
-            for offset, value in enumerate(input_data):
+            for offset, value in enumerate(data):
                 addr = start + offset
-                if reg_names := input_addr_to_names.get(addr):
-                    if any(self._is_valid_register_value(name, value) for name in reg_names):
-                        self.available_registers["input_registers"].update(reg_names)
+                if reg_names := addr_to_names.get(addr):
+                    if any(self._is_valid_register_value(n, value) for n in reg_names):
+                        self.available_registers[reg_type].update(reg_names)
                     else:
-                        self.failed_addresses["invalid_values"]["input_registers"].add(addr)
+                        self.failed_addresses["invalid_values"][reg_type].add(addr)
                         self._log_invalid_value(sorted(reg_names)[0], value)
 
-        # Scan Holding Registers in batches
+    async def _scan_named_input(self, input_registers: dict[int, str]) -> None:
+        """Scan FC04 input registers in batches."""
+        addr_to_names: dict[int, set[str]] = {}
+        addresses: list[int] = []
+        for addr, name in input_registers.items():
+            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
+                continue
+            addr_to_names.setdefault(addr, set()).add(name)
+            addresses.append(addr)
+
+        async def _read(start: int, count: int, *, skip_cache: bool = False):
+            try:
+                return await self._read_input(self._client, start, count, skip_cache=skip_cache) if self._client is not None else await self._read_input(start, count, skip_cache=skip_cache)
+            except TypeError:
+                return await self._read_input(start, count, skip_cache=skip_cache)
+
+        await self._scan_register_batch("input_registers", addr_to_names, addresses, _read)
+
+    async def _scan_named_holding(self, holding_registers: dict[int, str]) -> None:
+        """Scan FC03 holding registers in batches, handling multi-word registers."""
         holding_info: dict[int, tuple[set[str], int]] = {}
         holding_addresses: list[int] = []
         for addr, name in holding_registers.items():
@@ -1348,121 +1355,97 @@ class ThesslaGreenDeviceScanner:
                 continue  # pragma: no cover
             size = MULTI_REGISTER_SIZES.get(name, 1)
             if addr in holding_info:
-                names, _existing_size = holding_info[addr]  # pragma: no cover
+                names, _ = holding_info[addr]  # pragma: no cover
                 names.add(name)  # pragma: no cover
             else:
                 holding_info[addr] = ({name}, size)
             holding_addresses.extend(range(addr, addr + size))
 
-        for start, count in self._group_registers_for_batch_read(holding_addresses):
+        addr_to_names = {addr: names for addr, (names, _) in holding_info.items()}
+
+        async def _read(start: int, count: int, *, skip_cache: bool = False):
             try:
-                holding_data = await self._read_holding(self._client, start, count) if self._client is not None else await self._read_holding(start, count)
+                return await self._read_holding(self._client, start, count, skip_cache=skip_cache) if self._client is not None else await self._read_holding(start, count, skip_cache=skip_cache)
             except TypeError:
-                holding_data = await self._read_holding(start, count)
-            if holding_data is None:
-                self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                    range(start, start + count)
-                )
-                _LOGGER.debug(
-                    "Holding batch read %d-%d failed; probing addresses individually",
-                    start,
-                    start + count - 1,
-                )
-                for addr in range(start, start + count):
-                    if addr not in holding_info:
-                        continue
-                    names, _size = holding_info[addr]
+                return await self._read_holding(start, count, skip_cache=skip_cache)
 
-                    try:
-                        probe = await self._read_holding(self._client, addr, 1, skip_cache=True) if self._client is not None else await self._read_holding(addr, 1, skip_cache=True)
-                    except TypeError:
-                        probe = await self._read_holding(addr, 1, skip_cache=True)
+        await self._scan_register_batch("holding_registers", addr_to_names, holding_addresses, _read)
 
-                    if not probe:
-                        continue
-                    value = probe[0]
-                    if any(self._is_valid_register_value(name, value) for name in names):
-                        self.available_registers["holding_registers"].update(names)
-                    else:
-                        self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
-                        self._log_invalid_value(sorted(names)[0], value)
-                continue
-
-            for offset, value in enumerate(holding_data):
-                addr = start + offset
-                if addr in holding_info:
-                    names, _size = holding_info[addr]
-                    if any(self._is_valid_register_value(name, value) for name in names):
-                        self.available_registers["holding_registers"].update(names)
-                    else:
-                        self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
-                        self._log_invalid_value(sorted(names)[0], value)
-
-        # Expose diagnostic registers that responded during scanning.
-        # Skip addresses that explicitly failed with Modbus exceptions so
-        # we don't create permanently-unavailable entities for registers the
-        # device doesn't support.
-        failed_holding_addrs = self.failed_addresses["modbus_exceptions"]["holding_registers"]
+        # Expose error/alarm registers that didn't explicitly fail
+        failed_addrs = self.failed_addresses["modbus_exceptions"]["holding_registers"]
         for addr, name in holding_registers.items():
             if name.startswith(("e_", "s_")) or name in {"alarm", "error"}:
-                if addr not in failed_holding_addrs:
+                if addr not in failed_addrs:
                     self.available_registers["holding_registers"].add(name)
 
-        # Scan Coil Registers in batches
-        coil_addr_to_names: dict[int, set[str]] = {}
-        coil_addresses: list[int] = []
+    async def _scan_named_coil(self, coil_registers: dict[int, str]) -> None:
+        """Scan FC01 coil registers in batches."""
+        addr_to_names: dict[int, set[str]] = {}
+        addresses: list[int] = []
         for addr, name in coil_registers.items():
             if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["coil_registers"]:
                 continue  # pragma: no cover
-            coil_addr_to_names.setdefault(addr, set()).add(name)
-            coil_addresses.append(addr)
+            addr_to_names.setdefault(addr, set()).add(name)
+            addresses.append(addr)
 
-        for start, count in self._group_registers_for_batch_read(coil_addresses):
+        for start, count in self._group_registers_for_batch_read(addresses):
             coil_data = await self._read_coil(self._client, start, count) if self._client is not None else await self._read_coil(start, count)
             if coil_data is None:
                 self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
                     range(start, start + count)
                 )
                 for addr in range(start, start + count):
-                    if addr not in coil_addr_to_names:
+                    if addr not in addr_to_names:
                         continue  # pragma: no cover
                     probe = await self._read_coil(self._client, addr, 1) if self._client is not None else await self._read_coil(None, addr, 1)
                     if probe and probe[0] is not None:
-                        self.available_registers["coil_registers"].update(coil_addr_to_names[addr])
+                        self.available_registers["coil_registers"].update(addr_to_names[addr])
                 continue
             for offset, value in enumerate(coil_data):
                 addr = start + offset
-                if addr in coil_addr_to_names and value is not None:
-                    self.available_registers["coil_registers"].update(coil_addr_to_names[addr])
+                if addr in addr_to_names and value is not None:
+                    self.available_registers["coil_registers"].update(addr_to_names[addr])
 
-        # Scan Discrete Input Registers in batches
-        discrete_addr_to_names: dict[int, set[str]] = {}
-        discrete_addresses: list[int] = []
+    async def _scan_named_discrete(self, discrete_registers: dict[int, str]) -> None:
+        """Scan FC02 discrete input registers in batches."""
+        addr_to_names: dict[int, set[str]] = {}
+        addresses: list[int] = []
         for addr, name in discrete_registers.items():
             if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["discrete_inputs"]:
                 continue  # pragma: no cover
-            discrete_addr_to_names.setdefault(addr, set()).add(name)
-            discrete_addresses.append(addr)
+            addr_to_names.setdefault(addr, set()).add(name)
+            addresses.append(addr)
 
-        for start, count in self._group_registers_for_batch_read(discrete_addresses):
+        for start, count in self._group_registers_for_batch_read(addresses):
             discrete_data = await self._read_discrete(self._client, start, count) if self._client is not None else await self._read_discrete(start, count)
             if discrete_data is None:
                 self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
                     range(start, start + count)
                 )
                 for addr in range(start, start + count):
-                    if addr not in discrete_addr_to_names:
+                    if addr not in addr_to_names:
                         continue  # pragma: no cover
                     probe = await self._read_discrete(self._client, addr, 1) if self._client is not None else await self._read_discrete(None, addr, 1)
                     if probe and probe[0] is not None:
-                        self.available_registers["discrete_inputs"].update(discrete_addr_to_names[addr])
+                        self.available_registers["discrete_inputs"].update(addr_to_names[addr])
                 continue
             for offset, value in enumerate(discrete_data):
                 addr = start + offset
-                if addr in discrete_addr_to_names and value is not None:
-                    self.available_registers["discrete_inputs"].update(
-                        discrete_addr_to_names[addr]
-                    )
+                if addr in addr_to_names and value is not None:
+                    self.available_registers["discrete_inputs"].update(addr_to_names[addr])
+
+    async def _run_named_scan(
+        self,
+        input_registers: dict[int, str],
+        holding_registers: dict[int, str],
+        coil_registers: dict[int, str],
+        discrete_registers: dict[int, str],
+    ) -> None:
+        """Scan only named/known registers (normal scan mode)."""
+        await self._scan_named_input(input_registers)
+        await self._scan_named_holding(holding_registers)
+        await self._scan_named_coil(coil_registers)
+        await self._scan_named_discrete(discrete_registers)
 
     def _compute_scan_blocks(
         self,
