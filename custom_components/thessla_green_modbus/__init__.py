@@ -144,17 +144,10 @@ def _apply_log_level(log_level: str) -> None:
     _LOGGER.debug("Log level set to %s", log_level)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
-    """Set up ThesslaGreen Modbus from a config entry.
-
-    This hook is invoked by Home Assistant during config entry setup even
-    though it appears unused within the integration code itself.
-    """
-    from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
-    from homeassistant.helpers.update_coordinator import UpdateFailed  # type: ignore
-
-    _LOGGER.debug("Setting up ThesslaGreen Modbus integration for %s", getattr(entry, "title", entry.data.get(CONF_NAME, DEFAULT_NAME)))
-
+async def _async_create_coordinator(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> Any:  # pragma: no cover
+    """Read config entry options and instantiate the coordinator."""
     if hasattr(hass, "async_add_executor_job"):
         import_result = hass.async_add_executor_job(import_module, ".config_flow", __name__)
         if inspect.isawaitable(import_result):
@@ -178,9 +171,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     )
 
     host = entry.data.get(CONF_HOST, "")
-    port = entry.data.get(
-        CONF_PORT, DEFAULT_PORT
-    )  # Default to DEFAULT_PORT (502; legacy versions used 8899)
+    port = entry.data.get(CONF_PORT, DEFAULT_PORT)
     serial_port = entry.data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
     baud_rate = entry.data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
     parity = entry.data.get(CONF_PARITY, DEFAULT_PARITY)
@@ -205,12 +196,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     elif "unit" in entry.data:
         slave_id = entry.data["unit"]  # Legacy support
     else:
-        slave_id = DEFAULT_SLAVE_ID  # Use default if not found
+        slave_id = DEFAULT_SLAVE_ID
 
-    # Get name with fallback
     name = entry.data.get(CONF_NAME, DEFAULT_NAME)
 
-    # Get options with defaults
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
     retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
@@ -243,16 +232,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     _LOGGER.info(
         "Initializing ThesslaGreen device: %s via %s (%s) (slave_id=%s, scan_interval=%ds)",
-        name,
-        transport_label,
-        endpoint,
-        slave_id,
-        scan_interval,
+        name, transport_label, endpoint, slave_id, scan_interval,
     )
 
-    # Create coordinator for managing device communication
-    # Use cached module from sys.modules if available (avoids re-importing),
-    # otherwise offload the blocking import to the executor.
     _coordinator_key = f"{__name__}.coordinator"
     coordinator_mod = sys.modules.get(_coordinator_key)
     if coordinator_mod is None:
@@ -300,9 +282,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
             key: value for key, value in coordinator_kwargs.items() if key in signature.parameters
         }
 
-    coordinator = ThesslaGreenModbusCoordinator(**coordinator_kwargs)
+    return ThesslaGreenModbusCoordinator(**coordinator_kwargs)
 
-    # Setup coordinator (this includes device scanning)
+
+async def _async_start_coordinator(
+    hass: HomeAssistant, entry: ConfigEntry, coordinator: Any
+) -> bool:  # pragma: no cover
+    """Run coordinator async_setup and first refresh.
+
+    Returns False if a reauth flow was triggered (caller should return False).
+    Raises ConfigEntryNotReady on other connection failures.
+    """
+    from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
+    from homeassistant.helpers.update_coordinator import UpdateFailed  # type: ignore
+
     try:
         setup_cb = getattr(coordinator, "async_setup", None)
         if callable(setup_cb):
@@ -329,7 +322,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
 
-    # Perform first data update
     try:
         refresh_cb = getattr(coordinator, "async_config_entry_first_refresh", None)
         if callable(refresh_cb):
@@ -362,7 +354,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
 
-    # Ensure compatibility with lightweight fake coordinators used in tests
+    return True
+
+
+def _async_patch_coordinator_compat(
+    coordinator: Any, entry: ConfigEntry
+) -> None:  # pragma: no cover
+    """Add lightweight fallback attributes for test environments."""
     if not hasattr(coordinator, "capabilities"):
         class _PermissiveCapabilities:
             def __getattr__(self, _name: str) -> bool:
@@ -387,19 +385,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
             "discrete_inputs": set(),
         }
 
+    force_full = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
     if not hasattr(coordinator, "force_full_register_list"):
-        coordinator.force_full_register_list = bool(force_full_register_list)
+        coordinator.force_full_register_list = bool(force_full)
 
-    # Store coordinator on entry (HA 2024.6+ pattern)
-    entry.runtime_data = coordinator
 
-    # Clean up legacy entity IDs left from early versions
-    await _async_cleanup_legacy_fan_entity(hass, coordinator)
-
-    # Migrate entity unique IDs (replace ':' in host with '-')
-    await _async_migrate_unique_ids(hass, entry)
-
-    # Load option lists and entity mappings
+async def _async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
+    """Load option lists and entity mappings."""
     try:
         await async_setup_options(hass)
     except (TypeError, AttributeError):
@@ -409,21 +401,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     except (TypeError, AttributeError):
         _LOGGER.debug("Skipping async_setup_entity_mappings in mock context")
 
-    # Preload platform modules in the executor to avoid blocking the event loop
+
+async def _async_setup_platforms(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:  # pragma: no cover
+    """Preload platform modules and forward config entry setup."""
     for platform in PLATFORM_DOMAINS:
         try:
             import_task = hass.async_add_executor_job(import_module, f".{platform}", __name__)
             if inspect.isawaitable(import_task):
                 await import_task
-        except (
-            ImportError,
-            ModuleNotFoundError,
-        ) as err:  # pragma: no cover - environment-dependent
+        except (ImportError, ModuleNotFoundError) as err:
             _LOGGER.debug("Could not preload platform %s: %s", platform, err)
         except Exception as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
 
-    # Setup platforms
     platforms = _get_platforms()
     _LOGGER.debug("Setting up platforms: %s", platforms)
     try:
@@ -434,15 +426,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         _LOGGER.info("Platform setup cancelled for %s", platforms)
         raise
 
-    # Setup services (only once for first entry)
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
+    """Set up ThesslaGreen Modbus from a config entry.
+
+    This hook is invoked by Home Assistant during config entry setup even
+    though it appears unused within the integration code itself.
+    """
+    _LOGGER.debug(
+        "Setting up ThesslaGreen Modbus integration for %s",
+        getattr(entry, "title", entry.data.get(CONF_NAME, DEFAULT_NAME)),
+    )
+
+    coordinator = await _async_create_coordinator(hass, entry)
+    if not await _async_start_coordinator(hass, entry, coordinator):
+        return False
+    _async_patch_coordinator_compat(coordinator, entry)
+    entry.runtime_data = coordinator
+
+    await _async_cleanup_legacy_fan_entity(hass, coordinator)
+    await _async_migrate_unique_ids(hass, entry)
+    await _async_setup_mappings(hass)
+    await _async_setup_platforms(hass, entry)
+
     if len(hass.config_entries.async_entries(DOMAIN)) == 1:
         from .services import async_setup_services
-
         await async_setup_services(hass)
 
-    # Setup entry update listener
     entry.async_on_unload(entry.add_update_listener(async_update_options))
-
     _LOGGER.info("ThesslaGreen Modbus integration setup completed successfully")
     return True
 
