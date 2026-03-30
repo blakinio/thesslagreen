@@ -8,7 +8,7 @@ import logging
 import sys
 from datetime import timedelta
 from importlib import import_module
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
