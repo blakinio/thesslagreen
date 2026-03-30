@@ -89,9 +89,16 @@ def test_plan_group_reads_varied_block_sizes(monkeypatch, size, loader_mod):
 def test_scanner_respects_default_max_block_size():
     scanner = ThesslaGreenDeviceScanner("host", 502)
     addresses = list(range(MAX_BATCH_REGISTERS + 6))
+    # Known-missing input registers in range(22): version_patch=4,
+    # compilation_days=14, compilation_seconds=15, duct_supply_temperature=20,
+    # gwc_temperature=21 — each is isolated into a single-register group.
     assert scanner._group_registers_for_batch_read(addresses) == [
-        (0, 14),
+        (0, 4),
+        (4, 1),
+        (5, 9),
         (14, 1),
-        (15, MAX_BATCH_REGISTERS - 15),
-        (MAX_BATCH_REGISTERS, 6),
+        (15, 1),
+        (16, 4),
+        (20, 1),
+        (21, 1),
     ]

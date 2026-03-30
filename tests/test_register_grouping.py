@@ -38,10 +38,13 @@ def test_group_registers_split_known_missing():
 
     groups = scanner._group_registers_for_batch_read(addresses)
 
+    # compilation_seconds (missing_addr + 1 = 15) is also in KNOWN_MISSING_REGISTERS,
+    # so both addr 14 and 15 are isolated; addr 16 forms its own single-item group.
     assert groups == [
         (missing_addr - 2, 2),
         (missing_addr, 1),
-        (missing_addr + 1, 2),
+        (missing_addr + 1, 1),
+        (missing_addr + 2, 1),
     ]  # nosec B101
 
 
