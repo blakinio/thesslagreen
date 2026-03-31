@@ -13,6 +13,7 @@ from typing import Any, cast
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant import const as ha_const
+from homeassistant.helpers.entity import EntityCategory
 
 PERCENTAGE = getattr(ha_const, "PERCENTAGE", "%")
 from homeassistant.core import HomeAssistant
@@ -184,7 +185,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             self._attr_native_unit_of_measurement = PERCENTAGE  # pragma: no cover
         self._attr_device_class = sensor_definition.get("device_class")  # pragma: no cover
         self._attr_state_class = sensor_definition.get("state_class")  # pragma: no cover
-        self._attr_entity_category = sensor_definition.get("entity_category")  # pragma: no cover
+        _ec = sensor_definition.get("entity_category")  # pragma: no cover
+        self._attr_entity_category = EntityCategory(_ec) if _ec else None  # pragma: no cover
         if "suggested_display_precision" in sensor_definition:  # pragma: no cover
             self._attr_suggested_display_precision = sensor_definition["suggested_display_precision"]  # pragma: no cover
 

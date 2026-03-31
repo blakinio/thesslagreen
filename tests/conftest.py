@@ -54,6 +54,18 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     selector = types.ModuleType("homeassistant.helpers.selector")
     translation = types.ModuleType("homeassistant.helpers.translation")
     entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+    entity_helper = types.ModuleType("homeassistant.helpers.entity")
+
+    class EntityCategory:  # pragma: no cover - enum stub
+        CONFIG = "config"
+        DIAGNOSTIC = "diagnostic"
+
+        def __new__(cls, value: str) -> "EntityCategory":  # pragma: no cover
+            obj = object.__new__(cls)
+            obj._value_ = value
+            return obj
+
+    entity_helper.EntityCategory = EntityCategory
 
     class AddEntitiesCallback:  # pragma: no cover - simple stub
         pass
@@ -433,6 +445,8 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
     sys.modules["homeassistant.helpers.service"] = service_helper
     sys.modules["homeassistant.helpers.event"] = event_helper
     sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
+    sys.modules["homeassistant.helpers.entity"] = entity_helper
+    helpers_pkg.entity = entity_helper
     sys.modules["homeassistant.helpers.script"] = script_helper
     sys.modules["homeassistant.exceptions"] = exceptions
     sys.modules["homeassistant.const"] = const
