@@ -2017,6 +2017,27 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             data["total_energy"] = self._total_energy
             self._last_power_timestamp = now
 
+        # Decode device clock from BCD registers 0-3
+        try:
+            raw_yymm = data.get("date_time")
+            raw_ddtt = data.get("date_time_ddtt")
+            raw_ggmm = data.get("date_time_ggmm")
+            raw_sscc = data.get("date_time_sscc")
+            if all(v is not None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
+                def _bcd(b: int) -> int:
+                    return ((b >> 4) & 0xF) * 10 + (b & 0xF)
+                yy = _bcd((raw_yymm >> 8) & 0xFF)
+                mm = _bcd(raw_yymm & 0xFF)
+                dd = _bcd((raw_ddtt >> 8) & 0xFF)
+                hh = _bcd((raw_ggmm >> 8) & 0xFF)
+                mi = _bcd(raw_ggmm & 0xFF)
+                ss = _bcd((raw_sscc >> 8) & 0xFF)
+                year = 2000 + yy
+                if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
+                    data["device_clock"] = f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
+        except Exception as exc:  # pragma: no cover
+            _LOGGER.debug("Failed to decode device clock: %s", exc)
+
         return data
 
     def _create_consecutive_groups(self, registers: dict[str, int]) -> list[tuple[int, int, dict[str, int]]]:

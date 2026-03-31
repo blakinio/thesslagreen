@@ -980,6 +980,9 @@
       "dac_supply": {
         "name": "Napięcie wentylatora nawiewnego"
       },
+      "device_clock": {
+        "name": "Zegar rekuperatora"
+      },
       "day_of_week": {
         "name": "Dzień tygodnia",
         "state": {
@@ -1798,6 +1801,10 @@
         }
       },
       "name": "Ustaw nazwę urządzenia"
+    },
+    "sync_time": {
+      "description": "Synchronizuje zegar rekuperatora AirPack z aktualnym czasem Home Assistant. Przydatne po zaniku zasilania.",
+      "name": "Synchronizuj zegar urządzenia"
     },
     "refresh_device_data": {
       "description": "Wymuś natychmiastowe odświeżenie danych.",

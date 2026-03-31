@@ -14,6 +14,7 @@ from typing import Any
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capability_rules import capability_block_reason
@@ -120,6 +121,9 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self._attr_device_class: BinarySensorDeviceClass | None = sensor_definition.get(
             "device_class"
         )  # pragma: no cover
+
+        _ec = sensor_definition.get("entity_category")  # pragma: no cover
+        self._attr_entity_category = EntityCategory(_ec) if _ec else None  # pragma: no cover
 
         # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover

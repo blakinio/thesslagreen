@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capability_rules import capability_block_reason
@@ -122,8 +123,8 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self._attr_icon = entity_config.get("icon", "mdi:toggle-switch")
 
         # Set entity category if specified
-        if entity_config.get("category"):
-            self._attr_entity_category = entity_config["category"]  # pragma: no cover
+        if _ec := entity_config.get("category"):  # pragma: no cover
+            self._attr_entity_category = EntityCategory(_ec)  # pragma: no cover
 
         _LOGGER.debug("Initialized switch entity: %s", key)
 

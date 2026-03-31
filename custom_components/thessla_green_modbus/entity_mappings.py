@@ -970,6 +970,15 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     },
     # Derived / calculated sensors — values are produced by the coordinator's
     # _post_process_data and do not correspond to a single Modbus register.
+    "device_clock": {
+        "translation_key": "device_clock",
+        "icon": "mdi:clock-outline",
+        "device_class": None,
+        "state_class": None,
+        "unit": None,
+        "register_type": "calculated",
+        "entity_category": "diagnostic",
+    },
     "heat_recovery_efficiency": {
         "translation_key": "heat_recovery_efficiency",
         "icon": "mdi:heat-wave",
