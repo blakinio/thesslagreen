@@ -331,3 +331,17 @@ set_debug_logging:
           min: 0
           max: 86400
           step: 60
+
+sync_time:
+  name: Sync Device Clock
+  description: Synchronise the AirPack real-time clock to the current Home Assistant time. Useful after power loss.
+  target: *tg_target
+  fields:
+    entity_id:
+      name: Entity
+      description: The climate entity of the AirPack device.
+      required: true
+      selector:
+        entity:
+          domain: climate
+          integration: thessla_green_modbus

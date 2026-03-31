@@ -980,6 +980,9 @@
       "dac_supply": {
         "name": "Supply Fan Voltage"
       },
+      "device_clock": {
+        "name": "Device Clock"
+      },
       "day_of_week": {
         "name": "Day of Week",
         "state": {
@@ -1798,6 +1801,10 @@
         }
       },
       "name": "Set Device Name"
+    },
+    "sync_time": {
+      "description": "Synchronise the AirPack real-time clock to the current Home Assistant time. Useful after power loss.",
+      "name": "Sync Device Clock"
     },
     "refresh_device_data": {
       "description": "Force immediate data refresh.",

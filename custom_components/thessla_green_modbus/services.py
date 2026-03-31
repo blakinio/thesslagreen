@@ -236,6 +236,12 @@ SET_DEVICE_NAME_SCHEMA = vol.Schema(
     }
 )
 
+SYNC_TIME_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
+    }
+)
+
 REFRESH_DEVICE_DATA_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
@@ -865,11 +871,54 @@ def _register_maintenance_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set device name to '%s' for %s", device_name, entity_id)
 
+    async def sync_time(call: ServiceCall) -> None:
+        """Synchronise the device real-time clock to the current HA time."""
+        from datetime import datetime as _dt
+
+        entity_ids = _extract_legacy_entity_ids(hass, call)
+
+        for entity_id in entity_ids:
+            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
+            if not coordinator:
+                continue
+
+            now = _dt.now()
+
+            def _to_bcd(val: int) -> int:
+                return ((val // 10) << 4) | (val % 10)
+
+            # addr 0: RRMM — last two digits of year + month
+            reg_yymm = (_to_bcd(now.year % 100) << 8) | _to_bcd(now.month)
+            # addr 1: DDTT — day of month + day of week (Mon=0)
+            reg_ddtt = (_to_bcd(now.day) << 8) | _to_bcd(now.weekday())
+            # addr 2: GGmm — hour + minute
+            reg_ggmm = (_to_bcd(now.hour) << 8) | _to_bcd(now.minute)
+            # addr 3: sscc — second + hundredths (always 0)
+            reg_sscc = (_to_bcd(now.second) << 8) | 0x00
+
+            try:
+                success = await coordinator.async_write_registers(
+                    start_address=0,
+                    values=[reg_yymm, reg_ddtt, reg_ggmm, reg_sscc],
+                    refresh=False,
+                )
+                if success:
+                    _LOGGER.info(
+                        "Synced device clock to %s for %s",
+                        now.strftime("%Y-%m-%d %H:%M:%S"),
+                        entity_id,
+                    )
+                else:
+                    _LOGGER.error("Failed to sync clock for %s", entity_id)
+            except (ModbusException, ConnectionException) as err:
+                _LOGGER.error("Failed to sync clock for %s: %s", entity_id, err)
+
     hass.services.async_register(DOMAIN, "reset_filters", reset_filters, RESET_FILTERS_SCHEMA)
     hass.services.async_register(DOMAIN, "reset_settings", reset_settings, RESET_SETTINGS_SCHEMA)
     hass.services.async_register(DOMAIN, "start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA)
     hass.services.async_register(DOMAIN, "set_modbus_parameters", set_modbus_parameters, SET_MODBUS_PARAMETERS_SCHEMA)
     hass.services.async_register(DOMAIN, "set_device_name", set_device_name, SET_DEVICE_NAME_SCHEMA)
+    hass.services.async_register(DOMAIN, "sync_time", sync_time, SYNC_TIME_SCHEMA)
 
 
 def _register_data_services(hass: HomeAssistant) -> None:
@@ -993,6 +1042,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         "start_pressure_test",
         "set_modbus_parameters",
         "set_device_name",
+        "sync_time",
         "refresh_device_data",
         "get_unknown_registers",
         "scan_all_registers",
