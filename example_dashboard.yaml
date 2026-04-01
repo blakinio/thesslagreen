@@ -274,7 +274,7 @@ views:
         cards:
 
           - type: tile
-            entity: sensor.rekuperator_alarm
+            entity: binary_sensor.rekuperator_alarm
             name: Alarm E
             icon: mdi:alert-circle
             color: red
@@ -282,7 +282,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_error
+            entity: binary_sensor.rekuperator_error
             name: Błąd S
             icon: mdi:alert
             color: orange
@@ -320,6 +320,61 @@ views:
             grid_options:
               columns: 4
 
+      # ── Odzysk ciepła i energia ────────────────────────────
+      - type: grid
+        title: Odzysk ciepła i zużycie energii
+        cards:
+
+          - type: gauge
+            entity: sensor.rekuperator_heat_recovery_efficiency
+            name: Sprawność odzysku
+            unit: "%"
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              green: 75
+              yellow: 50
+              red: 0
+            grid_options:
+              columns: 4
+              rows: 3
+
+          - type: tile
+            entity: sensor.rekuperator_heat_recovery_power
+            name: Moc odzysku ciepła
+            icon: mdi:heat-wave
+            grid_options:
+              columns: 4
+
+          - type: tile
+            entity: sensor.rekuperator_electrical_power
+            name: Pobór mocy elektrycznej
+            icon: mdi:lightning-bolt
+            grid_options:
+              columns: 4
+
+          - type: tile
+            entity: sensor.rekuperator_constant_flow_active
+            name: Stały przepływ aktywny
+            icon: mdi:weather-windy
+            grid_options:
+              columns: 4
+
+          - type: history-graph
+            title: Sprawność i moc – 24h
+            hours_to_show: 24
+            entities:
+              - entity: sensor.rekuperator_heat_recovery_efficiency
+                name: Sprawność %
+              - entity: sensor.rekuperator_heat_recovery_power
+                name: Moc odzysku
+              - entity: sensor.rekuperator_electrical_power
+                name: Pobór mocy
+            grid_options:
+              columns: 12
+              rows: 4
+
 
 # ─────────────────────────────────────────────────────────────
 # WIDOK 2  KLIMAT
@@ -354,7 +409,7 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_antifreez_stage
+            entity: sensor.rekuperator_antifreeze_stage
             name: Antyzamrożenie (FPX)
             icon: mdi:snowflake-thermometer
             grid_options:
@@ -518,7 +573,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_bypass_coef_2
+            entity: number.rekuperator_bypass_coef_2
             name: Intensywność nawiewu – bypass tryb 2/3
             icon: mdi:percent
             grid_options:
@@ -568,7 +623,7 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_cfg_post_heater_mode
+            entity: select.rekuperator_cfg_post_heater_mode
             name: Tryb ERV (dogrzewacz wtórny)
             icon: mdi:heat-wave
             grid_options:
@@ -777,7 +832,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_gwc_regen_flag
+            entity: binary_sensor.rekuperator_gwc_regen_flag
             name: Regeneracja aktywna
             icon: mdi:restore
             grid_options:
@@ -798,49 +853,49 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_delta_t_gwc
+            entity: number.rekuperator_delta_t_gwc
             name: Delta T regeneracji
             icon: mdi:delta
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_min_gwc_air_temperature
+            entity: number.rekuperator_min_gwc_air_temperature
             name: Min. temp. GWC
             icon: mdi:thermometer-minus
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_max_gwc_air_temperature
+            entity: number.rekuperator_max_gwc_air_temperature
             name: Maks. temp. GWC
             icon: mdi:thermometer-plus
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_start_gwc_regen_summer_time
+            entity: time.rekuperator_start_gwc_regen_summer_time
             name: Start regeneracji – lato
             icon: mdi:clock-start
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_stop_gwc_regen_summer_time
+            entity: time.rekuperator_stop_gwc_regen_summer_time
             name: Stop regeneracji – lato
             icon: mdi:clock-end
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_start_gwc_regen_winter_time
+            entity: time.rekuperator_start_gwc_regen_winter_time
             name: Start regeneracji – zima
             icon: mdi:clock-start
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_stop_gwc_regen_winter_time
+            entity: time.rekuperator_stop_gwc_regen_winter_time
             name: Stop regeneracji – zima
             icon: mdi:clock-end
             grid_options:
@@ -929,7 +984,7 @@ views:
         cards:
 
           - type: tile
-            entity: sensor.rekuperator_alarm
+            entity: binary_sensor.rekuperator_alarm
             name: Alarm E (ostrzeżenie)
             icon: mdi:alert-circle
             color: red
@@ -938,7 +993,7 @@ views:
               rows: 2
 
           - type: tile
-            entity: sensor.rekuperator_error
+            entity: binary_sensor.rekuperator_error
             name: Błąd S (awaria)
             icon: mdi:alert
             color: deep-orange
@@ -979,7 +1034,7 @@ views:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_antifreez_stage
+            entity: sensor.rekuperator_antifreeze_stage
             name: Stopień antyzamrożenia
             icon: mdi:snowflake-thermometer
             grid_options:
@@ -1174,21 +1229,21 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_airing_coef
+            entity: number.rekuperator_airing_coef
             name: Współczynnik wietrzenia (pokoje) [%]
             icon: mdi:percent
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_airing_bathroom_coef
+            entity: number.rekuperator_airing_bathroom_coef
             name: Współczynnik wietrzenia (łazienka) [%]
             icon: mdi:percent
             grid_options:
               columns: 4
 
           - type: tile
-            entity: sensor.rekuperator_hood_exhaust_coef
+            entity: number.rekuperator_hood_exhaust_coef
             name: Wywiew okap [%]
             icon: mdi:range-hood
             grid_options:
@@ -1312,6 +1367,517 @@ views:
           - type: tile
             entity: select.rekuperator_setting_winter_mon_4
             name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Lato (Wtorek)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_tue_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_tue_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_tue_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_tue_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_tue_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Zima (Wtorek)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_tue_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_tue_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Lato (Środa)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_wed_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_wed_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Zima (Środa)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_wed_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_wed_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Lato (Czwartek)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_thu_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_thu_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Zima (Czwartek)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_thu_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_thu_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Lato (Piątek)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_fri_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_fri_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Zima (Piątek)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_fri_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_fri_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Lato (Sobota)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sat_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sat_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Zima (Sobota)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sat_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sat_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Lato (Niedziela)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_summer_sun_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_summer_sun_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram tygodniowy – Zima (Niedziela)
+        cards:
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_1
+            name: Slot 1 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_1
+            name: Slot 1 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_2
+            name: Slot 2 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_2
+            name: Slot 2 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_3
+            name: Slot 3 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_3
+            name: Slot 3 – tryb
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_schedule_winter_sun_4
+            name: Slot 4 – czas
+            grid_options: {columns: 3}
+          - type: tile
+            entity: select.rekuperator_setting_winter_sun_4
+            name: Slot 4 – tryb
+            grid_options: {columns: 3}
+
+      # ── Godziny wietrzenia tygodniowego ───────────────────
+      - type: grid
+        title: Harmonogram wietrzenia – Lato
+        cards:
+          - type: tile
+            entity: time.rekuperator_airing_summer_mon
+            name: Poniedziałek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_summer_tue
+            name: Wtorek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_summer_wed
+            name: Środa
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_summer_thu
+            name: Czwartek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_summer_fri
+            name: Piątek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_summer_sat
+            name: Sobota
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_summer_sun
+            name: Niedziela
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+
+      - type: grid
+        title: Harmonogram wietrzenia – Zima
+        cards:
+          - type: tile
+            entity: time.rekuperator_airing_winter_mon
+            name: Poniedziałek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_winter_tue
+            name: Wtorek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_winter_wed
+            name: Środa
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_winter_thu
+            name: Czwartek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_winter_fri
+            name: Piątek
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_winter_sat
+            name: Sobota
+            icon: mdi:clock-outline
+            grid_options: {columns: 3}
+          - type: tile
+            entity: time.rekuperator_airing_winter_sun
+            name: Niedziela
+            icon: mdi:clock-outline
             grid_options: {columns: 3}
 
       # ── Komunikacja Modbus ─────────────────────────────────
