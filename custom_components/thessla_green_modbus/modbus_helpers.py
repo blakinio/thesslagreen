@@ -380,12 +380,18 @@ async def _call_modbus(
 def group_reads(
     addresses: Iterable[int],
     max_block_size: int | None = None,
+    boundaries: frozenset[int] | None = None,
 ) -> list[tuple[int, int]]:
     """Group raw register addresses into contiguous read blocks.
 
     The addresses are sorted and sequential ranges are merged up to
     ``max_block_size`` entries.  The returned list contains ``(start, length)``
     tuples suitable for bulk Modbus read operations.
+
+    ``boundaries`` is an optional set of addresses at which a new batch must
+    start regardless of contiguity.  Use this to prevent batches from spanning
+    register regions that a device firmware cannot handle in a single request
+    (e.g. AirPack4 FW 3.11 rejects FC03 reads that cross addr 15→16).
     """
 
     if max_block_size is None:
@@ -398,7 +404,8 @@ def group_reads(
     groups: list[tuple[int, int]] = []
     start = prev = sorted_addresses[0]
     for addr in sorted_addresses[1:]:
-        if addr == prev + 1 and (addr - start + 1) <= max_block_size:
+        force_split = boundaries is not None and addr in boundaries
+        if not force_split and addr == prev + 1 and (addr - start + 1) <= max_block_size:
             prev = addr
             continue
         groups.append((start, prev - start + 1))

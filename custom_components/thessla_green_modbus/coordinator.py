@@ -181,6 +181,7 @@ from .const import (
     DEFAULT_SERIAL_PORT,
     DEFAULT_STOP_BITS,
     DOMAIN,
+    HOLDING_BATCH_BOUNDARIES,
     KNOWN_MISSING_REGISTERS,
     MANUFACTURER,
     MAX_REGS_PER_REQUEST,
@@ -1059,7 +1060,12 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     length = 1
                 addresses.extend(range(addr, addr + length))
 
-            self._register_groups[key] = group_reads(addresses, max_block_size=self.effective_batch)
+            boundaries = HOLDING_BATCH_BOUNDARIES if key == "holding_registers" else None
+            self._register_groups[key] = group_reads(
+                addresses,
+                max_block_size=self.effective_batch,
+                boundaries=boundaries,
+            )
 
         _LOGGER.debug(
             "Pre-computed register groups: %s",

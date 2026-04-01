@@ -32,6 +32,14 @@ MAX_REGISTERS_PER_REQUEST = 16
 MAX_REGS_PER_REQUEST = MAX_REGISTERS_PER_REQUEST
 MAX_BATCH_REGISTERS = MAX_REGISTERS_PER_REQUEST
 
+# Holding register addresses where a new batch must start.
+# FW 3.11: a batch that spans system registers (addr ≤15) and schedule
+# registers (addr ≥16) returns corrupt bytes and raises an exception.
+# Forcing a split at addr 16 keeps access_level (15) in its own batch and
+# schedule_summer_* (16+) in a separate one — eliminating the firmware bug
+# without relying on the individual-read fallback every poll cycle.
+HOLDING_BATCH_BOUNDARIES: frozenset[int] = frozenset({16})
+
 
 @cache
 def _build_map(fn: str) -> dict[str, int]:
