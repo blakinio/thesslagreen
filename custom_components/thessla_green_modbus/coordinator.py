@@ -980,6 +980,13 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         ):
             self.available_registers["input_registers"].add("serial_number")
 
+        # Strip registers known to be absent on this device family.
+        # This prevents stale cache entries from causing repeated EC2 errors
+        # when KNOWN_MISSING_REGISTERS is updated after a cache was saved.
+        for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+            if reg_type in self.available_registers:
+                self.available_registers[reg_type].difference_update(names)
+
         return True
 
     def _store_scan_cache(self) -> None:  # pragma: no cover

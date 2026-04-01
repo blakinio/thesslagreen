@@ -323,12 +323,12 @@ async def test_verify_connection_transport_close_exception_in_finally(caplog):
 
 @pytest.mark.asyncio
 async def test_is_valid_temperature_sensor_unavailable():
-    """Line 889: temperature register with SENSOR_UNAVAILABLE is invalid."""
+    """Temperature register with SENSOR_UNAVAILABLE means sensor not connected — register EXISTS."""
     scanner = await _make_scanner()
     scanner._register_ranges = {}
-    # A register with 'temperature' but NOT in SENSOR_UNAVAILABLE_REGISTERS
+    # A register with 'temperature' in its name: 0x8000 means sensor disconnected, not absent
     result = scanner._is_valid_register_value("coolant_temperature_extra", SENSOR_UNAVAILABLE)
-    assert result is False
+    assert result is True
 
 
 @pytest.mark.asyncio
