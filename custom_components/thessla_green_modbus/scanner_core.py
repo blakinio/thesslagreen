@@ -66,6 +66,7 @@ from .const import (
     DEFAULT_SERIAL_PORT,
     DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
+    HOLDING_BATCH_BOUNDARIES,
     KNOWN_MISSING_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
@@ -818,7 +819,11 @@ class ThesslaGreenDeviceScanner:
                         count=count,
                     )
 
-                for start, count in _group_reads(safe_holding, max_block_size=self.effective_batch):
+                for start, count in _group_reads(
+                    safe_holding,
+                    max_block_size=self.effective_batch,
+                    boundaries=HOLDING_BATCH_BOUNDARIES,
+                ):
                     _LOGGER.debug(
                         "verify_connection: read_holding_registers start=%s count=%s",
                         start,
@@ -971,7 +976,12 @@ class ThesslaGreenDeviceScanner:
         return caps
 
     def _group_registers_for_batch_read(
-        self, addresses: list[int], *, max_gap: int = 1, max_batch: int | None = None
+        self,
+        addresses: list[int],
+        *,
+        max_gap: int = 1,
+        max_batch: int | None = None,
+        boundaries: frozenset[int] | None = None,
     ) -> list[tuple[int, int]]:
         """Group consecutive register addresses for efficient batch reads.
 
@@ -999,7 +1009,7 @@ class ThesslaGreenDeviceScanner:
         # First, compute contiguous blocks using the generic ``group_reads``
         # helper.  ``max_gap`` is kept for API compatibility but is not
         # required when using ``group_reads`` which already splits on gaps.
-        groups = _group_reads(addresses, max_block_size=max_batch)
+        groups = _group_reads(addresses, max_block_size=max_batch, boundaries=boundaries)
 
         if not self._known_missing_addresses:
             return groups
@@ -1287,9 +1297,13 @@ class ThesslaGreenDeviceScanner:
         addr_to_names: dict[int, set[str]],
         addresses: list[int],
         read_fn,
+        *,
+        boundaries: frozenset[int] | None = None,
     ) -> None:
         """Read a batch of registers of one FC type, with per-address fallback."""
-        for start, count in self._group_registers_for_batch_read(addresses):
+        for start, count in self._group_registers_for_batch_read(
+            addresses, boundaries=boundaries
+        ):
             try:
                 data = await read_fn(start, count)
             except TypeError:
@@ -1374,7 +1388,13 @@ class ThesslaGreenDeviceScanner:
             except TypeError:
                 return await self._read_holding(start, count, skip_cache=skip_cache)
 
-        await self._scan_register_batch("holding_registers", addr_to_names, holding_addresses, _read)
+        await self._scan_register_batch(
+            "holding_registers",
+            addr_to_names,
+            holding_addresses,
+            _read,
+            boundaries=HOLDING_BATCH_BOUNDARIES,
+        )
 
         # Expose error/alarm registers that didn't explicitly fail
         failed_addrs = self.failed_addresses["modbus_exceptions"]["holding_registers"]

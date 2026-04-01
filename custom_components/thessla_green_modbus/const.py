@@ -33,12 +33,17 @@ MAX_REGS_PER_REQUEST = MAX_REGISTERS_PER_REQUEST
 MAX_BATCH_REGISTERS = MAX_REGISTERS_PER_REQUEST
 
 # Holding register addresses where a new batch must start.
-# FW 3.11: a batch that spans system registers (addr ≤15) and schedule
-# registers (addr ≥16) returns corrupt bytes and raises an exception.
-# Forcing a split at addr 16 keeps access_level (15) in its own batch and
-# schedule_summer_* (16+) in a separate one — eliminating the firmware bug
-# without relying on the individual-read fallback every poll cycle.
-HOLDING_BATCH_BOUNDARIES: frozenset[int] = frozenset({16})
+#
+# addr 16: FW 3.11 rejects FC03 batches that cross from system registers
+#   (addr ≤15, e.g. access_level) into schedule registers (addr ≥16).
+#   Keeping access_level (15) in its own batch and schedule_summer_* in a
+#   separate one eliminates repeated batch exceptions every poll cycle.
+#
+# addr 8192 (0x2000): page boundary in the AirPack4 memory map.
+#   A batch spanning 0x1FFF→0x2000 covers lock_pass/lock_flag (0x1FFB-0x1FFF)
+#   and alarm/error/filter_change (0x2000+).  Splitting here ensures alarm
+#   and error registers are always read reliably.
+HOLDING_BATCH_BOUNDARIES: frozenset[int] = frozenset({16, 8192})
 
 
 @cache
