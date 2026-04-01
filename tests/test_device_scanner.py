@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP, SENSOR_UNAVAILABLE
+from custom_components.thessla_green_modbus.const import (
+    CONNECTION_MODE_TCP,
+    KNOWN_MISSING_REGISTERS,
+    SENSOR_UNAVAILABLE,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -583,7 +587,9 @@ async def test_scan_device_success_dynamic():
     assert "access_level" in result["available_registers"]["holding_registers"]
     assert "power_supply_fans" in result["available_registers"]["coil_registers"]
     assert "expansion" in result["available_registers"]["discrete_inputs"]
-    assert set(result["available_registers"]["input_registers"]) == set(INPUT_REGISTERS.keys())
+    assert set(result["available_registers"]["input_registers"]) == (
+        set(INPUT_REGISTERS.keys()) - KNOWN_MISSING_REGISTERS.get("input_registers", set())
+    )
     assert set(result["available_registers"]["holding_registers"]) <= set(HOLDING_REGISTERS.keys())
     assert set(result["available_registers"]["coil_registers"]) == set(COIL_REGISTERS.keys())
     assert set(result["available_registers"]["discrete_inputs"]) == set(
@@ -1208,9 +1214,10 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("test_register", 100) is True
     assert scanner._is_valid_register_value("test_register", 0) is True
 
-    # SENSOR_UNAVAILABLE should be treated as unavailable for temperature and airflow sensors
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-    assert scanner._is_valid_register_value("supply_flow_rate", SENSOR_UNAVAILABLE) is False
+    # SENSOR_UNAVAILABLE (0x8000) means the register EXISTS but sensor is not connected.
+    # The register must produce an entity (shown as "unavailable" in HA), so return True.
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+    assert scanner._is_valid_register_value("supply_flow_rate", SENSOR_UNAVAILABLE) is True
 
     # Mode values respect allowed set
     assert scanner._is_valid_register_value("mode", 1) is True
@@ -1306,10 +1313,10 @@ async def test_format_register_value_invalid_time():
 
 
 async def test_scan_excludes_unavailable_temperature():
-    """Temperature register with SENSOR_UNAVAILABLE should be excluded."""
+    """Temperature register with SENSOR_UNAVAILABLE should be included (sensor disconnected, register exists)."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
-    async def fake_read_input(client, address, count):
+    async def fake_read_input(client, address, count, **kwargs):
         data = [1] * count
         if address == 0:
             data[0:3] = [4, 85, 0]
@@ -1321,10 +1328,10 @@ async def test_scan_excludes_unavailable_temperature():
     async def fake_read_holding(client, address, count, **kwargs):
         return [1] * count
 
-    async def fake_read_coil(client, address, count):
+    async def fake_read_coil(client, address, count, **kwargs):
         return [False] * count
 
-    async def fake_read_discrete(client, address, count):
+    async def fake_read_discrete(client, address, count, **kwargs):
         return [False] * count
 
     with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
@@ -1341,15 +1348,15 @@ async def test_scan_excludes_unavailable_temperature():
             scanner.connection_mode = CONNECTION_MODE_TCP
             result = await scanner.scan_device()
 
-    assert "outside_temperature" not in result["available_registers"]["input_registers"]
+    assert "outside_temperature" in result["available_registers"]["input_registers"]
 
 
 async def test_temperature_unavailable_no_warning(caplog):
-    """SENSOR_UNAVAILABLE should not log a warning for temperature sensors."""
+    """SENSOR_UNAVAILABLE should not log a warning — register exists, sensor just not connected."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
     caplog.set_level(logging.WARNING)
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
     assert "outside_temperature" not in caplog.text
 
 

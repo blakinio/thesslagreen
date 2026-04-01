@@ -880,11 +880,16 @@ class ThesslaGreenDeviceScanner:
         if value == 65535:
             return False
 
+        # Registers in SENSOR_UNAVAILABLE_REGISTERS return 0x8000 when a sensor
+        # is not physically connected. The register itself EXISTS and must produce
+        # an entity (shown as "unavailable" in HA). Only EC2 responses mean the
+        # register is truly absent. Accept 0x8000 here — coordinator and sensor.py
+        # already handle it correctly via the SENSOR_UNAVAILABLE sentinel.
         if name in SENSOR_UNAVAILABLE_REGISTERS and value == SENSOR_UNAVAILABLE:
-            return False
+            return True
 
         if "temperature" in name and value == SENSOR_UNAVAILABLE:
-            return False
+            return True
 
         allowed = REGISTER_ALLOWED_VALUES.get(name)
         if allowed is not None and value not in allowed:
@@ -1331,7 +1336,7 @@ class ThesslaGreenDeviceScanner:
         addr_to_names: dict[int, set[str]] = {}
         addresses: list[int] = []
         for addr, name in input_registers.items():
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["input_registers"]:
+            if name in KNOWN_MISSING_REGISTERS.get("input_registers", set()):
                 continue
             addr_to_names.setdefault(addr, set()).add(name)
             addresses.append(addr)
@@ -1351,8 +1356,8 @@ class ThesslaGreenDeviceScanner:
         for addr, name in holding_registers.items():
             if not self.scan_uart_settings and addr in UART_OPTIONAL_REGS:
                 continue
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["holding_registers"]:
-                continue  # pragma: no cover
+            if name in KNOWN_MISSING_REGISTERS.get("holding_registers", set()):
+                continue
             size = MULTI_REGISTER_SIZES.get(name, 1)
             if addr in holding_info:
                 names, _ = holding_info[addr]  # pragma: no cover
@@ -1383,8 +1388,8 @@ class ThesslaGreenDeviceScanner:
         addr_to_names: dict[int, set[str]] = {}
         addresses: list[int] = []
         for addr, name in coil_registers.items():
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["coil_registers"]:
-                continue  # pragma: no cover
+            if name in KNOWN_MISSING_REGISTERS.get("coil_registers", set()):
+                continue
             addr_to_names.setdefault(addr, set()).add(name)
             addresses.append(addr)
 
@@ -1411,8 +1416,8 @@ class ThesslaGreenDeviceScanner:
         addr_to_names: dict[int, set[str]] = {}
         addresses: list[int] = []
         for addr, name in discrete_registers.items():
-            if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS["discrete_inputs"]:
-                continue  # pragma: no cover
+            if name in KNOWN_MISSING_REGISTERS.get("discrete_inputs", set()):
+                continue
             addr_to_names.setdefault(addr, set()).add(name)
             addresses.append(addr)
 
@@ -1519,7 +1524,7 @@ class ThesslaGreenDeviceScanner:
         for reg_type, mapping in register_maps.items():
             missing: dict[str, int] = {}
             for name, addr in mapping.items():
-                if self.skip_known_missing and name in KNOWN_MISSING_REGISTERS[reg_type]:
+                if name in KNOWN_MISSING_REGISTERS.get(reg_type, set()):
                     continue
                 if name not in self.available_registers[reg_type]:
                     missing[name] = addr

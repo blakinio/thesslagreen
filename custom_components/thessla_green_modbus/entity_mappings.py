@@ -26,7 +26,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 try:  # pragma: no cover - handle absence of Home Assistant
     from homeassistant.components.binary_sensor import BinarySensorDeviceClass
     from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+    from homeassistant.helpers.entity import EntityCategory
 except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tests without HA
+
+    class EntityCategory:  # type: ignore[no-redef]
+        DIAGNOSTIC = "diagnostic"
+        CONFIG = "config"
 
     class BinarySensorDeviceClass:  # type: ignore[no-redef]
         RUNNING = "running"
@@ -522,7 +527,7 @@ def _load_discrete_mappings() -> tuple[
         binary_configs[reg] = {
             "translation_key": reg,
             "register_type": "holding_registers",
-            "entity_category": "diagnostic",
+            "entity_category": EntityCategory.DIAGNOSTIC,
         }
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)
@@ -751,37 +756,37 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "version_major",
         "icon": "mdi:information",
         "register_type": "input_registers",
-        "entity_category": "diagnostic",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     "version_minor": {
         "translation_key": "version_minor",
         "icon": "mdi:information",
         "register_type": "input_registers",
-        "entity_category": "diagnostic",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     "version_patch": {
         "translation_key": "version_patch",
         "icon": "mdi:information",
         "register_type": "input_registers",
-        "entity_category": "diagnostic",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     "serial_number": {
         "translation_key": "serial_number",
         "icon": "mdi:barcode",
         "register_type": "input_registers",
-        "entity_category": "diagnostic",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     "cf_version": {
         "translation_key": "cf_version",
         "icon": "mdi:information",
         "register_type": "holding_registers",
-        "entity_category": "diagnostic",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     "exp_version": {
         "translation_key": "exp_version",
         "icon": "mdi:information-outline",
         "register_type": "holding_registers",
-        "entity_category": "diagnostic",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     # Mode and status sensors
     "antifreeze_stage": {
@@ -977,7 +982,7 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "state_class": None,
         "unit": None,
         "register_type": "calculated",
-        "entity_category": "diagnostic",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     "heat_recovery_efficiency": {
         "translation_key": "heat_recovery_efficiency",

@@ -980,6 +980,13 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         ):
             self.available_registers["input_registers"].add("serial_number")
 
+        # Strip registers known to be absent on this device family.
+        # This prevents stale cache entries from causing repeated EC2 errors
+        # when KNOWN_MISSING_REGISTERS is updated after a cache was saved.
+        for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+            if reg_type in self.available_registers:
+                self.available_registers[reg_type].difference_update(names)
+
         return True
 
     def _store_scan_cache(self) -> None:  # pragma: no cover
@@ -1540,6 +1547,48 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
         return data
 
+    async def _read_holding_individually(
+        self,
+        read_method: Any,
+        chunk_start: int,
+        register_names: list[str | None],
+        data: dict[str, Any],
+    ) -> None:  # pragma: no cover
+        """Read holding registers one-by-one as fallback when a batch read fails.
+
+        Called both when the device returns an empty batch (len == 0) and when
+        the batch raises a Modbus exception (e.g. AirPack4 FW 3.11 bug on
+        schedule_summer addr 15-30 which returns corrupt bytes instead of data).
+        """
+        for idx, reg_name in enumerate(register_names):
+            if not reg_name:
+                continue
+            addr = chunk_start + idx
+            try:
+                single = await self._read_with_retry(
+                    read_method, addr, 1, register_type="holding"
+                )
+                if single.registers:
+                    pv = self._process_register_value(reg_name, single.registers[0])
+                    if pv is not None:
+                        data[reg_name] = pv
+                        self.statistics["total_registers_read"] += 1
+                        self._clear_register_failure(reg_name)
+                        _LOGGER.debug(
+                            "Read holding %d (%s) = %s (individual fallback)",
+                            addr,
+                            reg_name,
+                            pv,
+                        )
+                    else:
+                        self._mark_registers_failed([reg_name])
+                else:
+                    self._mark_registers_failed([reg_name])
+            except _PermanentModbusError:
+                self._mark_registers_failed([reg_name])
+            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+                self._mark_registers_failed([reg_name])
+
     async def _read_holding_registers_optimized(self) -> dict[str, Any]:  # pragma: no cover
         """Read holding registers using optimized batch reading."""
         data: dict[str, Any] = {}
@@ -1605,41 +1654,20 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     if len(response.registers) < chunk_count:
                         if len(response.registers) == 0:
                             # Batch returned nothing — fall back to individual reads
-                            for idx, reg_name in enumerate(register_names):
-                                if not reg_name:
-                                    continue
-                                addr = chunk_start + idx
-                                try:
-                                    single = await self._read_with_retry(
-                                        read_method, addr, 1, register_type="holding"
-                                    )
-                                    if single.registers:
-                                        pv = self._process_register_value(reg_name, single.registers[0])
-                                        if pv is not None:
-                                            data[reg_name] = pv
-                                            self.statistics["total_registers_read"] += 1
-                                            self._clear_register_failure(reg_name)
-                                            _LOGGER.debug(
-                                                "Read holding %d (%s) = %s (individual fallback)",
-                                                addr, reg_name, pv,
-                                            )
-                                        else:
-                                            self._mark_registers_failed([reg_name])
-                                    else:
-                                        self._mark_registers_failed([reg_name])
-                                except _PermanentModbusError:
-                                    self._mark_registers_failed([reg_name])
-                                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                                    self._mark_registers_failed([reg_name])
+                            await self._read_holding_individually(
+                                read_method, chunk_start, register_names, data
+                            )
                         else:
                             missing = register_names[len(response.registers) :]
                             self._mark_registers_failed(missing)
                 except _PermanentModbusError:
                     self._mark_registers_failed(register_names)
-                    continue
                 except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    continue
+                    # Batch raised an exception (e.g. firmware bug returning corrupt bytes).
+                    # Attempt individual reads so writes remain visible on the next poll.
+                    await self._read_holding_individually(
+                        read_method, chunk_start, register_names, data
+                    )
 
         return data
 

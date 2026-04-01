@@ -550,11 +550,11 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("schedule_summer_mon_1", 1024) is True
         assert scanner._is_valid_register_value("schedule_summer_mon_1", 8704) is True
 
-        # SENSOR_UNAVAILABLE is always treated as unavailable for temperature sensors
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
-        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is False
+        # SENSOR_UNAVAILABLE (0x8000) means sensor not connected — register EXISTS, return True
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
+        assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
 
         # Invalid air flow value
         assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
