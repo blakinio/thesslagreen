@@ -2277,6 +2277,9 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                             continue
 
                         refresh_after_write = refresh
+                        # Successful write: remove from failed set so the next
+                        # poll doesn't skip this register's chunk entirely.
+                        self._clear_register_failure(register_name)
                         _LOGGER.info(
                             "Successfully wrote %s to register %s",
                             original_value,
