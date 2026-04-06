@@ -219,7 +219,7 @@ views:
             grid_options:
               columns: 3
           - type: tile
-            entity: switch.rekuperator_comfort_mode
+            entity: switch.rekuperator_comfort_mode_panel
             name: Komfort
             icon: mdi:sofa
             color: purple
@@ -606,7 +606,7 @@ views:
             grid_options:
               columns: 6
           - type: tile
-            entity: switch.rekuperator_bypass_active
+            entity: switch.rekuperator_bypass_off
             name: Zablokuj bypass
             icon: mdi:pipe-off
             color: orange
@@ -849,7 +849,7 @@ views:
             grid_options:
               columns: 4
           - type: tile
-            entity: switch.rekuperator_gwc_active
+            entity: switch.rekuperator_gwc_off
             name: Zablokuj GWC
             icon: mdi:pipe-off
             color: orange
@@ -868,7 +868,7 @@ views:
             grid_options:
               columns: 4
           - type: tile
-            entity: select.rekuperator_gwc_regeneration
+            entity: select.rekuperator_gwc_regen
             name: Typ regeneracji
             icon: mdi:autorenew
             grid_options:
@@ -960,13 +960,13 @@ views:
             grid_options:
               columns: 6
           - type: tile
-            entity: select.rekuperator_filter_type
+            entity: select.rekuperator_filter_change
             name: Typ filtrów
             icon: mdi:filter-cog
             grid_options:
               columns: 6
           - type: tile
-            entity: select.rekuperator_filter_check_day_of_week
+            entity: select.rekuperator_pres_check_day
             name: Dzień kontroli filtrów
             icon: mdi:calendar-check
             grid_options:
@@ -1036,119 +1036,119 @@ views:
           - type: heading
             heading: Kody błędów E – diagnostyka
           - type: tile
-            entity: binary_sensor.rekuperator_e99_airpack_product_key_required
+            entity: binary_sensor.rekuperator_e_99
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e100_outdoor_air_sensor_failure_tz1
+            entity: binary_sensor.rekuperator_e_100
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e101_supply_air_sensor_failure_tn1
+            entity: binary_sensor.rekuperator_e_101
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e102_exhaust_air_sensor_failure_tp
+            entity: binary_sensor.rekuperator_e_102
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e103_hx_inlet_sensor_failure_tz2
+            entity: binary_sensor.rekuperator_e_103
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e104_room_temp_sensor_failure_to
+            entity: binary_sensor.rekuperator_e_104
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e105_duct_hx_supply_sensor_failure_tn2
+            entity: binary_sensor.rekuperator_e_105
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e106_gwc_outdoor_sensor_failure_tz3
+            entity: binary_sensor.rekuperator_e_106
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e108_no_reading_from_tw_sensor
+            entity: binary_sensor.rekuperator_e_108
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e138_supply_fan_cf_sensor_failure
+            entity: binary_sensor.rekuperator_e_138
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e139_exhaust_fan_cf_sensor_failure
+            entity: binary_sensor.rekuperator_e_139
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e140_supply_filter_cf_sensor_fault
+            entity: binary_sensor.rekuperator_e_140
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e141_exhaust_filter_cf_sensor_fault
+            entity: binary_sensor.rekuperator_e_141
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e144_supply_airflow_maintenance_error
+            entity: binary_sensor.rekuperator_e_144
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e145_exhaust_airflow_maintenance_error
+            entity: binary_sensor.rekuperator_e_145
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e148_supply_filter_wear_above_threshold
+            entity: binary_sensor.rekuperator_e_148
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e149_exhaust_filter_wear_above_threshold
+            entity: binary_sensor.rekuperator_e_149
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e150_supply_filter_replacement_required
+            entity: binary_sensor.rekuperator_e_150
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e151_exhaust_filter_replacement_required
+            entity: binary_sensor.rekuperator_e_151
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e152_exhaust_air_temp_too_high
+            entity: binary_sensor.rekuperator_e_152
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e156_supply_filter_service_time_elapsed
+            entity: binary_sensor.rekuperator_e_156
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e157_exhaust_filter_service_time_elapsed
+            entity: binary_sensor.rekuperator_e_157
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e200_central_heater_overprotection
+            entity: binary_sensor.rekuperator_e_200
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e201_duct_heater_overprotection
+            entity: binary_sensor.rekuperator_e_201
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e202_secondary_heater_control_failure
+            entity: binary_sensor.rekuperator_e_202
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e203_secondary_heater_control_failure_2
+            entity: binary_sensor.rekuperator_e_203
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e249_no_expansion_module_communication
+            entity: binary_sensor.rekuperator_e_249
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e250_ahu_filter_replacement_required
+            entity: binary_sensor.rekuperator_e_250
             grid_options:
               columns: 3
           - type: tile
-            entity: binary_sensor.rekuperator_e251_duct_filter_replacement_required
+            entity: binary_sensor.rekuperator_e_251
             grid_options:
               columns: 3
           - type: tile
@@ -1295,7 +1295,7 @@ views:
             grid_options:
               columns: 6
           - type: tile
-            entity: switch.rekuperator_comfort_mode
+            entity: switch.rekuperator_comfort_mode_panel
             name: Tryb komfort
             icon: mdi:sofa
             color: purple
@@ -1308,7 +1308,7 @@ views:
             grid_options:
               columns: 6
           - type: tile
-            entity: select.rekuperator_gwc_regeneration
+            entity: select.rekuperator_gwc_regen
             name: Regeneracja GWC
             icon: mdi:autorenew
             grid_options:
@@ -2266,19 +2266,19 @@ views:
             heading: Port Air-B (UART 0)
             icon: mdi:serial-port
           - type: tile
-            entity: select.rekuperator_port_0_baud_rate
+            entity: select.rekuperator_uart_0_baud
             name: Prędkość transmisji
             icon: mdi:speedometer
             grid_options:
               columns: 3
           - type: tile
-            entity: select.rekuperator_port_0_parity
+            entity: select.rekuperator_uart_0_parity
             name: Parzystość
             icon: mdi:sine-wave
             grid_options:
               columns: 3
           - type: tile
-            entity: select.rekuperator_port_0_stop_bits
+            entity: select.rekuperator_uart_0_stop
             name: Bity stopu
             icon: mdi:stop-circle-outline
             grid_options:
@@ -2293,19 +2293,19 @@ views:
             heading: Port Air++ (UART 1)
             icon: mdi:serial-port
           - type: tile
-            entity: select.rekuperator_port_1_baud_rate
+            entity: select.rekuperator_uart_1_baud
             name: Prędkość transmisji
             icon: mdi:speedometer
             grid_options:
               columns: 3
           - type: tile
-            entity: select.rekuperator_port_1_parity
+            entity: select.rekuperator_uart_1_parity
             name: Parzystość
             icon: mdi:sine-wave
             grid_options:
               columns: 3
           - type: tile
-            entity: select.rekuperator_port_1_stop_bits
+            entity: select.rekuperator_uart_1_stop
             name: Bity stopu
             icon: mdi:stop-circle-outline
             grid_options:

@@ -44,6 +44,16 @@ class ThesslaGreenEntity(CoordinatorEntity):
         self._attr_device_info = coordinator.get_device_info()  # pragma: no cover
 
     @property
+    def suggested_object_id(self) -> str:
+        """Return suggested entity object ID based on register key.
+
+        Using the register key (not the translated name) guarantees that
+        entity_ids are stable regardless of translation changes and are
+        predictable from the register map.
+        """
+        return self._key
+
+    @property
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
         bit_suffix = f"_bit{self._bit}" if self._bit is not None else ""
