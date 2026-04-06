@@ -225,6 +225,139 @@ views:
             color: purple
             grid_options:
               columns: 3
+
+      # ── Stan operacyjny ────────────────────────────────────
+      - type: grid
+        title: Stan operacyjny (tryby aktywne)
+        cards:
+
+          - type: tile
+            entity: binary_sensor.rekuperator_bypass
+            name: Bypass aktywny
+            icon: mdi:pipe-valve
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_gwc
+            name: GWC aktywny
+            icon: mdi:heat-wave
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_antifreeze_mode
+            name: Antyzamrożenie
+            icon: mdi:snowflake-alert
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_post_heater_on
+            name: Dogrzewacz ERV
+            icon: mdi:heating-coil
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_heating_cable
+            name: Kabel grzejny
+            icon: mdi:electric-switch
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_water_removal_active
+            name: Odprowadzanie wody
+            icon: mdi:water-minus
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_fireplace
+            name: Kominek (status)
+            icon: mdi:fireplace
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_empty_house
+            name: Nieobecność (status)
+            icon: mdi:home-off
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_work_permit
+            name: Zezwolenie pracy
+            icon: mdi:check-circle-outline
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_info
+            name: Potwierdzenie pracy
+            icon: mdi:information
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_fan_speed_1
+            name: Bieg 1
+            icon: mdi:fan-speed-1
+            grid_options: {columns: 2}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_fan_speed_2
+            name: Bieg 2
+            icon: mdi:fan-speed-2
+            grid_options: {columns: 2}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_fan_speed_3
+            name: Bieg 3
+            icon: mdi:fan-speed-3
+            grid_options: {columns: 2}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_airing_switch
+            name: Wietrzenie (przełącznik)
+            icon: mdi:toggle-switch
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_airing_sensor
+            name: Wietrzenie (czujnik)
+            icon: mdi:motion-sensor
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_airing_mini
+            name: Wietrzenie (mini)
+            icon: mdi:fan-minus
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_hood_switch
+            name: Okap (wejście)
+            icon: mdi:range-hood
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_hood_output
+            name: Okap (wyjście)
+            icon: mdi:range-hood
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_power_supply_fans
+            name: Zasilanie wentylatorów
+            icon: mdi:fan-alert
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_duct_water_heater_pump
+            name: Pompa nagrzewnicy
+            icon: mdi:pump
+            grid_options: {columns: 3}
+
+          - type: tile
+            entity: binary_sensor.rekuperator_expansion
+            name: Moduł rozszerzeń
+            icon: mdi:expansion-card
+            grid_options: {columns: 3}
+
+      # ── Alarmy ─────────────────────────────────────────────
       - type: grid
         cards:
           - type: heading
@@ -1019,10 +1152,120 @@ views:
             grid_options:
               columns: 3
           - type: tile
-            entity: >-
-              binary_sensor.rekuperator_e252_ahu_filter_replacement_required_with_pressure_switch
-            grid_options:
-              columns: 3
+            entity: binary_sensor.rekuperator_e_252
+            grid_options: {columns: 3}
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199
+            name: E196–E199 (zbiorczo)
+            grid_options: {columns: 3}
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_196
+            grid_options: {columns: 3}
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_197
+            grid_options: {columns: 3}
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_198
+            grid_options: {columns: 3}
+          - type: tile
+            entity: binary_sensor.rekuperator_e_196_e_199_e_199
+            grid_options: {columns: 3}
+
+      # ── Kody F – filtry (diagnostyczne) ───────────────────
+      - type: grid
+        title: Kody F – filtry
+        cards:
+          - type: tile
+            entity: binary_sensor.rekuperator_f_142
+            grid_options: {columns: 6}
+          - type: tile
+            entity: binary_sensor.rekuperator_f_143
+            grid_options: {columns: 6}
+          - type: tile
+            entity: binary_sensor.rekuperator_f_146
+            grid_options: {columns: 6}
+          - type: tile
+            entity: binary_sensor.rekuperator_f_147
+            grid_options: {columns: 6}
+
+      # ── Kody S – statusy systemowe ─────────────────────────
+      - type: grid
+        title: Kody S – statusy systemowe
+        cards:
+          - type: tile
+            entity: binary_sensor.rekuperator_s_2
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_6
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_7
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_8
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_9
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_10
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_13
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_14
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_15
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_16
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_17
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_19
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_20
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_22
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_23
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_24
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_25
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_26
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_28
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_29
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_30
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_31
+            grid_options: {columns: 4}
+          - type: tile
+            entity: binary_sensor.rekuperator_s_32
+            grid_options: {columns: 4}
+
+
+# ─────────────────────────────────────────────────────────────
+# WIDOK 5  USTAWIENIA
+# ─────────────────────────────────────────────────────────────
   - title: Ustawienia
     path: settings
     icon: mdi:cog-outline
@@ -1070,6 +1313,45 @@ views:
             icon: mdi:autorenew
             grid_options:
               columns: 6
+
+          - type: tile
+            entity: switch.rekuperator_summer
+            name: Tryb letni
+            icon: mdi:weather-sunny
+            color: amber
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: switch.rekuperator_winter
+            name: Tryb zimowy
+            icon: mdi:snowflake
+            color: blue
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: select.rekuperator_special_mode
+            name: Tryb specjalny (bieżący)
+            icon: mdi:star-settings
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: select.rekuperator_language
+            name: Język interfejsu
+            icon: mdi:translate
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: select.rekuperator_access_level
+            name: Poziom dostępu (serwis)
+            icon: mdi:shield-key
+            grid_options:
+              columns: 6
+
+      # ── Nastawa temperatury i przepływu ────────────────────
       - type: grid
         cards:
           - type: heading
@@ -1755,6 +2037,226 @@ views:
             icon: mdi:clock-outline
             grid_options: {columns: 3}
 
+      # ── Nastawy zaawansowane ──────────────────────────────
+      - type: grid
+        title: Nastawy zaawansowane
+        cards:
+
+          - type: tile
+            entity: number.rekuperator_max_supply_air_flow_rate
+            name: Maks. nawiew [m³/h]
+            icon: mdi:arrow-up-bold
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_max_exhaust_air_flow_rate
+            name: Maks. wywiew [m³/h]
+            icon: mdi:arrow-down-bold
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_bypass_coef_1
+            name: Bypass – intensywność tryb 1
+            icon: mdi:percent
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_fan_speed_1_coef
+            name: Bieg 1 [%]
+            icon: mdi:fan-speed-1
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_fan_speed_2_coef
+            name: Bieg 2 [%]
+            icon: mdi:fan-speed-2
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_fan_speed_3_coef
+            name: Bieg 3 [%]
+            icon: mdi:fan-speed-3
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_empty_house_coef
+            name: Współcz. nieobecność [%]
+            icon: mdi:home-off
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_fireplace_supply_coef
+            name: Nawiew kominek [%]
+            icon: mdi:fireplace
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_hood_supply_coef
+            name: Nawiew okap [%]
+            icon: mdi:range-hood
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_contamination_coef
+            name: Czujnik zanieczyszczeń [%]
+            icon: mdi:air-purifier
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_airing_switch_coef
+            name: Wietrzenie przełącznik [%]
+            icon: mdi:toggle-switch
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_gwc_regen_period
+            name: Okres regeneracji GWC [h]
+            icon: mdi:timer-sand
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_air_temperature_summer_free_heating
+            name: Próg Free Heating [°C]
+            icon: mdi:sun-thermometer
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_air_temperature_summer_free_cooling
+            name: Próg Free Cooling [°C]
+            icon: mdi:snowflake-thermometer
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_min_bypass_temperature
+            name: Min. temp. bypass [°C]
+            icon: mdi:thermometer-minus
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_cfgszf_fn_new
+            name: Zużycie filtra nawiewu [%]
+            icon: mdi:filter-settings
+            grid_options: {columns: 6}
+
+          - type: tile
+            entity: number.rekuperator_cfgszf_fw_new
+            name: Zużycie filtra wywiewu [%]
+            icon: mdi:filter-settings
+            grid_options: {columns: 6}
+
+          - type: tile
+            entity: number.rekuperator_air_flow_rate_temporary
+            name: Przepływ tymczasowy [%]
+            icon: mdi:timer-play
+            grid_options: {columns: 6}
+
+          - type: tile
+            entity: number.rekuperator_supply_air_temperature_temporary
+            name: Temp. nawiewu tymczasowa [°C]
+            icon: mdi:thermometer-play
+            grid_options: {columns: 6}
+
+          - type: tile
+            entity: number.rekuperator_open_window_coef
+            name: Otwarte okno [%]
+            icon: mdi:window-open
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_max_supply_air_flow_rate_gwc
+            name: Maks. nawiew GWC [m³/h]
+            icon: mdi:arrow-up-bold
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_max_exhaust_air_flow_rate_gwc
+            name: Maks. wywiew GWC [m³/h]
+            icon: mdi:arrow-down-bold
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: number.rekuperator_nominal_supply_air_flow_gwc
+            name: Nom. nawiew GWC [m³/h]
+            icon: mdi:air-filter
+            grid_options: {columns: 6}
+
+          - type: tile
+            entity: number.rekuperator_nominal_exhaust_air_flow_gwc
+            name: Nom. wywiew GWC [m³/h]
+            icon: mdi:air-filter
+            grid_options: {columns: 6}
+
+          - type: tile
+            entity: select.rekuperator_configuration_mode
+            name: Tryb konfiguracji
+            icon: mdi:cog-play
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: select.rekuperator_cfg_mode_1
+            name: Konfiguracja 1
+            icon: mdi:numeric-1-box
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: select.rekuperator_cfg_mode_2
+            name: Konfiguracja 2
+            icon: mdi:numeric-2-box
+            grid_options: {columns: 4}
+
+      # ── Odczyty diagnostyczne ──────────────────────────────
+      - type: grid
+        title: Odczyty diagnostyczne (read-only)
+        cards:
+
+          - type: tile
+            entity: sensor.rekuperator_nominal_supply_air_flow
+            name: Nom. nawiew (odczyt)
+            icon: mdi:air-filter
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: sensor.rekuperator_nominal_exhaust_air_flow
+            name: Nom. wywiew (odczyt)
+            icon: mdi:air-filter
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: sensor.rekuperator_max_supply_air_flow_rate
+            name: Maks. nawiew (odczyt)
+            icon: mdi:arrow-up-bold
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: sensor.rekuperator_max_exhaust_air_flow_rate
+            name: Maks. wywiew (odczyt)
+            icon: mdi:arrow-down-bold
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: sensor.rekuperator_air_flow_rate_manual
+            name: Przepływ ręczny (odczyt)
+            icon: mdi:tune
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: sensor.rekuperator_supply_air_temperature_manual
+            name: Temp. nawiewu ręczna (odczyt)
+            icon: mdi:thermometer-plus
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: sensor.rekuperator_compilation_days
+            name: Dni kompilacji FW
+            icon: mdi:calendar-text
+            grid_options: {columns: 4}
+
+          - type: tile
+            entity: sensor.rekuperator_compilation_seconds
+            name: Czas kompilacji FW
+            icon: mdi:clock-time-eight
+            grid_options: {columns: 4}
+
       # ── Komunikacja Modbus ─────────────────────────────────
       - type: grid
         cards:
@@ -1818,6 +2320,41 @@ views:
         cards:
           - type: heading
             heading: Informacje o systemie
+          - type: tile
+            entity: text.rekuperator_device_name
+            name: Nazwa urządzenia
+            icon: mdi:rename
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: sensor.rekuperator_device_clock
+            name: Zegar urządzenia
+            icon: mdi:clock
+            grid_options:
+              columns: 3
+
+          - type: tile
+            entity: sensor.rekuperator_day_of_week
+            name: Dzień tygodnia (urządzenie)
+            icon: mdi:calendar-today
+            grid_options:
+              columns: 3
+
+          - type: tile
+            entity: sensor.rekuperator_period
+            name: Aktywny slot harmonogramu
+            icon: mdi:calendar-clock
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: sensor.rekuperator_error_codes
+            name: Kody błędów (zbiorczo)
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+
           - type: tile
             entity: sensor.rekuperator_serial_number
             name: Numer seryjny
