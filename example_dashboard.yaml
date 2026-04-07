@@ -2391,6 +2391,36 @@ views:
             icon: mdi:expansion-card
             grid_options:
               columns: 6
+          - type: tile
+            entity: switch.rekuperator_lock_flag
+            name: Blokada
+            icon: mdi:lock
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: switch.rekuperator_airflow_rate_change_flag
+            name: Flaga zmiany przepływu
+            icon: mdi:air-filter
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: switch.rekuperator_temperature_change_flag
+            name: Flaga zmiany temperatury
+            icon: mdi:thermometer-alert
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: number.rekuperator_lock_pass
+            name: Kod blokady
+            icon: mdi:lock-smart
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: number.rekuperator_rtc_cal
+            name: Kalibracja RTC
+            icon: mdi:clock-edit
+            grid_options:
+              columns: 6
           - type: markdown
             content: >
               ⚠️ **Uwaga:** Poniższe przyciski przywracają ustawienia fabryczne

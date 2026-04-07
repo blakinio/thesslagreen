@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import re
 import sys
 from datetime import timedelta
 from importlib import import_module
@@ -66,6 +67,7 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     async_setup_options,
+    device_unique_id_prefix,
     migrate_unique_id,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
@@ -446,6 +448,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     await _async_cleanup_legacy_fan_entity(hass, coordinator)
     await _async_migrate_unique_ids(hass, entry)
+    await _async_migrate_entity_ids(hass, entry)
     await _async_setup_mappings(hass)
     await _async_setup_platforms(hass, entry)
 
@@ -510,6 +513,111 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
         await coordinator.async_request_refresh()
 
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str) -> str | None:
+    """Extract register key from entity unique_id.
+
+    Unique ID format: ``{prefix}_{slave_id}_{key}_{addr_part}{bit_suffix}``
+    where *addr_part* is a decimal number or the string ``calc``, and
+    *bit_suffix* is either empty or ``_bitN``.
+    """
+    start = f"{prefix}_{slave_id}_"
+    if not unique_id.startswith(start):
+        return None
+    rest = unique_id[len(start):]
+    # Strip optional bit suffix (_bit0, _bit1, …)
+    rest = re.sub(r"_bit\d+$", "", rest)
+    # The address is the last underscore-delimited segment that is a decimal
+    # number or the literal "calc".  Everything before it is the register key.
+    m = re.match(r"^(.+)_(\d+|calc)$", rest)
+    if not m:
+        return None
+    return m.group(1)
+
+
+async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover
+    """Rename entity IDs from translation-based to register-key-based naming.
+
+    Prior to adding ``suggested_object_id`` in the base entity class, HA
+    derived entity_ids from translated entity names (e.g.
+    ``switch.rekuperator_bypass_active``).  After the fix, new registrations
+    use the register key directly (e.g. ``switch.rekuperator_bypass_off``).
+    This function updates the entity registry for existing installations so
+    that old entity_ids are renamed to the new key-based format, making
+    ``example_dashboard.yaml`` work without manual intervention.
+    """
+    try:
+        from homeassistant.helpers import device_registry as dr  # type: ignore
+        from homeassistant.helpers import entity_registry as er  # type: ignore
+        from homeassistant.util import slugify  # type: ignore
+    except Exception:
+        return
+
+    entity_reg = er.async_get(hass)
+    device_reg = dr.async_get(hass)
+    if entity_reg is None or device_reg is None:
+        return
+
+    entries_for_config = getattr(er, "async_entries_for_config_entry", None)
+    if not callable(entries_for_config):
+        return
+
+    coordinator = entry.runtime_data
+    host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST, "")
+    port = getattr(coordinator, "port", None) or entry.data.get(CONF_PORT, 0)
+    device_info = getattr(coordinator, "device_info", {}) or {}
+    serial = device_info.get("serial_number")
+    slave_id = getattr(coordinator, "slave_id", 1)
+
+    prefix = device_unique_id_prefix(serial, host, port)
+
+    migrated: list[tuple[str, str]] = []
+    for reg_entry in entries_for_config(entity_reg, entry.entry_id):
+        if entity_reg.async_get(reg_entry.entity_id) is None:
+            continue
+
+        key = _extract_key_from_unique_id(reg_entry.unique_id, prefix, slave_id)
+        if not key:
+            continue
+
+        # Determine device name slug from the device registry
+        if not reg_entry.device_id:
+            continue
+        device = device_reg.async_get(reg_entry.device_id)
+        if not device or not device.name:
+            continue
+        device_slug = slugify(device.name)
+        if not device_slug:
+            continue
+
+        platform = reg_entry.entity_id.split(".")[0]
+        expected_entity_id = f"{platform}.{device_slug}_{key}"
+
+        if reg_entry.entity_id == expected_entity_id:
+            continue  # already correct
+
+        if entity_reg.async_get(expected_entity_id) is not None:
+            continue  # target already occupied — skip to avoid collision
+
+        try:
+            entity_reg.async_update_entity(reg_entry.entity_id, new_entity_id=expected_entity_id)
+            migrated.append((reg_entry.entity_id, expected_entity_id))
+        except Exception as exc:
+            _LOGGER.debug(
+                "Could not migrate entity_id %s → %s: %s",
+                reg_entry.entity_id,
+                expected_entity_id,
+                exc,
+            )
+
+    if migrated:
+        _LOGGER.warning(
+            "Migrated %d entity IDs to register-key-based naming: %s",
+            len(migrated),
+            ", ".join(f"{old} → {new}" for old, new in migrated[:10])
+            + (f" … (+{len(migrated) - 10} more)" if len(migrated) > 10 else ""),
+        )
 
 
 async def _async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator) -> None:
