@@ -737,13 +737,13 @@ views:
             grid_options:
               columns: 6
           - type: tile
-            entity: sensor.rekuperator_supply_flow_rate_m3h
+            entity: sensor.rekuperator_supply_flow_rate
             name: Zadany przepływ – nawiew
             icon: mdi:arrow-up-circle
             grid_options:
               columns: 6
           - type: tile
-            entity: sensor.rekuperator_exhaust_flow_rate_m3h
+            entity: sensor.rekuperator_exhaust_flow_rate
             name: Zadany przepływ – wywiew
             icon: mdi:arrow-down-circle
             grid_options:
@@ -941,13 +941,13 @@ views:
               columns: 6
               rows: 2
           - type: tile
-            entity: sensor.rekuperator_supply_filter_replacement_date
+            entity: sensor.rekuperator_filter_supply_date_limit_get
             name: Wymiana filtra nawiewu
             icon: mdi:calendar-filter
             grid_options:
               columns: 6
           - type: tile
-            entity: sensor.rekuperator_exhaust_filter_replacement_date
+            entity: sensor.rekuperator_filter_exhaust_date_limit_get
             name: Wymiana filtra wywiewu
             icon: mdi:calendar-filter
             grid_options:
@@ -2258,7 +2258,7 @@ views:
             grid_options: {columns: 4}
 
           - type: tile
-            entity: sensor.rekuperator_air_flow_rate_manual
+            entity: number.rekuperator_air_flow_rate_manual
             name: Przepływ ręczny (odczyt)
             icon: mdi:tune
             grid_options: {columns: 4}
@@ -2373,8 +2373,8 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.rekuperator_error_codes
-            name: Kody błędów (zbiorczo)
+            entity: sensor.rekuperator_stop_ahu_code
+            name: Kod zatrzymania AHU
             icon: mdi:alert-circle-outline
             grid_options:
               columns: 6
