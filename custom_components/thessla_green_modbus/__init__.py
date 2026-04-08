@@ -515,6 +515,39 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+# Map old register keys (as they appeared in unique_ids) to current keys.
+# Needed for entities where the dict_key itself was renamed across versions,
+# not just the entity_id naming mechanism (translation → key-based).
+_LEGACY_KEY_RENAMES: dict[str, str] = {
+    # Binary sensor key renames
+    "gwc_regeneration_active": "gwc_regen_flag",
+    "ahu_filter_overflow": "dp_ahu_filter_overflow",
+    "duct_filter_overflow": "dp_duct_filter_overflow",
+    "central_heater_overprotection": "post_heater_on",
+    "unit_operation_confirmation": "info",
+    "water_heater_pump": "duct_water_heater_pump",
+    # Sensor key renames
+    "maximum_percentage": "max_percentage",
+    "minimum_percentage": "min_percentage",
+    "time_period": "period",
+    "supply_flow_rate_m3_h": "supply_flow_rate",
+    "exhaust_flow_rate_m3_h": "exhaust_flow_rate",
+    "ahu_stop_alarm_code": "stop_ahu_code",
+    "product_key_lock_date_day": "lock_date_00dd",
+    "bypass_mode_status": "bypass_mode",
+    "comfort_mode_status": "comfort_mode",
+    # Switch key renames
+    "bypass_active": "bypass_off",
+    "gwc_active": "gwc_off",
+    "comfort_mode_switch": "comfort_mode_panel",
+    "lock": "lock_flag",
+    # Select key renames
+    "filter_check_day_of_week": "pres_check_day",
+    "gwc_regeneration": "gwc_regen",
+    "filter_type": "filter_change",
+}
+
+
 def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str) -> str | None:
     """Extract register key from entity unique_id.
 
@@ -580,6 +613,9 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
         key = _extract_key_from_unique_id(reg_entry.unique_id, prefix, slave_id)
         if not key:
             continue
+
+        # Apply legacy key renames (handles dict_key changes across versions)
+        key = _LEGACY_KEY_RENAMES.get(key, key)
 
         # Determine device name slug from the device registry
         if not reg_entry.device_id:

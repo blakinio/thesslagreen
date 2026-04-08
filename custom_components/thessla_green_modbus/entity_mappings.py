@@ -144,6 +144,37 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_on_off_panel_mode": ("switch", "rekuperator_on_off_panel_mode"),
     # Typo fix: antifreez_stage → antifreeze_stage (version 2.3.0)
     "rekuperator_antifreez_stage": ("sensor", "rekuperator_antifreeze_stage"),
+    # Binary sensor renames (dp_ prefix added, key made more precise)
+    "rekuperator_ahu_filter_overflow": ("binary_sensor", "rekuperator_dp_ahu_filter_overflow"),
+    "rekuperator_duct_filter_overflow": ("binary_sensor", "rekuperator_dp_duct_filter_overflow"),
+    "rekuperator_gwc_regeneration_active": ("binary_sensor", "rekuperator_gwc_regen_flag"),
+    "rekuperator_central_heater_overprotection": ("binary_sensor", "rekuperator_post_heater_on"),
+    "rekuperator_unit_operation_confirmation": ("binary_sensor", "rekuperator_info"),
+    "rekuperator_water_heater_pump": ("binary_sensor", "rekuperator_duct_water_heater_pump"),
+    # Sensor renames
+    "rekuperator_maximum_percentage": ("sensor", "rekuperator_max_percentage"),
+    "rekuperator_minimum_percentage": ("sensor", "rekuperator_min_percentage"),
+    "rekuperator_time_period": ("sensor", "rekuperator_period"),
+    "rekuperator_supply_flow_rate_m3_h": ("sensor", "rekuperator_supply_flow_rate"),
+    "rekuperator_exhaust_flow_rate_m3_h": ("sensor", "rekuperator_exhaust_flow_rate"),
+    "rekuperator_ahu_stop_alarm_code": ("sensor", "rekuperator_stop_ahu_code"),
+    "rekuperator_active_errors": ("sensor", "rekuperator_stop_ahu_code"),
+    "rekuperator_product_key_lock_date_day": ("sensor", "rekuperator_lock_date_00dd"),
+    "rekuperator_comfort_mode_status": ("sensor", "rekuperator_comfort_mode"),
+    # Switch renames
+    "rekuperator_bypass_active": ("switch", "rekuperator_bypass_off"),
+    "rekuperator_gwc_active": ("switch", "rekuperator_gwc_off"),
+    "rekuperator_lock": ("switch", "rekuperator_lock_flag"),
+    # Select renames
+    "rekuperator_filter_check_day_of_week": ("select", "rekuperator_pres_check_day"),
+    "rekuperator_gwc_regeneration": ("select", "rekuperator_gwc_regen"),
+    "rekuperator_filter_type": ("select", "rekuperator_filter_change"),
+    # Polish-language entity IDs (installations with HA language set to pl before 2026)
+    "rekuperator_moc_odzysku_ciepla": ("sensor", "rekuperator_heat_recovery_power"),
+    "rekuperator_sprawnosc_rekuperatora": ("sensor", "rekuperator_heat_recovery_efficiency"),
+    "rekuperator_pobor_mocy_elektrycznej": ("sensor", "rekuperator_electrical_power"),
+    "rekuperator_nazwa_urzadzenia": ("text", "rekuperator_device_name"),
+    "rekuperator_predkosc_1": ("fan", "rekuperator_ventilation"),
 }
 
 _alias_warning_logged = False
