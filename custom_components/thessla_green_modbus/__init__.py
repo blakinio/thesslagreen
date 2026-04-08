@@ -594,12 +594,12 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
     entries_for_config = getattr(er, "async_entries_for_config_entry", None)
     if not callable(entries_for_config):
-        _LOGGER.warning("entity_id migration: async_entries_for_config_entry not available")
+        _LOGGER.debug("entity_id migration: async_entries_for_config_entry not available")
         return
 
     # Single call — reuse this list for prefix detection and migration loop.
     reg_entries = list(entries_for_config(entity_reg, entry.entry_id))
-    _LOGGER.warning(
+    _LOGGER.debug(
         "entity_id migration: found %d entities for config entry %s",
         len(reg_entries),
         entry.entry_id,
@@ -633,11 +633,10 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
         serial = device_info.get("serial_number")
         prefix = device_unique_id_prefix(serial, host, port)
 
-    _LOGGER.warning(
-        "entity_id migration: using prefix=%r slave_id=%s (slave_marker=%r)",
+    _LOGGER.debug(
+        "entity_id migration: using prefix=%r slave_id=%s",
         prefix,
         slave_id,
-        slave_marker,
     )
 
     migrated: list[tuple[str, str]] = []
@@ -712,7 +711,7 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
                 exc,
             )
 
-    _LOGGER.warning(
+    _LOGGER.debug(
         "entity_id migration done: migrated=%d already_ok=%d no_key=%d no_device=%d collision=%d",
         len(migrated),
         skipped_ok,
@@ -721,8 +720,9 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
         skipped_collision,
     )
     if migrated:
-        _LOGGER.warning(
-            "Migrated entity IDs: %s",
+        _LOGGER.info(
+            "Migrated %d entity IDs to register-key-based naming: %s",
+            len(migrated),
             ", ".join(f"{old} → {new}" for old, new in migrated[:20])
             + (f" … (+{len(migrated) - 20} more)" if len(migrated) > 20 else ""),
         )
