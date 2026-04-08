@@ -594,41 +594,72 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
     entries_for_config = getattr(er, "async_entries_for_config_entry", None)
     if not callable(entries_for_config):
+        _LOGGER.warning("entity_id migration: async_entries_for_config_entry not available")
+        return
+
+    # Single call — reuse this list for prefix detection and migration loop.
+    reg_entries = list(entries_for_config(entity_reg, entry.entry_id))
+    _LOGGER.warning(
+        "entity_id migration: found %d entities for config entry %s",
+        len(reg_entries),
+        entry.entry_id,
+    )
+    if not reg_entries:
         return
 
     coordinator = entry.runtime_data
     slave_id = getattr(coordinator, "slave_id", 1)
 
-    all_reg_entries = entries_for_config(entity_reg, entry.entry_id)
-
-    # Determine the unique_id prefix dynamically from existing registry entries.
-    # We cannot rely on coordinator.device_info here because the coordinator has
-    # not yet performed its first refresh (device_info is still empty).
-    # Instead, scan existing unique_ids and infer the prefix as the part that
-    # precedes "_{slave_id}_" in any entry.
+    # Determine unique_id prefix from existing registry entries.
+    # Scan for the pattern _{slave_id}_ in each unique_id; the part before it
+    # is the prefix.  Using existing entries is more reliable than computing
+    # the prefix from coordinator.device_info because the serial may have
+    # changed or differed from what was used when entities were first registered.
     prefix: str | None = None
     slave_marker = f"_{slave_id}_"
-    for _e in all_reg_entries:
+    for _e in reg_entries:
         if _e.unique_id and slave_marker in _e.unique_id:
             idx = _e.unique_id.index(slave_marker)
-            prefix = _e.unique_id[:idx]
-            break
+            candidate = _e.unique_id[:idx]
+            if candidate:
+                prefix = candidate
+                break
 
     if not prefix:
-        # Fallback: compute from entry data (works for fresh installs without serial)
+        # Fallback: compute from coordinator / entry data
         host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST, "")
         port = getattr(coordinator, "port", None) or entry.data.get(CONF_PORT, 0)
         device_info = getattr(coordinator, "device_info", {}) or {}
         serial = device_info.get("serial_number")
         prefix = device_unique_id_prefix(serial, host, port)
 
+    _LOGGER.warning(
+        "entity_id migration: using prefix=%r slave_id=%s (slave_marker=%r)",
+        prefix,
+        slave_id,
+        slave_marker,
+    )
+
     migrated: list[tuple[str, str]] = []
-    for reg_entry in entries_for_config(entity_reg, entry.entry_id):
+    skipped_no_key: int = 0
+    skipped_no_device: int = 0
+    skipped_ok: int = 0
+    skipped_collision: int = 0
+
+    for reg_entry in reg_entries:
         if entity_reg.async_get(reg_entry.entity_id) is None:
             continue
 
         key = _extract_key_from_unique_id(reg_entry.unique_id, prefix, slave_id)
         if not key:
+            skipped_no_key += 1
+            _LOGGER.debug(
+                "entity_id migration: cannot extract key from unique_id=%r (prefix=%r slave=%s) — skipping %s",
+                reg_entry.unique_id,
+                prefix,
+                slave_id,
+                reg_entry.entity_id,
+            )
             continue
 
         # Apply legacy key renames (handles dict_key changes across versions)
@@ -636,40 +667,64 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
         # Determine device name slug from the device registry
         if not reg_entry.device_id:
+            skipped_no_device += 1
             continue
         device = device_reg.async_get(reg_entry.device_id)
         if not device or not device.name:
+            skipped_no_device += 1
             continue
         device_slug = slugify(device.name)
         if not device_slug:
+            skipped_no_device += 1
             continue
 
         platform = reg_entry.entity_id.split(".")[0]
         expected_entity_id = f"{platform}.{device_slug}_{key}"
 
         if reg_entry.entity_id == expected_entity_id:
+            skipped_ok += 1
             continue  # already correct
 
         if entity_reg.async_get(expected_entity_id) is not None:
-            continue  # target already occupied — skip to avoid collision
+            skipped_collision += 1
+            _LOGGER.debug(
+                "entity_id migration: target %s already occupied — cannot rename %s",
+                expected_entity_id,
+                reg_entry.entity_id,
+            )
+            continue
 
+        _LOGGER.debug(
+            "entity_id migration: renaming %s → %s (key=%r device=%r)",
+            reg_entry.entity_id,
+            expected_entity_id,
+            key,
+            device_slug,
+        )
         try:
             entity_reg.async_update_entity(reg_entry.entity_id, new_entity_id=expected_entity_id)
             migrated.append((reg_entry.entity_id, expected_entity_id))
         except Exception as exc:
-            _LOGGER.debug(
-                "Could not migrate entity_id %s → %s: %s",
+            _LOGGER.warning(
+                "entity_id migration: could not rename %s → %s: %s",
                 reg_entry.entity_id,
                 expected_entity_id,
                 exc,
             )
 
+    _LOGGER.warning(
+        "entity_id migration done: migrated=%d already_ok=%d no_key=%d no_device=%d collision=%d",
+        len(migrated),
+        skipped_ok,
+        skipped_no_key,
+        skipped_no_device,
+        skipped_collision,
+    )
     if migrated:
         _LOGGER.warning(
-            "Migrated %d entity IDs to register-key-based naming: %s",
-            len(migrated),
-            ", ".join(f"{old} → {new}" for old, new in migrated[:10])
-            + (f" … (+{len(migrated) - 10} more)" if len(migrated) > 10 else ""),
+            "Migrated entity IDs: %s",
+            ", ".join(f"{old} → {new}" for old, new in migrated[:20])
+            + (f" … (+{len(migrated) - 20} more)" if len(migrated) > 20 else ""),
         )
 
 
