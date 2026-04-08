@@ -597,13 +597,30 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
         return
 
     coordinator = entry.runtime_data
-    host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST, "")
-    port = getattr(coordinator, "port", None) or entry.data.get(CONF_PORT, 0)
-    device_info = getattr(coordinator, "device_info", {}) or {}
-    serial = device_info.get("serial_number")
     slave_id = getattr(coordinator, "slave_id", 1)
 
-    prefix = device_unique_id_prefix(serial, host, port)
+    all_reg_entries = entries_for_config(entity_reg, entry.entry_id)
+
+    # Determine the unique_id prefix dynamically from existing registry entries.
+    # We cannot rely on coordinator.device_info here because the coordinator has
+    # not yet performed its first refresh (device_info is still empty).
+    # Instead, scan existing unique_ids and infer the prefix as the part that
+    # precedes "_{slave_id}_" in any entry.
+    prefix: str | None = None
+    slave_marker = f"_{slave_id}_"
+    for _e in all_reg_entries:
+        if _e.unique_id and slave_marker in _e.unique_id:
+            idx = _e.unique_id.index(slave_marker)
+            prefix = _e.unique_id[:idx]
+            break
+
+    if not prefix:
+        # Fallback: compute from entry data (works for fresh installs without serial)
+        host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST, "")
+        port = getattr(coordinator, "port", None) or entry.data.get(CONF_PORT, 0)
+        device_info = getattr(coordinator, "device_info", {}) or {}
+        serial = device_info.get("serial_number")
+        prefix = device_unique_id_prefix(serial, host, port)
 
     migrated: list[tuple[str, str]] = []
     for reg_entry in entries_for_config(entity_reg, entry.entry_id):
