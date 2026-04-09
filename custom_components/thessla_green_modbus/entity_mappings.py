@@ -175,6 +175,11 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_pobor_mocy_elektrycznej": ("sensor", "rekuperator_electrical_power"),
     "rekuperator_nazwa_urzadzenia": ("text", "rekuperator_device_name"),
     "rekuperator_predkosc_1": ("fan", "rekuperator_ventilation"),
+    # Legacy split aliases for e_196_e_199 bitmask register
+    "rekuperator_error_e196": ("binary_sensor", "rekuperator_e_196_e_199_e_196"),
+    "rekuperator_error_e197": ("binary_sensor", "rekuperator_e_196_e_199_e_197"),
+    "rekuperator_error_e198": ("binary_sensor", "rekuperator_e_196_e_199_e_198"),
+    "rekuperator_error_e199": ("binary_sensor", "rekuperator_e_196_e_199_e_199"),
 }
 
 _alias_warning_logged = False

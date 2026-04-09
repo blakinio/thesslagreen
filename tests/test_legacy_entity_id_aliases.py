@@ -32,3 +32,24 @@ def test_map_legacy_entity_id_for_historical_register_renames() -> None:
         map_legacy_entity_id("number.rekuperator_bypass_coef_2")
         == "number.rekuperator_bypass_coef_2"
     )
+
+
+def test_map_legacy_entity_id_for_split_error_bitmask_aliases() -> None:
+    """Legacy per-error aliases should map to current e_196_e_199 bit keys."""
+
+    assert (
+        map_legacy_entity_id("binary_sensor.rekuperator_error_e196")
+        == "binary_sensor.rekuperator_e_196_e_199_e_196"
+    )
+    assert (
+        map_legacy_entity_id("binary_sensor.rekuperator_error_e197")
+        == "binary_sensor.rekuperator_e_196_e_199_e_197"
+    )
+    assert (
+        map_legacy_entity_id("binary_sensor.rekuperator_error_e198")
+        == "binary_sensor.rekuperator_e_196_e_199_e_198"
+    )
+    assert (
+        map_legacy_entity_id("binary_sensor.rekuperator_error_e199")
+        == "binary_sensor.rekuperator_e_196_e_199_e_199"
+    )
