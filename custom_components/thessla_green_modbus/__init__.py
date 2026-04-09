@@ -568,19 +568,32 @@ def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str
     Unique ID format: ``{prefix}_{slave_id}_{key}_{addr_part}{bit_suffix}``
     where *addr_part* is a decimal number or the string ``calc``, and
     *bit_suffix* is either empty or ``_bitN``.
+
+    The function first tries an exact prefix match (fast path).  If that
+    fails it falls back to scanning for ``_{slave_id}_`` anywhere in the
+    unique_id.  This handles cases where the prefix changed between
+    registrations (e.g. host-port → serial number after a firmware update)
+    so that migration can still rename entities whose prefix no longer
+    matches the currently detected one.
     """
+    def _parse_rest(rest: str) -> str | None:
+        rest = re.sub(r"_bit\d+$", "", rest)
+        m = re.match(r"^(.+)_(\d+|calc)$", rest)
+        return m.group(1) if m else None
+
+    # Fast path: exact prefix match
     start = f"{prefix}_{slave_id}_"
-    if not unique_id.startswith(start):
-        return None
-    rest = unique_id[len(start):]
-    # Strip optional bit suffix (_bit0, _bit1, …)
-    rest = re.sub(r"_bit\d+$", "", rest)
-    # The address is the last underscore-delimited segment that is a decimal
-    # number or the literal "calc".  Everything before it is the register key.
-    m = re.match(r"^(.+)_(\d+|calc)$", rest)
-    if not m:
-        return None
-    return m.group(1)
+    if unique_id.startswith(start):
+        return _parse_rest(unique_id[len(start):])
+
+    # Fallback: find _{slave_id}_ anywhere in the unique_id.
+    # Handles prefix changes (serial vs host-port) across integration versions.
+    slave_marker = f"_{slave_id}_"
+    idx = unique_id.find(slave_marker)
+    if idx > 0:  # prefix must be non-empty (idx > 0, not >= 0)
+        return _parse_rest(unique_id[idx + len(slave_marker):])
+
+    return None
 
 
 async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover
@@ -736,7 +749,7 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
                 exc,
             )
 
-    _LOGGER.debug(
+    _LOGGER.info(
         "entity_id migration done: migrated=%d already_ok=%d no_key=%d no_device=%d collision=%d",
         len(migrated),
         skipped_ok,
