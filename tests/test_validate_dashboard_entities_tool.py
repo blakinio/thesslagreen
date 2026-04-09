@@ -13,12 +13,14 @@ views:
           - entity: switch.rekuperator_lock_flag
           - entity: switch.rekuperator_lock
           - entity: switch.rekuperator_not_existing
+          - entity: number.rekuperator_12
 """,
         encoding="utf-8",
     )
 
-    valid, legacy, unknown = validate_dashboard(dashboard)
+    valid, legacy, unknown, suspicious = validate_dashboard(dashboard)
 
     assert "switch.rekuperator_lock_flag" in valid
     assert ("switch.rekuperator_lock", "switch.rekuperator_lock_flag") in legacy
-    assert unknown == ["switch.rekuperator_not_existing"]
+    assert unknown == ["number.rekuperator_12", "switch.rekuperator_not_existing"]
+    assert suspicious == ["number.rekuperator_12"]

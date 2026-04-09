@@ -102,6 +102,9 @@ def _install_homeassistant_stubs() -> None:
 
 
 ENTITY_ID_PATTERN = re.compile(r"entity:\s*([a-z_]+\.[a-z0-9_]+)")
+SUSPICIOUS_FALLBACK_PATTERN = re.compile(
+    r"^(?:number\.rekuperator_\d+|select\.rekuperator(?:_\d+)?)$"
+)
 
 
 def _collect_entities(content: str) -> list[str]:
@@ -123,10 +126,12 @@ def _current_entity_ids() -> set[str]:
     return ids
 
 
-def validate_dashboard(path: Path) -> tuple[list[str], list[tuple[str, str]], list[str]]:
+def validate_dashboard(
+    path: Path,
+) -> tuple[list[str], list[tuple[str, str]], list[str], list[str]]:
     """Validate dashboard entities.
 
-    Returns tuple: (valid, legacy_with_replacement, unknown).
+    Returns tuple: (valid, legacy_with_replacement, unknown, suspicious_fallback).
     """
 
     content = path.read_text(encoding="utf-8")
@@ -139,6 +144,7 @@ def validate_dashboard(path: Path) -> tuple[list[str], list[tuple[str, str]], li
     valid: list[str] = []
     legacy: list[tuple[str, str]] = []
     unknown: list[str] = []
+    suspicious_fallback: list[str] = []
 
     for entity_id in entities:
         if entity_id in current:
@@ -149,8 +155,10 @@ def validate_dashboard(path: Path) -> tuple[list[str], list[tuple[str, str]], li
             legacy.append((entity_id, mapped))
             continue
         unknown.append(entity_id)
+        if SUSPICIOUS_FALLBACK_PATTERN.match(entity_id):
+            suspicious_fallback.append(entity_id)
 
-    return valid, legacy, unknown
+    return valid, legacy, unknown, suspicious_fallback
 
 
 def main() -> int:
@@ -158,7 +166,7 @@ def main() -> int:
     parser.add_argument("dashboard_yaml", type=Path, help="Path to dashboard YAML")
     args = parser.parse_args()
 
-    valid, legacy, unknown = validate_dashboard(args.dashboard_yaml)
+    valid, legacy, unknown, suspicious_fallback = validate_dashboard(args.dashboard_yaml)
 
     print(f"VALID: {len(valid)}")
     print(f"LEGACY (auto-mapped): {len(legacy)}")
@@ -172,6 +180,10 @@ def main() -> int:
     if unknown:
         print("\nUnknown entity IDs:")
         for entity_id in unknown:
+            print(f"  - {entity_id}")
+    if suspicious_fallback:
+        print("\nSuspicious fallback-like entity IDs:")
+        for entity_id in suspicious_fallback:
             print(f"  - {entity_id}")
 
     return 1 if unknown else 0

@@ -167,8 +167,12 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_lock": ("switch", "rekuperator_lock_flag"),
     # Select renames
     "rekuperator_filter_check_day_of_week": ("select", "rekuperator_pres_check_day"),
+    "rekuperator_filter_check_day_of_week_ext": ("select", "rekuperator_pres_check_day_4432"),
     "rekuperator_gwc_regeneration": ("select", "rekuperator_gwc_regen"),
     "rekuperator_filter_type": ("select", "rekuperator_filter_change"),
+    # Time entity renames
+    "rekuperator_filter_check_start_time": ("time", "rekuperator_pres_check_time"),
+    "rekuperator_filter_check_start_time_ext": ("time", "rekuperator_pres_check_time_ggmm"),
     # Polish-language entity IDs (installations with HA language set to pl before 2026)
     "rekuperator_moc_odzysku_ciepla": ("sensor", "rekuperator_heat_recovery_power"),
     "rekuperator_sprawnosc_rekuperatora": ("sensor", "rekuperator_heat_recovery_efficiency"),
@@ -180,6 +184,8 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     "rekuperator_error_e197": ("binary_sensor", "rekuperator_e_196_e_199_e_197"),
     "rekuperator_error_e198": ("binary_sensor", "rekuperator_e_196_e_199_e_198"),
     "rekuperator_error_e199": ("binary_sensor", "rekuperator_e_196_e_199_e_199"),
+    # Product key lock date split fields
+    "rekuperator_product_key_lock_date_month": ("sensor", "rekuperator_lock_date_00mm"),
 }
 
 _alias_warning_logged = False
