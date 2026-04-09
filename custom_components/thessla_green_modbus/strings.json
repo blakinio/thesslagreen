@@ -172,6 +172,18 @@
       "e_196_e_199": {
         "name": "Error Flags E196–E199"
       },
+      "e_196_e_199_e_196": {
+        "name": "Error E196"
+      },
+      "e_196_e_199_e_197": {
+        "name": "Error E197"
+      },
+      "e_196_e_199_e_198": {
+        "name": "Error E198"
+      },
+      "e_196_e_199_e_199": {
+        "name": "Error E199"
+      },
       "e_200": {
         "name": "E200: Central Heater Overprotection"
       },
