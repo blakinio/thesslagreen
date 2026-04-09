@@ -547,6 +547,20 @@ _LEGACY_KEY_RENAMES: dict[str, str] = {
     "filter_type": "filter_change",
 }
 
+# Mapping from (register_key, bit_value) → bit-specific entity key.
+# Used during migration to assign unique entity_ids to individual bits of
+# bitmask registers.  Without this, all 4 bits of e_196_e_199 would all
+# target the same entity_id (collision) and only one could be migrated.
+_BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
+    # e_196_e_199 is a bitmask register; each bit gets its own entity key.
+    # Key format: _to_snake_case(bit_name) inserts underscore before digits,
+    # so "e196" → "e_196", giving "e_196_e_199_e_196".
+    ("e_196_e_199", 1): "e_196_e_199_e_196",
+    ("e_196_e_199", 2): "e_196_e_199_e_197",
+    ("e_196_e_199", 4): "e_196_e_199_e_198",
+    ("e_196_e_199", 8): "e_196_e_199_e_199",
+}
+
 
 def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str) -> str | None:
     """Extract register key from entity unique_id.
@@ -554,19 +568,32 @@ def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str
     Unique ID format: ``{prefix}_{slave_id}_{key}_{addr_part}{bit_suffix}``
     where *addr_part* is a decimal number or the string ``calc``, and
     *bit_suffix* is either empty or ``_bitN``.
+
+    The function first tries an exact prefix match (fast path).  If that
+    fails it falls back to scanning for ``_{slave_id}_`` anywhere in the
+    unique_id.  This handles cases where the prefix changed between
+    registrations (e.g. host-port → serial number after a firmware update)
+    so that migration can still rename entities whose prefix no longer
+    matches the currently detected one.
     """
+    def _parse_rest(rest: str) -> str | None:
+        rest = re.sub(r"_bit\d+$", "", rest)
+        m = re.match(r"^(.+)_(\d+|calc)$", rest)
+        return m.group(1) if m else None
+
+    # Fast path: exact prefix match
     start = f"{prefix}_{slave_id}_"
-    if not unique_id.startswith(start):
-        return None
-    rest = unique_id[len(start):]
-    # Strip optional bit suffix (_bit0, _bit1, …)
-    rest = re.sub(r"_bit\d+$", "", rest)
-    # The address is the last underscore-delimited segment that is a decimal
-    # number or the literal "calc".  Everything before it is the register key.
-    m = re.match(r"^(.+)_(\d+|calc)$", rest)
-    if not m:
-        return None
-    return m.group(1)
+    if unique_id.startswith(start):
+        return _parse_rest(unique_id[len(start):])
+
+    # Fallback: find _{slave_id}_ anywhere in the unique_id.
+    # Handles prefix changes (serial vs host-port) across integration versions.
+    slave_marker = f"_{slave_id}_"
+    idx = unique_id.find(slave_marker)
+    if idx > 0:  # prefix must be non-empty (idx > 0, not >= 0)
+        return _parse_rest(unique_id[idx + len(slave_marker):])
+
+    return None
 
 
 async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover
@@ -579,6 +606,20 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
     This function updates the entity registry for existing installations so
     that old entity_ids are renamed to the new key-based format, making
     ``example_dashboard.yaml`` work without manual intervention.
+
+    Two sources of wrongly-named entities are handled:
+
+    1. Entries associated with the current config entry — found via
+       ``async_entries_for_config_entry``.
+    2. Orphaned entries from a deleted/reinstalled config entry — these have a
+       different (stale) ``config_entry_id`` and are missed by source 1.  They
+       are discovered by iterating ``entity_reg.entities`` and filtering by
+       ``platform == DOMAIN``.
+
+    When the desired entity_id is already occupied by another entry that maps
+    to the same register key, the occupying entry is a newer/better duplicate
+    and the old wrongly-named entry is removed instead of being left as an
+    unreachable ghost.
     """
     try:
         from homeassistant.helpers import device_registry as dr  # type: ignore
@@ -592,67 +633,247 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
     if entity_reg is None or device_reg is None:
         return
 
-    entries_for_config = getattr(er, "async_entries_for_config_entry", None)
-    if not callable(entries_for_config):
-        return
-
     coordinator = entry.runtime_data
-    host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST, "")
-    port = getattr(coordinator, "port", None) or entry.data.get(CONF_PORT, 0)
-    device_info = getattr(coordinator, "device_info", {}) or {}
-    serial = device_info.get("serial_number")
     slave_id = getattr(coordinator, "slave_id", 1)
 
-    prefix = device_unique_id_prefix(serial, host, port)
+    # --- Collect candidates from two sources ---
 
+    entries_for_config = getattr(er, "async_entries_for_config_entry", None)
+    config_entry_list: list[Any] = (
+        list(entries_for_config(entity_reg, entry.entry_id))
+        if callable(entries_for_config)
+        else []
+    )
+
+    # Also scan ALL entities registered under this platform (catches orphaned
+    # entries left over from a previous config entry that was removed/re-added).
+    all_platform_entries: list[Any] = []
+    entities_dict = getattr(entity_reg, "entities", None)
+    if entities_dict is not None:
+        try:
+            iter_entries = (
+                entities_dict.values()
+                if hasattr(entities_dict, "values")
+                else entities_dict
+            )
+            all_platform_entries = [
+                e for e in iter_entries if getattr(e, "platform", None) == DOMAIN
+            ]
+        except Exception:
+            all_platform_entries = []
+
+    # Merge: config-entry entries first (take priority), then orphaned ones.
+    candidates: dict[str, Any] = {}
+    for e in all_platform_entries:
+        candidates[e.entity_id] = e
+    for e in config_entry_list:
+        candidates[e.entity_id] = e  # config-entry version overrides
+
+    if not candidates:
+        _LOGGER.debug(
+            "entity_id migration: no entities found for domain %s (config_entry=%s)",
+            DOMAIN,
+            entry.entry_id,
+        )
+        return
+
+    _LOGGER.debug(
+        "entity_id migration: %d candidates (%d from config entry, %d platform-wide)",
+        len(candidates),
+        len(config_entry_list),
+        len(all_platform_entries),
+    )
+
+    # --- Determine unique_id prefix ---
+    # Scan candidates for _{slave_id}_ to detect all prefixes used when
+    # entities were registered.  Collecting all distinct prefixes handles
+    # the case where some entities were registered with the old host-port
+    # prefix and others with the newer serial-number prefix.
+    slave_marker = f"_{slave_id}_"
+    detected_prefixes: set[str] = set()
+    for _e in candidates.values():
+        uid = getattr(_e, "unique_id", None)
+        if uid and slave_marker in uid:
+            idx = uid.index(slave_marker)
+            candidate_prefix = uid[:idx]
+            if candidate_prefix:
+                detected_prefixes.add(candidate_prefix)
+
+    if not detected_prefixes:
+        # Fallback: compute from coordinator / entry data
+        host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST, "")
+        port = getattr(coordinator, "port", None) or entry.data.get(CONF_PORT, 0)
+        device_info = getattr(coordinator, "device_info", {}) or {}
+        serial = device_info.get("serial_number")
+        detected_prefixes.add(device_unique_id_prefix(serial, host, port))
+
+    _LOGGER.debug(
+        "entity_id migration: detected prefixes=%r slave_id=%s",
+        detected_prefixes,
+        slave_id,
+    )
+
+    # Helper: try all known prefixes when extracting the key.
+    def _extract_key(unique_id: str) -> str | None:
+        for pfx in detected_prefixes:
+            k = _extract_key_from_unique_id(unique_id, pfx, slave_id)
+            if k:
+                return k
+        return None
+
+    # --- Migration loop ---
     migrated: list[tuple[str, str]] = []
-    for reg_entry in entries_for_config(entity_reg, entry.entry_id):
-        if entity_reg.async_get(reg_entry.entity_id) is None:
+    removed: list[str] = []
+    skipped_no_key: int = 0
+    skipped_no_device: int = 0
+    skipped_ok: int = 0
+    skipped_collision: int = 0
+
+    for reg_entry in list(candidates.values()):
+        # Re-fetch to get current state (a previous iteration may have renamed
+        # or removed this entry).
+        current = entity_reg.async_get(reg_entry.entity_id)
+        if current is None:
             continue
 
-        key = _extract_key_from_unique_id(reg_entry.unique_id, prefix, slave_id)
+        unique_id = getattr(current, "unique_id", None) or ""
+        key = _extract_key(unique_id)
         if not key:
+            skipped_no_key += 1
+            _LOGGER.debug(
+                "entity_id migration: cannot extract key from unique_id=%r "
+                "(prefixes=%r slave=%s) — skipping %s",
+                unique_id,
+                detected_prefixes,
+                slave_id,
+                current.entity_id,
+            )
             continue
 
         # Apply legacy key renames (handles dict_key changes across versions)
         key = _LEGACY_KEY_RENAMES.get(key, key)
 
+        # For bitmask bit entities, resolve register key + bit suffix to the
+        # per-bit entity key.  The unique_id may contain _bit{value} (entity.py
+        # stores the raw mask value) or _bit{index} (produced by
+        # migrate_unique_id for very old address-only IDs).  Try both.
+        bit_match = re.search(r"_bit(\d+)$", unique_id)
+        if bit_match:
+            bit_num = int(bit_match.group(1))
+            # Try as raw mask value (current format: _bit1, _bit2, _bit4, _bit8)
+            bit_key = _BIT_ENTITY_KEYS.get((key, bit_num))
+            if bit_key is None:
+                # Try as bit index → convert to mask value (1 << bit_num)
+                bit_key = _BIT_ENTITY_KEYS.get((key, 1 << bit_num))
+            if bit_key:
+                key = bit_key
+
         # Determine device name slug from the device registry
-        if not reg_entry.device_id:
+        device_id = getattr(current, "device_id", None)
+        if not device_id:
+            skipped_no_device += 1
             continue
-        device = device_reg.async_get(reg_entry.device_id)
+        device = device_reg.async_get(device_id)
         if not device or not device.name:
+            skipped_no_device += 1
             continue
         device_slug = slugify(device.name)
         if not device_slug:
+            skipped_no_device += 1
             continue
 
-        platform = reg_entry.entity_id.split(".")[0]
+        platform = current.entity_id.split(".")[0]
         expected_entity_id = f"{platform}.{device_slug}_{key}"
 
-        if reg_entry.entity_id == expected_entity_id:
+        if current.entity_id == expected_entity_id:
+            skipped_ok += 1
             continue  # already correct
 
-        if entity_reg.async_get(expected_entity_id) is not None:
-            continue  # target already occupied — skip to avoid collision
+        existing = entity_reg.async_get(expected_entity_id)
+        if existing is not None:
+            # Target is occupied.  Check if the occupying entry maps to the
+            # same register key — if so, it is a newer/better version of this
+            # entity (e.g. registered after suggested_object_id was added with
+            # a serial-based unique_id).  Remove the old wrongly-named entry so
+            # the better one wins.
+            existing_uid = getattr(existing, "unique_id", "") or ""
+            existing_key_raw = _extract_key(existing_uid)
+            existing_key = (
+                _LEGACY_KEY_RENAMES.get(existing_key_raw, existing_key_raw)
+                if existing_key_raw
+                else None
+            )
+            if existing_key == key:
+                _LOGGER.debug(
+                    "entity_id migration: removing orphaned %s "
+                    "(target %s occupied by same key %r)",
+                    current.entity_id,
+                    expected_entity_id,
+                    key,
+                )
+                try:
+                    entity_reg.async_remove(current.entity_id)
+                    removed.append(current.entity_id)
+                except Exception as exc:
+                    _LOGGER.warning(
+                        "entity_id migration: could not remove orphaned %s: %s",
+                        current.entity_id,
+                        exc,
+                    )
+            else:
+                skipped_collision += 1
+                _LOGGER.debug(
+                    "entity_id migration: target %s occupied by different key %r "
+                    "— cannot rename %s",
+                    expected_entity_id,
+                    existing_key,
+                    current.entity_id,
+                )
+            continue
 
+        _LOGGER.debug(
+            "entity_id migration: renaming %s → %s (key=%r device=%r)",
+            current.entity_id,
+            expected_entity_id,
+            key,
+            device_slug,
+        )
         try:
-            entity_reg.async_update_entity(reg_entry.entity_id, new_entity_id=expected_entity_id)
-            migrated.append((reg_entry.entity_id, expected_entity_id))
+            entity_reg.async_update_entity(
+                current.entity_id, new_entity_id=expected_entity_id
+            )
+            migrated.append((current.entity_id, expected_entity_id))
         except Exception as exc:
-            _LOGGER.debug(
-                "Could not migrate entity_id %s → %s: %s",
-                reg_entry.entity_id,
+            _LOGGER.warning(
+                "entity_id migration: could not rename %s → %s: %s",
+                current.entity_id,
                 expected_entity_id,
                 exc,
             )
 
+    _LOGGER.info(
+        "entity_id migration done: migrated=%d removed=%d already_ok=%d "
+        "no_key=%d no_device=%d collision=%d",
+        len(migrated),
+        len(removed),
+        skipped_ok,
+        skipped_no_key,
+        skipped_no_device,
+        skipped_collision,
+    )
     if migrated:
-        _LOGGER.warning(
+        _LOGGER.info(
             "Migrated %d entity IDs to register-key-based naming: %s",
             len(migrated),
-            ", ".join(f"{old} → {new}" for old, new in migrated[:10])
-            + (f" … (+{len(migrated) - 10} more)" if len(migrated) > 10 else ""),
+            ", ".join(f"{old} → {new}" for old, new in migrated[:20])
+            + (f" … (+{len(migrated) - 20} more)" if len(migrated) > 20 else ""),
+        )
+    if removed:
+        _LOGGER.info(
+            "Removed %d orphaned/duplicate entity registry entries: %s",
+            len(removed),
+            ", ".join(removed[:20])
+            + (f" … (+{len(removed) - 20} more)" if len(removed) > 20 else ""),
         )
 
 
