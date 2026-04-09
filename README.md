@@ -75,6 +75,7 @@ logger:
 - [Diagnostyka](docs/diagnostics.md)
 - [Skanowanie rejestrów](docs/register_scanning.md)
 - [Migracja encji przepływu](docs/airflow_migration.md)
+- [Dlaczego potrzebna jest migracja entity_id](docs/entity_id_migration.md)
 - [Changelog](CHANGELOG.md)
 
 ## Rozwój i testy

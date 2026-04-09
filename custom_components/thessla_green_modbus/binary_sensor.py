@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
@@ -27,6 +28,7 @@ from .entity_mappings import BINARY_SENSOR_ENTITY_MAPPINGS
 _LOGGER = logging.getLogger(__name__)
 
 BINARY_SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = BINARY_SENSOR_ENTITY_MAPPINGS
+LEGACY_PROBLEM_KEY_PATTERN = re.compile(r"^problem(?:_\d+)?$")
 
 
 async def async_setup_entry(
@@ -42,12 +44,20 @@ async def async_setup_entry(
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
+    skipped_legacy_problem = 0
 
     # Create binary sensors for discovered registers, or all known registers
     # when ``force_full_register_list`` is enabled.
     for key, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         register_name = sensor_def.get("register", key)
+        if LEGACY_PROBLEM_KEY_PATTERN.fullmatch(register_name):
+            _LOGGER.debug(
+                "Skipping stale legacy binary sensor key '%s' during entity creation",
+                register_name,
+            )
+            skipped_legacy_problem += 1
+            continue
 
         if reason := capability_block_reason(register_name, coordinator.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
@@ -86,6 +96,11 @@ async def async_setup_entry(
         _LOGGER.debug(
             "Created %d binary sensor entities for %s", len(entities), coordinator.device_name
         )
+        if skipped_legacy_problem:
+            _LOGGER.info(
+                "Skipped %d stale legacy problem_* binary sensor keys during setup",
+                skipped_legacy_problem,
+            )
     else:
         _LOGGER.warning("No binary sensor entities created - no compatible registers found")
 
