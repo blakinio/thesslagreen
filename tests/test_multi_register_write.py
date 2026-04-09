@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.register_addresses import (
     REG_TEMPORARY_FLOW_START,
@@ -51,7 +50,7 @@ async def test_async_write_registers_chunks_oversize():
     transport.write_registers = AsyncMock(return_value=response)
     coordinator._transport = transport
 
-    oversized = list(range(MAX_BATCH_REGISTERS + 1))
+    oversized = list(range(17))
     assert await coordinator.async_write_registers(100, oversized) is True
     assert transport.write_registers.await_count == 2
 

@@ -2272,7 +2272,7 @@ async def test_config_flow_max_registers_per_request_validated():
                 CONF_HOST: "192.168.1.100",
                 CONF_PORT: 502,
                 CONF_SLAVE_ID: 10,
-                CONF_MAX_REGISTERS_PER_REQUEST: MAX_BATCH_REGISTERS + 1,
+                CONF_MAX_REGISTERS_PER_REQUEST: 20,
             }
         )
         assert result["type"] == "form"
@@ -2312,6 +2312,6 @@ async def test_options_flow_max_registers_per_request_validated():
 
     # Reject values above range
     flow = OptionsFlow(SimpleNamespace(options={}))
-    result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: MAX_BATCH_REGISTERS + 1})
+    result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 20})
     assert result["type"] == "form"
     assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"

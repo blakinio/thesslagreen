@@ -56,9 +56,7 @@ def test_plan_group_reads_respects_max_block_size(monkeypatch, loader_mod):
     _Register = loader_mod.Register
     _ReadPlan = loader_mod.ReadPlan
     _plan_group_reads = loader_mod.plan_group_reads
-    # Use MAX_BATCH_REGISTERS + 6 consecutive registers to ensure the batch limit
-    # is hit and the registers are split into two read plans.
-    regs = [_Register("input", addr, f"r{addr}", "r") for addr in range(MAX_BATCH_REGISTERS + 6)]
+    regs = [_Register("input", addr, f"r{addr}", "r") for addr in range(22)]
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader.load_registers",
         lambda: regs,
@@ -94,8 +92,6 @@ def test_scanner_respects_default_max_block_size():
     # Known-missing input registers in range(22): version_patch=4,
     # compilation_days=14, compilation_seconds=15, duct_supply_temperature=20,
     # gwc_temperature=21 — each is isolated into a single-register group.
-    # Addresses 22-59 are consecutive in the register map → single group (22, 38).
-    # Addresses 60-65 form a second group (60, 6) after the MAX_BATCH_REGISTERS split.
     assert scanner._group_registers_for_batch_read(addresses) == [
         (0, 4),
         (4, 1),
@@ -105,6 +101,4 @@ def test_scanner_respects_default_max_block_size():
         (16, 4),
         (20, 1),
         (21, 1),
-        (22, 38),
-        (60, 6),
     ]

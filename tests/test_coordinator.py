@@ -504,17 +504,16 @@ async def test_async_write_register_truncates_over_limit(coordinator, monkeypatc
 
     import custom_components.thessla_green_modbus.coordinator as coordinator_mod
 
-    n = MAX_BATCH_REGISTERS + 10
-    fake_def = SimpleNamespace(length=n, address=0, function=3, encode=lambda v: v)
+    fake_def = SimpleNamespace(length=20, address=0, function=3, encode=lambda v: v)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
 
-    result = await coordinator.async_write_register("large", list(range(n)))
+    result = await coordinator.async_write_register("large", list(range(20)))
 
     assert result is True
     assert client.write_registers.await_count == 2
     assert [len(call.kwargs["values"]) for call in client.write_registers.await_args_list] == [
         MAX_BATCH_REGISTERS,
-        10,
+        4,
     ]
     coordinator.async_request_refresh.assert_called_once()
 
