@@ -172,6 +172,18 @@
       "e_196_e_199": {
         "name": "Flagi błędów E196–E199"
       },
+      "e_196_e_199_e_196": {
+        "name": "Błąd E196"
+      },
+      "e_196_e_199_e_197": {
+        "name": "Błąd E197"
+      },
+      "e_196_e_199_e_198": {
+        "name": "Błąd E198"
+      },
+      "e_196_e_199_e_199": {
+        "name": "Błąd E199"
+      },
       "e_200": {
         "name": "E200: Ochrona termiczna nagrzewnicy (centrala)"
       },

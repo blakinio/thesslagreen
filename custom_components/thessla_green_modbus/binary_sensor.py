@@ -134,6 +134,21 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
             register_name,
         )
 
+    @property
+    def suggested_object_id(self) -> str:  # pragma: no cover
+        """Return bit-specific object ID for bitmask sensors, register key otherwise.
+
+        For bit-level entities, ``_attr_translation_key`` holds the unique
+        per-bit key (e.g. ``e_196_e_199_e196``), while the parent's ``_key``
+        is the shared register name (``e_196_e_199``).  Returning the
+        translation_key here gives each bit entity a distinct entity_id without
+        changing the unique_id format (backward compatible).
+        """
+        tk = self._attr_translation_key
+        if tk and tk != self._key:
+            return tk
+        return super().suggested_object_id
+
     # Prefixes that identify diagnostic alarm/error/status registers.
     _DIAG_PREFIXES = ("s_", "e_", "f_")
     _DIAG_NAMES = {"alarm", "error"}

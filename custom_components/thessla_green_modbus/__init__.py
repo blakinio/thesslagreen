@@ -547,6 +547,20 @@ _LEGACY_KEY_RENAMES: dict[str, str] = {
     "filter_type": "filter_change",
 }
 
+# Mapping from (register_key, bit_value) → bit-specific entity key.
+# Used during migration to assign unique entity_ids to individual bits of
+# bitmask registers.  Without this, all 4 bits of e_196_e_199 would all
+# target the same entity_id (collision) and only one could be migrated.
+_BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
+    # e_196_e_199 is a bitmask register; each bit gets its own entity key.
+    # Key format: _to_snake_case(bit_name) inserts underscore before digits,
+    # so "e196" → "e_196", giving "e_196_e_199_e_196".
+    ("e_196_e_199", 1): "e_196_e_199_e_196",
+    ("e_196_e_199", 2): "e_196_e_199_e_197",
+    ("e_196_e_199", 4): "e_196_e_199_e_198",
+    ("e_196_e_199", 8): "e_196_e_199_e_199",
+}
+
 
 def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str) -> str | None:
     """Extract register key from entity unique_id.
@@ -663,6 +677,17 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
         # Apply legacy key renames (handles dict_key changes across versions)
         key = _LEGACY_KEY_RENAMES.get(key, key)
+
+        # For bitmask bit entities, resolve the register key + bit value to the
+        # per-bit entity key (e.g. "e_196_e_199" + bit1 → "e_196_e_199_e196").
+        # Without this, all four bits of e_196_e_199 would compete for the same
+        # target entity_id causing three of four to be skipped as collisions.
+        bit_match = re.search(r"_bit(\d+)$", reg_entry.unique_id)
+        if bit_match:
+            bit_val = int(bit_match.group(1))
+            bit_key = _BIT_ENTITY_KEYS.get((key, bit_val))
+            if bit_key:
+                key = bit_key
 
         # Determine device name slug from the device registry
         if not reg_entry.device_id:

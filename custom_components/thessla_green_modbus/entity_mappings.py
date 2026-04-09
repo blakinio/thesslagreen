@@ -1548,6 +1548,11 @@ def _extend_entity_mappings_from_registers() -> None:
             continue
         if register in BINARY_SENSOR_ENTITY_MAPPINGS:
             continue
+        # Skip if bit-level entities already cover this register (bitmask registers).
+        # Adding a whole-register entity on top of bit entities would create a
+        # redundant duplicate that reads the raw bitmask value.
+        if any(v.get("register") == register for v in BINARY_SENSOR_ENTITY_MAPPINGS.values()):
+            continue
         if register in SWITCH_ENTITY_MAPPINGS:
             continue
         if register in SELECT_ENTITY_MAPPINGS:
