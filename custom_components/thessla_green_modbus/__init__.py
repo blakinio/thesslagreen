@@ -474,9 +474,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  
     unload_ok = cast(bool, await hass.config_entries.async_unload_platforms(entry, platforms))
 
     if unload_ok:
-        # Shutdown coordinator
-        coordinator = entry.runtime_data
-        await coordinator.async_shutdown()
+        # Shutdown coordinator (runtime_data may not be set if setup failed early)
+        coordinator = getattr(entry, "runtime_data", None)
+        if coordinator is not None:
+            await coordinator.async_shutdown()
 
         # Unload services when last entry is removed
         if not hass.config_entries.async_entries(DOMAIN):
