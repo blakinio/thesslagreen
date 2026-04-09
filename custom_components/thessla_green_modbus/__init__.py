@@ -671,6 +671,7 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
     skipped_no_device: int = 0
     skipped_ok: int = 0
     skipped_collision: int = 0
+    removed_stale: int = 0
 
     for reg_entry in reg_entries:
         if entity_reg.async_get(reg_entry.entity_id) is None:
@@ -690,6 +691,26 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
         # Apply legacy key renames (handles dict_key changes across versions)
         key = _LEGACY_KEY_RENAMES.get(key, key)
+
+        # Very old releases created generic "problem_*" entity keys.
+        # Those keys do not map 1:1 to current S_/E_ register names, so keep
+        # them from lingering in the registry as stale unavailable entities.
+        if re.fullmatch(r"problem(?:_\d+)?", key):
+            _LOGGER.debug(
+                "entity_id migration: removing stale legacy problem entity %s (key=%r)",
+                reg_entry.entity_id,
+                key,
+            )
+            try:
+                entity_reg.async_remove(reg_entry.entity_id)
+                removed_stale += 1
+            except Exception as exc:
+                _LOGGER.warning(
+                    "entity_id migration: could not remove stale entity %s: %s",
+                    reg_entry.entity_id,
+                    exc,
+                )
+            continue
 
         # For bitmask bit entities, resolve the register key + bit value to the
         # per-bit entity key (e.g. "e_196_e_199" + bit1 → "e_196_e_199_e196").
@@ -750,8 +771,9 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
             )
 
     _LOGGER.info(
-        "entity_id migration done: migrated=%d already_ok=%d no_key=%d no_device=%d collision=%d",
+        "entity_id migration done: migrated=%d removed_stale=%d already_ok=%d no_key=%d no_device=%d collision=%d",
         len(migrated),
+        removed_stale,
         skipped_ok,
         skipped_no_key,
         skipped_no_device,
