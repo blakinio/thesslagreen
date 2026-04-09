@@ -62,6 +62,24 @@ def test_apply_log_level_sets_debug():
     assert logger.level == logging.DEBUG  # nosec B101
 
 
+def test_extract_legacy_problem_key_from_entity_id() -> None:
+    """Legacy problem suffix should be detectable from old entity IDs."""
+    from custom_components.thessla_green_modbus import _extract_legacy_problem_key_from_entity_id
+
+    assert (
+        _extract_legacy_problem_key_from_entity_id("binary_sensor.rekuperator_problem_29")
+        == "problem_29"
+    )
+    assert (
+        _extract_legacy_problem_key_from_entity_id("binary_sensor.rekuperator_problem")
+        == "problem"
+    )
+    assert (
+        _extract_legacy_problem_key_from_entity_id("binary_sensor.rekuperator_error_e196")
+        is None
+    )
+
+
 # ---------------------------------------------------------------------------
 # _async_cleanup_legacy_fan_entity (lines 524-525)
 # ---------------------------------------------------------------------------

@@ -62,6 +62,7 @@ sys.modules["homeassistant.util.network"] = network_mod
 
 from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
     BINARY_SENSOR_DEFINITIONS,
+    LEGACY_PROBLEM_KEY_PATTERN,
     ThesslaGreenBinarySensor,
     async_setup_entry,
 )
@@ -71,6 +72,14 @@ from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E
 )
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
+
+
+def test_legacy_problem_key_pattern_matches_expected_values() -> None:
+    """Guard against accidental creation of stale problem_* entities."""
+
+    assert LEGACY_PROBLEM_KEY_PATTERN.fullmatch("problem")  # nosec B101
+    assert LEGACY_PROBLEM_KEY_PATTERN.fullmatch("problem_29")  # nosec B101
+    assert not LEGACY_PROBLEM_KEY_PATTERN.fullmatch("s_29")  # nosec B101
 
 
 def test_binary_sensor_creation_and_state(mock_coordinator: MagicMock) -> None:

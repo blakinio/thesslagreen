@@ -596,6 +596,18 @@ def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str
     return None
 
 
+def _extract_legacy_problem_key_from_entity_id(entity_id: str) -> str | None:
+    """Extract legacy ``problem``/``problem_N`` key suffix from entity_id."""
+
+    if "." not in entity_id:
+        return None
+    object_id = entity_id.split(".", 1)[1]
+    match = re.search(r"(problem(?:_\d+)?)$", object_id)
+    if not match:
+        return None
+    return match.group(1)
+
+
 async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover
     """Rename entity IDs from translation-based to register-key-based naming.
 
@@ -671,6 +683,7 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
     skipped_no_device: int = 0
     skipped_ok: int = 0
     skipped_collision: int = 0
+    removed_stale: int = 0
 
     for reg_entry in reg_entries:
         if entity_reg.async_get(reg_entry.entity_id) is None:
@@ -678,6 +691,23 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
         key = _extract_key_from_unique_id(reg_entry.unique_id, prefix, slave_id)
         if not key:
+            legacy_problem_key = _extract_legacy_problem_key_from_entity_id(reg_entry.entity_id)
+            if legacy_problem_key:
+                _LOGGER.debug(
+                    "entity_id migration: removing stale legacy problem entity %s (fallback key=%r)",
+                    reg_entry.entity_id,
+                    legacy_problem_key,
+                )
+                try:
+                    entity_reg.async_remove(reg_entry.entity_id)
+                    removed_stale += 1
+                except Exception as exc:
+                    _LOGGER.warning(
+                        "entity_id migration: could not remove stale entity %s: %s",
+                        reg_entry.entity_id,
+                        exc,
+                    )
+                continue
             skipped_no_key += 1
             _LOGGER.debug(
                 "entity_id migration: cannot extract key from unique_id=%r (prefix=%r slave=%s) — skipping %s",
@@ -690,6 +720,26 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
         # Apply legacy key renames (handles dict_key changes across versions)
         key = _LEGACY_KEY_RENAMES.get(key, key)
+
+        # Very old releases created generic "problem_*" entity keys.
+        # Those keys do not map 1:1 to current S_/E_ register names, so keep
+        # them from lingering in the registry as stale unavailable entities.
+        if re.fullmatch(r"problem(?:_\d+)?", key):
+            _LOGGER.debug(
+                "entity_id migration: removing stale legacy problem entity %s (key=%r)",
+                reg_entry.entity_id,
+                key,
+            )
+            try:
+                entity_reg.async_remove(reg_entry.entity_id)
+                removed_stale += 1
+            except Exception as exc:
+                _LOGGER.warning(
+                    "entity_id migration: could not remove stale entity %s: %s",
+                    reg_entry.entity_id,
+                    exc,
+                )
+            continue
 
         # For bitmask bit entities, resolve the register key + bit value to the
         # per-bit entity key (e.g. "e_196_e_199" + bit1 → "e_196_e_199_e196").
@@ -750,8 +800,9 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
             )
 
     _LOGGER.info(
-        "entity_id migration done: migrated=%d already_ok=%d no_key=%d no_device=%d collision=%d",
+        "entity_id migration done: migrated=%d removed_stale=%d already_ok=%d no_key=%d no_device=%d collision=%d",
         len(migrated),
+        removed_stale,
         skipped_ok,
         skipped_no_key,
         skipped_no_device,
