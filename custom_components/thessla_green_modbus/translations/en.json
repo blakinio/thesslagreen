@@ -933,9 +933,6 @@
       "required_temperature": {
         "name": "Required Temperature"
       },
-      "air_flow_rate_manual": {
-        "name": "Air Flow Rate Manual"
-      },
       "air_temperature_summer_free_cooling": {
         "name": "Bypass Temperature (Free Cooling)"
       },

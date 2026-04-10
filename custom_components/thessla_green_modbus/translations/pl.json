@@ -933,9 +933,6 @@
       "required_temperature": {
         "name": "Temperatura zadana"
       },
-      "air_flow_rate_manual": {
-        "name": "Przepływ powietrza manualnie"
-      },
       "air_temperature_summer_free_cooling": {
         "name": "Temperatura bypassa (wolne chłodzenie)"
       },
