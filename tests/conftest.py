@@ -762,12 +762,25 @@ def fail_on_log_exception():
 
 @pytest.fixture(autouse=True)
 def close_dangling_event_loops():
-    """Close any dangling event loops after each test to prevent ResourceWarning."""
+    """Close dangling event loops after each test to prevent ResourceWarning.
+
+    Only closes loops that are genuinely idle — i.e. not currently running
+    and with no pending tasks.  This prevents interference with
+    pytest-asyncio's own loop teardown (shutdown_default_executor etc.)
+    which runs *after* fixture teardown in Python 3.10, causing
+    ``RuntimeError: Event loop is closed`` cascade errors.
+    """
     yield
     try:
         loop = asyncio.get_event_loop_policy().get_event_loop()
-        if loop and not loop.is_closed():
-            loop.close()
+        if loop is None or loop.is_closed() or loop.is_running():
+            return
+        # If there are pending tasks the loop is still in use by pytest-asyncio
+        # teardown — don't touch it.
+        pending = asyncio.all_tasks(loop)
+        if pending:
+            return
+        loop.close()
     except RuntimeError:
         pass
 
