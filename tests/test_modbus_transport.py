@@ -6,8 +6,8 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import custom_components.thessla_green_modbus.modbus_transport as _transport_mod
 import pytest
-
 from custom_components.thessla_green_modbus.const import (
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
@@ -21,11 +21,11 @@ from custom_components.thessla_green_modbus.modbus_transport import (
     RawModbusResponse,
     RawModbusWriteResponse,
     RawRtuOverTcpTransport,
+    RtuModbusTransport,
     TcpModbusTransport,
     _append_crc,
     _crc16,
 )
-
 
 # ---------------------------------------------------------------------------
 # Pure helpers
@@ -106,6 +106,7 @@ def test_tcp_is_connected_true():
 def test_build_tcp_client_fallback_stripped_kwargs():
     """_build_tcp_client falls back to minimal kwargs when reconnect params rejected."""
     import sys
+
     t = _make_tcp()
 
     call_count = [0]
@@ -132,6 +133,7 @@ def test_build_tcp_client_fallback_stripped_kwargs():
 def test_build_tcp_client_final_fallback():
     """_build_tcp_client last resort creates bare instance and sets host/port."""
     import sys
+
     t = _make_tcp()
 
     bare_instance = MagicMock()
@@ -546,9 +548,7 @@ async def test_raw_tcp_read_exactly_incomplete_read():
     """_read_exactly raises ModbusIOException on IncompleteReadError."""
     t = _make_raw_tcp()
     mock_reader = AsyncMock()
-    mock_reader.readexactly = AsyncMock(
-        side_effect=asyncio.IncompleteReadError(b"", 4)
-    )
+    mock_reader.readexactly = AsyncMock(side_effect=asyncio.IncompleteReadError(b"", 4))
     t._reader = mock_reader
 
     with pytest.raises(ModbusIOException, match="Incomplete"):
@@ -568,7 +568,7 @@ async def test_raw_tcp_read_exactly_timeout():
     mock_reader.readexactly = slow_read
     t._reader = mock_reader
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises((TimeoutError, asyncio.TimeoutError)):
         await t._read_exactly(4)
 
 
@@ -577,7 +577,7 @@ def test_validate_crc_mismatch():
     from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
 
     with pytest.raises(ModbusIOException, match="CRC mismatch"):
-        RawRtuOverTcpTransport._validate_crc(b"\x01\x03", b"\xFF\xFF")
+        RawRtuOverTcpTransport._validate_crc(b"\x01\x03", b"\xff\xff")
 
 
 def test_build_read_frame_structure():
@@ -587,8 +587,8 @@ def test_build_read_frame_structure():
     frame = RawRtuOverTcpTransport._build_read_frame(1, 4, 0x0064, 10)
     # slave, func, addr_hi, addr_lo, count_hi, count_lo + 2 CRC bytes = 8
     assert len(frame) == 8
-    assert frame[0] == 1   # slave_id
-    assert frame[1] == 4   # function
+    assert frame[0] == 1  # slave_id
+    assert frame[1] == 4  # function
 
 
 def test_build_write_single_frame_structure():
@@ -597,8 +597,8 @@ def test_build_write_single_frame_structure():
 
     frame = RawRtuOverTcpTransport._build_write_single_frame(1, 0x0064, 42)
     assert len(frame) == 8
-    assert frame[0] == 1   # slave_id
-    assert frame[1] == 6   # function code for write single register
+    assert frame[0] == 1  # slave_id
+    assert frame[1] == 6  # function code for write single register
 
 
 def test_build_write_multiple_frame_structure():
@@ -608,8 +608,8 @@ def test_build_write_multiple_frame_structure():
     frame = RawRtuOverTcpTransport._build_write_multiple_frame(1, 0x0064, [10, 20])
     # 1(slave) + 1(func) + 2(addr) + 2(qty) + 1(byte_count) + 4(2 values) + 2(CRC) = 13
     assert len(frame) == 13
-    assert frame[0] == 1    # slave_id
-    assert frame[1] == 16   # function code 0x10
+    assert frame[0] == 1  # slave_id
+    assert frame[1] == 16  # function code 0x10
 
 
 # ---------------------------------------------------------------------------
@@ -720,10 +720,6 @@ async def test_raw_tcp_read_input_registers():
     t = _make_raw_tcp()
 
     data = bytes([0x00, 0x2A])  # value = 42
-    byte_count = bytes([len(data)])
-    header = bytes([1, 4])
-    payload = header + byte_count + data
-    crc = _crc16(payload).to_bytes(2, "little")
 
     async def fake_send_frame(frame, slave, func):
         return data
@@ -902,10 +898,6 @@ async def test_raw_tcp_write_registers_invalid_length():
 # ---------------------------------------------------------------------------
 # RtuModbusTransport tests
 # ---------------------------------------------------------------------------
-
-
-from custom_components.thessla_green_modbus.modbus_transport import RtuModbusTransport
-import custom_components.thessla_green_modbus.modbus_transport as _transport_mod
 
 
 def _make_rtu(**kwargs):
