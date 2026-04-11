@@ -17,20 +17,60 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 USE_REAL_HOMEASSISTANT = os.environ.get("THESSLA_GREEN_USE_HA", "0") == "1"
+_ha_spec = importlib.util.find_spec("homeassistant") if USE_REAL_HOMEASSISTANT else None
+_translation_module = None
+if (
+    _ha_spec is not None
+    and importlib.util.find_spec("homeassistant.helpers.translation") is not None
+):
+    _translation_module = importlib.import_module("homeassistant.helpers.translation")
 
-try:
-    if not USE_REAL_HOMEASSISTANT:
-        raise ModuleNotFoundError
+
+def _install_translation_shims(module: types.ModuleType) -> None:
+    """Provide translation internals expected by HA pytest plugins."""
+    if not hasattr(module, "_TranslationsCacheData"):
+
+        class _TranslationsCacheData(dict):
+            """Compatibility shim for pytest-homeassistant-custom-component."""
+
+        module._TranslationsCacheData = _TranslationsCacheData
+
+    if not hasattr(module, "_async_get_component_strings"):
+
+        async def _async_get_component_strings(*_args, **_kwargs):
+            return {}
+
+        module._async_get_component_strings = _async_get_component_strings
+
+
+if _translation_module is not None:
+    _install_translation_shims(_translation_module)
+
+
+def _fake_modbus_response(*, registers=None, bits=None):
+    """Build a minimal pymodbus-like response object for tests."""
+    payload: dict[str, object] = {"isError": lambda self: False}
+    if registers is not None:
+        payload["registers"] = registers
+    if bits is not None:
+        payload["bits"] = bits
+    return type("Resp", (), payload)()
+
+
+_MANAGED_EVENT_LOOP: asyncio.AbstractEventLoop | None = None
+
+if USE_REAL_HOMEASSISTANT and importlib.util.find_spec("homeassistant") is not None:
     from homeassistant.util import dt as _ha_dt  # noqa: F401
 
     importlib.import_module("homeassistant.util")  # ensure util submodule is loaded for plugins
     import homeassistant as ha_module
+
     ha_module.components = importlib.import_module("homeassistant.components")
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.exceptions import ConfigEntryNotReady
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-except ModuleNotFoundError:  # pragma: no cover - simplify test environment
+else:  # pragma: no cover - simplify test environment
     ha = types.ModuleType("homeassistant")
     core = types.ModuleType("homeassistant.core")
     config_entries = types.ModuleType("homeassistant.config_entries")
@@ -97,6 +137,7 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
         return {}
 
     translation.async_get_translations = async_get_translations
+    _install_translation_shims(translation)
     pymodbus = types.ModuleType("pymodbus")
     pymodbus_client = types.ModuleType("pymodbus.client")
     pymodbus_client_tcp = types.ModuleType("pymodbus.client.tcp")
@@ -378,19 +419,19 @@ except ModuleNotFoundError:  # pragma: no cover - simplify test environment
             return None
 
         async def read_input_registers(self, *_args, **_kwargs):
-            return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+            return _fake_modbus_response(registers=[0], bits=[False])
 
         async def read_holding_registers(self, *_args, **_kwargs):
-            return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+            return _fake_modbus_response(registers=[0], bits=[False])
 
         async def read_coils(self, *_args, **_kwargs):
-            return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+            return _fake_modbus_response(bits=[False])
 
         async def read_discrete_inputs(self, *_args, **_kwargs):
-            return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+            return _fake_modbus_response(bits=[False])
 
         async def write_register(self, *_args, **_kwargs):
-            return type("Resp", (), {"isError": lambda self: False})()
+            return _fake_modbus_response()
 
     pymodbus_client_tcp.ModbusTcpClient = ModbusTcpClient
     pymodbus_client_tcp.AsyncModbusTcpClient = AsyncModbusTcpClient
@@ -547,6 +588,7 @@ def _ensure_homeassistant_modules() -> None:
 
     components_network = _ensure_module("homeassistant.components.network")
     if not hasattr(components_network, "async_get_source_ip"):
+
         async def async_get_source_ip(*_args, **_kwargs):  # pragma: no cover - stub
             return "127.0.0.1"
 
@@ -558,24 +600,34 @@ def _ensure_homeassistant_modules() -> None:
         client_cls = getattr(pymodbus_client_mod, "AsyncModbusTcpClient", None)
         if client_cls is not None:
             if not hasattr(client_cls, "read_input_registers"):
+
                 async def _read_input_registers(self, *_args, **_kwargs):
-                    return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+                    return _fake_modbus_response(registers=[0], bits=[False])
+
                 client_cls.read_input_registers = _read_input_registers
             if not hasattr(client_cls, "read_holding_registers"):
+
                 async def _read_holding_registers(self, *_args, **_kwargs):
-                    return type("Resp", (), {"isError": lambda self: False, "registers": [0], "bits": [False]})()
+                    return _fake_modbus_response(registers=[0], bits=[False])
+
                 client_cls.read_holding_registers = _read_holding_registers
             if not hasattr(client_cls, "read_coils"):
+
                 async def _read_coils(self, *_args, **_kwargs):
-                    return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+                    return _fake_modbus_response(bits=[False])
+
                 client_cls.read_coils = _read_coils
             if not hasattr(client_cls, "read_discrete_inputs"):
+
                 async def _read_discrete_inputs(self, *_args, **_kwargs):
-                    return type("Resp", (), {"isError": lambda self: False, "bits": [False]})()
+                    return _fake_modbus_response(bits=[False])
+
                 client_cls.read_discrete_inputs = _read_discrete_inputs
             if not hasattr(client_cls, "write_register"):
+
                 async def _write_register(self, *_args, **_kwargs):
-                    return type("Resp", (), {"isError": lambda self: False})()
+                    return _fake_modbus_response()
+
                 client_cls.write_register = _write_register
 
 
@@ -600,6 +652,7 @@ ha_const = sys.modules.get("homeassistant.const")
 if ha_const is not None and not hasattr(ha_const, "PERCENTAGE"):
     ha_const.PERCENTAGE = "%"
 
+
 def _restore_integration_modules() -> None:
     """Restore integration modules if tests monkeypatch core classes globally."""
 
@@ -619,7 +672,11 @@ def _restore_integration_modules() -> None:
 
     helpers_mod = sys.modules.get("homeassistant.helpers")
     entity_registry_mod = sys.modules.get("homeassistant.helpers.entity_registry")
-    if helpers_mod is not None and entity_registry_mod is not None and not hasattr(helpers_mod, "entity_registry"):
+    if (
+        helpers_mod is not None
+        and entity_registry_mod is not None
+        and not hasattr(helpers_mod, "entity_registry")
+    ):
         helpers_mod.entity_registry = entity_registry_mod
 
 
@@ -629,16 +686,48 @@ DOMAIN = "thessla_green_modbus"
 
 
 def pytest_configure() -> None:
-    _ensure_homeassistant_modules()
+    _prepare_pytest_runtime()
 
 
 def pytest_sessionstart(session) -> None:
-    _ensure_homeassistant_modules()
+    _prepare_pytest_runtime()
+
+
+def pytest_sessionfinish(session, exitstatus) -> None:
+    """Close event loop created by test harness, if any."""
+    global _MANAGED_EVENT_LOOP
+    loop = _MANAGED_EVENT_LOOP
+    if loop is None or loop.is_closed() or loop.is_running():
+        return
+    asyncio.set_event_loop(None)
+    loop.close()
+    _MANAGED_EVENT_LOOP = None
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_setup(item) -> None:
+    _prepare_pytest_runtime()
+
+
+def _prepare_pytest_runtime() -> None:
+    """Ensure HA shims and asyncio loop are ready for plugin hooks."""
     _ensure_homeassistant_modules()
+    _ensure_current_event_loop()
+
+
+def _ensure_current_event_loop() -> None:
+    """Ensure the main thread has an asyncio loop for HA pytest plugins."""
+    global _MANAGED_EVENT_LOOP
+
+    current_loop = None
+    try:
+        current_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        pass
+
+    if current_loop is None or current_loop.is_closed():
+        _MANAGED_EVENT_LOOP = asyncio.new_event_loop()
+        asyncio.set_event_loop(_MANAGED_EVENT_LOOP)
 
 
 class CoordinatorMock(MagicMock):
@@ -761,31 +850,6 @@ def fail_on_log_exception():
 
 
 @pytest.fixture(autouse=True)
-def close_dangling_event_loops():
-    """Close dangling event loops after each test to prevent ResourceWarning.
-
-    Only closes loops that are genuinely idle — i.e. not currently running
-    and with no pending tasks.  This prevents interference with
-    pytest-asyncio's own loop teardown (shutdown_default_executor etc.)
-    which runs *after* fixture teardown in Python 3.10, causing
-    ``RuntimeError: Event loop is closed`` cascade errors.
-    """
-    yield
-    try:
-        loop = asyncio.get_event_loop_policy().get_event_loop()
-        if loop is None or loop.is_closed() or loop.is_running():
-            return
-        # If there are pending tasks the loop is still in use by pytest-asyncio
-        # teardown — don't touch it.
-        pending = asyncio.all_tasks(loop)
-        if pending:
-            return
-        loop.close()
-    except RuntimeError:
-        pass
-
-
-@pytest.fixture(autouse=True)
 def _patch_ha_internals_for_mock_hass():
     """Patch HA internals that require full hass initialisation.
 
@@ -801,14 +865,18 @@ def _patch_ha_internals_for_mock_hass():
 
     from unittest.mock import AsyncMock, MagicMock, patch
 
-    with patch(
-        "homeassistant.helpers.entity_registry.async_get",
-        return_value=MagicMock(),
-    ), patch(
-        "homeassistant.helpers.translation.async_get_translations",
-        new=AsyncMock(return_value={}),
-    ), patch(
-        "homeassistant.helpers.frame.report_usage",
-        return_value=None,
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            new=AsyncMock(return_value={}),
+        ),
+        patch(
+            "homeassistant.helpers.frame.report_usage",
+            return_value=None,
+        ),
     ):
         yield
