@@ -15,7 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import holding_registers
+from .const import FAN_DEFAULT_PERCENT, FAN_SPEED_LEVELS, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
@@ -82,7 +82,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         self._attr_supported_features = FanEntityFeature.SET_SPEED  # pragma: no cover
 
         # Speed range (0-150% as per ThesslaGreen specs)
-        self._attr_speed_count = 10  # 10 speed levels used by integration/tests  # pragma: no cover
+        self._attr_speed_count = FAN_SPEED_LEVELS  # pragma: no cover
 
         _LOGGER.debug("Initialized fan entity")
 
@@ -92,6 +92,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         return (
             self.coordinator.last_update_success
             and self.coordinator.data.get("on_off_panel_mode") is not None
+            and not getattr(self.coordinator, "offline_state", False)
         )
 
     @property
@@ -118,25 +119,6 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
         _min_pct, max_pct = self._percentage_limits()
         return max(0, min(max_pct, int(flow_rate)))
-
-    def _percentage_limits(self) -> tuple[int, int]:
-        """Return min/max percentage limits derived from device data."""
-
-        min_pct = self.coordinator.data.get("min_percentage")
-        max_pct = self.coordinator.data.get("max_percentage")
-        try:
-            min_val = int(min_pct)
-        except (TypeError, ValueError):
-            min_val = 0
-        try:
-            max_val = int(max_pct)
-        except (TypeError, ValueError):
-            max_val = 150
-        min_val = max(0, min_val)
-        max_val = min(150, max_val)
-        if max_val < min_val:
-            max_val = min_val
-        return min_val, max_val
 
     def _get_current_flow_rate(self) -> float | None:
         """Get current flow rate from available registers."""
@@ -175,7 +157,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                 await self.async_set_percentage(percentage)
             else:
                 # Default to 50% if no percentage specified
-                await self.async_set_percentage(50)
+                await self.async_set_percentage(FAN_DEFAULT_PERCENT)
 
             _LOGGER.debug("Turned on fan")
 
@@ -273,7 +255,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         return None
 
     async def _write_register(self, register_name: str, value: int) -> None:
-        """Write value to register."""
+        """Write value to holding register when present on the device."""
         if register_name not in holding_registers():
             raise ValueError(f"Register {register_name} is not writable")
 
@@ -282,11 +264,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             _LOGGER.debug("Register %s unavailable, skipping write", register_name)
             return
 
-        success = await self.coordinator.async_write_register(register_name, value, refresh=False)
-        if not success:
-            raise RuntimeError(f"Failed to write register {register_name}")
-
-        await self.coordinator.async_request_refresh()
+        await super()._write_register(register_name, value)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover

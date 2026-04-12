@@ -10,9 +10,9 @@ import asyncio
 import logging
 from typing import Any, cast
 
+from homeassistant import const as ha_const
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant import const as ha_const
 from homeassistant.helpers.entity import EntityCategory
 
 PERCENTAGE = getattr(ha_const, "PERCENTAGE", "%")

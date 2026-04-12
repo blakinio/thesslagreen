@@ -66,9 +66,7 @@ async def async_setup_entry(
             else:
                 address = coil_map.get(register_name)
             if address is None:
-                _LOGGER.warning(
-                    "No register address for switch '%s', skipping", register_name
-                )
+                _LOGGER.warning("No register address for switch '%s', skipping", register_name)
                 continue
             entities.append(
                 ThesslaGreenSwitch(
@@ -187,13 +185,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     async def _write_register(self, register_name: str, value: int) -> None:
         """Write value to register."""
         offset = self.entity_config.get("offset", 0)
-        success = await self.coordinator.async_write_register(
-            register_name, value, refresh=False, offset=offset
-        )
-        if not success:
-            raise RuntimeError(f"Failed to write register {register_name}")
-
-        await self.coordinator.async_request_refresh()
+        await super()._write_register(register_name, value, offset=offset, include_offset=True)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import dataclasses
+import inspect
 import ipaddress
 import logging
 import socket
@@ -168,14 +168,14 @@ class _VolInvalid(Exception):
 
 VOL_INVALID = getattr(vol, "Invalid", _VolInvalid)
 if not hasattr(vol, "Invalid"):
-    setattr(vol, "Invalid", VOL_INVALID)  # pragma: no cover
+    vol.Invalid = VOL_INVALID  # pragma: no cover
 
 
 def _schema(definition: Any) -> Any:
     """Create voluptuous schema with `.schema` compatibility for tests."""
     schema_obj = vol.Schema(definition)
     if not hasattr(schema_obj, "schema"):
-        setattr(schema_obj, "schema", definition)  # pragma: no cover
+        schema_obj.schema = definition  # pragma: no cover
     return schema_obj
 
 def _required(schema: Any, **kwargs: Any) -> Any:
@@ -546,7 +546,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
-    except (TimeoutError, asyncio.TimeoutError) as exc:
+    except TimeoutError as exc:
         _LOGGER.warning("Timeout during device validation: %s", exc)
         if "modbus request cancelled" not in str(exc).lower():
             _LOGGER.debug("Traceback:\n%s", traceback.format_exc())

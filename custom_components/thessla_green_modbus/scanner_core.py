@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import collections.abc
+import importlib
 import inspect
 import logging
-import importlib
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -45,7 +45,7 @@ try:
     _pymodbus = importlib.import_module("pymodbus")
     _pymodbus_client = importlib.import_module("pymodbus.client")
     if not hasattr(_pymodbus, "client"):
-        setattr(_pymodbus, "client", _pymodbus_client)  # pragma: no cover
+        _pymodbus.client = _pymodbus_client  # pragma: no cover
 except Exception as _exc:  # pragma: no cover
     _LOGGER.debug("Could not attach pymodbus.client submodule: %s", _exc)
 
@@ -120,9 +120,9 @@ def _ensure_pymodbus_client_module() -> None:
     except Exception:
         return
     if not hasattr(pymodbus_mod, "client"):
-        setattr(pymodbus_mod, "client", client_mod)
+        pymodbus_mod.client = client_mod
     if hasattr(client_mod, "AsyncModbusTcpClient") and not hasattr(client_mod, "ModbusTcpClient"):
-        setattr(client_mod, "ModbusTcpClient", getattr(client_mod, "AsyncModbusTcpClient"))
+        client_mod.ModbusTcpClient = client_mod.AsyncModbusTcpClient
 
 
 # Register definition caches - populated lazily
@@ -1033,7 +1033,7 @@ class ThesslaGreenDeviceScanner:
         return result
 
     async def _scan_firmware_info(
-        self, info_regs: list[int], device: "ScannerDeviceInfo"
+        self, info_regs: list[int], device: ScannerDeviceInfo
     ) -> None:
         """Parse firmware version from info_regs and update device."""
         major: int | None = None
@@ -1114,7 +1114,7 @@ class ThesslaGreenDeviceScanner:
             device.firmware_available = False  # pragma: no cover
 
     async def _scan_device_identity(
-        self, info_regs: list[int], device: "ScannerDeviceInfo"
+        self, info_regs: list[int], device: ScannerDeviceInfo
     ) -> None:
         """Parse serial number and device name from registers into device."""
         try:
@@ -1678,7 +1678,7 @@ class ThesslaGreenDeviceScanner:
 
     async def scan_device(self) -> dict[str, Any]:
         """Open the Modbus connection, perform a scan and close the client."""
-        scan_method = getattr(self, "scan")
+        scan_method = self.scan
         if getattr(scan_method, "__func__", None) is not ThesslaGreenDeviceScanner.scan:
             try:
                 result = scan_method()

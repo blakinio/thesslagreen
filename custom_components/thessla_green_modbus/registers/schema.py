@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover - Python < 3.11 compatibility
 from typing import Any, Literal
 
 import pydantic
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..utils import _normalise_name
 

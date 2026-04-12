@@ -13,6 +13,7 @@ from typing import Any
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capability_rules import capability_block_reason
@@ -129,8 +130,9 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:  # pragma: no cover
         """Change the selected option."""
         if option not in self._states:
-            _LOGGER.error("Invalid option: %s", option)
-            return
+            msg = f"Invalid option for {self._register_name}: {option}"
+            _LOGGER.error(msg)
+            raise HomeAssistantError(msg)
 
         value = self._states[option]
         try:
@@ -138,10 +140,13 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
                 self._register_name, value, refresh=False
             )
         except (ModbusException, ConnectionException) as err:
-            _LOGGER.error("Error setting %s to %s: %s", self._register_name, option, err)
-            return
+            msg = f"Error setting {self._register_name} to {option}: {err}"
+            _LOGGER.error(msg)
+            raise HomeAssistantError(msg) from err
 
         if success:
             await self.coordinator.async_request_refresh()
         else:
-            _LOGGER.error("Failed to set %s to %s", self._register_name, option)
+            msg = f"Failed to set {self._register_name} to {option}"
+            _LOGGER.error(msg)
+            raise HomeAssistantError(msg)

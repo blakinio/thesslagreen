@@ -327,8 +327,8 @@ class TcpModbusTransport(BaseModbusTransport):
                 return AsyncTcpClient(self.host, **fallback_kwargs)
             except TypeError:
                 client = AsyncTcpClient()
-                setattr(client, "host", self.host)
-                setattr(client, "port", self.port)
+                client.host = self.host
+                client.port = self.port
                 return client
 
     async def _connect(self) -> None:
@@ -371,7 +371,7 @@ class TcpModbusTransport(BaseModbusTransport):
                 connected = await connected
         else:
             connected = True
-            setattr(self.client, "connected", True)
+            self.client.connected = True
         if not connected:
             self.offline_state = True
             raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
@@ -514,7 +514,7 @@ class RtuModbusTransport(BaseModbusTransport):
                 connected = await connected
         else:
             connected = True
-            setattr(self.client, "connected", True)
+            self.client.connected = True
         if not connected:
             self.offline_state = True
             raise ConnectionException(f"Could not connect to {self.serial_port}")
