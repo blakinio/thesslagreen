@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
@@ -29,7 +28,7 @@ except (ModuleNotFoundError, ImportError):  # pragma: no cover
 
         @staticmethod
         def utcnow() -> _datetime_module.datetime:
-            utc = _datetime_module.datetime.UTC if hasattr(_datetime_module.datetime, "UTC") else timezone.utc
+            utc = _datetime_module.datetime.UTC if hasattr(_datetime_module.datetime, "UTC") else _datetime_module.UTC
             return _datetime_module.datetime.now(utc)
 
     dt_util = _DTUtil()
@@ -308,7 +307,7 @@ def _clamp_airflow_rate(coordinator: Any, airflow_rate: int) -> int:
 
 
 async def _write_register(
-    coordinator: "ThesslaGreenModbusCoordinator",
+    coordinator: ThesslaGreenModbusCoordinator,
     register: str,
     value: Any,
     entity_id: str,

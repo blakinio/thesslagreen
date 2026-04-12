@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
-
-_LOGGER = logging.getLogger(__name__)
+from typing import Any
 
 from homeassistant.helpers import update_coordinator as update_coordinator_helper
 
 CoordinatorEntity = getattr(update_coordinator_helper, "CoordinatorEntity", object)
 
-from .const import device_unique_id_prefix
-from .coordinator import ThesslaGreenModbusCoordinator
+from .const import MAX_VENTILATION_PERCENT, device_unique_id_prefix  # noqa: E402
+from .coordinator import ThesslaGreenModbusCoordinator  # noqa: E402
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class ThesslaGreenEntity(CoordinatorEntity):
@@ -79,3 +81,50 @@ class ThesslaGreenEntity(CoordinatorEntity):
             and self.coordinator.data.get(self._key) is not None
             and not getattr(self.coordinator, "offline_state", False)
         )
+
+    def _percentage_limits(self) -> tuple[int, int]:
+        """Return min/max percentage limits derived from coordinator data."""
+        min_pct = self.coordinator.data.get("min_percentage")
+        max_pct = self.coordinator.data.get("max_percentage")
+        try:
+            min_val = int(min_pct)
+        except (TypeError, ValueError):
+            min_val = 0
+        try:
+            max_val = int(max_pct)
+        except (TypeError, ValueError):
+            max_val = MAX_VENTILATION_PERCENT
+        min_val = max(0, min_val)
+        max_val = min(MAX_VENTILATION_PERCENT, max_val)
+        if max_val < min_val:
+            max_val = min_val
+        return min_val, max_val
+
+    async def _write_register(
+        self,
+        register_name: str,
+        value: Any,
+        *,
+        offset: int = 0,
+        refresh: bool = True,
+        include_offset: bool = False,
+    ) -> None:
+        """Write a register via coordinator with broad compatibility."""
+        write_cb = self.coordinator.async_write_register
+        kwargs: dict[str, Any] = {"refresh": False}
+        try:
+            signature = inspect.signature(write_cb)
+        except (TypeError, ValueError):
+            signature = None
+        if (include_offset or offset != 0) and (
+            signature is None
+            or "offset" in signature.parameters
+            or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in signature.parameters.values())
+        ):
+            kwargs["offset"] = offset
+
+        success = await write_cb(register_name, value, **kwargs)
+        if not success:
+            raise RuntimeError(f"Failed to write register {register_name}")
+        if refresh:
+            await self.coordinator.async_request_refresh()

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from importlib import import_module
 import logging
 import re
 import sys
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta, timezone
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
 try:  # pragma: no cover - handle missing Home Assistant util during tests
@@ -128,7 +128,6 @@ _ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
 
 try:
     COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
@@ -1218,7 +1217,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     connect_result = await connect_result
             else:
                 connect_result = True
-                setattr(legacy_client, "connected", True)
+                legacy_client.connected = True
             if bool(connect_result) or bool(getattr(legacy_client, "connected", False)):
                 self.client = legacy_client
                 self._transport = None
@@ -1258,8 +1257,8 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             except TypeError:
                 tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
                 legacy_client = tcp_client_cls()
-                setattr(legacy_client, "host", self.host)
-                setattr(legacy_client, "port", self.port)
+                legacy_client.host = self.host
+                legacy_client.port = self.port
             connect_method = getattr(legacy_client, "connect", None)
             if callable(connect_method):
                 connect_result = connect_method()
@@ -1267,7 +1266,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     connect_result = await connect_result
             else:
                 connect_result = True
-                setattr(legacy_client, "connected", True)
+                legacy_client.connected = True
             if bool(connect_result) or bool(getattr(legacy_client, "connected", False)):
                 self.client = legacy_client
                 self._transport = None
@@ -1292,7 +1291,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     if inspect.isawaitable(connect_result):
                         connect_result = await connect_result
                     if bool(connect_result) or bool(getattr(self.client, "connected", False)):
-                        setattr(self.client, "connected", True)
+                        self.client.connected = True
                         return
             if self._transport is not None or self.client is not None:
                 await self._disconnect_locked()

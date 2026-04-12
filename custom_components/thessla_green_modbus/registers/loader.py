@@ -557,7 +557,10 @@ def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
 
     path = Path(json_path) if json_path is not None else _REGISTERS_PATH
     file_hash = registers_sha256(path)
-    mtime = _cached_file_info[str(path)][0]
+    cached = _cached_file_info.get(str(path))
+    if cached is None:
+        raise RuntimeError(f"Missing cache metadata for register file: {path}")
+    mtime = cached[0]
     key = (file_hash, mtime)
     regs = _register_cache.get(key)
     if regs is None:
@@ -573,7 +576,10 @@ async def async_load_registers(
 
     path = Path(json_path) if json_path is not None else _REGISTERS_PATH
     file_hash = await async_registers_sha256(hass, path)
-    mtime = _cached_file_info[str(path)][0]
+    cached = _cached_file_info.get(str(path))
+    if cached is None:
+        raise RuntimeError(f"Missing cache metadata for register file: {path}")
+    mtime = cached[0]
     key = (file_hash, mtime)
     regs = _register_cache.get(key)
     if regs is None:

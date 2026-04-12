@@ -94,6 +94,15 @@ DEFAULT_BACKOFF = 0.0
 DEFAULT_BACKOFF_JITTER = 0.0
 DEFAULT_MAX_BACKOFF = 30.0
 MIN_SCAN_INTERVAL = 5
+TEMPERATURE_MIN_C = 15.0
+TEMPERATURE_MAX_C = 35.0
+TEMPERATURE_STEP_C = 0.5
+MAX_VENTILATION_PERCENT = 150
+FAN_SPEED_LEVELS = 10
+FAN_DEFAULT_PERCENT = 50
+CONFIG_FLOW_VERSION_SCALE = 4096
+UART_OPTIONAL_REG_START = 4452
+UART_OPTIONAL_REG_END = 4460
 
 # Connection / transport configuration
 CONF_CONNECTION_TYPE = "connection_type"
@@ -456,18 +465,19 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
         ("modbus_stop_bits.json", "MODBUS_STOP_BITS"),
     ]
 
-    if hass is not None:
-        results = await asyncio.gather(
-            *[hass.async_add_executor_job(_load_json_option, fn) for fn, _ in filenames]
-        )
-    else:
-        results = [_load_json_option(fn) for fn, _ in filenames]
+    async with _get_options_init_lock():
+        if hass is not None:
+            results = await asyncio.gather(
+                *[hass.async_add_executor_job(_load_json_option, fn) for fn, _ in filenames]
+            )
+        else:
+            results = [_load_json_option(fn) for fn, _ in filenames]
 
-    (
-        SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES,
-        FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES,
-        MODBUS_PARITY, MODBUS_STOP_BITS,
-    ) = results
+        (
+            SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES,
+            FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES,
+            MODBUS_PARITY, MODBUS_STOP_BITS,
+        ) = results
 
 
 def _sync_setup_options() -> None:
@@ -502,6 +512,15 @@ MODBUS_PORTS: list[Any] = []
 MODBUS_BAUD_RATES: list[Any] = []
 MODBUS_PARITY: list[Any] = []
 MODBUS_STOP_BITS: list[Any] = []
+_OPTIONS_INIT_LOCK: asyncio.Lock | None = None
+
+
+def _get_options_init_lock() -> asyncio.Lock:
+    """Return a shared lock guarding global options initialization."""
+    global _OPTIONS_INIT_LOCK
+    if _OPTIONS_INIT_LOCK is None:
+        _OPTIONS_INIT_LOCK = asyncio.Lock()
+    return _OPTIONS_INIT_LOCK
 
 
 try:  # pragma: no cover - handle partially initialized module

@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from .const import MAX_BATCH_REGISTERS, SENSOR_UNAVAILABLE
+from .const import (
+    MAX_BATCH_REGISTERS,
+    SENSOR_UNAVAILABLE,
+    UART_OPTIONAL_REG_END,
+    UART_OPTIONAL_REG_START,
+)
 from .utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
@@ -84,7 +89,7 @@ SPECIAL_VALUE_DECODERS: dict[str, Callable[[int], int | None]] = {
 # optional and may be absent on devices without the corresponding
 # hardware. They are skipped by default unless UART scanning is
 # explicitly enabled.
-UART_OPTIONAL_REGS = range(4452, 4460)
+UART_OPTIONAL_REGS = range(UART_OPTIONAL_REG_START, UART_OPTIONAL_REG_END)
 
 # Registers considered safe to read when verifying connectivity.
 # Each entry is a tuple of Modbus function code and register name. The

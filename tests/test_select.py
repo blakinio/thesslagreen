@@ -5,6 +5,8 @@ import sys
 import types
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 # ---------------------------------------------------------------------------
 # Minimal Home Assistant stubs
 # ---------------------------------------------------------------------------
@@ -144,7 +146,7 @@ def test_select_option_change(mock_coordinator):
 
 
 def test_select_invalid_option(mock_coordinator):
-    """Invalid options should not trigger Modbus writes."""
+    """Invalid options should raise and not trigger Modbus writes."""
 
     mock_coordinator.data["mode"] = 0
     address = 4208
@@ -153,14 +155,15 @@ def test_select_invalid_option(mock_coordinator):
     )
     mock_coordinator.async_write_register = AsyncMock()
 
-    asyncio.run(select_entity.async_select_option("unsupported"))
+    with pytest.raises(Exception, match="Invalid option for mode: unsupported"):
+        asyncio.run(select_entity.async_select_option("unsupported"))
 
     mock_coordinator.async_write_register.assert_not_awaited()
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_select_modbus_error_logs_and_returns(mock_coordinator):
-    """Modbus failures should be logged and not raise."""
+    """Modbus failures should raise Home Assistant error semantics."""
 
     mock_coordinator.data["mode"] = 0
     address = 4208
@@ -172,7 +175,8 @@ def test_select_modbus_error_logs_and_returns(mock_coordinator):
     )
     select_entity.hass = MagicMock()
 
-    asyncio.run(select_entity.async_select_option("manual"))
+    with pytest.raises(Exception, match="Error setting mode to manual: write failed"):
+        asyncio.run(select_entity.async_select_option("manual"))
 
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
@@ -236,12 +240,12 @@ def test_schedule_time_select_unknown_for_disabled_slot(mock_coordinator):
 def test_schedule_registers_in_entity_mappings_time():
     """Real schedule registers resolved from JSON should land in ENTITY_MAPPINGS time."""
     time_keys = ENTITY_MAPPINGS.get("time", {})
-    assert "schedule_summer_mon_1" in time_keys, (
-        "schedule_summer_mon_1 should be a time entity (RW BCD time register)"
-    )
-    assert "schedule_summer_mon_1" not in ENTITY_MAPPINGS.get("sensor", {}), (
-        "schedule_summer_mon_1 must not also be a sensor"
-    )
-    assert "schedule_summer_mon_1" not in ENTITY_MAPPINGS.get("select", {}), (
-        "schedule_summer_mon_1 must not also be a select"
-    )
+    assert (
+        "schedule_summer_mon_1" in time_keys
+    ), "schedule_summer_mon_1 should be a time entity (RW BCD time register)"
+    assert "schedule_summer_mon_1" not in ENTITY_MAPPINGS.get(
+        "sensor", {}
+    ), "schedule_summer_mon_1 must not also be a sensor"
+    assert "schedule_summer_mon_1" not in ENTITY_MAPPINGS.get(
+        "select", {}
+    ), "schedule_summer_mon_1 must not also be a select"

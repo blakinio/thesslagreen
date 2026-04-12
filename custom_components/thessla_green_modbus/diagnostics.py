@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 
-from .const import DOMAIN
+from .const import CONFIG_FLOW_VERSION_SCALE, DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
 from .registers.loader import _REGISTERS_PATH, get_all_registers, registers_sha256
 
@@ -50,7 +50,7 @@ def _detect_data_anomalies(data: dict[str, Any]) -> list[str]:
         and isinstance(exhaust_air_flow, int)
         and isinstance(cf_version, int)
         and supply_air_flow == exhaust_air_flow == cf_version
-        and cf_version >= 4096
+        and cf_version >= CONFIG_FLOW_VERSION_SCALE
         and isinstance(supply_flow_rate, int)
         and isinstance(exhaust_flow_rate, int)
         and supply_flow_rate < 1000

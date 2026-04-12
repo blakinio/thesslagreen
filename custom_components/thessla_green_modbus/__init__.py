@@ -14,8 +14,6 @@ from typing import TYPE_CHECKING, Any, cast
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from typing import TypeAlias
-
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
@@ -84,12 +82,12 @@ except Exception:  # pragma: no cover
 _LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    ThesslaGreenConfigEntry: TypeAlias = ConfigEntry[ThesslaGreenModbusCoordinator]
+    type ThesslaGreenConfigEntry = ConfigEntry[ThesslaGreenModbusCoordinator]
 
 # Compatibility shim for tests patching "custom_components.thessla_green_modbus.__init__.er".
 _init_alias = sys.modules.setdefault(f"{__name__}.__init__", sys.modules[__name__])
-setattr(_init_alias, "er", er)
-setattr(sys.modules[__name__], "__init__", _init_alias)
+_init_alias.er = er
+sys.modules[__name__].__init__ = _init_alias
 
 # Legacy default port used before version 2 when explicit port was optional
 LEGACY_DEFAULT_PORT = 8899
@@ -99,7 +97,6 @@ LEGACY_FAN_ENTITY_IDS = [
     "number.rekuperator_predkosc",
     "number.rekuperator_speed",
 ]
-
 
 
 _platform_cache: list[object] | None = None
@@ -136,7 +133,6 @@ def _get_platforms() -> list[object]:
     return platforms
 
 
-
 def _apply_log_level(log_level: str) -> None:
     """Adjust the integration logger level dynamically."""
 
@@ -165,9 +161,7 @@ async def _async_create_coordinator(
         CONNECTION_TYPE_TCP_RTU,
     ):
         connection_type = DEFAULT_CONNECTION_TYPE
-    connection_mode = entry.options.get(
-        CONF_CONNECTION_MODE, entry.data.get(CONF_CONNECTION_MODE)
-    )
+    connection_mode = entry.options.get(CONF_CONNECTION_MODE, entry.data.get(CONF_CONNECTION_MODE))
     connection_type, connection_mode = resolve_connection_settings(
         connection_type, connection_mode, entry.data.get(CONF_PORT, DEFAULT_PORT)
     )
@@ -234,7 +228,11 @@ async def _async_create_coordinator(
 
     _LOGGER.info(
         "Initializing ThesslaGreen device: %s via %s (%s) (slave_id=%s, scan_interval=%ds)",
-        name, transport_label, endpoint, slave_id, scan_interval,
+        name,
+        transport_label,
+        endpoint,
+        slave_id,
+        scan_interval,
     )
 
     _coordinator_key = f"{__name__}.coordinator"
@@ -311,12 +309,12 @@ async def _async_start_coordinator(
             _LOGGER.error("Authentication failed during setup: %s", exc)
             await entry.async_start_reauth(hass)
             return False
-        if exc.__class__.__name__ == "ConfigEntryNotReady":
+        if isinstance(exc, ConfigEntryNotReady) or exc.__class__.__name__ == "ConfigEntryNotReady":
             raise
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
     except Exception as exc:
-        if exc.__class__.__name__ == "UpdateFailed":
+        if isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed":
             if is_invalid_auth_error(exc):
                 _LOGGER.error("Authentication failed during setup: %s", exc)
                 await entry.async_start_reauth(hass)
@@ -343,12 +341,12 @@ async def _async_start_coordinator(
             _LOGGER.error("Authentication failed during initial refresh: %s", exc)
             await entry.async_start_reauth(hass)
             return False
-        if exc.__class__.__name__ == "ConfigEntryNotReady":
+        if isinstance(exc, ConfigEntryNotReady) or exc.__class__.__name__ == "ConfigEntryNotReady":
             raise
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
     except Exception as exc:
-        if exc.__class__.__name__ == "UpdateFailed":
+        if isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed":
             if is_invalid_auth_error(exc):
                 _LOGGER.error("Authentication failed during initial refresh: %s", exc)
                 await entry.async_start_reauth(hass)
@@ -364,6 +362,7 @@ def _async_patch_coordinator_compat(
 ) -> None:  # pragma: no cover
     """Add lightweight fallback attributes for test environments."""
     if not hasattr(coordinator, "capabilities"):
+
         class _PermissiveCapabilities:
             def __getattr__(self, _name: str) -> bool:
                 return True
@@ -454,6 +453,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
 
     if len(hass.config_entries.async_entries(DOMAIN)) == 1:
         from .services import async_setup_services
+
         await async_setup_services(hass)
 
     entry.async_on_unload(entry.add_update_listener(async_update_options))
@@ -577,6 +577,7 @@ def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str
     so that migration can still rename entities whose prefix no longer
     matches the currently detected one.
     """
+
     def _parse_rest(rest: str) -> str | None:
         rest = re.sub(r"_bit\d+$", "", rest)
         m = re.match(r"^(.+)_(\d+|calc)$", rest)
@@ -585,14 +586,14 @@ def _extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str
     # Fast path: exact prefix match
     start = f"{prefix}_{slave_id}_"
     if unique_id.startswith(start):
-        return _parse_rest(unique_id[len(start):])
+        return _parse_rest(unique_id[len(start) :])
 
     # Fallback: find _{slave_id}_ anywhere in the unique_id.
     # Handles prefix changes (serial vs host-port) across integration versions.
     slave_marker = f"_{slave_id}_"
     idx = unique_id.find(slave_marker)
     if idx > 0:  # prefix must be non-empty (idx > 0, not >= 0)
-        return _parse_rest(unique_id[idx + len(slave_marker):])
+        return _parse_rest(unique_id[idx + len(slave_marker) :])
 
     return None
 
@@ -609,7 +610,9 @@ def _extract_legacy_problem_key_from_entity_id(entity_id: str) -> str | None:
     return match.group(1)
 
 
-async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover
+async def _async_migrate_entity_ids(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:  # pragma: no cover
     """Rename entity IDs from translation-based to register-key-based naming.
 
     Prior to adding ``suggested_object_id`` in the base entity class, HA
@@ -653,9 +656,7 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
 
     entries_for_config = getattr(er, "async_entries_for_config_entry", None)
     config_entry_list: list[Any] = (
-        list(entries_for_config(entity_reg, entry.entry_id))
-        if callable(entries_for_config)
-        else []
+        list(entries_for_config(entity_reg, entry.entry_id)) if callable(entries_for_config) else []
     )
 
     # Also scan ALL entities registered under this platform (catches orphaned
@@ -665,9 +666,7 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
     if entities_dict is not None:
         try:
             iter_entries = (
-                entities_dict.values()
-                if hasattr(entities_dict, "values")
-                else entities_dict
+                entities_dict.values() if hasattr(entities_dict, "values") else entities_dict
             )
             all_platform_entries = [
                 e for e in iter_entries if getattr(e, "platform", None) == DOMAIN
@@ -756,7 +755,8 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
             legacy_problem_key = _extract_legacy_problem_key_from_entity_id(reg_entry.entity_id)
             if legacy_problem_key:
                 _LOGGER.debug(
-                    "entity_id migration: removing stale legacy problem entity %s (fallback key=%r)",
+                    "entity_id migration: removing stale legacy problem entity %s "
+                    "(fallback key=%r)",
                     reg_entry.entity_id,
                     legacy_problem_key,
                 )
@@ -890,9 +890,7 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
             device_slug,
         )
         try:
-            entity_reg.async_update_entity(
-                current.entity_id, new_entity_id=expected_entity_id
-            )
+            entity_reg.async_update_entity(current.entity_id, new_entity_id=expected_entity_id)
             migrated.append((current.entity_id, expected_entity_id))
         except Exception as exc:
             _LOGGER.warning(
@@ -903,7 +901,8 @@ async def _async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
             )
 
     _LOGGER.info(
-        "entity_id migration done: migrated=%d removed_stale=%d already_ok=%d no_key=%d no_device=%d collision=%d",
+        "entity_id migration done: migrated=%d removed_stale=%d already_ok=%d "
+        "no_key=%d no_device=%d collision=%d",
         len(migrated),
         removed_stale,
         skipped_ok,

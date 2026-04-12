@@ -251,10 +251,4 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     @property
     def available(self) -> bool:  # pragma: no cover
         """Return if entity is available."""
-        # Entity is available if coordinator is available
-        if not self.coordinator.last_update_success:
-            return False
-
-        # For number entities, we don't require the register to be in current data
-        # as they are primarily for control, not just display
-        return True
+        return super().available

@@ -7,6 +7,10 @@ import logging
 from typing import Any
 
 import homeassistant.components as ha_components
+from homeassistant import const as ha_const
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 climate_component = getattr(ha_components, "climate", None)
 ClimateEntity = getattr(climate_component, "ClimateEntity", object)
@@ -14,20 +18,32 @@ ClimateEntityFeature = getattr(climate_component, "ClimateEntityFeature", int)
 HVACAction = getattr(
     climate_component,
     "HVACAction",
-    type("HVACAction", (), {"OFF": "off", "FAN": "fan", "HEATING": "heating", "COOLING": "cooling", "IDLE": "idle"}),
+    type(
+        "HVACAction",
+        (),
+        {"OFF": "off", "FAN": "fan", "HEATING": "heating", "COOLING": "cooling", "IDLE": "idle"},
+    ),
 )
-HVACMode = getattr(climate_component, "HVACMode", type("HVACMode", (), {"OFF": "off", "AUTO": "auto", "FAN_ONLY": "fan_only"}))
-from homeassistant.config_entries import ConfigEntry
-from homeassistant import const as ha_const
+HVACMode = getattr(
+    climate_component,
+    "HVACMode",
+    type("HVACMode", (), {"OFF": "off", "AUTO": "auto", "FAN_ONLY": "fan_only"}),
+)
 
 ATTR_TEMPERATURE = getattr(ha_const, "ATTR_TEMPERATURE", "temperature")
-UnitOfTemperature = getattr(ha_const, "UnitOfTemperature", type("UnitOfTemperature", (), {"CELSIUS": "°C"}))
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+UnitOfTemperature = getattr(
+    ha_const, "UnitOfTemperature", type("UnitOfTemperature", (), {"CELSIUS": "°C"})
+)
 
-from .const import SPECIAL_FUNCTION_MAP, holding_registers
-from .coordinator import ThesslaGreenModbusCoordinator
-from .entity import ThesslaGreenEntity
+from .const import (  # noqa: E402
+    SPECIAL_FUNCTION_MAP,
+    TEMPERATURE_MAX_C,
+    TEMPERATURE_MIN_C,
+    TEMPERATURE_STEP_C,
+    holding_registers,
+)
+from .coordinator import ThesslaGreenModbusCoordinator  # noqa: E402
+from .entity import ThesslaGreenEntity  # noqa: E402
 
 _FEATURE_TARGET_TEMPERATURE = getattr(ClimateEntityFeature, "TARGET_TEMPERATURE", 1)
 _FEATURE_FAN_MODE = getattr(ClimateEntityFeature, "FAN_MODE", 2)
@@ -116,15 +132,19 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         # Temperature settings
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS  # pragma: no cover
-        self._attr_precision = 0.5  # pragma: no cover
-        self._attr_min_temp = 15.0  # pragma: no cover
-        self._attr_max_temp = 35.0  # pragma: no cover
-        self._attr_target_temperature_step = 0.5  # pragma: no cover
+        self._attr_precision = TEMPERATURE_STEP_C  # pragma: no cover
+        self._attr_min_temp = TEMPERATURE_MIN_C  # pragma: no cover
+        self._attr_max_temp = TEMPERATURE_MAX_C  # pragma: no cover
+        self._attr_target_temperature_step = TEMPERATURE_STEP_C  # pragma: no cover
 
         # HVAC modes — FAN_ONLY (manual) requires the `mode` holding register
         _holding_map = coordinator.get_register_map("holding_registers")
         if "mode" in _holding_map:
-            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]  # pragma: no cover
+            self._attr_hvac_modes = [
+                HVACMode.OFF,
+                HVACMode.AUTO,
+                HVACMode.FAN_ONLY,
+            ]  # pragma: no cover
         else:
             self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO]  # pragma: no cover
 
@@ -222,25 +242,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             modes.append(f"{max_pct}%")
         return modes
 
-    def _percentage_limits(self) -> tuple[int, int]:
-        """Return min/max percentage limits derived from device data."""
-
-        min_pct = self.coordinator.data.get("min_percentage")
-        max_pct = self.coordinator.data.get("max_percentage")
-        try:
-            min_val = int(min_pct)
-        except (TypeError, ValueError):
-            min_val = 0
-        try:
-            max_val = int(max_pct)
-        except (TypeError, ValueError):
-            max_val = 150
-        min_val = max(0, min_val)
-        max_val = min(150, max_val)
-        if max_val < min_val:
-            max_val = min_val
-        return min_val, max_val
-
     @property
     def preset_mode(self) -> str | None:
         """Return current preset mode."""
@@ -288,7 +289,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         return attrs
 
-    async def _write_register_compat(self, register: str, value: Any, *, refresh: bool = False) -> Any:
+    async def _write_register_compat(
+        self, register: str, value: Any, *, refresh: bool = False
+    ) -> Any:
         """Write register with optional offset kwarg for non-native coordinators."""
 
         if isinstance(self.coordinator, ThesslaGreenModbusCoordinator):
@@ -308,12 +311,16 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             success = await self._write_register_compat("on_off_panel_mode", 0, refresh=False)
         else:
             # Turn on device first and capture result
-            power_on_success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+            power_on_success = await self._write_register_compat(
+                "on_off_panel_mode", 1, refresh=False
+            )
 
             # Retry once if power on failed
             if not power_on_success:
                 _LOGGER.warning("Power-on failed when setting HVAC mode to %s, retrying", hvac_mode)
-                power_on_success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+                power_on_success = await self._write_register_compat(
+                    "on_off_panel_mode", 1, refresh=False
+                )
 
             if not power_on_success:
                 _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
@@ -357,7 +364,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             )
 
         if success:
-            success = await self._write_register_compat("required_temperature", temperature, refresh=False)
+            success = await self._write_register_compat(
+                "required_temperature", temperature, refresh=False
+            )
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -374,7 +383,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             # Set manual airflow rate
             min_pct, max_pct = self._percentage_limits()
             airflow = max(min_pct, min(max_pct, airflow))
-            success = await self._write_register_compat("air_flow_rate_manual", airflow, refresh=False)
+            success = await self._write_register_compat(
+                "air_flow_rate_manual", airflow, refresh=False
+            )
 
             if success:
                 await self.coordinator.async_request_refresh()
@@ -396,7 +407,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
         if success:
-            success = await self._write_register_compat("special_mode", special_mode_value, refresh=False)
+            success = await self._write_register_compat(
+                "special_mode", special_mode_value, refresh=False
+            )
 
         if success:
             await self.coordinator.async_request_refresh()

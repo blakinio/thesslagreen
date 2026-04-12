@@ -3,7 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/blakinio/thesslagreen.svg)](https://github.com/blakinio/thesslagreen/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1.0%2B-blue.svg)](https://home-assistant.io/)
-[![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13%2B-blue.svg)](https://python.org/)
 
 Lokalna integracja (hub) dla rekuperatorów ThesslaGreen AirPack przez Modbus.
 Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automatycznym skanowaniem rejestrów oraz zestawem serwisów do sterowania urządzeniem.
@@ -11,7 +11,7 @@ Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automa
 ## Wymagania
 
 - Home Assistant **2026.1.0+**
-- Python **3.12+**
+- Python **3.13+**
 - `pymodbus>=3.6.0` (instalowane przez integrację)
 
 ## Co obsługuje integracja
