@@ -12,42 +12,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import (
-        async_get_all_registers,
-        async_registers_sha256,
-        get_all_registers,
-        get_registers_path,
-        registers_sha256,
-    )
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    async def async_get_all_registers(*_args, **_kwargs):
-        return []
-
-    async def async_registers_sha256(*_args, **_kwargs) -> str:
-        return ""
-
-    def get_all_registers(*_args, **_kwargs):
-        return []
-
-    def get_registers_path(*_args, **_kwargs) -> Path:
-        return Path(".")
-
-    def registers_sha256(*_args, **_kwargs) -> str:
-        return ""
-
-
-
-_LOGGER = logging.getLogger(__name__)
-
-try:
-    _pymodbus = importlib.import_module("pymodbus")
-    _pymodbus_client = importlib.import_module("pymodbus.client")
-    if not hasattr(_pymodbus, "client"):
-        _pymodbus.client = _pymodbus_client  # pragma: no cover
-except (ImportError, ModuleNotFoundError, AttributeError) as _exc:  # pragma: no cover
-    _LOGGER.debug("Could not attach pymodbus.client submodule: %s", _exc)
+from pymodbus.client import AsyncModbusTcpClient
 
 from . import modbus_helpers as _mh
 from .capability_rules import CAPABILITY_PATTERNS
@@ -101,10 +66,41 @@ from .utils import (
     resolve_connection_settings,
 )
 
-try:  # pragma: no cover - network transport always required
-    from pymodbus.client import AsyncModbusTcpClient
-except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - fatal
-    raise ImportError("pymodbus AsyncModbusTcpClient is required") from exc
+try:  # pragma: no cover - optional during isolated tests
+    from .registers.loader import (
+        async_get_all_registers,
+        async_registers_sha256,
+        get_all_registers,
+        get_registers_path,
+        registers_sha256,
+    )
+except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+
+    async def async_get_all_registers(*_args, **_kwargs):
+        return []
+
+    async def async_registers_sha256(*_args, **_kwargs) -> str:
+        return ""
+
+    def get_all_registers(*_args, **_kwargs):
+        return []
+
+    def get_registers_path(*_args, **_kwargs) -> Path:
+        return Path(".")
+
+    def registers_sha256(*_args, **_kwargs) -> str:
+        return ""
+
+
+_LOGGER = logging.getLogger(__name__)
+
+try:
+    _pymodbus = importlib.import_module("pymodbus")
+    _pymodbus_client = importlib.import_module("pymodbus.client")
+    if not hasattr(_pymodbus, "client"):
+        _pymodbus.client = _pymodbus_client  # pragma: no cover
+except (ImportError, AttributeError) as _exc:  # pragma: no cover
+    _LOGGER.debug("Could not attach pymodbus.client submodule: %s", _exc)
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
@@ -193,7 +189,6 @@ async def _sleep_retry_backoff(
         await asyncio.sleep(delay)
     else:
         await _maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
-
 
 
 DISCRETE_INPUT_REGISTERS: dict[str, int] = {}
@@ -357,7 +352,7 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     temperature_sensors_count: int = 0  # pragma: no cover
     _as_dict_cache: dict[str, Any] | None = field(init=False, repr=False, default=None)
 
-    def __setattr__(self, name: str, value: Any) -> None:  # noqa: D401 - simple cache invalidation
+    def __setattr__(self, name: str, value: Any) -> None:
         """Set attribute and invalidate cached ``as_dict`` result."""
         if name != "_as_dict_cache" and getattr(self, "_as_dict_cache", None) is not None:
             object.__setattr__(self, "_as_dict_cache", None)
@@ -588,15 +583,29 @@ class ThesslaGreenDeviceScanner:
         loaded = await self._load_registers()
         if isinstance(loaded, tuple):
             self._registers = cast(dict[int, dict[int, str]], loaded[0])
-            self._register_ranges = cast(dict[str, tuple[int | None, int | None]], loaded[1]) if len(loaded) > 1 and isinstance(loaded[1], dict) else {}
+            self._register_ranges = (
+                cast(dict[str, tuple[int | None, int | None]], loaded[1])
+                if len(loaded) > 1 and isinstance(loaded[1], dict)
+                else {}
+            )
         else:
             self._registers = cast(dict[int, dict[int, str]], loaded)
             self._register_ranges = {}
         self._names_by_address = {
-            4: self._build_names_by_address({name: addr for addr, name in self._registers.get(4, {}).items()} or INPUT_REGISTERS),
-            3: self._build_names_by_address({name: addr for addr, name in self._registers.get(3, {}).items()} or HOLDING_REGISTERS),
-            1: self._build_names_by_address({name: addr for addr, name in self._registers.get(1, {}).items()} or COIL_REGISTERS),
-            2: self._build_names_by_address({name: addr for addr, name in self._registers.get(2, {}).items()} or DISCRETE_INPUT_REGISTERS),
+            4: self._build_names_by_address(
+                {name: addr for addr, name in self._registers.get(4, {}).items()} or INPUT_REGISTERS
+            ),
+            3: self._build_names_by_address(
+                {name: addr for addr, name in self._registers.get(3, {}).items()}
+                or HOLDING_REGISTERS
+            ),
+            1: self._build_names_by_address(
+                {name: addr for addr, name in self._registers.get(1, {}).items()} or COIL_REGISTERS
+            ),
+            2: self._build_names_by_address(
+                {name: addr for addr, name in self._registers.get(2, {}).items()}
+                or DISCRETE_INPUT_REGISTERS
+            ),
         }
         self._update_known_missing_addresses()
 
@@ -728,10 +737,14 @@ class ThesslaGreenDeviceScanner:
         rtu_timeout = min(max(self.timeout, 2.0), 5.0)
         tcp_timeout = min(max(self.timeout, 5.0), 10.0)
         prefer_tcp = self.port == DEFAULT_PORT
-        mode_order = [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU] if prefer_tcp else [
-            CONNECTION_MODE_TCP_RTU,
-            CONNECTION_MODE_TCP,
-        ]
+        mode_order = (
+            [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU]
+            if prefer_tcp
+            else [
+                CONNECTION_MODE_TCP_RTU,
+                CONNECTION_MODE_TCP,
+            ]
+        )
         attempts: list[tuple[str, BaseModbusTransport, float]] = []
         for mode in mode_order:
             timeout = rtu_timeout if mode == CONNECTION_MODE_TCP_RTU else tcp_timeout
@@ -1032,9 +1045,7 @@ class ThesslaGreenDeviceScanner:
                 result.append((current, start + length - current))
         return result
 
-    async def _scan_firmware_info(
-        self, info_regs: list[int], device: ScannerDeviceInfo
-    ) -> None:
+    async def _scan_firmware_info(self, info_regs: list[int], device: ScannerDeviceInfo) -> None:
         """Parse firmware version from info_regs and update device."""
         major: int | None = None
         minor: int | None = None
@@ -1067,7 +1078,11 @@ class ThesslaGreenDeviceScanner:
             fallback_results: dict[str, int] = {}
             for name in ("version_major", "version_minor", "version_patch"):
                 current = (
-                    major if name == "version_major" else minor if name == "version_minor" else patch
+                    major
+                    if name == "version_major"
+                    else minor
+                    if name == "version_minor"
+                    else patch
                 )
                 if current is not None:
                     continue
@@ -1077,7 +1092,11 @@ class ThesslaGreenDeviceScanner:
                     if addr is None:
                         continue
                     try:
-                        probe = await self._read_input(self._client, addr, 1, skip_cache=True) if self._client is not None else await self._read_input(addr, 1, skip_cache=True)
+                        probe = (
+                            await self._read_input(self._client, addr, 1, skip_cache=True)
+                            if self._client is not None
+                            else await self._read_input(addr, 1, skip_cache=True)
+                        )
                     except TypeError:
                         probe = await self._read_input(addr, 1, skip_cache=True)
                 except (TypeError, ValueError, IndexError) as exc:  # pragma: no cover - best effort
@@ -1095,7 +1114,11 @@ class ThesslaGreenDeviceScanner:
 
         missing_regs: list[str] = []
         if None in (major, minor, patch):
-            for name, value in (("version_major", major), ("version_minor", minor), ("version_patch", patch)):
+            for name, value in (
+                ("version_major", major),
+                ("version_minor", minor),
+                ("version_patch", patch),
+            ):
                 if value is None and name in INPUT_REGISTERS:
                     missing_regs.append(f"{name} ({INPUT_REGISTERS[name]})")
 
@@ -1113,15 +1136,11 @@ class ThesslaGreenDeviceScanner:
             _LOGGER.warning(msg)
             device.firmware_available = False  # pragma: no cover
 
-    async def _scan_device_identity(
-        self, info_regs: list[int], device: ScannerDeviceInfo
-    ) -> None:
+    async def _scan_device_identity(self, info_regs: list[int], device: ScannerDeviceInfo) -> None:
         """Parse serial number and device name from registers into device."""
         try:
             start = INPUT_REGISTERS["serial_number"]
-            parts = info_regs[
-                start : start + REGISTER_DEFINITIONS["serial_number"].length
-            ]  # noqa: E203
+            parts = info_regs[start : start + REGISTER_DEFINITIONS["serial_number"].length]
             if parts:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
         except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
@@ -1131,9 +1150,7 @@ class ThesslaGreenDeviceScanner:
         try:
             start = HOLDING_REGISTERS["device_name"]
             name_regs = (
-                await self._read_holding_block(
-                    start, REGISTER_DEFINITIONS["device_name"].length
-                )
+                await self._read_holding_block(start, REGISTER_DEFINITIONS["device_name"].length)
                 or []
             )
             if name_regs:
@@ -1144,8 +1161,13 @@ class ThesslaGreenDeviceScanner:
                 device.device_name = name_bytes.decode("ascii", errors="replace").rstrip("\x00")
         except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
             _LOGGER.debug("Failed to parse device name: %s", err)
-        except (AttributeError, UnicodeDecodeError, RuntimeError) as err:  # pragma: no cover - unexpected
+        except (
+            AttributeError,
+            UnicodeDecodeError,
+            RuntimeError,
+        ) as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error parsing device name: %s", err)
+
     def _select_scan_registers(
         self,
     ) -> tuple[dict[int, str], dict[int, str], dict[int, str], dict[int, str], int, int, int, int]:
@@ -1155,10 +1177,18 @@ class ThesslaGreenDeviceScanner:
         coil_max = max(self._registers.get(1, {}).keys(), default=-1)
         discrete_max = max(self._registers.get(2, {}).keys(), default=-1)
         if self.full_register_scan:
-            input_registers = self._registers.get(4, {}) or {addr: name for name, addr in INPUT_REGISTERS.items()}
-            holding_registers = self._registers.get(3, {}) or {addr: name for name, addr in HOLDING_REGISTERS.items()}
-            coil_registers = self._registers.get(1, {}) or {addr: name for name, addr in COIL_REGISTERS.items()}
-            discrete_registers = self._registers.get(2, {}) or {addr: name for name, addr in DISCRETE_INPUT_REGISTERS.items()}
+            input_registers = self._registers.get(4, {}) or {
+                addr: name for name, addr in INPUT_REGISTERS.items()
+            }
+            holding_registers = self._registers.get(3, {}) or {
+                addr: name for name, addr in HOLDING_REGISTERS.items()
+            }
+            coil_registers = self._registers.get(1, {}) or {
+                addr: name for name, addr in COIL_REGISTERS.items()
+            }
+            discrete_registers = self._registers.get(2, {}) or {
+                addr: name for name, addr in DISCRETE_INPUT_REGISTERS.items()
+            }
         else:
             global_input = {addr: name for name, addr in INPUT_REGISTERS.items()}
             global_holding = {addr: name for name, addr in HOLDING_REGISTERS.items()}
@@ -1170,12 +1200,39 @@ class ThesslaGreenDeviceScanner:
             loaded_coil = self._registers.get(1, {})
             loaded_discrete = self._registers.get(2, {})
 
-            input_registers = loaded_input if loaded_input and (not global_input or len(loaded_input) <= len(global_input)) else global_input
-            holding_registers = loaded_holding if loaded_holding and (not global_holding or len(loaded_holding) <= len(global_holding)) else global_holding
-            coil_registers = loaded_coil if loaded_coil and (not global_coil or len(loaded_coil) <= len(global_coil)) else global_coil
-            discrete_registers = loaded_discrete if loaded_discrete and (not global_discrete or len(loaded_discrete) <= len(global_discrete)) else global_discrete
+            input_registers = (
+                loaded_input
+                if loaded_input and (not global_input or len(loaded_input) <= len(global_input))
+                else global_input
+            )
+            holding_registers = (
+                loaded_holding
+                if loaded_holding
+                and (not global_holding or len(loaded_holding) <= len(global_holding))
+                else global_holding
+            )
+            coil_registers = (
+                loaded_coil
+                if loaded_coil and (not global_coil or len(loaded_coil) <= len(global_coil))
+                else global_coil
+            )
+            discrete_registers = (
+                loaded_discrete
+                if loaded_discrete
+                and (not global_discrete or len(loaded_discrete) <= len(global_discrete))
+                else global_discrete
+            )
 
-        return input_registers, holding_registers, coil_registers, discrete_registers, input_max, holding_max, coil_max, discrete_max
+        return (
+            input_registers,
+            holding_registers,
+            coil_registers,
+            discrete_registers,
+            input_max,
+            holding_max,
+            coil_max,
+            discrete_max,
+        )
 
     async def _run_full_scan(
         self,
@@ -1187,11 +1244,13 @@ class ThesslaGreenDeviceScanner:
         scanned_registers: dict[str, int],
     ) -> None:
         """Scan all registers up to max known address (full_register_scan mode)."""
-        for start, count in _group_reads(
-            range(input_max + 1), max_block_size=self.effective_batch
-        ):
+        for start, count in _group_reads(range(input_max + 1), max_block_size=self.effective_batch):
             scanned_registers["input_registers"] += count
-            input_data = await self._read_input(self._client, start, count, skip_cache=True) if self._client is not None else await self._read_input(None, start, count, skip_cache=True)
+            input_data = (
+                await self._read_input(self._client, start, count, skip_cache=True)
+                if self._client is not None
+                else await self._read_input(None, start, count, skip_cache=True)
+            )
             if input_data is None:
                 self.failed_addresses["modbus_exceptions"]["input_registers"].update(
                     range(start, start + count)
@@ -1222,7 +1281,11 @@ class ThesslaGreenDeviceScanner:
             range(holding_max + 1), max_block_size=self.effective_batch
         ):
             scanned_registers["holding_registers"] += count
-            holding_data = await self._read_holding(self._client, start, count, skip_cache=True) if self._client is not None else await self._read_holding(None, start, count, skip_cache=True)
+            holding_data = (
+                await self._read_holding(self._client, start, count, skip_cache=True)
+                if self._client is not None
+                else await self._read_holding(None, start, count, skip_cache=True)
+            )
             if holding_data is None:
                 self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
                     range(start, start + count)
@@ -1249,11 +1312,13 @@ class ThesslaGreenDeviceScanner:
                         self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
                         self._log_invalid_value(reg_name, value)
 
-        for start, count in _group_reads(
-            range(coil_max + 1), max_block_size=self.effective_batch
-        ):
+        for start, count in _group_reads(range(coil_max + 1), max_block_size=self.effective_batch):
             scanned_registers["coil_registers"] += count
-            coil_data = await self._read_coil(self._client, start, count) if self._client is not None else await self._read_coil(start, count)
+            coil_data = (
+                await self._read_coil(self._client, start, count)
+                if self._client is not None
+                else await self._read_coil(start, count)
+            )
             if coil_data is None:
                 self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
                     range(start, start + count)
@@ -1274,7 +1339,11 @@ class ThesslaGreenDeviceScanner:
             range(discrete_max + 1), max_block_size=self.effective_batch
         ):
             scanned_registers["discrete_inputs"] += count
-            discrete_data = await self._read_discrete(self._client, start, count) if self._client is not None else await self._read_discrete(start, count)
+            discrete_data = (
+                await self._read_discrete(self._client, start, count)
+                if self._client is not None
+                else await self._read_discrete(start, count)
+            )
             if discrete_data is None:
                 self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
                     range(start, start + count)
@@ -1301,9 +1370,7 @@ class ThesslaGreenDeviceScanner:
         boundaries: frozenset[int] | None = None,
     ) -> None:
         """Read a batch of registers of one FC type, with per-address fallback."""
-        for start, count in self._group_registers_for_batch_read(
-            addresses, boundaries=boundaries
-        ):
+        for start, count in self._group_registers_for_batch_read(addresses, boundaries=boundaries):
             try:
                 data = await read_fn(start, count)
             except TypeError:
@@ -1315,7 +1382,9 @@ class ThesslaGreenDeviceScanner:
                 )
                 _LOGGER.debug(
                     "%s batch read %d-%d failed; probing individually",
-                    reg_type, start, start + count - 1,
+                    reg_type,
+                    start,
+                    start + count - 1,
                 )
                 for addr in range(start, start + count):
                     reg_names = addr_to_names.get(addr)
@@ -1357,7 +1426,11 @@ class ThesslaGreenDeviceScanner:
 
         async def _read(start: int, count: int, *, skip_cache: bool = False):
             try:
-                return await self._read_input(self._client, start, count, skip_cache=skip_cache) if self._client is not None else await self._read_input(start, count, skip_cache=skip_cache)
+                return (
+                    await self._read_input(self._client, start, count, skip_cache=skip_cache)
+                    if self._client is not None
+                    else await self._read_input(start, count, skip_cache=skip_cache)
+                )
             except TypeError:
                 return await self._read_input(start, count, skip_cache=skip_cache)
 
@@ -1384,7 +1457,11 @@ class ThesslaGreenDeviceScanner:
 
         async def _read(start: int, count: int, *, skip_cache: bool = False):
             try:
-                return await self._read_holding(self._client, start, count, skip_cache=skip_cache) if self._client is not None else await self._read_holding(start, count, skip_cache=skip_cache)
+                return (
+                    await self._read_holding(self._client, start, count, skip_cache=skip_cache)
+                    if self._client is not None
+                    else await self._read_holding(start, count, skip_cache=skip_cache)
+                )
             except TypeError:
                 return await self._read_holding(start, count, skip_cache=skip_cache)
 
@@ -1414,7 +1491,11 @@ class ThesslaGreenDeviceScanner:
             addresses.append(addr)
 
         for start, count in self._group_registers_for_batch_read(addresses):
-            coil_data = await self._read_coil(self._client, start, count) if self._client is not None else await self._read_coil(start, count)
+            coil_data = (
+                await self._read_coil(self._client, start, count)
+                if self._client is not None
+                else await self._read_coil(start, count)
+            )
             if coil_data is None:
                 self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
                     range(start, start + count)
@@ -1422,7 +1503,11 @@ class ThesslaGreenDeviceScanner:
                 for addr in range(start, start + count):
                     if addr not in addr_to_names:
                         continue  # pragma: no cover
-                    probe = await self._read_coil(self._client, addr, 1) if self._client is not None else await self._read_coil(None, addr, 1)
+                    probe = (
+                        await self._read_coil(self._client, addr, 1)
+                        if self._client is not None
+                        else await self._read_coil(None, addr, 1)
+                    )
                     if probe and probe[0] is not None:
                         self.available_registers["coil_registers"].update(addr_to_names[addr])
                 continue
@@ -1442,7 +1527,11 @@ class ThesslaGreenDeviceScanner:
             addresses.append(addr)
 
         for start, count in self._group_registers_for_batch_read(addresses):
-            discrete_data = await self._read_discrete(self._client, start, count) if self._client is not None else await self._read_discrete(start, count)
+            discrete_data = (
+                await self._read_discrete(self._client, start, count)
+                if self._client is not None
+                else await self._read_discrete(start, count)
+            )
             if discrete_data is None:
                 self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
                     range(start, start + count)
@@ -1450,7 +1539,11 @@ class ThesslaGreenDeviceScanner:
                 for addr in range(start, start + count):
                     if addr not in addr_to_names:
                         continue  # pragma: no cover
-                    probe = await self._read_discrete(self._client, addr, 1) if self._client is not None else await self._read_discrete(None, addr, 1)
+                    probe = (
+                        await self._read_discrete(self._client, addr, 1)
+                        if self._client is not None
+                        else await self._read_discrete(None, addr, 1)
+                    )
                     if probe and probe[0] is not None:
                         self.available_registers["discrete_inputs"].update(addr_to_names[addr])
                 continue
@@ -1596,8 +1689,12 @@ class ThesslaGreenDeviceScanner:
 
         if self.full_register_scan:
             await self._run_full_scan(
-                input_max, holding_max, coil_max, discrete_max,
-                unknown_registers, scanned_registers,
+                input_max,
+                holding_max,
+                coil_max,
+                discrete_max,
+                unknown_registers,
+                scanned_registers,
             )
         else:
             await self._run_named_scan(
@@ -1612,15 +1709,25 @@ class ThesslaGreenDeviceScanner:
         _LOGGER.info("Detected %d capabilities", len(device.capabilities))
 
         scan_blocks = self._compute_scan_blocks(
-            input_registers, holding_registers, coil_registers, discrete_registers,
-            input_max, holding_max, coil_max, discrete_max,
+            input_registers,
+            holding_registers,
+            coil_registers,
+            discrete_registers,
+            input_max,
+            holding_max,
+            coil_max,
+            discrete_max,
         )
         self._log_skipped_ranges()
 
         raw_registers: dict[int, int] = {}
         if self.deep_scan:
             for start, count in self._group_registers_for_batch_read(list(range(287))):
-                data = await self._read_input(self._client, start, count) if self._client is not None else await self._read_input(None, start, count)
+                data = (
+                    await self._read_input(self._client, start, count)
+                    if self._client is not None
+                    else await self._read_input(None, start, count)
+                )
                 if data is None:
                     continue
                 for offset, value in enumerate(data):
@@ -1642,9 +1749,7 @@ class ThesslaGreenDeviceScanner:
                 "The following registers were not found during scan: %s", "; ".join(details)
             )
 
-        available_registers = {
-            key: set(value) for key, value in self.available_registers.items()
-        }
+        available_registers = {key: set(value) for key, value in self.available_registers.items()}
 
         result = {
             "available_registers": available_registers,
@@ -1684,11 +1789,18 @@ class ThesslaGreenDeviceScanner:
                 result = scan_method()
                 if inspect.isawaitable(result):
                     result = await result
-                if isinstance(result, tuple) and len(result) >= 2 and isinstance(result[0], ScannerDeviceInfo) and isinstance(result[1], DeviceCapabilities):
+                if (
+                    isinstance(result, tuple)
+                    and len(result) >= 2
+                    and isinstance(result[0], ScannerDeviceInfo)
+                    and isinstance(result[1], DeviceCapabilities)
+                ):
                     device, caps = result[0], result[1]
                     unknown = result[2] if len(result) > 2 and isinstance(result[2], dict) else {}
                     return {
-                        "available_registers": {k: sorted(v) for k, v in self.available_registers.items()},
+                        "available_registers": {
+                            k: sorted(v) for k, v in self.available_registers.items()
+                        },
                         "device_info": device.as_dict(),
                         "capabilities": caps.as_dict(),
                         "register_count": sum(len(v) for v in self.available_registers.values()),
@@ -1739,14 +1851,14 @@ class ThesslaGreenDeviceScanner:
                         except (
                             ModbusException,
                             ConnectionException,
-                            ModbusIOException,
-                            TimeoutError,
                             OSError,
                             TypeError,
                             ValueError,
                             AttributeError,
                         ) as exc:
-                            _LOGGER.debug("Protocol probe non-critical exception (protocol ok): %s", exc)
+                            _LOGGER.debug(
+                                "Protocol probe non-critical exception (protocol ok): %s", exc
+                            )
                     except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
                         last_error = exc
                         await transport.close()
@@ -1761,9 +1873,7 @@ class ThesslaGreenDeviceScanner:
                     )
                     break
                 if self._transport is None:
-                    raise ConnectionException(
-                        "Auto-detect Modbus transport failed"
-                    ) from last_error
+                    raise ConnectionException("Auto-detect Modbus transport failed") from last_error
             else:
                 self._transport = self._build_tcp_transport(mode)
 
@@ -1829,10 +1939,7 @@ class ThesslaGreenDeviceScanner:
             # Exclude addresses successfully recovered via individual probe fallback
             reverse_map = _addr_to_name.get(reg_type, {})
             available = self.available_registers.get(reg_type, set())
-            truly_failed = {
-                addr for addr in filtered
-                if reverse_map.get(addr) not in available
-            }
+            truly_failed = {addr for addr in filtered if reverse_map.get(addr) not in available}
             if truly_failed:
                 decimals = ", ".join(str(addr) for addr in sorted(truly_failed))
                 _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
@@ -1841,7 +1948,8 @@ class ThesslaGreenDeviceScanner:
                 decimals = ", ".join(str(addr) for addr in sorted(filtered))
                 _LOGGER.debug(
                     "Batch read failed for %s at %s but individual probes succeeded",
-                    reg_type, decimals,
+                    reg_type,
+                    decimals,
                 )
 
         for reg_type, addrs in self.failed_addresses["invalid_values"].items():
@@ -1862,11 +1970,7 @@ class ThesslaGreenDeviceScanner:
         if not ranges:
             return set(addrs)
 
-        return {
-            addr
-            for addr in addrs
-            if not any(start <= addr <= end for start, end in ranges)
-        }
+        return {addr for addr in addrs if not any(start <= addr <= end for start, end in ranges)}
 
     def _log_invalid_value(self, name: str, raw: int) -> None:
         """Log a register value that failed validation."""
@@ -2044,7 +2148,12 @@ class ThesslaGreenDeviceScanner:
                 if response is not None:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
-                        _LOGGER.warning("Exception code %s while reading holding registers %d-%d", code, start, end)
+                        _LOGGER.warning(
+                            "Exception code %s while reading holding registers %d-%d",
+                            code,
+                            start,
+                            end,
+                        )
                         self._failed_input.update(range(start, end + 1))
                         self._mark_input_unsupported(start, end, code)
                         self.failed_addresses["modbus_exceptions"]["input_registers"].update(
@@ -2111,11 +2220,19 @@ class ThesslaGreenDeviceScanner:
                 )
                 self._track_input_failure(count, address)
 
-            await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
+            await _sleep_retry_backoff(
+                backoff=self.backoff,
+                backoff_jitter=self.backoff_jitter,
+                attempt=attempt,
+                retry=self.retry,
+            )
 
         if aborted_transiently:
             _LOGGER.warning(
-                "Aborted reading input registers %d-%d after %d/%d attempts due to timeout/cancellation",
+                (
+                    "Aborted reading input registers %d-%d after %d/%d attempts "
+                    "due to timeout/cancellation"
+                ),
                 start,
                 end,
                 attempted_reads,
@@ -2172,7 +2289,9 @@ class ThesslaGreenDeviceScanner:
         count: int | None = None,
     ) -> list[int] | None:
         """Read a contiguous input register block in MAX-sized chunks."""
-        return await self._read_register_block(self._read_input, client_or_start, start_or_count, count)
+        return await self._read_register_block(
+            self._read_input, client_or_start, start_or_count, count
+        )
 
     async def _read_holding_block(
         self,
@@ -2181,7 +2300,9 @@ class ThesslaGreenDeviceScanner:
         count: int | None = None,
     ) -> list[int] | None:
         """Read a contiguous holding register block in MAX-sized chunks."""
-        return await self._read_register_block(self._read_holding, client_or_start, start_or_count, count)
+        return await self._read_register_block(
+            self._read_holding, client_or_start, start_or_count, count
+        )
 
     async def _read_holding(
         self,
@@ -2249,7 +2370,12 @@ class ThesslaGreenDeviceScanner:
                 if response is not None:
                     if response.isError():
                         code = getattr(response, "exception_code", None)
-                        _LOGGER.warning("Exception code %s while reading holding registers %d-%d", code, start, end)
+                        _LOGGER.warning(
+                            "Exception code %s while reading holding registers %d-%d",
+                            code,
+                            start,
+                            end,
+                        )
                         if code == 2:
                             self._failed_holding.update(range(start, end + 1))
                             self._mark_holding_unsupported(start, end, code)
@@ -2263,9 +2389,9 @@ class ThesslaGreenDeviceScanner:
                             if failures >= self.retry:
                                 self._failed_holding.update(range(start, end + 1))
                                 self._mark_holding_unsupported(start, end, code or 0)
-                                self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                                    range(start, end + 1)
-                                )
+                                self.failed_addresses["modbus_exceptions"][
+                                    "holding_registers"
+                                ].update(range(start, end + 1))
                                 return None
                         continue
                     if skip_cache and count == 1:
@@ -2340,11 +2466,19 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
+            await _sleep_retry_backoff(
+                backoff=self.backoff,
+                backoff_jitter=self.backoff_jitter,
+                attempt=attempt,
+                retry=self.retry,
+            )
 
         if aborted_transiently:
             _LOGGER.warning(
-                "Aborted reading holding registers %d-%d after %d/%d attempts due to timeout/cancellation",
+                (
+                    "Aborted reading holding registers %d-%d after %d/%d attempts "
+                    "due to timeout/cancellation"
+                ),
                 start,
                 end,
                 attempted_reads,
@@ -2451,11 +2585,12 @@ class ThesslaGreenDeviceScanner:
                         ConnectionException,
                         ModbusIOException,
                         TimeoutError,
-                        asyncio.TimeoutError,
                         OSError,
                         AttributeError,
                     ) as exc:
-                        _LOGGER.debug("Transport client refresh failed during %s read: %s", type_name, exc)
+                        _LOGGER.debug(
+                            "Transport client refresh failed during %s read: %s", type_name, exc
+                        )
             except asyncio.CancelledError:
                 _LOGGER.debug(
                     "Cancelled reading %s %d on attempt %d",
@@ -2475,7 +2610,12 @@ class ThesslaGreenDeviceScanner:
                 )
                 break
 
-            await _sleep_retry_backoff(backoff=self.backoff, backoff_jitter=self.backoff_jitter, attempt=attempt, retry=self.retry)
+            await _sleep_retry_backoff(
+                backoff=self.backoff,
+                backoff_jitter=self.backoff_jitter,
+                attempt=attempt,
+                retry=self.retry,
+            )
 
         self.failed_addresses["modbus_exceptions"][failed_key].update(
             range(address, address + count)
@@ -2497,8 +2637,12 @@ class ThesslaGreenDeviceScanner:
     ) -> list[bool] | None:
         """Read coil registers with retry and backoff."""
         return await self._read_bit_registers(
-            "read_coils", "coil_registers", "coil",
-            client_or_address, address_or_count, count,
+            "read_coils",
+            "coil_registers",
+            "coil",
+            client_or_address,
+            address_or_count,
+            count,
         )
 
     async def _read_discrete(
@@ -2509,6 +2653,10 @@ class ThesslaGreenDeviceScanner:
     ) -> list[bool] | None:
         """Read discrete input registers with retry and backoff."""
         return await self._read_bit_registers(
-            "read_discrete_inputs", "discrete_inputs", "discrete",
-            client_or_address, address_or_count, count,
+            "read_discrete_inputs",
+            "discrete_inputs",
+            "discrete",
+            client_or_address,
+            address_or_count,
+            count,
         )

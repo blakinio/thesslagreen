@@ -343,7 +343,7 @@ class RegisterDef:
                 airflow, temp = value
             else:
                 airflow, temp = value, 0
-            return (int(airflow) << 8) | (int(round(float(temp) * 2)) & 255)
+            return (int(airflow) << 8) | (round(float(temp) * 2) & 255)
 
         raw: Any = value
         if self.enum and not (self.extra and self.extra.get("bitmask")):
@@ -441,8 +441,12 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
         elif enum_map:
             if all(isinstance(k, int | float) or str(k).isdigit() for k in enum_map):
                 enum_map = cast(dict[int | str, Any], {int(k): v for k, v in enum_map.items()})
-            elif all(isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()):  # pragma: no cover
-                enum_map = cast(dict[int | str, Any], {int(v): k for k, v in enum_map.items()})  # pragma: no cover
+            elif all(
+                isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()
+            ):  # pragma: no cover
+                enum_map = cast(
+                    dict[int | str, Any], {int(v): k for k, v in enum_map.items()}
+                )  # pragma: no cover
 
         # ``multiplier`` and ``resolution`` are optional in the JSON.  The
         # dataclass defaults to ``1`` for both fields but passing ``None`` would
@@ -491,7 +495,12 @@ def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> li
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
-    except (OSError, TypeError, ValueError, json.JSONDecodeError) as err:  # pragma: no cover - defensive
+    except (
+        OSError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as err:  # pragma: no cover - defensive
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
 
     return _parse_registers(raw)
@@ -507,7 +516,12 @@ async def async_load_registers_from_file(
         raw = json.loads(raw_text)
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
-    except (OSError, TypeError, ValueError, json.JSONDecodeError) as err:  # pragma: no cover - defensive
+    except (
+        OSError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as err:  # pragma: no cover - defensive
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
 
     return _parse_registers(raw)
@@ -692,10 +706,10 @@ Register = RegisterDef
 
 # Public exports for import * use in tests and helpers
 __all__ = [
+    "_REGISTERS_PATH",
+    "ReadPlan",
     "Register",
     "RegisterDef",
-    "ReadPlan",
-    "_REGISTERS_PATH",
     "async_compute_file_hash",
     "async_get_all_registers",
     "async_get_registers_by_function",

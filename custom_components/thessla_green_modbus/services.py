@@ -101,10 +101,7 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
     if raw_ids is None:
         return set()
 
-    if isinstance(raw_ids, str):
-        raw_ids = [raw_ids]
-    else:
-        raw_ids = list(raw_ids)
+    raw_ids = [raw_ids] if isinstance(raw_ids, str) else list(raw_ids)
 
     mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
     mapped_call = SimpleNamespace(
@@ -359,9 +356,13 @@ def _register_mode_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set special mode %s for %s", mode, entity_id)
 
-    hass.services.async_register(DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
+    )
     hass.services.async_register(DOMAIN, "set_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_special_function", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, "set_special_function", set_special_mode, SET_SPECIAL_MODE_SCHEMA
+    )
 
 
 def _register_schedule_services(hass: HomeAssistant) -> None:
@@ -461,8 +462,12 @@ def _register_schedule_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set airflow schedule for %s", entity_id)
 
-    hass.services.async_register(DOMAIN, "set_airflow_schedule", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_intensity", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, "set_airflow_schedule", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "set_intensity", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA
+    )
 
 
 def _register_parameter_services(hass: HomeAssistant) -> None:
@@ -641,10 +646,21 @@ def _register_parameter_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
                 _LOGGER.info("Set temperature curve for %s", entity_id)
 
-    hass.services.async_register(DOMAIN, "set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_gwc_parameters", set_gwc_parameters, SET_GWC_PARAMETERS_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_air_quality_thresholds", set_air_quality_thresholds, SET_AIR_QUALITY_THRESHOLDS_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, "set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "set_gwc_parameters", set_gwc_parameters, SET_GWC_PARAMETERS_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "set_air_quality_thresholds",
+        set_air_quality_thresholds,
+        SET_AIR_QUALITY_THRESHOLDS_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN, "set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA
+    )
 
 
 def _register_maintenance_services(hass: HomeAssistant) -> None:
@@ -896,8 +912,12 @@ def _register_maintenance_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(DOMAIN, "reset_filters", reset_filters, RESET_FILTERS_SCHEMA)
     hass.services.async_register(DOMAIN, "reset_settings", reset_settings, RESET_SETTINGS_SCHEMA)
-    hass.services.async_register(DOMAIN, "start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_modbus_parameters", set_modbus_parameters, SET_MODBUS_PARAMETERS_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, "start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "set_modbus_parameters", set_modbus_parameters, SET_MODBUS_PARAMETERS_SCHEMA
+    )
     hass.services.async_register(DOMAIN, "set_device_name", set_device_name, SET_DEVICE_NAME_SCHEMA)
     hass.services.async_register(DOMAIN, "sync_time", sync_time, SYNC_TIME_SCHEMA)
 
@@ -990,10 +1010,18 @@ def _register_data_services(hass: HomeAssistant) -> None:
         )
         manager.set_level(level_value, duration)
 
-    hass.services.async_register(DOMAIN, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA)
-    hass.services.async_register(DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA)
-    hass.services.async_register(DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA)
-    hass.services.async_register(DOMAIN, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA
+    )
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:

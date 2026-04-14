@@ -26,6 +26,7 @@ except (ModuleNotFoundError, ImportError):
 try:
     from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 except (ModuleNotFoundError, ImportError):
+
     class BinarySensorDeviceClass:  # type: ignore[no-redef]
         RUNNING = "running"
         OPENING = "opening"
@@ -36,9 +37,11 @@ except (ModuleNotFoundError, ImportError):
         SAFETY = "safety"
         MOISTURE = "moisture"
 
+
 try:
     from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 except (ModuleNotFoundError, ImportError):
+
     class SensorDeviceClass:  # type: ignore[no-redef]
         TEMPERATURE = "temperature"
         VOLTAGE = "voltage"
@@ -51,16 +54,20 @@ except (ModuleNotFoundError, ImportError):
         MEASUREMENT = "measurement"
         TOTAL_INCREASING = "total_increasing"
 
+
 try:
     from homeassistant.helpers.entity import EntityCategory
 except (ModuleNotFoundError, ImportError):
+
     class EntityCategory:  # type: ignore[no-redef]
         DIAGNOSTIC = "diagnostic"
         CONFIG = "config"
 
+
 try:
     from homeassistant.helpers.device_registry import DeviceInfo
 except (ModuleNotFoundError, ImportError):
+
     class DeviceInfo:
         """Minimal fallback DeviceInfo for tests."""
 
@@ -79,19 +86,59 @@ except (ModuleNotFoundError, ImportError):
             except KeyError as exc:
                 raise AttributeError(item) from exc
 
+
 try:
     from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 except (ModuleNotFoundError, ImportError):
     EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
 
 try:
+    from homeassistant.const import (
+        PERCENTAGE,
+        UnitOfElectricPotential,
+        UnitOfPower,
+        UnitOfTemperature,
+        UnitOfTime,
+        UnitOfVolumeFlowRate,
+    )
+except (ModuleNotFoundError, ImportError):
+    PERCENTAGE = "%"
+
+    class UnitOfElectricPotential:  # type: ignore[no-redef]
+        VOLT = "V"
+
+    class UnitOfPower:  # type: ignore[no-redef]
+        WATT = "W"
+
+    class UnitOfTemperature:  # type: ignore[no-redef]
+        CELSIUS = "°C"
+
+    class UnitOfTime:  # type: ignore[no-redef]
+        HOURS = "h"
+        DAYS = "d"
+        SECONDS = "s"
+
+    class UnitOfVolumeFlowRate:  # type: ignore[no-redef]
+        CUBIC_METERS_PER_HOUR = "m³/h"
+
+
+try:
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 except (ModuleNotFoundError, ImportError):
+
     class DataUpdateCoordinator:  # type: ignore[no-redef]
         pass
+
+
+try:
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+except (ModuleNotFoundError, ImportError):
+
+    class UpdateFailed(Exception):  # type: ignore[no-redef]
+        """Fallback update-failed exception."""
+
 
 try:
     COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
 except TypeError:
     COORDINATOR_BASE = DataUpdateCoordinator
-

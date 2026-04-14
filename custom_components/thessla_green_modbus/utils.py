@@ -8,11 +8,11 @@ from datetime import time
 __all__ = [
     "BCD_TIME_PREFIXES",
     "TIME_REGISTER_PREFIXES",
-    "default_connection_mode",
+    "decode_aatt",
+    "decode_bcd_time",
     "decode_int16",
     "decode_temp_01c",
-    "decode_bcd_time",
-    "decode_aatt",
+    "default_connection_mode",
     "encode_bcd_time",
     "resolve_connection_settings",
 ]

@@ -12,9 +12,7 @@ from .utils import decode_bcd_time, encode_bcd_time
 # key and value are strings; the register loader's encode() handles the
 # string → BCD int conversion when writing.
 TIME_SELECT_STATES: dict[str, str] = {
-    f"{h:02d}:{m:02d}": f"{h:02d}:{m:02d}"
-    for h in range(24)
-    for m in (0, 30)
+    f"{h:02d}:{m:02d}": f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)
 }
 
 # Prefixes for schedule intensity/airflow setting registers.
@@ -22,9 +20,7 @@ SETTING_SCHEDULE_PREFIXES: tuple[str, ...] = ("setting_summer_", "setting_winter
 
 # Mapping of "0%" … "100%" labels → integer values for schedule intensity
 # select entities (step 10 %).
-PERCENT_10_SELECT_STATES: dict[str, int] = {
-    f"{pct}%": pct for pct in range(0, 101, 10)
-}
+PERCENT_10_SELECT_STATES: dict[str, int] = {f"{pct}%": pct for pct in range(0, 101, 10)}
 
 
 def time_to_bcd(t: time) -> int:

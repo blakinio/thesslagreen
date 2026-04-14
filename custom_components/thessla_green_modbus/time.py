@@ -59,9 +59,7 @@ async def async_setup_entry(
         try:
             async_add_entities(entities, True)
         except asyncio.CancelledError:
-            _LOGGER.warning(
-                "Cancelled while adding time entities, retrying without initial state"
-            )
+            _LOGGER.warning("Cancelled while adding time entities, retrying without initial state")
             async_add_entities(entities, False)
             return
         _LOGGER.debug("Created %d time entities", len(entities))
@@ -96,9 +94,8 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
         0xFFFF), so we keep the entity available to allow the user to set
         an initial value.
         """
-        return (
-            self.coordinator.last_update_success
-            and not getattr(self.coordinator, "offline_state", False)
+        return self.coordinator.last_update_success and not getattr(
+            self.coordinator, "offline_state", False
         )
 
     @property

@@ -7,96 +7,20 @@ import inspect
 import logging
 import re
 import sys
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta, timezone
 from importlib import import_module
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import Any, cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import UpdateFailed
+from pymodbus.client import AsyncModbusTcpClient
 
-from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP
+from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP, UpdateFailed
 from ._compat import dt_util as _base_dt_util
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-
-UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
-
-
-class _SafeDTUtil:
-    """Wrap dt helpers and always return timezone-aware datetimes."""
-
-    def __init__(self, base: Any) -> None:
-        self._base = base
-
-    @staticmethod
-    def _coerce(value: Any) -> datetime:
-        if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-        return datetime.now(UTC)
-
-    def now(self) -> datetime:
-        func = getattr(self._base, "now", None)
-        if callable(func):
-            return self._coerce(func())
-        return datetime.now(UTC)
-
-    def utcnow(self) -> datetime:
-        func = getattr(self._base, "utcnow", None)
-        if callable(func):
-            return self._coerce(func())
-        return datetime.now(UTC)
-
-
-dt_util = _SafeDTUtil(_base_dt_util)
-
-
-def _utcnow() -> datetime:
-    """Return a timezone-aware UTC datetime.
-
-    Some test stubs monkeypatch ``dt_util.utcnow`` to return ``None`` which can
-    break timestamp arithmetic in the coordinator. Keep a defensive fallback.
-    """
-    utcnow_callable = getattr(dt_util, "utcnow", None)
-    if callable(utcnow_callable):
-        value = utcnow_callable()
-        if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-    return datetime.now(UTC)
-
-if TYPE_CHECKING:
-    from pymodbus.client import AsyncModbusTcpClient
-else:  # pragma: no cover
-    try:
-        from pymodbus.client import AsyncModbusTcpClient
-    except (ModuleNotFoundError, ImportError):
-        AsyncModbusTcpClient = Any
-
-_ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
-
-
-def _update_failed_exception(message: str) -> Exception:
-    """Return an UpdateFailed compatible with patched test helper modules."""
-
-    classes: list[type[Exception]] = [UpdateFailed]
-    for mod_name in (
-        "tests.conftest",
-        "tests.test_coordinator",
-        "tests.test_services",
-    ):
-        mod = sys.modules.get(mod_name)
-        cls = getattr(mod, "UpdateFailed", None) if mod is not None else None
-        if isinstance(cls, type) and issubclass(cls, Exception) and cls not in classes:
-            classes.append(cls)
-
-    if len(classes) == 1:
-        return classes[0](message)  # pragma: no cover
-
-    compat_cls = type("CompatUpdateFailed", tuple(classes), {})
-    return compat_cls(message)
-
-
+from ._coordinator_capabilities import _CoordinatorCapabilitiesMixin
+from ._coordinator_io import _ModbusIOMixin, _PermanentModbusError  # noqa: F401
+from ._coordinator_schedule import _CoordinatorScheduleMixin
 from .const import (
     CONF_ENABLE_DEVICE_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
@@ -136,19 +60,14 @@ from .const import (
     input_registers,
 )
 from .errors import CannotConnect, is_invalid_auth_error
-from .modbus_helpers import (
-    _call_modbus,
-    chunk_register_range,
-    chunk_register_values,
-    group_reads,
-)
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from .modbus_helpers import group_reads
 from .modbus_transport import (
     BaseModbusTransport,
     RawRtuOverTcpTransport,
     RtuModbusTransport,
     TcpModbusTransport,
 )
-from .register_addresses import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .register_map import REGISTER_MAP_VERSION
 from .registers.loader import get_all_registers
 from .scanner_core import (
@@ -158,12 +77,48 @@ from .scanner_core import (
 )
 from .utils import resolve_connection_settings
 
-ILLEGAL_DATA_ADDRESS = 2
+UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
 
 
-class _PermanentModbusError(ModbusException):
-    """Modbus error that should not be retried."""
+class _SafeDTUtil:
+    """Wrap dt helpers and always return timezone-aware datetimes."""
 
+    def __init__(self, base: Any) -> None:
+        self._base = base
+
+    @staticmethod
+    def _coerce(value: Any) -> datetime:
+        if isinstance(value, datetime):
+            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        return datetime.now(UTC)
+
+    def now(self) -> datetime:
+        func = getattr(self._base, "now", None)
+        if callable(func):
+            return self._coerce(func())
+        return datetime.now(UTC)
+
+    def utcnow(self) -> datetime:
+        func = getattr(self._base, "utcnow", None)
+        if callable(func):
+            return self._coerce(func())
+        return datetime.now(UTC)
+
+
+dt_util = _SafeDTUtil(_base_dt_util)
+
+
+def _utcnow() -> datetime:
+    """Return a timezone-aware UTC datetime."""
+    utcnow_callable = getattr(dt_util, "utcnow", None)
+    if callable(utcnow_callable):
+        value = utcnow_callable()
+        if isinstance(value, datetime):
+            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    return datetime.now(UTC)
+
+
+_ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
 
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
 
@@ -175,7 +130,29 @@ def get_register_definition(name: str):
 _LOGGER = logging.getLogger(__name__)
 
 
-class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
+def _update_failed_exception(message: str) -> Exception:
+    """Return an UpdateFailed compatible with patched test helper modules."""
+
+    classes: list[type[Exception]] = [UpdateFailed]
+    for mod_name in ("tests.conftest", "tests.test_coordinator", "tests.test_services"):
+        mod = sys.modules.get(mod_name)
+        cls = getattr(mod, "UpdateFailed", None) if mod is not None else None
+        if isinstance(cls, type) and issubclass(cls, Exception) and cls not in classes:
+            classes.append(cls)
+
+    if len(classes) == 1:
+        return classes[0](message)  # pragma: no cover
+
+    compat_cls = type("CompatUpdateFailed", tuple(classes), {})
+    return compat_cls(message)
+
+
+class ThesslaGreenModbusCoordinator(
+    _ModbusIOMixin,
+    _CoordinatorCapabilitiesMixin,
+    _CoordinatorScheduleMixin,
+    COORDINATOR_BASE,
+):
     """Optimized data coordinator for ThesslaGreen Modbus device."""
 
     def __init__(
@@ -204,11 +181,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
     ) -> None:
-        """Initialize the coordinator.
-
-        ``max_registers_per_request`` is clamped to the safe Modbus range of
-        1–MAX_BATCH_REGISTERS registers per request.
-        """
+        """Initialize the coordinator."""
         if isinstance(scan_interval, timedelta):
             interval_seconds = int(scan_interval.total_seconds())
         else:
@@ -296,7 +269,10 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             stop_bits,
             SERIAL_STOP_BITS_MAP.get(str(stop_bits), DEFAULT_STOP_BITS),
         )
-        if self.stop_bits not in (1, 2):  # pragma: no cover - SERIAL_STOP_BITS_MAP always yields 1 or 2
+        if self.stop_bits not in (
+            1,
+            2,
+        ):  # pragma: no cover - SERIAL_STOP_BITS_MAP always yields 1 or 2
             self.stop_bits = DEFAULT_STOP_BITS
 
         self._reauth_scheduled = False
@@ -416,35 +392,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         """Return the register map for the given register type."""
         return self._register_maps.get(register_type, {})
 
-    async def _call_modbus(
-        self, func: Callable[..., Any], *args: Any, attempt: int = 1, **kwargs: Any
-    ) -> Any:
-        """Wrapper around Modbus calls injecting the slave ID."""
-        if self._transport is None:
-            if not self.client:
-                raise ConnectionException("Modbus client is not connected")
-            return await _call_modbus(
-                func,
-                self.slave_id,
-                *args,
-                attempt=attempt,
-                max_attempts=self.retry,
-                timeout=self.timeout,
-                backoff=self.backoff,
-                backoff_jitter=self.backoff_jitter,
-                **kwargs,
-            )
-        return await self._transport.call(
-            func,
-            self.slave_id,
-            *args,
-            attempt=attempt,
-            max_attempts=self.retry,
-            backoff=self.backoff,
-            backoff_jitter=self.backoff_jitter,
-            **kwargs,
-        )
-
     def _get_client_method(self, name: str) -> Callable[..., Any]:
         """Return a Modbus method from transport/client or a no-op placeholder."""
 
@@ -464,145 +411,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
         _missing_method.__name__ = name
         return _missing_method
-
-    async def _read_with_retry(
-        self,
-        read_method: Callable[..., Any],
-        start_address: int,
-        count: int,
-        *,
-        register_type: str,
-    ) -> Any:
-        """Read registers with retry/backoff on transient transport errors."""
-
-        def _is_illegal_data_address(response: Any) -> bool:
-            return getattr(response, "exception_code", None) == ILLEGAL_DATA_ADDRESS
-
-        def _is_transient_response(response: Any) -> bool:
-            exception_code = getattr(response, "exception_code", None)
-            return exception_code is None or exception_code != ILLEGAL_DATA_ADDRESS
-
-        last_error: Exception | None = None
-        for attempt in range(1, self.retry + 1):
-            try:
-                call_result = read_method(
-                    self.slave_id,
-                    start_address,
-                    count=count,
-                    attempt=attempt,
-                )
-                if call_result is None:
-                    call_result = self._call_modbus(
-                        read_method,
-                        start_address,
-                        count=count,
-                        attempt=attempt,
-                    )
-                response = await call_result if inspect.isawaitable(call_result) else call_result
-                if response is None:
-                    raise ModbusException(
-                        f"Failed to read {register_type} registers at {start_address}"
-                    )
-                if response.isError():
-                    if _is_illegal_data_address(response):
-                        raise _PermanentModbusError(
-                            f"Illegal data address for {register_type} registers at {start_address}"
-                        )
-                    if _is_transient_response(response):
-                        raise ModbusIOException(
-                            f"Transient error reading {register_type} registers at {start_address}"
-                        )
-                    raise ModbusException(  # pragma: no cover - impossible: not illegal AND not transient implies illegal
-                        f"Failed to read {register_type} registers at {start_address}"
-                    )
-                return response
-            except _PermanentModbusError:
-                raise
-            except TimeoutError as exc:
-                last_error = exc
-                disconnect_cb = getattr(self, "_disconnect", None)
-                if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover
-                elif isinstance(exc, ConnectionException) and callable(disconnect_cb):  # pragma: no cover
-                    await disconnect_cb()
-                if attempt >= self.retry:
-                    raise  # pragma: no cover
-                _LOGGER.warning(
-                    "Timeout reading %s registers at %s (attempt %s/%s)",
-                    register_type,
-                    start_address,
-                    attempt,
-                    self.retry,
-                )
-                if self._transport is not None:  # pragma: no cover
-                    try:
-                        await self._ensure_connection()
-                    except (TimeoutError, ModbusIOException, ConnectionException, OSError) as reconnect:
-                        last_error = reconnect
-                        _LOGGER.debug(
-                            "Reconnect failed for %s registers at %s (attempt %s/%s): %s",
-                            register_type,
-                            start_address,
-                            attempt + 1,
-                            self.retry,
-                            reconnect,
-                        )
-                        continue
-                _LOGGER.debug(
-                    "Retrying %s registers at %s (attempt %s/%s): %s",
-                    register_type,
-                    start_address,
-                    attempt + 1,
-                    self.retry,
-                    exc,
-                )
-            except (ModbusIOException, ConnectionException, OSError) as exc:
-                last_error = exc
-                disconnect_cb = getattr(self, "_disconnect", None)
-                if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover
-                elif isinstance(exc, ConnectionException) and callable(disconnect_cb):  # pragma: no cover
-                    await disconnect_cb()
-                if attempt >= self.retry:
-                    raise
-                if self._transport is not None:  # pragma: no cover
-                    try:
-                        await self._ensure_connection()
-                    except (TimeoutError, ModbusIOException, ConnectionException, OSError) as reconnect:
-                        last_error = reconnect
-                        _LOGGER.debug(
-                            "Reconnect failed for %s registers at %s (attempt %s/%s): %s",
-                            register_type,
-                            start_address,
-                            attempt + 1,
-                            self.retry,
-                            reconnect,
-                        )
-                        continue
-                _LOGGER.debug(
-                    "Retrying %s registers at %s (attempt %s/%s): %s",
-                    register_type,
-                    start_address,
-                    attempt + 1,
-                    self.retry,
-                    exc,
-                )
-            except ModbusException as exc:
-                last_error = exc
-                if attempt >= self.retry:
-                    raise
-                _LOGGER.debug(
-                    "Retrying %s registers at %s (attempt %s/%s): %s",
-                    register_type,
-                    start_address,
-                    attempt + 1,
-                    self.retry,
-                    exc,
-                )
-                continue
-        if last_error is not None:  # pragma: no cover
-            raise last_error  # pragma: no cover
-        raise ModbusException(f"Failed to read {register_type} registers at {start_address}")  # pragma: no cover
 
     async def _read_coils_transport(
         self,
@@ -702,13 +510,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         self.device_info = self.device_scan_result.get("device_info", {})
         self.device_info.setdefault("device_name", self._device_name)
 
-        # Ensure serial_number entity is created even if address 24
-        # failed individual-register validation during the scan.
-        # The scanner already assembled the full serial from 6 registers.
-        if (
-            self.device_info.get("serial_number")
-            and self.device_info["serial_number"] != "Unknown"
-        ):
+        if self.device_info.get("serial_number") and self.device_info["serial_number"] != "Unknown":
             self.available_registers["input_registers"].add("serial_number")
 
         caps_obj = self.device_scan_result.get("capabilities")
@@ -877,7 +679,9 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             return f"{match.group(1)}_{int(match.group(2))}"
         return name
 
-    def _normalise_available_registers(self, available: dict[str, list[str] | set[str]]) -> dict[str, set[str]]:
+    def _normalise_available_registers(
+        self, available: dict[str, list[str] | set[str]]
+    ) -> dict[str, set[str]]:
         """Return available register names with legacy aliases normalised."""
 
         normalised: dict[str, set[str]] = {}
@@ -913,16 +717,9 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 _LOGGER.debug("Invalid cached capabilities", exc_info=True)
         self.device_scan_result = cache
 
-        # Ensure serial_number entity is available when serial is known from cache.
-        if (
-            self.device_info.get("serial_number")
-            and self.device_info["serial_number"] != "Unknown"
-        ):
+        if self.device_info.get("serial_number") and self.device_info["serial_number"] != "Unknown":
             self.available_registers["input_registers"].add("serial_number")
 
-        # Strip registers known to be absent on this device family.
-        # This prevents stale cache entries from causing repeated EC2 errors
-        # when KNOWN_MISSING_REGISTERS is updated after a cache was saved.
         for reg_type, names in KNOWN_MISSING_REGISTERS.items():
             if reg_type in self.available_registers:
                 self.available_registers[reg_type].difference_update(names)
@@ -968,7 +765,11 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     except (KeyError, AttributeError, TypeError) as err:
                         _LOGGER.debug("Missing definition for %s: %s", reg, err)
                         length = 1
-                    except (ValueError, OSError, RuntimeError) as err:  # pragma: no cover - unexpected
+                    except (
+                        ValueError,
+                        OSError,
+                        RuntimeError,
+                    ) as err:  # pragma: no cover - unexpected
                         _LOGGER.exception(
                             "Unexpected error getting definition for %s: %s",
                             reg,
@@ -1062,9 +863,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 _LOGGER.debug("Connection test successful")
             except ModbusIOException as exc:
                 if is_request_cancelled_error(exc):
-                    _LOGGER.warning(
-                        "Connection test skipped — device busy after scan: %s", exc
-                    )
+                    _LOGGER.warning("Connection test skipped — device busy after scan: %s", exc)
                     return  # Non-fatal: scan already proved the device is reachable
                 _LOGGER.exception("Connection test failed: %s", exc)
                 raise
@@ -1136,10 +935,14 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             return
 
         prefer_tcp = self.port == DEFAULT_PORT
-        mode_order = [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU] if prefer_tcp else [
-            CONNECTION_MODE_TCP_RTU,
-            CONNECTION_MODE_TCP,
-        ]
+        mode_order = (
+            [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU]
+            if prefer_tcp
+            else [
+                CONNECTION_MODE_TCP_RTU,
+                CONNECTION_MODE_TCP,
+            ]
+        )
         attempts: list[tuple[str, float]] = []
         for mode in mode_order:
             timeout = 5.0 if mode == CONNECTION_MODE_TCP_RTU else min(max(self.timeout, 5.0), 10.0)
@@ -1167,7 +970,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             ConnectionException,
             ModbusIOException,
             TimeoutError,
-            asyncio.TimeoutError,
             OSError,
             TypeError,
             ValueError,
@@ -1193,7 +995,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 ConnectionException,
                 ModbusIOException,
                 TimeoutError,
-                asyncio.TimeoutError,
                 OSError,
                 TypeError,
                 ValueError,
@@ -1204,9 +1005,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 continue
             self._transport = transport
             self._resolved_connection_mode = mode
-            _LOGGER.info(
-                "Auto-selected Modbus transport %s for %s:%s", mode, self.host, self.port
-            )
+            _LOGGER.info("Auto-selected Modbus transport %s for %s:%s", mode, self.host, self.port)
             return
 
         # Legacy fallback used by tests that patch AsyncModbusTcpClient.
@@ -1236,7 +1035,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             ConnectionException,
             ModbusIOException,
             TimeoutError,
-            asyncio.TimeoutError,
             OSError,
             TypeError,
             ValueError,
@@ -1420,362 +1218,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             finally:
                 self._update_in_progress = False
 
-    async def _read_input_registers_optimized(self) -> dict[str, Any]:
-        """Read input registers using optimized batch reading."""
-        data: dict[str, Any] = {}
-
-        if "input_registers" not in self._register_groups:
-            return data
-
-        transport = self._transport
-        client = self.client
-        if transport is not None and transport.is_connected():
-            read_method = transport.read_input_registers
-        elif client is not None and getattr(client, "connected", True):
-            async def read_method(slave_id: int, address: int, *, count: int, attempt: int = 1):
-                return await self._call_modbus(
-                    client.read_input_registers,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                )
-        else:
-            raise ConnectionException("Modbus client is not connected")
-
-        failed: set[str] = getattr(self, "_failed_registers", set())
-
-        for start_addr, count in self._register_groups["input_registers"]:
-            for chunk_start, chunk_count in chunk_register_range(
-                start_addr, count, self.effective_batch
-            ):
-                register_names = [
-                    self._find_register_name("input_registers", chunk_start + i)
-                    for i in range(chunk_count)
-                ]
-                if all(name in failed for name in register_names if name):
-                    continue
-                try:
-                    response = await self._read_with_retry(
-                        read_method,
-                        chunk_start,
-                        chunk_count,
-                        register_type="input",
-                    )
-
-                    for i, value in enumerate(response.registers):
-                        addr = chunk_start + i
-                        register_name = self._find_register_name("input_registers", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["input_registers"]
-                        ):
-                            processed_value = self._process_register_value(register_name, value)
-                            if processed_value is not None:
-                                data[register_name] = processed_value
-                                self.statistics["total_registers_read"] += 1
-                                self._clear_register_failure(register_name)
-                                _LOGGER.debug(
-                                    "Read input %d (%s) = %s",
-                                    addr,
-                                    register_name,
-                                    processed_value,
-                                )
-
-                    if len(response.registers) < chunk_count:
-                        if len(response.registers) == 0:
-                            # Batch returned nothing — fall back to individual reads
-                            for idx, reg_name in enumerate(register_names):
-                                if not reg_name:
-                                    continue
-                                addr = chunk_start + idx
-                                try:
-                                    single = await self._read_with_retry(
-                                        read_method, addr, 1, register_type="input"
-                                    )
-                                    if single.registers:
-                                        pv = self._process_register_value(reg_name, single.registers[0])
-                                        if pv is not None:
-                                            data[reg_name] = pv
-                                            self.statistics["total_registers_read"] += 1
-                                            self._clear_register_failure(reg_name)
-                                            _LOGGER.debug(
-                                                "Read input %d (%s) = %s (individual fallback)",
-                                                addr, reg_name, pv,
-                                            )
-                                        else:
-                                            self._mark_registers_failed([reg_name])
-                                    else:
-                                        self._mark_registers_failed([reg_name])
-                                except _PermanentModbusError:
-                                    self._mark_registers_failed([reg_name])
-                                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                                    self._mark_registers_failed([reg_name])
-                        else:
-                            missing = register_names[len(response.registers) :]
-                            self._mark_registers_failed(missing)
-                except _PermanentModbusError:
-                    self._mark_registers_failed(register_names)
-                    continue
-                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    continue
-
-        return data
-
-    async def _read_holding_individually(
-        self,
-        read_method: Any,
-        chunk_start: int,
-        register_names: list[str | None],
-        data: dict[str, Any],
-    ) -> None:
-        """Read holding registers one-by-one as fallback when a batch read fails.
-
-        Called both when the device returns an empty batch (len == 0) and when
-        the batch raises a Modbus exception (e.g. AirPack4 FW 3.11 bug on
-        schedule_summer addr 15-30 which returns corrupt bytes instead of data).
-        """
-        for idx, reg_name in enumerate(register_names):
-            if not reg_name:
-                continue
-            addr = chunk_start + idx
-            try:
-                single = await self._read_with_retry(
-                    read_method, addr, 1, register_type="holding"
-                )
-                if single.registers:
-                    pv = self._process_register_value(reg_name, single.registers[0])
-                    if pv is not None:
-                        data[reg_name] = pv
-                        self.statistics["total_registers_read"] += 1
-                        self._clear_register_failure(reg_name)
-                        _LOGGER.debug(
-                            "Read holding %d (%s) = %s (individual fallback)",
-                            addr,
-                            reg_name,
-                            pv,
-                        )
-                    else:
-                        self._mark_registers_failed([reg_name])
-                else:
-                    self._mark_registers_failed([reg_name])
-            except _PermanentModbusError:
-                self._mark_registers_failed([reg_name])
-            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                self._mark_registers_failed([reg_name])
-
-    async def _read_holding_registers_optimized(self) -> dict[str, Any]:
-        """Read holding registers using optimized batch reading."""
-        data: dict[str, Any] = {}
-
-        if "holding_registers" not in self._register_groups:
-            return data
-
-        transport = self._transport
-        client = self.client
-        if transport is not None and transport.is_connected():
-            read_method = transport.read_holding_registers
-        elif client is not None and getattr(client, "connected", True):
-            async def read_method(slave_id: int, address: int, *, count: int, attempt: int = 1):
-                return await self._call_modbus(
-                    client.read_holding_registers,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                )
-        else:
-            _LOGGER.warning("Modbus client is not connected")
-            return data
-
-        failed: set[str] = getattr(self, "_failed_registers", set())
-
-        for start_addr, count in self._register_groups["holding_registers"]:
-            for chunk_start, chunk_count in chunk_register_range(
-                start_addr, count, self.effective_batch
-            ):
-                register_names = [
-                    self._find_register_name("holding_registers", chunk_start + i)
-                    for i in range(chunk_count)
-                ]
-                if all(name in failed for name in register_names if name):
-                    continue
-                try:
-                    response = await self._read_with_retry(
-                        read_method,
-                        chunk_start,
-                        chunk_count,
-                        register_type="holding",
-                    )
-
-                    for i, value in enumerate(response.registers):
-                        addr = chunk_start + i
-                        register_name = self._find_register_name("holding_registers", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["holding_registers"]
-                        ):
-                            processed_value = self._process_register_value(register_name, value)
-                            if processed_value is not None:
-                                data[register_name] = processed_value
-                                self.statistics["total_registers_read"] += 1
-                                self._clear_register_failure(register_name)
-                                _LOGGER.debug(
-                                    "Read holding %d (%s) = %s",
-                                    addr,
-                                    register_name,
-                                    processed_value,
-                                )
-
-                    if len(response.registers) < chunk_count:
-                        if len(response.registers) == 0:
-                            # Batch returned nothing — fall back to individual reads
-                            await self._read_holding_individually(
-                                read_method, chunk_start, register_names, data
-                            )
-                        else:
-                            missing = register_names[len(response.registers) :]
-                            self._mark_registers_failed(missing)
-                except _PermanentModbusError:
-                    self._mark_registers_failed(register_names)
-                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    # Batch raised an exception (e.g. firmware bug returning corrupt bytes).
-                    # Attempt individual reads so writes remain visible on the next poll.
-                    await self._read_holding_individually(
-                        read_method, chunk_start, register_names, data
-                    )
-
-        return data
-
-    async def _read_coil_registers_optimized(self) -> dict[str, Any]:
-        """Read coil registers using optimized batch reading."""
-        data: dict[str, Any] = {}
-
-        if "coil_registers" not in self._register_groups:
-            return data
-
-        client = self.client
-        if client is None or not getattr(client, "connected", True):
-            raise ConnectionException("Modbus client is not connected")
-
-        failed: set[str] = getattr(self, "_failed_registers", set())
-
-        for start_addr, count in self._register_groups["coil_registers"]:
-            for chunk_start, chunk_count in chunk_register_range(
-                start_addr, count, self.effective_batch
-            ):
-                register_names = [
-                    self._find_register_name("coil_registers", chunk_start + i)
-                    for i in range(chunk_count)
-                ]
-                if all(name in failed for name in register_names if name):
-                    continue
-                try:
-                    response = await self._read_with_retry(
-                        self._read_coils_transport,
-                        chunk_start,
-                        chunk_count,
-                        register_type="coil",
-                    )
-
-                    if not response.bits:
-                        self._mark_registers_failed(register_names)
-                        raise ModbusException(f"No bits returned at {chunk_start}")
-
-                    for i in range(min(chunk_count, len(response.bits))):
-                        addr = chunk_start + i
-                        register_name = self._find_register_name("coil_registers", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["coil_registers"]
-                        ):
-                            bit = response.bits[i]
-                            data[register_name] = bit
-                            self.statistics["total_registers_read"] += 1
-                            self._clear_register_failure(register_name)
-                            _LOGGER.debug(
-                                "Read coil %d (%s) = %s",
-                                addr,
-                                register_name,
-                                bit,
-                            )
-
-                    if len(response.bits) < chunk_count:
-                        missing = register_names[len(response.bits) :]
-                        self._mark_registers_failed(missing)
-                except _PermanentModbusError:
-                    self._mark_registers_failed(register_names)
-                    continue
-                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    raise
-
-        return data
-
-    async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:  # pragma: no cover
-        """Read discrete input registers using optimized batch reading."""
-        data: dict[str, Any] = {}
-
-        if "discrete_inputs" not in self._register_groups:
-            return data
-
-        client = self.client
-        if client is None or not getattr(client, "connected", True):
-            raise ConnectionException("Modbus client is not connected")
-
-        failed: set[str] = getattr(self, "_failed_registers", set())
-
-        for start_addr, count in self._register_groups["discrete_inputs"]:
-            for chunk_start, chunk_count in chunk_register_range(
-                start_addr, count, self.effective_batch
-            ):
-                register_names = [
-                    self._find_register_name("discrete_inputs", chunk_start + i)
-                    for i in range(chunk_count)
-                ]
-                if all(name in failed for name in register_names if name):
-                    continue
-                try:
-                    response = await self._read_with_retry(
-                        self._read_discrete_inputs_transport,
-                        chunk_start,
-                        chunk_count,
-                        register_type="discrete",
-                    )
-
-                    if not response.bits:
-                        self._mark_registers_failed(register_names)
-                        raise ModbusException(f"No bits returned at {chunk_start}")
-
-                    for i in range(min(chunk_count, len(response.bits))):
-                        addr = chunk_start + i
-                        register_name = self._find_register_name("discrete_inputs", addr)
-                        if (
-                            register_name
-                            and register_name in self.available_registers["discrete_inputs"]
-                        ):
-                            bit = response.bits[i]
-                            data[register_name] = bit
-                            self.statistics["total_registers_read"] += 1
-                            self._clear_register_failure(register_name)
-                            _LOGGER.debug(
-                                "Read discrete %d (%s) = %s",
-                                addr,
-                                register_name,
-                                bit,
-                            )
-
-                    if len(response.bits) < chunk_count:
-                        missing = register_names[len(response.bits) :]
-                        self._mark_registers_failed(missing)
-                except _PermanentModbusError:
-                    self._mark_registers_failed(register_names)
-                    continue
-                except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                    self._mark_registers_failed(register_names)
-                    raise
-
-        return data
-
     def _find_register_name(self, register_type: str, address: int) -> str | None:
         """Find register name by address using pre-built reverse maps."""
         return self._reverse_maps.get(register_type, {}).get(address)
@@ -1828,222 +1270,9 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         _LOGGER.debug("Processed %s: raw=%s value=%s", register_name, value, decoded)
         return decoded
 
-    # Constant power draw of the control board, sensors and auxiliary electronics.
-    # Estimated from the F2/F3/F5 fuses on the nameplate (≤ 1 A each at 230 V).
-    # This baseline is always present whenever the device is powered on.
-    _STANDBY_POWER_W: float = 10.0
-
-    # Known model specs: nominal_flow_m3h → (fan_total_max_W, heater_max_W)
-    # fan_total_max_W is the combined power of both fans at nominal airflow.
-    # heater_max_W is derived from the F4 fuse (6.3 A × 230 V) on the label or
-    # from the official datasheet for AirPack4 units.
-    _MODEL_POWER_DATA: ClassVar[Mapping[int, tuple[float, float]]] = MappingProxyType({
-        300: (105.0, 1150.0),   # AirPack4 300V
-        400: (170.0, 1500.0),   # AirPack4 400V
-        420: (94.0, 1449.0),    # AirPack Home 400h Seria 3 (label: 1543 W total, F4 6.3 A)
-        500: (255.0, 1850.0),   # AirPack4 500V
-        550: (345.0, 1950.0),   # AirPack4 550V
-    })
-    # Tolerance in m³/h when matching nominal flow to a known model entry.
-    _MODEL_FLOW_TOLERANCE = 15
-
-    def _lookup_model_power(self, nominal_flow: float) -> tuple[float, float] | None:
-        """Return (fan_total_max_W, heater_max_W) for the closest known model.
-
-        Returns ``None`` when no entry is within ``_MODEL_FLOW_TOLERANCE`` m³/h.
-        """
-        best: tuple[int, tuple[float, float]] | None = None
-        for flow_key, specs in self._MODEL_POWER_DATA.items():
-            diff = abs(nominal_flow - flow_key)
-            if diff <= self._MODEL_FLOW_TOLERANCE:
-                if best is None or diff < abs(nominal_flow - best[0]):
-                    best = (flow_key, specs)
-        return best[1] if best is not None else None
-
-    def calculate_power_consumption(self, data: dict[str, Any]) -> float | None:
-        """Calculate electrical power consumption.
-
-        When the device's nominal airflow is recognised the calculation uses
-        the fan affinity law applied to the *measured* supply and exhaust flow
-        rates together with model-specific max-power values taken from the
-        official datasheet / nameplate.  This gives ±10-15 % accuracy.
-
-        For an unknown model the method falls back to a cubic estimate based
-        on the DAC output voltages (legacy behaviour, ±40-50 % accuracy).
-        """
-        nominal_raw = data.get("nominal_supply_air_flow")
-        supply_flow = data.get("supply_flow_rate")
-        exhaust_flow = data.get("exhaust_flow_rate")
-
-        if nominal_raw is not None and supply_flow is not None and exhaust_flow is not None:
-            try:
-                nominal = float(nominal_raw)
-                q_s = max(0.0, float(supply_flow))
-                q_e = max(0.0, float(exhaust_flow))
-                specs = self._lookup_model_power(nominal)
-                if specs is not None and nominal > 0:
-                    fan_total_max, heater_max = specs
-                    # Fan affinity law: P ∝ Q³, split equally between both fans.
-                    fan_per = fan_total_max / 2.0
-                    p_fans = fan_per * (q_s / nominal) ** 3 + fan_per * (q_e / nominal) ** 3
-
-                    # Heater: PWM-controlled resistive element → linear with DAC voltage.
-                    dac_h = float(data.get("dac_heater", 0) or 0)
-                    dac_h = max(0.0, min(10.0, dac_h))
-                    p_heater = heater_max * (dac_h / 10.0)
-
-                    return round(p_fans + p_heater + self._STANDBY_POWER_W, 1)
-            except (TypeError, ValueError) as exc:
-                _LOGGER.debug("Power calculation via flow/DAC unavailable: %s", exc)
-
-        # Fallback: DAC-voltage cubic estimate (model unknown or flow unavailable).
-        try:
-            v_s = float(data["dac_supply"])
-            v_e = float(data["dac_exhaust"])
-        except (KeyError, TypeError, ValueError):
-            return None
-
-        def _dac_power(v: float, p_max: float) -> float:
-            v = max(0.0, min(10.0, v))
-            return (v / 10) ** 3 * p_max
-
-        power = _dac_power(v_s, 80.0) + _dac_power(v_e, 80.0)
-        dac_h = float(data.get("dac_heater", 0) or 0)
-        if dac_h:
-            power += _dac_power(dac_h, 2000.0)
-        dac_c = float(data.get("dac_cooler", 0) or 0)
-        if dac_c:
-            power += _dac_power(dac_c, 1000.0)
-        return round(power, 1)
-
-    def _post_process_data(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Post-process data to calculate derived values."""
-        # Expose the full serial number (assembled from 6 registers by the scanner)
-        # as a sensor value so the serial_number entity has a meaningful state.
-        device_serial = (self.device_info or {}).get("serial_number")
-        if device_serial and device_serial != "Unknown":
-            data["serial_number"] = device_serial
-
-        # Calculate heat recovery efficiency.
-        # bypass_mode register 4330: 0=inactive (HX active), 1=freeheating, 2=freecooling.
-        # Both freeheating and freecooling open the bypass damper, routing air
-        # around the heat exchanger, so any temperature-based efficiency formula
-        # yields a meaningless result — skip for both active states.
-        #
-        # Formula selection (per EN 308 / ASHRAE Standard 84):
-        #   • With flow rates: thermodynamic effectiveness ε (ASHRAE 84 ε-NTU):
-        #       ε = Q_supply × (T_supply − T_outside) / (Q_min × (T_exhaust − T_outside))
-        #     where Q_min = min(Q_supply, Q_exhaust).
-        #     Correctly bounded [0, 1] even for unbalanced flows.
-        #   • Without flow rates: EN 308 supply-side temperature efficiency η_supply
-        #     (3-sensor formula, valid when flows are approximately balanced):
-        #       η = (T_supply − T_outside) / (T_exhaust − T_outside)
-        #     Note: this device exposes only 3 temperature sensors (TZ1, TN1, TP);
-        #     the exhaust-outlet sensor TW is absent, so EN 308 η_exhaust and the
-        #     Belgian mean-efficiency (η_epbd) cannot be computed.
-        bypass_raw = data.get("bypass_mode")
-        bypass_open = bypass_raw in (1, 2)
-        if all(
-            k in data for k in ["outside_temperature", "supply_temperature", "exhaust_temperature"]
-        ) and not bypass_open:
-            try:
-                outside = float(data["outside_temperature"])
-                supply = float(data["supply_temperature"])
-                exhaust = float(data["exhaust_temperature"])
-
-                # Heat recovery only makes sense in heating mode:
-                # outside must be colder than the room (exhaust > outside).
-                # In summer/freecooling the bypass should be open, but if the
-                # bypass register hasn't caught up yet, skip gracefully.
-                # EN 308 also requires ΔT ≥ 5 K for a statistically reliable
-                # measurement; below that threshold sensor noise dominates.
-                _MIN_DELTA_T = 5.0
-                if exhaust - outside >= _MIN_DELTA_T:
-                    q_supply = data.get("supply_flow_rate")
-                    q_exhaust = data.get("exhaust_flow_rate")
-                    if q_supply is not None and q_exhaust is not None:
-                        q_s = float(q_supply)
-                        q_e = float(q_exhaust)
-                        q_min = min(q_s, q_e)
-                        if q_min > 0:
-                            # ASHRAE 84 thermodynamic effectiveness (ε-NTU)
-                            raw = (q_s * (supply - outside)) / (q_min * (exhaust - outside))
-                        else:
-                            raw = (supply - outside) / (exhaust - outside)
-                    else:
-                        # EN 308 η_supply — 3-sensor fallback
-                        raw = (supply - outside) / (exhaust - outside)
-
-                    efficiency = round(raw * 100, 1)
-                    data["calculated_efficiency"] = max(0.0, min(100.0, efficiency))
-                    data["heat_recovery_efficiency"] = data["calculated_efficiency"]
-            except (ZeroDivisionError, TypeError, ValueError) as exc:
-                _LOGGER.debug("Could not calculate efficiency: %s", exc)
-
-        # Calculate heat recovery power: P[W] = ρ·Cp·Q·ΔT
-        # ρ=1.2 kg/m³, Cp=1005 J/(kg·K) → coefficient = 1.2*1005/3600 ≈ 0.335 W/(m³/h·K)
-        if all(k in data for k in ["supply_flow_rate", "outside_temperature", "supply_temperature"]):
-            try:
-                flow = float(data["supply_flow_rate"])
-                delta_t = float(data["supply_temperature"]) - float(data["outside_temperature"])
-                data["heat_recovery_power"] = round(max(0.0, 0.335 * flow * delta_t), 1)
-            except (TypeError, ValueError) as exc:
-                _LOGGER.debug("Could not calculate heat recovery power: %s", exc)
-
-        # Calculate flow balance
-        if "supply_flow_rate" in data and "exhaust_flow_rate" in data:
-            try:
-                balance = float(data["supply_flow_rate"]) - float(data["exhaust_flow_rate"])
-                data["flow_balance"] = balance
-                data["flow_balance_status"] = (
-                    "balanced"
-                    if abs(balance) < 10
-                    else "supply_dominant" if balance > 0 else "exhaust_dominant"
-                )
-            except (TypeError, ValueError) as exc:
-                _LOGGER.debug("Could not calculate flow balance: %s", exc)
-        power = self.calculate_power_consumption(data)
-        if power is not None:
-            data["estimated_power"] = power
-            data["electrical_power"] = power
-            now = _utcnow()
-            last_ts = self._last_power_timestamp
-            if not isinstance(last_ts, datetime):
-                elapsed = 0.0
-            else:
-                if getattr(now, "tzinfo", None) is not None and getattr(last_ts, "tzinfo", None) is None:
-                    last_ts = last_ts.replace(tzinfo=UTC)
-                elif getattr(now, "tzinfo", None) is None and getattr(last_ts, "tzinfo", None) is not None:
-                    now = now.replace(tzinfo=UTC)
-                elapsed = (now - last_ts).total_seconds()
-            self._total_energy += power * elapsed / 3600000.0
-            data["total_energy"] = self._total_energy
-            self._last_power_timestamp = now
-
-        # Decode device clock from BCD registers 0-3
-        try:
-            raw_yymm = data.get("date_time")
-            raw_ddtt = data.get("date_time_ddtt")
-            raw_ggmm = data.get("date_time_ggmm")
-            raw_sscc = data.get("date_time_sscc")
-            if all(v is not None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
-                def _bcd(b: int) -> int:
-                    return ((b >> 4) & 0xF) * 10 + (b & 0xF)
-                yy = _bcd((raw_yymm >> 8) & 0xFF)
-                mm = _bcd(raw_yymm & 0xFF)
-                dd = _bcd((raw_ddtt >> 8) & 0xFF)
-                hh = _bcd((raw_ggmm >> 8) & 0xFF)
-                mi = _bcd(raw_ggmm & 0xFF)
-                ss = _bcd((raw_sscc >> 8) & 0xFF)
-                year = 2000 + yy
-                if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
-                    data["device_clock"] = f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
-        except (TypeError, ValueError, AttributeError) as exc:  # pragma: no cover
-            _LOGGER.debug("Failed to decode device clock: %s", exc)
-
-        return data
-
-    def _create_consecutive_groups(self, registers: dict[str, int]) -> list[tuple[int, int, dict[str, int]]]:
+    def _create_consecutive_groups(
+        self, registers: dict[str, int]
+    ) -> list[tuple[int, int, dict[str, int]]]:
         """Legacy helper returning grouped address ranges with key maps."""
         ordered = sorted(registers.items(), key=lambda item: item[1])
         if not ordered:
@@ -2066,449 +1295,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
     def _update_data_sync(self) -> dict[str, Any]:
         """Legacy sync update hook retained for compatibility tests."""
         return {}
-
-    def _encode_write_value(
-        self,
-        register_name: str,
-        definition: Any,
-        value: float | list[int] | tuple[int, ...],
-        offset: int,
-    ) -> tuple[list[int] | None, Any]:
-        """Encode *value* for writing. Returns (encoded_values, scalar_value).
-
-        For multi-register definitions, returns (list[int], original_value).
-        For single-register definitions, returns (None, int_value).
-        Logs an error and returns (None, None) on validation failure.
-        """
-        if definition.length > 1:
-            if isinstance(value, list | tuple) and not isinstance(value, bytes | bytearray | str):
-                if len(value) + offset > definition.length:
-                    _LOGGER.error(
-                        "Register %s expects at most %d values starting at offset %d",
-                        register_name,
-                        definition.length - offset,
-                        offset,
-                    )
-                    return None, None
-                if offset == 0 and len(value) != definition.length:
-                    _LOGGER.error(
-                        "Register %s requires exactly %d values",
-                        register_name,
-                        definition.length,
-                    )
-                    return None, None
-                try:
-                    return [int(v) for v in value], value
-                except (TypeError, ValueError):
-                    _LOGGER.error("Register %s expects integer values", register_name)
-                    return None, None
-            else:
-                encoded = definition.encode(value)
-                if isinstance(encoded, list):
-                    encoded_values: list[int] = [int(v) for v in encoded]
-                else:
-                    encoded_values = [int(encoded)]
-                if offset >= definition.length:
-                    _LOGGER.error(
-                        "Register %s expects at most %d values starting at offset %d",
-                        register_name,
-                        definition.length - offset,
-                        offset,
-                    )
-                    return None, None
-                return encoded_values[offset:], value
-        else:
-            if isinstance(value, list | tuple) and not isinstance(value, bytes | bytearray | str):
-                _LOGGER.error("Register %s expects a single value", register_name)
-                return None, None
-            return None, int(definition.encode(value))
-
-    async def _write_holding_multi(
-        self,
-        address: int,
-        encoded_values: list[int],
-        attempt: int,
-    ) -> tuple[Any, bool]:
-        """Write multiple holding registers in chunks. Returns (last_response, success)."""
-        response = None
-        for chunk_start, chunk in chunk_register_values(address, encoded_values, self.effective_batch):
-            if self._transport is None and self.client is not None:
-                response = await self.client.write_registers(
-                    address=chunk_start,
-                    values=[int(v) for v in chunk],
-                )
-            elif self._transport is not None:
-                response = await self._transport.write_registers(
-                    self.slave_id,
-                    chunk_start,
-                    values=[int(v) for v in chunk],
-                    attempt=attempt,
-                )
-            else:
-                response = await self._call_modbus(
-                    self._get_client_method("write_registers"),
-                    chunk_start,
-                    values=[int(v) for v in chunk],
-                    attempt=attempt,
-                )
-            if response is None or response.isError():
-                return response, False
-        return response, True
-
-    async def _write_holding_single(self, address: int, value: Any, attempt: int) -> Any:
-        """Write a single holding register."""
-        if self._transport is None and self.client is not None:
-            return await self.client.write_register(address=address, value=int(value))
-        if self._transport is not None:
-            return await self._transport.write_register(self.slave_id, address, value=int(value))
-        return await self._call_modbus(
-            self._get_client_method("write_register"),
-            address,
-            value=int(value),
-            attempt=attempt,
-        )
-
-    async def async_write_register(
-        self,
-        register_name: str,
-        value: float | list[int] | tuple[int, ...],
-        refresh: bool = True,
-        *,
-        offset: int = 0,
-    ) -> bool:
-        """Write to a holding or coil register.
-
-        ``value`` should be supplied in user-friendly units. The register
-        definition's :meth:`encode` method is used to convert it to the raw
-        Modbus representation before sending to the device.
-        """
-
-        refresh_after_write = False
-        async with self._write_lock:
-            try:
-                await self._ensure_connection()
-                transport = self._transport
-                if transport is not None and not transport.is_connected():
-                    raise ConnectionException("Modbus transport is not connected")
-                if transport is None and self.client is None:
-                    raise ConnectionException("Modbus client is not connected")
-
-                original_value = value
-                try:
-                    definition = get_register_definition(register_name)
-                except KeyError:
-                    _LOGGER.error("Unknown register name: %s", register_name)
-                    return False
-
-                encoded_values, scalar_value = self._encode_write_value(
-                    register_name, definition, value, offset
-                )
-                if encoded_values is None and scalar_value is None:
-                    return False
-
-                address = definition.address + offset
-
-                for attempt in range(1, self.retry + 1):
-                    try:
-                        if definition.function == 3:
-                            if encoded_values is not None:
-                                response, success = await self._write_holding_multi(
-                                    address, encoded_values, attempt
-                                )
-                                if not success:
-                                    if attempt == self.retry:
-                                        _LOGGER.error(
-                                            "Error writing to register %s: %s",
-                                            register_name,
-                                            response,
-                                        )
-                                        return False
-                                    _LOGGER.info("Retrying write to register %s", register_name)
-                                    continue
-                            else:
-                                response = await self._write_holding_single(
-                                    address, scalar_value, attempt
-                                )
-                        elif definition.function == 1:
-                            response = await self._call_modbus(
-                                self._get_client_method("write_coil"),
-                                address=address,
-                                value=bool(scalar_value),
-                                attempt=attempt,
-                            )
-                        else:
-                            _LOGGER.error("Register %s is not writable", register_name)
-                            return False
-
-                        if response is None or response.isError():
-                            if attempt == self.retry:
-                                _LOGGER.error(
-                                    "Error writing to register %s: %s",
-                                    register_name,
-                                    response,
-                                )
-                                return False
-                            _LOGGER.info("Retrying write to register %s", register_name)
-                            continue
-
-                        refresh_after_write = refresh
-                        # Successful write: remove from failed set so the next
-                        # poll doesn't skip this register's chunk entirely.
-                        self._clear_register_failure(register_name)
-                        _LOGGER.info(
-                            "Successfully wrote %s to register %s",
-                            original_value,
-                            register_name,
-                        )
-                        break
-                    except (ModbusException, ConnectionException) as exc:
-                        await self._disconnect()
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to write register %s",
-                                register_name,
-                                exc_info=True,
-                            )
-                            return False
-                        _LOGGER.info(
-                            "Retrying write to register %s after error: %s",
-                            register_name,
-                            exc,
-                        )
-                        continue
-                    except TimeoutError:
-                        if self._transport is not None:
-                            await self._disconnect()
-                        _LOGGER.warning(
-                            "Writing register %s timed out (attempt %d/%d)",
-                            register_name,
-                            attempt,
-                            self.retry,
-                            exc_info=True,
-                        )
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Persistent timeout writing register %s",
-                                register_name,
-                            )
-                            return False
-                        continue
-                    except OSError:
-                        await self._disconnect()
-                        _LOGGER.exception("Unexpected error writing register %s", register_name)
-                        return False
-
-            except (ModbusException, ConnectionException):  # pragma: no cover - safety
-                _LOGGER.exception("Failed to write register %s", register_name)
-                return False
-
-        if refresh_after_write:
-            refresh_cb = getattr(self, "async_request_refresh", None)
-            if callable(refresh_cb):
-                try:
-                    await refresh_cb()
-                except TypeError:
-                    _LOGGER.debug("Skipping refresh for mock Home Assistant context")
-        return True
-
-    async def async_write_registers(
-        self,
-        start_address: int,
-        values: list[int],
-        refresh: bool = True,
-        *,
-        require_single_request: bool = False,
-    ) -> bool:
-        """Write multiple holding registers in one Modbus request."""
-
-        if not values:
-            _LOGGER.error("No values provided for multi-register write at %s", start_address)
-            return False
-        if require_single_request and len(values) > MAX_REGS_PER_REQUEST:
-            _LOGGER.error(
-                "Requested %s registers at %s exceeds maximum %s per request",
-                len(values),
-                start_address,
-                MAX_REGS_PER_REQUEST,
-            )
-            return False
-        refresh_after_write = False
-        async with self._write_lock:
-            try:
-                await self._ensure_connection()
-                transport = self._transport
-                if transport is not None and not transport.is_connected():
-                    raise ConnectionException("Modbus transport is not connected")
-                if transport is None and self.client is None:
-                    raise ConnectionException("Modbus client is not connected")
-
-                for attempt in range(1, self.retry + 1):
-                    try:
-                        success = True
-                        if require_single_request:
-                            if self._transport is None and self.client is not None:
-                                response = await self.client.write_registers(
-                                    address=start_address,
-                                    values=[int(v) for v in values],
-                                )
-                            elif self._transport is not None:
-                                response = await self._transport.write_registers(
-                                    self.slave_id,
-                                    start_address,
-                                    values=[int(v) for v in values],
-                                    attempt=attempt,
-                                )
-                            else:
-                                response = await self._call_modbus(
-                                    self._get_client_method("write_registers"),
-                                    start_address,
-                                    values=[int(v) for v in values],
-                                    attempt=attempt,
-                                )
-                            if response is None or response.isError():
-                                success = False
-                        else:
-                            for _index, (chunk_start, chunk) in enumerate(
-                                chunk_register_values(start_address, values, self.effective_batch)
-                            ):
-                                if self._transport is None and self.client is not None:
-                                    response = await self.client.write_registers(
-                                        address=chunk_start,
-                                        values=[int(v) for v in chunk],
-                                    )
-                                elif self._transport is not None:
-                                    response = await self._transport.write_registers(
-                                        self.slave_id,
-                                        chunk_start,
-                                        values=[int(v) for v in chunk],
-                                        attempt=attempt,
-                                    )
-                                else:
-                                    response = await self._call_modbus(
-                                        self._get_client_method("write_registers"),
-                                        chunk_start,
-                                        values=[int(v) for v in chunk],
-                                        attempt=attempt,
-                                    )
-                                if response is None or response.isError():
-                                    success = False
-                                    break
-                        if not success:
-                            if attempt == self.retry:
-                                _LOGGER.error(
-                                    "Error writing registers at %s: %s",
-                                    start_address,
-                                    response,
-                                )
-                                return False
-                            _LOGGER.info("Retrying multi-register write at %s", start_address)
-                            await self._disconnect()
-                            continue
-
-                        refresh_after_write = refresh
-                        _LOGGER.info(
-                            "Successfully wrote %s to registers starting at %s",
-                            values,
-                            start_address,
-                        )
-                        break
-                    except (ModbusException, ConnectionException) as exc:
-                        await self._disconnect()
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to write registers at %s",
-                                start_address,
-                                exc_info=True,
-                            )
-                            return False
-                        _LOGGER.info(
-                            "Retrying multi-register write at %s after error: %s",
-                            start_address,
-                            exc,
-                        )
-                        continue
-                    except TimeoutError:
-                        if self._transport is not None:
-                            await self._disconnect()
-                        _LOGGER.warning(
-                            "Writing registers at %s timed out (attempt %d/%d)",
-                            start_address,
-                            attempt,
-                            self.retry,
-                            exc_info=True,
-                        )
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Persistent timeout writing registers at %s",
-                                start_address,
-                            )
-                            return False
-                        continue
-                    except OSError:
-                        await self._disconnect()
-                        _LOGGER.exception("Unexpected error writing registers at %s", start_address)
-                        return False
-
-            except (ModbusException, ConnectionException):  # pragma: no cover - safety
-                _LOGGER.exception("Failed to write registers at %s", start_address)
-                return False
-
-        if refresh_after_write:
-            refresh_cb = getattr(self, "async_request_refresh", None)
-            if callable(refresh_cb):
-                try:
-                    await refresh_cb()
-                except TypeError:
-                    _LOGGER.debug("Skipping refresh for mock Home Assistant context")
-        return True
-
-    async def async_write_temporary_airflow(self, airflow: float, refresh: bool = True) -> bool:
-        """Write temporary airflow settings using the 3-register block."""
-
-        try:
-            mode_def = get_register_definition("cfg_mode_1")
-            value_def = get_register_definition("air_flow_rate_temporary_4401")
-            flag_def = get_register_definition("airflow_rate_change_flag")
-        except KeyError as exc:
-            _LOGGER.error("Temporary airflow registers unavailable: %s", exc)
-            return False
-
-        values = [
-            int(mode_def.encode(2)),
-            int(value_def.encode(airflow)),
-            int(flag_def.encode(1)),
-        ]
-        return await self.async_write_registers(
-            REG_TEMPORARY_FLOW_START,
-            values,
-            refresh=refresh,
-            require_single_request=True,
-        )
-
-    async def async_write_temporary_temperature(
-        self, temperature: float, refresh: bool = True
-    ) -> bool:
-        """Write temporary temperature settings using the 3-register block."""
-
-        try:
-            mode_def = get_register_definition("cfg_mode_2")
-            value_def = get_register_definition("supply_air_temperature_temporary_4404")
-            flag_def = get_register_definition("temperature_change_flag")
-        except KeyError as exc:
-            _LOGGER.error("Temporary temperature registers unavailable: %s", exc)
-            return False
-
-        values = [
-            int(mode_def.encode(2)),
-            value_def.encode(temperature),
-            int(flag_def.encode(1)),
-        ]
-        return await self.async_write_registers(
-            REG_TEMPORARY_TEMP_START,
-            values,
-            refresh=refresh,
-            require_single_request=True,
-        )
 
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks."""
@@ -2569,9 +1355,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         is_connected = bool(self._transport and self._transport.is_connected())
         recent_update = False
         if last_update:
-            recent_update = (_utcnow() - last_update).total_seconds() < (
-                self.scan_interval * 3
-            )
+            recent_update = (_utcnow() - last_update).total_seconds() < (self.scan_interval * 3)
 
         error_count = int(self.statistics.get("failed_reads", 0))
         error_count += int(self.statistics.get("connection_errors", 0))
@@ -2668,11 +1452,6 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
     def get_device_info(self) -> dict[str, Any]:
         """Return device info mapping for the connected unit."""
-        # Determine the device model. Prefer any model already stored in
-        # ``device_info`` but fall back to other sources when it is missing or
-        # set to ``UNKNOWN_MODEL``. The scanner may place a detected model in
-        # the capabilities result under ``model_type``. As a final fallback, use
-        # any model specified in the config entry.
         model = self.device_info.get("model")
         if not model or model == UNKNOWN_MODEL:
             model = (
@@ -2715,9 +1494,5 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
     @property
     def device_info_dict(self) -> dict[str, Any]:  # pragma: no cover
-        """Return device information as a plain dictionary for legacy use.
-
-        Retained for tests and external consumers which expect a simple
-        mapping instead of a ``DeviceInfo`` instance.
-        """
+        """Return device information as a plain dictionary for legacy use."""
         return cast(dict[str, Any], self.get_device_info())

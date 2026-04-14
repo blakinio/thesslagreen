@@ -104,9 +104,8 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         the entity disappearing as «unavailable».
         """
         if self._register_name.startswith(BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES):
-            return (
-                self.coordinator.last_update_success
-                and not getattr(self.coordinator, "offline_state", False)
+            return self.coordinator.last_update_success and not getattr(
+                self.coordinator, "offline_state", False
             )
         return super().available
 

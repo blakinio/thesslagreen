@@ -70,6 +70,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     ``_attr_*`` attributes and entity methods implement the Home Assistant
     ``FanEntity`` API and may appear unused to static analysis.
     """
+
     _MODE_MAP: ClassVar[dict[int, str]] = {0: "auto", 1: "manual", 2: "temporary"}
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
@@ -100,7 +101,10 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     def is_on(self) -> bool | None:
         """Return true if fan is on."""
         # Check if system is powered on
-        if "on_off_panel_mode" in self.coordinator.data and not self.coordinator.data["on_off_panel_mode"]:
+        if (
+            "on_off_panel_mode" in self.coordinator.data
+            and not self.coordinator.data["on_off_panel_mode"]
+        ):
             return False
 
         # Check current flow rate
@@ -285,9 +289,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
         # Add system status
         system_status = []
-        if (
-            self.coordinator.data.get("power_supply_fans")
-        ):
+        if self.coordinator.data.get("power_supply_fans"):
             system_status.append("fans_powered")
         if self.coordinator.data.get("boost_mode"):
             system_status.append("boost_active")

@@ -116,7 +116,11 @@ def _get_platforms() -> list[object]:
 
     try:  # Import only when running inside Home Assistant
         from homeassistant.const import Platform  # type: ignore
-    except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - Home Assistant missing
+    except (
+        ImportError,
+        ModuleNotFoundError,
+        AttributeError,
+    ):  # pragma: no cover - Home Assistant missing
         _platform_cache = list(PLATFORM_DOMAINS)
         return _platform_cache
 
@@ -428,7 +432,13 @@ async def _async_setup_platforms(
                 await import_task
         except (ImportError, ModuleNotFoundError) as err:
             _LOGGER.debug("Could not preload platform %s: %s", platform, err)
-        except (TypeError, ValueError, RuntimeError, AttributeError, OSError) as err:  # pragma: no cover - unexpected
+        except (
+            TypeError,
+            ValueError,
+            RuntimeError,
+            AttributeError,
+            OSError,
+        ) as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
 
     platforms = _get_platforms()
@@ -522,7 +532,13 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
         coordinator.safe_scan = bool(entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN))
         try:
             coordinator._compute_register_groups()
-        except (TypeError, ValueError, AttributeError, RuntimeError, OSError):  # pragma: no cover - defensive
+        except (
+            TypeError,
+            ValueError,
+            AttributeError,
+            RuntimeError,
+            OSError,
+        ):  # pragma: no cover - defensive
             _LOGGER.debug("Failed to recompute register groups after option update", exc_info=True)
 
         await coordinator.async_request_refresh()
@@ -870,8 +886,7 @@ async def _async_migrate_entity_ids(
             )
             if existing_key == key:
                 _LOGGER.debug(
-                    "entity_id migration: removing orphaned %s "
-                    "(target %s occupied by same key %r)",
+                    "entity_id migration: removing orphaned %s (target %s occupied by same key %r)",
                     current.entity_id,
                     expected_entity_id,
                     key,
@@ -992,7 +1007,12 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
                     maybe_info = await maybe_info
                 if isinstance(maybe_info, dict):
                     device_info = maybe_info
-            except (TypeError, AttributeError, OSError, RuntimeError):  # pragma: no cover - defensive
+            except (
+                TypeError,
+                AttributeError,
+                OSError,
+                RuntimeError,
+            ):  # pragma: no cover - defensive
                 device_info = None
     serial = device_info.get("serial_number") if isinstance(device_info, dict) else None
     host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST)

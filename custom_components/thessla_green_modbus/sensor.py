@@ -10,16 +10,14 @@ import asyncio
 import logging
 from typing import Any, cast
 
-from homeassistant import const as ha_const
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity import EntityCategory
-
-PERCENTAGE = getattr(ha_const, "PERCENTAGE", "%")
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from ._compat import PERCENTAGE
 from .capability_rules import capability_block_reason
 from .const import (
     AIRFLOW_RATE_REGISTERS,
@@ -61,7 +59,12 @@ def _error_status_description(key: str) -> str:
 
     try:
         definition = get_register_definition(key)
-    except (AttributeError, KeyError, TypeError, ValueError):  # pragma: no cover - defensive fallback
+    except (
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+    ):  # pragma: no cover - defensive fallback
         return key
     return definition.description_en or definition.description or key
 
@@ -104,9 +107,9 @@ async def async_setup_entry(
         # serial_number is always force-created: it reads from device_info (assembled
         # during scan from 6 registers) rather than via per-register polling, so it
         # works even when the device rejects block reads at those addresses.
-        force_create = (
-            coordinator.force_full_register_list and register_name in register_map
-        ) or (register_name == "serial_number" and register_name in register_map)
+        force_create = (coordinator.force_full_register_list and register_name in register_map) or (
+            register_name == "serial_number" and register_name in register_map
+        )
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
@@ -116,7 +119,9 @@ async def async_setup_entry(
                 _LOGGER.warning("No address for sensor: %s, skipping", register_name)
                 continue
             if register_name == "serial_number":
-                entities.append(ThesslaGreenSerialNumberSensor(coordinator, register_name, address, sensor_def))
+                entities.append(
+                    ThesslaGreenSerialNumberSensor(coordinator, register_name, address, sensor_def)
+                )
             else:
                 entities.append(ThesslaGreenSensor(coordinator, register_name, address, sensor_def))
             _LOGGER.debug("Created sensor: %s", sensor_def["translation_key"])
@@ -146,7 +151,9 @@ async def async_setup_entry(
         _LOGGER.debug(
             "Created %d sensor entities for %s",
             len(entities),
-            getattr(coordinator, "device_name", getattr(coordinator, "_device_name", "ThesslaGreen")),
+            getattr(
+                coordinator, "device_name", getattr(coordinator, "_device_name", "ThesslaGreen")
+            ),
         )
     else:
         _LOGGER.warning("No sensor entities created - no compatible registers found")
@@ -188,7 +195,9 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         _ec = sensor_definition.get("entity_category")  # pragma: no cover
         self._attr_entity_category = EntityCategory(_ec) if _ec else None  # pragma: no cover
         if "suggested_display_precision" in sensor_definition:  # pragma: no cover
-            self._attr_suggested_display_precision = sensor_definition["suggested_display_precision"]  # pragma: no cover
+            self._attr_suggested_display_precision = sensor_definition[
+                "suggested_display_precision"
+            ]  # pragma: no cover
 
         # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover
@@ -225,7 +234,9 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         """Return if entity has valid data."""
         value = self.coordinator.data.get(self._register_name)
 
-        if not self.coordinator.last_update_success or getattr(self.coordinator, "offline_state", False):
+        if not self.coordinator.last_update_success or getattr(
+            self.coordinator, "offline_state", False
+        ):
             return False
 
         if value == SENSOR_UNAVAILABLE:
@@ -237,9 +248,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         if value is None and not self._register_name.startswith(TIME_REGISTER_PREFIXES):
             return False
 
-        if self._use_percentage() and self._get_nominal_flow() is None:
-            return False
-        return True
+        return not (self._use_percentage() and self._get_nominal_flow() is None)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover

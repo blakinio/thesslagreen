@@ -177,13 +177,11 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         When data is temporarily missing the entity shows «unknown» instead of
         «unavailable», which is less alarming and more accurate.
         """
-        if (
-            self._register_name in self._DIAG_NAMES
-            or self._register_name.startswith(self._DIAG_PREFIXES)
+        if self._register_name in self._DIAG_NAMES or self._register_name.startswith(
+            self._DIAG_PREFIXES
         ):
-            return (
-                self.coordinator.last_update_success
-                and not getattr(self.coordinator, "offline_state", False)
+            return self.coordinator.last_update_success and not getattr(
+                self.coordinator, "offline_state", False
             )
         return super().available
 
