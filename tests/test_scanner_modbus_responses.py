@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
 )

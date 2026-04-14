@@ -2,8 +2,8 @@
 import asyncio
 import gc
 import warnings
-import pytest
 
+import pytest
 
 _open_loop_ids_before = set()
 _leaking_tests = []
@@ -12,7 +12,9 @@ _leaking_tests = []
 @pytest.fixture(autouse=True)
 def track_event_loops(request):
     # Collect IDs of currently open loops before the test
-    gc.collect(); gc.collect(); gc.collect()
+    gc.collect()
+    gc.collect()
+    gc.collect()
     before = set()
     for obj in gc.get_objects():
         try:
@@ -24,7 +26,9 @@ def track_event_loops(request):
     yield
 
     # After the test, check for new unclosed loops
-    gc.collect(); gc.collect(); gc.collect()
+    gc.collect()
+    gc.collect()
+    gc.collect()
     new_loops = []
     for obj in gc.get_objects():
         try:

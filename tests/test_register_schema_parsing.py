@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from custom_components.thessla_green_modbus.registers.schema import RegisterDefinition
 
 

@@ -127,17 +127,17 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual tests
 # ---------------------------------------------------------------------------
 
-import custom_components.thessla_green_modbus.select as select_module  # noqa: E402
-from custom_components.thessla_green_modbus.const import (  # noqa: E402
+import custom_components.thessla_green_modbus.select as select_module
+from custom_components.thessla_green_modbus.const import (
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
     DOMAIN,
     SENSOR_UNAVAILABLE,
 )
-from custom_components.thessla_green_modbus.select import (  # noqa: E402
+from custom_components.thessla_green_modbus.select import (
     async_setup_entry as select_async_setup_entry,
 )
-from custom_components.thessla_green_modbus.sensor import (  # noqa: E402
+from custom_components.thessla_green_modbus.sensor import (
     SENSOR_DEFINITIONS,
     ThesslaGreenActiveErrorsSensor,
     ThesslaGreenErrorCodesSensor,

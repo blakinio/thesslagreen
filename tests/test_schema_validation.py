@@ -1,8 +1,8 @@
 """Tests for RegisterDefinition validator edge cases in registers/schema.py."""
 
 import pytest
-
 from custom_components.thessla_green_modbus.registers.schema import RegisterDefinition
+from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
 # Minimal valid base record (function 3 = holding registers, access RW)
@@ -54,7 +54,7 @@ def test_access_w_accepted(monkeypatch):
 
 def test_access_invalid_raises():
     """Unknown access value raises a validation error (lines 196-197)."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         _make(access="INVALID")
 
 
@@ -71,25 +71,25 @@ def test_address_dec_decimal_string_accepted():
 
 def test_address_dec_hex_string_raises():
     """Non-decimal string (hex) raises ValueError (lines 204-208)."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         _make(address_dec="0x64")
 
 
 def test_address_dec_alphabetic_string_raises():
     """Alphabetic string raises ValueError (lines 204-208)."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         _make(address_dec="abc")
 
 
 def test_address_dec_float_raises():
     """Float address_dec raises TypeError (line 211)."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         _make(address_dec=100.0)
 
 
 def test_address_dec_bool_raises():
     """Bool address_dec raises TypeError (line 211 — bool is not int for our purposes)."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         _make(address_dec=True)
 
 
@@ -106,5 +106,5 @@ def test_function_string_alias_accepted():
 
 def test_function_read_only_with_rw_access_raises():
     """Functions 1 or 2 require R access; RW should raise (lines 260-263)."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         _make(function=1, access="RW")

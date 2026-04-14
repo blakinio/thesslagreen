@@ -6,7 +6,6 @@ import types
 from unittest.mock import AsyncMock
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
@@ -63,7 +62,7 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.fan import ThesslaGreenFan  # noqa: E402
+from custom_components.thessla_green_modbus.fan import ThesslaGreenFan
 
 
 def test_fan_creation_and_state(mock_coordinator):

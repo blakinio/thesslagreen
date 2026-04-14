@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
     _SafeDTUtil,
-    _PermanentModbusError,
     _utcnow,
+)
+from custom_components.thessla_green_modbus.coordinator import (
     dt_util as coordinator_dt_util,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
@@ -20,7 +19,6 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -429,7 +427,7 @@ def test_post_process_data_timezone_aware_timestamp():
     """Timezone-aware last timestamp is handled correctly (lines 1916-1919)."""
     coord = _make_coordinator()
     # Set a timezone-aware last timestamp
-    coord._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    coord._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     data = {"dac_supply": 3.0, "dac_exhaust": 3.0}
     result = coord._post_process_data(data)
     assert "estimated_power" in result
@@ -445,7 +443,6 @@ async def test_async_write_temporary_airflow():
     """async_write_temporary_airflow calls async_write_registers when registers exist."""
     coord = _make_coordinator()
     coord.async_write_registers = AsyncMock(return_value=True)
-    from custom_components.thessla_green_modbus.coordinator import get_register_definition
     mock_def = MagicMock()
     mock_def.encode = MagicMock(return_value=1)
     with patch(
@@ -668,9 +665,6 @@ def test_coordinator_init_super_type_error_fallback():
     """super().__init__ TypeError fallback sets attrs manually (lines 289-294)."""
     from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
     hass = MagicMock()
-    # Patch the base class __init__ to raise TypeError on the first call
-    original_init = ThesslaGreenModbusCoordinator.__bases__[0].__init__
-
     call_count = [0]
 
     def patched_init(self, *args, **kwargs):
@@ -679,8 +673,7 @@ def test_coordinator_init_super_type_error_fallback():
             raise TypeError("unexpected keyword argument")
         # Second call (fallback with no args) should succeed
 
-    with patch.object(ThresslaGreenCoordinatorBase := ThesslaGreenModbusCoordinator.__bases__[0],
-                      "__init__", patched_init):
+    with patch.object(ThesslaGreenModbusCoordinator.__bases__[0], "__init__", patched_init):
         coord = ThesslaGreenModbusCoordinator(
             hass=hass, host="localhost", port=502, slave_id=1
         )
@@ -972,7 +965,7 @@ async def test_read_with_retry_awaitable_returning_none_raises():
     async def read_method(slave_id, addr, *, count, attempt):
         return None
 
-    with pytest.raises(Exception):
+    with pytest.raises(ModbusException):
         await coord._read_with_retry(read_method, 0, 1, register_type="input_registers")
 
 
@@ -1017,7 +1010,10 @@ def test_process_register_value_sensor_unavailable_temperature():
 
 def test_process_register_value_sensor_unavailable_non_temperature():
     """SENSOR_UNAVAILABLE on a non-temperature register → returns SENSOR_UNAVAILABLE."""
-    from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE, SENSOR_UNAVAILABLE_REGISTERS
+    from custom_components.thessla_green_modbus.const import (
+        SENSOR_UNAVAILABLE,
+        SENSOR_UNAVAILABLE_REGISTERS,
+    )
     coord = _make_coordinator()
     non_temp_reg = next((r for r in SENSOR_UNAVAILABLE_REGISTERS if "temperature" not in r), None)
     if non_temp_reg is None:
@@ -1037,7 +1033,6 @@ def test_process_register_value_sensor_unavailable_non_temperature():
 
 def test_process_register_value_schedule_hh_mm():
     """schedule_ register with HH:MM decoded → stored as HH:MM string (not minutes)."""
-    from custom_components.thessla_green_modbus.coordinator import get_register_definition
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def._is_temperature.return_value = False
@@ -1287,7 +1282,7 @@ def test_post_process_data_non_datetime_last_timestamp():
 def test_post_process_data_naive_now_aware_last_ts():
     """Naive _utcnow with aware last_ts → adds UTC tz to now (line 1919)."""
     coord = _make_coordinator()
-    coord._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    coord._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     # Patch _utcnow to return naive datetime
     with patch(
         "custom_components.thessla_green_modbus.coordinator._utcnow",
@@ -1342,7 +1337,9 @@ async def test_disconnect_locked_transport_modbus_exception():
     coord._transport = transport
     # Should not raise
     await coord._disconnect_locked()
-    assert coord._transport is None or True  # transport var was local, client set to None
+    transport.close.assert_awaited_once()
+    assert coord._transport is transport
+    assert coord.client is None
 
 
 @pytest.mark.asyncio

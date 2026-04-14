@@ -7,7 +7,6 @@ from importlib import resources
 from pathlib import Path
 
 import pytest
-
 from custom_components.thessla_green_modbus.utils import BCD_TIME_PREFIXES
 
 

@@ -128,7 +128,6 @@ def test_intentional_omissions_are_valid() -> None:
 def test_number_translations_match() -> None:
     """Ensure NUMBER_ENTITY_MAPPINGS keys match entity.number in translation files."""
     import json as _json
-
     from pathlib import Path as _Path
 
     entity_mod = importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")

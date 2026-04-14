@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
@@ -102,13 +101,15 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Imports under test
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
+from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.entity_mappings import (
     ENTITY_MAPPINGS,
     TEXT_ENTITY_MAPPINGS,
 )
-from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function  # noqa: E402
-from custom_components.thessla_green_modbus.text import ThesslaGreenText  # noqa: E402
+from custom_components.thessla_green_modbus.registers.loader import (
+    get_registers_by_function,
+)
+from custom_components.thessla_green_modbus.text import ThesslaGreenText
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 

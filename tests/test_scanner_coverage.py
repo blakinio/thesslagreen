@@ -5,7 +5,6 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.const import (
     CONNECTION_TYPE_RTU,
     DEFAULT_BAUD_RATE,
@@ -22,7 +21,6 @@ from custom_components.thessla_green_modbus.scanner_core import (
     ThesslaGreenDeviceScanner,
     _build_register_maps,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -105,12 +103,11 @@ async def test_call_modbus_compat_type_error_reraise():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core._call_modbus",
         side_effect=raise_other_type_error,
-    ):
-        with pytest.raises(TypeError, match="something unrelated"):
-            await _call_modbus_compat(
-                MagicMock(), 1, 0,
-                count=1, attempt=1, retry=1, timeout=5, backoff=0.0, backoff_jitter=None,
-            )
+    ), pytest.raises(TypeError, match="something unrelated"):
+        await _call_modbus_compat(
+            MagicMock(), 1, 0,
+            count=1, attempt=1, retry=1, timeout=5, backoff=0.0, backoff_jitter=None,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -641,10 +638,9 @@ async def test_read_holding_cancelled_error_reraises():
             "custom_components.thessla_green_modbus.scanner_core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ),
-        patch("asyncio.sleep", AsyncMock()),
+        patch("asyncio.sleep", AsyncMock()),pytest.raises(asyncio.CancelledError)
     ):
-        with pytest.raises(asyncio.CancelledError):
-            await scanner._read_holding(mock_client, 0, 1)
+        await scanner._read_holding(mock_client, 0, 1)
 
 
 @pytest.mark.asyncio
@@ -804,10 +800,9 @@ async def test_read_coil_cancelled_error_reraises():
         patch(
             "custom_components.thessla_green_modbus.scanner_core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
-        ),
+        ),pytest.raises(asyncio.CancelledError)
     ):
-        with pytest.raises(asyncio.CancelledError):
-            await scanner._read_coil(mock_client, 0, 1)
+        await scanner._read_coil(mock_client, 0, 1)
 
 
 @pytest.mark.asyncio
@@ -954,10 +949,9 @@ async def test_read_discrete_cancelled_error_reraises():
         patch(
             "custom_components.thessla_green_modbus.scanner_core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
-        ),
+        ),pytest.raises(asyncio.CancelledError)
     ):
-        with pytest.raises(asyncio.CancelledError):
-            await scanner._read_discrete(mock_client, 0, 1)
+        await scanner._read_discrete(mock_client, 0, 1)
 
 
 @pytest.mark.asyncio
@@ -1290,19 +1284,18 @@ async def test_scan_device_rtu_creates_transport():
     mock_transport.ensure_connected = AsyncMock()
     mock_transport.client = mock_client
 
-    with patch(
+    with (
+        patch(
         "custom_components.thessla_green_modbus.scanner_core.RtuModbusTransport",
         return_value=mock_transport,
-    ) as mock_rtu:
-        with (
-            patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
-            patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
-            patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
-        ):
-            result = await scanner.scan_device()
+    ) as mock_rtu, patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+    ):
+        result = await scanner.scan_device()
 
     mock_rtu.assert_called_once()
     assert "available_registers" in result
@@ -1327,9 +1320,8 @@ async def test_scan_device_auto_detect_all_fail():
         return_value=[
             ("tcp", failing_transport, 1.0),
         ],
-    ):
-        with pytest.raises(ConnectionException, match="Auto-detect Modbus transport failed"):
-            await scanner.scan_device()
+    ), pytest.raises(ConnectionException, match="Auto-detect Modbus transport failed"):
+        await scanner.scan_device()
 
 
 # ---------------------------------------------------------------------------
@@ -1352,17 +1344,16 @@ async def test_scan_device_scan_returns_non_dict_raises():
     mock_client.connect.return_value = True
     mock_ctor.return_value = mock_client
 
-    with patch.object(ThesslaGreenDeviceScanner, "scan", fake_scan):
-        with patch(
-            "custom_components.thessla_green_modbus.scanner_core.importlib.import_module"
-        ) as mock_import:
-            mock_mod = MagicMock()
-            mock_mod.ModbusTcpClient = mock_ctor
-            mock_import.return_value = mock_mod
+    with patch.object(ThesslaGreenDeviceScanner, "scan", fake_scan), patch(
+        "custom_components.thessla_green_modbus.scanner_core.importlib.import_module"
+    ) as mock_import:
+        mock_mod = MagicMock()
+        mock_mod.ModbusTcpClient = mock_ctor
+        mock_import.return_value = mock_mod
 
-            with patch.object(scanner, "close", AsyncMock()):
-                with pytest.raises(TypeError, match="scan\\(\\) must return a dict"):
-                    await scanner.scan_device()
+        with patch.object(scanner, "close", AsyncMock()):
+            with pytest.raises(TypeError, match="scan\\(\\) must return a dict"):
+                await scanner.scan_device()
 
 
 # ===========================================================================
@@ -1694,7 +1685,7 @@ async def test_scan_holding_skips_uart_optional_registers():
         patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
         patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
     ):
-        result = await scanner.scan()
+        await scanner.scan()
 
     # addr 4452 should have been skipped — not read
     assert not read_holding_calls
@@ -1706,45 +1697,23 @@ async def test_scan_holding_skips_uart_optional_registers():
 
 @pytest.mark.asyncio
 async def test_scan_holding_multiregister_alias():
-    """Lines 1362-1363: two names share same holding address."""
+    """Lines 1362-1363: duplicate holding address merges names into one entry."""
     scanner = await _make_scanner(retry=1)
     scanner._client = AsyncMock()
-    # Put two different names at the same address (alias)
-    scanner._registers = {4: {}, 3: {9999: "fake_h1"}, 1: {}, 2: {}}
-    # Simulate second name at same address by pre-populating holding_registers mapping
-    # We do this by patching the global HOLDING_REGISTERS to include both names at 9999
 
-    import custom_components.thessla_green_modbus.scanner_core as sc
+    class DuplicateAddressHoldingMap(dict[int, str]):
+        def items(self):
+            return iter([(9999, "fake_h1"), (9999, "fake_h2")])
 
-    original = dict(sc.HOLDING_REGISTERS)
-    try:
-        sc.HOLDING_REGISTERS["fake_h1"] = 9999
-        sc.HOLDING_REGISTERS["fake_h2"] = 9999  # alias at same address
+    with (
+        patch.object(scanner, "_group_registers_for_batch_read", return_value=[(9999, 1)]),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=[123])),
+        patch.object(scanner, "_is_valid_register_value", return_value=True),
+    ):
+        await scanner._scan_named_holding(DuplicateAddressHoldingMap())
 
-        # Rebuild names_by_address
-        scanner._registers = {4: {}, 3: {9999: "fake_h1"}, 1: {}, 2: {}}
-        # The scan() uses holding_registers (from _registers or globals)
-        # In scan(), holding_registers = _registers.get(3, {}) = {9999: "fake_h1"}
-        # So "fake_h2" won't be in input unless we put it in _registers too
-        # Lines 1362-1363 are: if addr in holding_info: names.add(name)
-        # This happens when two names map to the same address in holding_registers dict
-        scanner._registers = {4: {}, 3: {9999: "fake_h1", 9999: "fake_h1"}, 1: {}, 2: {}}
-        # Can't have two keys — use MULTI_REGISTER_SIZES instead (size > 1 extends range)
-
-        # Actually, lines 1362-1363 fire when addr is already in holding_info from
-        # a PREVIOUS iteration. This happens when a later register in holding_registers.items()
-        # has the same addr as an earlier one. Since dict can't have duplicate keys,
-        # this only fires when _group_reads brings multiple entries per address, which can't
-        # happen with a dict. Let's use the global holding_registers path instead.
-
-        # Let me try: if global HOLDING_REGISTERS has two names at the same address
-        # (not possible with a dict). So lines 1362-1363 require two different names at
-        # the same addr in holding_registers — only possible if the loader has aliases.
-        # Skip this edge case — it would require a special register definition.
-        pass
-    finally:
-        sc.HOLDING_REGISTERS.clear()
-        sc.HOLDING_REGISTERS.update(original)
+    assert "fake_h1" in scanner.available_registers["holding_registers"]
+    assert "fake_h2" in scanner.available_registers["holding_registers"]
 
 
 # ---------------------------------------------------------------------------
@@ -1814,7 +1783,7 @@ async def test_scan_holding_probe_addr_not_in_info():
             patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
             patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
         ):
-            result = await scanner.scan()
+            await scanner.scan()
 
     finally:
         sc.MULTI_REGISTER_SIZES.clear()
@@ -1918,20 +1887,18 @@ async def test_scan_device_importlib_fails():
     mock_transport = _make_transport()
     mock_transport.client = AsyncMock()
 
-    with patch.object(scanner, "_build_tcp_transport", return_value=mock_transport):
-        with patch(
-            "custom_components.thessla_green_modbus.scanner_core.importlib.import_module",
-            side_effect=Exception("import failed"),
-        ):
-            with (
-                patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
-                patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
-                patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
-                patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
-                patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
-                patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
-            ):
-                result = await scanner.scan_device()
+    with (
+        patch.object(scanner, "_build_tcp_transport", return_value=mock_transport), patch(
+        "custom_components.thessla_green_modbus.scanner_core.importlib.import_module",
+        side_effect=Exception("import failed"),
+    ), patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+    ):
+        result = await scanner.scan_device()
 
     assert "available_registers" in result
 
@@ -1955,19 +1922,18 @@ async def test_scan_device_auto_detect_probe_timeout():
     t2 = _make_transport()
     t2.client = AsyncMock()
 
-    with patch.object(
+    with (
+        patch.object(
         scanner, "_build_auto_tcp_attempts",
         return_value=[("tcp", t1, 1.0), ("tcp_rtu", t2, 1.0)],
+    ), patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
     ):
-        with (
-            patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
-            patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
-            patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
-        ):
-            result = await scanner.scan_device()
+        result = await scanner.scan_device()
 
     assert "available_registers" in result
 
@@ -1986,19 +1952,18 @@ async def test_scan_device_auto_detect_probe_modbus_io_cancelled():
     t2 = _make_transport()
     t2.client = AsyncMock()
 
-    with patch.object(
+    with (
+        patch.object(
         scanner, "_build_auto_tcp_attempts",
         return_value=[("tcp", t1, 1.0), ("tcp_rtu", t2, 1.0)],
+    ), patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
     ):
-        with (
-            patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
-            patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
-            patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
-            patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
-        ):
-            result = await scanner.scan_device()
+        result = await scanner.scan_device()
 
     assert "available_registers" in result
 
@@ -2049,7 +2014,7 @@ async def test_load_registers_with_min_max():
     ):
         result = await scanner._load_registers()
 
-    register_map, register_ranges = result
+    _register_map, register_ranges = result
     assert "test_reg_with_range" in register_ranges
     assert register_ranges["test_reg_with_range"] == (0, 100)
 
@@ -2197,7 +2162,6 @@ async def test_mark_holding_unsupported_partial_overlap():
 
 def test_ensure_pymodbus_import_fails():
     """Lines 119-120: except Exception: return when importlib raises."""
-    import importlib as _importlib_mod
     from custom_components.thessla_green_modbus.scanner_core import _ensure_pymodbus_client_module
 
     with patch(
@@ -2294,7 +2258,10 @@ async def test_verify_connection_tcp_explicit_mode():
 @pytest.mark.asyncio
 async def test_verify_connection_safe_holding_with_patched_definitions():
     """Lines 766, 824-829: safe_holding populated when REGISTER_DEFINITIONS has holding reg."""
-    from custom_components.thessla_green_modbus.scanner_core import SAFE_REGISTERS, REGISTER_DEFINITIONS
+    from custom_components.thessla_green_modbus.scanner_core import (
+        REGISTER_DEFINITIONS,
+        SAFE_REGISTERS,
+    )
 
     # Find the holding SAFE_REGISTER name
     holding_name = next((name for func, name in SAFE_REGISTERS if func == 3), None)
@@ -2350,9 +2317,8 @@ async def test_verify_connection_rtu_with_serial_port():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.RtuModbusTransport",
         return_value=fake_transport,
-    ):
-        with pytest.raises(asyncio.CancelledError):
-            await scanner.verify_connection()
+    ), pytest.raises(asyncio.CancelledError):
+        await scanner.verify_connection()
 
 
 # ---------------------------------------------------------------------------
@@ -2466,7 +2432,6 @@ async def test_scan_input_probe_returns_invalid_value_v2():
     scanner._registers = {4: {9999: "fake_input"}, 3: {}, 1: {}, 2: {}}
     scanner._names_by_address[4] = {9999: {"fake_input"}}
 
-    batch_attempted = {"n": 0}
 
     async def smart_read_input(*args, **kwargs):
         skip_cache = kwargs.get("skip_cache", False)
@@ -2531,7 +2496,7 @@ async def test_load_registers_empty_name():
     ):
         result = await scanner._load_registers()
 
-    register_map, register_ranges = result
+    register_map, _register_ranges = result
     # Empty name register skipped, valid one added
     assert 9999 not in register_map[3]
     assert 100 in register_map[4]

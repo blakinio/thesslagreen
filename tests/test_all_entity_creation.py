@@ -19,7 +19,6 @@ from __future__ import annotations
 import sys
 import types
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -175,8 +174,7 @@ if _ha_const is not None:
 # Now it is safe to import the integration domain constant
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-
+from custom_components.thessla_green_modbus.const import DOMAIN
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -254,7 +252,7 @@ async def test_all_platforms_create_at_least_one_entity(
         mock_coordinator.available_registers, holding_registers=holding
     )
 
-    from custom_components.thessla_green_modbus import (  # noqa: PLC0415
+    from custom_components.thessla_green_modbus import (
         binary_sensor,
         climate,
         fan,
@@ -315,7 +313,7 @@ async def test_entity_counts_per_platform(
     mock_config_entry: MagicMock,
 ) -> None:
     """Entity counts per platform must match the static register definitions."""
-    from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: PLC0415
+    from custom_components.thessla_green_modbus.entity_mappings import (
         BINARY_SENSOR_ENTITY_MAPPINGS,
         ENTITY_MAPPINGS,
     )
@@ -333,7 +331,7 @@ async def test_entity_counts_per_platform(
         mock_coordinator.available_registers, holding_registers=holding
     )
 
-    from custom_components.thessla_green_modbus import (  # noqa: PLC0415
+    from custom_components.thessla_green_modbus import (
         binary_sensor,
         climate,
         fan,
@@ -341,6 +339,8 @@ async def test_entity_counts_per_platform(
         select,
         sensor,
         switch,
+    )
+    from custom_components.thessla_green_modbus import (
         time as time_platform,
     )
 

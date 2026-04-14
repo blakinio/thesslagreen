@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.registers.loader import (
     get_register_definition,
@@ -144,11 +143,11 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.entity_mappings import (  # noqa: E402
+from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.entity_mappings import (
     SENSOR_ENTITY_MAPPINGS,
 )
-from custom_components.thessla_green_modbus.number import (  # noqa: E402
+from custom_components.thessla_green_modbus.number import (
     ENTITY_MAPPINGS,
     ThesslaGreenNumber,
     async_setup_entry,

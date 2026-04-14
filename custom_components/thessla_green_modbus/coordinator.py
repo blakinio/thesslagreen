@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import inspect
 import logging
 import re
 import sys
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from importlib import import_module
 from typing import Any, cast
 
@@ -19,7 +20,7 @@ from pymodbus.client import AsyncModbusTcpClient
 from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP, UpdateFailed
 from ._compat import dt_util as _base_dt_util
 from ._coordinator_capabilities import _CoordinatorCapabilitiesMixin
-from ._coordinator_io import _ModbusIOMixin, _PermanentModbusError  # noqa: F401
+from ._coordinator_io import _ModbusIOMixin, _PermanentModbusError  # re-export for backward compat
 from ._coordinator_schedule import _CoordinatorScheduleMixin
 from .const import (
     CONF_ENABLE_DEVICE_SCAN,
@@ -77,7 +78,8 @@ from .scanner_core import (
 )
 from .utils import resolve_connection_settings
 
-UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
+__all__ = ["ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
+UTC = dt.UTC
 
 
 class _SafeDTUtil:

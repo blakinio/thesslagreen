@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import pytest
-
 from custom_components.thessla_green_modbus.register_map import (
     RegisterMapEntry,
     validate_register_value,
@@ -284,7 +283,7 @@ def test_validate_register_value_known_register_valid():
     if not REGISTER_MAP:
         pytest.skip("REGISTER_MAP is empty in test environment")
 
-    name, entry = next(iter(REGISTER_MAP.items()))
+    name, _entry = next(iter(REGISTER_MAP.items()))
     # Any value that passes validation should be returned
     result = validate_register_value(name, None)
     assert result is None  # None always passes through

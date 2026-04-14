@@ -631,7 +631,9 @@ def _ensure_homeassistant_modules() -> None:
                 client_cls.write_register = _write_register
 
 
-import custom_components.thessla_green_modbus.registers.loader  # noqa: F401,E402
+import contextlib
+
+import custom_components.thessla_green_modbus.registers.loader  # noqa: F401
 
 _ensure_homeassistant_modules()
 
@@ -720,10 +722,8 @@ def _ensure_current_event_loop() -> None:
     global _MANAGED_EVENT_LOOP
 
     current_loop = None
-    try:
+    with contextlib.suppress(RuntimeError):
         current_loop = asyncio.get_event_loop()
-    except RuntimeError:
-        pass
 
     if current_loop is None or current_loop.is_closed():
         _MANAGED_EVENT_LOOP = asyncio.new_event_loop()

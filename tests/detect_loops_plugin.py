@@ -1,7 +1,6 @@
 """Conftest plugin to detect unclosed event loops after each test."""
 import asyncio
 import gc
-import pytest
 
 
 def pytest_runtest_teardown(item, nextitem):

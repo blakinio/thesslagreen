@@ -12,7 +12,8 @@ import pytest
 
 def test_time_to_bcd_roundtrip():
     from datetime import time
-    from custom_components.thessla_green_modbus.schedule_helpers import time_to_bcd, bcd_to_time
+
+    from custom_components.thessla_green_modbus.schedule_helpers import bcd_to_time, time_to_bcd
 
     t = time(8, 30)
     encoded = time_to_bcd(t)
@@ -22,6 +23,7 @@ def test_time_to_bcd_roundtrip():
 
 def test_bcd_to_time_valid():
     from datetime import time
+
     from custom_components.thessla_green_modbus.schedule_helpers import bcd_to_time
 
     # 0x0830 = 0830 BCD = 08:30
@@ -45,8 +47,9 @@ def test_bcd_to_time_invalid_raises():
 
 def test_capability_block_reason_none_when_all_present():
     """Returns None when all capabilities are present."""
-    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
     from types import SimpleNamespace
+
+    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
 
     caps = SimpleNamespace(
         outside_temperature=True,
@@ -70,8 +73,9 @@ def test_capability_block_reason_none_when_all_present():
 
 def test_capability_block_reason_temperature_missing():
     """Returns reason string when temperature sensor capability absent (line 43)."""
-    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
     from types import SimpleNamespace
+
+    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
 
     caps = SimpleNamespace(sensor_outside_temperature=False)
     result = capability_block_reason("outside_temperature", caps)
@@ -80,8 +84,9 @@ def test_capability_block_reason_temperature_missing():
 
 def test_capability_block_reason_pattern_missing():
     """Returns reason string when pattern capability absent (line 49)."""
-    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
     from types import SimpleNamespace
+
+    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
 
     caps = SimpleNamespace(bypass_system=False)
     result = capability_block_reason("bypass_mode", caps)
@@ -90,8 +95,9 @@ def test_capability_block_reason_pattern_missing():
 
 def test_capability_block_reason_unknown_register():
     """Returns None for a register not matching any capability."""
-    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
     from types import SimpleNamespace
+
+    from custom_components.thessla_green_modbus.capability_rules import capability_block_reason
 
     caps = SimpleNamespace()
     result = capability_block_reason("version_major", caps)
@@ -264,7 +270,7 @@ def test_resolve_connection_settings_unknown_type_defaults_to_tcp():
     """Unknown connection_type is normalised to DEFAULT_CONNECTION_TYPE (line 190)."""
     from custom_components.thessla_green_modbus.utils import resolve_connection_settings
 
-    conn_type, mode = resolve_connection_settings("unknown_bus", "tcp", 502)
+    conn_type, _mode = resolve_connection_settings("unknown_bus", "tcp", 502)
     assert conn_type == "tcp"  # DEFAULT_CONNECTION_TYPE  # nosec B101
 
 

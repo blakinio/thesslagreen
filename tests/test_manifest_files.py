@@ -13,8 +13,7 @@ MANIFEST = COMPONENT / "manifest.json"
 def _expected_files() -> list[str]:
     files: list[str] = ["services.yaml", "strings.json"]
     for folder in ("options", "registers", "translations"):
-        for path in (COMPONENT / folder).glob("*.json"):
-            files.append(f"{folder}/{path.name}")
+        files.extend(f"{folder}/{path.name}" for path in (COMPONENT / folder).glob("*.json"))
     return sorted(files)
 
 

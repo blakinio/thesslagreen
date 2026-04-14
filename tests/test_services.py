@@ -6,12 +6,11 @@ import os
 import sys
 import types
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, ClassVar
 from unittest.mock import ANY, AsyncMock
 from unittest.mock import call as call_obj
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
@@ -258,7 +257,7 @@ def test_get_coordinator_from_entity_id_multiple_devices():
     entry2 = SimpleNamespace(runtime_data=coord2)
 
     class DummyConfigEntries:
-        _entries = {"entry1": entry1, "entry2": entry2}
+        _entries: ClassVar[dict[str, SimpleNamespace]] = {"entry1": entry1, "entry2": entry2}
 
         def async_get_entry(self, entry_id):
             return self._entries.get(entry_id)

@@ -9,7 +9,6 @@ from __future__ import annotations
 import sys
 import types
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -156,7 +155,7 @@ def _make_binary_sensor(
     register_name: str | None = None,
     address: int = 100,
 ) -> ThesslaGreenBinarySensor:
-    reg = register_name or sensor_def.get("register", list(sensor_def.keys())[0])
+    reg = register_name or sensor_def.get("register", next(iter(sensor_def.keys())))
     return ThesslaGreenBinarySensor(coordinator, reg, address, sensor_def)
 
 

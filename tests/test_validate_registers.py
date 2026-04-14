@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from custom_components.thessla_green_modbus.registers.schema import RegisterType
 from tools import validate_registers
 

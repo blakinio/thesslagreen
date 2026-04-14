@@ -5,10 +5,9 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from custom_components.thessla_green_modbus import async_setup_entry
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
-
-from custom_components.thessla_green_modbus import async_setup_entry
 
 pytestmark = pytest.mark.asyncio
 

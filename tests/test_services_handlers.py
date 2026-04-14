@@ -8,18 +8,15 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
 from custom_components.thessla_green_modbus.services import (
-    AIR_QUALITY_REGISTER_MAP,
+    _get_coordinator_from_entity_id,
     async_setup_services,
     async_unload_services,
-    _get_coordinator_from_entity_id,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

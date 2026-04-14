@@ -1,4 +1,3 @@
-import pytest
 
 from custom_components.thessla_green_modbus.const import (
     DOMAIN,

@@ -1,9 +1,8 @@
 import logging
 from pathlib import Path
 
-import pytest
-
 import custom_components.thessla_green_modbus.const as const
+import pytest
 
 
 def test_deep_scan_defaults():
@@ -60,7 +59,7 @@ def test_multi_register_sizes_returns_dict():
 
 def test_migrate_unique_id_base_uid_already_has_prefix():
     """migrate_unique_id returns base_uid unchanged when it already starts with prefix (line 350)."""
-    from custom_components.thessla_green_modbus.const import migrate_unique_id, DOMAIN
+    from custom_components.thessla_green_modbus.const import DOMAIN, migrate_unique_id
 
     # serial_number="1" → prefix="1"; slave_id=1 → base_uid="1_fan_0"
     # "1_fan_0".startswith("1") is True → returns base_uid unchanged
@@ -78,7 +77,6 @@ def test_migrate_unique_id_base_uid_already_has_prefix():
 @pytest.mark.asyncio
 async def test_async_setup_options_no_hass_uses_sync_path():
     """async_setup_options(None) falls back to synchronous loading (const.py line 408)."""
-    result_before = const.MODBUS_BAUD_RATES  # capture current state
     await const.async_setup_options(None)
     # After calling with hass=None, globals should still be set (sync path executed)
     assert const.MODBUS_BAUD_RATES is not None

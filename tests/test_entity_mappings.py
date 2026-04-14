@@ -1,11 +1,8 @@
 """Tests for entity_mappings.py helper functions."""
 import logging
 
-import pytest
-
 from custom_components.thessla_green_modbus import entity_mappings as em
 from custom_components.thessla_green_modbus.entity_mappings import _infer_icon
-
 
 # ---------------------------------------------------------------------------
 # _infer_icon (lines 191-201)
@@ -225,7 +222,7 @@ def test_load_discrete_mappings_bitmask_no_name_skipped(monkeypatch):
                       extra={"bitmask": True}, bits=[{"name": "flag_a"}])
     original_get_all = em.get_all_registers
     monkeypatch.setattr(em, "get_all_registers",
-                        lambda *a, **kw: list(original_get_all()) + [reg])
+                        lambda *a, **kw: [*list(original_get_all()), reg])
 
     binary, _, _ = em._load_discrete_mappings()
     # The nameless register's bit must not appear
@@ -238,7 +235,7 @@ def test_load_discrete_mappings_bitmask_invalid_function_skipped(monkeypatch):
                       extra={"bitmask": True}, bits=[{"name": "flag_b"}])
     original_get_all = em.get_all_registers
     monkeypatch.setattr(em, "get_all_registers",
-                        lambda *a, **kw: list(original_get_all()) + [reg])
+                        lambda *a, **kw: [*list(original_get_all()), reg])
 
     binary, _, _ = em._load_discrete_mappings()
     assert "weird_bitmask_p8_flag_b" not in binary
@@ -251,7 +248,7 @@ def test_load_discrete_mappings_bitmask_string_bit_definition(monkeypatch):
                       extra={"bitmask": True}, bits=["flag_c", None])
     original_get_all = em.get_all_registers
     monkeypatch.setattr(em, "get_all_registers",
-                        lambda *a, **kw: list(original_get_all()) + [reg])
+                        lambda *a, **kw: [*list(original_get_all()), reg])
 
     binary, _, _ = em._load_discrete_mappings()
     # String bit_def "flag_c" → creates named entry
@@ -267,7 +264,7 @@ def test_load_discrete_mappings_bitmask_unnamed_bit_generic_config(monkeypatch):
                       extra={"bitmask": True}, bits=[{"name": "e_flag"}, None])
     original_get_all = em.get_all_registers
     monkeypatch.setattr(em, "get_all_registers",
-                        lambda *a, **kw: list(original_get_all()) + [reg])
+                        lambda *a, **kw: [*list(original_get_all()), reg])
 
     binary, _, _ = em._load_discrete_mappings()
     # Named bit creates specific entry
@@ -374,7 +371,7 @@ def test_load_discrete_bitmask_empty_bits_list_creates_generic_config(monkeypatc
                       extra={"bitmask": True}, bits=[])
     original_get_all = em.get_all_registers
     monkeypatch.setattr(em, "get_all_registers",
-                        lambda *a, **kw: list(original_get_all()) + [reg])
+                        lambda *a, **kw: [*list(original_get_all()), reg])
     binary, _, _ = em._load_discrete_mappings()
     assert "empty_bitmask_p9" in binary
     assert binary["empty_bitmask_p9"].get("bitmask") is True

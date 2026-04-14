@@ -1,6 +1,7 @@
 """Ensure translation files don't contain unused keys."""
 
 from custom_components.thessla_green_modbus.const import SPECIAL_FUNCTION_MAP
+
 from tests.test_translations import (
     BINARY_KEYS,
     CODE_KEYS,
@@ -11,16 +12,14 @@ from tests.test_translations import (
     OPTION_KEYS,
     PL,
     SELECT_KEYS,
-)
-from tests.test_translations import SENSOR_KEYS as SENSOR_ENTITY_KEYS
-from tests.test_translations import (
     SERVICES,
 )
+from tests.test_translations import SENSOR_KEYS as SENSOR_ENTITY_KEYS
 from tests.test_translations import SWITCH_KEYS as SWITCH_ENTITY_KEYS
 
-SENSOR_KEYS = SENSOR_ENTITY_KEYS + ["air_flow_rate_manual"]
+SENSOR_KEYS = [*SENSOR_ENTITY_KEYS, "air_flow_rate_manual"]
 
-SWITCH_KEYS = SWITCH_ENTITY_KEYS + ["on_off_panel_mode"] + list(SPECIAL_FUNCTION_MAP.keys())
+SWITCH_KEYS = [*SWITCH_ENTITY_KEYS, "on_off_panel_mode", *list(SPECIAL_FUNCTION_MAP.keys())]
 
 
 def _assert_no_extra_keys(trans, entity_type, valid_keys) -> None:
