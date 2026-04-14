@@ -6,6 +6,7 @@ Includes the same translated error and status codes as exposed by the ``error_co
 from __future__ import annotations
 
 import copy
+import asyncio
 import ipaddress
 import logging
 import re
@@ -132,10 +133,12 @@ async def async_get_config_entry_diagnostics(
         translations = await translation.async_get_translations(
             hass, hass.config.language, f"component.{DOMAIN}"
         )
-    except (OSError, ValueError, HomeAssistantError) as err:  # pragma: no cover - defensive
+    except (OSError, ValueError, HomeAssistantError, RuntimeError) as err:  # pragma: no cover - defensive
         _LOGGER.debug("Translation load failed: %s", err)
-    except Exception as err:  # pragma: no cover - unexpected
-        _LOGGER.exception("Unexpected error loading translations: %s", err)
+    except BaseException as err:  # pragma: no cover - defensive for unexpected translation-layer errors
+        if isinstance(err, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)):
+            raise
+        _LOGGER.debug("Translation load failed unexpectedly: %s", err)
     active_errors: dict[str, str] = {}
     if coordinator.data:
         for key, value in coordinator.data.items():

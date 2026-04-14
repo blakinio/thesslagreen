@@ -73,12 +73,14 @@ src = ["custom_components", "tests", "tools"]
 select = [
     "E",
     "F",
-    "I",
     "W",
-    "UP",
     "B",
+    "SIM",
+    "RUF",
+    "UP",
+    "I",
 ]
-ignore = ["ANN401"]
+ignore = ["ANN401", "E501"]
 extend-safe-fixes = ["ANN"]
 per-file-ignores = {"tests/**/*.py" = ["D", "ANN"]}
 

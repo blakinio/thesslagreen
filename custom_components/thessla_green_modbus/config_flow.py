@@ -306,7 +306,7 @@ async def _run_with_retry(
             delay = backoff * 2 ** (attempt - 1)
             if delay:
                 await asyncio.sleep(delay)
-        except (TimeoutError, ConnectionException, ModbusException, OSError):
+        except (TimeoutError, asyncio.TimeoutError, ConnectionException, ModbusException, OSError):
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -546,7 +546,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
-    except TimeoutError as exc:
+    except (TimeoutError, asyncio.TimeoutError) as exc:
         _LOGGER.warning("Timeout during device validation: %s", exc)
         if "modbus request cancelled" not in str(exc).lower():
             _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
@@ -936,7 +936,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             )
         except (OSError, ValueError, HomeAssistantError) as err:  # pragma: no cover
             _LOGGER.debug("Translation load failed: %s", err)
-        except Exception as err:  # pragma: no cover
+        except (TypeError, AttributeError, RuntimeError) as err:  # pragma: no cover
             _LOGGER.exception("Unexpected error loading translations: %s", err)
 
         key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"

@@ -46,7 +46,7 @@ try:
     _pymodbus_client = importlib.import_module("pymodbus.client")
     if not hasattr(_pymodbus, "client"):
         _pymodbus.client = _pymodbus_client  # pragma: no cover
-except Exception as _exc:  # pragma: no cover
+except (ImportError, ModuleNotFoundError, AttributeError) as _exc:  # pragma: no cover
     _LOGGER.debug("Could not attach pymodbus.client submodule: %s", _exc)
 
 from . import modbus_helpers as _mh
@@ -117,7 +117,7 @@ def _ensure_pymodbus_client_module() -> None:
     try:
         pymodbus_mod = importlib.import_module("pymodbus")
         client_mod = importlib.import_module("pymodbus.client")
-    except Exception:
+    except (ImportError, ModuleNotFoundError, AttributeError):
         return
     if not hasattr(pymodbus_mod, "client"):
         pymodbus_mod.client = client_mod
@@ -1049,7 +1049,7 @@ class ThesslaGreenDeviceScanner:
                 except (TypeError, ValueError, IndexError) as exc:  # pragma: no cover - best effort
                     firmware_err = exc
                     continue
-                except Exception as exc:  # pragma: no cover - unexpected
+                except (AttributeError, RuntimeError) as exc:  # pragma: no cover - unexpected
                     _LOGGER.exception("Unexpected firmware value error for %s: %s", name, exc)
                     firmware_err = exc
                     continue
@@ -1083,7 +1083,7 @@ class ThesslaGreenDeviceScanner:
                 except (TypeError, ValueError, IndexError) as exc:  # pragma: no cover - best effort
                     firmware_err = exc
                     continue
-                except Exception as exc:  # pragma: no cover - unexpected
+                except (AttributeError, RuntimeError) as exc:  # pragma: no cover - unexpected
                     _LOGGER.exception("Unexpected firmware probe error for %s: %s", name, exc)
                     firmware_err = exc
                     continue
@@ -1126,7 +1126,7 @@ class ThesslaGreenDeviceScanner:
                 device.serial_number = "".join(f"{p:04X}" for p in parts)
         except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
             _LOGGER.debug("Failed to parse serial number: %s", err)
-        except Exception as err:  # pragma: no cover - unexpected
+        except (AttributeError, RuntimeError) as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error parsing serial number: %s", err)
         try:
             start = HOLDING_REGISTERS["device_name"]
@@ -1144,7 +1144,7 @@ class ThesslaGreenDeviceScanner:
                 device.device_name = name_bytes.decode("ascii", errors="replace").rstrip("\x00")
         except (KeyError, IndexError, TypeError, ValueError) as err:  # pragma: no cover
             _LOGGER.debug("Failed to parse device name: %s", err)
-        except Exception as err:  # pragma: no cover - unexpected
+        except (AttributeError, UnicodeDecodeError, RuntimeError) as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error parsing device name: %s", err)
     def _select_scan_registers(
         self,
@@ -1736,7 +1736,16 @@ class ThesslaGreenDeviceScanner:
                             if is_request_cancelled_error(exc):
                                 raise TimeoutError(str(exc)) from exc
                             # Other Modbus exceptions (error codes) confirm protocol is working
-                        except Exception as exc:
+                        except (
+                            ModbusException,
+                            ConnectionException,
+                            ModbusIOException,
+                            TimeoutError,
+                            OSError,
+                            TypeError,
+                            ValueError,
+                            AttributeError,
+                        ) as exc:
                             _LOGGER.debug("Protocol probe non-critical exception (protocol ok): %s", exc)
                     except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
                         last_error = exc
@@ -2437,7 +2446,15 @@ class ThesslaGreenDeviceScanner:
                         if transport_client is not None:
                             client = transport_client
                             self._client = transport_client
-                    except Exception as exc:
+                    except (
+                        ModbusException,
+                        ConnectionException,
+                        ModbusIOException,
+                        TimeoutError,
+                        asyncio.TimeoutError,
+                        OSError,
+                        AttributeError,
+                    ) as exc:
                         _LOGGER.debug("Transport client refresh failed during %s read: %s", type_name, exc)
             except asyncio.CancelledError:
                 _LOGGER.debug(
