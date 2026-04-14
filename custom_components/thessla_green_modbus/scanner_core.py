@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-import collections.abc
 import importlib
 import inspect
 import logging
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict  # noqa: F401
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from pymodbus.client import AsyncModbusTcpClient
 
 from . import modbus_helpers as _mh
+from . import scanner_io as _scanner_io
+from . import scanner_register_maps as _register_maps
 from .capability_rules import CAPABILITY_PATTERNS
 from .const import (
     CONNECTION_MODE_AUTO,
@@ -37,7 +38,6 @@ from .const import (
     SENSOR_UNAVAILABLE_REGISTERS,
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
-    UNKNOWN_MODEL,
 )
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import (
@@ -52,12 +52,21 @@ from .modbus_transport import (
     RtuModbusTransport,
     TcpModbusTransport,
 )
+from .scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
 from .scanner_helpers import (
     MAX_BATCH_REGISTERS,
     REGISTER_ALLOWED_VALUES,
     SAFE_REGISTERS,
     UART_OPTIONAL_REGS,
     _format_register_value,
+)
+from .scanner_register_maps import (
+    COIL_REGISTERS,
+    DISCRETE_INPUT_REGISTERS,
+    HOLDING_REGISTERS,
+    INPUT_REGISTERS,
+    MULTI_REGISTER_SIZES,
+    REGISTER_DEFINITIONS,
 )
 from .utils import (
     BCD_TIME_PREFIXES,
@@ -110,38 +119,20 @@ else:
 
 def _ensure_pymodbus_client_module() -> None:
     """Ensure `pymodbus.client` is importable and attached to `pymodbus`."""
-    try:
-        pymodbus_mod = importlib.import_module("pymodbus")
-        client_mod = importlib.import_module("pymodbus.client")
-    except (ImportError, ModuleNotFoundError, AttributeError):
-        return
-    if not hasattr(pymodbus_mod, "client"):
-        pymodbus_mod.client = client_mod
-    if hasattr(client_mod, "AsyncModbusTcpClient") and not hasattr(client_mod, "ModbusTcpClient"):
-        client_mod.ModbusTcpClient = client_mod.AsyncModbusTcpClient
+    _scanner_io.ensure_pymodbus_client_module()
 
 
 # Register definition caches - populated lazily
-REGISTER_DEFINITIONS: dict[str, Any] = {}
-INPUT_REGISTERS: dict[str, int] = {}
-HOLDING_REGISTERS: dict[str, int] = {}
-COIL_REGISTERS: dict[str, int] = {}
 
 
 def is_request_cancelled_error(exc: ModbusIOException) -> bool:
     """Return True when a modbus IO error indicates a cancelled request."""
-
-    message = str(exc).lower()
-    return "request cancelled outside pymodbus" in message or "cancelled" in message
+    return _scanner_io.is_request_cancelled_error(exc)
 
 
 async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
     """Yield control between retries to allow cancellation to propagate."""
-
-    if attempt >= retry or backoff > 0:
-        return
-
-    await asyncio.sleep(0)
+    await _scanner_io.maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
 
 
 async def _call_modbus_compat(
@@ -158,109 +149,76 @@ async def _call_modbus_compat(
     apply_backoff: bool = True,
 ) -> Any:
     """Call `_call_modbus` with rich kwargs, fallback to minimal mock signatures."""
-
-    try:
-        return await _call_modbus(
-            func,
-            slave_id,
-            address,
-            count=count,
-            attempt=attempt,
-            max_attempts=retry,
-            timeout=timeout,
-            backoff=0.0,
-            backoff_jitter=None,
-            apply_backoff=False,
-        )
-    except TypeError as exc:
-        if "unexpected keyword" not in str(exc):
-            raise
-        return await _call_modbus(func, slave_id, address, count=count)
+    return await _scanner_io.call_modbus_compat(
+        _call_modbus,
+        func,
+        slave_id,
+        address,
+        count=count,
+        attempt=attempt,
+        retry=retry,
+        timeout=timeout,
+        backoff=backoff,
+        backoff_jitter=backoff_jitter,
+        apply_backoff=apply_backoff,
+    )
 
 
 async def _sleep_retry_backoff(
     *, backoff: float, backoff_jitter: float | tuple[float, float] | None, attempt: int, retry: int
 ) -> None:
     """Sleep between retries using modbus_helpers timing semantics."""
-    if attempt >= retry:
-        return
-    delay = _mh._calculate_backoff_delay(base=backoff, attempt=attempt + 1, jitter=backoff_jitter)
-    if delay > 0:
-        await asyncio.sleep(delay)
-    else:
-        await _maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
+    await _scanner_io.sleep_retry_backoff(
+        calculate_backoff_delay=lambda base, at, jitter: _mh._calculate_backoff_delay(
+            base=base, attempt=at, jitter=jitter
+        ),
+        backoff=backoff,
+        backoff_jitter=backoff_jitter,
+        attempt=attempt,
+        retry=retry,
+    )
 
 
-DISCRETE_INPUT_REGISTERS: dict[str, int] = {}
-MULTI_REGISTER_SIZES: dict[str, int] = {}
-REGISTER_HASH: str | None = None
+# Register-map compatibility wrappers kept in scanner_core for existing tests/imports.
+REGISTER_HASH = _register_maps.REGISTER_HASH
+
+
+def _sync_register_hash_from_maps() -> None:
+    """Synchronize locally re-exported register hash from scanner_register_maps."""
+    global REGISTER_HASH
+    REGISTER_HASH = _register_maps.REGISTER_HASH
 
 
 def _build_register_maps_from(regs: list[Any], register_hash: str) -> None:
     """Populate register lookup maps from provided register definitions."""
-    global REGISTER_HASH
-    REGISTER_HASH = register_hash
-
-    REGISTER_DEFINITIONS.clear()
-    REGISTER_DEFINITIONS.update({r.name: r for r in regs})
-
-    INPUT_REGISTERS.clear()
-    INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 4}
-    )
-
-    HOLDING_REGISTERS.clear()
-    HOLDING_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 3}
-    )
-
-    COIL_REGISTERS.clear()
-    COIL_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 1}
-    )
-
-    DISCRETE_INPUT_REGISTERS.clear()
-    DISCRETE_INPUT_REGISTERS.update(
-        {name: reg.address for name, reg in REGISTER_DEFINITIONS.items() if reg.function == 2}
-    )
-
-    MULTI_REGISTER_SIZES.clear()
-    MULTI_REGISTER_SIZES.update(
-        {
-            name: reg.length
-            for name, reg in REGISTER_DEFINITIONS.items()
-            if reg.function == 3 and reg.length > 1
-        }
-    )
+    _register_maps._build_register_maps_from(regs, register_hash)
+    _sync_register_hash_from_maps()
 
 
 def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
-    regs = get_all_registers()
-    register_hash = registers_sha256(get_registers_path())
-    _build_register_maps_from(regs, register_hash)
+    _register_maps._build_register_maps()
+    _sync_register_hash_from_maps()
 
 
 async def _async_build_register_maps(hass: Any | None) -> None:
     """Populate register lookup maps from current definitions asynchronously."""
-    register_hash = await async_registers_sha256(hass, get_registers_path())
-    regs = await async_get_all_registers(hass)
-    _build_register_maps_from(regs, register_hash)
+    await _register_maps._async_build_register_maps(hass)
+    _sync_register_hash_from_maps()
 
 
-# Ensure register lookup maps are available before use
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    current_hash = registers_sha256(get_registers_path())
-    if not REGISTER_DEFINITIONS or current_hash != REGISTER_HASH:
-        _build_register_maps()
+    _register_maps.REGISTER_HASH = REGISTER_HASH
+    _register_maps._ensure_register_maps()
+    _sync_register_hash_from_maps()
 
 
 async def _async_ensure_register_maps(hass: Any | None) -> None:
     """Ensure register lookup maps are populated without blocking the event loop."""
-    register_hash = await async_registers_sha256(hass, get_registers_path())
-    if not REGISTER_DEFINITIONS or register_hash != REGISTER_HASH:
-        await _async_build_register_maps(hass)
+    _register_maps.REGISTER_HASH = REGISTER_HASH
+    await _register_maps._async_ensure_register_maps(hass)
+    _sync_register_hash_from_maps()
 
 
 async def async_ensure_register_maps(hass: Any | None = None) -> None:
@@ -268,128 +226,7 @@ async def async_ensure_register_maps(hass: Any | None = None) -> None:
     await _async_ensure_register_maps(hass)
 
 
-@dataclass(slots=True)
-class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
-    """Basic identifying information about a ThesslaGreen unit.
-
-    The attributes are populated dynamically and accessed via ``as_dict`` in
-    diagnostics; they therefore appear unused in static analysis.
-
-    Attributes:
-        device_name: User configured name reported by the unit.
-        model: Reported model name used to identify the device type.
-        firmware: Firmware version string for compatibility checks.
-        serial_number: Unique hardware identifier for the unit.
-    """
-
-    device_name: str = "Unknown"
-    model: str = UNKNOWN_MODEL
-    firmware: str = "Unknown"
-    serial_number: str = "Unknown"
-    firmware_available: bool = True  # pragma: no cover
-    capabilities: list[str] = field(default_factory=list)
-
-    def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-    def items(self):
-        return self.as_dict().items()
-
-    def keys(self):
-        return self.as_dict().keys()
-
-    def values(self):
-        return self.as_dict().values()
-
-    def __getitem__(self, key: str) -> Any:
-        return self.as_dict()[key]
-
-    def __iter__(self):
-        return iter(self.as_dict())
-
-    def __len__(self) -> int:
-        return len(self.as_dict())
-
-
-# Attributes of this dataclass are read dynamically at runtime to determine
-# which features the device exposes; static analysis may therefore mark them
-# as unused even though they are relied upon.
-@dataclass(slots=True)
-class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
-    """Feature flags and sensor availability detected on the device.
-
-    Although capabilities are typically determined once during the initial scan,
-    the dataclass caches the result of :meth:`as_dict` for efficiency. Any
-    attribute assignment will clear this cache so subsequent calls reflect the
-    new values. The capability sets are mutable; modify them via assignment to
-    trigger cache invalidation.
-    """
-
-    basic_control: bool = False
-    temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
-    flow_sensors: set[str] = field(
-        default_factory=set
-    )  # Airflow sensor identifiers  # pragma: no cover
-    special_functions: set[str] = field(
-        default_factory=set
-    )  # Optional feature flags  # pragma: no cover
-    expansion_module: bool = False  # pragma: no cover
-    constant_flow: bool = False  # pragma: no cover
-    gwc_system: bool = False  # pragma: no cover
-    bypass_system: bool = False  # pragma: no cover
-    heating_system: bool = False  # pragma: no cover
-    cooling_system: bool = False  # pragma: no cover
-    air_quality: bool = False  # pragma: no cover
-    weekly_schedule: bool = False  # pragma: no cover
-    sensor_outside_temperature: bool = False  # pragma: no cover
-    sensor_supply_temperature: bool = False  # pragma: no cover
-    sensor_exhaust_temperature: bool = False  # pragma: no cover
-    sensor_fpx_temperature: bool = False  # pragma: no cover
-    sensor_duct_supply_temperature: bool = False  # pragma: no cover
-    sensor_gwc_temperature: bool = False  # pragma: no cover
-    sensor_ambient_temperature: bool = False  # pragma: no cover
-    sensor_heating_temperature: bool = False  # pragma: no cover
-    temperature_sensors_count: int = 0  # pragma: no cover
-    _as_dict_cache: dict[str, Any] | None = field(init=False, repr=False, default=None)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        """Set attribute and invalidate cached ``as_dict`` result."""
-        if name != "_as_dict_cache" and getattr(self, "_as_dict_cache", None) is not None:
-            object.__setattr__(self, "_as_dict_cache", None)
-        object.__setattr__(self, name, value)
-
-    def as_dict(self) -> dict[str, Any]:
-        """Return capabilities as a dictionary with set values sorted.
-
-        The result is cached on first call to avoid repeated ``dataclasses.asdict``
-        invocations when capabilities are accessed multiple times.
-        """
-
-        if self._as_dict_cache is None:
-            data = {k: v for k, v in asdict(self).items() if not k.startswith("_")}
-            for key, value in data.items():
-                if isinstance(value, set):
-                    data[key] = sorted(value)
-            object.__setattr__(self, "_as_dict_cache", data)
-        return self._as_dict_cache
-
-    def items(self):
-        return self.as_dict().items()
-
-    def keys(self):
-        return self.as_dict().keys()
-
-    def values(self):
-        return self.as_dict().values()
-
-    def __getitem__(self, key: str) -> Any:
-        return self.as_dict()[key]
-
-    def __iter__(self):
-        return iter(self.as_dict())
-
-    def __len__(self) -> int:
-        return len(self.as_dict())
+# Ensure register lookup maps are available before use
 
 
 class ThesslaGreenDeviceScanner:

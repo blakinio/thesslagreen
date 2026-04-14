@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import Any, ClassVar
 
 _LOGGER = logging.getLogger(__name__)
-UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
-
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC now."""

@@ -23,7 +23,7 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 # Core dependencies
-dependencies = ["pymodbus>=3.6.0"]
+dependencies = ["pymodbus>=3.6.0,<4.0", "voluptuous>=0.13"]
 
 [project.optional-dependencies]
 dev = [
@@ -159,4 +159,23 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "asyncio: marks asynchronous tests",
+]
+
+
+[tool.coverage.run]
+source = ["custom_components.thessla_green_modbus"]
+branch = true
+omit = [
+    "custom_components/thessla_green_modbus/_compat.py",
+    "custom_components/thessla_green_modbus/translations/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
 ]

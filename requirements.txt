@@ -5,3 +5,4 @@
 
 # Modbus communication library
 pymodbus>=3.6.0
+voluptuous>=0.13

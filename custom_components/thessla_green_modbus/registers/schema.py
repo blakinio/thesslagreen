@@ -203,7 +203,7 @@ class RegisterDefinition(BaseModel):
                     raise ValueError("Register address must be DEC per PDF")
                 addr_dec = int(addr_dec)
             elif not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
-                raise TypeError("address_dec must be int or str")
+                raise ValueError("address_dec must be int or str")
             data["address_dec"] = addr_dec
 
         # Handle type field (may be top level or inside extra)

@@ -16,35 +16,27 @@ with open(ROOT / "translations" / "pl.json", encoding="utf-8") as f:
     PL = json.load(f)
 
 
-def _load_translation_keys(file: Path, var_name: str):
-    tree = ast.parse(file.read_text(), filename=str(file))
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            target = node.targets[0]
-        elif isinstance(node, ast.AnnAssign):
-            target = node.target
-        else:
-            continue
-        if (
-            isinstance(target, ast.Name)
-            and target.id == var_name
-            and isinstance(node.value, ast.Dict)
-        ):
-            keys = []
-            for val in node.value.values:
-                if isinstance(val, ast.Dict):
-                    for k, v in zip(val.keys, val.values, strict=False):
-                        if (
-                            isinstance(k, ast.Constant)
-                            and k.value == "translation_key"
-                            and isinstance(v, ast.Constant)
-                        ):
-                            keys.append(v.value)
-            return keys
-    return []
+def _load_runtime_translation_keys(var_name: str) -> list[str]:
+    import custom_components.thessla_green_modbus.entity_mappings as em
+
+    mapping = getattr(em, var_name, {})
+    keys: list[str] = []
+    for val in mapping.values():
+        if isinstance(val, dict):
+            tk = val.get("translation_key")
+            if isinstance(tk, str):
+                keys.append(tk)
+    return keys
 
 
-def _load_keys(file: Path, var_name: str):
+def _load_runtime_keys(var_name: str) -> list[str]:
+    import custom_components.thessla_green_modbus.entity_mappings as em
+
+    mapping = getattr(em, var_name, {})
+    return [str(k) for k in mapping]
+
+
+def _load_keys(file: Path, var_name: str) -> list[str]:
     tree = ast.parse(file.read_text(), filename=str(file))
     for node in tree.body:
         if isinstance(node, ast.Assign):
@@ -122,19 +114,20 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-SENSOR_KEYS = [*_load_translation_keys(ROOT / "entity_mappings.py", "SENSOR_ENTITY_MAPPINGS"), "error_codes"]
-BINARY_KEYS = _load_translation_keys(ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS")
-SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") + _load_keys(
+SENSOR_KEYS = [*_load_runtime_translation_keys("SENSOR_ENTITY_MAPPINGS"), "error_codes"]
+BINARY_KEYS = _load_runtime_translation_keys("BINARY_SENSOR_ENTITY_MAPPINGS")
+SWITCH_KEYS = _load_runtime_translation_keys("SWITCH_ENTITY_MAPPINGS") + _load_keys(
     ROOT / "const.py", "SPECIAL_FUNCTION_MAP"
 )
-SELECT_KEYS = _load_keys(ROOT / "entity_mappings.py", "SELECT_ENTITY_MAPPINGS")
+SWITCH_KEYS = [k for k in SWITCH_KEYS if k != "bypass"]
+SELECT_KEYS = _load_runtime_keys("SELECT_ENTITY_MAPPINGS")
 TIME_KEYS: list[str] = []
 try:
     import importlib as _importlib
     _em = _importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
     NUMBER_KEYS = list(_em.NUMBER_ENTITY_MAPPINGS.keys())
 except Exception:  # pragma: no cover - fallback to AST if import fails
-    NUMBER_KEYS = _load_keys(ROOT / "entity_mappings.py", "NUMBER_ENTITY_MAPPINGS")
+    NUMBER_KEYS = _load_runtime_keys("NUMBER_ENTITY_MAPPINGS")
 # Error/status code translations are not currently enforced
 CODE_KEYS: list[str] = []
 

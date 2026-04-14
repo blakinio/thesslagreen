@@ -33,11 +33,12 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+            constraints.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -c constraints.txt -e ".[dev]"
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: Ruff (custom_components gate)
@@ -78,15 +79,21 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+            constraints.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -c constraints.txt -e ".[dev]"
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
-      - name: Pytest
-        run: pytest -q
+      - name: Pytest with coverage
+        run: pytest --cov --cov-report=xml --cov-report=term -q
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
 
   entity-mappings:
     name: Entity mappings validation
@@ -108,11 +115,12 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+            constraints.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -c constraints.txt -e ".[dev]"
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: Validate entity mappings
@@ -137,11 +145,12 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+            constraints.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -c constraints.txt -e ".[dev]"
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: hassfest validation
@@ -166,11 +175,12 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+            constraints.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -c constraints.txt -e ".[dev]"
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: HACS validation

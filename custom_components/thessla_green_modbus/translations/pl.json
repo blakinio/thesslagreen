@@ -1480,21 +1480,27 @@
       "init": {
         "data": {
           "deep_scan": "Głęboki skan rejestrów",
+          "enable_device_scan": "Włącz skanowanie urządzenia",
           "force_full_register_list": "Wymuś pełną listę rejestrów (bez skanowania)",
+          "log_level": "Poziom logowania",
           "max_registers_per_request": "Maksymalna liczba rejestrów na żądanie",
           "retry": "Liczba prób",
+          "safe_scan": "Bezpieczny skan (bez grupowania)",
           "scan_interval": "Interwał skanowania (s)",
           "skip_missing_registers": "Pomijaj znane brakujące rejestry",
           "timeout": "Limit czasu połączenia (s)"
         },
         "data_description": {
+          "deep_scan": "Odczyt surowych rejestrów 0-300 do diagnostyki",
+          "enable_device_scan": "Włącz automatyczne skanowanie urządzenia podczas konfiguracji",
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
+          "log_level": "Ustaw poziom szczegółowości logów integracji",
+          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)",
           "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
+          "safe_scan": "Unikaj grupowanych odczytów rejestrów dla kompatybilności",
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
-          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
-          "deep_scan": "Odczyt surowych rejestrów 0-300 do diagnostyki",
-          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)"
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)"
         },
         "error": {
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
