@@ -29,7 +29,7 @@ dependencies = ["pymodbus>=3.6.0,<4.0", "voluptuous>=0.13"]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=1.2.0",
-    "pytest-homeassistant-custom-component>=0.13.309,<0.13.316",
+    "pytest-homeassistant-custom-component>=0.13.309,<0.13.317",
     "PyYAML>=6.0",
     "voluptuous>=0.13.1",
     "black>=24.4.0",

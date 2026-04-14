@@ -5,7 +5,7 @@ pytest>=7.0.0
 pytest-asyncio>=1.2.0
 voluptuous>=0.13.1
 # Keep this range in sync with known-good HA plugin behavior on Python 3.13.
-pytest-homeassistant-custom-component>=0.13.309,<0.13.316
+pytest-homeassistant-custom-component>=0.13.309,<0.13.317
 PyYAML>=6.0
 types-PyYAML>=6.0.12
 pydantic>=2.0,<3
