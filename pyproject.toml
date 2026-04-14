@@ -66,23 +66,19 @@ include = ["custom_components*"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py312"
 src = ["custom_components", "tests", "tools"]
 
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "W",
-    "B",
-    "SIM",
-    "RUF",
-    "UP",
-    "I",
+select = ["F", "E", "W", "B", "SIM", "RUF", "UP", "I", "PERF"]
+ignore = [
+    "E501",
+    "RUF002",
+    "RUF003",
+    "SIM102",
 ]
-ignore = ["ANN401", "E501"]
 extend-safe-fixes = ["ANN"]
-per-file-ignores = {"tests/**/*.py" = ["D", "ANN"]}
+per-file-ignores = {"tests/*" = ["E402"]}
 
 [tool.ruff.format]
 line-ending = "lf"

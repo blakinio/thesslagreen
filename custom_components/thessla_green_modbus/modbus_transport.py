@@ -56,14 +56,14 @@ class RawModbusResponse:
     def __init__(self, registers: list[int] | None = None) -> None:
         self.registers = registers or []
 
-    def isError(self) -> bool:  # noqa: N802 - mimic pymodbus API
+    def isError(self) -> bool:
         return False
 
 
 class RawModbusWriteResponse:
     """Minimal Modbus response container for raw RTU-over-TCP writes."""
 
-    def isError(self) -> bool:  # noqa: N802 - mimic pymodbus API
+    def isError(self) -> bool:
         return False
 
 
@@ -128,7 +128,12 @@ class BaseModbusTransport(ABC):
             _LOGGER.error("Permanent Modbus error: %s", exc)
             self.offline_state = True
             raise
-        except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:  # pragma: no cover - unexpected
+        except (
+            AttributeError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as exc:  # pragma: no cover - unexpected
             _LOGGER.error("Unexpected transport error: %s", exc)
             self.offline_state = True
             raise
@@ -146,6 +151,7 @@ class BaseModbusTransport(ABC):
         **kwargs: Any,
     ) -> Any:
         """Call a Modbus function with connection management and retries."""
+
         async def _invoke() -> Any:
             return await _call_modbus(
                 func,
@@ -773,9 +779,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             data = await self._send_frame(frame, slave_id, 4)
             if len(data) % 2:
                 raise ModbusIOException("Invalid byte count in RTU response")
-            registers = [
-                int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)
-            ]
+            registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
             return RawModbusResponse(registers)
 
         return await self._execute(_invoke)
@@ -795,9 +799,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             data = await self._send_frame(frame, slave_id, 3)
             if len(data) % 2:
                 raise ModbusIOException("Invalid byte count in RTU response")
-            registers = [
-                int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)
-            ]
+            registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
             return RawModbusResponse(registers)
 
         return await self._execute(_invoke)

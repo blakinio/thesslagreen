@@ -50,14 +50,14 @@ async def async_setup_entry(
         is_available = False
 
         if config["register_type"] == "holding_registers":
-            if register_name in coordinator.available_registers.get("holding_registers", set()):
-                is_available = True
-            elif coordinator.force_full_register_list and register_name in holding_map:
+            if register_name in coordinator.available_registers.get("holding_registers", set()) or (
+                coordinator.force_full_register_list and register_name in holding_map
+            ):
                 is_available = True
         elif config["register_type"] == "coil_registers":
-            if register_name in coordinator.available_registers.get("coil_registers", set()):
-                is_available = True
-            elif coordinator.force_full_register_list and register_name in coil_map:
+            if register_name in coordinator.available_registers.get("coil_registers", set()) or (
+                coordinator.force_full_register_list and register_name in coil_map
+            ):
                 is_available = True
 
         if is_available:
@@ -229,10 +229,6 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     @property
     def available(self) -> bool:  # pragma: no cover
         """Return if entity is available."""
-        # Entity is available if coordinator is available
-        if not self.coordinator.last_update_success:
-            return False
-
         # For switch entities, we don't require the register to be in current data
-        # as they are primarily for control, not just display
-        return True
+        # as they are primarily for control, not just display.
+        return self.coordinator.last_update_success

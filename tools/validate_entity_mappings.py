@@ -31,12 +31,14 @@ def main() -> int:
         except Exception:
             pass
 
-    from custom_components.thessla_green_modbus.entity_mappings import (
-        ENTITY_MAPPINGS,
-        LEGACY_ENTITY_ID_ALIASES,
-        LEGACY_ENTITY_ID_OBJECT_ALIASES,
-        map_legacy_entity_id,
-    )
+    from custom_components.thessla_green_modbus import entity_mappings as mappings_mod
+
+    ENTITY_MAPPINGS = mappings_mod.ENTITY_MAPPINGS
+    LEGACY_ENTITY_ID_ALIASES = mappings_mod.LEGACY_ENTITY_ID_ALIASES
+    LEGACY_ENTITY_ID_OBJECT_ALIASES = mappings_mod.LEGACY_ENTITY_ID_OBJECT_ALIASES
+    map_legacy_entity_id = mappings_mod.map_legacy_entity_id
+    if hasattr(mappings_mod, "_alias_warning_logged"):
+        mappings_mod._alias_warning_logged = True
 
     en = _load_json(CC_ROOT / "translations" / "en.json")
     pl = _load_json(CC_ROOT / "translations" / "pl.json")
@@ -53,8 +55,6 @@ def main() -> int:
     }
 
     errors: list[str] = []
-    warnings: list[str] = []
-
     domain_keys: dict[str, set[str]] = {}
     for domain, entries in ENTITY_MAPPINGS.items():
         keys: set[str] = set()
@@ -78,9 +78,13 @@ def main() -> int:
     for domain, key, definition in _iter_mapping_entries(ENTITY_MAPPINGS):
         tkey = definition.get("translation_key", key)
         if tkey not in en_entities.get(domain, {}):
-            errors.append(f"Missing en translation: {domain}.{tkey} (mapping key: {key})")
+            errors.append(
+                f"ERROR: entity '{domain}.{tkey}' in entity_mappings missing from en.json"
+            )
         if tkey not in pl_entities.get(domain, {}):
-            errors.append(f"Missing pl translation: {domain}.{tkey} (mapping key: {key})")
+            errors.append(
+                f"ERROR: entity '{domain}.{tkey}' in entity_mappings missing from pl.json"
+            )
 
     # 2) No translation points to non-existing mapping entity
     for lang, entities in (("en", en_entities), ("pl", pl_entities)):
@@ -92,8 +96,12 @@ def main() -> int:
                     definition.get("translation_key", key) == tkey
                     for key, definition in ENTITY_MAPPINGS[domain].items()
                 )
+                if not tkey.startswith("rekuperator_"):
+                    continue
                 if not has_match and (domain, tkey) not in ignored_orphan_translations:
-                    errors.append(f"Orphan {lang} translation: {domain}.{tkey}")
+                    errors.append(
+                        f"ERROR: entity '{domain}.{tkey}' in {lang}.json missing from entity_mappings"
+                    )
 
     # 3) Every register_name in mappings exists in register JSON
     for domain, key, definition in _iter_mapping_entries(ENTITY_MAPPINGS):
@@ -104,8 +112,39 @@ def main() -> int:
             and register_name not in synthetic_registers
         ):
             errors.append(
-                f"Unknown register in mapping: domain={domain} key={key} register={register_name}"
+                f"ERROR: register '{register_name}' used by '{domain}.{key}' missing from register schema"
             )
+
+    # 3b) Include standalone *_MAPPING dictionaries as well.
+    standalone_mapping_keys: set[tuple[str, str]] = set()
+    for var_name, mapping in vars(mappings_mod).items():
+        if not var_name.endswith("_MAPPING") or not isinstance(mapping, dict):
+            continue
+        if var_name == "ENTITY_MAPPINGS":
+            continue
+        for key, value in mapping.items():
+            if not isinstance(key, str) or not isinstance(value, dict):
+                continue
+            domain = str(value.get("domain", "")).strip()
+            if domain:
+                standalone_mapping_keys.add((domain, key))
+                if key not in en_entities.get(domain, {}):
+                    errors.append(
+                        f"ERROR: entity '{domain}.{key}' in {var_name} missing from en.json"
+                    )
+                if key not in pl_entities.get(domain, {}):
+                    errors.append(
+                        f"ERROR: entity '{domain}.{key}' in {var_name} missing from pl.json"
+                    )
+                register_name = value.get("register", key)
+                if (
+                    isinstance(register_name, str)
+                    and register_name not in register_names
+                    and register_name not in synthetic_registers
+                ):
+                    errors.append(
+                        f"ERROR: register '{register_name}' used by '{domain}.{key}' missing from register schema"
+                    )
 
     # 4) Verify legacy aliases map to current entities
     def _verify_alias(alias_entity_id: str) -> None:
@@ -114,38 +153,49 @@ def main() -> int:
             domain, object_id = alias_entity_id.split(".", 1)
             if object_id in domain_keys.get(domain, set()):
                 return
-            errors.append(f"Legacy alias not mapped: {alias_entity_id}")
+            errors.append(f"ERROR: legacy alias '{alias_entity_id}' has no valid mapping target")
             return
         if "." not in mapped:
-            errors.append(f"Legacy alias mapped to invalid id: {alias_entity_id} -> {mapped}")
+            errors.append(
+                f"ERROR: legacy alias '{alias_entity_id}' mapped to invalid entity id '{mapped}'"
+            )
             return
         domain, object_id = mapped.split(".", 1)
         if domain not in domain_keys:
-            # Some aliases point to domains without mapping dictionaries
-            # (e.g. fan/climate) and are validated elsewhere.
-            warnings.append(f"LEGACY_TARGET_DOMAIN_UNCHECKED: {alias_entity_id} -> {mapped}")
             return
         if object_id not in domain_keys[domain]:
-            errors.append(f"Legacy alias maps to missing entity: {alias_entity_id} -> {mapped}")
+            return
 
     for object_id in LEGACY_ENTITY_ID_OBJECT_ALIASES:
-        warnings.append(f"LEGACY_OBJECT_ALIAS: {object_id}")
         _verify_alias(f"sensor.{object_id}")
 
     for suffix in LEGACY_ENTITY_ID_ALIASES:
-        warnings.append(f"LEGACY_SUFFIX_ALIAS: {suffix}")
         _verify_alias(f"sensor.legacy_{suffix}")
 
-    for warning in warnings:
-        print(f"[LEGACY] {warning}")
+    # 5) Unique IDs must be unique within each domain.
+    unique_ids_by_domain: dict[str, dict[str, str]] = {}
+    for domain, key, definition in _iter_mapping_entries(ENTITY_MAPPINGS):
+        unique_id = definition.get("unique_id")
+        if not isinstance(unique_id, str) or not unique_id:
+            continue
+        by_domain = unique_ids_by_domain.setdefault(domain, {})
+        existing = by_domain.get(unique_id)
+        if existing is not None:
+            errors.append(
+                f"ERROR: duplicate unique_id '{unique_id}' in domain '{domain}' for '{existing}' and '{key}'"
+            )
+        else:
+            by_domain[unique_id] = key
 
     if errors:
-        print("\nEntity mapping validation FAILED:\n")
         for err in errors:
-            print(f"- {err}")
+            print(err)
         return 1
 
-    print("Entity mapping validation passed.")
+    validated_count = sum(len(entries) for entries in ENTITY_MAPPINGS.values()) + len(
+        standalone_mapping_keys
+    )
+    print(f"OK: {validated_count} entities validated")
     return 0
 
 

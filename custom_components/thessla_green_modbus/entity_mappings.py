@@ -21,48 +21,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ._compat import (
+    PERCENTAGE,
     BinarySensorDeviceClass,
     EntityCategory,
     SensorDeviceClass,
     SensorStateClass,
+    UnitOfElectricPotential,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolumeFlowRate,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
-
-
-try:  # pragma: no cover - use HA constants when available
-    from homeassistant.const import (
-        UnitOfElectricPotential,
-        UnitOfPower,
-        UnitOfTemperature,
-        UnitOfTime,
-        UnitOfVolumeFlowRate,
-    )
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
-
-    class UnitOfElectricPotential:  # type: ignore[no-redef]
-        VOLT = "V"
-
-    class UnitOfPower:  # type: ignore[no-redef]
-        WATT = "W"
-
-    class UnitOfTemperature:  # type: ignore[no-redef]
-        CELSIUS = "°C"
-
-    class UnitOfTime:  # type: ignore[no-redef]
-        HOURS = "h"
-        DAYS = "d"
-        SECONDS = "s"
-
-    class UnitOfVolumeFlowRate:  # type: ignore[no-redef]
-        CUBIC_METERS_PER_HOUR = "m³/h"
-
-
-try:  # pragma: no cover - fallback for tests without full HA constants
-    from homeassistant.const import PERCENTAGE
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed only in tests
-    PERCENTAGE = "%"
 
 try:  # pragma: no cover - optional during isolated tests
     from .registers.loader import get_all_registers
@@ -179,7 +151,7 @@ def map_legacy_entity_id(entity_id: str) -> str:
     if "." not in entity_id:
         return entity_id
 
-    domain, object_id = entity_id.split(".", 1)
+    _domain, object_id = entity_id.split(".", 1)
     if object_id in LEGACY_ENTITY_ID_OBJECT_ALIASES:
         new_domain, new_object_id = LEGACY_ENTITY_ID_OBJECT_ALIASES[object_id]
         new_entity_id = f"{new_domain}.{new_object_id}"
@@ -198,12 +170,12 @@ def map_legacy_entity_id(entity_id: str) -> str:
 
     new_domain, new_suffix = LEGACY_ENTITY_ID_ALIASES[suffix]
     parts = object_id.split("_")
-    new_object_id = "_".join(parts[:-1] + [new_suffix]) if len(parts) > 1 else new_suffix
+    new_object_id = "_".join([*parts[:-1], new_suffix]) if len(parts) > 1 else new_suffix
     new_entity_id = f"{new_domain}.{new_object_id}"
 
     if not _alias_warning_logged:
         _LOGGER.warning(
-            "Legacy entity ID '%s' detected. Please update automations " "to use '%s'.",
+            "Legacy entity ID '%s' detected. Please update automations to use '%s'.",
             entity_id,
             new_entity_id,
         )
@@ -363,14 +335,39 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Temperature setpoints — multiplier=0.5, so physical = raw × 0.5 (°C)
     # PDF raw range 20–90 → physical 10–45 °C, step 0.5 °C
-    "supply_air_temperature_manual": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
-    "supply_air_temperature_temporary": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
-    "supply_air_temperature_temporary_4404": {"icon": "mdi:thermometer-plus", "min": 10, "max": 45, "step": 0.5},
+    "supply_air_temperature_manual": {
+        "icon": "mdi:thermometer-plus",
+        "min": 10,
+        "max": 45,
+        "step": 0.5,
+    },
+    "supply_air_temperature_temporary": {
+        "icon": "mdi:thermometer-plus",
+        "min": 10,
+        "max": 45,
+        "step": 0.5,
+    },
+    "supply_air_temperature_temporary_4404": {
+        "icon": "mdi:thermometer-plus",
+        "min": 10,
+        "max": 45,
+        "step": 0.5,
+    },
     # PDF raw 10–40 → physical 5–20 °C
     "min_bypass_temperature": {"icon": "mdi:thermometer-low", "min": 5, "max": 20, "step": 0.5},
     # PDF raw 30–60 → physical 15–30 °C
-    "air_temperature_summer_free_heating": {"icon": "mdi:thermometer", "min": 15, "max": 30, "step": 0.5},
-    "air_temperature_summer_free_cooling": {"icon": "mdi:thermometer", "min": 15, "max": 30, "step": 0.5},
+    "air_temperature_summer_free_heating": {
+        "icon": "mdi:thermometer",
+        "min": 15,
+        "max": 30,
+        "step": 0.5,
+    },
+    "air_temperature_summer_free_cooling": {
+        "icon": "mdi:thermometer",
+        "min": 15,
+        "max": 30,
+        "step": 0.5,
+    },
     # PDF raw 0–20 → physical 0–10 °C
     "min_gwc_air_temperature": {"icon": "mdi:thermometer-low", "min": 0, "max": 10, "step": 0.5},
     # PDF raw 30–80 → physical 15–40 °C
@@ -411,8 +408,18 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Special-function timing (min)
     "airing_panel_mode_time": {"icon": "mdi:timer", "min": 1, "max": 45, "step": 1},
     "airing_switch_mode_time": {"icon": "mdi:timer", "min": 1, "max": 45, "step": 1},
-    "airing_switch_mode_on_delay": {"icon": "mdi:timer-plus-outline", "min": 0, "max": 20, "step": 1},
-    "airing_switch_mode_off_delay": {"icon": "mdi:timer-minus-outline", "min": 0, "max": 20, "step": 1},
+    "airing_switch_mode_on_delay": {
+        "icon": "mdi:timer-plus-outline",
+        "min": 0,
+        "max": 20,
+        "step": 1,
+    },
+    "airing_switch_mode_off_delay": {
+        "icon": "mdi:timer-minus-outline",
+        "min": 0,
+        "max": 20,
+        "step": 1,
+    },
     "fireplace_mode_time": {"icon": "mdi:timer", "min": 1, "max": 10, "step": 1},
     # Modbus port device IDs
     "uart_0_id": {"icon": "mdi:identifier", "min": 10, "max": 19, "step": 1},
@@ -746,7 +753,15 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:calendar-week",
         "register_type": "input_registers",
         # Register 2: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
-        "value_map": {0: "monday", 1: "tuesday", 2: "wednesday", 3: "thursday", 4: "friday", 5: "saturday", 6: "sunday"},
+        "value_map": {
+            0: "monday",
+            1: "tuesday",
+            2: "wednesday",
+            3: "thursday",
+            4: "friday",
+            5: "saturday",
+            6: "sunday",
+        },
     },
     "period": {
         "translation_key": "period",

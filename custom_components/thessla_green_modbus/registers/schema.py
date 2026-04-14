@@ -30,6 +30,8 @@ except ImportError:  # pragma: no cover - Python < 3.11 compatibility
         """Fallback StrEnum for runtimes without enum.StrEnum."""
 
         pass
+
+
 from typing import Any, Literal
 
 import pydantic

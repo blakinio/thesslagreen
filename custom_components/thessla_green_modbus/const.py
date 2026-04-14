@@ -203,29 +203,29 @@ LOG_LEVEL_OPTIONS = ["debug", "info", "warning", "error"]
 # Registers that are known to be unavailable on some devices
 KNOWN_MISSING_REGISTERS = {
     "input_registers": {
-        "compilation_days",           # EC2 — brak w FW 3.11
-        "compilation_seconds",        # EC2 — brak w FW 3.11
-        "version_patch",              # EC2 — FW 3.11 nie raportuje patch version
-        "duct_supply_temperature",    # 0x8000 sentinel — brak czujnika kanałowego
-        "gwc_temperature",            # 0x8000 sentinel — brak czujnika GWC
-        "water_removal_active",       # EC2 — brak funkcji HEWR w FW 3.11
+        "compilation_days",  # EC2 — brak w FW 3.11
+        "compilation_seconds",  # EC2 — brak w FW 3.11
+        "version_patch",  # EC2 — FW 3.11 nie raportuje patch version
+        "duct_supply_temperature",  # 0x8000 sentinel — brak czujnika kanałowego
+        "gwc_temperature",  # 0x8000 sentinel — brak czujnika GWC
+        "water_removal_active",  # EC2 — brak funkcji HEWR w FW 3.11
     },
     "holding_registers": {
-        "exp_version",                # EC2 — brak modułu Expansion
-        "uart_0_id",                  # EC2 — ustawienia UART niedostępne w FW 3.11
-        "uart_0_baud",                # EC2
-        "uart_0_parity",              # EC2
-        "uart_0_stop",                # EC2
-        "uart_1_id",                  # EC2
-        "uart_1_baud",                # EC2
-        "uart_1_parity",              # EC2
-        "uart_1_stop",                # EC2
-        "cfgszf_fn_new",              # EC2 — brak w FW 3.11
-        "cfgszf_fw_new",              # EC2 — brak w FW 3.11
-        "filter_supply_date_limit_get",   # EC2 — brak w FW 3.11
+        "exp_version",  # EC2 — brak modułu Expansion
+        "uart_0_id",  # EC2 — ustawienia UART niedostępne w FW 3.11
+        "uart_0_baud",  # EC2
+        "uart_0_parity",  # EC2
+        "uart_0_stop",  # EC2
+        "uart_1_id",  # EC2
+        "uart_1_baud",  # EC2
+        "uart_1_parity",  # EC2
+        "uart_1_stop",  # EC2
+        "cfgszf_fn_new",  # EC2 — brak w FW 3.11
+        "cfgszf_fw_new",  # EC2 — brak w FW 3.11
+        "filter_supply_date_limit_get",  # EC2 — brak w FW 3.11
         "filter_exhaust_date_limit_get",  # EC2 — brak w FW 3.11
-        "post_heater_on",             # EC2 — brak nagrzewnicy wtórnej
-        "cfg_post_heater_mode",       # EC2 — brak nagrzewnicy wtórnej
+        "post_heater_on",  # EC2 — brak nagrzewnicy wtórnej
+        "cfg_post_heater_mode",  # EC2 — brak nagrzewnicy wtórnej
     },
     "coil_registers": set(),
     "discrete_inputs": set(),
@@ -336,10 +336,7 @@ def migrate_unique_id(
     if re.fullmatch(pattern_new, uid):
         return uid
 
-    if uid.startswith(f"{DOMAIN}_"):
-        uid_no_domain = uid[len(DOMAIN) + 1 :]
-    else:
-        uid_no_domain = uid
+    uid_no_domain = uid[len(DOMAIN) + 1 :] if uid.startswith(f"{DOMAIN}_") else uid
 
     lookup = _build_entity_lookup()
 
@@ -474,9 +471,17 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
             results = [_load_json_option(fn) for fn, _ in filenames]
 
         (
-            SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES,
-            FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES,
-            MODBUS_PARITY, MODBUS_STOP_BITS,
+            SPECIAL_MODE_OPTIONS,
+            DAYS_OF_WEEK,
+            PERIODS,
+            BYPASS_MODES,
+            GWC_MODES,
+            FILTER_TYPES,
+            RESET_TYPES,
+            MODBUS_PORTS,
+            MODBUS_BAUD_RATES,
+            MODBUS_PARITY,
+            MODBUS_STOP_BITS,
         ) = results
 
 

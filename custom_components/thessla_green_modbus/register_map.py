@@ -31,7 +31,7 @@ except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback for te
 _LOGGER = logging.getLogger(__name__)
 
 # Version and provenance of the register layout used to build this structure.
-REGISTER_MAP_VERSION = "AirPack Home/Compact series 4 – Modbus register map rev. 2023-10"
+REGISTER_MAP_VERSION = "AirPack Home/Compact series 4 - Modbus register map rev. 2023-10"
 REGISTER_MAP_SOURCE = (
     "Validated against the manufacturer supplied Modbus register map (rev. 2023-10) "
     "and the bundled thessla_green_registers_full.json"
@@ -58,7 +58,7 @@ class RegisterMapEntry:
 
         The method applies lightweight runtime guards so obviously invalid data
         (e.g. out-of-range values) does not propagate into entities. Validation
-        is tolerant – values are coerced when possible and only dropped when
+        is tolerant - values are coerced when possible and only dropped when
         they cannot be matched to the expected type or range.
         """
 
@@ -215,7 +215,13 @@ def build_register_map() -> dict[str, RegisterMapEntry]:
             enum_values=set(register.enum.values()) if register.enum else set(),
             model_variants=_model_variants(register),
             entity_domain=_resolve_entity_domain(register.name),
-            enum_map={int(k): v for k, v in register.enum.items() if isinstance(k, (int, str)) and str(k).lstrip("-").isdigit()} if register.enum else {},
+            enum_map={
+                int(k): v
+                for k, v in register.enum.items()
+                if isinstance(k, (int, str)) and str(k).lstrip("-").isdigit()
+            }
+            if register.enum
+            else {},
         )
         entries[register.name] = entry
     return entries
@@ -239,8 +245,8 @@ def validate_register_value(register_name: str, value: Any) -> Any:
 
 __all__ = [
     "REGISTER_MAP",
-    "REGISTER_MAP_VERSION",
     "REGISTER_MAP_SOURCE",
+    "REGISTER_MAP_VERSION",
     "RegisterMapEntry",
     "build_register_map",
     "validate_register_value",

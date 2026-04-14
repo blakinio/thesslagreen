@@ -153,10 +153,6 @@ async def _load_scanner_module(hass: Any) -> Any:
 CONFIG_FLOW_BACKOFF = 0.1
 
 
-
-
-
-
 class _VolInvalid(Exception):
     """Fallback voluptuous Invalid-like exception."""
 
@@ -177,6 +173,7 @@ def _schema(definition: Any) -> Any:
     if not hasattr(schema_obj, "schema"):
         schema_obj.schema = definition  # pragma: no cover
     return schema_obj
+
 
 def _required(schema: Any, **kwargs: Any) -> Any:
     """Compat wrapper for voluptuous.Required across test stubs."""
@@ -306,7 +303,7 @@ async def _run_with_retry(
             delay = backoff * 2 ** (attempt - 1)
             if delay:
                 await asyncio.sleep(delay)
-        except (TimeoutError, asyncio.TimeoutError, ConnectionException, ModbusException, OSError):
+        except (TimeoutError, ConnectionException, ModbusException, OSError):
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -328,10 +325,7 @@ async def _call_with_optional_timeout(func: Callable[[], Any], timeout: float) -
 def _caps_to_dict(obj: Any) -> dict[str, Any]:
     """Return a JSON-serializable dict from a capabilities object."""
     if dataclasses.is_dataclass(obj):
-        if hasattr(obj, "as_dict"):
-            data = dict(obj.as_dict())
-        else:
-            data = dataclasses.asdict(obj)
+        data = dict(obj.as_dict()) if hasattr(obj, "as_dict") else dataclasses.asdict(obj)
     elif hasattr(obj, "as_dict"):
         data = obj.as_dict()
     elif isinstance(obj, dict):
@@ -546,7 +540,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
-    except (TimeoutError, asyncio.TimeoutError) as exc:
+    except TimeoutError as exc:
         _LOGGER.warning("Timeout during device validation: %s", exc)
         if "modbus request cancelled" not in str(exc).lower():
             _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
@@ -773,9 +767,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
                     CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
                 ),
                 description={
-                    "selector": {
-                        "number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}
-                    }
+                    "selector": {"number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}}
                 },
             ): int,
         }
@@ -818,7 +810,9 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
         unique_host = host.replace(":", "-") if host else ""
         return f"{unique_host}:{port}:{slave_id}"
 
-    async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle the confirm step."""
         module = await _load_scanner_module(self.hass)
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
@@ -1001,25 +995,17 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             description_placeholders=description_placeholders,
         )
 
-    async def async_step_dhcp(
-        self, discovery_info: DhcpServiceInfo
-    ) -> ConfigFlowResult:
+    async def async_step_dhcp(self, discovery_info: DhcpServiceInfo) -> ConfigFlowResult:
         """Handle DHCP discovery of AirPack device."""
         await self.async_set_unique_id(discovery_info.macaddress.upper())
-        self._abort_if_unique_id_configured(
-            updates={CONF_HOST: discovery_info.ip}
-        )
+        self._abort_if_unique_id_configured(updates={CONF_HOST: discovery_info.ip})
         self._discovered_host = discovery_info.ip
         return await self.async_step_user()
 
-    async def async_step_zeroconf(
-        self, discovery_info: ZeroconfServiceInfo
-    ) -> ConfigFlowResult:
+    async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> ConfigFlowResult:
         """Handle Zeroconf discovery of AirPack device."""
         await self.async_set_unique_id(discovery_info.host)
-        self._abort_if_unique_id_configured(
-            updates={CONF_HOST: discovery_info.host}
-        )
+        self._abort_if_unique_id_configured(updates={CONF_HOST: discovery_info.host})
         self._discovered_host = discovery_info.host
         return await self.async_step_user()
 

@@ -58,9 +58,7 @@ async def async_setup_entry(
         try:
             async_add_entities(entities, True)
         except asyncio.CancelledError:
-            _LOGGER.warning(
-                "Cancelled while adding text entities, retrying without initial state"
-            )
+            _LOGGER.warning("Cancelled while adding text entities, retrying without initial state")
             async_add_entities(entities, False)
             return
         _LOGGER.debug("Created %d text entities", len(entities))
@@ -91,9 +89,8 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
     @property
     def available(self) -> bool:  # pragma: no cover
         """Return True whenever the coordinator is connected."""
-        return (
-            self.coordinator.last_update_success
-            and not getattr(self.coordinator, "offline_state", False)
+        return self.coordinator.last_update_success and not getattr(
+            self.coordinator, "offline_state", False
         )
 
     @property

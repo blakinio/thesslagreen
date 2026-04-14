@@ -12,7 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 
 try:  # pragma: no cover - handle missing or incompatible pymodbus
     from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
+except ImportError:  # pragma: no cover
 
     class ConnectionException(Exception):  # type: ignore[no-redef]
         """Fallback exception when pymodbus is unavailable."""
