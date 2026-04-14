@@ -446,7 +446,9 @@ def _number_translation_keys() -> set[str]:
     undocumented registers (e.g. ``reserved_8145``–``reserved_8151``).
     """
     try:
-        with (((_tp := Path(__file__).resolve().with_name("translations")) if (Path(__file__).resolve().with_name("translations")).exists() else Path(__file__).resolve().parents[1] / "translations") / "en.json").open(encoding="utf-8") as f:
+        _t = Path(__file__).resolve().with_name("translations")
+        _translations_dir = _t if _t.exists() else Path(__file__).resolve().parents[1] / "translations"
+        with (_translations_dir / "en.json").open(encoding="utf-8") as f:
             data = json.load(f)
         return set(data.get("entity", {}).get("number", {}).keys())
     except (
@@ -465,7 +467,9 @@ def _load_translation_keys() -> dict[str, set[str]]:
     """Return available translation keys for supported entity types."""
 
     try:
-        with (((_tp := Path(__file__).resolve().with_name("translations")) if (Path(__file__).resolve().with_name("translations")).exists() else Path(__file__).resolve().parents[1] / "translations") / "en.json").open(encoding="utf-8") as f:
+        _t = Path(__file__).resolve().with_name("translations")
+        _translations_dir = _t if _t.exists() else Path(__file__).resolve().parents[1] / "translations"
+        with (_translations_dir / "en.json").open(encoding="utf-8") as f:
             data = json.load(f)
         entity = data.get("entity", {})
         return {

@@ -7,7 +7,7 @@ import importlib
 import inspect
 import logging
 import time
-from dataclasses import asdict  # noqa: F401
+from dataclasses import asdict as _dataclasses_asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -100,6 +100,8 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
     def registers_sha256(*_args, **_kwargs) -> str:
         return ""
 
+
+asdict = _dataclasses_asdict  # re-exported for test monkeypatching
 
 _LOGGER = logging.getLogger(__name__)
 

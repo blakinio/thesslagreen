@@ -71,7 +71,7 @@ target-version = "py312"
 src = ["custom_components", "tests", "tools"]
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "B", "SIM", "RUF", "UP", "I", "PERF"]
+select = ["F", "E", "W", "B", "SIM", "RUF", "UP", "I", "PERF", "BLE"]
 ignore = [
     "E501",
     "RUF002",

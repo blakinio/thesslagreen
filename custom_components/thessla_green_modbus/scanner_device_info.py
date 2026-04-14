@@ -17,7 +17,7 @@ def _compat_asdict(obj: Any) -> dict[str, Any]:
         from . import scanner_core as _scanner_core
 
         return _scanner_core.asdict(obj)
-    except Exception:  # pragma: no cover - fallback
+    except (ImportError, AttributeError, TypeError):  # pragma: no cover - fallback
         return dataclasses.asdict(obj)
 
 
