@@ -4,8 +4,6 @@ from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.const import CONF_HOST, CONF_PORT
-
 from custom_components.thessla_green_modbus import async_setup_entry
 from custom_components.thessla_green_modbus.const import (
     AIRFLOW_UNIT_M3H,
@@ -14,6 +12,7 @@ from custom_components.thessla_green_modbus.const import (
     DOMAIN,
 )
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 
 def _create_coordinator(

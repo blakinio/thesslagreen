@@ -210,11 +210,7 @@ async def validate_entity_creation():
         ]
 
         base_path = Path(__file__).parent / "custom_components" / "thessla_green_modbus"
-        missing_files = []
-
-        for filename in platform_files:
-            if not (base_path / filename).exists():
-                missing_files.append(filename)
+        missing_files = [filename for filename in platform_files if not (base_path / filename).exists()]
 
         if missing_files:
             print(f"❌ Missing platform files: {missing_files}")

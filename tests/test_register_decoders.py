@@ -2,7 +2,6 @@ import asyncio
 import struct
 
 import pytest
-
 from custom_components.thessla_green_modbus.registers.loader import (
     Register,
     get_registers_by_function,

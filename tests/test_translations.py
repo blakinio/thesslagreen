@@ -122,9 +122,7 @@ class AddEntitiesCallback:  # pragma: no cover - simple stub
 entity_platform.AddEntitiesCallback = AddEntitiesCallback
 sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 
-SENSOR_KEYS = _load_translation_keys(ROOT / "entity_mappings.py", "SENSOR_ENTITY_MAPPINGS") + [
-    "error_codes"
-]
+SENSOR_KEYS = [*_load_translation_keys(ROOT / "entity_mappings.py", "SENSOR_ENTITY_MAPPINGS"), "error_codes"]
 BINARY_KEYS = _load_translation_keys(ROOT / "entity_mappings.py", "BINARY_SENSOR_ENTITY_MAPPINGS")
 SWITCH_KEYS = _load_keys(ROOT / "entity_mappings.py", "SWITCH_ENTITY_MAPPINGS") + _load_keys(
     ROOT / "const.py", "SPECIAL_FUNCTION_MAP"
@@ -144,18 +142,17 @@ CODE_KEYS: list[str] = []
 # and extend SENSOR_KEYS with dynamically generated BCD time registers (schedule_,
 # airing_*, gwc regen, etc.).  These are not in the static dicts above but ARE
 # written into the translation files.
-import json as _json  # noqa: E402  (already imported at module level as json)
-import re as _re  # noqa: E402
+import json as _json
+import re as _re
 
 _REGISTERS_JSON = ROOT / "registers" / "thessla_green_registers_full.json"
 
 try:
-    from custom_components.thessla_green_modbus.utils import (  # noqa: E402
+    from custom_components.thessla_green_modbus.utils import (
         BCD_TIME_PREFIXES,
         _normalise_name,
+        _to_snake_case,
     )
-
-    from custom_components.thessla_green_modbus.utils import _to_snake_case  # noqa: E402
 
     _reg_data = _json.loads(_REGISTERS_JSON.read_text(encoding="utf-8"))
     for _r in _reg_data.get("registers", []):

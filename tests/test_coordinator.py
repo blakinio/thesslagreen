@@ -10,7 +10,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
     MAX_BATCH_REGISTERS,
@@ -21,7 +20,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402,F811,E501
+from custom_components.thessla_green_modbus.registers.loader import (
     RegisterDef,
     get_register_definition,
     get_registers_by_function,
@@ -191,11 +190,11 @@ INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
 # ✅ FIXED: Import correct coordinator class name
-from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
     _PermanentModbusError,
 )
-from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+from custom_components.thessla_green_modbus.coordinator import (
     dt_util as coordinator_dt_util,
 )
 
@@ -334,9 +333,8 @@ async def test_read_holding_registers_cancelled_error(coordinator, caplog):
     coordinator._register_groups = {"holding_registers": [(0, 1)]}
     coordinator._call_modbus = AsyncMock(side_effect=asyncio.CancelledError)
 
-    with caplog.at_level(logging.ERROR):
-        with pytest.raises(asyncio.CancelledError):
-            await coordinator._read_holding_registers_optimized()
+    with caplog.at_level(logging.ERROR), pytest.raises(asyncio.CancelledError):
+        await coordinator._read_holding_registers_optimized()
     assert caplog.text == ""
 
 
@@ -1072,9 +1070,8 @@ async def test_async_setup_invalid_capabilities(coordinator):
     with patch(
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await coordinator.async_setup()
+    ), pytest.raises(CannotConnect) as err:
+        await coordinator.async_setup()
 
     assert str(err.value) == "invalid_capabilities"
     scanner_instance.close.assert_awaited_once()
@@ -1214,6 +1211,6 @@ def cleanup_modules():
 
 
 # Register cleanup
-import atexit  # noqa: E402
+import atexit
 
 atexit.register(cleanup_modules)

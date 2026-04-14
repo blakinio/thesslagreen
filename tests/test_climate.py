@@ -100,21 +100,21 @@ sys.modules["homeassistant.helpers.device_registry"] = device_registry
 # Actual imports after stubbing
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.climate import (  # noqa: E402
+from custom_components.thessla_green_modbus.climate import (
     HVAC_MODE_MAP,
     HVAC_MODE_REVERSE_MAP,
     ThesslaGreenClimate,
     async_setup_entry,
 )
-from custom_components.thessla_green_modbus.coordinator import (  # noqa: E402
+from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
+from custom_components.thessla_green_modbus.const import DOMAIN
 
 
 class DummyClient:
@@ -367,9 +367,9 @@ def test_preset_mode_active_special_function():
 
 def test_preset_mode_unknown_bits_returns_none():
     """preset_mode returns 'none' when no SPECIAL_FUNCTION_MAP entry matches (line 254)."""
-    from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP
-    from custom_components.thessla_green_modbus import climate as climate_mod
     from unittest.mock import patch
+
+    from custom_components.thessla_green_modbus import climate as climate_mod
 
     hass = SimpleNamespace()
     coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev", timedelta(seconds=1))

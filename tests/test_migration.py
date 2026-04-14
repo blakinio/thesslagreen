@@ -3,11 +3,10 @@
 from unittest.mock import MagicMock
 
 import pytest
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
-
 from custom_components.thessla_green_modbus import async_migrate_entry
 from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 
 @pytest.mark.asyncio

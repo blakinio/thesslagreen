@@ -3,9 +3,8 @@
 from datetime import time
 from types import SimpleNamespace
 
-import pytest
-
 import custom_components.thessla_green_modbus.services as services
+import pytest
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.registers.loader import (
     get_register_definition,

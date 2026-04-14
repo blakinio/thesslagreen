@@ -37,11 +37,11 @@ config_flow_stub = ModuleType("custom_components.thessla_green_modbus.config_flo
 config_flow_stub.CannotConnect = type("CannotConnect", (), {})
 sys.modules["custom_components.thessla_green_modbus.config_flow"] = config_flow_stub
 
-from custom_components.thessla_green_modbus.diagnostics import (  # noqa: E402
+from custom_components.thessla_green_modbus.diagnostics import (
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
-from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities  # noqa: E402
+from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
 
 # Restore real registers module for subsequent tests
 if original_registers is not None:
@@ -435,9 +435,8 @@ async def test_translation_failure_handled(caplog):
     with patch(
         "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
         AsyncMock(side_effect=Exception("boom")),
-    ):
-        with caplog.at_level(logging.DEBUG):
-            result = await async_get_config_entry_diagnostics(hass, entry)
+    ), caplog.at_level(logging.DEBUG):
+        result = await async_get_config_entry_diagnostics(hass, entry)
 
     assert result["active_errors"] == {"e_fault": "e_fault"}
     assert any("translation" in record.message.lower() for record in caplog.records)

@@ -4,7 +4,6 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.const import (
     CONNECTION_MODE_TCP,
     KNOWN_MISSING_REGISTERS,

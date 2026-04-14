@@ -6,7 +6,6 @@ import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -226,9 +225,8 @@ def test_async_setup_closes_scanner():
         with patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner",
             return_value=scanner,
-        ):
-            with patch.object(coordinator, "_test_connection", AsyncMock()):
-                result = await coordinator.async_setup()
+        ), patch.object(coordinator, "_test_connection", AsyncMock()):
+            result = await coordinator.async_setup()
 
         assert result is True
         scanner.close.assert_awaited_once()
@@ -266,14 +264,13 @@ def test_async_setup_cancel_mid_scan(caplog):
         with patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner),
-        ):
-            with patch.object(coordinator, "_test_connection", AsyncMock()):
-                caplog.set_level(logging.DEBUG)
-                setup_task = asyncio.create_task(coordinator.async_setup())
-                await asyncio.sleep(0)
-                setup_task.cancel()
-                with pytest.raises(asyncio.CancelledError):
-                    await setup_task
+        ), patch.object(coordinator, "_test_connection", AsyncMock()):
+            caplog.set_level(logging.DEBUG)
+            setup_task = asyncio.create_task(coordinator.async_setup())
+            await asyncio.sleep(0)
+            setup_task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await setup_task
 
         scanner.close.assert_awaited_once()
         assert not any(record.levelno >= logging.ERROR for record in caplog.records)

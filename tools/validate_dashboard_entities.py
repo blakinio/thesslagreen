@@ -123,6 +123,14 @@ def _current_entity_ids() -> set[str]:
     for domain, mapping in ENTITY_MAPPINGS.items():
         for key in mapping:
             ids.add(f"{domain}.rekuperator_{key}")
+    # Climate and fan entities are managed by dedicated platforms and do not live
+    # in ENTITY_MAPPINGS.
+    ids.update(
+        {
+            "climate.rekuperator_climate_control",
+            "fan.rekuperator_ventilation",
+        }
+    )
     return ids
 
 

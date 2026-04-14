@@ -170,9 +170,8 @@ async def test_tcp_connect_tcp_rtu_framer_none():
     with patch(
         "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
         return_value=None,
-    ):
-        with pytest.raises(ConnectionException, match="RTU framer"):
-            await t._connect()
+    ), pytest.raises(ConnectionException, match="RTU framer"):
+        await t._connect()
 
 
 @pytest.mark.asyncio
@@ -188,9 +187,8 @@ async def test_tcp_connect_tcp_rtu_success():
     with patch(
         "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
         return_value=mock_framer,
-    ):
-        with patch.object(t, "_build_tcp_client", return_value=mock_client):
-            await t._connect()
+    ), patch.object(t, "_build_tcp_client", return_value=mock_client):
+        await t._connect()
 
     assert t.offline_state is False
     assert t.client is mock_client
@@ -326,9 +324,8 @@ async def test_execute_timeout_error():
     async def raises_timeout():
         raise TimeoutError("timeout")
 
-    with patch.object(t, "_reset_connection", new=AsyncMock()):
-        with pytest.raises(TimeoutError):
-            await t._execute(raises_timeout)
+    with patch.object(t, "_reset_connection", new=AsyncMock()), pytest.raises(TimeoutError):
+        await t._execute(raises_timeout)
 
     assert t.offline_state is True
 
@@ -371,9 +368,8 @@ async def test_execute_os_error():
     async def raises_os():
         raise OSError("os error")
 
-    with patch.object(t, "_reset_connection", new=AsyncMock()):
-        with pytest.raises(OSError):
-            await t._execute(raises_os)
+    with patch.object(t, "_reset_connection", new=AsyncMock()), pytest.raises(OSError):
+        await t._execute(raises_os)
 
     assert t.offline_state is True
 
@@ -386,9 +382,8 @@ async def test_execute_modbus_exception():
     async def raises_modbus():
         raise ModbusException("modbus err")
 
-    with patch.object(t, "_reset_connection", new=AsyncMock()):
-        with pytest.raises(ModbusException):
-            await t._execute(raises_modbus)
+    with patch.object(t, "_reset_connection", new=AsyncMock()), pytest.raises(ModbusException):
+        await t._execute(raises_modbus)
 
     assert t.offline_state is True
 
@@ -490,9 +485,8 @@ async def test_raw_tcp_connect_timeout():
     with patch(
         "asyncio.open_connection",
         side_effect=TimeoutError("connect timeout"),
-    ):
-        with pytest.raises(TimeoutError, match="Timed out connecting"):
-            await t._connect()
+    ), pytest.raises(TimeoutError, match="Timed out connecting"):
+        await t._connect()
 
 
 @pytest.mark.asyncio
@@ -502,9 +496,8 @@ async def test_raw_tcp_connect_os_error():
     with patch(
         "asyncio.open_connection",
         side_effect=OSError("refused"),
-    ):
-        with pytest.raises(ConnectionException, match="Could not connect"):
-            await t._connect()
+    ), pytest.raises(ConnectionException, match="Could not connect"):
+        await t._connect()
 
 
 @pytest.mark.asyncio
@@ -855,10 +848,9 @@ async def test_tcp_connect_rtu_build_client_type_error():
     with patch(
         "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
         return_value=mock_framer,
-    ):
-        with patch.object(t, "_build_tcp_client", side_effect=TypeError("framer not supported")):
-            with pytest.raises(ConnectionException, match="not supported"):
-                await t._connect()
+    ), patch.object(t, "_build_tcp_client", side_effect=TypeError("framer not supported")):
+        with pytest.raises(ConnectionException, match="not supported"):
+            await t._connect()
 
 
 # ---------------------------------------------------------------------------

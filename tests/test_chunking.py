@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_helpers import (
     chunk_register_range,
     chunk_register_values,

@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_transport import (
     RawRtuOverTcpTransport,
     _crc16,

@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import call, patch
 
 import pytest
-
 from tools.cleanup_old_entities import cleanup_entity_registry
 
 
@@ -22,9 +21,8 @@ def test_cleanup_entity_registry_invalid_json_restores_backup(
 ) -> None:
     registry_path = _setup_registry(tmp_path, "{invalid")
 
-    with patch("shutil.copy2", wraps=shutil.copy2) as mock_copy:
-        with caplog.at_level(logging.ERROR):
-            assert not cleanup_entity_registry(tmp_path)  # nosec B101
+    with patch("shutil.copy2", wraps=shutil.copy2) as mock_copy, caplog.at_level(logging.ERROR):
+        assert not cleanup_entity_registry(tmp_path)  # nosec B101
 
     backup_path = mock_copy.call_args_list[0].args[1]
     assert "Error decoding entity registry JSON" in caplog.text  # nosec B101

@@ -60,14 +60,14 @@ sys.modules["homeassistant.util.network"] = network_mod
 # Actual tests
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.binary_sensor import (  # noqa: E402
+from custom_components.thessla_green_modbus.binary_sensor import (
     BINARY_SENSOR_DEFINITIONS,
     LEGACY_PROBLEM_KEY_PATTERN,
     ThesslaGreenBinarySensor,
     async_setup_entry,
 )
-from custom_components.thessla_green_modbus.const import DOMAIN  # noqa: E402
-from custom_components.thessla_green_modbus.registers.loader import (  # noqa: E402
+from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 

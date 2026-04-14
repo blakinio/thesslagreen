@@ -1,6 +1,5 @@
 """Tests for JSON register loader."""
 
-# ruff: noqa: E402
 
 import json
 import sys

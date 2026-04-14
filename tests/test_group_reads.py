@@ -4,13 +4,7 @@ import importlib
 import sys
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
-from custom_components.thessla_green_modbus.registers.loader import (
-    ReadPlan,
-    Register,
-    plan_group_reads,
-)
 
 
 @pytest.fixture()

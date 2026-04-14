@@ -2,24 +2,24 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import datetime as dt
 from typing import Any
+
+UTC = dt.UTC
 
 try:
     from homeassistant.util import dt as dt_util
 except (ModuleNotFoundError, ImportError):
-    UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
-
     class _DTUtil:
         """Fallback minimal dt util."""
 
         @staticmethod
-        def now() -> datetime:
-            return datetime.now(UTC)
+        def now() -> dt.datetime:
+            return dt.datetime.now(UTC)
 
         @staticmethod
-        def utcnow() -> datetime:
-            return datetime.now(UTC)
+        def utcnow() -> dt.datetime:
+            return dt.datetime.now(UTC)
 
     dt_util = _DTUtil()
 

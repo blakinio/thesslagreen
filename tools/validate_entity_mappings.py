@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -26,10 +27,8 @@ def _iter_mapping_entries(entity_mappings: dict[str, dict[str, dict[str, Any]]])
 
 def main() -> int:
     if "homeassistant" not in sys.modules:
-        try:
+        with suppress(Exception):
             import tests.conftest  # noqa: F401
-        except Exception:
-            pass
 
     from custom_components.thessla_green_modbus import entity_mappings as mappings_mod
 

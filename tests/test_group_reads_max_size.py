@@ -1,5 +1,4 @@
 import pytest
-
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 

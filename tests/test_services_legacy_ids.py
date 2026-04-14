@@ -1,9 +1,8 @@
 from datetime import time
 from types import SimpleNamespace
 
-import pytest
-
 import custom_components.thessla_green_modbus.services as services
+import pytest
 
 
 class Services:

@@ -1,6 +1,5 @@
 """Test config flow for ThesslaGreen Modbus integration."""
 
-# ruff: noqa: E402
 
 import asyncio
 import logging
@@ -88,11 +87,11 @@ from custom_components.thessla_green_modbus.const import (
     CONF_SERIAL_PORT,
     CONF_SLAVE_ID,
     CONF_STOP_BITS,
+    CONNECTION_MODE_AUTO,
+    CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
-    CONNECTION_MODE_AUTO,
-    CONNECTION_MODE_TCP_RTU,
     DEFAULT_BAUD_RATE,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_PARITY,
@@ -596,10 +595,9 @@ async def test_user_step_duplicate_entry_aborts_silently(caplog):
             "_abort_if_unique_id_configured",
             side_effect=AbortFlow("already_configured"),
         ),
-        caplog.at_level(logging.ERROR),
+        caplog.at_level(logging.ERROR),pytest.raises(AbortFlow) as err
     ):
-        with pytest.raises(AbortFlow) as err:
-            await flow.async_step_user(DEFAULT_USER_INPUT)
+        await flow.async_step_user(DEFAULT_USER_INPUT)
 
     assert err.value.reason == "already_configured"
     assert not caplog.records
@@ -787,10 +785,9 @@ async def test_confirm_step_aborts_on_existing_entry():
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
             "_abort_if_unique_id_configured",
             side_effect=RuntimeError("already_configured"),
-        ),
+        ),pytest.raises(RuntimeError)
     ):
-        with pytest.raises(RuntimeError):
-            await flow.async_step_confirm({})
+        await flow.async_step_confirm({})
 
     with (
         patch(
@@ -1271,9 +1268,8 @@ async def test_validate_input_invalid_domain():
 
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
-    ) as create_mock:
-        with pytest.raises(vol.Invalid) as err:
-            await validate_input(None, data)
+    ) as create_mock, pytest.raises(vol.Invalid) as err:
+        await validate_input(None, data)
     assert err.value.error_message == "invalid_host"
     create_mock.assert_not_called()
 
@@ -1292,9 +1288,8 @@ async def test_validate_input_invalid_ipv4():
 
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
-    ) as create_mock:
-        with pytest.raises(vol.Invalid) as err:
-            await validate_input(None, data)
+    ) as create_mock, pytest.raises(vol.Invalid) as err:
+        await validate_input(None, data)
     assert err.value.error_message == "invalid_host"
     create_mock.assert_not_called()
 
@@ -1313,9 +1308,8 @@ async def test_validate_input_invalid_ipv6():
 
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
-    ) as create_mock:
-        with pytest.raises(vol.Invalid) as err:
-            await validate_input(None, data)
+    ) as create_mock, pytest.raises(vol.Invalid) as err:
+        await validate_input(None, data)
     assert err.value.error_message == "invalid_host"
     create_mock.assert_not_called()
 
@@ -1335,9 +1329,8 @@ async def test_validate_input_invalid_port(invalid_port: int):
 
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
-    ) as create_mock:
-        with pytest.raises(vol.Invalid) as err:
-            await validate_input(None, data)
+    ) as create_mock, pytest.raises(vol.Invalid) as err:
+        await validate_input(None, data)
 
     assert err.value.error_message == "invalid_port"
     create_mock.assert_not_called()
@@ -1364,9 +1357,8 @@ async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
 
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
-    ) as create_mock:
-        with pytest.raises(vol.Invalid) as err:
-            await validate_input(None, data)
+    ) as create_mock, pytest.raises(vol.Invalid) as err:
+        await validate_input(None, data)
 
     assert err.value.error_message == err_code
     create_mock.assert_not_called()
@@ -1457,9 +1449,8 @@ async def test_validate_input_no_data():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect):
-            await validate_input(hass, data)
+    ), pytest.raises(CannotConnect):
+        await validate_input(hass, data)
 
     scanner_instance.close.assert_awaited_once()
 
@@ -1485,9 +1476,8 @@ async def test_validate_input_modbus_exception():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect):
-            await validate_input(hass, data)
+    ), pytest.raises(CannotConnect):
+        await validate_input(hass, data)
 
     scanner_instance.close.assert_awaited_once()
 
@@ -1512,9 +1502,8 @@ async def test_validate_input_scanner_closed_on_exception():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert str(err.value) == "modbus_error"
 
@@ -1542,9 +1531,8 @@ async def test_validate_input_attribute_error():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert err.value.args[0] == "missing_method"
     scanner_instance.close.assert_awaited_once()
@@ -1645,9 +1633,8 @@ async def test_validate_input_verify_connection_failure():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert err.value.args[0] == "cannot_connect"
     scanner_instance.close.assert_awaited_once()
@@ -1680,9 +1667,8 @@ async def test_validate_input_invalid_capabilities():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert str(err.value) == "invalid_capabilities"
     scanner_instance.close.assert_awaited_once()
@@ -1709,9 +1695,8 @@ async def test_validate_input_invalid_scan_result_format():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert str(err.value) == "invalid_format"
     scanner_instance.close.assert_awaited_once()
@@ -1785,9 +1770,8 @@ async def test_validate_input_missing_capabilities():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert str(err.value) == "invalid_capabilities"
     scanner_instance.close.assert_awaited_once()
@@ -1837,10 +1821,9 @@ async def test_validate_input_capabilities_missing_fields():
         patch(
             "custom_components.thessla_green_modbus.scanner_core.asdict",
             side_effect=_missing_basic_control,
-        ),
+        ),pytest.raises(CannotConnect) as err
     ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+        await validate_input(None, data)
 
     assert str(err.value) == "invalid_capabilities"
     scanner_instance.close.assert_awaited_once()
@@ -1888,10 +1871,9 @@ async def test_validate_input_slotted_capabilities_missing_fields():
         patch(
             "custom_components.thessla_green_modbus.scanner_core.DeviceCapabilities",
             SlotCaps,
-        ),
+        ),pytest.raises(CannotConnect) as err
     ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+        await validate_input(None, data)
 
     assert str(err.value) == "invalid_capabilities"
     scanner_instance.close.assert_awaited_once()
@@ -1918,9 +1900,8 @@ async def test_validate_input_scan_device_connection_exception():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert err.value.args[0] == "cannot_connect"
     scanner_instance.close.assert_awaited_once()
@@ -1947,9 +1928,8 @@ async def test_validate_input_scan_device_modbus_exception():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert err.value.args[0] == "modbus_error"
     scanner_instance.close.assert_awaited_once()
@@ -1976,9 +1956,8 @@ async def test_validate_input_scan_device_attribute_error():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert err.value.args[0] == "missing_method"
     scanner_instance.close.assert_awaited_once()
@@ -2059,10 +2038,9 @@ async def test_validate_input_timeout_errors(exc, err_key):
             "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner_instance),
         ),
-        patch("asyncio.sleep", AsyncMock()),
+        patch("asyncio.sleep", AsyncMock()),pytest.raises(CannotConnect) as err
     ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+        await validate_input(None, data)
 
     assert err.value.args[0] == err_key
     scanner_instance.close.assert_awaited_once()
@@ -2095,10 +2073,9 @@ async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
             AsyncMock(return_value=scanner_instance),
         ),
         patch("asyncio.sleep", AsyncMock()),
-        caplog.at_level(logging.DEBUG),
+        caplog.at_level(logging.DEBUG),pytest.raises(CannotConnect) as err
     ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+        await validate_input(None, data)
 
     assert err.value.args[0] == "timeout"
     assert "Timeout during device validation: Modbus request cancelled" in caplog.text
@@ -2130,10 +2107,9 @@ async def test_validate_input_cancelled_modbus_io_suppresses_traceback(caplog):
             AsyncMock(return_value=scanner_instance),
         ),
         patch("asyncio.sleep", AsyncMock()),
-        caplog.at_level(logging.DEBUG),
+        caplog.at_level(logging.DEBUG),pytest.raises(CannotConnect) as err
     ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+        await validate_input(None, data)
 
     assert err.value.args[0] == "timeout"
     assert "Timeout during device validation: Modbus request cancelled" in caplog.text
@@ -2154,9 +2130,8 @@ async def test_validate_input_dns_failure():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(side_effect=socket.gaierror()),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert err.value.args[0] == "dns_failure"
 
@@ -2176,9 +2151,8 @@ async def test_validate_input_connection_refused():
     with patch(
         "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
         AsyncMock(side_effect=ConnectionRefusedError()),
-    ):
-        with pytest.raises(CannotConnect) as err:
-            await validate_input(None, data)
+    ), pytest.raises(CannotConnect) as err:
+        await validate_input(None, data)
 
     assert err.value.args[0] == "connection_refused"
 

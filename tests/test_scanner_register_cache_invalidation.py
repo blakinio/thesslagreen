@@ -1,9 +1,8 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 import custom_components.thessla_green_modbus.scanner_core as sc
+import pytest
 from custom_components.thessla_green_modbus.registers.loader import _REGISTERS_PATH, clear_cache
 
 

@@ -3,13 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import homeassistant.const as ha_const
 import pytest
-from homeassistant.const import CONF_HOST, CONF_PORT
-
 from custom_components.thessla_green_modbus.const import CONF_FORCE_FULL_REGISTER_LIST, DOMAIN
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 ha_const.STATE_UNAVAILABLE = "unavailable"
 
-from custom_components.thessla_green_modbus import async_setup_entry, sensor  # noqa: E402
+from custom_components.thessla_green_modbus import async_setup_entry, sensor
 
 # Minimal sensor definitions for testing
 SENSOR_MAP = {

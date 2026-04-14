@@ -361,18 +361,6 @@
       "e_157": {
         "name": "E157: Exhaust Filter Service Time Elapsed"
       },
-      "e_196_e_199_e_196": {
-        "name": "Error E196"
-      },
-      "e_196_e_199_e_197": {
-        "name": "Error E197"
-      },
-      "e_196_e_199_e_198": {
-        "name": "Error E198"
-      },
-      "e_196_e_199_e_199": {
-        "name": "Error E199"
-      },
       "gwc_regen_flag": {
         "name": "GWC Regeneration Active"
       },
@@ -1492,26 +1480,20 @@
       "init": {
         "data": {
           "deep_scan": "Deep Register Scan",
-          "enable_device_scan": "Enable Device Scan on Setup",
           "force_full_register_list": "Force Full Register List (skip scanning)",
-          "log_level": "Log Level",
           "max_registers_per_request": "Max Registers per Request",
           "retry": "Retry Attempts",
-          "safe_scan": "Safe Scan (Individual Register Reads)",
           "scan_interval": "Scan Interval (seconds)",
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)"
         },
         "data_description": {
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
-          "enable_device_scan": "Run the device scan during setup to detect available registers",
           "retry": "How many times to retry failed reads (1-5 attempts)",
           "scan_interval": "How often to read data from device (10-300 seconds)",
-          "log_level": "Adjust integration logging verbosity without restarting Home Assistant",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "deep_scan": "Read raw registers 0-300 for diagnostics",
-          "safe_scan": "Disable grouping; read registers individually (max 16 per request)",
           "max_registers_per_request": "Select maximum registers per request (1-16)"
         },
         "error": {

@@ -5,12 +5,6 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from tests.conftest import CoordinatorMock
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-
 from custom_components.thessla_green_modbus.const import (
     SENSOR_UNAVAILABLE,
     coil_registers,
@@ -18,6 +12,11 @@ from custom_components.thessla_green_modbus.const import (
     holding_registers,
     input_registers,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import HomeAssistant
+
+from tests.conftest import CoordinatorMock
 
 # Setup logging for tests
 logging.basicConfig(level=logging.DEBUG)
@@ -145,7 +144,6 @@ class TestThesslaGreenIntegration:
     async def test_async_setup_entry_success(self, mock_hass, mock_config_entry, mock_coordinator):
         """Test successful setup of config entry."""
         from custom_components.thessla_green_modbus import async_setup_entry
-        from custom_components.thessla_green_modbus.const import DOMAIN
 
         with patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
@@ -182,7 +180,6 @@ class TestThesslaGreenIntegration:
     async def test_async_unload_entry_success(self, mock_hass, mock_config_entry, mock_coordinator):
         """Test successful unloading of config entry."""
         from custom_components.thessla_green_modbus import async_unload_entry
-        from custom_components.thessla_green_modbus.const import DOMAIN
 
         # Setup initial state
         mock_config_entry.runtime_data = mock_coordinator
@@ -519,8 +516,8 @@ class TestThesslaGreenDeviceScanner:
     @pytest.mark.asyncio
     async def test_scanner_core_connection_failure(self):
         """Test scanner behavior on connection failure."""
-        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
         from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
@@ -534,9 +531,8 @@ class TestThesslaGreenDeviceScanner:
             scanner,
             "_build_auto_tcp_attempts",
             return_value=[("tcp", mock_transport, 5.0)],
-        ):
-            with pytest.raises(Exception, match="(connect|transport failed)"):
-                await scanner.scan_device()
+        ), pytest.raises(ConnectionException, match=r"(connect|transport failed)"):
+            await scanner.scan_device()
 
     def test_register_value_validation(self):
         """Test register value validation logic."""
@@ -635,9 +631,8 @@ class TestThesslaGreenClimate:
     @pytest.mark.asyncio
     async def test_climate_entity_creation(self, mock_climate_coordinator):
         """Test climate entity creation and basic properties."""
-        from homeassistant.components.climate import HVACMode
-
         from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
+        from homeassistant.components.climate import HVACMode
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
 
@@ -650,9 +645,8 @@ class TestThesslaGreenClimate:
     @pytest.mark.asyncio
     async def test_climate_set_hvac_mode(self, mock_climate_coordinator):
         """Test setting HVAC mode."""
-        from homeassistant.components.climate import HVACMode
-
         from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
+        from homeassistant.components.climate import HVACMode
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
 
@@ -671,9 +665,8 @@ class TestThesslaGreenClimate:
     @pytest.mark.asyncio
     async def test_climate_set_hvac_mode_enable_failed(self, mock_climate_coordinator, caplog):
         """Abort mode change if enabling fails."""
-        from homeassistant.components.climate import HVACMode
-
         from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
+        from homeassistant.components.climate import HVACMode
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
         mock_climate_coordinator.async_write_register = AsyncMock(side_effect=[False, False])
@@ -695,9 +688,8 @@ class TestThesslaGreenClimate:
     @pytest.mark.asyncio
     async def test_climate_set_preset_mode(self, mock_climate_coordinator):
         """Test setting preset mode."""
-        from homeassistant.components.climate import PRESET_ECO
-
         from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
+        from homeassistant.components.climate import PRESET_ECO
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
 

@@ -25,7 +25,7 @@ sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNa
     get_registers_by_function=loader_stub.get_registers_by_function,
 )
 
-from custom_components.thessla_green_modbus.modbus_helpers import (  # noqa: E402
+from custom_components.thessla_green_modbus.modbus_helpers import (
     _KWARG_CACHE,
     _SIG_CACHE,
     _call_modbus,
@@ -344,7 +344,7 @@ def test_get_signature_typeerror_returns_none():
     import inspect
     from unittest.mock import patch
 
-    from custom_components.thessla_green_modbus.modbus_helpers import _get_signature, _SIG_CACHE
+    from custom_components.thessla_green_modbus.modbus_helpers import _SIG_CACHE, _get_signature
 
     def func():
         pass
@@ -362,7 +362,7 @@ def test_get_signature_valueerror_returns_none():
     import inspect
     from unittest.mock import patch
 
-    from custom_components.thessla_green_modbus.modbus_helpers import _get_signature, _SIG_CACHE
+    from custom_components.thessla_green_modbus.modbus_helpers import _SIG_CACHE, _get_signature
 
     def func():
         pass
@@ -636,6 +636,7 @@ async def test_call_modbus_non_debug_encode_exception_sets_empty(monkeypatch):
 # ---------------------------------------------------------------------------
 
 import logging as _logging
+
 from custom_components.thessla_green_modbus import modbus_helpers as _mh
 
 

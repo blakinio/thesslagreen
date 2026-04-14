@@ -1,7 +1,6 @@
 """Tests for __init__.py helper functions: async_setup, _apply_log_level,
 _async_cleanup_legacy_fan_entity, and _async_migrate_unique_ids."""
 
-import asyncio
 import contextlib
 import logging
 import sys
@@ -10,7 +9,6 @@ from dataclasses import dataclass, field
 from unittest.mock import MagicMock
 
 import pytest
-
 from custom_components.thessla_green_modbus.const import DOMAIN
 
 

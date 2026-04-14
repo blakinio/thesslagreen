@@ -5,7 +5,6 @@ import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
 

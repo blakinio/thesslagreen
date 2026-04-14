@@ -60,11 +60,11 @@ def _entity_names(trans: dict, platform: str) -> dict[str, str]:
 @pytest.fixture(scope="module")
 def entity_mappings():
     from custom_components.thessla_green_modbus.entity_mappings import (
-        SENSOR_ENTITY_MAPPINGS,
         BINARY_SENSOR_ENTITY_MAPPINGS,
-        SWITCH_ENTITY_MAPPINGS,
-        SELECT_ENTITY_MAPPINGS,
         NUMBER_ENTITY_MAPPINGS,
+        SELECT_ENTITY_MAPPINGS,
+        SENSOR_ENTITY_MAPPINGS,
+        SWITCH_ENTITY_MAPPINGS,
         TEXT_ENTITY_MAPPINGS,
         TIME_ENTITY_MAPPINGS,
     )
@@ -241,7 +241,7 @@ class TestEntityNames:
 
         orphaned = en_sensor_tks - valid_tks
         assert not orphaned, (
-            f"Osierocone klucze w entity.sensor en.json (żadna encja ich nie używa):\n"
+            "Osierocone klucze w entity.sensor en.json (żadna encja ich nie używa):\n"
             + "\n".join(f"  '{k}'" for k in sorted(orphaned))
         )
 

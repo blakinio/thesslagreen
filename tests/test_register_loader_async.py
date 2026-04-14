@@ -6,7 +6,6 @@ import functools
 from typing import Any
 
 import pytest
-
 from custom_components.thessla_green_modbus.registers.loader import (
     _REGISTERS_PATH,
     async_compute_file_hash,
