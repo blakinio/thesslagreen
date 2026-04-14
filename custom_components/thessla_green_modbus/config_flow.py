@@ -567,6 +567,12 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.error("Unexpected error during device validation: %s", exc)  # pragma: no cover
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())  # pragma: no cover
         raise CannotConnect("cannot_connect") from exc  # pragma: no cover
+    except CannotConnect:
+        raise
+    except Exception as exc:
+        _LOGGER.error("Unexpected error during device validation: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        raise CannotConnect("cannot_connect") from exc
     finally:
         if hasattr(scanner, "close"):
             close_result = scanner.close()

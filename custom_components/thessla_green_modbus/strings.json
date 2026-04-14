@@ -1480,21 +1480,27 @@
       "init": {
         "data": {
           "deep_scan": "Deep Register Scan",
+          "enable_device_scan": "Enable Device Scan",
           "force_full_register_list": "Force Full Register List (skip scanning)",
+          "log_level": "Log Level",
           "max_registers_per_request": "Max Registers per Request",
           "retry": "Retry Attempts",
+          "safe_scan": "Safe Scan (no grouping)",
           "scan_interval": "Scan Interval (seconds)",
           "skip_missing_registers": "Skip Known Missing Registers",
           "timeout": "Connection Timeout (seconds)"
         },
         "data_description": {
+          "deep_scan": "Read raw registers 0-300 for diagnostics",
+          "enable_device_scan": "Enable automatic device scan during setup",
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
+          "log_level": "Set integration log verbosity",
+          "max_registers_per_request": "Select maximum registers per request (1-16)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
+          "safe_scan": "Avoid grouped register reads for compatibility",
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
-          "timeout": "Maximum time to wait for response (5-60 seconds)",
-          "deep_scan": "Read raw registers 0-300 for diagnostics",
-          "max_registers_per_request": "Select maximum registers per request (1-16)"
+          "timeout": "Maximum time to wait for response (5-60 seconds)"
         },
         "error": {
           "max_registers_per_request": "Maximum registers per Modbus request (1-16)"

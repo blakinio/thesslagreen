@@ -21,6 +21,9 @@ OPTION_KEYS = [
     "timeout",
     "deep_scan",
     "max_registers_per_request",
+    "enable_device_scan",
+    "log_level",
+    "safe_scan",
 ]
 
 OPTION_ERROR_KEYS = [
