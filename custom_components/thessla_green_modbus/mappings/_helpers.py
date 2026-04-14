@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -38,16 +39,31 @@ def _infer_icon(name: str, unit: str | None) -> str:
 
 
 def _get_register_info(name: str) -> dict[str, Any] | None:
-    """Return register metadata, handling numeric suffixes."""
+    """Return register metadata, handling numeric suffixes.
+
+    Looks up ``_REGISTER_INFO_CACHE`` through the parent ``mappings`` package
+    module so that test monkeypatching on ``em._REGISTER_INFO_CACHE`` is
+    respected at call time.
+    """
     global _REGISTER_INFO_CACHE
-    if _REGISTER_INFO_CACHE is None:
-        _REGISTER_INFO_CACHE = {}
-        for reg in get_all_registers():
+
+    # Prefer the cache stored on the parent module so monkeypatch works.
+    _parent = sys.modules.get(__package__)
+    cache: dict[str, Any] | None = (
+        getattr(_parent, "_REGISTER_INFO_CACHE", None) if _parent is not None else _REGISTER_INFO_CACHE
+    )
+
+    if cache is None:
+        _fn = (
+            getattr(_parent, "get_all_registers", None) if _parent is not None else None
+        ) or get_all_registers
+        cache = {}
+        for reg in _fn():
             if not reg.name:
                 continue
             scale = reg.multiplier or 1
             step = reg.resolution or scale
-            _REGISTER_INFO_CACHE[reg.name] = {
+            cache[reg.name] = {
                 "access": reg.access,
                 "min": reg.min,
                 "max": reg.max,
@@ -56,9 +72,13 @@ def _get_register_info(name: str) -> dict[str, Any] | None:
                 "scale": scale,
                 "step": step,
             }
-    info = _REGISTER_INFO_CACHE.get(name)
+        _REGISTER_INFO_CACHE = cache
+        if _parent is not None:
+            _parent._REGISTER_INFO_CACHE = cache  # type: ignore[union-attr]
+
+    info = cache.get(name)
     if info is None and (suffix := name.rsplit("_", 1)) and len(suffix) > 1 and suffix[1].isdigit():
-        info = _REGISTER_INFO_CACHE.get(suffix[0])
+        info = cache.get(suffix[0])
     return info
 
 
@@ -136,4 +156,5 @@ __all__ = [
     "_load_translation_keys",
     "_number_translation_keys",
     "_parse_states",
+    "get_all_registers",
 ]

@@ -79,7 +79,7 @@ ignore = [
     "SIM102",
 ]
 extend-safe-fixes = ["ANN"]
-per-file-ignores = {"tests/*" = ["E402", "RUF001", "SIM117"], "tools/translate_register_descriptions.py" = ["RUF001"]}
+per-file-ignores = {"tests/*" = ["BLE001", "E402", "RUF001", "SIM117"], "tools/translate_register_descriptions.py" = ["RUF001"]}
 
 [tool.ruff.format]
 line-ending = "lf"
