@@ -21,7 +21,7 @@ from .utils import BCD_TIME_PREFIXES
 
 try:
     from .registers.loader import RegisterDef, get_all_registers
-except Exception:  # pragma: no cover - fallback for test stubs
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback for test stubs
     from typing import Any as RegisterDef  # type: ignore
 
     def get_all_registers():  # type: ignore
@@ -175,7 +175,7 @@ def _resolve_entity_domain(register_name: str) -> str | None:
         for domain, mapping in ENTITY_MAPPINGS.items():
             if register_name in mapping:
                 return domain
-    except Exception:  # pragma: no cover - defensive during bootstrap
+    except (ImportError, AttributeError):  # pragma: no cover - defensive during bootstrap
         return None
     return None
 

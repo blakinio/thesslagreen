@@ -76,13 +76,13 @@ from .utils import resolve_connection_settings
 
 try:  # pragma: no cover - optional in tests
     from homeassistant.helpers import entity_registry as er  # type: ignore
-except Exception:  # pragma: no cover
+except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover
     er = None  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    type ThesslaGreenConfigEntry = ConfigEntry[ThesslaGreenModbusCoordinator]
+    ThesslaGreenConfigEntry = ConfigEntry[ThesslaGreenModbusCoordinator]
 
 # Compatibility shim for tests patching "custom_components.thessla_green_modbus.__init__.er".
 _init_alias = sys.modules.setdefault(f"{__name__}.__init__", sys.modules[__name__])
@@ -116,7 +116,7 @@ def _get_platforms() -> list[object]:
 
     try:  # Import only when running inside Home Assistant
         from homeassistant.const import Platform  # type: ignore
-    except Exception:  # pragma: no cover - Home Assistant missing
+    except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - Home Assistant missing
         _platform_cache = list(PLATFORM_DOMAINS)
         return _platform_cache
 
@@ -313,12 +313,19 @@ async def _async_start_coordinator(
             raise
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
-    except Exception as exc:
-        if isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed":
-            if is_invalid_auth_error(exc):
-                _LOGGER.error("Authentication failed during setup: %s", exc)
-                await entry.async_start_reauth(hass)
-                return False
+    except BaseException as exc:
+        if isinstance(exc, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)):
+            raise
+        # Deliberately broad at integration setup boundary: Home Assistant test
+        # stubs and custom coordinator implementations may raise dynamic
+        # exception classes (including test-local subclasses of UpdateFailed).
+        # We convert all such failures into ConfigEntryNotReady/reauth flow.
+        if (
+            isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed"
+        ) and is_invalid_auth_error(exc):
+            _LOGGER.error("Authentication failed during setup: %s", exc)
+            await entry.async_start_reauth(hass)
+            return False
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
 
@@ -345,12 +352,19 @@ async def _async_start_coordinator(
             raise
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
-    except Exception as exc:
-        if isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed":
-            if is_invalid_auth_error(exc):
-                _LOGGER.error("Authentication failed during initial refresh: %s", exc)
-                await entry.async_start_reauth(hass)
-                return False
+    except BaseException as exc:
+        if isinstance(exc, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)):
+            raise
+        # Deliberately broad at integration setup boundary: Home Assistant test
+        # stubs and custom coordinator implementations may raise dynamic
+        # exception classes (including test-local subclasses of UpdateFailed).
+        # We convert all such failures into ConfigEntryNotReady/reauth flow.
+        if (
+            isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed"
+        ) and is_invalid_auth_error(exc):
+            _LOGGER.error("Authentication failed during initial refresh: %s", exc)
+            await entry.async_start_reauth(hass)
+            return False
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
 
@@ -414,7 +428,7 @@ async def _async_setup_platforms(
                 await import_task
         except (ImportError, ModuleNotFoundError) as err:
             _LOGGER.debug("Could not preload platform %s: %s", platform, err)
-        except Exception as err:  # pragma: no cover - unexpected
+        except (TypeError, ValueError, RuntimeError, AttributeError, OSError) as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
 
     platforms = _get_platforms()
@@ -508,7 +522,7 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
         coordinator.safe_scan = bool(entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN))
         try:
             coordinator._compute_register_groups()
-        except Exception:  # pragma: no cover - defensive
+        except (TypeError, ValueError, AttributeError, RuntimeError, OSError):  # pragma: no cover - defensive
             _LOGGER.debug("Failed to recompute register groups after option update", exc_info=True)
 
         await coordinator.async_request_refresh()
@@ -641,7 +655,7 @@ async def _async_migrate_entity_ids(
         from homeassistant.helpers import device_registry as dr  # type: ignore
         from homeassistant.helpers import entity_registry as er  # type: ignore
         from homeassistant.util import slugify  # type: ignore
-    except Exception:
+    except (ImportError, ModuleNotFoundError, AttributeError):
         return
 
     entity_reg = er.async_get(hass)
@@ -671,7 +685,7 @@ async def _async_migrate_entity_ids(
             all_platform_entries = [
                 e for e in iter_entries if getattr(e, "platform", None) == DOMAIN
             ]
-        except Exception:
+        except (TypeError, AttributeError, OSError, RuntimeError):
             all_platform_entries = []
 
     # Merge: config-entry entries first (take priority), then orphaned ones.
@@ -763,7 +777,7 @@ async def _async_migrate_entity_ids(
                 try:
                     entity_reg.async_remove(reg_entry.entity_id)
                     removed_stale += 1
-                except Exception as exc:
+                except (TypeError, AttributeError, OSError, RuntimeError) as exc:
                     _LOGGER.warning(
                         "entity_id migration: could not remove stale entity %s: %s",
                         reg_entry.entity_id,
@@ -796,7 +810,7 @@ async def _async_migrate_entity_ids(
             try:
                 entity_reg.async_remove(reg_entry.entity_id)
                 removed_stale += 1
-            except Exception as exc:
+            except (TypeError, AttributeError, OSError, RuntimeError) as exc:
                 _LOGGER.warning(
                     "entity_id migration: could not remove stale entity %s: %s",
                     reg_entry.entity_id,
@@ -865,7 +879,7 @@ async def _async_migrate_entity_ids(
                 try:
                     entity_reg.async_remove(current.entity_id)
                     removed.append(current.entity_id)
-                except Exception as exc:
+                except (TypeError, AttributeError, OSError, RuntimeError) as exc:
                     _LOGGER.warning(
                         "entity_id migration: could not remove orphaned %s: %s",
                         current.entity_id,
@@ -892,7 +906,7 @@ async def _async_migrate_entity_ids(
         try:
             entity_reg.async_update_entity(current.entity_id, new_entity_id=expected_entity_id)
             migrated.append((current.entity_id, expected_entity_id))
-        except Exception as exc:
+        except (TypeError, AttributeError, OSError, RuntimeError) as exc:
             _LOGGER.warning(
                 "entity_id migration: could not rename %s → %s: %s",
                 current.entity_id,
@@ -950,7 +964,7 @@ async def _async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator) -> 
                     new_entity_id=new_entity_id,
                     new_unique_id=new_unique_id,
                 )
-            except Exception:
+            except (TypeError, AttributeError, OSError, RuntimeError):
                 registry.async_remove(old_entity_id)
             migrated = True
 
@@ -978,7 +992,7 @@ async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> 
                     maybe_info = await maybe_info
                 if isinstance(maybe_info, dict):
                     device_info = maybe_info
-            except Exception:  # pragma: no cover - defensive
+            except (TypeError, AttributeError, OSError, RuntimeError):  # pragma: no cover - defensive
                 device_info = None
     serial = device_info.get("serial_number") if isinstance(device_info, dict) else None
     host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST)

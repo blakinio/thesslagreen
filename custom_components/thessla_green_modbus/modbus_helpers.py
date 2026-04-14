@@ -101,13 +101,13 @@ async def async_maybe_await_close(obj: Any | None) -> None:
 
     try:
         result = close()
-    except Exception as exc:  # pragma: no cover - defensive
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:  # pragma: no cover - defensive
         _LOGGER.debug("Error calling close on Modbus client: %s", exc)
         return
 
     try:
         await async_maybe_await(result)
-    except Exception as exc:  # pragma: no cover - defensive
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:  # pragma: no cover - defensive
         _LOGGER.debug("Error awaiting Modbus client close: %s", exc)
 
 
@@ -184,10 +184,6 @@ def _build_request_frame(
     except (ValueError, TypeError, IndexError) as err:
         _LOGGER.debug("Failed to build request frame: %s", err)
         return b""
-    except Exception as err:  # pragma: no cover - unexpected
-        _LOGGER.exception("Unexpected error building request frame: %s", err)
-        return b""
-
     return b""
 
 
@@ -345,7 +341,14 @@ async def _call_modbus(
     except asyncio.CancelledError:
         _LOGGER.debug("Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts)
         raise
-    except Exception as err:
+    except (
+        AttributeError,
+        ModbusIOException,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as err:
         if isinstance(err, ModbusIOException) and "request cancelled" in str(err).lower():
             _LOGGER.debug(
                 "Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts
@@ -360,7 +363,7 @@ async def _call_modbus(
         except (AttributeError, ValueError, TypeError, UnicodeError) as err:
             _LOGGER.debug("Failed to encode Modbus response: %s", err)
             encoded = b""
-        except Exception as err:  # pragma: no cover - unexpected
+        except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as err:  # pragma: no cover - unexpected
             _LOGGER.exception("Unexpected error encoding Modbus response: %s", err)
             encoded = b""
         if encoded:
@@ -370,7 +373,7 @@ async def _call_modbus(
     else:
         try:
             encoded = response.encode() if hasattr(response, "encode") else b""
-        except Exception:
+        except (AttributeError, OSError, RuntimeError, TypeError, ValueError):
             encoded = b""
         if encoded:
             _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))

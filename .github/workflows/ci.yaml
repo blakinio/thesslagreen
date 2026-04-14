@@ -82,6 +82,36 @@ jobs:
       - name: Pytest
         run: pytest -q
 
+  entity-mappings:
+    name: Entity mappings validation
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+        ha-version: ["2026.1.0"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install homeassistant==${{ matrix.ha-version }} hacs
+
+      - name: Validate entity mappings
+        run: python tools/validate_entity_mappings.py
+
   hassfest:
     name: hassfest
     runs-on: ubuntu-latest

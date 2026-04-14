@@ -20,40 +20,15 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from ._compat import (
+    BinarySensorDeviceClass,
+    EntityCategory,
+    SensorDeviceClass,
+    SensorStateClass,
+)
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
-
-try:  # pragma: no cover - handle absence of Home Assistant
-    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-    from homeassistant.helpers.entity import EntityCategory
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - executed in tests without HA
-
-    class EntityCategory:  # type: ignore[no-redef]
-        DIAGNOSTIC = "diagnostic"
-        CONFIG = "config"
-
-    class BinarySensorDeviceClass:  # type: ignore[no-redef]
-        RUNNING = "running"
-        OPENING = "opening"
-        POWER = "power"
-        HEAT = "heat"
-        CONNECTIVITY = "connectivity"
-        PROBLEM = "problem"
-        SAFETY = "safety"
-        MOISTURE = "moisture"
-
-    class SensorDeviceClass:  # type: ignore[no-redef]
-        TEMPERATURE = "temperature"
-        VOLTAGE = "voltage"
-        POWER = "power"
-        ENERGY = "energy"
-        EFFICIENCY = "efficiency"
-        VOLUME_FLOW_RATE = "volume_flow_rate"
-
-    class SensorStateClass:  # type: ignore[no-redef]
-        MEASUREMENT = "measurement"
-        TOTAL_INCREASING = "total_increasing"
 
 
 try:  # pragma: no cover - use HA constants when available
@@ -470,7 +445,7 @@ def _number_translation_keys() -> set[str]:
     ) as err:  # pragma: no cover - fallback when translations missing
         _LOGGER.debug("Failed to load number translation keys: %s", err)
         return set()
-    except Exception as err:  # pragma: no cover - unexpected
+    except (AttributeError, TypeError) as err:  # pragma: no cover - unexpected
         _LOGGER.exception("Unexpected error loading number translation keys: %s", err)
         return set()
 
@@ -494,7 +469,7 @@ def _load_translation_keys() -> dict[str, set[str]]:
     ) as err:  # pragma: no cover - fallback when translations missing
         _LOGGER.debug("Failed to load translation keys: %s", err)
         return {"binary_sensor": set(), "switch": set(), "select": set()}
-    except Exception as err:  # pragma: no cover - unexpected
+    except (AttributeError, TypeError) as err:  # pragma: no cover - unexpected
         _LOGGER.exception("Unexpected error loading translation keys: %s", err)
         return {"binary_sensor": set(), "switch": set(), "select": set()}
 

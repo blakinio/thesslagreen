@@ -61,7 +61,7 @@ def _error_status_description(key: str) -> str:
 
     try:
         definition = get_register_definition(key)
-    except Exception:  # pragma: no cover - defensive fallback
+    except (AttributeError, KeyError, TypeError, ValueError):  # pragma: no cover - defensive fallback
         return key
     return definition.description_en or definition.description or key
 

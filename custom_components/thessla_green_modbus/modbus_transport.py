@@ -121,14 +121,14 @@ class BaseModbusTransport(ABC):
             self.offline_state = True
             try:
                 await self._reset_connection()
-            except Exception as exc:
+            except (ConnectionException, ModbusException, OSError, RuntimeError) as exc:
                 _LOGGER.debug("Reset connection failed during CancelledError handling: %s", exc)
             raise
         except ModbusException as exc:
             _LOGGER.error("Permanent Modbus error: %s", exc)
             self.offline_state = True
             raise
-        except Exception as exc:  # pragma: no cover - unexpected
+        except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:  # pragma: no cover - unexpected
             _LOGGER.error("Unexpected transport error: %s", exc)
             self.offline_state = True
             raise

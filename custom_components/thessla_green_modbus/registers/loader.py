@@ -399,7 +399,7 @@ try:  # pragma: no cover - defensive
 except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
     _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}  # type: ignore[assignment]
-except Exception as err:  # pragma: no cover - unexpected
+except (AttributeError, TypeError) as err:  # pragma: no cover - unexpected
     _LOGGER.exception("Unexpected error loading special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}  # type: ignore[assignment]
 
@@ -491,7 +491,7 @@ def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> li
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
-    except Exception as err:  # pragma: no cover - defensive
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as err:  # pragma: no cover - defensive
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
 
     return _parse_registers(raw)
@@ -507,7 +507,7 @@ async def async_load_registers_from_file(
         raw = json.loads(raw_text)
     except FileNotFoundError as err:  # pragma: no cover - sanity check
         raise RuntimeError(f"Register definition file missing: {path}") from err
-    except Exception as err:  # pragma: no cover - defensive
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as err:  # pragma: no cover - defensive
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
 
     return _parse_registers(raw)

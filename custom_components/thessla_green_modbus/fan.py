@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
@@ -70,6 +70,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     ``_attr_*`` attributes and entity methods implement the Home Assistant
     ``FanEntity`` API and may appear unused to static analysis.
     """
+    _MODE_MAP: ClassVar[dict[int, str]] = {0: "auto", 1: "manual", 2: "temporary"}
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
@@ -99,9 +100,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     def is_on(self) -> bool | None:
         """Return true if fan is on."""
         # Check if system is powered on
-        if "on_off_panel_mode" in self.coordinator.data:
-            if not self.coordinator.data["on_off_panel_mode"]:
-                return False
+        if "on_off_panel_mode" in self.coordinator.data and not self.coordinator.data["on_off_panel_mode"]:
+            return False
 
         # Check current flow rate
         flow_rate = self._get_current_flow_rate()
@@ -245,13 +245,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     def _get_current_mode(self) -> str | None:
         """Get current system mode."""
         if "mode" in self.coordinator.data:
-            mode_value = self.coordinator.data["mode"]
-            if mode_value == 0:
-                return "auto"
-            elif mode_value == 1:
-                return "manual"
-            elif mode_value == 2:
-                return "temporary"
+            return self._MODE_MAP.get(self.coordinator.data["mode"])
         return None
 
     async def _write_register(self, register_name: str, value: int) -> None:
@@ -292,13 +286,12 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # Add system status
         system_status = []
         if (
-            "power_supply_fans" in self.coordinator.data
-            and self.coordinator.data["power_supply_fans"]
+            self.coordinator.data.get("power_supply_fans")
         ):
             system_status.append("fans_powered")
-        if "boost_mode" in self.coordinator.data and self.coordinator.data["boost_mode"]:
+        if self.coordinator.data.get("boost_mode"):
             system_status.append("boost_active")
-        if "eco_mode" in self.coordinator.data and self.coordinator.data["eco_mode"]:
+        if self.coordinator.data.get("eco_mode"):
             system_status.append("eco_active")
 
         if system_status:

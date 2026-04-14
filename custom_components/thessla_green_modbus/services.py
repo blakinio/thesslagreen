@@ -14,25 +14,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.service import async_extract_entity_ids
 
-try:  # pragma: no cover - handle missing Home Assistant util during tests
-    from homeassistant.util import dt as dt_util
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
-    import datetime as _datetime_module
-
-    class _DTUtil:
-        """Fallback minimal dt util."""
-
-        @staticmethod
-        def now() -> _datetime_module.datetime:
-            return _datetime_module.datetime.now()
-
-        @staticmethod
-        def utcnow() -> _datetime_module.datetime:
-            utc = _datetime_module.datetime.UTC if hasattr(_datetime_module.datetime, "UTC") else _datetime_module.UTC
-            return _datetime_module.datetime.now(utc)
-
-    dt_util = _DTUtil()
-
+from ._compat import dt_util
 from .const import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
@@ -282,7 +264,7 @@ def _normalize_option(value: str) -> str:
     ]
     for prefix in prefixes:
         if value.startswith(prefix):
-            return value[len(prefix) :]  # noqa: E203
+            return value[len(prefix) :]
     return value
 
 

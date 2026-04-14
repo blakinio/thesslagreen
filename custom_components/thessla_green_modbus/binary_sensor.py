@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -166,7 +166,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
     # Prefixes that identify diagnostic alarm/error/status registers.
     _DIAG_PREFIXES = ("s_", "e_", "f_")
-    _DIAG_NAMES = {"alarm", "error"}
+    _DIAG_NAMES: ClassVar[frozenset[str]] = frozenset({"alarm", "error"})
 
     @property
     def available(self) -> bool:  # pragma: no cover

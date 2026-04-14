@@ -7,33 +7,21 @@ import inspect
 import logging
 import re
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime, timedelta, timezone
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, cast
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
-try:  # pragma: no cover - handle missing Home Assistant util during tests
-    from homeassistant.util import dt as dt_util
-except (ModuleNotFoundError, ImportError):  # pragma: no cover
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
-    UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
+from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP
+from ._compat import dt_util as _base_dt_util
+from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
-    class _DTUtil:
-        """Fallback minimal dt util."""
-
-        @staticmethod
-        def now():
-            from datetime import datetime
-
-            return datetime.now(UTC)
-
-        @staticmethod
-        def utcnow():
-            from datetime import datetime
-
-            return datetime.now(UTC)
-
-    dt_util = _DTUtil()  # type: ignore
+UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
 
 
 class _SafeDTUtil:
@@ -45,23 +33,23 @@ class _SafeDTUtil:
     @staticmethod
     def _coerce(value: Any) -> datetime:
         if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-        return datetime.now(timezone.utc)
+            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        return datetime.now(UTC)
 
     def now(self) -> datetime:
         func = getattr(self._base, "now", None)
         if callable(func):
             return self._coerce(func())
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def utcnow(self) -> datetime:
         func = getattr(self._base, "utcnow", None)
         if callable(func):
             return self._coerce(func())
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
-dt_util = _SafeDTUtil(dt_util)
+dt_util = _SafeDTUtil(_base_dt_util)
 
 
 def _utcnow() -> datetime:
@@ -74,66 +62,18 @@ def _utcnow() -> datetime:
     if callable(utcnow_callable):
         value = utcnow_callable()
         if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc)
-
-try:  # pragma: no cover - used in runtime environments only
-    from homeassistant.const import EVENT_HOMEASSISTANT_STOP
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - test fallback
-    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
-
-from homeassistant.core import HomeAssistant
-
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    return datetime.now(UTC)
 
 if TYPE_CHECKING:
-    from homeassistant.helpers.device_registry import DeviceInfo
     from pymodbus.client import AsyncModbusTcpClient
 else:  # pragma: no cover
-    try:
-        from homeassistant.helpers.device_registry import DeviceInfo
-    except (ModuleNotFoundError, ImportError):  # pragma: no cover
-
-        class DeviceInfo:
-            """Minimal fallback DeviceInfo for tests.
-
-            Stores provided keyword arguments and exposes an ``as_dict`` method
-            similar to Home Assistant's ``DeviceInfo`` dataclass.
-            """
-
-            def __init__(self, **kwargs: Any) -> None:
-                self._data: dict[str, Any] = dict(kwargs)
-
-            def as_dict(self) -> dict[str, Any]:
-                """Return stored fields as a dictionary."""
-                return dict(self._data)
-
-            # Provide dictionary-style and attribute-style access for convenience in tests
-            def __getitem__(self, key: str) -> Any:  # pragma: no cover - simple mapping
-                return self._data[key]
-
-            def __getattr__(self, item: str) -> Any:
-                try:
-                    return self._data[item]
-                except KeyError as exc:  # pragma: no cover - mirror dict behaviour
-                    raise AttributeError(item) from exc
-
     try:
         from pymodbus.client import AsyncModbusTcpClient
     except (ModuleNotFoundError, ImportError):
         AsyncModbusTcpClient = Any
 
 _ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
-
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-try:
-    COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
-except TypeError:  # pragma: no cover - non-generic test stubs
-    COORDINATOR_BASE = DataUpdateCoordinator
-
 
 
 def _update_failed_exception(message: str) -> Exception:
@@ -1028,7 +968,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     except (KeyError, AttributeError, TypeError) as err:
                         _LOGGER.debug("Missing definition for %s: %s", reg, err)
                         length = 1
-                    except Exception as err:  # pragma: no cover - unexpected
+                    except (ValueError, OSError, RuntimeError) as err:  # pragma: no cover - unexpected
                         _LOGGER.exception(
                             "Unexpected error getting definition for %s: %s",
                             reg,
@@ -1050,7 +990,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 except (KeyError, AttributeError, TypeError) as err:
                     _LOGGER.debug("Missing definition for %s: %s", reg, err)
                     length = 1
-                except Exception as err:  # pragma: no cover - unexpected
+                except (ValueError, OSError, RuntimeError) as err:  # pragma: no cover - unexpected
                     _LOGGER.exception(
                         "Unexpected error getting definition for %s: %s",
                         reg,
@@ -1222,7 +1162,17 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 self.client = legacy_client
                 self._transport = None
                 return
-        except Exception as exc:
+        except (
+            ModbusException,
+            ConnectionException,
+            ModbusIOException,
+            TimeoutError,
+            asyncio.TimeoutError,
+            OSError,
+            TypeError,
+            ValueError,
+            AttributeError,
+        ) as exc:
             _LOGGER.debug("Legacy client connect attempt failed, trying transports: %s", exc)
 
         for mode, timeout in attempts:
@@ -1238,7 +1188,17 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                     raise  # timeout / no connection = wrong protocol, reject transport
                 except ModbusException as exc:
                     _LOGGER.debug("Protocol probe: Modbus error code = valid protocol (%s)", exc)
-            except Exception as exc:  # pragma: no cover - network dependent
+            except (
+                ModbusException,
+                ConnectionException,
+                ModbusIOException,
+                TimeoutError,
+                asyncio.TimeoutError,
+                OSError,
+                TypeError,
+                ValueError,
+                AttributeError,
+            ) as exc:  # pragma: no cover - network dependent
                 last_error = exc
                 await transport.close()
                 continue
@@ -1271,7 +1231,17 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 self.client = legacy_client
                 self._transport = None
                 return
-        except Exception as exc:
+        except (
+            ModbusException,
+            ConnectionException,
+            ModbusIOException,
+            TimeoutError,
+            asyncio.TimeoutError,
+            OSError,
+            TypeError,
+            ValueError,
+            AttributeError,
+        ) as exc:
             _LOGGER.debug("Legacy client connect attempt failed: %s", exc)
 
         raise ConnectionException("Auto-detect Modbus transport failed") from last_error
@@ -1346,7 +1316,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 _LOGGER.exception("Unexpected error establishing connection: %s", exc)
                 raise
 
-    async def _async_update_data(self) -> dict[str, Any]:  # pragma: no cover
+    async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the device with optimized batch reading.
 
         This method overrides ``DataUpdateCoordinator._async_update_data``
@@ -1450,7 +1420,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             finally:
                 self._update_in_progress = False
 
-    async def _read_input_registers_optimized(self) -> dict[str, Any]:  # pragma: no cover
+    async def _read_input_registers_optimized(self) -> dict[str, Any]:
         """Read input registers using optimized batch reading."""
         data: dict[str, Any] = {}
 
@@ -1558,7 +1528,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
         chunk_start: int,
         register_names: list[str | None],
         data: dict[str, Any],
-    ) -> None:  # pragma: no cover
+    ) -> None:
         """Read holding registers one-by-one as fallback when a batch read fails.
 
         Called both when the device returns an empty batch (len == 0) and when
@@ -1594,7 +1564,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
             except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
                 self._mark_registers_failed([reg_name])
 
-    async def _read_holding_registers_optimized(self) -> dict[str, Any]:  # pragma: no cover
+    async def _read_holding_registers_optimized(self) -> dict[str, Any]:
         """Read holding registers using optimized batch reading."""
         data: dict[str, Any] = {}
 
@@ -1676,7 +1646,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
 
         return data
 
-    async def _read_coil_registers_optimized(self) -> dict[str, Any]:  # pragma: no cover
+    async def _read_coil_registers_optimized(self) -> dict[str, Any]:
         """Read coil registers using optimized batch reading."""
         data: dict[str, Any] = {}
 
@@ -1867,13 +1837,13 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
     # fan_total_max_W is the combined power of both fans at nominal airflow.
     # heater_max_W is derived from the F4 fuse (6.3 A × 230 V) on the label or
     # from the official datasheet for AirPack4 units.
-    _MODEL_POWER_DATA: dict[int, tuple[float, float]] = {
+    _MODEL_POWER_DATA: ClassVar[Mapping[int, tuple[float, float]]] = MappingProxyType({
         300: (105.0, 1150.0),   # AirPack4 300V
         400: (170.0, 1500.0),   # AirPack4 400V
         420: (94.0, 1449.0),    # AirPack Home 400h Seria 3 (label: 1543 W total, F4 6.3 A)
         500: (255.0, 1850.0),   # AirPack4 500V
         550: (345.0, 1950.0),   # AirPack4 550V
-    }
+    })
     # Tolerance in m³/h when matching nominal flow to a known model entry.
     _MODEL_FLOW_TOLERANCE = 15
 
@@ -2042,9 +2012,9 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 elapsed = 0.0
             else:
                 if getattr(now, "tzinfo", None) is not None and getattr(last_ts, "tzinfo", None) is None:
-                    last_ts = last_ts.replace(tzinfo=timezone.utc)
+                    last_ts = last_ts.replace(tzinfo=UTC)
                 elif getattr(now, "tzinfo", None) is None and getattr(last_ts, "tzinfo", None) is not None:
-                    now = now.replace(tzinfo=timezone.utc)
+                    now = now.replace(tzinfo=UTC)
                 elapsed = (now - last_ts).total_seconds()
             self._total_energy += power * elapsed / 3600000.0
             data["total_energy"] = self._total_energy
@@ -2068,7 +2038,7 @@ class ThesslaGreenModbusCoordinator(COORDINATOR_BASE):
                 year = 2000 + yy
                 if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
                     data["device_clock"] = f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
-        except Exception as exc:  # pragma: no cover
+        except (TypeError, ValueError, AttributeError) as exc:  # pragma: no cover
             _LOGGER.debug("Failed to decode device clock: %s", exc)
 
         return data
