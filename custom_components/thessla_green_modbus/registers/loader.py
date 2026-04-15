@@ -339,7 +339,7 @@ class RegisterDef:
             if isinstance(value, dict):
                 airflow = value.get("airflow_pct", value.get("airflow"))
                 temp = value.get("temp_c", value.get("temp"))
-            elif isinstance(value, (list, tuple)):
+            elif isinstance(value, list | tuple):
                 airflow, temp = value
             else:
                 airflow, temp = value, 0
@@ -398,10 +398,10 @@ try:  # pragma: no cover - defensive
     }
 except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
     _LOGGER.debug("Failed to load special modes: %s", err)
-    _SPECIAL_MODES_ENUM = {}  # type: ignore[assignment]
+    _SPECIAL_MODES_ENUM = {}
 except (AttributeError, TypeError) as err:  # pragma: no cover - unexpected
     _LOGGER.exception("Unexpected error loading special modes: %s", err)
-    _SPECIAL_MODES_ENUM = {}  # type: ignore[assignment]
+    _SPECIAL_MODES_ENUM = {}
 
 
 # ---------------------------------------------------------------------------
@@ -697,11 +697,7 @@ def group_registers(
 
     from ..modbus_helpers import group_reads
 
-    return group_reads(addresses, max_block_size=max_block_size)
-
-
-# Backwards compatible alias used throughout the integration and tests.
-Register = RegisterDef
+    return cast(list[tuple[int, int]], group_reads(addresses, max_block_size=max_block_size))
 
 
 # Public exports for import * use in tests and helpers

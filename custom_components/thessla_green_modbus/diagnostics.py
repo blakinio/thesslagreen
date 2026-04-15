@@ -143,7 +143,7 @@ async def async_get_config_entry_diagnostics(
     except (
         BaseException
     ) as err:  # pragma: no cover - defensive for unexpected translation-layer errors
-        if isinstance(err, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)):
+        if isinstance(err, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
             raise
         _LOGGER.debug("Translation load failed unexpectedly: %s", err)
     active_errors: dict[str, str] = {}

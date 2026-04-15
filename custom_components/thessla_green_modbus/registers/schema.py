@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import re
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import pydantic
 from pydantic import BaseModel, ConfigDict, Field
@@ -44,7 +44,7 @@ if hasattr(pydantic, "model_validator"):
     model_validator = pydantic.model_validator
 else:  # pragma: no cover
 
-    def model_validator(*args: Any, **kwargs: Any):
+    def model_validator(*args: Any, **kwargs: Any) -> Any:
         if "mode" in kwargs:
             kwargs = dict(kwargs)
             mode = kwargs.pop("mode")
@@ -254,7 +254,7 @@ class RegisterDefinition(BaseModel):
 
     else:  # pragma: no cover
 
-        @pydantic.validator("function")  # type: ignore[no-redef]
+        @pydantic.validator("function")
         def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
             if v not in {1, 2, 3, 4}:
                 raise ValueError("function code must be between 1 and 4")
@@ -439,7 +439,7 @@ class RegisterDefinition(BaseModel):
 
     else:  # pragma: no cover
 
-        @pydantic.validator("name")  # type: ignore[no-redef]
+        @pydantic.validator("name")
         def name_is_snake(cls, v: str) -> str:  # pragma: no cover
             if not re.fullmatch(r"[a-z0-9_]+", v):
                 raise ValueError("name must be snake_case")
@@ -448,15 +448,17 @@ class RegisterDefinition(BaseModel):
 
 if hasattr(pydantic, "RootModel"):
 
-    class RegisterList(RootModel[list[RegisterDefinition]]):
+    class RegisterList(RootModel[list[RegisterDefinition]]):  # type: ignore[valid-type,misc]
         """Container model to validate a list of registers."""
 
         @property
         def registers(self) -> list[RegisterDefinition]:
             root_val = getattr(self, "root", None)
             if root_val is not None:
-                return root_val
-            return getattr(self, "__root__")  # noqa: B009  # pragma: no cover
+                return cast(list[RegisterDefinition], root_val)
+            return cast(
+                list[RegisterDefinition], self.__root__
+            )  # pragma: no cover
 
         if hasattr(pydantic, "model_validator"):
 
@@ -479,7 +481,7 @@ if hasattr(pydantic, "RootModel"):
 
 else:  # pragma: no cover
 
-    class RegisterList(RootModel):
+    class RegisterList(RootModel):  # type: ignore[no-redef,valid-type,misc]
         """Container model to validate a list of registers."""
 
         __root__: list[RegisterDefinition]

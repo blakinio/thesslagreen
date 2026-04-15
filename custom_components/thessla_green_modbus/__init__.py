@@ -318,7 +318,7 @@ async def _async_start_coordinator(
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
     except BaseException as exc:
-        if isinstance(exc, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)):
+        if isinstance(exc, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
             raise
         # Deliberately broad at integration setup boundary: Home Assistant test
         # stubs and custom coordinator implementations may raise dynamic
@@ -357,7 +357,7 @@ async def _async_start_coordinator(
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
     except BaseException as exc:
-        if isinstance(exc, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)):
+        if isinstance(exc, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
             raise
         # Deliberately broad at integration setup boundary: Home Assistant test
         # stubs and custom coordinator implementations may raise dynamic
