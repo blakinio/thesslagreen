@@ -504,7 +504,9 @@ def _build_entity_mappings() -> None:
     text_mappings = _maps("TEXT_ENTITY_MAPPINGS")
     special_mode_icons: dict[str, str] = _maps("SPECIAL_MODE_ICONS")
 
-    number_mappings = _load_number_mappings()
+    number_mappings = _maps("NUMBER_ENTITY_MAPPINGS")
+    number_mappings.clear()
+    number_mappings.update(_load_number_mappings())
     time_mappings: dict[str, dict[str, Any]] = {}
 
     _gen_binary, _gen_switch, _gen_select = _load_discrete_mappings()
@@ -532,10 +534,9 @@ def _build_entity_mappings() -> None:
             "bit": bit,
         }
 
-    # Temporarily inject number_mappings and time_mappings into parent so
-    # _extend_entity_mappings_from_registers can see them via _get_parent().
+    # Temporarily inject time_mappings into parent so
+    # _extend_entity_mappings_from_registers can see it via _get_parent().
     if parent is not None:
-        parent.NUMBER_ENTITY_MAPPINGS = number_mappings
         parent.TIME_ENTITY_MAPPINGS = time_mappings
 
     _extend_entity_mappings_from_registers()
