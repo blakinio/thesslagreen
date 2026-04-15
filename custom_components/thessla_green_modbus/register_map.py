@@ -87,7 +87,7 @@ class RegisterMapEntry:
         if expected == "bitmask":
             if isinstance(value, int):
                 return value  # raw integer stored for per-bit sensor processing
-            if not isinstance(value, Iterable) or isinstance(value, (str, bytes)):
+            if not isinstance(value, Iterable) or isinstance(value, str | bytes):
                 raise ValueError(f"Expected iterable flag list for {self.name}, got {type(value)}")
             return list(value)
 
@@ -107,7 +107,7 @@ class RegisterMapEntry:
         if expected == "bool":
             if isinstance(value, bool):
                 coerced: bool | int | float = value
-            elif isinstance(value, (int, float)):
+            elif isinstance(value, int | float):
                 coerced = bool(value)
             elif isinstance(value, str) and self.enum_map:
                 # Value is an enum-decoded string (e.g. "brak"/"jest").
@@ -122,7 +122,7 @@ class RegisterMapEntry:
             return bool(coerced)
 
         numeric: float | int
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             numeric = value
         else:
             raise ValueError(f"Expected numeric value for {self.name}, got {type(value)}")
@@ -215,13 +215,15 @@ def build_register_map() -> dict[str, RegisterMapEntry]:
             enum_values=set(register.enum.values()) if register.enum else set(),
             model_variants=_model_variants(register),
             entity_domain=_resolve_entity_domain(register.name),
-            enum_map={
-                int(k): v
-                for k, v in register.enum.items()
-                if isinstance(k, (int, str)) and str(k).lstrip("-").isdigit()
-            }
-            if register.enum
-            else {},
+            enum_map=(
+                {
+                    int(k): v
+                    for k, v in register.enum.items()
+                    if isinstance(k, int | str) and str(k).lstrip("-").isdigit()
+                }
+                if register.enum
+                else {}
+            ),
         )
         entries[register.name] = entry
     return entries
