@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc
+UTC = datetime.UTC if hasattr(datetime, "UTC") else UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -994,12 +994,12 @@ async def test_read_with_retry_transient_error_raises_modbus_io():
 
 
 def test_process_register_value_sensor_unavailable_temperature():
-    """SENSOR_UNAVAILABLE on register with 'temperature' in name → returns None (line 1828)."""
+    """SENSOR_UNAVAILABLE on a temperature register → returns None."""
     from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
     coord = _make_coordinator()
-    # Mock _is_temperature()=False so line 1813 is skipped, reaching line 1826-1828
+    # Use a mock that correctly identifies this as a temperature register.
     mock_def = MagicMock()
-    mock_def._is_temperature.return_value = False
+    mock_def.is_temperature.return_value = True
     mock_def.enum = None
     mock_def.decode.return_value = 0
     with patch(
@@ -1020,9 +1020,9 @@ def test_process_register_value_sensor_unavailable_non_temperature():
     non_temp_reg = next((r for r in SENSOR_UNAVAILABLE_REGISTERS if "temperature" not in r), None)
     if non_temp_reg is None:
         pytest.skip("No non-temperature register in SENSOR_UNAVAILABLE_REGISTERS")
-    # Mock _is_temperature()=False so decode doesn't transform value
+    # Mock is_temperature()=False so decode doesn't transform value
     mock_def = MagicMock()
-    mock_def._is_temperature.return_value = False
+    mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = 0
     with patch(
@@ -1037,7 +1037,7 @@ def test_process_register_value_schedule_hh_mm():
     """schedule_ register with HH:MM decoded → stored as HH:MM string (not minutes)."""
     coord = _make_coordinator()
     mock_def = MagicMock()
-    mock_def._is_temperature.return_value = False
+    mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = "06:30"
     with patch(
@@ -1193,7 +1193,7 @@ def test_process_register_value_decoded_equals_sensor_unavailable():
     from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
     coord = _make_coordinator()
     mock_def = MagicMock()
-    mock_def._is_temperature.return_value = False
+    mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = SENSOR_UNAVAILABLE  # decoded == SENSOR_UNAVAILABLE
     with patch(
@@ -1208,7 +1208,7 @@ def test_process_register_value_schedule_hh_mm_invalid():
     """schedule_ register with bad HH:MM → ValueError caught, decoded unchanged (lines 1850-1851)."""
     coord = _make_coordinator()
     mock_def = MagicMock()
-    mock_def._is_temperature.return_value = False
+    mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = "ab:cd"  # valid format but int() will fail
     with patch(

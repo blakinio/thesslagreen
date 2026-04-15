@@ -5,6 +5,17 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.3.1
+
+### Fixed
+- Fixed FC03 partial-response tail reverting after write: when AirPack4 FW 3.11 returns fewer registers than requested in a batch, the missing tail is now retried with individual reads instead of being marked as failed, preventing the UI from reverting to stale values after a write.
+- Fixed cache strip stripping registers on newer firmware: `_apply_scan_cache` now only strips `KNOWN_MISSING_REGISTERS` for FW 3.x devices; caches built on FW 4.x+ are no longer corrupted until the next full scan.
+- Refactored sensor sentinel handling: consolidated three separate 0x8000 checks into a single ordered sentinel gate in `_process_register_value`, eliminated magic number `32768` in favour of `SENSOR_UNAVAILABLE`, and added public `is_temperature()` alias on register definitions.
+
+### Changed
+- Replaced `pyflakes` with `ruff` as the primary linter; `# noqa: F401` directives on intentional side-effect imports are now respected.
+- Removed unused `_HAS_HA` dead code from `mappings/__init__.py`.
+
 ## [Unreleased]
 
 ### Added
