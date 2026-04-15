@@ -441,8 +441,18 @@ class _ModbusIOMixin:
                                 read_method, chunk_start, register_names, data
                             )
                         else:
-                            missing = register_names[len(response.registers) :]
-                            self._mark_registers_failed(missing)
+                            # Partial response (e.g. AirPack4 FW 3.11 returns
+                            # fewer registers than requested on schedule_summer
+                            # batches). Retry the missing tail with single-
+                            # register reads instead of marking it failed —
+                            # otherwise post-write refresh skips the chunk and
+                            # the UI reverts to the stale value.
+                            tail_offset = len(response.registers)
+                            tail_names = register_names[tail_offset:]
+                            tail_start = chunk_start + tail_offset
+                            await self._read_holding_individually(
+                                read_method, tail_start, tail_names, data
+                            )
                 except _PermanentModbusError:
                     self._mark_registers_failed(register_names)
                 except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):

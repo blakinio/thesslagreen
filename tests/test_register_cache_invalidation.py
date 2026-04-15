@@ -1,7 +1,10 @@
 import json
 import os
 from pathlib import Path
+from unittest.mock import MagicMock
 
+import pytest
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.registers.loader import (
     _REGISTERS_PATH,
     clear_cache,
@@ -49,3 +52,71 @@ def test_cache_invalidation_on_mtime_change(tmp_path: Path) -> None:
     assert first_id != second_id
 
     clear_cache()
+
+
+@pytest.fixture
+def minimal_coordinator() -> ThesslaGreenModbusCoordinator:
+    coord = ThesslaGreenModbusCoordinator(
+        hass=MagicMock(),
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=5,
+        retry=1,
+    )
+    return coord
+
+
+def test_apply_scan_cache_keeps_known_missing_for_newer_firmware(
+    minimal_coordinator: ThesslaGreenModbusCoordinator,
+) -> None:
+    """Cache built on FW 4.x must NOT have KNOWN_MISSING_REGISTERS stripped."""
+    cache = {
+        "available_registers": {
+            "input_registers": ["compilation_days", "version_patch", "outside_temperature"],
+            "holding_registers": ["uart_0_id", "post_heater_on"],
+            "coil_registers": [],
+            "discrete_inputs": [],
+        },
+        "device_info": {"firmware": "4.0.1", "serial_number": "Unknown"},
+    }
+    assert minimal_coordinator._apply_scan_cache(cache) is True
+    assert "compilation_days" in minimal_coordinator.available_registers["input_registers"]
+    assert "uart_0_id" in minimal_coordinator.available_registers["holding_registers"]
+
+
+def test_apply_scan_cache_strips_known_missing_for_fw311(
+    minimal_coordinator: ThesslaGreenModbusCoordinator,
+) -> None:
+    """Cache built on FW 3.11 must have KNOWN_MISSING_REGISTERS stripped."""
+    cache = {
+        "available_registers": {
+            "input_registers": ["compilation_days", "outside_temperature"],
+            "holding_registers": ["uart_0_id"],
+            "coil_registers": [],
+            "discrete_inputs": [],
+        },
+        "device_info": {"firmware": "3.11", "serial_number": "Unknown"},
+    }
+    assert minimal_coordinator._apply_scan_cache(cache) is True
+    assert "compilation_days" not in minimal_coordinator.available_registers["input_registers"]
+    assert "uart_0_id" not in minimal_coordinator.available_registers["holding_registers"]
+    assert "outside_temperature" in minimal_coordinator.available_registers["input_registers"]
+
+
+def test_apply_scan_cache_accepts_set_values(
+    minimal_coordinator: ThesslaGreenModbusCoordinator,
+) -> None:
+    cache = {
+        "available_registers": {
+            "input_registers": {"outside_temperature"},  # set, not list
+            "holding_registers": [],
+            "coil_registers": [],
+            "discrete_inputs": [],
+        },
+        "device_info": {"serial_number": "Unknown"},
+    }
+    assert minimal_coordinator._apply_scan_cache(cache) is True
+    assert "outside_temperature" in minimal_coordinator.available_registers["input_registers"]

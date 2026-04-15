@@ -122,6 +122,12 @@ class RegisterDef:
             return True
         return "temperature" in self.name
 
+    # Public alias — callers outside the loader should not depend on a
+    # private name. Keep ``_is_temperature`` as the canonical implementation
+    # to avoid breaking existing internal callers in registers/loader.py.
+    def is_temperature(self) -> bool:
+        return self._is_temperature()
+
     def _is_bcd_time(self) -> bool:
         """Return True when the register stores a BCD HHMM time value."""
 

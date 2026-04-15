@@ -12,7 +12,6 @@ were renamed in newer versions of the integration.
 
 from __future__ import annotations
 
-import importlib.util
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -130,10 +129,5 @@ async def async_setup_entity_mappings(hass: HomeAssistant | None = None) -> None
     else:
         _run_build_entity_mappings()
 
-
-try:  # pragma: no cover - handle partially initialized module
-    _HAS_HA = importlib.util.find_spec("homeassistant") is not None
-except (ImportError, ValueError):
-    _HAS_HA = False
 
 _run_build_entity_mappings()

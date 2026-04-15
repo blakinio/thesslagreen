@@ -79,7 +79,7 @@ from .scanner_core import (
 from .utils import resolve_connection_settings
 
 __all__ = ["ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
-UTC = getattr(dt, "UTC", dt.timezone.utc)
+UTC = getattr(dt, "UTC", dt.UTC)
 
 
 class _SafeDTUtil:
@@ -704,7 +704,11 @@ class ThesslaGreenModbusCoordinator(
 
         try:
             self.available_registers = self._normalise_available_registers(
-                {key: value for key, value in available.items() if isinstance(value, list)}
+                {
+                    key: value
+                    for key, value in available.items()
+                    if isinstance(value, (list, set))
+                }
             )
         except (TypeError, ValueError):
             return False
@@ -722,11 +726,29 @@ class ThesslaGreenModbusCoordinator(
         if self.device_info.get("serial_number") and self.device_info["serial_number"] != "Unknown":
             self.available_registers["input_registers"].add("serial_number")
 
-        for reg_type, names in KNOWN_MISSING_REGISTERS.items():
-            if reg_type in self.available_registers:
-                self.available_registers[reg_type].difference_update(names)
+        # Only strip KNOWN_MISSING_REGISTERS for firmwares that actually lack
+        # those registers (currently FW 3.11 / EC2 family). Stripping
+        # unconditionally would corrupt caches built on newer firmwares where
+        # the registers are present, until the next full scan.
+        if self._firmware_lacks_known_missing(self.device_info.get("firmware")):
+            for reg_type, names in KNOWN_MISSING_REGISTERS.items():
+                if reg_type in self.available_registers:
+                    self.available_registers[reg_type].difference_update(names)
 
         return True
+
+    @staticmethod
+    def _firmware_lacks_known_missing(firmware: Any) -> bool:
+        """Return True for firmwares that do not expose KNOWN_MISSING_REGISTERS.
+
+        Currently matches FW 3.x / EC2. Extend this when new affected
+        firmwares are identified, or invert the check by adding an explicit
+        FW allowlist in const.py.
+        """
+        if not isinstance(firmware, str):
+            return False
+        major = firmware.strip().split(".", 1)[0]
+        return major in {"3"}
 
     def _store_scan_cache(self) -> None:  # pragma: no cover
         """Store scan results in config entry options."""
@@ -1225,7 +1247,22 @@ class ThesslaGreenModbusCoordinator(
         return self._reverse_maps.get(register_type, {}).get(address)
 
     def _process_register_value(self, register_name: str, value: int) -> Any:
-        """Decode a raw register value using its definition."""
+        """Decode a raw register value using its definition.
+
+        Order of checks:
+        1. DAC range guard (returns None on out-of-range).
+        2. Resolve definition (returns False on unknown name — preserves
+           legacy contract used by tests).
+        3. Sentinel check 0x8000 (SENSOR_UNAVAILABLE):
+           - for temperature registers: always None (no sensor / disconnected),
+           - for registers in SENSOR_UNAVAILABLE_REGISTERS: SENSOR_UNAVAILABLE,
+           - otherwise fall through to normal decode.
+        4. Two's-complement adjustment for signed temperatures.
+        5. Decode via register definition.
+        6. Post-decode SENSOR_UNAVAILABLE check (for definitions that decode
+           the sentinel into a non-zero value — keep for backward compat).
+        7. Per-register fixups (flow rate two's-complement, enum override).
+        """
         if register_name in {"dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"} and not (
             0 <= value <= 4095
         ):
@@ -1236,32 +1273,43 @@ class ThesslaGreenModbusCoordinator(
         except KeyError:
             _LOGGER.error("Unknown register name: %s", register_name)
             return False
-        if value == 32768 and definition._is_temperature():
-            if _LOGGER.isEnabledFor(logging.DEBUG):  # pragma: no cover
+
+        # --- step 3: sentinel ---
+        if value == SENSOR_UNAVAILABLE:
+            if definition.is_temperature():
                 _LOGGER.debug(
                     "Processed %s: raw=%s value=None (temperature sentinel)",
                     register_name,
                     value,
                 )
-            return None
-        raw_value = value
-        if definition._is_temperature() and isinstance(raw_value, int) and raw_value > 32767:
-            raw_value -= 65536
-        decoded = definition.decode(raw_value)
-
-        if value == SENSOR_UNAVAILABLE and register_name in SENSOR_UNAVAILABLE_REGISTERS:
-            if "temperature" in register_name:
                 return None
-            return SENSOR_UNAVAILABLE
-
-        if decoded == SENSOR_UNAVAILABLE:
-            if _LOGGER.isEnabledFor(logging.DEBUG):  # pragma: no cover
+            if register_name in SENSOR_UNAVAILABLE_REGISTERS:
                 _LOGGER.debug(
                     "Processed %s: raw=%s value=SENSOR_UNAVAILABLE",
                     register_name,
                     value,
                 )
+                return SENSOR_UNAVAILABLE
+            # Falls through: register reports 0x8000 as a real value.
+
+        # --- step 4: two's-complement for signed temperature ---
+        raw_value = value
+        if definition.is_temperature() and isinstance(raw_value, int) and raw_value > 32767:
+            raw_value -= 65536
+
+        # --- step 5: decode ---
+        decoded = definition.decode(raw_value)
+
+        # --- step 6: post-decode sentinel safety net ---
+        if decoded == SENSOR_UNAVAILABLE:
+            _LOGGER.debug(
+                "Processed %s: raw=%s value=SENSOR_UNAVAILABLE (post-decode)",
+                register_name,
+                value,
+            )
             return SENSOR_UNAVAILABLE
+
+        # --- step 7: per-register fixups ---
         if register_name in {"supply_flow_rate", "exhaust_flow_rate"} and isinstance(decoded, int):
             if decoded > 32767:
                 decoded -= 65536

@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-UTC = getattr(dt, "UTC", dt.timezone.utc)
+UTC = getattr(dt, "UTC", dt.UTC)
 
 try:
     from homeassistant.util import dt as dt_util
