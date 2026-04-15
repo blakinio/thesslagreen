@@ -79,7 +79,7 @@ from .scanner_core import (
 from .utils import resolve_connection_settings
 
 __all__ = ["ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
-UTC = dt.UTC
+UTC = getattr(dt, "UTC", dt.timezone.utc)
 
 
 class _SafeDTUtil:

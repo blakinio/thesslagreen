@@ -20,7 +20,13 @@ from __future__ import annotations
 
 import logging
 import re
-from enum import StrEnum
+from enum import Enum
+
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11
+    class StrEnum(str, Enum):
+        """Fallback StrEnum for older Python versions."""
 from typing import Any, Literal, cast
 
 import pydantic

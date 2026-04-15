@@ -95,6 +95,7 @@ from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOExc
 from .utils import resolve_connection_settings
 
 _LOGGER = logging.getLogger(__name__)
+TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 
 
 class _FallbackFlowBase:  # pragma: no cover
@@ -303,7 +304,7 @@ async def _run_with_retry(
             delay = backoff * 2 ** (attempt - 1)
             if delay:
                 await asyncio.sleep(delay)
-        except (TimeoutError, ConnectionException, ModbusException, OSError):
+        except (*TIMEOUT_EXCEPTIONS, ConnectionException, ModbusException, OSError):
             if attempt >= retries:
                 raise
             delay = backoff * 2 ** (attempt - 1)
@@ -540,7 +541,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
-    except TimeoutError as exc:
+    except TIMEOUT_EXCEPTIONS as exc:
         _LOGGER.warning("Timeout during device validation: %s", exc)
         if "modbus request cancelled" not in str(exc).lower():
             _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
