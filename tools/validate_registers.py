@@ -132,7 +132,7 @@ def validate(path: Path) -> list[RegisterDefinition]:
             for key, val in reg.enum.items():
                 try:
                     int(key)
-                except Exception:  # pragma: no cover - defensive
+                except (ValueError, TypeError):  # pragma: no cover - defensive
                     raise ValueError(f"{reg.name}: enum keys must be numeric") from None
                 if not isinstance(val, str):
                     raise ValueError(f"{reg.name}: enum values must be strings")
@@ -179,7 +179,7 @@ def main(path: Path | None = None) -> int:
 
     try:
         validate(Path(target))
-    except Exception as err:  # pragma: no cover - error path
+    except (ValueError, OSError, TypeError) as err:  # pragma: no cover - error path
         print(err)
         raise SystemExit(1) from None
     return 0

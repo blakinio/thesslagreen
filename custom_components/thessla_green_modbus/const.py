@@ -247,7 +247,7 @@ try:  # pragma: no cover - optional during isolated tests
         _Platform.TEXT,
         _Platform.TIME,
     ]
-except (ImportError, Exception):  # pragma: no cover - fallback for test environments
+except (ImportError, AttributeError):  # pragma: no cover - fallback for test environments
     PLATFORMS = [  # type: ignore[assignment]
         "sensor",
         "binary_sensor",
