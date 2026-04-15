@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc
 from types import MappingProxyType
 from typing import Any, ClassVar
 
