@@ -43,11 +43,13 @@ set_airflow_schedule:
           options: !include options/days_of_week.json
     period:
       name: Period
-      description: Day period (1 or 2).
+      description: Day slot number (1-4).
       required: true
       selector:
-        select:
-          options: !include options/periods.json
+        number:
+          min: 1
+          max: 4
+          step: 1
     start_time:
       name: Start Time
       description: Period start time.
@@ -56,9 +58,19 @@ set_airflow_schedule:
         time:
     end_time:
       name: End Time
-      description: Period end time.
-      required: true
+      description: Deprecated. Ignored by device (slot end equals next slot start).
+      required: false
       selector: *time_selector
+    season:
+      name: Season
+      description: Select summer or winter schedule bank.
+      required: false
+      default: summer
+      selector:
+        select:
+          options:
+            - summer
+            - winter
     airflow_rate:
       name: Airflow Rate
       description: Airflow in %.
@@ -96,7 +108,7 @@ set_bypass_parameters:
       required: false
       selector:
         number:
-          min: 10.0
+          min: -20.0
           max: 40.0
           step: 0.5
 

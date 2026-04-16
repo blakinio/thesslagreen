@@ -12,6 +12,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
+from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import (
     _get_coordinator_from_entity_id,
     async_setup_services,
@@ -44,7 +45,9 @@ class _Coordinator:
         self.async_write_register = AsyncMock(return_value=write_result)
         self.async_request_refresh = AsyncMock()
         self.effective_batch = 2
-        self.available_registers = {"holding_registers": set()}
+        self.available_registers = {
+            "holding_registers": {r.name for r in get_registers_by_function("03")}
+        }
         self.data = {}
         self.host = "127.0.0.1"
         self.port = 502
@@ -247,22 +250,20 @@ async def test_set_airflow_schedule_basic(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=30)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "monday",
-        "period": "1",
+        "period": 1,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 75,
     })
     await handler(call)
 
     coord.async_request_refresh.assert_awaited_once()
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
-    assert "schedule_monday_period1_start" in written
-    assert "schedule_monday_period1_end" in written
-    assert "schedule_monday_period1_flow" in written
+    assert "schedule_summer_mon_1" in written
+    assert "setting_summer_mon_1" in written
+    assert not any(k.endswith("_period1_end") for k in written)
 
 
 @pytest.mark.asyncio
@@ -273,20 +274,19 @@ async def test_set_airflow_schedule_with_temperature(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "friday",
-        "period": "2",
+        "period": 2,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 50,
         "temperature": 22.0,
     })
     await handler(call)
 
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
-    assert "schedule_friday_period2_temp" in written
+    assert "schedule_summer_fri_2" in written
+    assert "setting_summer_fri_2" in written
 
 
 @pytest.mark.asyncio
@@ -298,23 +298,21 @@ async def test_set_airflow_schedule_clamp_rate(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "monday",
-        "period": "1",
+        "period": 1,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 200,  # above max, should be clamped to 80
     })
     await handler(call)
 
-    flow_calls = [
+    setting_calls = [
         c for c in coord.async_write_register.call_args_list
-        if "flow" in c.args[0]
+        if c.args[0] == "setting_summer_mon_1"
     ]
-    assert flow_calls
-    assert flow_calls[0].args[1] == 80
+    assert setting_calls
+    assert setting_calls[0].args[1] == (80 << 8)
 
 
 @pytest.mark.asyncio
@@ -325,13 +323,11 @@ async def test_set_airflow_schedule_write_failure(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "monday",
-        "period": "1",
+        "period": 1,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 50,
     })
     await handler(call)
@@ -954,13 +950,11 @@ async def test_set_airflow_schedule_clamp_bad_min(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "monday",
-        "period": "1",
+        "period": 1,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 50,
     })
     await handler(call)  # should not raise
@@ -976,13 +970,11 @@ async def test_set_airflow_schedule_clamp_bad_max(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "tuesday",
-        "period": "1",
+        "period": 1,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 80,
     })
     await handler(call)  # should not raise
@@ -998,23 +990,21 @@ async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "wednesday",
-        "period": "1",
+        "period": 1,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 10,  # below both, should clamp to 60 (min==max after fix)
     })
     await handler(call)
 
-    flow_calls = [
+    setting_calls = [
         c for c in coord.async_write_register.call_args_list
-        if "flow" in c.args[0]
+        if c.args[0] == "setting_summer_wed_1"
     ]
-    assert flow_calls
-    assert flow_calls[0].args[1] == 60  # clamped to min (which equals max after fix)
+    assert setting_calls
+    assert setting_calls[0].args[1] == (60 << 8)
 
 
 # ---------------------------------------------------------------------------
@@ -1044,21 +1034,19 @@ async def test_set_special_mode_duration_write_failure(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_set_airflow_schedule_end_write_failure(monkeypatch):
-    """set_airflow_schedule aborts when end-time write fails (2nd write)."""
+async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
+    """set_airflow_schedule aborts when AATT setting write fails (2nd write)."""
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "monday",
-        "period": "1",
+        "period": 1,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 50,
     })
     await handler(call)
@@ -1066,21 +1054,19 @@ async def test_set_airflow_schedule_end_write_failure(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_set_airflow_schedule_flow_write_failure(monkeypatch):
-    """set_airflow_schedule aborts when flow write fails (3rd write)."""
+async def test_set_airflow_schedule_start_write_failure(monkeypatch):
+    """set_airflow_schedule aborts when start write fails (1st write)."""
     coord = _Coordinator()
-    coord.async_write_register = AsyncMock(side_effect=[True, True, False])
+    coord.async_write_register = AsyncMock(side_effect=[False])
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "monday",
-        "period": "2",
+        "period": 2,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 50,
     })
     await handler(call)
@@ -1089,20 +1075,18 @@ async def test_set_airflow_schedule_flow_write_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
-    """set_airflow_schedule aborts when temperature write fails (4th write)."""
+    """set_airflow_schedule aborts when AATT write fails with temperature."""
     coord = _Coordinator()
-    coord.async_write_register = AsyncMock(side_effect=[True, True, True, False])
+    coord.async_write_register = AsyncMock(side_effect=[True, False])
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    end = SimpleNamespace(hour=18, minute=0)
     call = _make_call({
         "entity_id": ["climate.dev"],
         "day": "monday",
-        "period": "3",
+        "period": 3,
         "start_time": start,
-        "end_time": end,
         "airflow_rate": 50,
         "temperature": 22.0,
     })
@@ -1170,6 +1154,36 @@ async def test_set_gwc_parameters_max_temp_write_failure(monkeypatch):
     })
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
+
+
+def test_set_bypass_parameters_schema_accepts_negative_min_temperature():
+    """Bypass validator accepts full device range including negative values."""
+    from custom_components.thessla_green_modbus.services import (
+        _validate_bypass_temperature_range,
+    )
+
+    payload = {"min_outdoor_temperature": -10.0}
+    assert _validate_bypass_temperature_range(payload) == payload
+
+
+def test_set_bypass_parameters_schema_rejects_too_low_temperature():
+    """Bypass validator rejects values below supported device range."""
+    from custom_components.thessla_green_modbus.services import (
+        _validate_bypass_temperature_range,
+    )
+
+    with pytest.raises(Exception, match=r"-20.0\.\.40.0"):
+        _validate_bypass_temperature_range({"min_outdoor_temperature": -25.0})
+
+
+def test_gwc_schema_rejects_min_ge_max():
+    """Cross-field validator enforces min_air_temperature < max_air_temperature."""
+    from custom_components.thessla_green_modbus.services import _validate_gwc_temperature_range
+
+    with pytest.raises(Exception, match="strictly less than"):
+        _validate_gwc_temperature_range(
+            {"min_air_temperature": 20.0, "max_air_temperature": 20.0}
+        )
 
 
 # ---------------------------------------------------------------------------

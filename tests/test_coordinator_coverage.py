@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-
-UTC = datetime.UTC if hasattr(datetime, "UTC") else UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

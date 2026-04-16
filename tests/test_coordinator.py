@@ -741,6 +741,14 @@ def test_process_register_value_extremes(coordinator, register_name, value, expe
     assert result == expected
 
 
+def test_process_register_value_no_magic_number_in_source():
+    """Regression guard against reintroducing literal 32768 in coordinator logic."""
+    import inspect
+
+    src = inspect.getsource(ThesslaGreenModbusCoordinator._process_register_value)
+    assert "32768" not in src
+
+
 @pytest.mark.parametrize(
     "register_name",
     ["dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"],

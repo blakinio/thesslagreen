@@ -25,7 +25,6 @@ from .const import (
     MODBUS_PARITY,
     MODBUS_PORTS,
     MODBUS_STOP_BITS,
-    PERIODS,
     RESET_TYPES,
     SPECIAL_FUNCTION_MAP,
     SPECIAL_MODE_OPTIONS,
@@ -93,6 +92,17 @@ AIR_QUALITY_REGISTER_MAP = {
     "humidity_target": "humidity_target",
 }
 
+_SEASONS = ("summer", "winter")
+_DAY_TO_DEVICE_KEY = {
+    "monday": "mon",
+    "tuesday": "tue",
+    "wednesday": "wed",
+    "thursday": "thu",
+    "friday": "fri",
+    "saturday": "sat",
+    "sunday": "sun",
+}
+
 
 def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call handling legacy aliases."""
@@ -113,6 +123,15 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
     return cast(set[str], async_extract_entity_ids(hass, mapped_call))
 
 
+def _validate_bypass_temperature_range(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate bypass temperature range independently from voluptuous internals."""
+    temperature = data.get("min_outdoor_temperature")
+    if temperature is not None and not (-20.0 <= float(temperature) <= 40.0):
+        invalid_exc = getattr(vol, "Invalid", ValueError)
+        raise invalid_exc(f"min_outdoor_temperature ({temperature}) must be in range -20.0..40.0")
+    return data
+
+
 # Service schemas
 SET_SPECIAL_MODE_SCHEMA = vol.Schema(
     {
@@ -126,35 +145,55 @@ SET_AIRFLOW_SCHEDULE_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("day"): vol.In(DAYS_OF_WEEK),
-        vol.Required("period"): vol.In(PERIODS),
+        vol.Required("period"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4)),
         vol.Required("start_time"): _CV_TIME,
-        vol.Required("end_time"): _CV_TIME,
+        vol.Optional("end_time"): _CV_TIME,
         vol.Required("airflow_rate"): vol.All(vol.Coerce(int), vol.Range(min=0, max=150)),
+        vol.Optional("season", default="summer"): vol.In(_SEASONS),
         vol.Optional("temperature"): vol.All(vol.Coerce(float), vol.Range(min=16.0, max=30.0)),
     }
 )
 
-SET_BYPASS_PARAMETERS_SCHEMA = vol.Schema(
-    {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
-        vol.Required("mode"): vol.In(BYPASS_MODES),
-        vol.Optional("min_outdoor_temperature"): vol.All(
-            vol.Coerce(float), vol.Range(min=10.0, max=40.0)
-        ),
-    }
+SET_BYPASS_PARAMETERS_SCHEMA = vol.All(
+    vol.Schema(
+        {
+            vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
+            vol.Required("mode"): vol.In(BYPASS_MODES),
+            vol.Optional("min_outdoor_temperature"): vol.All(
+                vol.Coerce(float), vol.Range(min=-20.0, max=40.0)
+            ),
+        }
+    ),
+    _validate_bypass_temperature_range,
 )
 
-SET_GWC_PARAMETERS_SCHEMA = vol.Schema(
-    {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
-        vol.Required("mode"): vol.In(GWC_MODES),
-        vol.Optional("min_air_temperature"): vol.All(
-            vol.Coerce(float), vol.Range(min=0.0, max=20.0)
-        ),
-        vol.Optional("max_air_temperature"): vol.All(
-            vol.Coerce(float), vol.Range(min=30.0, max=80.0)
-        ),
-    }
+def _validate_gwc_temperature_range(data: dict[str, Any]) -> dict[str, Any]:
+    """Reject configurations where min_air_temperature >= max_air_temperature."""
+    tmin = data.get("min_air_temperature")
+    tmax = data.get("max_air_temperature")
+    if tmin is not None and tmax is not None and tmin >= tmax:
+        invalid_exc = getattr(vol, "Invalid", ValueError)
+        raise invalid_exc(
+            f"min_air_temperature ({tmin}) must be strictly less than "
+            f"max_air_temperature ({tmax})"
+        )
+    return data
+
+
+SET_GWC_PARAMETERS_SCHEMA = vol.All(
+    vol.Schema(
+        {
+            vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
+            vol.Required("mode"): vol.In(GWC_MODES),
+            vol.Optional("min_air_temperature"): vol.All(
+                vol.Coerce(float), vol.Range(min=0.0, max=20.0)
+            ),
+            vol.Optional("max_air_temperature"): vol.All(
+                vol.Coerce(float), vol.Range(min=30.0, max=80.0)
+            ),
+        }
+    ),
+    _validate_gwc_temperature_range,
 )
 
 SET_AIR_QUALITY_THRESHOLDS_SCHEMA = vol.Schema(
@@ -369,98 +408,80 @@ def _register_schedule_services(hass: HomeAssistant) -> None:
     """Register set_airflow_schedule and its legacy alias."""
 
     async def set_airflow_schedule(call: ServiceCall) -> None:
-        """Service to set airflow schedule."""
+        """Service to set airflow schedule for a single slot."""
         entity_ids = _extract_legacy_entity_ids(hass, call)
         day = _normalize_option(call.data["day"])
-        period = _normalize_option(call.data["period"])
+        period = int(_normalize_option(str(call.data["period"])))
+        season = _normalize_option(call.data.get("season", "summer"))
         start_time = call.data["start_time"]
-        end_time = call.data["end_time"]
+        end_time = call.data.get("end_time")
         airflow_rate = call.data["airflow_rate"]
         temperature = call.data.get("temperature")
+        dow_key = _DAY_TO_DEVICE_KEY[day]
+        schedule_register = f"schedule_{season}_{dow_key}_{period}"
+        setting_register = f"setting_{season}_{dow_key}_{period}"
+        start_value = f"{start_time.hour:02d}:{start_time.minute:02d}"
 
-        # Convert day name to index
-        day_map = {
-            "monday": 0,
-            "tuesday": 1,
-            "wednesday": 2,
-            "thursday": 3,
-            "friday": 4,
-            "saturday": 5,
-            "sunday": 6,
-        }
-        day_index = day_map[day]
+        if end_time is not None:
+            _LOGGER.warning(
+                "set_airflow_schedule: end_time is not writable on AirPack4 "
+                "(slot end = next slot's start). Ignoring end_time=%s.",
+                end_time,
+            )
 
-        # Prepare start/end values as tuples so Register.encode can
-        # handle conversion to the device format.
-        start_tuple = (start_time.hour, start_time.minute)
-        end_tuple = (end_time.hour, end_time.minute)
-
-        # Format times in a user-friendly way for encoding
-        start_value = f"{start_tuple[0]:02d}:{start_tuple[1]:02d}"
-        end_value = f"{end_tuple[0]:02d}:{end_tuple[1]:02d}"
         for entity_id in entity_ids:
             coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                # Calculate register names based on day and period
-                day_names = [
-                    "monday",
-                    "tuesday",
-                    "wednesday",
-                    "thursday",
-                    "friday",
-                    "saturday",
-                    "sunday",
-                ]
-                day_name = day_names[day_index]
+            if not coordinator:
+                continue
 
-                start_register = f"schedule_{day_name}_period{period}_start"
-                end_register = f"schedule_{day_name}_period{period}_end"
-                flow_register = f"schedule_{day_name}_period{period}_flow"
-                temp_register = f"schedule_{day_name}_period{period}_temp"
-                clamped_airflow = _clamp_airflow_rate(coordinator, airflow_rate)
-
-                # Write schedule values relying on register encode logic
-                if not await _write_register(
-                    coordinator,
-                    start_register,
-                    start_value,
+            holding = coordinator.available_registers.get("holding_registers", set())
+            if schedule_register not in holding or setting_register not in holding:
+                _LOGGER.error(
+                    "set_airflow_schedule: %s or %s not available on %s — aborting",
+                    schedule_register,
+                    setting_register,
                     entity_id,
-                    "set airflow schedule",
-                ):
-                    _LOGGER.error("Failed to set schedule start for %s", entity_id)
-                    continue
-                if not await _write_register(
-                    coordinator,
-                    end_register,
-                    end_value,
-                    entity_id,
-                    "set airflow schedule",
-                ):
-                    _LOGGER.error("Failed to set schedule end for %s", entity_id)
-                    continue
-                if not await _write_register(
-                    coordinator,
-                    flow_register,
-                    clamped_airflow,
-                    entity_id,
-                    "set airflow schedule",
-                ):
-                    _LOGGER.error("Failed to set schedule flow for %s", entity_id)
-                    continue
+                )
+                continue
 
-                if temperature is not None:
-                    if not await _write_register(
-                        coordinator,
-                        temp_register,
-                        temperature,
-                        entity_id,
-                        "set airflow schedule",
-                    ):
-                        _LOGGER.error("Failed to set schedule temperature for %s", entity_id)
-                        continue
+            clamped_airflow = _clamp_airflow_rate(coordinator, airflow_rate)
+            if not await _write_register(
+                coordinator,
+                schedule_register,
+                start_value,
+                entity_id,
+                "set airflow schedule start",
+            ):
+                _LOGGER.error("Failed to set schedule start for %s", entity_id)
+                continue
 
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set airflow schedule for %s", entity_id)
+            if temperature is not None:
+                temp_byte = max(0, min(39, round((temperature - 16.0) * 2)))
+            else:
+                current = coordinator.data.get(setting_register) if coordinator.data else None
+                temp_byte = int(current) & 0xFF if isinstance(current, int) else 0
+            aatt_value = ((clamped_airflow & 0xFF) << 8) | (temp_byte & 0xFF)
+
+            if not await _write_register(
+                coordinator,
+                setting_register,
+                aatt_value,
+                entity_id,
+                "set airflow schedule AATT",
+            ):
+                _LOGGER.error("Failed to set schedule AATT for %s", entity_id)
+                continue
+
+            await coordinator.async_request_refresh()
+            _LOGGER.info(
+                "Set airflow schedule [%s %s slot %d] start=%s flow=%d%% on %s",
+                season,
+                dow_key,
+                period,
+                start_value,
+                clamped_airflow,
+                entity_id,
+            )
 
     hass.services.async_register(
         DOMAIN, "set_airflow_schedule", set_airflow_schedule, SET_AIRFLOW_SCHEDULE_SCHEMA

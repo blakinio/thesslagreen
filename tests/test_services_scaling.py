@@ -11,18 +11,8 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 
-# Build a register map similar to what the coordinator exposes.  The schedule
-# related registers used by the services are added manually as they are not
-# present in the extracted list.
+# Build a register map similar to what the coordinator exposes.
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-HOLDING_REGISTERS.update(
-    {
-        "schedule_monday_period1_start": 0,
-        "schedule_monday_period1_end": 1,
-        "schedule_monday_period1_flow": 2,
-        "schedule_monday_period1_temp": 3,
-    }
-)
 
 
 class DummyCoordinator:
@@ -68,6 +58,9 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     hass = SimpleNamespace()
     hass.services = Services()
     coordinator = DummyCoordinator()
+    coordinator.available_registers["holding_registers"].update(
+        {"schedule_summer_mon_1", "setting_summer_mon_1"}
+    )
 
     monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: coordinator)
     monkeypatch.setattr(
@@ -82,9 +75,8 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
         data={
             "entity_id": ["climate.device"],
             "day": "monday",
-            "period": "1",
+            "period": 1,
             "start_time": time(hour=6, minute=30),
-            "end_time": time(hour=8, minute=0),
             "airflow_rate": 55,
             "temperature": 21.5,
         }
@@ -95,23 +87,13 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     writes = coordinator.writes
 
     assert writes[0] == (
-        HOLDING_REGISTERS["schedule_monday_period1_start"],
+        HOLDING_REGISTERS["schedule_summer_mon_1"],
         "06:30",
         1,
     )  # nosec: B101
     assert writes[1] == (
-        HOLDING_REGISTERS["schedule_monday_period1_end"],
-        "08:00",
-        1,
-    )  # nosec: B101
-    assert writes[2] == (
-        HOLDING_REGISTERS["schedule_monday_period1_flow"],
-        55,
-        1,
-    )  # nosec: B101
-    assert writes[3] == (
-        HOLDING_REGISTERS["schedule_monday_period1_temp"],
-        21.5,
+        HOLDING_REGISTERS["setting_summer_mon_1"],
+        14091,
         1,
     )  # nosec: B101
 
