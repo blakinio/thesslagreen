@@ -69,7 +69,7 @@ from .modbus_transport import (
     TcpModbusTransport,
 )
 from .register_map import REGISTER_MAP_VERSION
-from .registers.loader import get_all_registers
+from .registers.loader import RegisterDef, get_all_registers
 from .scanner_core import (
     DeviceCapabilities,
     ThesslaGreenDeviceScanner,
@@ -123,7 +123,7 @@ _ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
 REGISTER_DEFS = {r.name: r for r in get_all_registers()}
 
 
-def get_register_definition(name: str):
+def get_register_definition(name: str) -> RegisterDef:
     return REGISTER_DEFS[name]
 
 
@@ -143,7 +143,7 @@ def _update_failed_exception(message: str) -> Exception:
     if len(classes) == 1:
         return classes[0](message)  # pragma: no cover
 
-    compat_cls = type("CompatUpdateFailed", tuple(classes), {})
+    compat_cls = cast(type[Exception], type("CompatUpdateFailed", tuple(classes), {}))
     return compat_cls(message)
 
 
@@ -398,13 +398,13 @@ class ThesslaGreenModbusCoordinator(
         transport = self._transport
         transport_method = getattr(transport, name, None) if transport is not None else None
         if callable(transport_method):
-            return transport_method
+            return cast(Callable[..., Any], transport_method)
         """Return a Modbus client method or a no-op async placeholder."""
 
         client = self.client
         method = getattr(client, name, None) if client is not None else None
         if callable(method):
-            return method
+            return cast(Callable[..., Any], method)
 
         async def _missing_method(*_args: Any, **_kwargs: Any) -> Any:
             return None
@@ -488,7 +488,7 @@ class ThesslaGreenModbusCoordinator(
 
     def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:  # pragma: no cover
         """Store and process a completed device scan result."""
-        self.device_scan_result = cast(dict[str, Any], scan_result)
+        self.device_scan_result = scan_result
         if self.connection_mode == CONNECTION_MODE_AUTO:
             if resolved := self.device_scan_result.get("resolved_connection_mode"):
                 self._resolved_connection_mode = resolved
@@ -619,7 +619,9 @@ class ThesslaGreenModbusCoordinator(
         elif not self.enable_device_scan:
             cache: dict[str, Any] = {}
             if self.entry is not None:
-                cache = self.entry.options.get("device_scan_cache", {})  # type: ignore[assignment]
+                raw_cache = self.entry.options.get("device_scan_cache", {})
+                if isinstance(raw_cache, dict):
+                    cache = raw_cache
             if cache and self._apply_scan_cache(cache):
                 _LOGGER.info("Using cached device scan results")
             else:
@@ -1543,4 +1545,4 @@ class ThesslaGreenModbusCoordinator(
     @property
     def device_info_dict(self) -> dict[str, Any]:  # pragma: no cover
         """Return device information as a plain dictionary for legacy use."""
-        return cast(dict[str, Any], self.get_device_info())
+        return self.get_device_info()

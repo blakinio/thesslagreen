@@ -18,6 +18,10 @@ def _utcnow() -> datetime:
 class _CoordinatorCapabilitiesMixin:
     """Capability and derived-value logic for the coordinator."""
 
+    device_info: dict[str, Any]
+    _last_power_timestamp: datetime | None
+    _total_energy: float
+
     _STANDBY_POWER_W: float = 10.0
     _MODEL_POWER_DATA: ClassVar[Mapping[int, tuple[float, float]]] = MappingProxyType(
         {
@@ -223,7 +227,12 @@ class _CoordinatorCapabilitiesMixin:
             raw_ddtt = data.get("date_time_ddtt")
             raw_ggmm = data.get("date_time_ggmm")
             raw_sscc = data.get("date_time_sscc")
-            if all(v is not None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
+            if (
+                raw_yymm is not None
+                and raw_ddtt is not None
+                and raw_ggmm is not None
+                and raw_sscc is not None
+            ):
 
                 def _bcd(b: int) -> int:
                     return ((b >> 4) & 0xF) * 10 + (b & 0xF)

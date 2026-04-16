@@ -207,12 +207,12 @@ class _ScannerCapabilitiesMixin:
 
         missing_regs: list[str] = []
         if None in (major, minor, patch):
-            for name, value in (
+            for name, missing_value in (
                 ("version_major", major),
                 ("version_minor", minor),
                 ("version_patch", patch),
             ):
-                if value is None and name in INPUT_REGISTERS:
+                if missing_value is None and name in INPUT_REGISTERS:
                     missing_regs.append(f"{name} ({INPUT_REGISTERS[name]})")
 
         if None not in (major, minor, patch):

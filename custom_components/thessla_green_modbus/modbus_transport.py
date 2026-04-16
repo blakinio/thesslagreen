@@ -402,6 +402,7 @@ class TcpModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.read_input_registers,
             slave_id,
@@ -420,6 +421,7 @@ class TcpModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.read_holding_registers,
             slave_id,
@@ -438,6 +440,7 @@ class TcpModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.write_register,
             slave_id,
@@ -456,6 +459,7 @@ class TcpModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.write_registers,
             slave_id,
@@ -545,6 +549,7 @@ class RtuModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.read_input_registers,
             slave_id,
@@ -563,6 +568,7 @@ class RtuModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.read_holding_registers,
             slave_id,
@@ -581,6 +587,7 @@ class RtuModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.write_register,
             slave_id,
@@ -599,6 +606,7 @@ class RtuModbusTransport(BaseModbusTransport):
     ) -> Any:
         if self.client is None:
             await self.ensure_connected()
+        assert self.client is not None
         return await self.call(
             self.client.write_registers,
             slave_id,

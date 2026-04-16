@@ -161,7 +161,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         """
         tk = self._attr_translation_key
         if tk and tk != self._key:
-            return tk
+            return str(tk)
         return super().suggested_object_id
 
     # Prefixes that identify diagnostic alarm/error/status registers.

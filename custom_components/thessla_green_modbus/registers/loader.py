@@ -349,6 +349,8 @@ class RegisterDef:
                 airflow, temp = value
             else:
                 airflow, temp = value, 0
+            if airflow is None or temp is None:
+                raise ValueError(f"Invalid AATT value for {self.name}: {value!r}")
             return (int(airflow) << 8) | (round(float(temp) * 2) & 255)
 
         raw: Any = value
@@ -383,6 +385,8 @@ class RegisterDef:
                 scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
             raw = scaled
         typ = self.extra.get("type") if self.extra else None
+        if raw is None:
+            raise ValueError(f"Invalid value None for {self.name}")
         if typ == "i16":
             return int(raw) & 65535
         return int(raw)
@@ -703,7 +707,7 @@ def group_registers(
 
     from ..modbus_helpers import group_reads
 
-    return cast(list[tuple[int, int]], group_reads(addresses, max_block_size=max_block_size))
+    return group_reads(addresses, max_block_size=max_block_size)
 
 
 # Public exports for import * use in tests and helpers

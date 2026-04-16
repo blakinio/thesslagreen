@@ -222,7 +222,7 @@ def _calculate_backoff_delay(
             jitter_min, jitter_max = jitter_max, jitter_min
         delay += random.uniform(jitter_min, jitter_max)
 
-    return max(delay, 0.0)
+    return float(max(delay, 0.0))
 
 
 async def _call_modbus(

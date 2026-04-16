@@ -46,7 +46,11 @@ class HVACMode:  # pragma: no cover - simple stub
 
 
 class HVACAction:  # pragma: no cover - simple stub
-    pass
+    OFF = "off"
+    FAN = "fan"
+    HEATING = "heating"
+    COOLING = "cooling"
+    IDLE = "idle"
 
 
 climate_mod.ClimateEntity = ClimateEntity
@@ -380,3 +384,13 @@ def test_preset_mode_unknown_bits_returns_none():
     # Patch SPECIAL_FUNCTION_MAP to empty so no preset matches
     with patch.dict(climate_mod.SPECIAL_FUNCTION_MAP, {}, clear=True):
         assert climate_entity.preset_mode == "none"  # nosec B101
+
+
+def test_climate_imports_real_ha_symbols() -> None:
+    """Ensure climate module uses direct Home Assistant symbols."""
+    from custom_components.thessla_green_modbus import climate
+
+    assert hasattr(climate.HVACMode, "AUTO")
+    assert hasattr(climate.HVACMode, "OFF")
+    assert hasattr(climate.HVACAction, "HEATING")
+    assert climate.ClimateEntity is climate_mod.ClimateEntity

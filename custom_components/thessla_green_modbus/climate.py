@@ -6,50 +6,33 @@ import asyncio
 import logging
 from typing import Any
 
-import homeassistant.components as ha_components
-from homeassistant import const as ha_const
+from homeassistant.components.climate import (
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
+)
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-climate_component = getattr(ha_components, "climate", None)
-ClimateEntity = getattr(climate_component, "ClimateEntity", object)
-ClimateEntityFeature = getattr(climate_component, "ClimateEntityFeature", int)
-HVACAction = getattr(
-    climate_component,
-    "HVACAction",
-    type(
-        "HVACAction",
-        (),
-        {"OFF": "off", "FAN": "fan", "HEATING": "heating", "COOLING": "cooling", "IDLE": "idle"},
-    ),
-)
-HVACMode = getattr(
-    climate_component,
-    "HVACMode",
-    type("HVACMode", (), {"OFF": "off", "AUTO": "auto", "FAN_ONLY": "fan_only"}),
-)
-
-ATTR_TEMPERATURE = getattr(ha_const, "ATTR_TEMPERATURE", "temperature")
-UnitOfTemperature = getattr(
-    ha_const, "UnitOfTemperature", type("UnitOfTemperature", (), {"CELSIUS": "°C"})
-)
-
-from .const import (  # noqa: E402
+from .const import (
     SPECIAL_FUNCTION_MAP,
     TEMPERATURE_MAX_C,
     TEMPERATURE_MIN_C,
     TEMPERATURE_STEP_C,
     holding_registers,
 )
-from .coordinator import ThesslaGreenModbusCoordinator  # noqa: E402
-from .entity import ThesslaGreenEntity  # noqa: E402
+from .coordinator import ThesslaGreenModbusCoordinator
+from .entity import ThesslaGreenEntity
 
-_FEATURE_TARGET_TEMPERATURE = getattr(ClimateEntityFeature, "TARGET_TEMPERATURE", 1)
-_FEATURE_FAN_MODE = getattr(ClimateEntityFeature, "FAN_MODE", 2)
-_FEATURE_PRESET_MODE = getattr(ClimateEntityFeature, "PRESET_MODE", 4)
-_FEATURE_TURN_ON = getattr(ClimateEntityFeature, "TURN_ON", 0)
-_FEATURE_TURN_OFF = getattr(ClimateEntityFeature, "TURN_OFF", 0)
+# ClimateEntityFeature.TURN_ON / TURN_OFF are guaranteed in required HA versions.
+_FEATURE_TARGET_TEMPERATURE = ClimateEntityFeature.TARGET_TEMPERATURE
+_FEATURE_FAN_MODE = ClimateEntityFeature.FAN_MODE
+_FEATURE_PRESET_MODE = ClimateEntityFeature.PRESET_MODE
+_FEATURE_TURN_ON = ClimateEntityFeature.TURN_ON
+_FEATURE_TURN_OFF = ClimateEntityFeature.TURN_OFF
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -253,7 +236,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         # Check for active special function
         for preset, bit_value in SPECIAL_FUNCTION_MAP.items():
             if special_mode == bit_value:
-                return preset
+                return str(preset)
 
         return "none"
 

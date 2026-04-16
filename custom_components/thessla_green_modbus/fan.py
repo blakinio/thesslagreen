@@ -252,7 +252,15 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             return self._MODE_MAP.get(self.coordinator.data["mode"])
         return None
 
-    async def _write_register(self, register_name: str, value: int) -> None:
+    async def _write_register(
+        self,
+        register_name: str,
+        value: Any,
+        *,
+        offset: int = 0,
+        refresh: bool = True,
+        include_offset: bool = False,
+    ) -> None:
         """Write value to holding register when present on the device."""
         if register_name not in holding_registers():
             raise ValueError(f"Register {register_name} is not writable")
@@ -262,7 +270,13 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             _LOGGER.debug("Register %s unavailable, skipping write", register_name)
             return
 
-        await super()._write_register(register_name, value)
+        await super()._write_register(
+            register_name,
+            int(value),
+            offset=offset,
+            refresh=refresh,
+            include_offset=include_offset,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover

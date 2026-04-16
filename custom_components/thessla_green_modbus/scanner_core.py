@@ -7,6 +7,7 @@ import importlib
 import inspect
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict as _dataclasses_asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -85,19 +86,21 @@ try:  # pragma: no cover - optional during isolated tests
     )
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
 
-    async def async_get_all_registers(*_args, **_kwargs):
+    async def async_get_all_registers(
+        hass: Any | None, json_path: Path | str | None = None
+    ) -> list[RegisterDef]:
         return []
 
-    async def async_registers_sha256(*_args, **_kwargs) -> str:
+    async def async_registers_sha256(hass: Any | None, json_path: Path | str) -> str:
         return ""
 
-    def get_all_registers(*_args, **_kwargs):
+    def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
         return []
 
-    def get_registers_path(*_args, **_kwargs) -> Path:
+    def get_registers_path() -> Path:
         return Path(".")
 
-    def registers_sha256(*_args, **_kwargs) -> str:
+    def registers_sha256(json_path: Path | str) -> str:
         return ""
 
 
@@ -106,8 +109,8 @@ asdict = _dataclasses_asdict  # re-exported for test monkeypatching
 _LOGGER = logging.getLogger(__name__)
 
 try:
-    _pymodbus = importlib.import_module("pymodbus")
-    _pymodbus_client = importlib.import_module("pymodbus.client")
+    _pymodbus: Any = importlib.import_module("pymodbus")
+    _pymodbus_client: Any = importlib.import_module("pymodbus.client")
     if not hasattr(_pymodbus, "client"):
         _pymodbus.client = _pymodbus_client  # pragma: no cover
 except (ImportError, AttributeError) as _exc:  # pragma: no cover
@@ -115,6 +118,8 @@ except (ImportError, AttributeError) as _exc:  # pragma: no cover
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
+
+    from .registers.loader import RegisterDef
 else:
     AsyncModbusSerialClientType = Any
 
@@ -129,7 +134,7 @@ def _ensure_pymodbus_client_module() -> None:
 
 def is_request_cancelled_error(exc: ModbusIOException) -> bool:
     """Return True when a modbus IO error indicates a cancelled request."""
-    return _scanner_io.is_request_cancelled_error(exc)
+    return bool(_scanner_io.is_request_cancelled_error(exc))
 
 
 async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
@@ -347,7 +352,7 @@ class ThesslaGreenDeviceScanner:
 
         # Placeholder for register map and value ranges loaded asynchronously
         self._registers: dict[int, dict[int, str]] = {}
-        self._register_ranges: dict[str, tuple[int | None, int | None]] = {}
+        self._register_ranges: dict[str, tuple[float | None, float | None]] = {}
         self._names_by_address: dict[int, dict[int, set[str]]] = {4: {}, 3: {}, 1: {}, 2: {}}
 
         # Track holding registers that consistently fail to respond so we
@@ -421,14 +426,12 @@ class ThesslaGreenDeviceScanner:
         await _async_ensure_register_maps(self._hass)
         loaded = await self._load_registers()
         if isinstance(loaded, tuple):
-            self._registers = cast(dict[int, dict[int, str]], loaded[0])
+            self._registers = loaded[0]
             self._register_ranges = (
-                cast(dict[str, tuple[int | None, int | None]], loaded[1])
-                if len(loaded) > 1 and isinstance(loaded[1], dict)
-                else {}
+                loaded[1] if len(loaded) > 1 and isinstance(loaded[1], dict) else {}
             )
         else:
-            self._registers = cast(dict[int, dict[int, str]], loaded)
+            self._registers = loaded
             self._register_ranges = {}
         self._names_by_address = {
             4: self._build_names_by_address(
@@ -648,13 +651,13 @@ class ThesslaGreenDeviceScanner:
 
         last_error: Exception | None = None
         closed_transports: set[int] = set()
-        for mode, transport, timeout in attempts:
+        for mode_name, transport, timeout in attempts:
             try:
                 _LOGGER.info(
                     "verify_connection: connecting to %s:%s (mode=%s, timeout=%s)",
                     self.host,
                     self.port,
-                    mode or self.connection_type,
+                    mode_name or self.connection_type,
                     timeout,
                 )
                 await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
@@ -686,15 +689,15 @@ class ThesslaGreenDeviceScanner:
                         start,
                         count=count,
                     )
-                if mode is not None:
+                if mode_name is not None:
                     if self.connection_mode == CONNECTION_MODE_AUTO:
                         _LOGGER.info(
                             "verify_connection: auto-selected Modbus transport %s for %s:%s",
-                            mode,
+                            mode_name,
                             self.host,
                             self.port,
                         )
-                    self._resolved_connection_mode = mode
+                    self._resolved_connection_mode = mode_name
                 return
             except asyncio.CancelledError:
                 raise
@@ -953,12 +956,12 @@ class ThesslaGreenDeviceScanner:
 
         missing_regs: list[str] = []
         if None in (major, minor, patch):
-            for name, value in (
+            for name, missing_value in (
                 ("version_major", major),
                 ("version_minor", minor),
                 ("version_patch", patch),
             ):
-                if value is None and name in INPUT_REGISTERS:
+                if missing_value is None and name in INPUT_REGISTERS:
                     missing_regs.append(f"{name} ({INPUT_REGISTERS[name]})")
 
         if None not in (major, minor, patch):
@@ -1204,7 +1207,7 @@ class ThesslaGreenDeviceScanner:
         reg_type: str,
         addr_to_names: dict[int, set[str]],
         addresses: list[int],
-        read_fn,
+        read_fn: Callable[..., Awaitable[list[int] | None]],
         *,
         boundaries: frozenset[int] | None = None,
     ) -> None:
@@ -1263,7 +1266,7 @@ class ThesslaGreenDeviceScanner:
             addr_to_names.setdefault(addr, set()).add(name)
             addresses.append(addr)
 
-        async def _read(start: int, count: int, *, skip_cache: bool = False):
+        async def _read(start: int, count: int, *, skip_cache: bool = False) -> list[int] | None:
             try:
                 return (
                     await self._read_input(self._client, start, count, skip_cache=skip_cache)
@@ -1294,7 +1297,7 @@ class ThesslaGreenDeviceScanner:
 
         addr_to_names = {addr: names for addr, (names, _) in holding_info.items()}
 
-        async def _read(start: int, count: int, *, skip_cache: bool = False):
+        async def _read(start: int, count: int, *, skip_cache: bool = False) -> list[int] | None:
             try:
                 return (
                     await self._read_holding(self._client, start, count, skip_cache=skip_cache)
@@ -1625,17 +1628,21 @@ class ThesslaGreenDeviceScanner:
         scan_method = self.scan
         if getattr(scan_method, "__func__", None) is not ThesslaGreenDeviceScanner.scan:
             try:
-                result = scan_method()
-                if inspect.isawaitable(result):
-                    result = await result
+                scan_result: Any = scan_method()
+                if inspect.isawaitable(scan_result):
+                    scan_result = await scan_result
                 if (
-                    isinstance(result, tuple)
-                    and len(result) >= 2
-                    and isinstance(result[0], ScannerDeviceInfo)
-                    and isinstance(result[1], DeviceCapabilities)
+                    isinstance(scan_result, tuple)
+                    and len(scan_result) >= 2
+                    and isinstance(scan_result[0], ScannerDeviceInfo)
+                    and isinstance(scan_result[1], DeviceCapabilities)
                 ):
-                    device, caps = result[0], result[1]
-                    unknown = result[2] if len(result) > 2 and isinstance(result[2], dict) else {}
+                    device, caps = scan_result[0], scan_result[1]
+                    unknown = (
+                        scan_result[2]
+                        if len(scan_result) > 2 and isinstance(scan_result[2], dict)
+                        else {}
+                    )
                     return {
                         "available_registers": {
                             k: sorted(v) for k, v in self.available_registers.items()
@@ -1645,7 +1652,11 @@ class ThesslaGreenDeviceScanner:
                         "register_count": sum(len(v) for v in self.available_registers.values()),
                         "unknown_registers": unknown,
                     }
-                return cast(dict[str, Any], result)
+                if isinstance(scan_result, dict):
+                    return scan_result
+                raise TypeError(
+                    "Overridden scan() must return dict or (ScannerDeviceInfo, DeviceCapabilities)"
+                )
             finally:
                 await self.close()
 
@@ -1724,10 +1735,10 @@ class ThesslaGreenDeviceScanner:
             raise ConnectionException(f"Failed to connect to {self.host}:{self.port}") from exc
 
         try:
-            result = await self.scan()
-            if not isinstance(result, dict):
+            scan_data = await self.scan()
+            if not isinstance(scan_data, dict):
                 raise TypeError("scan() must return a dict")
-            return result
+            return scan_data
         finally:
             await self.close()
 
@@ -1735,11 +1746,11 @@ class ThesslaGreenDeviceScanner:
         self,
     ) -> tuple[
         dict[int, dict[int, str]],
-        dict[str, tuple[int | None, int | None]],
+        dict[str, tuple[float | None, float | None]],
     ]:
         """Load Modbus register definitions and value ranges."""
         register_map: dict[int, dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
-        register_ranges: dict[str, tuple[int | None, int | None]] = {}
+        register_ranges: dict[str, tuple[float | None, float | None]] = {}
         for reg in await async_get_all_registers(self._hass):
             if not reg.name:
                 continue
@@ -1878,7 +1889,7 @@ class ThesslaGreenDeviceScanner:
         """Unpack the overloaded (client, address, count) / (address, count) signatures."""
         if count is None or isinstance(client_or_address, int):
             return None, int(client_or_address), address_or_count
-        return client_or_address, address_or_count, count  # type: ignore[return-value]
+        return client_or_address, address_or_count, count
 
     def _resolve_transport_and_client(
         self,

@@ -75,9 +75,9 @@ from .modbus_exceptions import ConnectionException, ModbusException
 from .utils import resolve_connection_settings
 
 try:  # pragma: no cover - optional in tests
-    from homeassistant.helpers import entity_registry as er  # type: ignore
+    from homeassistant.helpers import entity_registry as er
 except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover
-    er = None  # type: ignore
+    er = None
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,8 +86,10 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 # Compatibility shim for tests patching "custom_components.thessla_green_modbus.__init__.er".
 _init_alias = sys.modules.setdefault(f"{__name__}.__init__", sys.modules[__name__])
-_init_alias.er = er
-sys.modules[__name__].__init__ = _init_alias
+_init_alias_any: Any = _init_alias
+_init_alias_any.er = er
+module_self: Any = sys.modules[__name__]
+module_self.__init__ = _init_alias
 
 # Legacy default port used before version 2 when explicit port was optional
 LEGACY_DEFAULT_PORT = 8899
@@ -115,7 +117,7 @@ def _get_platforms() -> list[object]:
         return _platform_cache
 
     try:  # Import only when running inside Home Assistant
-        from homeassistant.const import Platform  # type: ignore
+        from homeassistant.const import Platform
     except (
         ImportError,
         ModuleNotFoundError,
@@ -297,8 +299,8 @@ async def _async_start_coordinator(
     Returns False if a reauth flow was triggered (caller should return False).
     Raises ConfigEntryNotReady on other connection failures.
     """
-    from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
-    from homeassistant.helpers.update_coordinator import UpdateFailed  # type: ignore
+    from homeassistant.exceptions import ConfigEntryNotReady
+    from homeassistant.helpers.update_coordinator import UpdateFailed
 
     try:
         setup_cb = getattr(coordinator, "async_setup", None)
@@ -325,8 +327,10 @@ async def _async_start_coordinator(
         # exception classes (including test-local subclasses of UpdateFailed).
         # We convert all such failures into ConfigEntryNotReady/reauth flow.
         if (
-            isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed"
-        ) and is_invalid_auth_error(exc):
+            isinstance(exc, Exception)
+            and (isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed")
+            and is_invalid_auth_error(exc)
+        ):
             _LOGGER.error("Authentication failed during setup: %s", exc)
             await entry.async_start_reauth(hass)
             return False
@@ -364,8 +368,10 @@ async def _async_start_coordinator(
         # exception classes (including test-local subclasses of UpdateFailed).
         # We convert all such failures into ConfigEntryNotReady/reauth flow.
         if (
-            isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed"
-        ) and is_invalid_auth_error(exc):
+            isinstance(exc, Exception)
+            and (isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed")
+            and is_invalid_auth_error(exc)
+        ):
             _LOGGER.error("Authentication failed during initial refresh: %s", exc)
             await entry.async_start_reauth(hass)
             return False
@@ -388,7 +394,7 @@ def _async_patch_coordinator_compat(
         coordinator.capabilities = _PermissiveCapabilities()
 
     if not hasattr(coordinator, "get_register_map"):
-        empty_maps = {
+        empty_maps: dict[str, dict[str, Any]] = {
             "input_registers": {},
             "holding_registers": {},
             "coil_registers": {},
@@ -668,9 +674,9 @@ async def _async_migrate_entity_ids(
     unreachable ghost.
     """
     try:
-        from homeassistant.helpers import device_registry as dr  # type: ignore
-        from homeassistant.helpers import entity_registry as er  # type: ignore
-        from homeassistant.util import slugify  # type: ignore
+        from homeassistant.helpers import device_registry as dr
+        from homeassistant.helpers import entity_registry as er
+        from homeassistant.util import slugify
     except (ImportError, ModuleNotFoundError, AttributeError):
         return
 
@@ -955,14 +961,14 @@ async def _async_migrate_entity_ids(
         )
 
 
-async def _async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator) -> None:
+async def _async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator: Any) -> None:
     """Remove legacy number entity IDs replaced by the fan entity.
 
     HA's entity registry does not allow changing domains via async_update_entity,
     so old number.* entities cannot be renamed to fan.*. They are simply removed;
     the fan.rekuperator_fan entity is created by the fan platform setup.
     """
-    from homeassistant.helpers import entity_registry as er  # type: ignore
+    from homeassistant.helpers import entity_registry as er
 
     registry = er.async_get(hass)
     if registry is None:
@@ -993,7 +999,7 @@ async def _async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator) -> 
 
 async def _async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Migrate entity unique IDs stored in the entity registry."""
-    from homeassistant.helpers import entity_registry as er  # type: ignore
+    from homeassistant.helpers import entity_registry as er
 
     registry = er.async_get(hass)
     coordinator = entry.runtime_data

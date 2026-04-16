@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .const import MAX_REGS_PER_REQUEST
 from .modbus_exceptions import ConnectionException, ModbusException
 from .modbus_helpers import chunk_register_values
 from .register_addresses import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
+
+if TYPE_CHECKING:
+    from .modbus_transport import BaseModbusTransport
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,11 +28,26 @@ def _get_register_definition(register_name: str) -> Any:
 class _CoordinatorScheduleMixin:
     """Write-path and schedule helpers for the coordinator."""
 
+    _transport: BaseModbusTransport | None
+    client: Any | None
+    slave_id: int
+    retry: int
+    effective_batch: int
+    _write_lock: asyncio.Lock
+
+    async def _call_modbus(
+        self, func: Any, *args: Any, attempt: int = 1, **kwargs: Any
+    ) -> Any: ...
+    def _get_client_method(self, name: str) -> Any: ...
+    async def _ensure_connection(self) -> None: ...
+    async def _disconnect(self) -> None: ...
+    def _clear_register_failure(self, name: str) -> None: ...
+
     def _encode_write_value(
         self,
         register_name: str,
         definition: Any,
-        value: float | list[int] | tuple[int, ...],
+        value: float | str | list[int] | tuple[int, ...],
         offset: int,
     ) -> tuple[list[int] | None, Any]:
         """Encode *value* for writing. Returns (encoded_values, scalar_value).
@@ -130,7 +149,7 @@ class _CoordinatorScheduleMixin:
     async def async_write_register(
         self,
         register_name: str,
-        value: float | list[int] | tuple[int, ...],
+        value: float | str | list[int] | tuple[int, ...],
         refresh: bool = True,
         *,
         offset: int = 0,
