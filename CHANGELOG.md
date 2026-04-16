@@ -8,9 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 2.3.1
 
 ### Fixed
+- Fixed `set_airflow_schedule` / `set_intensity` writing to nonexistent register names. Services now write real `schedule_<season>_<dow>_<n>` and `setting_<season>_<dow>_<n>` register pairs, with `season` support and deprecated `end_time` handling.
 - Fixed FC03 partial-response tail reverting after write: when AirPack4 FW 3.11 returns fewer registers than requested in a batch, the missing tail is now retried with individual reads instead of being marked as failed, preventing the UI from reverting to stale values after a write.
 - Fixed cache strip stripping registers on newer firmware: `_apply_scan_cache` now only strips `KNOWN_MISSING_REGISTERS` for FW 3.x devices; caches built on FW 4.x+ are no longer corrupted until the next full scan.
 - Refactored sensor sentinel handling: consolidated three separate 0x8000 checks into a single ordered sentinel gate in `_process_register_value`, eliminated magic number `32768` in favour of `SENSOR_UNAVAILABLE`, and added public `is_temperature()` alias on register definitions.
+- Fixed service schema validation gaps: `set_bypass_parameters.min_outdoor_temperature` now accepts `-20..40 °C`, and `set_gwc_parameters` now validates `min_air_temperature < max_air_temperature`.
 
 ### Changed
 - Replaced `pyflakes` with `ruff` as the primary linter; `# noqa: F401` directives on intentional side-effect imports are now respected.

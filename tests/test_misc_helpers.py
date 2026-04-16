@@ -116,7 +116,7 @@ def test_format_bcd_time_valid():
     """BCD time registers return HH:MM string."""
     from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
 
-    result = _format_register_value("schedule_monday_period1_start", 0x0830)
+    result = _format_register_value("schedule_summer_mon_1", 0x0830)
     assert result == "08:30"
 
 
@@ -124,7 +124,7 @@ def test_format_bcd_time_too_large_sensor_unavailable():
     """BCD time above 0x2359 and equal to SENSOR_UNAVAILABLE returns None (line 40)."""
     from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
 
-    result = _format_register_value("schedule_monday_period1_start", SENSOR_UNAVAILABLE)
+    result = _format_register_value("schedule_summer_mon_1", SENSOR_UNAVAILABLE)
     assert result is None
 
 
@@ -132,7 +132,7 @@ def test_format_bcd_time_too_large_invalid():
     """BCD time above 0x2359 but not SENSOR_UNAVAILABLE returns 'invalid' string (line 40)."""
     from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
 
-    result = _format_register_value("schedule_monday_period1_start", 0x9999)
+    result = _format_register_value("schedule_summer_mon_1", 0x9999)
     assert "invalid" in str(result)
 
 
@@ -142,7 +142,7 @@ def test_format_bcd_time_invalid_bcd_sensor_unavailable():
 
     # 0x1390 is <= 0x2359 but has invalid BCD digits (0x90 minutes)
     # decode_bcd_time returns None for invalid BCD
-    result = _format_register_value("schedule_monday_period1_start", SENSOR_UNAVAILABLE)
+    result = _format_register_value("schedule_summer_mon_1", SENSOR_UNAVAILABLE)
     assert result is None
 
 
@@ -151,7 +151,7 @@ def test_format_bcd_time_invalid_bcd_not_unavailable():
     from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
 
     # 160 → decoded as 1h 60m → invalid (minutes out of range)
-    result = _format_register_value("schedule_monday_period1_start", 160)
+    result = _format_register_value("schedule_summer_mon_1", 160)
     assert "invalid" in str(result).lower() or result is None
 
 

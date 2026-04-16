@@ -2,14 +2,12 @@ import copy
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-UTC = datetime.UTC if hasattr(datetime, "UTC") else timezone.utc  # noqa: UP017
 
 # Stub registers module to avoid heavy imports during diagnostics import
 original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")

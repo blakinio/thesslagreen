@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import datetime as dt
 import inspect
 import logging
 import re
 import sys
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from typing import Any, cast
 
@@ -79,7 +78,6 @@ from .scanner_core import (
 from .utils import resolve_connection_settings
 
 __all__ = ["ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
-UTC = getattr(dt, "UTC", dt.UTC)
 
 
 class _SafeDTUtil:
