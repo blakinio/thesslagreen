@@ -42,6 +42,8 @@ _LOGGER = logging.getLogger(__name__)
 class _ScannerRegistersMixin:
     """Raw Modbus read operations for the device scanner."""
 
+    _client: AsyncModbusTcpClient | None
+
     def _filter_unsupported_addresses(self, reg_type: str, addrs: set[int]) -> set[int]:
         """Return failed addresses that are not already covered by unsupported spans."""
 
@@ -340,7 +342,7 @@ class _ScannerRegistersMixin:
             start = start_or_count
 
         results: list[int] = []
-        active_client = client or self._client  # type: ignore[attr-defined]
+        active_client = client or self._client
         for chunk_start, chunk_count in chunk_register_range(start, count, self.effective_batch):  # type: ignore[attr-defined]
             block = await (
                 read_fn(chunk_start, chunk_count)
@@ -371,7 +373,7 @@ class _ScannerRegistersMixin:
     ) -> list[int] | None:
         """Read a contiguous holding register block in MAX-sized chunks."""
         return await self._read_register_block(
-            self._read_holding, client_or_start, start_or_count, count  # type: ignore[attr-defined]
+            self._read_holding, client_or_start, start_or_count, count
         )
 
     async def _read_holding(
@@ -597,11 +599,11 @@ class _ScannerRegistersMixin:
         if count is None:
             address = int(client_or_address)
             count = address_or_count
-            client = self._client  # type: ignore[attr-defined]
+            client = self._client
         elif isinstance(client_or_address, int):
             address = client_or_address
             count = address_or_count
-            client = self._client  # type: ignore[attr-defined]
+            client = self._client
         else:
             client = client_or_address
             address = address_or_count
@@ -661,7 +663,7 @@ class _ScannerRegistersMixin:
                         transport_client = getattr(self._transport, "client", None)  # type: ignore[attr-defined]
                         if transport_client is not None:
                             client = transport_client
-                            self._client = transport_client  # type: ignore[attr-defined]
+                            self._client = transport_client
                     except (
                         ModbusException,
                         ConnectionException,

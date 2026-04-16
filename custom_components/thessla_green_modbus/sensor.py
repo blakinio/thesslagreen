@@ -176,7 +176,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         register_name: str,
-        address: int,
+        address: int | None,
         sensor_definition: dict[str, Any],
     ) -> None:
         """Initialize the sensor."""
@@ -307,7 +307,7 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
         """Return the serial number string assembled during device scan."""
         sn = (self.coordinator.device_info or {}).get("serial_number")
         if sn and sn != "Unknown":
-            return sn
+            return str(sn)
         return None
 
     @property

@@ -20,8 +20,6 @@ def _compat_asdict(obj: Any) -> dict[str, Any]:
     except (ImportError, AttributeError, TypeError):  # pragma: no cover - fallback
         return dataclasses.asdict(obj)
 
-
-
 @dataclass(slots=True)
 class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
@@ -46,24 +44,23 @@ class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     def as_dict(self) -> dict[str, Any]:
         return _compat_asdict(self)
 
-    def items(self):
+    def items(self) -> Any:
         return self.as_dict().items()
 
-    def keys(self):
+    def keys(self) -> Any:
         return self.as_dict().keys()
 
-    def values(self):
+    def values(self) -> Any:
         return self.as_dict().values()
 
     def __getitem__(self, key: str) -> Any:
         return self.as_dict()[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
         return iter(self.as_dict())
 
     def __len__(self) -> int:
         return len(self.as_dict())
-
 @dataclass(slots=True)
 class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
@@ -121,21 +118,24 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
                 if isinstance(value, set):
                     data[key] = sorted(value)
             object.__setattr__(self, "_as_dict_cache", data)
-        return self._as_dict_cache
+        cache = self._as_dict_cache
+        if cache is None:
+            return {}
+        return cache
 
-    def items(self):
+    def items(self) -> Any:
         return self.as_dict().items()
 
-    def keys(self):
+    def keys(self) -> Any:
         return self.as_dict().keys()
 
-    def values(self):
+    def values(self) -> Any:
         return self.as_dict().values()
 
     def __getitem__(self, key: str) -> Any:
         return self.as_dict()[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
         return iter(self.as_dict())
 
     def __len__(self) -> int:

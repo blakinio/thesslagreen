@@ -140,7 +140,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
 
         if self.bit is not None:
             if self.register_name == "special_mode":
-                return raw_value == self.bit
+                return bool(raw_value == self.bit)
             return bool(raw_value & self.bit)
 
         # Convert to boolean
@@ -182,10 +182,24 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             _LOGGER.error("Failed to turn off %s: %s", self.register_name, exc)
             raise
 
-    async def _write_register(self, register_name: str, value: int) -> None:
+    async def _write_register(
+        self,
+        register_name: str,
+        value: Any,
+        *,
+        offset: int = 0,
+        refresh: bool = True,
+        include_offset: bool = False,
+    ) -> None:
         """Write value to register."""
-        offset = self.entity_config.get("offset", 0)
-        await super()._write_register(register_name, value, offset=offset, include_offset=True)
+        entity_offset = self.entity_config.get("offset", 0)
+        await super()._write_register(
+            register_name,
+            int(value),
+            offset=entity_offset if offset == 0 else offset,
+            refresh=refresh,
+            include_offset=True if offset == 0 else include_offset,
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
@@ -231,4 +245,4 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         """Return if entity is available."""
         # For switch entities, we don't require the register to be in current data
         # as they are primarily for control, not just display.
-        return self.coordinator.last_update_success
+        return bool(self.coordinator.last_update_success)

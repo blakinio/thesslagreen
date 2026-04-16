@@ -124,7 +124,7 @@ def map_legacy_entity_id(entity_id: str) -> str:
             )
             _alias_warning_logged = True
             if _parent is not None:
-                _parent._alias_warning_logged = True  # type: ignore[union-attr]
+                _parent._alias_warning_logged = True  # type: ignore[attr-defined]
         return new_entity_id
 
     suffix = object_id.rsplit("_", 1)[-1]
@@ -144,7 +144,7 @@ def map_legacy_entity_id(entity_id: str) -> str:
         )
         _alias_warning_logged = True
         if _parent is not None:
-            _parent._alias_warning_logged = True  # type: ignore[union-attr]
+            _parent._alias_warning_logged = True  # type: ignore[attr-defined]
 
     return new_entity_id
 

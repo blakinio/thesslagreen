@@ -981,22 +981,24 @@ def _register_data_services(hass: HomeAssistant) -> None:
             if not coordinator:
                 continue
 
-            scanner = await ThesslaGreenDeviceScanner.create(
-                host=coordinator.host,
-                port=coordinator.port,
-                slave_id=coordinator.slave_id,
-                timeout=coordinator.timeout,
-                retry=coordinator.retry,
-                scan_uart_settings=coordinator.scan_uart_settings,
-                skip_known_missing=False,
-                full_register_scan=True,
-                max_registers_per_request=coordinator.effective_batch,
-                hass=hass,
-            )
+            scanner: ThesslaGreenDeviceScanner | None = None
             try:
+                scanner = await ThesslaGreenDeviceScanner.create(
+                    host=coordinator.host,
+                    port=coordinator.port,
+                    slave_id=coordinator.slave_id,
+                    timeout=int(coordinator.timeout),
+                    retry=coordinator.retry,
+                    scan_uart_settings=coordinator.scan_uart_settings,
+                    skip_known_missing=False,
+                    full_register_scan=True,
+                    max_registers_per_request=coordinator.effective_batch,
+                    hass=hass,
+                )
                 scan_result = await scanner.scan_device()
             finally:
-                await scanner.close()
+                if scanner is not None:
+                    await scanner.close()
 
             coordinator.device_scan_result = scan_result
 

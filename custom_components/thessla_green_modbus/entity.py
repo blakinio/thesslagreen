@@ -6,12 +6,10 @@ import inspect
 import logging
 from typing import Any
 
-from homeassistant.helpers import update_coordinator as update_coordinator_helper
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-CoordinatorEntity = getattr(update_coordinator_helper, "CoordinatorEntity", object)
-
-from .const import MAX_VENTILATION_PERCENT, device_unique_id_prefix  # noqa: E402
-from .coordinator import ThesslaGreenModbusCoordinator  # noqa: E402
+from .const import MAX_VENTILATION_PERCENT, device_unique_id_prefix
+from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +23,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
         self,
         coordinator: ThesslaGreenModbusCoordinator,
         key: str,
-        address: int,
+        address: int | None,
         *,
         bit: int | None = None,
     ) -> None:

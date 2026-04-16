@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import datetime as dt
-from datetime import UTC
 from typing import Any
+
+UTC = getattr(dt, "UTC", dt.timezone.utc)  # noqa: UP017 - Python < 3.11 fallback
 
 try:
     from homeassistant.util import dt as dt_util
@@ -67,7 +68,7 @@ try:
     from homeassistant.helpers.device_registry import DeviceInfo
 except (ModuleNotFoundError, ImportError):
 
-    class DeviceInfo:
+    class DeviceInfo:  # type: ignore[no-redef]
         """Minimal fallback DeviceInfo for tests."""
 
         def __init__(self, **kwargs: Any) -> None:

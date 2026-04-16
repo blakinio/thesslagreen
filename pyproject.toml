@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thessla-green-modbus"
-version = "2.3.1"
+version = "2.3.2"
 description = "ThesslaGreen Modbus integration for Home Assistant"
 readme = "README.md"
 license = {text = "MIT"}
@@ -131,6 +131,7 @@ follow_imports = "skip"
 module = [
     "homeassistant.*",
     "pymodbus.*",
+    "pydantic.*",
     "voluptuous.*",
 ]
 ignore_missing_imports = true

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
@@ -22,15 +22,40 @@ class _PermanentModbusError(ModbusException):
 
 
 class _ModbusIOMixin:
-    """Read-path Modbus methods used by the coordinator."""
+    """Read-path Modbus methods used by the coordinator.
 
+    Attributes and stub methods declared below are provided by
+    ``ThesslaGreenModbusCoordinator`` and sibling mixins at runtime.
+    They allow mypy to type-check this mixin in isolation.
+    """
+
+    # Transport / connection
     _transport: BaseModbusTransport | None
     client: Any | None
+    slave_id: int
+    timeout: float
+    retry: int
+    backoff: float
+    backoff_jitter: float | tuple[float, float] | None
+
+    # Runtime state
     statistics: dict[str, Any]
     available_registers: dict[str, set[str]]
     _register_groups: dict[str, list[tuple[int, int]]]
     effective_batch: int
     _failed_registers: set[str]
+
+    async def _ensure_connection(self) -> None: ...
+    def _find_register_name(self, register_type: str, address: int) -> str | None: ...
+    def _process_register_value(self, register_name: str, value: int) -> Any: ...
+    def _clear_register_failure(self, name: str) -> None: ...
+    def _mark_registers_failed(self, names: Iterable[str | None]) -> None: ...
+    async def _read_coils_transport(
+        self, slave_id: int, address: int, *, count: int, attempt: int = 1
+    ) -> Any: ...
+    async def _read_discrete_inputs_transport(
+        self, slave_id: int, address: int, *, count: int, attempt: int = 1
+    ) -> Any: ...
 
     async def _call_modbus(
         self, func: Callable[..., Any], *args: Any, attempt: int = 1, **kwargs: Any
@@ -231,7 +256,9 @@ class _ModbusIOMixin:
             read_method = transport.read_input_registers
         elif client is not None and getattr(client, "connected", True):
 
-            async def read_method(slave_id: int, address: int, *, count: int, attempt: int = 1):
+            async def read_method(
+                slave_id: int, address: int, *, count: int, attempt: int = 1
+            ) -> Any:
                 return await self._call_modbus(
                     client.read_input_registers,
                     address,
@@ -384,7 +411,9 @@ class _ModbusIOMixin:
             read_method = transport.read_holding_registers
         elif client is not None and getattr(client, "connected", True):
 
-            async def read_method(slave_id: int, address: int, *, count: int, attempt: int = 1):
+            async def read_method(
+                slave_id: int, address: int, *, count: int, attempt: int = 1
+            ) -> Any:
                 return await self._call_modbus(
                     client.read_holding_registers,
                     address,

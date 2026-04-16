@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..registers.loader import RegisterDef
 
 from .._compat import BinarySensorDeviceClass, EntityCategory
 from ..const import (
@@ -26,7 +30,7 @@ try:  # pragma: no cover - optional during isolated tests
     from ..registers.loader import get_all_registers
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
 
-    def get_all_registers(*_args, **_kwargs):  # type: ignore[misc]
+    def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
         return []
 
 

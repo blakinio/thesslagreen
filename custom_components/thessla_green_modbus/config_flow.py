@@ -11,27 +11,42 @@ import socket
 import traceback
 from collections.abc import Awaitable, Callable
 from importlib import import_module
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
-try:  # pragma: no cover - optional HA component
+if TYPE_CHECKING:
     from homeassistant.components.dhcp import DhcpServiceInfo
-except (ImportError, ModuleNotFoundError):  # pragma: no cover
-    DhcpServiceInfo = None  # type: ignore[assignment,misc]
-
-try:  # pragma: no cover - optional HA component
     from homeassistant.components.zeroconf import ZeroconfServiceInfo
-except (ImportError, ModuleNotFoundError):  # pragma: no cover
-    ZeroconfServiceInfo = None  # type: ignore[assignment,misc]
+else:
+    try:  # pragma: no cover - optional HA component
+        from homeassistant.components.dhcp import DhcpServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
+
+        @dataclasses.dataclass
+        class DhcpServiceInfo:  # pragma: no cover
+            """Fallback DHCP service info for minimal test environments."""
+
+            macaddress: str | None = None
+            ip: str | None = None
+
+    try:  # pragma: no cover - optional HA component
+        from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
+
+        @dataclasses.dataclass
+        class ZeroconfServiceInfo:  # pragma: no cover
+            """Fallback Zeroconf service info for minimal test environments."""
+
+            host: str | None = None
 from homeassistant.core import HomeAssistant
 
 try:  # pragma: no cover - available since HA 2023.9
     from homeassistant.config_entries import ConfigFlowResult
 except (ImportError, ModuleNotFoundError):  # pragma: no cover
-    ConfigFlowResult = dict  # type: ignore[assignment,misc]
+    ConfigFlowResult = dict[str, Any]
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 from homeassistant.util.network import is_host_valid
@@ -97,31 +112,34 @@ from .utils import resolve_connection_settings
 _LOGGER = logging.getLogger(__name__)
 TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 
+if TYPE_CHECKING:
+    class _ConfigFlowBase(config_entries.ConfigFlow):
+        def __init_subclass__(cls, *, domain: str, **kwargs: Any) -> None: ...
+
+else:
+    _ConfigFlowBase = config_entries.ConfigFlow
+
 
 class _FallbackFlowBase:  # pragma: no cover
     """Fallback flow base for minimal test environments."""
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         return None
 
-    async def async_set_unique_id(self, *args, **kwargs):
+    async def async_set_unique_id(self, *args: Any, **kwargs: Any) -> None:
         return None
 
-    def _abort_if_unique_id_configured(self):
+    def _abort_if_unique_id_configured(self) -> None:
         return None
 
-    def async_show_form(self, **kwargs):
+    def async_show_form(self, **kwargs: Any) -> dict[str, Any]:
         return {"type": "form", **kwargs}
 
-    def async_create_entry(self, **kwargs):
+    def async_create_entry(self, **kwargs: Any) -> dict[str, Any]:
         return {"type": "create_entry", **kwargs}
 
-    def async_abort(self, **kwargs):
+    def async_abort(self, **kwargs: Any) -> dict[str, Any]:
         return {"type": "abort", **kwargs}
-
-
-_BASE_CONFIG_FLOW = getattr(config_entries, "ConfigFlow", _FallbackFlowBase)
-_BASE_OPTIONS_FLOW = getattr(config_entries, "OptionsFlow", _FallbackFlowBase)
 
 
 def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
@@ -325,7 +343,7 @@ async def _call_with_optional_timeout(func: Callable[[], Any], timeout: float) -
 
 def _caps_to_dict(obj: Any) -> dict[str, Any]:
     """Return a JSON-serializable dict from a capabilities object."""
-    if dataclasses.is_dataclass(obj):
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
         data = dict(obj.as_dict()) if hasattr(obj, "as_dict") else dataclasses.asdict(obj)
     elif hasattr(obj, "as_dict"):
         data = obj.as_dict()
@@ -575,13 +593,13 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc
     finally:
-        if hasattr(scanner, "close"):
+        if scanner is not None and hasattr(scanner, "close"):
             close_result = scanner.close()
             if inspect.isawaitable(close_result):
                 await close_result
 
 
-class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
+class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
     """Handle a config flow for ThesslaGreen Modbus."""
 
     VERSION = 4  # pragma: no cover
@@ -631,7 +649,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             ),
         )
 
-    async def async_set_unique_id(self, *args, **kwargs):  # pragma: no cover
+    async def async_set_unique_id(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "async_set_unique_id", None)
         if callable(base):
             result = base(*args, **kwargs)
@@ -640,25 +658,25 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
             return result
         return None
 
-    def _abort_if_unique_id_configured(self, **kwargs):  # pragma: no cover
+    def _abort_if_unique_id_configured(self, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "_abort_if_unique_id_configured", None)
         if callable(base):
             return base(**kwargs)
         return None
 
-    def async_show_form(self, **kwargs):  # pragma: no cover
+    def async_show_form(self, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "async_show_form", None)
         if callable(base):
             return base(**kwargs)
         return {"type": "form", **kwargs}
 
-    def async_create_entry(self, **kwargs):  # pragma: no cover
+    def async_create_entry(self, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "async_create_entry", None)
         if callable(base):
             return base(**kwargs)
         return {"type": "create_entry", **kwargs}
 
-    def async_abort(self, **kwargs):  # pragma: no cover
+    def async_abort(self, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "async_abort", None)
         if callable(base):
             return base(**kwargs)
@@ -1179,7 +1197,7 @@ class ConfigFlow(_BASE_CONFIG_FLOW, domain=DOMAIN):  # type: ignore[call-arg]
         return OptionsFlow(config_entry)
 
 
-class OptionsFlow(_BASE_OPTIONS_FLOW):
+class OptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for ThesslaGreen Modbus."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:  # pragma: no cover
@@ -1187,23 +1205,23 @@ class OptionsFlow(_BASE_OPTIONS_FLOW):
         self._stored_config_entry = config_entry
 
     @property
-    def config_entry(self):  # type: ignore[override]  # pragma: no cover
+    def config_entry(self) -> config_entries.ConfigEntry:  # pragma: no cover
         """Return the config entry for this options flow."""
         return self._stored_config_entry
 
-    def async_show_form(self, **kwargs):  # pragma: no cover
+    def async_show_form(self, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "async_show_form", None)
         if callable(base):
             return base(**kwargs)
         return {"type": "form", **kwargs}
 
-    def async_create_entry(self, **kwargs):  # pragma: no cover
+    def async_create_entry(self, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "async_create_entry", None)
         if callable(base):
             return base(**kwargs)
         return {"type": "create_entry", **kwargs}
 
-    def async_abort(self, **kwargs):  # pragma: no cover
+    def async_abort(self, **kwargs: Any) -> Any:  # pragma: no cover
         base = getattr(super(), "async_abort", None)
         if callable(base):
             return base(**kwargs)

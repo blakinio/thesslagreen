@@ -14,12 +14,16 @@ try:  # pragma: no cover - optional during isolated tests
     from .registers.loader import get_registers_by_function
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
 
-    def get_registers_by_function(fn: str):
+    def get_registers_by_function(
+        fn: str, json_path: Path | str | None = None
+    ) -> list[RegisterDef]:
         return []
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
+
+    from .registers.loader import RegisterDef
 
 # Maximum number of registers that can be read in a single request.
 # The registers loader previously created a circular dependency with
@@ -248,7 +252,7 @@ try:  # pragma: no cover - optional during isolated tests
         _Platform.TIME,
     ]
 except (ImportError, AttributeError):  # pragma: no cover - fallback for test environments
-    PLATFORMS = [  # type: ignore[assignment]
+    PLATFORMS = [
         "sensor",
         "binary_sensor",
         "climate",
@@ -357,12 +361,12 @@ def migrate_unique_id(
     reverse_by_address: dict[tuple[int, int | None], str] = {}
     register_to_key: dict[str, str] = {}
 
-    for key, (register_name, register_type, bit) in lookup.items():
-        register_to_key.setdefault(register_name, key)
-        address = _register_address(register_name, register_type)
+    for mapping_key, (mapped_register_name, mapped_register_type, bit) in lookup.items():
+        register_to_key.setdefault(mapped_register_name, mapping_key)
+        address = _register_address(mapped_register_name, mapped_register_type)
         if address is None:
             continue
-        reverse_by_address.setdefault((address, _bit_index(bit)), key)
+        reverse_by_address.setdefault((address, _bit_index(bit)), mapping_key)
 
     match = re.match(rf".*_{slave_id}_(.+)", uid_no_domain)
     remainder = match.group(1) if match else None
@@ -374,31 +378,34 @@ def migrate_unique_id(
         if match_address:
             address = int(match_address.group(1))
             bit_index = int(match_address.group(2)) if match_address.group(2) else None
-            key = reverse_by_address.get((address, bit_index)) or reverse_by_address.get(
+            resolved_key = reverse_by_address.get((address, bit_index)) or reverse_by_address.get(
                 (address, None)
             )
-            if key:
+            if resolved_key:
                 bit_suffix = f"_bit{bit_index}" if bit_index is not None else ""
-                base_uid = f"{slave_id}_{key}_{address}{bit_suffix}"
+                base_uid = f"{slave_id}_{resolved_key}_{address}{bit_suffix}"
         else:
-            key = None
-            register_name: str | None = None
-            bit_index: int | None = None
+            resolved_key = None
+            matched_register_name: str | None = None
+            matched_register_type: str | None = None
+            matched_bit_index: int | None = None
 
             if remainder in lookup:
-                key = remainder
-                register_name, register_type, bit = lookup[key]
-                bit_index = _bit_index(bit)
+                resolved_key = remainder
+                matched_register_name, matched_register_type, bit = lookup[resolved_key]
+                matched_bit_index = _bit_index(bit)
             elif remainder in register_to_key:
-                key = register_to_key[remainder]
-                register_name, register_type, bit = lookup[key]
-                bit_index = _bit_index(bit)
+                resolved_key = register_to_key[remainder]
+                matched_register_name, matched_register_type, bit = lookup[resolved_key]
+                matched_bit_index = _bit_index(bit)
 
-            if register_name:
-                address = _register_address(register_name, register_type)
+            if matched_register_name:
+                address = _register_address(matched_register_name, matched_register_type)
                 if address is not None:
-                    bit_suffix = f"_bit{bit_index}" if bit_index is not None else ""
-                    base_uid = f"{slave_id}_{key}_{address}{bit_suffix}"
+                    bit_suffix = (
+                        f"_bit{matched_bit_index}" if matched_bit_index is not None else ""
+                    )
+                    base_uid = f"{slave_id}_{resolved_key}_{address}{bit_suffix}"
             elif remainder == "fan":
                 base_uid = f"{slave_id}_fan_0"
 

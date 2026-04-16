@@ -67,6 +67,9 @@ _LOGGER = logging.getLogger(__name__)
 class _ScannerTransportMixin:
     """Connection-setup and transport management for the device scanner."""
 
+    _transport: BaseModbusTransport | None
+    _client: AsyncModbusTcpClient | None
+
     # ------------------------------------------------------------------ #
     # Connection helpers                                                   #
     # ------------------------------------------------------------------ #
@@ -74,15 +77,15 @@ class _ScannerTransportMixin:
     async def close(self) -> None:
         """Close the underlying Modbus client connection."""
 
-        if self._transport is not None:  # type: ignore[attr-defined]
+        if self._transport is not None:
             try:
-                await self._transport.close()  # type: ignore[attr-defined]
+                await self._transport.close()
             except (OSError, ConnectionException, ModbusIOException):
                 _LOGGER.debug("Error closing Modbus transport", exc_info=True)
             finally:
-                self._transport = None  # type: ignore[attr-defined]
+                self._transport = None
 
-        client = self._client  # type: ignore[attr-defined]
+        client = self._client
         if client is None:
             return
 
@@ -91,7 +94,7 @@ class _ScannerTransportMixin:
         except (OSError, ConnectionException, ModbusIOException):
             _LOGGER.debug("Error closing Modbus client", exc_info=True)
         finally:
-            self._client = None  # type: ignore[attr-defined]
+            self._client = None
 
     def _build_tcp_transport(
         self,
@@ -241,7 +244,7 @@ class _ScannerTransportMixin:
                             self.host,  # type: ignore[attr-defined]
                             self.port,  # type: ignore[attr-defined]
                         )
-                    self._resolved_connection_mode = mode  # type: ignore[attr-defined]
+                    self._resolved_connection_mode = mode
                 return
             except asyncio.CancelledError:
                 raise
@@ -289,9 +292,9 @@ class _ScannerTransportMixin:
         client: Any,
     ) -> tuple[Any, Any]:
         """Return (transport, client) ready for reads. Raises if neither available."""
-        transport = self._transport if client is None else None  # type: ignore[attr-defined]
+        transport = self._transport if client is None else None
         if client is None and transport is None:
-            client = self._client  # type: ignore[attr-defined]
+            client = self._client
         if client is None and transport is None:
             raise ConnectionException("Modbus transport is not connected")
         return transport, client

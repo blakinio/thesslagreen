@@ -19,8 +19,8 @@ def ensure_pymodbus_client_module() -> None:
     """Ensure ``pymodbus.client`` is importable and attached to ``pymodbus``."""
 
     try:
-        pymodbus_mod = importlib.import_module("pymodbus")
-        client_mod = importlib.import_module("pymodbus.client")
+        pymodbus_mod: Any = importlib.import_module("pymodbus")
+        client_mod: Any = importlib.import_module("pymodbus.client")
     except (ImportError, ModuleNotFoundError, AttributeError):
         return
     if not hasattr(pymodbus_mod, "client"):

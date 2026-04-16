@@ -5,6 +5,19 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.3.2
+
+### Changed
+- Replaced runtime `getattr(...)` dispatch in `climate.py` with direct imports from `homeassistant.components.climate`, removing dead fallback paths and restoring strict typing support.
+- Added explicit mixin attribute and stub-method declarations in coordinator/scanner mixins so mypy can validate cross-mixin contracts without runtime changes.
+- Added `assert self.client is not None` after transport reconnection in Modbus transport read/write methods to make `None` narrowing explicit for static typing.
+- Aligned conditional fallback shim signatures in register loader adapters (`scanner_register_maps.py`, `scanner_core.py`, `const.py`, `mappings/_helpers.py`, `mappings/_loaders.py`) with real loader APIs.
+- Refactored BCD clock decode in `_coordinator_capabilities.py` from `all(...)` generator checks to explicit `is not None` guards for mypy narrowing.
+
+### Fixed
+- Removed stale/incorrect `# type: ignore[...]` tags that no longer matched emitted mypy error codes.
+- Added stricter typing/guard fixes in scanner and register helpers to reduce strict-mode typing failures.
+
 ## 2.3.1
 
 ### Fixed

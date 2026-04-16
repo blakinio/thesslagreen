@@ -6,7 +6,10 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..registers.loader import RegisterDef
 
 from .._compat import PERCENTAGE
 from ..utils import _to_snake_case
@@ -15,7 +18,7 @@ try:  # pragma: no cover - optional during isolated tests
     from ..registers.loader import get_all_registers
 except (ImportError, AttributeError):  # pragma: no cover
 
-    def get_all_registers(*_args, **_kwargs):
+    def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
         return []
 
 
@@ -74,7 +77,7 @@ def _get_register_info(name: str) -> dict[str, Any] | None:
             }
         _REGISTER_INFO_CACHE = cache
         if _parent is not None:
-            _parent._REGISTER_INFO_CACHE = cache  # type: ignore[union-attr]
+            _parent._REGISTER_INFO_CACHE = cache  # type: ignore[attr-defined]
 
     info = cache.get(name)
     if info is None and (suffix := name.rsplit("_", 1)) and len(suffix) > 1 and suffix[1].isdigit():

@@ -34,8 +34,8 @@ def _format_register_value(name: str, value: int) -> int | str | None:
     """Return a human-readable representation of a register value."""
     if name == "manual_airing_time_to_start":
         raw_value = value
-        value = ((value & 255) << 8) | ((value >> 8) & 255)
-        decoded = _decode_register_time(value)
+        swapped_value = ((value & 255) << 8) | ((value >> 8) & 255)
+        decoded = _decode_register_time(swapped_value)
         if decoded is None:
             return None if raw_value == SENSOR_UNAVAILABLE else f"{raw_value} (invalid)"
         return f"{decoded // 60:02d}:{decoded % 60:02d}"
@@ -43,23 +43,25 @@ def _format_register_value(name: str, value: int) -> int | str | None:
     if name.startswith(BCD_TIME_PREFIXES):
         if value > 0x2359:
             return None if value == SENSOR_UNAVAILABLE else f"{value} (invalid)"
-        decoded = decode_bcd_time(value)
-        if decoded is None:
+        bcd_decoded = decode_bcd_time(value)
+        if bcd_decoded is None:
             return None if value == SENSOR_UNAVAILABLE else f"{value} (invalid)"
-        return decoded
+        return bcd_decoded
 
     if name.startswith(TIME_REGISTER_PREFIXES):
-        decoded = _decode_register_time(value)
-        if decoded is None:
+        time_decoded = _decode_register_time(value)
+        if time_decoded is None:
             return None if value == SENSOR_UNAVAILABLE else f"{value} (invalid)"
-        return f"{decoded // 60:02d}:{decoded % 60:02d}"
+        return f"{time_decoded // 60:02d}:{time_decoded % 60:02d}"
 
     if name.startswith(SETTING_PREFIX):
-        decoded = _decode_aatt(value)
-        if decoded is None:
+        aatt_decoded: dict[str, float | int] | None = _decode_aatt(value)
+        if aatt_decoded is None:
             return None if value == SENSOR_UNAVAILABLE else value
-        airflow = decoded["airflow_pct"]
-        temp = decoded["temp_c"]
+        airflow = aatt_decoded.get("airflow_pct")
+        temp = aatt_decoded.get("temp_c")
+        if airflow is None or temp is None:
+            return None if value == SENSOR_UNAVAILABLE else value
         temp_str = f"{temp:g}"
         return f"{airflow}% @ {temp_str}°C"
 
