@@ -12,10 +12,50 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 
+def test_coordinator_config_from_entry() -> None:
+    """CoordinatorConfig should parse connection and option fields from entry."""
+    from custom_components.thessla_green_modbus.coordinator import CoordinatorConfig
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.data = {
+        CONF_HOST: "192.168.1.100",
+        CONF_PORT: 8899,
+        "slave_id": 7,
+        "name": "Device",
+        "connection_type": "tcp_rtu",
+        "connection_mode": "tcp_rtu",
+        "serial_port": "/dev/ttyUSB0",
+        "baud_rate": 19200,
+        "parity": "even",
+        "stop_bits": 2,
+    }
+    entry.options = {
+        "scan_interval": 15,
+        "timeout": 8,
+        "retry": 2,
+        "backoff": 0.2,
+        "backoff_jitter": 0.1,
+        "force_full_register_list": True,
+        "scan_uart_settings": False,
+        "deep_scan": True,
+        "safe_scan": True,
+        "max_registers_per_request": 10,
+        "skip_missing_registers": True,
+    }
+
+    config = CoordinatorConfig.from_entry(entry)
+    assert config.host == "192.168.1.100"
+    assert config.port == 8899
+    assert config.slave_id == 7
+    assert config.connection_type == "tcp_rtu"
+    assert config.max_registers_per_request == 10
+
+
 async def test_async_setup_entry_success():
     """Test successful setup entry."""
     hass = MagicMock()
     hass.data = {}
+    hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
     hass.config_entries.async_forward_entry_setups = AsyncMock()
 
     entry = MagicMock(spec=ConfigEntry)
@@ -52,6 +92,7 @@ async def test_async_setup_entry_failure():
     """Test setup entry with coordinator failure."""
     hass = MagicMock()
     hass.data = {}
+    hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
 
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
@@ -84,6 +125,7 @@ async def test_async_setup_entry_triggers_reauth_on_auth_error():
     """Authentication errors during setup should trigger reauth."""
     hass = MagicMock()
     hass.data = {}
+    hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
 
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
@@ -116,6 +158,7 @@ async def test_async_setup_entry_triggers_reauth_on_refresh_auth_error():
     """Authentication errors during refresh should trigger reauth."""
     hass = MagicMock()
     hass.data = {}
+    hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
     hass.config_entries.async_forward_entry_setups = AsyncMock()
 
     entry = MagicMock(spec=ConfigEntry)
@@ -152,6 +195,7 @@ async def test_async_setup_entry_custom_port():
     """Test setup entry with a non-default port."""
     hass = MagicMock()
     hass.data = {}
+    hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
     hass.config_entries.async_forward_entry_setups = AsyncMock()
 
     entry = MagicMock(spec=ConfigEntry)
@@ -273,6 +317,7 @@ async def test_unload_and_reload_entry():
     """Test unloading and reloading a config entry reinitializes the integration."""
     hass = MagicMock()
     hass.data = {}
+    hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
     hass.config_entries.async_forward_entry_setups = AsyncMock()
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
 
@@ -342,3 +387,18 @@ async def test_unload_and_reload_entry():
         assert hass.config_entries.async_forward_entry_setups.call_count == 1
         mock_setup_services.assert_called_once()
         assert mock_coordinator_class.call_count == 2
+
+
+def test_coordinator_from_config() -> None:
+    """Coordinator factory should build object from CoordinatorConfig payload."""
+    from custom_components.thessla_green_modbus.coordinator import (
+        CoordinatorConfig,
+        ThesslaGreenModbusCoordinator,
+    )
+
+    hass = MagicMock()
+    config = CoordinatorConfig(host="192.168.1.10", port=502, slave_id=10)
+    coordinator = ThesslaGreenModbusCoordinator.from_config(hass, config)
+    assert coordinator.host == "192.168.1.10"
+    assert coordinator.port == 502
+    assert coordinator.slave_id == 10

@@ -10,16 +10,6 @@ from typing import Any
 from .const import UNKNOWN_MODEL
 
 
-def _compat_asdict(obj: Any) -> dict[str, Any]:
-    """Use scanner_core.asdict when available (test patch compatibility)."""
-
-    try:
-        from . import scanner_core as _scanner_core
-
-        return _scanner_core.asdict(obj)
-    except (ImportError, AttributeError, TypeError):  # pragma: no cover - fallback
-        return dataclasses.asdict(obj)
-
 @dataclass(slots=True)
 class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     """Basic identifying information about a ThesslaGreen unit.
@@ -42,7 +32,7 @@ class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     capabilities: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
-        return _compat_asdict(self)
+        return dataclasses.asdict(self)
 
     def items(self) -> Any:
         return self.as_dict().items()
@@ -61,6 +51,8 @@ class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
 
     def __len__(self) -> int:
         return len(self.as_dict())
+
+
 @dataclass(slots=True)
 class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     """Feature flags and sensor availability detected on the device.
@@ -113,7 +105,7 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
         """
 
         if self._as_dict_cache is None:
-            data = {k: v for k, v in _compat_asdict(self).items() if not k.startswith("_")}
+            data = {k: v for k, v in dataclasses.asdict(self).items() if not k.startswith("_")}
             for key, value in data.items():
                 if isinstance(value, set):
                     data[key] = sorted(value)
@@ -140,5 +132,6 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
 
     def __len__(self) -> int:
         return len(self.as_dict())
+
 
 __all__ = ["DeviceCapabilities", "ScannerDeviceInfo"]

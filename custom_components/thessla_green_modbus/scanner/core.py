@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import importlib
-import inspect
 import logging
-import time
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict as _dataclasses_asdict
 from pathlib import Path
@@ -21,7 +18,6 @@ from ..const import (
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP,
     CONNECTION_MODE_TCP_RTU,
-    CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
@@ -37,7 +33,7 @@ from ..const import (
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
 )
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from ..modbus_exceptions import ConnectionException, ModbusIOException
 from ..modbus_helpers import (
     _call_modbus,
     async_maybe_await_close,
@@ -52,8 +48,9 @@ from ..modbus_transport import (
 from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
 from ..scanner_helpers import (
     MAX_BATCH_REGISTERS,
-    SAFE_REGISTERS,
-    _format_register_value,
+)
+from ..scanner_helpers import (
+    SAFE_REGISTERS as _SAFE_REGISTERS,
 )
 from ..scanner_register_maps import (
     COIL_REGISTERS,
@@ -61,16 +58,16 @@ from ..scanner_register_maps import (
     HOLDING_REGISTERS,
     INPUT_REGISTERS,
     MULTI_REGISTER_SIZES,
-    REGISTER_DEFINITIONS,
 )
 from ..utils import (
-    default_connection_mode,
     resolve_connection_settings,
 )
 from . import capabilities as scanner_capabilities
 from . import firmware as scanner_firmware
 from . import io as scanner_domain_io
+from . import orchestration as scanner_orchestration
 from . import registers as scanner_registers
+from . import setup as scanner_setup
 
 try:  # pragma: no cover - optional during isolated tests
     from ..registers.loader import (
@@ -103,6 +100,8 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs 
 asdict = _dataclasses_asdict  # re-exported for test monkeypatching
 
 _LOGGER = logging.getLogger(__name__)
+REGISTER_DEFINITIONS = _register_maps.REGISTER_DEFINITIONS
+SAFE_REGISTERS = _SAFE_REGISTERS
 
 try:
     _pymodbus: Any = importlib.import_module("pymodbus")
@@ -604,124 +603,14 @@ class ThesslaGreenDeviceScanner:
         callers can surface an appropriate error to the user.
         """
 
-        safe_input: list[int] = []
-        safe_holding: list[int] = []
-        for func, name in SAFE_REGISTERS:
-            reg = REGISTER_DEFINITIONS.get(name)
-            if reg is None:
-                continue
-            if func == 4:
-                safe_input.append(reg.address)
-            else:
-                safe_holding.append(reg.address)
-
-        attempts: list[tuple[str | None, BaseModbusTransport, float]] = []
-        if self.connection_type == CONNECTION_TYPE_RTU:
-            if not self.serial_port:
-                raise ConnectionException("Serial port not configured")
-            parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
-            stop_bits = SERIAL_STOP_BITS_MAP.get(
-                self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
-            )
-            attempts.append(
-                (
-                    None,
-                    RtuModbusTransport(
-                        serial_port=self.serial_port,
-                        baudrate=self.baud_rate,
-                        parity=parity,
-                        stopbits=stop_bits,
-                        max_retries=self.retry,
-                        base_backoff=self.backoff,
-                        max_backoff=DEFAULT_MAX_BACKOFF,
-                        timeout=self.timeout,
-                    ),
-                    self.timeout,
-                )
-            )
-        elif self.connection_mode == CONNECTION_MODE_AUTO:
-            attempts.extend(self._build_auto_tcp_attempts())
-        else:
-            mode = self.connection_mode or default_connection_mode(self.port)
-            attempts.append((mode, self._build_tcp_transport(mode), self.timeout))
-
-        last_error: Exception | None = None
-        closed_transports: set[int] = set()
-        for mode_name, transport, timeout in attempts:
-            try:
-                _LOGGER.info(
-                    "verify_connection: connecting to %s:%s (mode=%s, timeout=%s)",
-                    self.host,
-                    self.port,
-                    mode_name or self.connection_type,
-                    timeout,
-                )
-                await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
-
-                for start, count in _group_reads(safe_input, max_block_size=self.effective_batch):
-                    _LOGGER.debug(
-                        "verify_connection: read_input_registers start=%s count=%s",
-                        start,
-                        count,
-                    )
-                    await transport.read_input_registers(
-                        self.slave_id,
-                        start,
-                        count=count,
-                    )
-
-                for start, count in _group_reads(
-                    safe_holding,
-                    max_block_size=self.effective_batch,
-                    boundaries=HOLDING_BATCH_BOUNDARIES,
-                ):
-                    _LOGGER.debug(
-                        "verify_connection: read_holding_registers start=%s count=%s",
-                        start,
-                        count,
-                    )
-                    await transport.read_holding_registers(
-                        self.slave_id,
-                        start,
-                        count=count,
-                    )
-                if mode_name is not None:
-                    if self.connection_mode == CONNECTION_MODE_AUTO:
-                        _LOGGER.info(
-                            "verify_connection: auto-selected Modbus transport %s for %s:%s",
-                            mode_name,
-                            self.host,
-                            self.port,
-                        )
-                    self._resolved_connection_mode = mode_name
-                return
-            except asyncio.CancelledError:
-                raise
-            except ModbusIOException as exc:
-                last_error = exc
-                if is_request_cancelled_error(exc):
-                    _LOGGER.info("Modbus request cancelled during verify_connection.")
-                    raise TimeoutError("Modbus request cancelled") from exc
-            except TimeoutError as exc:
-                last_error = exc
-                _LOGGER.warning("Timeout during verify_connection: %s", exc)
-            except (ConnectionException, ModbusException, OSError) as exc:
-                last_error = exc
-            finally:
-                try:
-                    transport_id = id(transport)
-                    if transport_id not in closed_transports:
-                        close_result = transport.close()
-                        if inspect.isawaitable(close_result):
-                            await close_result
-                        closed_transports.add(transport_id)
-                except (OSError, ConnectionException, ModbusIOException):
-                    _LOGGER.debug(
-                        "Error closing Modbus transport during verify_connection", exc_info=True
-                    )
-
-        if last_error:
-            raise last_error
+        await scanner_setup.verify_connection(
+            self,
+            safe_registers=SAFE_REGISTERS,
+            register_definitions=REGISTER_DEFINITIONS,
+            holding_batch_boundaries=HOLDING_BATCH_BOUNDARIES,
+            group_reads=_group_reads,
+            rtu_transport_cls=RtuModbusTransport,
+        )
 
     def _is_valid_register_value(self, name: str, value: int) -> bool:
         """Validate a register value against known constraints."""
@@ -872,121 +761,15 @@ class ThesslaGreenDeviceScanner:
         scanned_registers: dict[str, int],
     ) -> None:
         """Scan all registers up to max known address (full_register_scan mode)."""
-        for start, count in _group_reads(range(input_max + 1), max_block_size=self.effective_batch):
-            scanned_registers["input_registers"] += count
-            input_data = (
-                await self._read_input(self._client, start, count, skip_cache=True)
-                if self._client is not None
-                else await self._read_input(None, start, count, skip_cache=True)
-            )
-            if input_data is None:
-                self.failed_addresses["modbus_exceptions"]["input_registers"].update(
-                    range(start, start + count)
-                )
-                continue
-            for offset in range(count):
-                addr = start + offset
-                if offset >= len(input_data):
-                    if self._registers.get(4, {}).get(addr) is None:
-                        base = input_data[0] if input_data else start
-                        unknown_registers["input_registers"][addr] = int(base) + offset
-                    continue
-                value = input_data[offset]
-                reg_name = self._registers.get(4, {}).get(addr)
-                if reg_name and self._is_valid_register_value(reg_name, value):
-                    names = self._alias_names(4, addr)
-                    if names:
-                        self.available_registers["input_registers"].update(names)
-                    else:
-                        self.available_registers["input_registers"].add(reg_name)
-                else:
-                    unknown_registers["input_registers"][addr] = value
-                    if reg_name:
-                        self.failed_addresses["invalid_values"]["input_registers"].add(addr)
-                        self._log_invalid_value(reg_name, value)
-
-        for start, count in _group_reads(
-            range(holding_max + 1), max_block_size=self.effective_batch
-        ):
-            scanned_registers["holding_registers"] += count
-            holding_data = (
-                await self._read_holding(self._client, start, count, skip_cache=True)
-                if self._client is not None
-                else await self._read_holding(None, start, count, skip_cache=True)
-            )
-            if holding_data is None:
-                self.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                    range(start, start + count)
-                )
-                continue
-            for offset in range(count):
-                addr = start + offset
-                if offset >= len(holding_data):
-                    if self._registers.get(3, {}).get(addr) is None:
-                        base = holding_data[0] if holding_data else start
-                        unknown_registers["holding_registers"][addr] = int(base) + offset
-                    continue
-                value = holding_data[offset]
-                reg_name = self._registers.get(3, {}).get(addr)
-                if reg_name and self._is_valid_register_value(reg_name, value):
-                    names = self._alias_names(3, addr)
-                    if names:
-                        self.available_registers["holding_registers"].update(names)
-                    else:
-                        self.available_registers["holding_registers"].add(reg_name)
-                else:
-                    unknown_registers["holding_registers"][addr] = value
-                    if reg_name:
-                        self.failed_addresses["invalid_values"]["holding_registers"].add(addr)
-                        self._log_invalid_value(reg_name, value)
-
-        for start, count in _group_reads(range(coil_max + 1), max_block_size=self.effective_batch):
-            scanned_registers["coil_registers"] += count
-            coil_data = (
-                await self._read_coil(self._client, start, count)
-                if self._client is not None
-                else await self._read_coil(start, count)
-            )
-            if coil_data is None:
-                self.failed_addresses["modbus_exceptions"]["coil_registers"].update(
-                    range(start, start + count)
-                )
-                continue
-            for offset, value in enumerate(coil_data):
-                addr = start + offset
-                if (reg_name := self._registers.get(1, {}).get(addr)) is not None:
-                    names = self._alias_names(1, addr)
-                    if names:
-                        self.available_registers["coil_registers"].update(names)
-                    else:
-                        self.available_registers["coil_registers"].add(reg_name)
-                else:
-                    unknown_registers["coil_registers"][addr] = value
-
-        for start, count in _group_reads(
-            range(discrete_max + 1), max_block_size=self.effective_batch
-        ):
-            scanned_registers["discrete_inputs"] += count
-            discrete_data = (
-                await self._read_discrete(self._client, start, count)
-                if self._client is not None
-                else await self._read_discrete(start, count)
-            )
-            if discrete_data is None:
-                self.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
-                    range(start, start + count)
-                )
-                continue
-            for offset, value in enumerate(discrete_data):
-                addr = start + offset
-                if (reg_name := self._registers.get(2, {}).get(addr)) is not None:
-                    names = self._alias_names(2, addr)
-                    if names:
-                        self.available_registers["discrete_inputs"].update(names)
-                    else:
-                        self.available_registers["discrete_inputs"].add(reg_name)
-                else:
-                    unknown_registers["discrete_inputs"][addr] = value
+        await scanner_orchestration.run_full_scan(
+            self,
+            input_max,
+            holding_max,
+            coil_max,
+            discrete_max,
+            unknown_registers,
+            scanned_registers,
+        )
 
     async def _scan_register_batch(
         self,
@@ -1081,258 +864,12 @@ class ThesslaGreenDeviceScanner:
 
     async def scan(self) -> dict[str, Any]:  # pragma: no cover
         """Perform the actual register scan using an established connection."""
-        scan_started = time.monotonic()
-        transport = self._transport
-        if transport is None:
-            if self._client is None:
-                raise ConnectionException("Transport not connected")
-        elif not transport.is_connected() and self._client is None:
-            raise ConnectionException("Transport not connected")
-
-        device = ScannerDeviceInfo()
-
-        # Basic firmware/serial information
-        info_regs = await self._read_input_block(0, 30) or []
-
-        await self._scan_firmware_info(info_regs, device)
-        await self._scan_device_identity(info_regs, device)
-
-        (
-            input_registers,
-            holding_registers,
-            coil_registers,
-            discrete_registers,
-            input_max,
-            holding_max,
-            coil_max,
-            discrete_max,
-        ) = self._select_scan_registers()
-
-        unknown_registers: dict[str, dict[int, Any]] = {
-            "input_registers": {},
-            "holding_registers": {},
-            "coil_registers": {},
-            "discrete_inputs": {},
-        }
-        scanned_registers: dict[str, int] = {
-            "input_registers": 0,
-            "holding_registers": 0,
-            "coil_registers": 0,
-            "discrete_inputs": 0,
-        }
-
-        if self.full_register_scan:
-            await self._run_full_scan(
-                input_max,
-                holding_max,
-                coil_max,
-                discrete_max,
-                unknown_registers,
-                scanned_registers,
-            )
-        else:
-            await self._run_named_scan(
-                input_registers, holding_registers, coil_registers, discrete_registers
-            )
-
-        caps = self._analyze_capabilities()
-        self.capabilities = caps
-        device.capabilities = [
-            key for key, val in caps.as_dict().items() if isinstance(val, bool) and val
-        ]
-        _LOGGER.info("Detected %d capabilities", len(device.capabilities))
-
-        scan_blocks = self._compute_scan_blocks(
-            input_registers,
-            holding_registers,
-            coil_registers,
-            discrete_registers,
-            input_max,
-            holding_max,
-            coil_max,
-            discrete_max,
-        )
-        self._log_skipped_ranges()
-
-        raw_registers: dict[int, int] = {}
-        if self.deep_scan:
-            for start, count in self._group_registers_for_batch_read(list(range(287))):
-                data = (
-                    await self._read_input(self._client, start, count)
-                    if self._client is not None
-                    else await self._read_input(None, start, count)
-                )
-                if data is None:
-                    continue
-                for offset, value in enumerate(data):
-                    raw_registers[start + offset] = value
-
-        missing_registers = self._collect_missing_registers(
-            input_registers, holding_registers, coil_registers, discrete_registers
-        )
-
-        if missing_registers:
-            details = []
-            for reg_type, regs in missing_registers.items():
-                formatted = ", ".join(
-                    f"{name}={addr}"
-                    for name, addr in sorted(regs.items(), key=lambda item: item[1])
-                )
-                details.append(f"{reg_type}: {formatted}")
-            _LOGGER.warning(
-                "The following registers were not found during scan: %s", "; ".join(details)
-            )
-
-        available_registers = {key: set(value) for key, value in self.available_registers.items()}
-
-        result = {
-            "available_registers": available_registers,
-            "device_info": device.as_dict(),
-            "capabilities": caps.as_dict(),
-            "register_count": sum(len(v) for v in available_registers.values()),
-            "scan_blocks": scan_blocks,
-            "unknown_registers": unknown_registers,
-            "scanned_registers": scanned_registers,
-            "missing_registers": missing_registers,
-            "failed_addresses": {
-                "modbus_exceptions": {
-                    k: sorted(v) for k, v in self.failed_addresses["modbus_exceptions"].items() if v
-                },
-                "invalid_values": {
-                    k: sorted(v) for k, v in self.failed_addresses["invalid_values"].items() if v
-                },
-            },
-            "resolved_connection_mode": self._resolved_connection_mode,
-            "scan_stats": {
-                "total_attempts": sum(scanned_registers.values()),
-                "successful_reads": sum(len(v) for v in available_registers.values()),
-                "scan_duration": max(0.0001, time.monotonic() - scan_started),
-            },
-        }
-        if self.deep_scan:
-            result["raw_registers"] = raw_registers
-            result["total_addresses_scanned"] = len(raw_registers)
-
-        return result
+        return await scanner_orchestration.scan(self)
 
     async def scan_device(self) -> dict[str, Any]:
         """Open the Modbus connection, perform a scan and close the client."""
-        scan_method = self.scan
-        if getattr(scan_method, "__func__", None) is not ThesslaGreenDeviceScanner.scan:
-            try:
-                scan_result: Any = scan_method()
-                if inspect.isawaitable(scan_result):
-                    scan_result = await scan_result
-                if (
-                    isinstance(scan_result, tuple)
-                    and len(scan_result) >= 2
-                    and isinstance(scan_result[0], ScannerDeviceInfo)
-                    and isinstance(scan_result[1], DeviceCapabilities)
-                ):
-                    device, caps = scan_result[0], scan_result[1]
-                    unknown = (
-                        scan_result[2]
-                        if len(scan_result) > 2 and isinstance(scan_result[2], dict)
-                        else {}
-                    )
-                    return {
-                        "available_registers": {
-                            k: sorted(v) for k, v in self.available_registers.items()
-                        },
-                        "device_info": device.as_dict(),
-                        "capabilities": caps.as_dict(),
-                        "register_count": sum(len(v) for v in self.available_registers.values()),
-                        "unknown_registers": unknown,
-                    }
-                if isinstance(scan_result, dict):
-                    return scan_result
-                raise TypeError(
-                    "Overridden scan() must return dict or (ScannerDeviceInfo, DeviceCapabilities)"
-                )
-            finally:
-                await self.close()
-
-        if self.connection_type == CONNECTION_TYPE_RTU:
-            if not self.serial_port:
-                raise ConnectionException("Serial port not configured")
-            parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
-            stop_bits = SERIAL_STOP_BITS_MAP.get(
-                self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
-            )
-            self._transport = RtuModbusTransport(
-                serial_port=self.serial_port,
-                baudrate=self.baud_rate,
-                parity=parity,
-                stopbits=stop_bits,
-                max_retries=self.retry,
-                base_backoff=self.backoff,
-                max_backoff=DEFAULT_MAX_BACKOFF,
-                timeout=self.timeout,
-            )
-        else:
-            mode = self._resolved_connection_mode or self.connection_mode
-            if mode is None or mode == CONNECTION_MODE_AUTO:
-                last_error: Exception | None = None
-                for selected_mode, transport, timeout in self._build_auto_tcp_attempts():
-                    try:
-                        await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
-                        # Protocol probe: verify actual Modbus protocol works, not just
-                        # the TCP socket. A TCP_RTU transport can open a TCP connection to any
-                        # device, but reads will time out if the device speaks Modbus TCP instead
-                        # of RTU-over-TCP. This mirrors verify_connection: TimeoutError means
-                        # wrong protocol; any other outcome (even a Modbus exception code) means
-                        # the device responded in the expected protocol.
-                        try:
-                            await transport.read_input_registers(self.slave_id, 0, count=2)
-                        except TimeoutError:
-                            raise
-                        except ModbusIOException as exc:
-                            if is_request_cancelled_error(exc):
-                                raise TimeoutError(str(exc)) from exc
-                            # Other Modbus exceptions (error codes) confirm protocol is working
-                        except (
-                            ModbusException,
-                            ConnectionException,
-                            OSError,
-                            TypeError,
-                            ValueError,
-                            AttributeError,
-                        ) as exc:
-                            _LOGGER.debug(
-                                "Protocol probe non-critical exception (protocol ok): %s", exc
-                            )
-                    except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
-                        last_error = exc
-                        await transport.close()
-                        continue
-                    self._transport = transport
-                    self._resolved_connection_mode = selected_mode
-                    _LOGGER.info(
-                        "scan_device: auto-selected Modbus transport %s for %s:%s",
-                        selected_mode,
-                        self.host,
-                        self.port,
-                    )
-                    break
-                if self._transport is None:
-                    raise ConnectionException("Auto-detect Modbus transport failed") from last_error
-            else:
-                self._transport = self._build_tcp_transport(mode)
-
-        try:
-            await asyncio.wait_for(self._transport.ensure_connected(), timeout=self.timeout)
-            self._client = getattr(self._transport, "client", None)
-        except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
-            await self.close()
-            raise ConnectionException(f"Failed to connect to {self.host}:{self.port}") from exc
-
-        try:
-            scan_data = await self.scan()
-            if not isinstance(scan_data, dict):
-                raise TypeError("scan() must return a dict")
-            return scan_data
-        finally:
-            await self.close()
+        self._rtu_transport_cls = RtuModbusTransport
+        return await scanner_orchestration.scan_device(self)
 
     async def _load_registers(
         self,
@@ -1341,63 +878,11 @@ class ThesslaGreenDeviceScanner:
         dict[str, tuple[float | None, float | None]],
     ]:
         """Load Modbus register definitions and value ranges."""
-        register_map: dict[int, dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
-        register_ranges: dict[str, tuple[float | None, float | None]] = {}
-        for reg in await async_get_all_registers(self._hass):
-            if not reg.name:
-                continue
-            register_map[reg.function][reg.address] = reg.name
-            if reg.min is not None or reg.max is not None:
-                register_ranges[reg.name] = (reg.min, reg.max)
-        return register_map, register_ranges
+        return await scanner_registers.load_registers(self, async_get_all_registers)
 
     def _log_skipped_ranges(self) -> None:
         """Log summary of ranges skipped due to Modbus exceptions."""
-        if self._unsupported_input_ranges:
-            ranges = ", ".join(
-                f"{start}-{end} (exception code {code})"
-                for (start, end), code in sorted(self._unsupported_input_ranges.items())
-            )
-            _LOGGER.warning("Skipping unsupported input registers %s", ranges)
-        if self._unsupported_holding_ranges:
-            ranges = ", ".join(
-                f"{start}-{end} (exception code {code})"
-                for (start, end), code in sorted(self._unsupported_holding_ranges.items())
-            )
-            _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
-
-        # Build addr->name reverse maps from module-level register dicts
-        _addr_to_name: dict[str, dict[int, str]] = {
-            "input_registers": {addr: name for name, addr in INPUT_REGISTERS.items()},
-            "holding_registers": {addr: name for name, addr in HOLDING_REGISTERS.items()},
-            "coil_registers": {addr: name for name, addr in COIL_REGISTERS.items()},
-            "discrete_inputs": {addr: name for name, addr in DISCRETE_INPUT_REGISTERS.items()},
-        }
-
-        for reg_type, addrs in self.failed_addresses["modbus_exceptions"].items():
-            filtered = self._filter_unsupported_addresses(reg_type, addrs)
-            if not filtered:
-                continue
-            # Exclude addresses successfully recovered via individual probe fallback
-            reverse_map = _addr_to_name.get(reg_type, {})
-            available = self.available_registers.get(reg_type, set())
-            truly_failed = {addr for addr in filtered if reverse_map.get(addr) not in available}
-            if truly_failed:
-                decimals = ", ".join(str(addr) for addr in sorted(truly_failed))
-                _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
-            elif filtered:
-                # Batch failed but individual probe recovered all — log at debug only
-                decimals = ", ".join(str(addr) for addr in sorted(filtered))
-                _LOGGER.debug(
-                    "Batch read failed for %s at %s but individual probes succeeded",
-                    reg_type,
-                    decimals,
-                )
-
-        for reg_type, addrs in self.failed_addresses["invalid_values"].items():
-            if addrs:
-                decimals = ", ".join(str(addr) for addr in sorted(addrs))
-                _LOGGER.debug("Invalid values for %s at %s", reg_type, decimals)
+        scanner_registers.log_skipped_ranges(self)
 
     def _filter_unsupported_addresses(self, reg_type: str, addrs: set[int]) -> set[int]:
         """Return failed addresses that are not already covered by unsupported spans."""
@@ -1405,61 +890,23 @@ class ThesslaGreenDeviceScanner:
 
     def _log_invalid_value(self, name: str, raw: int) -> None:
         """Log a register value that failed validation."""
-        if name in self._reported_invalid:
-            if not self.verbose_invalid_values:
-                return
-            level = logging.DEBUG
-        else:
-            level = logging.INFO if self.verbose_invalid_values else logging.DEBUG
-            self._reported_invalid.add(name)
-        decoded = _format_register_value(name, raw)
-        _LOGGER.log(level, "Invalid value for %s: raw=%d decoded=%s", name, raw, decoded)
+        scanner_capabilities.log_invalid_value(self, name, raw)
 
     def _mark_input_supported(self, address: int) -> None:
         """Remove address from cached unsupported input ranges after success."""
-        self._failed_input.discard(address)
-        for (start, end), code in list(self._unsupported_input_ranges.items()):
-            if start <= address <= end:
-                del self._unsupported_input_ranges[(start, end)]
-                if start <= address - 1:
-                    self._unsupported_input_ranges[(start, address - 1)] = code
-                if address + 1 <= end:
-                    self._unsupported_input_ranges[(address + 1, end)] = code
+        scanner_capabilities.mark_input_supported(self, address)
 
     def _mark_holding_supported(self, address: int) -> None:
         """Remove address from cached unsupported holding ranges after success."""
-        self._failed_holding.discard(address)
-        for (start, end), code in list(self._unsupported_holding_ranges.items()):
-            if start <= address <= end:
-                del self._unsupported_holding_ranges[(start, end)]
-                if start <= address - 1:
-                    self._unsupported_holding_ranges[(start, address - 1)] = code
-                if address + 1 <= end:
-                    self._unsupported_holding_ranges[(address + 1, end)] = code
+        scanner_capabilities.mark_holding_supported(self, address)
 
     def _mark_holding_unsupported(self, start: int, end: int, code: int) -> None:
         """Track unsupported holding register range without overlaps."""
-        for (exist_start, exist_end), exist_code in list(self._unsupported_holding_ranges.items()):
-            if exist_end < start or exist_start > end:
-                continue
-            del self._unsupported_holding_ranges[(exist_start, exist_end)]
-            if exist_start < start:
-                self._unsupported_holding_ranges[(exist_start, start - 1)] = exist_code
-            if end < exist_end:
-                self._unsupported_holding_ranges[(end + 1, exist_end)] = exist_code
-        self._unsupported_holding_ranges[(start, end)] = code
+        scanner_capabilities.mark_holding_unsupported(self, start, end, code)
 
     def _mark_input_unsupported(self, start: int, end: int, code: int | None) -> None:
         """Cache unsupported input register range, merging overlaps."""
-
-        for (old_start, old_end), _ in list(self._unsupported_input_ranges.items()):
-            if end < old_start or start > old_end:
-                continue
-            del self._unsupported_input_ranges[(old_start, old_end)]
-            start = min(start, old_start)
-            end = max(end, old_end)
-
-        self._unsupported_input_ranges[(start, end)] = code or 0
+        scanner_capabilities.mark_input_unsupported(self, start, end, code)
 
     def _unpack_read_args(
         self,

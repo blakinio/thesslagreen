@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.util
 import re
-import sys
 from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -492,26 +490,6 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
         ) = results
 
 
-def _sync_setup_options() -> None:
-    """Populate option lists synchronously."""
-
-    global SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES
-    global FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES
-    global MODBUS_PARITY, MODBUS_STOP_BITS
-
-    SPECIAL_MODE_OPTIONS = _load_json_option("special_modes.json")
-    DAYS_OF_WEEK = _load_json_option("days_of_week.json")
-    PERIODS = _load_json_option("periods.json")
-    BYPASS_MODES = _load_json_option("bypass_modes.json")
-    GWC_MODES = _load_json_option("gwc_modes.json")
-    FILTER_TYPES = _load_json_option("filter_types.json")
-    RESET_TYPES = _load_json_option("reset_types.json")
-    MODBUS_PORTS = _load_json_option("modbus_ports.json")
-    MODBUS_BAUD_RATES = _load_json_option("modbus_baud_rates.json")
-    MODBUS_PARITY = _load_json_option("modbus_parity.json")
-    MODBUS_STOP_BITS = _load_json_option("modbus_stop_bits.json")
-
-
 # Shared option lists loaded during setup
 SPECIAL_MODE_OPTIONS: list[Any] = []
 DAYS_OF_WEEK: list[Any] = []
@@ -533,16 +511,6 @@ def _get_options_init_lock() -> asyncio.Lock:
     if _OPTIONS_INIT_LOCK is None:
         _OPTIONS_INIT_LOCK = asyncio.Lock()
     return _OPTIONS_INIT_LOCK
-
-
-try:  # pragma: no cover - handle partially initialized module
-    _HAS_HA = importlib.util.find_spec("homeassistant") is not None
-except (ImportError, ValueError):
-    _HAS_HA = False
-
-# Load option lists immediately when Home Assistant isn't available or during tests
-if not _HAS_HA or "pytest" in sys.modules:  # pragma: no cover - test env
-    _sync_setup_options()
 
 # Special function enum index mappings for services.
 # Values match the sequential enum indices in special_modes.json (0=none, 1=boost, ...).

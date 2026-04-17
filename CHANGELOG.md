@@ -1,3 +1,29 @@
+# Changelog
+
+All notable changes to the ThesslaGreen Modbus Integration will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## 2.4.1 — Detox completion
+
+Completes the test-compat cleanup started in 2.4.0. Eight remaining spots where
+production code tested for or worked around test mocks have been removed.
+
+### Removed
+- `_compat_asdict` wrapper in `scanner_device_info.py` that existed for test-patch compatibility. Callers now use `dataclasses.asdict` directly.
+- `inspect.signature` filtering of coordinator kwargs in `__init__.py`. Incomplete coordinator stubs now raise `TypeError` explicitly instead of silently dropping kwargs.
+- `sys.modules.get()` check before dynamic coordinator import in `__init__.py`. Module import now goes straight through the Home Assistant executor.
+- `try/except TypeError` around `async_setup_options` / `async_setup_entity_mappings` in `_async_setup_mappings`. Real bugs in option setup are no longer masked by "Skipping in mock context" debug logs.
+- `_HAS_HA` detection and `"pytest" in sys.modules` check in `const.py`. Production and test paths now execute identical code.
+- Dynamic self-import via `import_module(__name__)` in `coordinator._create_scanner`. Direct reference to `ThesslaGreenDeviceScanner.create()` is used.
+- `inspect.signature(write_cb)` check in `entity._write_register`. Direct call to `coordinator.async_write_register` with explicit kwargs.
+- Trivial `_schema` and `_required` wrappers in `config_flow.py`. Direct `vol.Schema` / `vol.Required` calls are now used throughout.
+
+### Migration notes
+- Tests that relied on production silently filtering kwargs or falling back to sync option setup may need to use `MagicMock(spec=...)` or `pytest-homeassistant-custom-component` fixtures.
+- `scanner_core.asdict` is no longer used internally, so patching it in tests has no effect.
+
 ## 2.4.0 — Dead code cleanup and production detox
 
 - Removed orphan scanner mixin modules, legacy `register_addresses.py`, and root `validate.yaml`.
@@ -5,13 +31,6 @@
 - Added register cross-check tooling: `tools/compare_registers_with_reference.py` and `tests/test_registers_vs_reference.py`.
 - Removed `entity_mappings.py` shim and updated imports to `mappings`.
 - Cleaned coordinator and setup error paths (`UpdateFailed`, reauth flow, fallback wrappers).
-
-# Changelog
-
-All notable changes to the ThesslaGreen Modbus Integration will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## 2.3.9
 

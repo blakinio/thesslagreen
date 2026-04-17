@@ -1819,7 +1819,7 @@ async def test_validate_input_capabilities_missing_fields():
             AsyncMock(return_value=scanner_instance),
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.asdict",
+            "custom_components.thessla_green_modbus.scanner_device_info.dataclasses.asdict",
             side_effect=_missing_basic_control,
         ),pytest.raises(CannotConnect) as err
     ):

@@ -149,14 +149,6 @@ CONFIG_FLOW_BACKOFF = 0.1
 
 
 
-def _schema(definition: Any) -> vol.Schema:
-    return vol.Schema(definition)
-
-
-def _required(schema: Any, **kwargs: Any) -> vol.Required:
-    return vol.Required(schema, **kwargs)
-
-
 def _strip_translation_prefix(value: str) -> str:
     """Remove integration/domain prefixes from option strings."""
     if value.startswith(f"{DOMAIN}."):
@@ -697,7 +689,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         )
 
         data_schema: dict[Any, Any] = {
-            _required(
+            vol.Required(
                 CONF_CONNECTION_TYPE,
                 default=connection_default,
                 description={
@@ -721,7 +713,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
                     }
                 },
             ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
-            _required(CONF_SLAVE_ID, default=slave_default): vol.All(
+            vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
                 vol.Coerce(int), vol.Range(min=0, max=247)
             ),
             vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
@@ -744,8 +736,8 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         if connection_default in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
             data_schema.update(
                 {
-                    _required(CONF_HOST, default=host_default): str,
-                    _required(CONF_PORT, default=port_default): vol.All(
+                    vol.Required(CONF_HOST, default=host_default): str,
+                    vol.Required(CONF_PORT, default=port_default): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=65535)
                     ),
                 }
@@ -753,14 +745,14 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         else:
             data_schema.update(
                 {
-                    _required(CONF_SERIAL_PORT, default=serial_port_default): str,
-                    _required(CONF_BAUD_RATE, default=baud_default): baud_validator,
-                    _required(CONF_PARITY, default=parity_default): parity_validator,
-                    _required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
+                    vol.Required(CONF_SERIAL_PORT, default=serial_port_default): str,
+                    vol.Required(CONF_BAUD_RATE, default=baud_default): baud_validator,
+                    vol.Required(CONF_PARITY, default=parity_default): parity_validator,
+                    vol.Required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
                 }
             )
 
-        return _schema(data_schema)
+        return vol.Schema(data_schema)
 
     @staticmethod
     def _build_unique_id(data: dict[str, Any]) -> str:
@@ -1238,7 +1230,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                 transport_label = "Modbus TCP (Auto)"
             transport_details = ""
 
-        data_schema = _schema(
+        data_schema = vol.Schema(
             {
                 vol.Optional(CONF_SCAN_INTERVAL, default=current_scan_interval): vol.All(
                     vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=300)

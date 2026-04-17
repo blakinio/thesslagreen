@@ -8,8 +8,8 @@ import inspect
 import logging
 import re
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from importlib import import_module
 from typing import Any, cast
 
 from homeassistant.config_entries import ConfigEntry
@@ -22,8 +22,25 @@ from ._coordinator_capabilities import _CoordinatorCapabilitiesMixin
 from ._coordinator_io import _ModbusIOMixin, _PermanentModbusError  # re-export for backward compat
 from ._coordinator_schedule import _CoordinatorScheduleMixin
 from .const import (
+    CONF_BACKOFF,
+    CONF_BACKOFF_JITTER,
+    CONF_BAUD_RATE,
+    CONF_CONNECTION_MODE,
+    CONF_CONNECTION_TYPE,
+    CONF_DEEP_SCAN,
     CONF_ENABLE_DEVICE_SCAN,
+    CONF_FORCE_FULL_REGISTER_LIST,
     CONF_MAX_REGISTERS_PER_REQUEST,
+    CONF_PARITY,
+    CONF_RETRY,
+    CONF_SAFE_SCAN,
+    CONF_SCAN_INTERVAL,
+    CONF_SCAN_UART_SETTINGS,
+    CONF_SERIAL_PORT,
+    CONF_SKIP_MISSING_REGISTERS,
+    CONF_SLAVE_ID,
+    CONF_STOP_BITS,
+    CONF_TIMEOUT,
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP,
     CONNECTION_MODE_TCP_RTU,
@@ -33,16 +50,22 @@ from .const import (
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
+    DEFAULT_DEEP_SCAN,
     DEFAULT_ENABLE_DEVICE_SCAN,
     DEFAULT_MAX_BACKOFF,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
     DEFAULT_PORT,
+    DEFAULT_RETRY,
+    DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
     DEFAULT_SERIAL_PORT,
+    DEFAULT_SKIP_MISSING_REGISTERS,
+    DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
+    DEFAULT_TIMEOUT,
     DOMAIN,
     HOLDING_BATCH_BOUNDARIES,
     KNOWN_MISSING_REGISTERS,
@@ -77,7 +100,7 @@ from .scanner import (
 )
 from .utils import resolve_connection_settings
 
-__all__ = ["ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
+__all__ = ["CoordinatorConfig", "ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
 
 
 dt_util = _base_dt_util
@@ -101,6 +124,68 @@ def get_register_definition(name: str) -> RegisterDef:
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class CoordinatorConfig:
+    """Normalized coordinator configuration payload."""
+
+    host: str
+    port: int
+    slave_id: int
+    name: str = DEFAULT_NAME
+    scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL
+    timeout: int = 10
+    retry: int = 3
+    backoff: float = DEFAULT_BACKOFF
+    backoff_jitter: float | tuple[float, float] | None = DEFAULT_BACKOFF_JITTER
+    force_full_register_list: bool = False
+    scan_uart_settings: bool = DEFAULT_SCAN_UART_SETTINGS
+    deep_scan: bool = False
+    safe_scan: bool = False
+    max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST
+    skip_missing_registers: bool = False
+    connection_type: str = DEFAULT_CONNECTION_TYPE
+    connection_mode: str | None = None
+    serial_port: str = DEFAULT_SERIAL_PORT
+    baud_rate: int = DEFAULT_BAUD_RATE
+    parity: str = DEFAULT_PARITY
+    stop_bits: int = DEFAULT_STOP_BITS
+
+    @classmethod
+    def from_entry(cls, entry: ConfigEntry) -> CoordinatorConfig:
+        """Build coordinator config from a Home Assistant config entry."""
+        data = entry.data
+        options = entry.options
+        return cls(
+            host=str(data.get("host", "")),
+            port=int(data.get("port", DEFAULT_PORT)),
+            slave_id=int(data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)),
+            name=str(data.get("name", DEFAULT_NAME)),
+            scan_interval=int(options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+            timeout=int(options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)),
+            retry=int(options.get(CONF_RETRY, DEFAULT_RETRY)),
+            backoff=float(options.get(CONF_BACKOFF, DEFAULT_BACKOFF)),
+            backoff_jitter=options.get(CONF_BACKOFF_JITTER, DEFAULT_BACKOFF_JITTER),
+            force_full_register_list=bool(
+                options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+            ),
+            scan_uart_settings=bool(options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)),
+            deep_scan=bool(options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)),
+            safe_scan=bool(options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)),
+            max_registers_per_request=int(
+                options.get(CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST)
+            ),
+            skip_missing_registers=bool(
+                options.get(CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS)
+            ),
+            connection_type=str(data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)),
+            connection_mode=cast(str | None, data.get(CONF_CONNECTION_MODE)),
+            serial_port=str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)),
+            baud_rate=int(data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)),
+            parity=str(data.get(CONF_PARITY, DEFAULT_PARITY)),
+            stop_bits=int(data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)),
+        )
 
 
 
@@ -294,6 +379,41 @@ class ThesslaGreenModbusCoordinator(
         self._last_power_timestamp = _utcnow()
         self._total_energy = 0.0
 
+    @classmethod
+    def from_config(
+        cls,
+        hass: HomeAssistant,
+        config: CoordinatorConfig,
+        *,
+        entry: ConfigEntry | None = None,
+    ) -> ThesslaGreenModbusCoordinator:
+        """Create coordinator from a typed CoordinatorConfig payload."""
+        return cls(
+            hass=hass,
+            host=config.host,
+            port=config.port,
+            slave_id=config.slave_id,
+            name=config.name,
+            scan_interval=config.scan_interval,
+            timeout=config.timeout,
+            retry=config.retry,
+            backoff=config.backoff,
+            backoff_jitter=config.backoff_jitter,
+            force_full_register_list=config.force_full_register_list,
+            scan_uart_settings=config.scan_uart_settings,
+            deep_scan=config.deep_scan,
+            safe_scan=config.safe_scan,
+            max_registers_per_request=config.max_registers_per_request,
+            entry=entry,
+            skip_missing_registers=config.skip_missing_registers,
+            connection_type=config.connection_type,
+            connection_mode=config.connection_mode,
+            serial_port=config.serial_port,
+            baud_rate=config.baud_rate,
+            parity=config.parity,
+            stop_bits=config.stop_bits,
+        )
+
     @staticmethod
     def _parse_backoff_jitter(
         value: float | int | str | tuple[float, float] | list[float] | None,
@@ -446,20 +566,9 @@ class ThesslaGreenModbusCoordinator(
         }
 
     async def _create_scanner(self) -> Any:  # pragma: no cover
-        """Instantiate a ThesslaGreenDeviceScanner using the appropriate factory."""
-        scanner_cls = getattr(
-            import_module(__name__), "ThesslaGreenDeviceScanner", ThesslaGreenDeviceScanner
-        )
+        """Instantiate a ThesslaGreenDeviceScanner using its create() factory."""
         kwargs = self._build_scanner_kwargs()
-        if not inspect.isclass(scanner_cls):
-            return scanner_cls(**kwargs)
-        scanner_factory = getattr(scanner_cls, "create", None)
-        if callable(scanner_factory):
-            result = scanner_factory(**kwargs)
-            if inspect.isawaitable(result):
-                result = await result
-            return result
-        return scanner_cls(**kwargs)
+        return await ThesslaGreenDeviceScanner.create(**kwargs)
 
     def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:  # pragma: no cover
         """Store and process a completed device scan result."""
