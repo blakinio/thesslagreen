@@ -81,7 +81,7 @@ def test_all_registers_covered() -> None:
         if r.get("name")
     }
 
-    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
+    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.mappings")
     exposed: set[str] = set()
     for mapping in entity_mod.ENTITY_MAPPINGS.values():
         exposed.update(mapping.keys())
@@ -109,7 +109,7 @@ def test_intentional_omissions_are_valid() -> None:
         if r.get("name")
     }
 
-    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
+    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.mappings")
     exposed: set[str] = set()
     for mapping in entity_mod.ENTITY_MAPPINGS.values():
         exposed.update(mapping.keys())
@@ -130,7 +130,7 @@ def test_number_translations_match() -> None:
     import json as _json
     from pathlib import Path as _Path
 
-    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
+    entity_mod = importlib.import_module("custom_components.thessla_green_modbus.mappings")
     number_keys = set(entity_mod.NUMBER_ENTITY_MAPPINGS.keys())
 
     trans_root = _Path("custom_components/thessla_green_modbus/translations")

@@ -22,9 +22,10 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-def is_request_cancelled_error(exc: ModbusIOException) -> bool:
-    """Return True when a modbus IO error indicates a cancelled request."""
-    return bool(_scanner_io.is_request_cancelled_error(exc))
+def is_request_cancelled_error(exc: Exception) -> bool:
+    """Return True when an exception indicates a cancelled Modbus request."""
+    message = str(exc).lower()
+    return "request cancelled outside pymodbus" in message or "cancelled" in message
 
 
 async def _call_modbus_compat(

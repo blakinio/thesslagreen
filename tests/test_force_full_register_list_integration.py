@@ -79,6 +79,10 @@ class FakeCoordinator:
         entry=None,
         skip_missing_registers=False,
     ) -> None:
+        class _Capabilities:
+            def __getattr__(self, _name: str) -> bool:
+                return True
+
         self.hass = hass
         self.host = host
         self.port = port
@@ -90,6 +94,7 @@ class FakeCoordinator:
         self.available_registers = {k: set(v) for k, v in source.items()}
         self.data: dict[str, int] = {}
         self.last_update_success = True
+        self.capabilities = _Capabilities()
 
     async def async_setup(self):  # pragma: no cover - simple stub
         return True

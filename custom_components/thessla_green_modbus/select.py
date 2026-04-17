@@ -19,7 +19,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .capability_rules import capability_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .entity_mappings import ENTITY_MAPPINGS
+from .mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
 from .schedule_helpers import SETTING_SCHEDULE_PREFIXES
 from .utils import BCD_TIME_PREFIXES

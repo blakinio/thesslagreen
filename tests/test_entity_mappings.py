@@ -1,8 +1,8 @@
 """Tests for entity_mappings.py helper functions."""
 import logging
 
-from custom_components.thessla_green_modbus import entity_mappings as em
-from custom_components.thessla_green_modbus.entity_mappings import _infer_icon
+from custom_components.thessla_green_modbus import mappings as em
+from custom_components.thessla_green_modbus.mappings import _infer_icon
 
 # ---------------------------------------------------------------------------
 # _infer_icon (lines 191-201)
@@ -85,7 +85,7 @@ def test_map_legacy_entity_id_suffix_warning(monkeypatch, caplog):
     monkeypatch.setattr(em, "_alias_warning_logged", False)
     with caplog.at_level(
         logging.WARNING,
-        logger="custom_components.thessla_green_modbus.entity_mappings",
+        logger="custom_components.thessla_green_modbus.mappings",
     ):
         result = em.map_legacy_entity_id("number.device_predkosc")
     assert "fan" in result
@@ -98,7 +98,7 @@ def test_map_legacy_entity_id_suffix_warning(monkeypatch, caplog):
 
 def test_parse_states_valid_entries():
     """Valid 'value - label' parts are added to state map (line 243)."""
-    from custom_components.thessla_green_modbus.entity_mappings import _parse_states
+    from custom_components.thessla_green_modbus.mappings import _parse_states
 
     states = _parse_states("0 - off; 1 - on")
     assert states == {"off": 0, "on": 1}
@@ -106,7 +106,7 @@ def test_parse_states_valid_entries():
 
 def test_parse_states_skips_empty_parts():
     """Empty parts from consecutive semicolons are skipped (line 237)."""
-    from custom_components.thessla_green_modbus.entity_mappings import _parse_states
+    from custom_components.thessla_green_modbus.mappings import _parse_states
 
     states = _parse_states("0 - off;;1 - on")
     assert states == {"off": 0, "on": 1}
@@ -618,7 +618,7 @@ def test_all_number_entities_have_translation_key():
     import json
     from pathlib import Path
 
-    en = Path(em.__file__).with_name("translations") / "en.json"
+    en = Path(em.__file__).resolve().parents[1] / "translations" / "en.json"
     number_keys = set(json.loads(en.read_text(encoding="utf-8")).get("entity", {}).get("number", {}).keys())
     unnamed = [k for k in em.ENTITY_MAPPINGS.get("number", {}) if k not in number_keys]
     assert unnamed == [], f"Number entities without translation key (would show as 'Rekuperator'): {unnamed}"

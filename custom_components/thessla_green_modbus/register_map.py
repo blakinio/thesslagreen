@@ -170,7 +170,7 @@ def _infer_data_type(definition: RegisterDef) -> str:
 
 def _resolve_entity_domain(register_name: str) -> str | None:
     try:
-        from .entity_mappings import ENTITY_MAPPINGS
+        from .mappings import ENTITY_MAPPINGS
 
         for domain, mapping in ENTITY_MAPPINGS.items():
             if register_name in mapping:

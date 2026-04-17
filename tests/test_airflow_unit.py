@@ -19,7 +19,7 @@ from custom_components.thessla_green_modbus.const import (
     CONF_AIRFLOW_UNIT,
 )
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
-from custom_components.thessla_green_modbus.entity_mappings import (
+from custom_components.thessla_green_modbus.mappings import (
     SENSOR_ENTITY_MAPPINGS,
 )
 from custom_components.thessla_green_modbus.sensor import ThesslaGreenSensor

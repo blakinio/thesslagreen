@@ -144,7 +144,7 @@ helpers_uc.CoordinatorEntity = CoordinatorEntity
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.entity_mappings import (
+from custom_components.thessla_green_modbus.mappings import (
     SENSOR_ENTITY_MAPPINGS,
 )
 from custom_components.thessla_green_modbus.number import (

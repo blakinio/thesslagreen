@@ -16,7 +16,7 @@ from .capability_rules import capability_block_reason
 from .const import coil_registers, holding_registers
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .entity_mappings import ENTITY_MAPPINGS
+from .mappings import ENTITY_MAPPINGS
 from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)

@@ -41,14 +41,11 @@ jobs:
           python -m pip install -c constraints.txt -e ".[dev]"
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
-      - name: Ruff (custom_components gate)
-        run: ruff check custom_components/
-
-      - name: Pyflakes (custom_components)
-        run: python -m pyflakes custom_components/
-
-      - name: Ruff (repo)
+      - name: Ruff
         run: ruff check .
+
+      - name: Compare registers with vendor reference
+        run: python tools/compare_registers_with_reference.py
 
       - name: Black
         run: black --check .

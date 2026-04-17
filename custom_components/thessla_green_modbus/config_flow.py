@@ -16,40 +16,16 @@ from typing import TYPE_CHECKING, Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
-
-if TYPE_CHECKING:
-    from homeassistant.components.dhcp import DhcpServiceInfo
-    from homeassistant.components.zeroconf import ZeroconfServiceInfo
-else:
-    try:  # pragma: no cover - optional HA component
-        from homeassistant.components.dhcp import DhcpServiceInfo
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover
-
-        @dataclasses.dataclass
-        class DhcpServiceInfo:  # pragma: no cover
-            """Fallback DHCP service info for minimal test environments."""
-
-            macaddress: str | None = None
-            ip: str | None = None
-
-    try:  # pragma: no cover - optional HA component
-        from homeassistant.components.zeroconf import ZeroconfServiceInfo
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover
-
-        @dataclasses.dataclass
-        class ZeroconfServiceInfo:  # pragma: no cover
-            """Fallback Zeroconf service info for minimal test environments."""
-
-            host: str | None = None
 from homeassistant.core import HomeAssistant
-
-try:  # pragma: no cover - available since HA 2023.9
-    from homeassistant.config_entries import ConfigFlowResult
-except (ImportError, ModuleNotFoundError):  # pragma: no cover
-    ConfigFlowResult = dict[str, Any]
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 from homeassistant.util.network import is_host_valid
+from voluptuous import Invalid as VOL_INVALID
+
+try:
+    from homeassistant.config_entries import ConfigFlowResult
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - test stubs
+    ConfigFlowResult = dict[str, Any]
 
 from .const import (
     AIRFLOW_UNIT_M3H,
@@ -113,33 +89,33 @@ _LOGGER = logging.getLogger(__name__)
 TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 
 if TYPE_CHECKING:
+    from homeassistant.components.dhcp import DhcpServiceInfo
+    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+else:
+    try:
+        from homeassistant.components.dhcp import DhcpServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
+
+        @dataclasses.dataclass
+        class DhcpServiceInfo:
+            macaddress: str | None = None
+            ip: str | None = None
+
+    try:
+        from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
+
+        @dataclasses.dataclass
+        class ZeroconfServiceInfo:
+            host: str | None = None
+
+if TYPE_CHECKING:
     class _ConfigFlowBase(config_entries.ConfigFlow):
         def __init_subclass__(cls, *, domain: str, **kwargs: Any) -> None: ...
 
 else:
     _ConfigFlowBase = config_entries.ConfigFlow
 
-
-class _FallbackFlowBase:  # pragma: no cover
-    """Fallback flow base for minimal test environments."""
-
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        return None
-
-    async def async_set_unique_id(self, *args: Any, **kwargs: Any) -> None:
-        return None
-
-    def _abort_if_unique_id_configured(self) -> None:
-        return None
-
-    def async_show_form(self, **kwargs: Any) -> dict[str, Any]:
-        return {"type": "form", **kwargs}
-
-    def async_create_entry(self, **kwargs: Any) -> dict[str, Any]:
-        return {"type": "create_entry", **kwargs}
-
-    def async_abort(self, **kwargs: Any) -> dict[str, Any]:
-        return {"type": "abort", **kwargs}
 
 
 def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
@@ -172,45 +148,13 @@ async def _load_scanner_module(hass: Any) -> Any:
 CONFIG_FLOW_BACKOFF = 0.1
 
 
-class _VolInvalid(Exception):
-    """Fallback voluptuous Invalid-like exception."""
 
-    def __init__(self, error_message: str, path: list[str] | None = None) -> None:
-        super().__init__(error_message)
-        self.error_message = error_message
-        self.path = path or []
+def _schema(definition: Any) -> vol.Schema:
+    return vol.Schema(definition)
 
 
-VOL_INVALID = getattr(vol, "Invalid", _VolInvalid)
-if not hasattr(vol, "Invalid"):
-    vol.Invalid = VOL_INVALID  # pragma: no cover
-
-
-def _schema(definition: Any) -> Any:
-    """Create voluptuous schema with `.schema` compatibility for tests."""
-    schema_obj = vol.Schema(definition)
-    if not hasattr(schema_obj, "schema"):
-        schema_obj.schema = definition  # pragma: no cover
-    return schema_obj
-
-
-def _required(schema: Any, **kwargs: Any) -> Any:
-    """Compat wrapper for voluptuous.Required across test stubs."""
-    try:
-        return vol.Required(schema, **kwargs)
-    except TypeError:  # pragma: no cover
-        msg = kwargs.get("msg")  # pragma: no cover
-        default = kwargs.get("default", ...)  # pragma: no cover
-        description = kwargs.get("description")  # pragma: no cover
-        try:  # pragma: no cover
-            return vol.Required(schema, msg, default, description)  # pragma: no cover
-        except TypeError:  # pragma: no cover
-            if default is not ...:  # pragma: no cover
-                try:  # pragma: no cover
-                    return vol.Required(schema, default=default)  # pragma: no cover
-                except TypeError:  # pragma: no cover
-                    return vol.Required(schema)  # pragma: no cover
-            return vol.Required(schema)  # pragma: no cover
+def _required(schema: Any, **kwargs: Any) -> vol.Required:
+    return vol.Required(schema, **kwargs)
 
 
 def _strip_translation_prefix(value: str) -> str:
@@ -366,14 +310,14 @@ def _normalize_connection_type(data: dict[str, Any]) -> str:
     if connection_type == CONNECTION_TYPE_TCP_RTU:
         data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
         data[CONF_CONNECTION_MODE] = CONNECTION_MODE_TCP_RTU
-        return CONNECTION_TYPE_TCP
+        return str(CONNECTION_TYPE_TCP)
     if connection_type == CONNECTION_TYPE_TCP:
         data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
         data.pop(CONF_CONNECTION_MODE, None)
-        return CONNECTION_TYPE_TCP
+        return str(CONNECTION_TYPE_TCP)
     data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_RTU
     data.pop(CONF_CONNECTION_MODE, None)
-    return CONNECTION_TYPE_RTU
+    return str(CONNECTION_TYPE_RTU)
 
 
 def _validate_slave_id(data: dict[str, Any]) -> int:

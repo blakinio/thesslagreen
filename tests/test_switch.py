@@ -126,7 +126,7 @@ sys.modules["homeassistant.components.sensor"] = sensor_mod
 
 from custom_components.thessla_green_modbus import switch
 from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS
+from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
 from custom_components.thessla_green_modbus.switch import ThesslaGreenSwitch
 
 # Ensure required test mapping is present when dynamic generation is unavailable

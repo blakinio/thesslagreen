@@ -1,3 +1,11 @@
+## 2.4.0 — Dead code cleanup and production detox
+
+- Removed orphan scanner mixin modules, legacy `register_addresses.py`, and root `validate.yaml`.
+- Simplified compatibility layer in `_compat.py` to direct Home Assistant re-exports.
+- Added register cross-check tooling: `tools/compare_registers_with_reference.py` and `tests/test_registers_vs_reference.py`.
+- Removed `entity_mappings.py` shim and updated imports to `mappings`.
+- Cleaned coordinator and setup error paths (`UpdateFailed`, reauth flow, fallback wrappers).
+
 # Changelog
 
 All notable changes to the ThesslaGreen Modbus Integration will be documented in this file.

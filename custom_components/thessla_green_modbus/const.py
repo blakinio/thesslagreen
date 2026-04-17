@@ -306,7 +306,7 @@ def _build_entity_lookup() -> dict[str, tuple[str, str | None, int | None]]:
     """Build mapping of entity keys to register info."""
     global _ENTITY_LOOKUP
     if _ENTITY_LOOKUP is None:
-        from .entity_mappings import ENTITY_MAPPINGS as _MAP
+        from .mappings import ENTITY_MAPPINGS as _MAP
 
         lookup: dict[str, tuple[str, str | None, int | None]] = {}
         for platform in ("sensor", "binary_sensor", "switch", "select", "number"):

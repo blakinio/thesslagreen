@@ -17,7 +17,7 @@ with open(ROOT / "translations" / "pl.json", encoding="utf-8") as f:
 
 
 def _load_runtime_translation_keys(var_name: str) -> list[str]:
-    import custom_components.thessla_green_modbus.entity_mappings as em
+    import custom_components.thessla_green_modbus.mappings as em
 
     mapping = getattr(em, var_name, {})
     keys: list[str] = []
@@ -30,7 +30,7 @@ def _load_runtime_translation_keys(var_name: str) -> list[str]:
 
 
 def _load_runtime_keys(var_name: str) -> list[str]:
-    import custom_components.thessla_green_modbus.entity_mappings as em
+    import custom_components.thessla_green_modbus.mappings as em
 
     mapping = getattr(em, var_name, {})
     return [str(k) for k in mapping]
@@ -124,7 +124,7 @@ SELECT_KEYS = _load_runtime_keys("SELECT_ENTITY_MAPPINGS")
 TIME_KEYS: list[str] = []
 try:
     import importlib as _importlib
-    _em = _importlib.import_module("custom_components.thessla_green_modbus.entity_mappings")
+    _em = _importlib.import_module("custom_components.thessla_green_modbus.mappings")
     NUMBER_KEYS = list(_em.NUMBER_ENTITY_MAPPINGS.keys())
 except Exception:  # pragma: no cover - fallback to AST if import fails
     NUMBER_KEYS = _load_runtime_keys("NUMBER_ENTITY_MAPPINGS")
@@ -346,7 +346,7 @@ def test_register_names_match_translations() -> None:
         if func in fn_map:
             reg_names[fn_map[func]].add(_to_snake(reg["name"]))
 
-    source = (ROOT / "entity_mappings.py").read_text()
+    source = (ROOT / "mappings/__init__.py").read_text()
     tree = ast.parse(source)
 
     vars_to_entity = {
