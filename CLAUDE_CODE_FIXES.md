@@ -1,71 +1,77 @@
-# thessla_green_modbus — instrukcja napraw dla Claude Code (v8)
+# thessla_green_modbus — instrukcja napraw dla Claude Code (v9)
 
 **Repozytorium:** `github.com/blakinio/thesslagreen`
-**Branch:** `main` (HEAD: `a6535b9` — merge PR #1328)
-**Wersja docelowa:** `2.4.0 → 2.4.1`
+**Branch:** `main` (HEAD: `cb2a33d` — merge PR #1329)
+**Wersja docelowa:** `2.4.1 → 2.4.2`
 **Data audytu:** 2026-04-17
 
 ---
 
-## Stan po wdrożeniu v7 (świetne wyniki)
+## Co ten audyt odkrywa
 
-**Baseline 2.4.0:**
-- ✅ **Ruff:** 0 findings
-- ✅ **Mypy strict:** 0 errors w **50 plikach** (−5 od v2.3.9)
-- ✅ **Zero TODO/FIXME/HACK**
-- ✅ **`_compat.py`:** 144 → 75 linii (martwe fallbacki usunięte)
-- ✅ Wszystkie 17 fixów z v7 zmerdżowane (PR #1328)
-- ✅ Fixes z v1-v6 wdrożone (ruff 0, mypy 0, scanner split, martwy kod usunięty, cross-validation z PDF dodana)
+Po pobraniu świeżego repo okazało się że:
 
-**Co się zmieniło:**
-- Usunięte: `_scanner_*_mixin.py` (3 pliki), `register_addresses.py`, `entity_mappings.py`, `validate.yaml`
-- `_update_failed_exception`, `_PermissiveCapabilities`, `_async_patch_coordinator_compat`, `_SafeDTUtil` — wszystkie usunięte
-- Alias `__init__.er` + shim dla `tests/__init__.er` — usunięty
-- Pyflakes step z CI — usunięty (ruff pokrywa)
-- Nowy skrypt `tools/compare_registers_with_reference.py` + test cross-validation z PDF
-- `scanner_core.py` jest re-export shimem dla `scanner.core`
+✅ **V8 wdrożone** (PR #1329): `_compat_asdict` usunięty, `_HAS_HA + "pytest" in sys.modules` usunięte, `inspect.signature` w 3 miejscach usunięty, `"Skipping in mock context"` usunięte, trywialne `_schema`/`_required` usunięte.
+
+✅ **Bonus — Fix #10 i #11 z v8 Grupa B wdrożone**:
+- `_setup.py` wydzielony z `__init__.py` (246 linii) → `__init__.py` schudł z 1067 do **755 linii**.
+- `scanner/core.py` podzielony: **1596 → 1043 linie** (−553), nowe moduły `scanner/orchestration.py` (385 linii) i `scanner/setup.py` (151 linii).
+
+✅ **Fix #9 z v8 Grupa B wdrożone częściowo**: `CoordinatorConfig` dataclass istnieje, z metodą `from_entry(entry)` i factory `from_config(hass, config, entry)`. **ALE** nie usunięto 24-param `__init__` coordynatora — `from_config` to tylko wrapper który mapuje config na stary `__init__`.
+
+🚨 **REGRESJA** — część pracy z v7 została **cofnięta**:
+- `_compat.py` wrócił do 75 linii z `try/except ImportError` i fallbackami (po v7 miał być tylko re-exportem)
+- `config_flow.py` odzyskał `DhcpServiceInfo`/`ZeroconfServiceInfo`/`ConfigFlowResult` fallbacki (v7 Fix #14a-b)
+- `const.py` odzyskał `PLATFORMS` fallback (v7 Fix #5)
+- `register_map.py` dodał `except (ImportError, ModuleNotFoundError): def get_all_registers(): return []` fallback
+
+🚨 **NOWY SMELL krytyczny** — `_setup.py:40-48`:
+```python
+def _supports_typed_factory(coordinator_cls):
+    if not hasattr(coordinator_cls, "from_config"): return False
+    from unittest.mock import Mock
+    return not isinstance(coordinator_cls, Mock)
+```
+**Produkcja sprawdza czy klasa jest `Mock`-iem**. Jeśli tak — wraca do starej ścieżki 22-kwarg. Nowy detox hack który zamiast usunąć, tylko skomplikował problem.
+
+**Baseline:**
+- ✅ Ruff: 0 findings
+- ✅ Mypy strict: 0 errors (53 pliki — +3 od v2.4.0)
+- ✅ Zero TODO/FIXME/HACK
 
 ---
 
-## Cel v2.4.1 — dokończenie detoxu
+## Motywacja v2.4.2
 
-V7 usunęło **większość** śladów "produkcja-pod-testy", ale audyt v2.4.0 znalazł **8 pozostałych miejsc** gdzie production code wciąż wie o testach:
+Dwa cele:
 
-- Skanowanie `sys.modules` dla `"pytest"` żeby zmienić zachowanie
-- Wrappery z komentarzem "test patch compatibility"
-- `inspect.signature` check'i na własnych metodach żeby uniknąć "mock context" błędów
-- Dynamic imports przez `sys.modules` check żeby testy mogły patchować moduły
-- Defensywne `try/except TypeError: _LOGGER.debug("Skipping in mock context")`
-- Trywialne wrappery `_schema`/`_required` które nic nie robią po cleanup v7
+1. **Naprawa regresji** — przywrócenie stanu `_compat.py`/`config_flow.py` z v7 (czyste re-exports).
+2. **Nowy detox** — usunięcie `_supports_typed_factory` Mock check + finalna unifikacja ścieżki konstrukcji coordynatora.
 
-**Plus 4 odłożone pozycje architekturalne** z poprzednich audytów (dataclass CoordinatorConfig, split scanner/core, split __init__.py, config_flow follow-up).
+**Plus kilka nowych drobnych znalezisk** (sys.modules hacks w `mappings/`, test-compat komentarze w `modbus_helpers.py`).
 
-**To minor bump** (2.4.1) bo:
-- Fixy są czysto removalsami — nie dodają funkcjonalności.
-- Brak breaking change w publicznym API.
-- Testy wymagają mniejszej pracy niż v7 (większość prace została zrobiona).
+**Minor bump (2.4.2)** — czysto removals/cleanups, zero feature changes.
 
 ---
 
 ## Zakres i kolejność
 
-**Grupa A — Ostatnie test-induced smelly (niskie/średnie ryzyko):**
+**Grupa A — Detox regresji (średnie ryzyko, każdy pojedyńczo):**
 
-1. Fix #1 — Usunięcie `_compat_asdict` w `scanner_device_info.py`
-2. Fix #2 — Usunięcie `inspect.signature` filtering w `__init__.py:274`
-3. Fix #3 — Usunięcie `sys.modules.get()` check przed dynamicznym importem coordinator
-4. Fix #4 — Usunięcie `"Skipping in mock context"` try/except w `__init__.py:362`
-5. Fix #5 — Usunięcie `_HAS_HA` + `"pytest" in sys.modules` w `const.py`
-6. Fix #6 — Uproszczenie `_create_scanner` w `coordinator.py` (usunięcie dynamic self-import)
-7. Fix #7 — Usunięcie `inspect.signature(write_cb)` check w `entity.py`
-8. Fix #8 — Usunięcie trywialnych wrapperów `_schema`/`_required` w `config_flow.py`
+1. **Fix #1** — `_supports_typed_factory` + dual path w `async_create_coordinator` → jedna ścieżka przez `from_config`
+2. **Fix #2** — `_compat.py` — powrót do czystych re-exports z v7
+3. **Fix #3** — `config_flow.py` — usunięcie fallback `DhcpServiceInfo`/`ZeroconfServiceInfo`/`ConfigFlowResult`
+4. **Fix #4** — `const.py` — usunięcie `PLATFORMS` fallback
+5. **Fix #5** — `register_map.py` — usunięcie `get_all_registers` fallback
 
-**Grupa B — Architekturalne (odłożone; nie w tym release):**
+**Grupa B — Nowe znaleziska (niskie ryzyko):**
 
-- Fix #9 (tracked) — Dataclass `CoordinatorConfig` (24-param `__init__`)
-- Fix #10 (tracked) — Split `scanner/core.py` (1596 linii)
-- Fix #11 (tracked) — Split `__init__.py` (1067 linii)
-- Fix #12 (tracked) — Dalsza redukcja `# pragma: no cover` w `config_flow.py` (46 wciąż obecnych)
+6. **Fix #6** — `modbus_helpers.py:285` — usunięcie komentarza + signature-based Mock workaround
+7. **Fix #7** — `mappings/_loaders.py`/`legacy.py`/`_helpers.py` — audit wzorca `_get_parent()` z `sys.modules`
+
+**Grupa C — Dokończenie Fix #9 z v8 (rekomendowane, niskie ryzyko):**
+
+8. **Fix #8** — Uproszczenie 24-param `__init__` coordynatora przez prawdziwe użycie `CoordinatorConfig`
 
 Po każdym fixie:
 ```bash
@@ -76,694 +82,788 @@ pytest tests/ -x -q
 
 ---
 
-## Fix #1 — Usuń `_compat_asdict` w `scanner_device_info.py`
+## Fix #1 — Usuń `_supports_typed_factory` Mock check
 
-**Plik:** `custom_components/thessla_green_modbus/scanner_device_info.py`
+**Plik:** `custom_components/thessla_green_modbus/_setup.py`
 
-**Dowód (linie 13-20):**
+**Dowód (linie 40-48):**
 ```python
-def _compat_asdict(obj: Any) -> dict[str, Any]:
-    """Use scanner_core.asdict when available (test patch compatibility)."""
-
+def _supports_typed_factory(coordinator_cls: Any) -> bool:
+    """Return True when class can safely use from_config in runtime."""
+    if not hasattr(coordinator_cls, "from_config"):
+        return False
     try:
-        from . import scanner_core as _scanner_core
-
-        return _scanner_core.asdict(obj)
-    except (ImportError, AttributeError, TypeError):  # pragma: no cover - fallback
-        return dataclasses.asdict(obj)
+        from unittest.mock import Mock
+    except ImportError:  # pragma: no cover
+        return True
+    return not isinstance(coordinator_cls, Mock)
 ```
 
-**Co to robi:** funkcja importuje `scanner_core` (który jest shimem dla `scanner.core`), pobiera `asdict` i wywołuje ją. `scanner_core.asdict = _dataclasses_asdict` — czyli to jest **dokładnie to samo** co `dataclasses.asdict` — tylko z jedną dodatkową warstwą indirekcji. Komentarz mówi wprost: *"test patch compatibility"*.
+**Co to robi:** sprawdza czy `coordinator_cls`:
+1. Ma atrybut `from_config` (tak, **zawsze** ma — jest classmethod na `ThesslaGreenModbusCoordinator`).
+2. **Nie jest instancją `Mock`**. Jeśli jest Mockiem → zwraca `False` → idziemy starą ścieżką 22-kwarg.
 
-**Jedyny użyteczny cel:** gdyby testy patchowały `scanner_core.asdict` na custom funkcję.
+**Produkcja importuje `unittest.mock` w hot path** żeby wykryć testy. To jest **dokładnie ten sam gatunek smelli** który usuwaliśmy w v6/v8: produkcja-pod-testy.
 
-**Weryfikacja — kto patchuje `scanner_core.asdict`?**
-```bash
-grep -rn "scanner_core\.asdict\|scanner_core.*asdict" tests/ --include="*.py"
-```
-
-Jeśli grep zwraca 0 wyników → funkcja jest martwa. Jeśli coś zwraca → naprawić testy żeby patchowały `dataclasses.asdict` (właściwy symbol).
-
-### Krok 1a — znajdź callery `_compat_asdict`
-
-```bash
-grep -rn "_compat_asdict" custom_components/ tests/ --include="*.py"
-```
-
-### Krok 1b — zastąp wywołania przez `dataclasses.asdict`
-
-W każdym miejscu gdzie `_compat_asdict(obj)` → zmień na `dataclasses.asdict(obj)`.
-
-### Krok 1c — usuń funkcję
-
-**Plik:** `custom_components/thessla_green_modbus/scanner_device_info.py`
-
-#### SZUKAJ (linie 13-20)
+**Dual code path w `async_create_coordinator` (linie 132-159):**
 ```python
-def _compat_asdict(obj: Any) -> dict[str, Any]:
-    """Use scanner_core.asdict when available (test patch compatibility)."""
+if _supports_typed_factory(ThesslaGreenModbusCoordinator):
+    return ThesslaGreenModbusCoordinator.from_config(hass, config, entry=entry)
 
+return ThesslaGreenModbusCoordinator(
+    hass=hass,
+    host=config.host,
+    port=config.port,
+    # ... 19 więcej kwargs
+    entry=entry,
+)
+```
+
+**Dlaczego to istnieje:** testy podstawiają `Mock()` jako `ThesslaGreenModbusCoordinator` w `_setup.py`. `Mock()` ma każdy atrybut (włącznie z `from_config`) i każdą metodę. Gdyby produkcja wywołała `Mock.from_config(hass, config, entry)`, mock dostałby 3 argumenty zamiast 22 kwargs — test weryfikujący "czy coordinator został utworzony z properties X, Y, Z" padłby.
+
+**Prawidłowe rozwiązanie:** zmuszenie testów do używania `MagicMock(spec=ThesslaGreenModbusCoordinator)` (z `spec=` mock akceptuje tylko prawdziwe metody) lub prawdziwego coordynatora.
+
+### Krok 1a — usuń `_supports_typed_factory`
+
+**Plik:** `custom_components/thessla_green_modbus/_setup.py`
+
+#### SZUKAJ (linie 40-48)
+```python
+def _supports_typed_factory(coordinator_cls: Any) -> bool:
+    """Return True when class can safely use from_config in runtime."""
+    if not hasattr(coordinator_cls, "from_config"):
+        return False
     try:
-        from . import scanner_core as _scanner_core
-
-        return _scanner_core.asdict(obj)
-    except (ImportError, AttributeError, TypeError):  # pragma: no cover - fallback
-        return dataclasses.asdict(obj)
+        from unittest.mock import Mock
+    except ImportError:  # pragma: no cover
+        return True
+    return not isinstance(coordinator_cls, Mock)
 ```
 
 #### USUŃ (całość)
 
-### Krok 1d — napraw testy (jeśli były)
+### Krok 1b — uprość `async_create_coordinator`
 
-Jeśli jakieś testy patchowały `scanner_core.asdict`:
+**Plik:** `custom_components/thessla_green_modbus/_setup.py`
+
+#### SZUKAJ (linie 130-159)
 ```python
-# Było:
-monkeypatch.setattr("custom_components.thessla_green_modbus.scanner_core.asdict", mock_asdict)
+    scan_interval_seconds = _scan_interval_seconds(config.scan_interval)
 
-# Ma być:
-monkeypatch.setattr("custom_components.thessla_green_modbus.scanner_device_info.dataclasses.asdict", mock_asdict)
-# lub po prostu usunąć patch — dataclasses.asdict nie wymaga mockowania.
-```
+    if _supports_typed_factory(ThesslaGreenModbusCoordinator):
+        return ThesslaGreenModbusCoordinator.from_config(hass, config, entry=entry)
 
-### Oczekiwany efekt
-- -8 linii w `scanner_device_info.py`.
-- Bezpośrednie wywołanie `dataclasses.asdict` zamiast przez shim.
-- Jedna mniej miejsca gdzie produkcja importuje `scanner_core` (shim).
-
----
-
-## Fix #2 — Usuń `inspect.signature` filtering kwargs w `__init__.py`
-
-**Plik:** `custom_components/thessla_green_modbus/__init__.py`
-
-**Dowód (linie 274-283):**
-```python
-    try:
-        signature = inspect.signature(ThesslaGreenModbusCoordinator)
-    except (TypeError, ValueError):
-        signature = None
-    if signature is not None and not any(
-        param.kind is inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()
-    ):
-        coordinator_kwargs = {
-            key: value for key, value in coordinator_kwargs.items() if key in signature.parameters
-        }
-
-    return ThesslaGreenModbusCoordinator(**coordinator_kwargs)
-```
-
-**Co to robi:** przed wywołaniem `ThesslaGreenModbusCoordinator(**kwargs)` inspektuje signature klasy i **filtruje `coordinator_kwargs`** do tylko tych parametrów które klasa akceptuje. **Produkcyjny coordinator zawsze akceptuje ten sam zestaw 23 kwargs** — ten filter nigdy nic nie robi w runtime.
-
-**Kiedy filter coś robi:** gdy test podstawił `ThesslaGreenModbusCoordinator` jako coś innego (MagicMock, SimpleNamespace, klasa z mniejszą listą parametrów). Defense przeciw testowym stubom.
-
-**Ryzyko usunięcia:** niskie. Jeśli test zrobi `coordinator_module.ThesslaGreenModbusCoordinator = FakeCoordinator(fewer_params)`, po fixie dostanie `TypeError: unexpected keyword argument 'baud_rate'` zamiast cichego pominięcia. **To lepsze** — test widzi że stub jest niekompletny, zamiast przechodzić z zignorowanymi kwargs.
-
-### Krok 2 — usuń filter
-
-**Plik:** `custom_components/thessla_green_modbus/__init__.py`
-
-#### SZUKAJ (linie 274-285)
-```python
-    try:
-        signature = inspect.signature(ThesslaGreenModbusCoordinator)
-    except (TypeError, ValueError):
-        signature = None
-    if signature is not None and not any(
-        param.kind is inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()
-    ):
-        coordinator_kwargs = {
-            key: value for key, value in coordinator_kwargs.items() if key in signature.parameters
-        }
-
-    return ThesslaGreenModbusCoordinator(**coordinator_kwargs)
-```
-
-#### ZASTĄP
-```python
-    return ThesslaGreenModbusCoordinator(**coordinator_kwargs)
-```
-
-### Krok 2b — usuń `import inspect` jeśli nie używany gdzie indziej
-
-```bash
-grep -n "\binspect\." custom_components/thessla_green_modbus/__init__.py
-```
-
-Jeśli `inspect` używany tylko w usuniętym bloku — usuń `import inspect` z nagłówka.
-
-### Krok 2c — napraw testy
-
-```bash
-grep -rn "ThesslaGreenModbusCoordinator =\|coordinator_module\.ThesslaGreenModbusCoordinator" tests/ --include="*.py"
-```
-
-Każdy test który podstawiał nie-kompletny coordinator — przepisz używając `MagicMock(spec=ThesslaGreenModbusCoordinator)`.
-
-### Oczekiwany efekt
-- -12 linii.
-- Jeden mniej `inspect.signature` sprawdzenia w produkcji.
-- Testy z niekompletnymi stubami zaczną padać jawnie (zamiast cicho pomijać kwargs).
-
----
-
-## Fix #3 — Usuń `sys.modules.get()` check przed importem coordinator
-
-**Plik:** `custom_components/thessla_green_modbus/__init__.py`
-
-**Dowód (linie 238-247):**
-```python
-    _coordinator_key = f"{__name__}.coordinator"
-    coordinator_mod = sys.modules.get(_coordinator_key)
-    if coordinator_mod is None:
-        if hasattr(hass, "async_add_executor_job"):
-            coordinator_mod = await hass.async_add_executor_job(
-                import_module, ".coordinator", __name__
-            )
-        else:
-            coordinator_mod = import_module(".coordinator", __name__)
-    ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
-```
-
-**Co to robi:** najpierw sprawdza `sys.modules` czy coordinator już był zaimportowany (co daje testom szansę podstawić `sys.modules["...coordinator"] = MockCoordinatorModule`), potem robi executor-import przez HA lub synchroniczny `import_module` jako fallback.
-
-**Smell:**
-1. Sprawdzanie `sys.modules` żeby testy mogły patchować — wciąż produkcja-pod-testy.
-2. `hasattr(hass, "async_add_executor_job")` — w produkcji zawsze jest, fallback dla stubów HA.
-
-### Krok 3 — uprość import
-
-**Plik:** `custom_components/thessla_green_modbus/__init__.py`
-
-#### SZUKAJ (linie 238-247)
-```python
-    _coordinator_key = f"{__name__}.coordinator"
-    coordinator_mod = sys.modules.get(_coordinator_key)
-    if coordinator_mod is None:
-        if hasattr(hass, "async_add_executor_job"):
-            coordinator_mod = await hass.async_add_executor_job(
-                import_module, ".coordinator", __name__
-            )
-        else:
-            coordinator_mod = import_module(".coordinator", __name__)
-    ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
-```
-
-#### ZASTĄP
-```python
-    coordinator_mod = await hass.async_add_executor_job(
-        import_module, ".coordinator", __name__
+    return ThesslaGreenModbusCoordinator(
+        hass=hass,
+        host=config.host,
+        port=config.port,
+        slave_id=config.slave_id,
+        name=config.name,
+        connection_type=config.connection_type,
+        connection_mode=config.connection_mode,
+        serial_port=config.serial_port,
+        baud_rate=config.baud_rate,
+        parity=config.parity,
+        stop_bits=config.stop_bits,
+        timeout=config.timeout,
+        retry=config.retry,
+        backoff=config.backoff,
+        backoff_jitter=config.backoff_jitter,
+        force_full_register_list=config.force_full_register_list,
+        scan_uart_settings=config.scan_uart_settings,
+        deep_scan=config.deep_scan,
+        safe_scan=config.safe_scan,
+        skip_missing_registers=config.skip_missing_registers,
+        max_registers_per_request=config.max_registers_per_request,
+        scan_interval=timedelta(seconds=scan_interval_seconds),
+        entry=entry,
     )
-    ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
-```
-
-### Krok 3b — rozważ przeniesienie importu na top of file
-
-Dynamic import coordynatora przy każdym setup'ie to kosztowne. Jeśli `coordinator` nie powoduje circular import w top-level:
-
-```bash
-# Sprawdź czy coordinator.py importuje __init__.py cokolwiek:
-grep -n "from \. import\|from \.__init__\|import __init__" custom_components/thessla_green_modbus/coordinator.py
-```
-
-Jeśli nie ma cyklu — przenieś na top:
-```python
-from .coordinator import ThesslaGreenModbusCoordinator
-```
-
-Usuń dynamic import z funkcji `_async_create_coordinator`. Prawdopodobnie dynamic import istnieje tylko żeby uniknąć blockującego I/O w setup, ale `import_module` na module Python który jest już w PYTHONPATH nie blokuje (poza pierwszym razem, gdy kompiluje .pyc).
-
-**Jeśli** circular import występuje — zostaw dynamic import, ale bez `sys.modules.get()` check'a.
-
-### Krok 3c — napraw testy
-
-```bash
-grep -rn "sys\.modules\[.*coordinator.*\]" tests/ --include="*.py"
-```
-
-Jeśli testy robiły `sys.modules["custom_components.thessla_green_modbus.coordinator"] = mock_module` — przepisz używając `monkeypatch.setattr(coordinator_module, "ThesslaGreenModbusCoordinator", MockCoordinator)` lub podobnie.
-
-### Oczekiwany efekt
-- -8 linii z defensywnego kodu.
-- Szybszy setup (jeśli top-level import — import raz, nie co każdy setup).
-- Brak `sys.modules.get()` sprawdzenia jako hook dla testów.
-
----
-
-## Fix #4 — Usuń `"Skipping in mock context"` try/except w `__init__.py`
-
-**Plik:** `custom_components/thessla_green_modbus/__init__.py`
-
-**Dowód (linie 361-369):**
-```python
-async def _async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
-    """Load option lists and entity mappings."""
-    try:
-        await async_setup_options(hass)
-    except (TypeError, AttributeError):
-        _LOGGER.debug("Skipping async_setup_options in mock context")
-    try:
-        await async_setup_entity_mappings(hass)
-    except (TypeError, AttributeError):
-        _LOGGER.debug("Skipping async_setup_entity_mappings in mock context")
-```
-
-**Co to robi:** wywołuje `async_setup_options(hass)` — jeśli rzuci `TypeError` lub `AttributeError` (co w produkcji **nie powinno się zdarzyć**), cicho pomija. Komentarz: *"in mock context"* — produkcja wie że może być testowana.
-
-**Dlaczego to jest złe:** jeśli pewnego dnia `async_setup_options` naprawdę rzuci `TypeError` z powodu buga, produkcja go **połknie** bez wyrzucenia setup error. Integracja uruchomi się bez załadowanych option lists, entities będą niekompletne — a użytkownik nie zobaczy błędu.
-
-### Krok 4 — usuń try/except
-
-#### SZUKAJ (linie 361-369)
-```python
-async def _async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
-    """Load option lists and entity mappings."""
-    try:
-        await async_setup_options(hass)
-    except (TypeError, AttributeError):
-        _LOGGER.debug("Skipping async_setup_options in mock context")
-    try:
-        await async_setup_entity_mappings(hass)
-    except (TypeError, AttributeError):
-        _LOGGER.debug("Skipping async_setup_entity_mappings in mock context")
 ```
 
 #### ZASTĄP
 ```python
-async def _async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
-    """Load option lists and entity mappings."""
-    await async_setup_options(hass)
-    await async_setup_entity_mappings(hass)
+    return ThesslaGreenModbusCoordinator.from_config(hass, config, entry=entry)
 ```
 
-### Krok 4b — napraw testy
+### Krok 1c — sprawdź czy `timedelta` jeszcze używana
 
-Jeśli testy mockują `hass` jako SimpleNamespace i `async_setup_options(hass)` rzuca `TypeError`:
+```bash
+grep -n "\btimedelta\b" custom_components/thessla_green_modbus/_setup.py
+```
+
+Jeśli nie — usuń `from datetime import timedelta` z nagłówka. Jeśli wciąż używana (np. w `_scan_interval_seconds`) — zostaw.
+
+### Krok 1d — napraw testy
+
+```bash
+grep -rn "ThesslaGreenModbusCoordinator\s*=\s*Mock\|coordinator_cls\s*=\s*Mock" tests/ --include="*.py"
+```
+
+Dla każdego testu podstawiającego `Mock()` jako coordinator class:
 
 ```python
-# Źle - polega na produkcji żeby łapać TypeError:
-hass = SimpleNamespace(data={}, ...)
-await async_setup_entry(hass, entry)
+# Było (działało dzięki _supports_typed_factory który zwracał False):
+mock_coordinator_cls = Mock()
+monkeypatch.setattr("custom_components.thessla_green_modbus._setup.ThesslaGreenModbusCoordinator", mock_coordinator_cls)
+await async_create_coordinator(hass, entry)
+mock_coordinator_cls.assert_called_once_with(host="1.2.3.4", port=502, ...)
 
-# Dobrze - użyj pytest-homeassistant-custom-component:
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-async def test_setup(hass):  # hass fixture z PHCC
-    entry = MockConfigEntry(...)
-    entry.add_to_hass(hass)
-    await hass.config_entries.async_setup(entry.entry_id)
+# Ma być (explicit spec, `from_config` activates):
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+mock_coordinator = MagicMock(spec=ThesslaGreenModbusCoordinator)
+# Lub jeszcze lepiej:
+mock_from_config = AsyncMock()
+monkeypatch.setattr(ThesslaGreenModbusCoordinator, "from_config", mock_from_config)
+await async_create_coordinator(hass, entry)
+mock_from_config.assert_called_once_with(hass, config_object, entry=entry)
 ```
 
 ### Oczekiwany efekt
-- -4 linie w produkcji.
-- Bugs w `async_setup_options` / `async_setup_entity_mappings` nie są już połykane.
-- Testy z niepełnymi mock-hass zaczną padać — użyj prawdziwego `hass` fixture.
+- −9 linii funkcji `_supports_typed_factory`
+- −25 linii dual-path construction w `async_create_coordinator`
+- Jedna ścieżka konstrukcji — jaśniejszy flow
+- `unittest.mock` nie jest już importowany w produkcji
 
 ---
 
-## Fix #5 — Usuń `_HAS_HA` + `"pytest" in sys.modules` w `const.py`
+## Fix #2 — `_compat.py` powrót do czystych re-exports
 
-**Plik:** `custom_components/thessla_green_modbus/const.py`
+**Plik:** `custom_components/thessla_green_modbus/_compat.py`
 
-**Dowód (linie 538-545):**
+**Dowód (linie 10-53):**
 ```python
-try:  # pragma: no cover - handle partially initialized module
-    _HAS_HA = importlib.util.find_spec("homeassistant") is not None
-except (ImportError, ValueError):
-    _HAS_HA = False
+try:
+    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+    from homeassistant.const import (
+        EVENT_HOMEASSISTANT_STOP,
+        PERCENTAGE,
+        UnitOfElectricPotential,
+        UnitOfPower,
+        UnitOfTemperature,
+        UnitOfTime,
+        UnitOfVolumeFlowRate,
+    )
+    from homeassistant.helpers.device_registry import DeviceInfo
+    from homeassistant.helpers.entity import EntityCategory
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+    from homeassistant.util import dt as dt_util
+except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - test stubs
+    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+    from homeassistant.helpers.device_registry import DeviceInfo
+    from homeassistant.helpers.entity import EntityCategory
+    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+    from homeassistant.util import dt as dt_util
 
-# Load option lists immediately when Home Assistant isn't available or during tests
-if not _HAS_HA or "pytest" in sys.modules:  # pragma: no cover - test env
-    _sync_setup_options()
+    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
+    PERCENTAGE = "%"
+
+    class UnitOfElectricPotential:  # type: ignore[no-redef]
+        VOLT = "V"
+    # ... więcej takich klas
 ```
 
-**To jest KONCEPTUALNIE NAJGORSZY SMELL.** Produkcja:
-1. Sprawdza czy Home Assistant jest zainstalowany (co zawsze jest w produkcji — manifest wymaga HA 2026.1.0).
-2. Sprawdza czy `pytest` jest w `sys.modules` — czyli **czy kod jest uruchamiany przez pytest**.
-3. Na tej podstawie wybiera inną ścieżkę inicjalizacji (`_sync_setup_options()`).
+**To jest nielogiczne:**
+- `try` block importuje z 5 modułów HA.
+- `except` block importuje z **dokładnie tych samych 5 modułów HA**, z wyjątkiem `homeassistant.const`.
+- Jedyne co `except` robi inaczej: re-defines `EVENT_HOMEASSISTANT_STOP`, `PERCENTAGE`, `UnitOf*` jako lokalne klasy.
 
-**Kod w produkcji i kod w testach to nie jest ten sam kod.** Produkcja używa async setup (`async_setup_options(hass)`), testy używają sync setup. To znaczy że **testy testują inny kod niż produkcja**.
+**Kiedy except trigger'uje:** tylko gdy `homeassistant.const` jest dostępne **częściowo** (brak `EVENT_HOMEASSISTANT_STOP` lub `UnitOf*`). Te symbole są w HA od 2022. Manifest wymaga HA 2026.1.0.
 
-### Krok 5 — usuń detekcję testów
+**Po v7 (Fix #5):** ten plik był czystym re-exportem bez `try/except`. Regresja.
 
-**Plik:** `custom_components/thessla_green_modbus/const.py`
+### Krok 2 — przywróć stan z v7
 
-#### SZUKAJ (linie 538-545)
+**Plik:** `custom_components/thessla_green_modbus/_compat.py`
+
+#### ZASTĄP cały plik
 ```python
-try:  # pragma: no cover - handle partially initialized module
-    _HAS_HA = importlib.util.find_spec("homeassistant") is not None
-except (ImportError, ValueError):
-    _HAS_HA = False
+"""Compatibility re-exports for Home Assistant symbols used across the integration.
 
-# Load option lists immediately when Home Assistant isn't available or during tests
-if not _HAS_HA or "pytest" in sys.modules:  # pragma: no cover - test env
-    _sync_setup_options()
-```
+Manifest requires homeassistant>=2026.1.0 and python>=3.13, so all fallbacks
+for running without Home Assistant have been removed. This module is now a
+single import point for HA symbols used across the integration.
+"""
 
-#### USUŃ (całość)
+from __future__ import annotations
 
-### Krok 5b — sprawdź zależności
+from datetime import UTC
+from typing import Any
 
-```bash
-# Czy _HAS_HA jest używany gdzie indziej?
-grep -rn "_HAS_HA" custom_components/ tests/ --include="*.py"
-
-# Czy _sync_setup_options jest nadal potrzebny?
-grep -rn "_sync_setup_options" custom_components/ tests/ --include="*.py"
-```
-
-Jeśli `_HAS_HA` nie używany nigdzie indziej — usuń też `import importlib.util`.
-
-Jeśli `_sync_setup_options` używane tylko w tym usuniętym bloku — usuń też funkcję.
-
-### Krok 5c — napraw testy
-
-```bash
-grep -rn "_sync_setup_options\|pytest.*sys.modules" tests/ --include="*.py"
-```
-
-Testy które polegały na sync setup (bo produkcja to wywoływała automatycznie dla pytest):
-```python
-# Dodaj explicit wywołanie w fixture:
-@pytest.fixture(autouse=True)
-async def setup_options(hass):
-    from custom_components.thessla_green_modbus.const import async_setup_options
-    await async_setup_options(hass)
-```
-
-Lub użyj `pytest-homeassistant-custom-component` `hass` fixture który dostarcza pełny HA context.
-
-### Oczekiwany efekt
-- -8 linii + potencjalnie `_sync_setup_options` (jeśli tylko dla tego użyty).
-- **Produkcja i testy uruchamiają ten sam kod.**
-- Brak wykrywania pytest w `sys.modules`.
-
----
-
-## Fix #6 — Uprość `_create_scanner` w `coordinator.py`
-
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
-
-**Dowód (linie 448-462):**
-```python
-    async def _create_scanner(self) -> Any:  # pragma: no cover
-        """Instantiate a ThesslaGreenDeviceScanner using the appropriate factory."""
-        scanner_cls = getattr(
-            import_module(__name__), "ThesslaGreenDeviceScanner", ThesslaGreenDeviceScanner
-        )
-        kwargs = self._build_scanner_kwargs()
-        if not inspect.isclass(scanner_cls):
-            return scanner_cls(**kwargs)
-        scanner_factory = getattr(scanner_cls, "create", None)
-        if callable(scanner_factory):
-            result = scanner_factory(**kwargs)
-            if inspect.isawaitable(result):
-                result = await result
-            return result
-        return scanner_cls(**kwargs)
-```
-
-**Co to robi:** `import_module(__name__)` = ponowny import `coordinator` module. Potem `getattr(..., "ThesslaGreenDeviceScanner", ThesslaGreenDeviceScanner)` — **pobierz z modułu, a jeśli nie ma → użyj globalnie zaimportowanego**. Standard Python: globalny import i `getattr(module, name, default)` zwracają **dokładnie to samo** poza przypadkiem gdy test patchował moduł.
-
-**Plus:** `if not inspect.isclass(scanner_cls): return scanner_cls(**kwargs)` — defensive check dla przypadku gdy `ThesslaGreenDeviceScanner` został podstawiony jako function/callable zamiast class.
-
-**Wszystko to dla testów.** Produkcyjny `ThesslaGreenDeviceScanner` to klasa z `.create()` factory.
-
-### Krok 6 — uprość
-
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
-
-#### SZUKAJ (linie 448-462)
-```python
-    async def _create_scanner(self) -> Any:  # pragma: no cover
-        """Instantiate a ThesslaGreenDeviceScanner using the appropriate factory."""
-        scanner_cls = getattr(
-            import_module(__name__), "ThesslaGreenDeviceScanner", ThesslaGreenDeviceScanner
-        )
-        kwargs = self._build_scanner_kwargs()
-        if not inspect.isclass(scanner_cls):
-            return scanner_cls(**kwargs)
-        scanner_factory = getattr(scanner_cls, "create", None)
-        if callable(scanner_factory):
-            result = scanner_factory(**kwargs)
-            if inspect.isawaitable(result):
-                result = await result
-            return result
-        return scanner_cls(**kwargs)
-```
-
-#### ZASTĄP
-```python
-    async def _create_scanner(self) -> Any:  # pragma: no cover
-        """Instantiate a ThesslaGreenDeviceScanner using its create() factory."""
-        kwargs = self._build_scanner_kwargs()
-        return await ThesslaGreenDeviceScanner.create(**kwargs)
-```
-
-### Krok 6b — sprawdź zależności
-
-```bash
-# Czy import_module i inspect jeszcze używane?
-grep -n "\bimport_module\b\|\binspect\." custom_components/thessla_green_modbus/coordinator.py
-```
-
-Jeśli nie — usuń `from importlib import import_module` i `import inspect` z nagłówka.
-
-### Krok 6c — napraw testy
-
-Testy które patchowały `coordinator.ThesslaGreenDeviceScanner`:
-```python
-# Było (działało dzięki dynamic import):
-monkeypatch.setattr(
-    "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner",
-    MockScanner
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (
+    EVENT_HOMEASSISTANT_STOP,
+    PERCENTAGE,
+    UnitOfElectricPotential,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolumeFlowRate,
 )
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
-# Wciąż działa:
-# monkeypatch.setattr dla stringa modyfikuje atrybut modułu, 
-# i ThesslaGreenDeviceScanner w `_create_scanner` odwołuje się do tego atrybutu
-# ZAŁOŻENIE: use `coordinator.ThesslaGreenDeviceScanner` reference, nie lokalnej zmiennej
-```
+COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
 
-**Ważne:** po fixie `ThesslaGreenDeviceScanner.create(...)` używa globalnie zaimportowanego symbolu. Jeśli test patchował tylko `coordinator_module.ThesslaGreenDeviceScanner` (symbol w module), **patch nadal działa** bo Python resolve'uje atrybut przy wywołaniu. Ale jeśli test patchował przez `sys.modules` hack — przepisz.
-
-```bash
-grep -rn "coordinator.*ThesslaGreenDeviceScanner" tests/ --include="*.py" | head -10
+__all__ = [
+    "COORDINATOR_BASE",
+    "EVENT_HOMEASSISTANT_STOP",
+    "PERCENTAGE",
+    "UTC",
+    "BinarySensorDeviceClass",
+    "DataUpdateCoordinator",
+    "DeviceInfo",
+    "EntityCategory",
+    "SensorDeviceClass",
+    "SensorStateClass",
+    "UnitOfElectricPotential",
+    "UnitOfPower",
+    "UnitOfTemperature",
+    "UnitOfTime",
+    "UnitOfVolumeFlowRate",
+    "UpdateFailed",
+    "dt_util",
+]
 ```
 
 ### Oczekiwany efekt
-- -10 linii dynamic import madness.
-- Bezpośrednia czytelna metoda.
-- Mniej indirekcji — łatwiejsza lokalizacja bugów.
+- 75 → ~40 linii czystego re-exportu (jak po v7)
+- Brak fallbacków dla symbolów które są w HA od 2022
+- `datetime.UTC` z Python 3.13 (nie `dt.timezone.utc` z `# noqa`)
 
 ---
 
-## Fix #7 — Usuń `inspect.signature(write_cb)` w `entity.py`
-
-**Plik:** `custom_components/thessla_green_modbus/entity.py`
-
-**Dowód (linie 110-124):**
-```python
-    async def _async_write_register(
-        self,
-        register_name: str,
-        value: int,
-        refresh: bool = True,
-        offset: int = 0,
-        include_offset: bool = False,
-    ) -> None:
-        """Write a register via coordinator with broad compatibility."""
-        write_cb = self.coordinator.async_write_register
-        kwargs: dict[str, Any] = {"refresh": False}
-        try:
-            signature = inspect.signature(write_cb)
-        except (TypeError, ValueError):
-            signature = None
-        if (include_offset or offset != 0) and (
-            signature is None
-            or "offset" in signature.parameters
-            or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in signature.parameters.values())
-        ):
-            kwargs["offset"] = offset
-
-        success = await write_cb(register_name, value, **kwargs)
-```
-
-**Co to robi:** sprawdza czy `coordinator.async_write_register` akceptuje parametr `offset`. Jeśli tak — dodaje do kwargs. Jeśli nie — pomija.
-
-**Kiedy to było potrzebne:** jeśli `async_write_register` historycznie nie miał `offset` i dodany został później, ale nie wszystkie istniejące instances coordinatora zostały zaktualizowane. Dzisiaj wszystkie versions `async_write_register` akceptują `offset`.
-
-**Weryfikacja:**
-```bash
-# Sprawdź signature produkcyjnej metody:
-grep -A 10 "def async_write_register" custom_components/thessla_green_modbus/coordinator.py | head -15
-```
-
-Jeśli `async_write_register` ma `offset: int = 0` — filter jest bezużyteczny.
-
-### Krok 7 — uprość
-
-**Plik:** `custom_components/thessla_green_modbus/entity.py`
-
-#### SZUKAJ (linie 108-128)
-```python
-    async def _async_write_register(
-        self,
-        register_name: str,
-        value: int,
-        refresh: bool = True,
-        offset: int = 0,
-        include_offset: bool = False,
-    ) -> None:
-        """Write a register via coordinator with broad compatibility."""
-        write_cb = self.coordinator.async_write_register
-        kwargs: dict[str, Any] = {"refresh": False}
-        try:
-            signature = inspect.signature(write_cb)
-        except (TypeError, ValueError):
-            signature = None
-        if (include_offset or offset != 0) and (
-            signature is None
-            or "offset" in signature.parameters
-            or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in signature.parameters.values())
-        ):
-            kwargs["offset"] = offset
-
-        success = await write_cb(register_name, value, **kwargs)
-        if not success:
-            raise RuntimeError(f"Failed to write register {register_name}")
-        if refresh:
-            await self.coordinator.async_request_refresh()
-```
-
-#### ZASTĄP
-```python
-    async def _async_write_register(
-        self,
-        register_name: str,
-        value: int,
-        refresh: bool = True,
-        offset: int = 0,
-        include_offset: bool = False,
-    ) -> None:
-        """Write a register via the coordinator."""
-        kwargs: dict[str, Any] = {"refresh": False}
-        if include_offset or offset != 0:
-            kwargs["offset"] = offset
-
-        success = await self.coordinator.async_write_register(
-            register_name, value, **kwargs
-        )
-        if not success:
-            raise RuntimeError(f"Failed to write register {register_name}")
-        if refresh:
-            await self.coordinator.async_request_refresh()
-```
-
-### Krok 7b — sprawdź import `inspect`
-
-```bash
-grep -n "\binspect\." custom_components/thessla_green_modbus/entity.py
-```
-
-Jeśli nie używane — usuń `import inspect` z nagłówka.
-
-### Krok 7c — napraw testy
-
-Testy które mockowały coordinator z `async_write_register` bez `offset` parameter:
-
-```python
-# Było (działało dzięki entity.py filter):
-mock_coordinator.async_write_register = AsyncMock(
-    signature_without_offset  # pseudo-code
-)
-
-# Ma być (explicit signature compat):
-async def write(register_name, value, *, refresh=True, offset=0):
-    # mock behavior
-    return True
-mock_coordinator.async_write_register = write
-```
-
-Lub użyj `MagicMock(spec=ThesslaGreenModbusCoordinator)` — automatycznie dostaje prawdziwą signature.
-
-### Oczekiwany efekt
-- -10 linii defensywnego kodu.
-- Bezpośrednie wywołanie bez introspekcji.
-- Jeśli coordynator interface się zmieni — entity.py pada jawnie z `TypeError: unexpected keyword argument 'offset'`, łatwo zidentyfikować problem.
-
----
-
-## Fix #8 — Usuń trywialne wrappery `_schema`/`_required` w `config_flow.py`
+## Fix #3 — `config_flow.py` — usuń fallbacki HA service info
 
 **Plik:** `custom_components/thessla_green_modbus/config_flow.py`
 
-**Dowód (linie 152-157):**
+**Dowód (linie 25-110):**
 ```python
-def _schema(definition: Any) -> vol.Schema:
-    return vol.Schema(definition)
+try:
+    from homeassistant.config_entries import ConfigFlowResult
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - test stubs
+    ConfigFlowResult = dict[str, Any]
 
+# ...
 
-def _required(schema: Any, **kwargs: Any) -> vol.Required:
-    return vol.Required(schema, **kwargs)
+if TYPE_CHECKING:
+    from homeassistant.components.dhcp import DhcpServiceInfo
+    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+else:
+    try:
+        from homeassistant.components.dhcp import DhcpServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
+
+        @dataclasses.dataclass
+        class DhcpServiceInfo:
+            macaddress: str | None = None
+            ip: str | None = None
+
+    try:
+        from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
+
+        @dataclasses.dataclass
+        class ZeroconfServiceInfo:
+            host: str | None = None
 ```
 
-**Kontekst historyczny:** v7 audit zauważył że te wrappery miały 7-poziomowy fallback dla różnych wersji voluptuous stubów. V7 uprościł je do pojedynczego wywołania `vol.*`. Teraz są **trywialnymi wrapperami bez logiki** — ale wciąż istnieją, co jest nieużyteczną indirekcją.
+**To są te same fallbacki które usunęliśmy w v7 Fix #14a-b.** Wróciły.
 
-**Użycia:**
-```
-config_flow.py:700     _required(
-config_flow.py:724     _required(CONF_SLAVE_ID, default=slave_default): ...
-config_flow.py:747     _required(CONF_HOST, default=host_default): ...
-config_flow.py:748     _required(CONF_PORT, default=port_default): ...
-config_flow.py:756     _required(CONF_SERIAL_PORT, ...)
-config_flow.py:757     _required(CONF_BAUD_RATE, ...)
-config_flow.py:758     _required(CONF_PARITY, ...)
-config_flow.py:759     _required(CONF_STOP_BITS, ...)
-config_flow.py:763     return _schema(data_schema)
-config_flow.py:1241    data_schema = _schema(...)
+### Krok 3a — usuń `ConfigFlowResult` fallback
+
+#### SZUKAJ (linie 25-28)
+```python
+try:
+    from homeassistant.config_entries import ConfigFlowResult
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - test stubs
+    ConfigFlowResult = dict[str, Any]
 ```
 
-14 wywołań łącznie. Zamiana na `vol.Schema` / `vol.Required` to prosta find-replace operacja.
+#### ZASTĄP
+```python
+from homeassistant.config_entries import ConfigFlowResult
+```
 
-### Krok 8a — zamień wywołania
+### Krok 3b — usuń `DhcpServiceInfo`/`ZeroconfServiceInfo` fallback
 
-W `config_flow.py`:
+#### SZUKAJ (linie 91-110)
+```python
+if TYPE_CHECKING:
+    from homeassistant.components.dhcp import DhcpServiceInfo
+    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+else:
+    try:
+        from homeassistant.components.dhcp import DhcpServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
+
+        @dataclasses.dataclass
+        class DhcpServiceInfo:
+            macaddress: str | None = None
+            ip: str | None = None
+
+    try:
+        from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
+
+        @dataclasses.dataclass
+        class ZeroconfServiceInfo:
+            host: str | None = None
+```
+
+#### ZASTĄP
+```python
+from homeassistant.components.dhcp import DhcpServiceInfo
+from homeassistant.components.zeroconf import ZeroconfServiceInfo
+```
+
+### Krok 3c — sprawdź `dataclasses` import
 
 ```bash
-# Znajdź wszystkie wystąpienia:
-grep -n "_schema(\|_required(" custom_components/thessla_green_modbus/config_flow.py
+grep -n "dataclasses" custom_components/thessla_green_modbus/config_flow.py
 ```
 
-**Dla każdej linii:**
-- `_schema(definition)` → `vol.Schema(definition)`
-- `_required(key, default=...)` → `vol.Required(key, default=...)`
-- `_required(CONF_X)` → `vol.Required(CONF_X)`
+Jeśli `dataclasses` był używany tylko w usuniętych fallbackach — usuń `import dataclasses` z nagłówka.
 
-### Krok 8b — usuń funkcje helper
+### Krok 3d — sprawdź `TYPE_CHECKING` guard
 
-#### SZUKAJ (linie 152-157)
-```python
-def _schema(definition: Any) -> vol.Schema:
-    return vol.Schema(definition)
-
-
-def _required(schema: Any, **kwargs: Any) -> vol.Required:
-    return vol.Required(schema, **kwargs)
-```
-
-#### USUŃ (całość)
-
-### Krok 8c — napraw testy
-
-```bash
-grep -rn "_schema\|_required" tests/test_config_flow.py | head -5
-```
-
-Testy prawdopodobnie nie używają tych funkcji bezpośrednio. Jeśli używają — zamień na `vol.*`.
+Jeśli fallbacki były jedynym użyciem `TYPE_CHECKING` w tym pliku — sprawdź czy guard potrzebny dla innych importów (class `_ConfigFlowBase` na linii 112 używa `TYPE_CHECKING`).
 
 ### Oczekiwany efekt
-- -6 linii (2 funkcje × 3 linie).
-- -14 wywołań przez nieużyteczny wrapper.
-- `config_flow.py` używa standardowego API voluptuous bezpośrednio.
+- −25 linii test-compat kodu
+- `config_flow.py` z 1304 → ~1280 linii
+
+---
+
+## Fix #4 — `const.py` — usuń `PLATFORMS` fallback
+
+**Plik:** `custom_components/thessla_green_modbus/const.py`
+
+**Dowód (linie ~236-262):**
+```python
+try:
+    from homeassistant.const import Platform as _Platform
+
+    PLATFORMS: list[_Platform] = [
+        _Platform.SENSOR,
+        _Platform.BINARY_SENSOR,
+        _Platform.CLIMATE,
+        _Platform.FAN,
+        _Platform.SELECT,
+        _Platform.NUMBER,
+        _Platform.SWITCH,
+        _Platform.TEXT,
+        _Platform.TIME,
+    ]
+except (ImportError, AttributeError):  # pragma: no cover - fallback for test environments
+    PLATFORMS = [
+        "sensor",
+        "binary_sensor",
+        "climate",
+        "fan",
+        "select",
+        "number",
+        "switch",
+        "text",
+        "time",
+    ]
+```
+
+**HA `Platform` enum** istnieje od 2022. Fallback istnieje dla stubów testowych.
+
+### Krok 4 — uprość
+
+**Plik:** `custom_components/thessla_green_modbus/const.py`
+
+#### SZUKAJ (cały blok try/except dla `PLATFORMS`)
+```python
+try:
+    from homeassistant.const import Platform as _Platform
+
+    PLATFORMS: list[_Platform] = [
+        _Platform.SENSOR,
+        # ...
+    ]
+except (ImportError, AttributeError):  # pragma: no cover - fallback for test environments
+    PLATFORMS = [
+        "sensor",
+        # ...
+    ]
+```
+
+#### ZASTĄP
+```python
+from homeassistant.const import Platform
+
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.CLIMATE,
+    Platform.FAN,
+    Platform.SELECT,
+    Platform.NUMBER,
+    Platform.SWITCH,
+    Platform.TEXT,
+    Platform.TIME,
+]
+```
+
+### Oczekiwany efekt
+- −12 linii
+- `PLATFORMS` jest listą `Platform` enum zamiast `list[_Platform | str]` union
+
+---
+
+## Fix #5 — `register_map.py` — usuń loader fallback
+
+**Plik:** `custom_components/thessla_green_modbus/register_map.py`
+
+**Dowód (linie 22-28):**
+```python
+try:
+    from .registers.loader import RegisterDef, get_all_registers
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback for test stubs
+    from typing import Any as RegisterDef  # type: ignore
+
+    def get_all_registers():  # type: ignore
+        return []
+```
+
+**Kiedy to trigger'uje:** tylko gdy ktoś wykomentuje `registers/loader.py` lub nie zainstaluje JSON-a. W produkcji **zawsze dostępne**.
+
+**Problem z fallbackiem:** `def get_all_registers(): return []` zwraca pustą listę. Jeśli coś poszłoby nie tak z loaderem, integracja **uruchomi się z 0 rejestrami** zamiast rzucić błąd. Defensywa która maskuje bug.
+
+### Krok 5 — usuń fallback
+
+**Plik:** `custom_components/thessla_green_modbus/register_map.py`
+
+#### SZUKAJ (linie 22-28)
+```python
+try:
+    from .registers.loader import RegisterDef, get_all_registers
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback for test stubs
+    from typing import Any as RegisterDef  # type: ignore
+
+    def get_all_registers():  # type: ignore
+        return []
+```
+
+#### ZASTĄP
+```python
+from .registers.loader import RegisterDef, get_all_registers
+```
+
+### Krok 5b — napraw testy
+
+Testy które polegały na pustym loaderze:
+```python
+# Źle:
+monkeypatch.setattr("custom_components.thessla_green_modbus.registers.loader.get_all_registers", lambda: [])
+
+# Jeśli test potrzebuje custom register list:
+monkeypatch.setattr(
+    "custom_components.thessla_green_modbus.registers.loader.get_all_registers",
+    lambda: [custom_register_1, custom_register_2]
+)
+```
+
+### Oczekiwany efekt
+- −6 linii
+- Jeśli `loader.py` zepsuty → błąd jawny przy imporcie, nie cicha pusta lista
+
+---
+
+## Fix #6 — `modbus_helpers.py` — usuń Mock-oriented signature workaround
+
+**Plik:** `custom_components/thessla_green_modbus/modbus_helpers.py`
+
+**Dowód (linie 280-289):**
+```python
+        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "slave"
+        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "unit"
+        else:
+            # Some tests use plain ``Mock``/``AsyncMock`` callables that do not
+            # expose a valid signature. Prefer ``slave`` as default because it
+            # matches modern pymodbus and is accepted by autospecced mocks.
+            kwarg = "slave" if signature is None else ""
+        _KWARG_CACHE[func] = kwarg
+```
+
+**Kontekst:** `modbus_helpers._call_modbus` dynamicznie wykrywa czy funkcja pymodbus akceptuje `device_id`/`slave`/`unit` jako kwarg (zmiana API w pymodbus 3.x). Signature inspection jest uzasadnione dla real-world zgodności z różnymi wersjami pymodbus.
+
+**Co jest smellem:** specific fallback `kwarg = "slave" if signature is None else ""` z komentarzem o Mock/AsyncMock.
+
+**Czy to naprawdę smell:**
+- Produkcyjnie `signature` zwraca valid signature dla pymodbus funkcji.
+- `signature is None` może się zdarzyć gdy `inspect.signature` rzuci wyjątek — w teorii może się to zdarzyć dla niektórych C-extension funkcji.
+- Ale komentarz jasno wskazuje że fallback jest **dla testów**.
+
+### Krok 6 — uprość komentarz i fallback
+
+**Plik:** `custom_components/thessla_green_modbus/modbus_helpers.py`
+
+#### SZUKAJ (linie 280-289)
+```python
+        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "slave"
+        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "unit"
+        else:
+            # Some tests use plain ``Mock``/``AsyncMock`` callables that do not
+            # expose a valid signature. Prefer ``slave`` as default because it
+            # matches modern pymodbus and is accepted by autospecced mocks.
+            kwarg = "slave" if signature is None else ""
+        _KWARG_CACHE[func] = kwarg
+```
+
+#### ZASTĄP
+```python
+        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "slave"
+        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+            kwarg = "unit"
+        else:
+            # Default to "slave" when signature introspection failed — matches
+            # pymodbus 3.x convention. Pass no kwarg when signature is available
+            # but neither device_id/slave/unit is recognized.
+            kwarg = "slave" if signature is None else ""
+        _KWARG_CACHE[func] = kwarg
+```
+
+Zmiana to tylko refactor komentarza — usunięcie wzmianki o Mockach w produkcji. Logika pozostaje (bo jest legitymacznie potrzebna dla pymodbus C-extensions).
+
+### Oczekiwany efekt
+- Komentarze produkcyjne mówią o **produkcyjnych scenariuszach**, nie o tym jak kod obsługuje mocki testów.
+- Zero funkcjonalnej zmiany.
+
+---
+
+## Fix #7 — Audit `_get_parent()` pattern w `mappings/`
+
+**Pliki:**
+- `custom_components/thessla_green_modbus/mappings/_loaders.py`
+- `custom_components/thessla_green_modbus/mappings/legacy.py`
+- `custom_components/thessla_green_modbus/mappings/_helpers.py`
+
+**Dowód z `mappings/_loaders.py:48-65`:**
+```python
+def _get_parent() -> Any:
+    """Return the parent mappings package module.
+
+    Using ``sys.modules`` lookup allows test monkeypatching on the parent
+    module (e.g. ``monkeypatch.setattr(em, "get_all_registers", ...)``) to
+    transparently propagate into the functions below.
+    """
+    return sys.modules.get(__package__)
+
+
+def _resolve(attr: str, fallback: Any) -> Any:
+    """Look up *attr* on the parent mappings module, falling back to *fallback*."""
+    parent = _get_parent()
+    if parent is not None:
+        val = getattr(parent, attr, None)
+        if val is not None:
+            return val
+    return fallback
+
+
+def _load_number_mappings() -> dict[str, dict[str, Any]]:
+    _get_all = _resolve("get_all_registers", get_all_registers)
+    _get_info = _resolve("_get_register_info", _get_register_info)
+    _parse = _resolve("_parse_states", _parse_states)
+    # ...
+```
+
+**Co to robi:** `_resolve` przy każdym wywołaniu `_load_number_mappings()` sprawdza moduł nadrzędny `mappings` w `sys.modules`, próbuje znaleźć zmienioną (patched) wersję funkcji, i jeśli jest — używa jej zamiast lokalnie zaimportowanej.
+
+**Dlaczego to istnieje:** testy robią:
+```python
+import custom_components.thessla_green_modbus.mappings as em
+monkeypatch.setattr(em, "get_all_registers", custom_registers_func)
+em._load_number_mappings()  # chce użyć custom_registers_func
+```
+
+**Rzeczywiście uzasadnione jednak:** **jest to akceptowalne.** Bez tego wzorca monkey-patch na parent module nie propagowałby się do loadera. To NIE jest smell — to rozsądny wzorzec dla **testowalności**.
+
+**ALE**: komentarze które są smellami:
+```python
+# Comment in mappings/_helpers.py:
+# monkeypatching on the parent module so that test monkeypatching on 
+# ``em._REGISTER_INFO_CACHE`` is still visible
+```
+
+**Decyzja:** Pattern jest legit. **Nie ruszamy**. Ale wartościowe jest **udokumentowanie decyzji** — żeby następny audyt wiedział że to NIE jest smell do usunięcia.
+
+### Krok 7 — dodaj komentarz decision-doc
+
+**Plik:** `custom_components/thessla_green_modbus/mappings/_loaders.py`
+
+#### SZUKAJ (linia 48)
+```python
+def _get_parent() -> Any:
+    """Return the parent mappings package module.
+
+    Using ``sys.modules`` lookup allows test monkeypatching on the parent
+    module (e.g. ``monkeypatch.setattr(em, "get_all_registers", ...)``) to
+    transparently propagate into the functions below.
+    """
+    return sys.modules.get(__package__)
+```
+
+#### ZASTĄP
+```python
+def _get_parent() -> Any:
+    """Return the parent mappings package module for attribute resolution.
+
+    Design note: all loaders in this module resolve attributes via the parent
+    package rather than direct imports. This is intentional — it allows tests
+    to patch attributes on the ``mappings`` package and have those patches
+    visible to loaders without monkey-patching each individual private function.
+
+    This is NOT a test-induced production smell; it is a deliberate design
+    choice for module-level indirection. The pattern is established and
+    documented here to prevent accidental removal in future audits.
+    """
+    return sys.modules.get(__package__)
+```
+
+### Oczekiwany efekt
+- Zero kodowej zmiany
+- Jasne oznaczenie "to jest zamierzone, nie usuwaj"
+- Ochrona przed błędnym fixem w kolejnym audycie
+
+---
+
+## Fix #8 — Prawdziwe uproszczenie 24-param `__init__` coordynatora
+
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
+
+**Kontekst:** `CoordinatorConfig` dataclass istnieje (linia 130). `from_config` factory istnieje (linia 383). Ale `ThesslaGreenModbusCoordinator.__init__` wciąż ma **24 parametry** (linia ~200). `from_config` to **wrapper** który dekonstruuje `config` na 22 kwargs i przekazuje do `__init__`.
+
+**Właściwy refactor:** `__init__` przyjmuje `CoordinatorConfig` zamiast 24 kwargs.
+
+**Dowód obecnego stanu:**
+
+```python
+# Linia ~200 - 24 parametry
+def __init__(
+    self,
+    hass: HomeAssistant,
+    host: str,
+    port: int,
+    slave_id: int,
+    name: str = DEFAULT_NAME,
+    scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL,
+    # ... 18 więcej
+    stop_bits: int = DEFAULT_STOP_BITS,
+) -> None:
+
+# Linia ~383 - wrapper robi dokładnie to samo
+@classmethod
+def from_config(cls, hass, config, *, entry=None) -> ThesslaGreenModbusCoordinator:
+    return cls(
+        hass=hass,
+        host=config.host,
+        port=config.port,
+        # ... 21 więcej
+        stop_bits=config.stop_bits,
+    )
+```
+
+**Idealny stan docelowy:**
+```python
+def __init__(
+    self,
+    hass: HomeAssistant,
+    config: CoordinatorConfig,
+    *,
+    entry: ConfigEntry | None = None,
+) -> None:
+    # Body używa self.config.host etc. zamiast self.host
+
+@classmethod
+def from_config(cls, hass, config, *, entry=None) -> ThesslaGreenModbusCoordinator:
+    return cls(hass, config, entry=entry)  # trywialne, można usunąć
+```
+
+**ALE** — to jest **większy refactor**:
+- Body `__init__` używa `self.host`, `self.port` etc. (ustawiane w linii ~200-260).
+- Mixiny coordynatora (`_ModbusIOMixin`, `_CoordinatorCapabilitiesMixin`, `_CoordinatorScheduleMixin`) prawdopodobnie używają `self.host` etc. bezpośrednio.
+- Testy tworzące coordinator z kwargs musiałyby zostać przepisane.
+
+**Ryzyko:** ŚREDNIE-WYSOKIE. To major bump (breaking change publicznego API klasy).
+
+### Opcja A — Minimalna refactor (rekomendowana dla 2.4.2)
+
+**Zostaw `__init__` jak jest, ale zapisz `config` jako atrybut:**
+
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
+
+W `__init__` na końcu (po ustawieniu wszystkich `self.*`):
+
+#### SZUKAJ (koniec `__init__`, po wszystkich `self.X = X`)
+```python
+        # Initialize other coordinator state
+        self._total_energy = 0.0
+```
+
+(lub ostatnia linia inicjalizacji w `__init__`)
+
+#### ZASTĄP (dodaj przed/po)
+```python
+        # Initialize other coordinator state
+        self._total_energy = 0.0
+
+        # Store normalized config for access by mixins and external code.
+        # This is a read-only snapshot of the initialization parameters —
+        # mutations should happen via explicit methods, not via config.X = ...
+        self.config = CoordinatorConfig(
+            host=host,
+            port=port,
+            slave_id=slave_id,
+            name=name,
+            scan_interval=scan_interval,
+            timeout=timeout,
+            retry=retry,
+            backoff=backoff,
+            backoff_jitter=backoff_jitter,
+            force_full_register_list=force_full_register_list,
+            scan_uart_settings=scan_uart_settings,
+            deep_scan=deep_scan,
+            safe_scan=safe_scan,
+            max_registers_per_request=max_registers_per_request,
+            skip_missing_registers=skip_missing_registers,
+            connection_type=connection_type,
+            connection_mode=connection_mode or CONNECTION_MODE_AUTO,
+            serial_port=serial_port,
+            baud_rate=baud_rate,
+            parity=parity,
+            stop_bits=stop_bits,
+        )
+```
+
+**Efekt:** `coordinator.config` jest dostępne jako `CoordinatorConfig` dataclass, ale stare atrybuty (`coordinator.host`, `coordinator.port`) **pozostają** — zero breaking change.
+
+### Opcja B — Pełny refactor (odłożone na 2.5.0)
+
+Odłożyć do 2.5.0 major bump:
+1. Zmiana `__init__` na `def __init__(self, hass, config: CoordinatorConfig, *, entry=None)`.
+2. Aktualizacja wszystkich odwołań `self.host` → `self.config.host` (podobnie dla 22 atrybutów).
+3. Aktualizacja wszystkich testów konstruujących coordinator (10+ miejsc w `tests/test_coordinator.py`).
+4. `from_config` staje się trywialnym `return cls(hass, config, entry=entry)`.
+
+**Decyzja dla 2.4.2:** Opcja A. Coordinator ma `self.config` dostępne dla mixinów i zewnętrznego kodu, ale 24-param `__init__` pozostaje (zamrożony API). Fix #1 (usunięcie `_supports_typed_factory`) robi z `from_config` jedyną ścieżkę konstrukcji w produkcji.
+
+### Oczekiwany efekt
+- `coordinator.config` nowy atrybut jako `CoordinatorConfig`
+- Zero breaking change dla callerów używających `coordinator.host` etc.
+- Foundation pod Opcję B w 2.5.0
 
 ---
 
@@ -772,32 +872,24 @@ Testy prawdopodobnie nie używają tych funkcji bezpośrednio. Jeśli używają 
 Po zastosowaniu Fixów #1-#8:
 
 ```bash
-# Expected: "All checks passed!"
-ruff check custom_components/ tests/ tools/
-
-# Expected: "Success: no issues found in ~50 source files"
-mypy custom_components/thessla_green_modbus/
-
-# Expected: wszystkie testy przechodzą (ewentualnie po refactorze kilku testów)
-pytest tests/ -x -q
-
-# Expected: nadal działa (sprawdza airpack4_modbus.json)
-python tools/compare_registers_with_reference.py
+ruff check custom_components/ tests/ tools/      # Expected: All checks passed!
+mypy custom_components/thessla_green_modbus/     # Expected: Success: 53 source files
+pytest tests/ -x -q                               # Expected: po napraw testów wszystko przechodzi
+python tools/compare_registers_with_reference.py # Expected: pass
 ```
 
-**Docelowe metryki:**
+**Metryki:**
 
 ```
-                                  v2.4.0       v2.4.1 (target)
-sys.modules check / detection:      2            0  (minus scanner_core shim który zostaje)
-"pytest" in sys.modules checks:     1            0
-inspect.signature w produkcji:      3            0
-# pragma: no cover w __init__.py:  19           15  (−4 z usuniętego kodu)
-# pragma: no cover w coordinator:  17           14  (−3)
-_compat_asdict w scanner_device:    1            0
-Trywialne wrappers w config_flow:   2            0
-Linie kodu produkcji:            ~12800      ~12750  (−50)
-Test suite pass rate:            100%         100%
+                                v2.4.1       v2.4.2 (target)
+_supports_typed_factory:           ✗ (exists)   ✓ (removed)
+_compat.py test fallback:         Present      Removed
+config_flow.py HA fallbacks:      Present      Removed
+const.py PLATFORMS fallback:      Present      Removed
+register_map.py loader fallback:  Present      Removed
+Production imports unittest.mock:  1            0
+Production sys.modules hacks:      4 (shim+3 mappings pattern)   3 (mappings pattern udokumentowany)
+coordinator.config attribute:      No          Yes (nowy)
 ```
 
 ---
@@ -806,98 +898,95 @@ Test suite pass rate:            100%         100%
 
 **Plik:** `custom_components/thessla_green_modbus/manifest.json`
 ```json
-"version": "2.4.1",
+"version": "2.4.2",
 ```
 
 **Plik:** `pyproject.toml`
 ```toml
-version = "2.4.1"
+version = "2.4.2"
 ```
 
 **Plik:** `CHANGELOG.md` — dodaj na górze:
 ```markdown
-## 2.4.1 — Detox completion
+## 2.4.2 — Detox regression fixes
 
-Completes the test-compat cleanup started in 2.4.0. Eight remaining spots where
-production code tested for or worked around test mocks have been removed.
+Fixes several test-compat fallbacks that had crept back into production code
+after the 2.4.1 detox, and completes the `CoordinatorConfig` refactor started
+in 2.4.1.
 
 ### Removed
-- `_compat_asdict` wrapper in `scanner_device_info.py` that existed for test-patch compatibility. Callers now use `dataclasses.asdict` directly.
-- `inspect.signature` filtering of coordinator kwargs in `__init__.py`. Incomplete coordinator stubs will now raise `TypeError` explicitly instead of silently dropping kwargs.
-- `sys.modules.get()` check before dynamic coordinator import in `__init__.py`. Module import goes straight through HA executor.
-- `try/except TypeError` around `async_setup_options` / `async_setup_entity_mappings` in `_async_setup_mappings`. Real bugs in option setup will no longer be masked by "Skipping in mock context" debug logs.
-- `_HAS_HA` detection and `"pytest" in sys.modules` check in `const.py`. Production and test paths now execute identical code.
-- Dynamic self-import via `import_module(__name__)` in `coordinator._create_scanner`. Direct reference to `ThesslaGreenDeviceScanner.create()` is used.
-- `inspect.signature(write_cb)` check in `entity._async_write_register`. Direct call to `coordinator.async_write_register` with explicit kwargs.
-- Trivial `_schema` and `_required` wrappers in `config_flow.py`. Direct `vol.Schema` / `vol.Required` calls used throughout.
+- `_supports_typed_factory` function and dual-path coordinator construction in `_setup.async_create_coordinator`. Production code no longer imports `unittest.mock.Mock` at runtime; `from_config` is the single code path.
+- `try/except ImportError` fallbacks in `_compat.py`. `__compat.py` is now a pure re-export module as intended after v2.4.0.
+- `DhcpServiceInfo` / `ZeroconfServiceInfo` / `ConfigFlowResult` fallback imports in `config_flow.py`. These HA symbols are stable; direct imports are used.
+- `PLATFORMS` string-list fallback in `const.py`. Direct `Platform` enum is used.
+- `get_all_registers()` fallback in `register_map.py`. Register loader failure now raises `ImportError` explicitly instead of returning an empty register list.
+
+### Changed
+- Comment in `modbus_helpers._get_kwarg_for_slave` updated to describe production behavior (pymodbus C-extensions) instead of referring to test Mock handling.
+- Added design-note docstring on `mappings/_loaders._get_parent` explaining that the `sys.modules`-based attribute resolution pattern is intentional and should not be removed in future audits.
+
+### Added
+- `ThesslaGreenModbusCoordinator.config` attribute — a `CoordinatorConfig` dataclass snapshot of initialization parameters. This is a non-breaking addition; existing `coordinator.host`, `coordinator.port` etc. attributes continue to work.
 
 ### Migration notes
-- Tests that relied on production silently filtering kwargs or falling back to sync option setup may need to use `MagicMock(spec=...)` or `pytest-homeassistant-custom-component` fixtures.
-- `scanner_core.asdict` is no longer used internally — patching it in tests no longer has any effect.
+- Tests that replaced `ThesslaGreenModbusCoordinator` with a plain `Mock()` for `async_create_coordinator` will now fail because `from_config` is called unconditionally. Use `MagicMock(spec=ThesslaGreenModbusCoordinator)` or patch `from_config` explicitly.
+- Tests that monkey-patched `get_all_registers` to return `[]` at import time will now fail at import. Patch at test setup time using `monkeypatch.setattr`.
 ```
+
+---
+
+## Odłożone na 2.5.0 (major bump)
+
+**Fix #9 — Pełny refactor `__init__` → `def __init__(self, hass, config)`.**
+- Change signature from 24-param to 2-param.
+- Update all `self.host` → `self.config.host` (i 22 podobnych).
+- Update all test constructors (10+ miejsc).
+- Usunąć `from_config` wrapper (redundant).
+
+**Fix #10 — Dalsza redukcja `coordinator.py` (1617 linii).**
+Kandydaci do extraktu:
+- `_handle_update_error` (w coordinator.py) → potencjalnie do `_coordinator_io.py`.
+- Register-reading logic w `_async_update_data` → delegacja do mixinów lepsza.
+
+**Fix #11 — Dalszy podział `__init__.py` (755 linii).**
+13 funkcji migracji/setup wciąż w jednym pliku:
+- Nowy `_migrations.py` — `_async_migrate_unique_ids`, `_async_migrate_entity_ids`, `_async_cleanup_legacy_fan_entity`, `async_migrate_entry`.
+- Nowy `_legacy.py` — legacy entity ID mapping.
+
+**Fix #12 — Redukcja `# pragma: no cover` w całym codebase.**
+Obecnie 33 plików z `# pragma: no cover`. Każde jedno wystąpienie powinno mieć uzasadnienie — "test env" lub "defensive" (nie testowalne łatwo). Audit dla każdego.
 
 ---
 
 ## Notatki końcowe
 
-**Dlaczego to minor bump (2.4.1) a nie major (2.5.0):**
-- Fixy są czysto removalami test-compat warstwy — zero nowej funkcjonalności.
-- Użytkownik końcowy nie widzi różnicy.
-- Testy mogą wymagać drobnych zmian, ale bez poważnego przepisywania jak v7.
+**Dlaczego to minor bump (2.4.2):**
+- Fixy są czysto removalami/cleanupami, zero nowych funkcji.
+- `coordinator.config` atrybut to dodawanie non-breaking (stare atrybuty pozostają).
+- Brak breaking changes w publicznym API.
 
-**Ryzyko regresu — niskie:**
-- Każdy fix removuje kod który w produkcji nigdy nie był osiągany (bo produkcja zawsze ma HA i pełne API).
-- Testy mogą zacząć padać — **to pożądane**. Każdy padający test to test który dotychczas przechodził z powodu maskującej produkcji, nie prawdziwej poprawności.
-- Strategia naprawy testów: `MagicMock(spec=ThesslaGreenModbusCoordinator)` lub `pytest-homeassistant-custom-component` fixtures.
+**Ryzyko regresu — niskie-średnie:**
+- Fix #1 — ryzyko ze testy z `Mock()` coordynatora będą padać → naprawić używając `spec=`.
+- Fix #2-5 — ryzyko że jakieś środowisko testowe bez pełnego HA padało z `ImportError` → używać `pytest-homeassistant-custom-component`.
+- Fix #6-7 — zero ryzyka, same komentarze.
+- Fix #8 — czysto additive, zero ryzyka.
 
-**Grupa B — odłożone architekturalne (nie w tym release):**
+**Strategia wdrożenia:**
+- **Commit 1**: Fix #1 (najbardziej spektakularny — produkcja nie importuje `unittest.mock`).
+- **Commit 2**: Fix #2-5 (restore v7 state dla plików które cofnęły się).
+- **Commit 3**: Fix #6-7 (komentarze).
+- **Commit 4**: Fix #8 (`coordinator.config` atrybut).
+- Tag **2.4.2**.
 
-Po wdrożeniu v2.4.1 rozważyć w osobnych PR-ach:
+**Co ten audyt wykrywa:** przypadek gdzie **fixy z v7 częściowo się cofnęły** w czasie implementacji kolejnych PR-ów. To normalne dla dużych PR-ów mergowanych bez pełnej code review — autor PR #1328 (wdrażającego v7) prawdopodobnie miał konflikty z innymi zmianami i wrócił do starszej wersji niektórych plików. Ten audyt przywraca intencję v7 + dodaje dwa nowe znaleziska (`_supports_typed_factory`, `coordinator.config`).
 
-1. **Fix #9 — `CoordinatorConfig` dataclass.** 24 parametry w `__init__` kandydują do:
-   ```python
-   @dataclass
-   class CoordinatorConfig:
-       host: str
-       port: int
-       slave_id: int
-       # ... pozostałe
-       
-       @classmethod
-       def from_entry(cls, entry: ConfigEntry) -> CoordinatorConfig:
-           # ... parsing logic
-   
-   class ThesslaGreenModbusCoordinator:
-       def __init__(self, hass: HomeAssistant, config: CoordinatorConfig, entry: ConfigEntry | None = None):
-           ...
-   ```
-   Wymaga aktualizacji ~10 miejsc konstruujących coordinator w testach. Zmienia publiczny interfejs klasy — major bump (2.5.0).
-
-2. **Fix #10 — Split `scanner/core.py` (1596 linii).** Kontynuacja refactoru z v2.3.6–v2.3.9. Pozostałe duże metody: `verify_connection` (>125 linii), `_run_full_scan`, `scan_device`. Propozycja: `scanner/setup.py` (connection), `scanner/orchestration.py` (scan logic).
-
-3. **Fix #11 — Split `__init__.py` (1067 linii).** 13+ async funkcji w jednym pliku (setup, unload, options, migrations, legacy cleanup, platforms). Propozycja podziału:
-   - `__init__.py` — tylko `async_setup_entry`, `async_unload_entry`, `async_update_options`, `async_migrate_entry` (public HA API)
-   - `_setup.py` — `_async_create_coordinator`, `_async_start_coordinator`, `_async_setup_mappings`, `_async_setup_platforms`
-   - `_migrations.py` — `_async_migrate_unique_ids`, `_async_migrate_entity_ids`, `_async_cleanup_legacy_fan_entity`
-
-4. **Fix #12 — Dalsza redukcja `# pragma: no cover` w `config_flow.py`** (46 nadal obecnych). Po v7 i Fix #8 z tego release część powinna zniknąć. Pozostałe to testy które nie pokrywają path-ów walidacji schematu.
-
-**Priorytet Fix #9-#12:** możliwość zrobienia osobnych PR-ów w tempie właściciela. Każdy jest niezależny.
-
----
-
-## Podsumowanie metryk po całej serii audytów
-
-```
-                          v2.3.0        v2.4.0        v2.4.1 (target)
-Mypy errors:               343           0             0
-Ruff findings:              7            0             0
-Linie produkcji:         ~14500       ~13100        ~12750
-_compat.py:                144          75            75
-test-compat kod:          ~400         ~50           ~5
-sys.modules hacks:          4            1             1 (scanner_core shim)
-Klasy istniejące dla testów:  ~10      0             0
-# pragma: no cover (total): ~350      302           290
+**Długofalowo:** warto by skrypt w CI sprawdzał "anti-regression" — listę wzorców które zostały usunięte i nie powinny wrócić. Np.:
+```bash
+# W CI:
+if grep -rn "from unittest.mock" custom_components/thessla_green_modbus/ --include="*.py"; then
+    echo "ERROR: unittest.mock imported in production code"
+    exit 1
+fi
 ```
 
-Od v2.3.0 do v2.4.1 integracja schudła o **~1750 linii**, przy zachowaniu identycznej funkcjonalności dla użytkowników.
+To by wyłapało dziesiątki smelli automatycznie zanim trafią do głównej gałęzi.
