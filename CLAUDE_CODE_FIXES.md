@@ -1,73 +1,701 @@
-# thessla_green_modbus — instrukcja napraw dla Claude Code (v6)
+# thessla_green_modbus — instrukcja napraw dla Claude Code (v7 — scalone)
 
 **Repozytorium:** `github.com/blakinio/thesslagreen`
 **Branch:** `main` (HEAD: `58a81af` — merge PR #1327)
-**Wersja docelowa:** `2.3.9 → 2.4.0` (major, bo dotyka publicznego API)
+**Wersja docelowa:** `2.3.9 → 2.4.0` (major bump)
 **Data audytu:** 2026-04-17
 
 ---
 
-## Motywacja: odtrucie produkcji od testów
+## Motywacja
 
-Wszystkie wersje do 2.3.9 celowały w jakość typów, lint, refactor struktury. Baseline jest czysty (ruff 0, mypy 0). Ale pod powierzchnią siedzi **fundamentalny problem architektoniczny**:
+Ten dokument łączy **dwa wątki audytu**:
 
-**Produkcja została wygięta żeby dopasować się do źle napisanych testów.**
+1. **Dead code cleanup** (wcześniej v5) — osierocone pliki po refactorach (`_scanner_*_mixin.py`, `register_addresses.py`), duplikaty CI (`validate.yaml` + pyflakes), martwy `_compat.py`, niewykorzystana referencja z PDF (`airpack4_modbus.json`).
+2. **Production code detox** (wcześniej v6) — produkcja została wygięta żeby pasować do źle napisanych testów. `sys.modules` hacks, monkey-patching bibliotek, skanowanie `tests/` z produkcji, `_PermissiveCapabilities` zwracający True dla wszystkiego.
 
-Audyt znalazł 13 miejsc gdzie production code robi rzeczy których **nigdy nie wykona w runtime**, tylko po to żeby testy używające SimpleNamespace / ręcznie napisanych stubów / niekompletnych mocków działały. To się objawia:
+**Razem: 17 fixów w jednym release.** Duży skok funkcjonalny (2.4.0), ale zero zmian user-visible — integracja zachowuje się identycznie, testy wymagają przepisania.
 
-- `sys.modules` manipulation w runtime (2 miejsca)
-- Import-time monkey-patching biblioteki voluptuous
-- Skanowanie `sys.modules` w poszukiwaniu plików testowych (`tests.conftest`, `tests.test_coordinator`)
-- Porównanie typów przez `__class__.__name__ == "UpdateFailed"` zamiast `isinstance`
-- `except BaseException` z komentarzem *"Deliberately broad for test stubs"*
-- `_PermissiveCapabilities` który zwraca `True` dla każdego atrybutu — i jest **wstawiany do coordynatora w produkcji**
-- `_SafeDTUtil` defensywny wrapper na `dt_util` który HA gwarantuje
-- 67× `# pragma: no cover` w `config_flow.py` na kodzie który istnieje wyłącznie dla test envs
-- `super().__init__()` bez argumentów w fallback bloku `TypeError` — dla stubów które nie przyjmują argumentów HA
-
-**Koszt:** ~500-800 linii kodu produkcyjnego który nie służy użytkownikom, utrudnia czytanie, generuje `# pragma: no cover`, i co gorsza **maskuje prawdziwe błędy**. `except BaseException` z `exc.__class__.__name__ == "UpdateFailed"` oznacza że prawdziwe bugi mogą być połknięte i raportowane jako "connection failed".
-
-**Korzyść z fixa:** mniejszy codebase, testy oparte na HA-provided mocks (`pytest-homeassistant-custom-component` jest w `requirements-dev.txt`), większa pewność że kod działa zgodnie z tym co widać.
-
-**To jest major release** (2.4.0, nie 2.3.10) bo:
-- Niektóre fixy usuwają publiczne funkcje (`_update_failed_exception` jest bez `_` — półprywatna).
-- Testy wymagają przepisania na `pytest-homeassistant-custom-component`.
-- Potencjalny breaking change dla zewnętrznych narzędzi (mało prawdopodobnych, ale formalnie).
+**Baseline po v2.3.9 (nie ruszać):**
+- ✅ Ruff: 0 findings.
+- ✅ Mypy strict: 0 errors w 55 plikach.
+- ✅ Modern HA API (`entry.runtime_data`, `async_forward_entry_setups`).
+- ✅ Scanner split w toku (2.3.4–2.3.9).
 
 ---
 
 ## Zakres i kolejność
 
-| Fix | Smell | Ryzyko | Trudność |
-|---|---|---|---|
-| #1 | `_update_failed_exception` skanuje sys.modules testów | Wysokie zanim, niskie potem | Średnia |
-| #2 | `__init__.py` alias dla testów patchujących `__init__.er` | Średnie | Niska |
-| #3 | `entity_mappings.py` to `sys.modules[__name__] = _m` | Niskie | Niska |
-| #4 | `_async_patch_coordinator_compat` + `_PermissiveCapabilities` w produkcji | Wysokie | Średnia |
-| #5 | `_SafeDTUtil` defensywny wrapper na `dt_util` | Niskie | Niska |
-| #6 | `super().__init__()` TypeError fallback w coordinator | Niskie | Niska |
-| #7 | `config_flow.py` test-compat layer (67× `# pragma: no cover`) | Wysokie | **Duża** |
-| #8 | `except BaseException` + `__class__.__name__` w `__init__.py` | Wysokie | Średnia |
-| #9 | Legacy migracje v1→v4 — czy v1 jeszcze istnieje? | Średnie | Niska |
-| #10 | Defensywne `getattr` w krytycznych ścieżkach | Średnie | Średnia |
+**Grupa A — Dead code (bezpieczne, zero ryzyka):**
+1. Fix #1 — Usunięcie 3 osieroconych mixinów scannera (−1312 linii)
+2. Fix #2 — Usunięcie `register_addresses.py` (−32 linie)
+3. Fix #3 — Usunięcie `validate.yaml` z root (duplikat CI, nieaktywny)
+4. Fix #4 — Wywalenie pyflakes z CI (duplikat ruff)
 
-**Wykonanie w kolejności 1→10.** Każdy fix robi test-suite:
+**Grupa B — `_compat.py` cleanup (niskie ryzyko):**
+5. Fix #5 — `_compat.py` jako re-export module (−100 linii dead fallbacks)
 
+**Grupa C — Wykorzystanie referencji PDF (feature add):**
+6. Fix #6 — Cross-validation `airpack4_modbus.json` ↔ integracja
+
+**Grupa D — Konsolidacje (niskie ryzyko):**
+7. Fix #7 — Konsolidacja `scanner_io.py` + `scanner/io.py`
+
+**Grupa E — Production code detox (średnie/wysokie ryzyko, wymaga napraw testów):**
+8. Fix #8 — Usunięcie `_update_failed_exception` skanującego `sys.modules`
+9. Fix #9 — Usunięcie aliasu `__init__.er` dla test monkey-patchy
+10. Fix #10 — Usunięcie `entity_mappings.py` shim
+11. Fix #11 — Usunięcie `_async_patch_coordinator_compat` + `_PermissiveCapabilities`
+12. Fix #12 — Usunięcie `_SafeDTUtil` defensywny wrapper
+13. Fix #13 — Usunięcie `super().__init__()` TypeError fallback
+14. Fix #14 — Cleanup `config_flow.py` test-compat warstwy (67× `# pragma: no cover`)
+15. Fix #15 — Cleanup `except BaseException` + `__class__.__name__` w `__init__.py`
+16. Fix #16 — Audit `async_migrate_entry` (czy v1 jeszcze istnieje?)
+17. Fix #17 — Defensywne `getattr` w krytycznych ścieżkach
+
+**Zalecana strategia wdrożenia:**
+- **Commit 1:** Fixy #1-#4 (zero ryzyka, CI powinien przejść od razu)
+- **Commit 2:** Fix #5 (`_compat.py` cleanup)
+- **Commit 3:** Fix #6 (nowa funkcjonalność — cross-validation)
+- **Commit 4:** Fix #7 (konsolidacja scannera)
+- **Commit 5-14:** Fixy #8-#17 pojedynczo, każdy z naprawą padających testów
+
+Po każdym commicie:
 ```bash
 ruff check custom_components/ tests/ tools/
 mypy custom_components/thessla_green_modbus/
 pytest tests/ -x -q
 ```
 
-**Jeśli po danym fixie testy padają** — to jest sygnał że test polega na smell'u. Przepisz test, nie cofaj fixa.
+---
+
+# GRUPA A — Dead code cleanup
+
+## Fix #1 — Usuń 3 osierocone mixiny scannera (1312 linii)
+
+**Pliki do usunięcia:**
+- `custom_components/thessla_green_modbus/_scanner_capabilities_mixin.py` (262 linie, 11.6 KB)
+- `custom_components/thessla_green_modbus/_scanner_registers_mixin.py` (750 linii, 33 KB)
+- `custom_components/thessla_green_modbus/_scanner_transport_mixin.py` (300 linii, 12 KB)
+
+**Razem: 1312 linii / 57 KB martwego kodu.**
+
+**Dowód:**
+```bash
+grep -rn "_scanner_capabilities_mixin\|_scanner_registers_mixin\|_scanner_transport_mixin\|_ScannerCapabilitiesMixin\|_ScannerRegistersMixin\|_ScannerTransportMixin" \
+    custom_components/ tests/ tools/ --include="*.py"
+```
+
+Wynik: **tylko self-references wewnątrz samych tych 3 plików**. Powstały jako etap pośredni w refactorze `scanner_core.py` → `scanner/` package (wersje 2.3.4–2.3.9). Po przeniesieniu logiki do `scanner/capabilities.py`, `scanner/registers.py`, `scanner/io.py` — mixiny powinny były zniknąć, ale zostały.
+
+### Krok 1 — usuń 3 pliki
+
+```bash
+cd custom_components/thessla_green_modbus
+rm _scanner_capabilities_mixin.py
+rm _scanner_registers_mixin.py
+rm _scanner_transport_mixin.py
+```
+
+### Weryfikacja
+
+```bash
+grep -rn "_scanner_capabilities_mixin\|_scanner_registers_mixin\|_scanner_transport_mixin" \
+    custom_components/ tests/ tools/ --include="*.py"
+# Expected: 0 wyników
+
+ruff check custom_components/ tests/ tools/
+mypy custom_components/thessla_green_modbus/
+pytest tests/ -x -q
+```
 
 ---
 
-## Fix #1 — Usuń `_update_failed_exception`, używaj `UpdateFailed` wszędzie
+## Fix #2 — Usuń osierocony `register_addresses.py`
 
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py` (+ callers)
+**Plik:** `custom_components/thessla_green_modbus/register_addresses.py` (32 linie)
 
-**Dowód problemu (linie 134-148):**
+**Dowód:**
+```bash
+grep -rn "register_addresses\|REG_MIN_PERCENT\|REG_MAX_PERCENT\|REG_ON_OFF_PANEL_MODE\|REG_TEMPORARY_FLOW\|REG_TEMPORARY_TEMP" \
+    custom_components/ tests/ tools/ --include="*.py"
+```
+
+Wynik: **tylko self-references**. Stałe `REG_MIN_PERCENT = 276`, `REG_MAX_PERCENT = 277`, `REG_ON_OFF_PANEL_MODE = 4387`, `REG_TEMPORARY_FLOW_*`, `REG_TEMPORARY_TEMP_*` — żadna nie jest używana.
+
+### Krok 2 — usuń plik
+
+```bash
+rm custom_components/thessla_green_modbus/register_addresses.py
+```
+
+### Weryfikacja
+
+```bash
+grep -rn "register_addresses\|REG_MIN_PERCENT\|REG_MAX_PERCENT" custom_components/ tests/ tools/ --include="*.py"
+# Expected: 0 wyników
+```
+
+---
+
+## Fix #3 — Usuń `validate.yaml` z root
+
+**Plik:** `validate.yaml` (w korzeniu repo, 871 bajtów)
+
+**Dowód:**
+```bash
+ls .github/workflows/
+# Wynik: ci.yaml (tylko ten)
+```
+
+**GitHub Actions czyta workflows wyłącznie z `.github/workflows/`.** Plik `validate.yaml` w root repo **nigdy się nie wykonuje**. Dodatkowo odwołuje się do `home-assistant/actions/helpers/hacs-validate@master` (archaiczne, bez pinned version) i `vulture` (nieużywany).
+
+### Krok 3 — usuń plik
+
+```bash
+rm validate.yaml
+```
+
+### Krok 3b — usuń `vulture` z requirements-dev.txt
+
+```bash
+grep vulture requirements-dev.txt
+# Powinno pokazać: vulture>=2.11,<3.0
+```
+
+#### SZUKAJ w `requirements-dev.txt`
+```
+vulture>=2.11,<3.0
+```
+
+#### USUŃ (całą linię)
+
+Wyszukaj też komentarz w `__init__.py`:
+```bash
+grep -n "vulture" custom_components/thessla_green_modbus/__init__.py
+```
+
+Jeśli znajdziesz *"vulture marks it as unused"* — usuń ten komentarz (adres w Fix #16).
+
+---
+
+## Fix #4 — Wywal `pyflakes` z CI (duplikat `ruff`)
+
+**Plik:** `.github/workflows/ci.yaml`
+
+**Dowód:**
+```yaml
+- name: Ruff (custom_components gate)
+  run: ruff check custom_components/
+
+- name: Pyflakes (custom_components)
+  run: python -m pyflakes custom_components/
+```
+
+`pyproject.toml`:
+```toml
+[tool.ruff.lint]
+select = ["F", "E", "W", "B", "SIM", "RUF", "UP", "I", "PERF", "BLE"]
+```
+
+**Reguły `F` w ruff = Pyflakes.** CHANGELOG v2.3.1 zapowiadał *"Replaced pyflakes with ruff as the primary linter"* — ale step pozostał.
+
+### Krok 4 — usuń step
+
+**Plik:** `.github/workflows/ci.yaml`
+
+#### SZUKAJ
+```yaml
+      - name: Ruff (custom_components gate)
+        run: ruff check custom_components/
+
+      - name: Pyflakes (custom_components)
+        run: python -m pyflakes custom_components/
+
+      - name: Ruff (repo)
+        run: ruff check .
+```
+
+#### ZASTĄP
+```yaml
+      - name: Ruff
+        run: ruff check .
+```
+
+(Uprościłem też dwa kroki ruff w jeden — `ruff check .` obejmuje `custom_components/`.)
+
+---
+
+# GRUPA B — `_compat.py` cleanup
+
+## Fix #5 — Przepisz `_compat.py` jako czyste re-exports
+
+**Plik:** `custom_components/thessla_green_modbus/_compat.py` (144 linie → ~40 linii)
+
+**Kontekst:**
+Plik zawiera 8 bloków `try/except ImportError` służących do uruchamiania kodu w środowisku bez Home Assistant. Ale manifest wymaga `"homeassistant": "2026.1.0"` i `python>=3.13`, więc te fallbacki są dead paths.
+
+**Analiza każdego fallbacku:**
+
+| Symbol | Decyzja |
+|---|---|
+| `UTC = getattr(dt, "UTC", ...)` + `# noqa: UP017` | **USUŃ** — py3.13 ma `datetime.UTC`. |
+| `dt_util` z `_DTUtil` fallback | **USUŃ fallback, zostaw re-export** — `homeassistant.util.dt` zawsze dostępne w HA. |
+| `BinarySensorDeviceClass` fallback | **USUŃ** — w HA od 2021. |
+| `SensorDeviceClass` / `SensorStateClass` fallback | **USUŃ** — w HA od 2022. |
+| `EntityCategory` fallback | **USUŃ** — w HA od 2022. |
+| `DeviceInfo` fallback | **USUŃ** — w HA od 2022. |
+| `EVENT_HOMEASSISTANT_STOP` fallback | **USUŃ** — core constant. |
+| `PERCENTAGE`, `UnitOf*` fallback | **USUŃ** — core constants. |
+| `DataUpdateCoordinator`, `UpdateFailed` fallback | **USUŃ** — jeśli nie ma HA, coordinator i tak nie działa. |
+| `COORDINATOR_BASE = DataUpdateCoordinator[...]` + `TypeError` catch | **USUŃ** — HA 2026.1.0 zawsze wspiera generic. |
+
+### Krok 5 — przepisz `_compat.py`
+
+#### ZASTĄP cały plik `custom_components/thessla_green_modbus/_compat.py`
+
+```python
+"""Compatibility re-exports for Home Assistant symbols used across the integration.
+
+Historically this module provided fallbacks for running integration code without
+a full Home Assistant install. Since manifest.json requires homeassistant>=2026.1.0
+and requires-python>=3.13, all fallbacks have been removed. This module now only
+re-exports symbols from HA so the rest of the integration has a single import point.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC
+from typing import Any
+
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (
+    EVENT_HOMEASSISTANT_STOP,
+    PERCENTAGE,
+    UnitOfElectricPotential,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolumeFlowRate,
+)
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
+
+COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
+
+__all__ = [
+    "COORDINATOR_BASE",
+    "BinarySensorDeviceClass",
+    "DataUpdateCoordinator",
+    "DeviceInfo",
+    "EVENT_HOMEASSISTANT_STOP",
+    "EntityCategory",
+    "PERCENTAGE",
+    "SensorDeviceClass",
+    "SensorStateClass",
+    "UTC",
+    "UnitOfElectricPotential",
+    "UnitOfPower",
+    "UnitOfTemperature",
+    "UnitOfTime",
+    "UnitOfVolumeFlowRate",
+    "UpdateFailed",
+    "dt_util",
+]
+```
+
+### Uwaga
+
+Zostawiamy `_compat.py` jako moduł, bo jest importowany z 8+ miejsc. Jedyna zmiana — usuwamy `try/except ImportError` gałęzie które były martwe.
+
+### Weryfikacja
+
+```bash
+mypy custom_components/thessla_green_modbus/
+ruff check custom_components/ tests/ tools/
+pytest tests/ -x -q
+```
+
+---
+
+# GRUPA C — Wykorzystanie referencji PDF
+
+## Fix #6 — Cross-validate `airpack4_modbus.json` z integracją
+
+**Kontekst:** `airpack4_modbus.json` (91 KB w root) jest wygenerowany z PDF producenta i służy jako referencyjne źródło prawdy. Ale **nikt tego nie używa** — plik leży niewykorzystany.
+
+**Ad-hoc analiza rozbieżności:**
+```
+REF (vendor PDF → JSON):     294 rejestrów
+MAIN (integracja):           356 rejestrów
+
+COMMON:                      294
+Brakuje w integracji:          0  ✅
+Extra w integracji:           62  (23 bitmap bits + 37 error codes + 2 realne extras)
+Różnice w nazwach:           242  (część legit renames, część warte weryfikacji)
+```
+
+**62 extra rejestry w integracji:**
+- 23× `s_N` (np. `s_2`, `s_6`, `s_9`) — pseudorrejestry-bity dekodowane z rejestru bitmap alarmów 0x2000.
+- 37× `alarm`, `error`, `e_99`..`e_252`, `f_142`..`f_147`, `e_196_e_199` — pseudorrejestry dla bitmap błędów.
+- 2× rzeczywiście brakujących w REF — **warte weryfikacji z producentem**:
+  - `FC04 0x0017` — `heating_temperature` (TH sensor)
+  - `FC04 0x012A` — `water_removal_active` (HEWR procedure)
+
+### Krok 6a — dodaj skrypt porównujący
+
+**Plik:** `tools/compare_registers_with_reference.py` (NOWY)
+
+```python
+#!/usr/bin/env python3
+"""Compare integration register JSON with the vendor reference (airpack4_modbus.json).
+
+The reference file is generated from the manufacturer PDF and serves as the
+source of truth for addresses and Modbus function codes. This tool reports:
+
+1. Registers in the reference that are missing from the integration.
+2. Registers in the integration that are extra (not in reference).
+3. Name mismatches on common (function, address) pairs.
+
+By default the script exits non-zero if there are unexpected discrepancies.
+Use --allow-extra to permit integration-specific pseudo-registers (bitmap bits,
+synthetic entities). See ``KNOWN_EXTRA_PREFIXES`` for the current allowlist.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+REF_PATH = ROOT / "airpack4_modbus.json"
+MAIN_PATH = (
+    ROOT / "custom_components" / "thessla_green_modbus" / "registers"
+    / "thessla_green_registers_full.json"
+)
+
+# Integration-specific pseudo-registers (decoded from bitmap registers in the
+# device). These are intentionally absent from the vendor reference.
+KNOWN_EXTRA_PREFIXES = (
+    "alarm",
+    "error",
+    "s_",      # alarm bits decoded from 0x2000 bitmap
+    "e_",      # error bits decoded from 0x2001+ bitmaps
+    "f_",      # filter-related flag bits
+)
+
+
+def _fc_num(key: str) -> int:
+    """'fc03_holding_registers' -> 3"""
+    return int(key[2:4])
+
+
+def _load_reference() -> dict[tuple[int, int], dict]:
+    """Return {(function, address): entry} from vendor reference."""
+    data = json.loads(REF_PATH.read_text(encoding="utf-8"))
+    result: dict[tuple[int, int], dict] = {}
+    for key in (
+        "fc01_coils",
+        "fc02_discrete_inputs",
+        "fc03_holding_registers",
+        "fc04_input_registers",
+    ):
+        fn = _fc_num(key)
+        for entry in data[key]["registers"]:
+            addr = entry.get("dec")
+            if addr is None:
+                addr = int(entry["hex"], 16)
+            result[(fn, int(addr))] = entry
+    return result
+
+
+def _load_main() -> dict[tuple[int, int], dict]:
+    """Return {(function, address): entry} from integration JSON."""
+    data = json.loads(MAIN_PATH.read_text(encoding="utf-8"))
+    result: dict[tuple[int, int], dict] = {}
+    for r in data["registers"]:
+        fn = int(str(r["function"]))
+        addr = r.get("address_dec")
+        if addr is None:
+            addr = int(str(r["address_hex"]), 16)
+        result[(fn, int(addr))] = r
+    return result
+
+
+def _is_known_extra(entry: dict) -> bool:
+    name = entry.get("name") or ""
+    return any(name.startswith(p) for p in KNOWN_EXTRA_PREFIXES)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero on any name mismatch (even for known-safe renames).",
+    )
+    parser.add_argument(
+        "--show-renames",
+        action="store_true",
+        help="Print every name mismatch, not just summary.",
+    )
+    args = parser.parse_args()
+
+    ref = _load_reference()
+    main = _load_main()
+
+    only_ref = set(ref) - set(main)
+    only_main = set(main) - set(ref)
+    common = set(ref) & set(main)
+
+    print(f"Reference entries: {len(ref)}")
+    print(f"Integration entries: {len(main)}")
+    print(f"Common: {len(common)}")
+    print(f"Missing from integration: {len(only_ref)}")
+    print(f"Extra in integration: {len(only_main)}")
+
+    errors = 0
+
+    if only_ref:
+        print("\n!! MISSING from integration (this is a bug) !!")
+        for p in sorted(only_ref):
+            e = ref[p]
+            print(f"  FC{p[0]:02d} 0x{p[1]:04X} ({p[1]:5d}): {e.get('name')!r}")
+        errors += len(only_ref)
+
+    unexpected_extra = [p for p in only_main if not _is_known_extra(main[p])]
+    if unexpected_extra:
+        print("\n?? UNEXPECTED extras in integration (verify with vendor) ??")
+        for p in sorted(unexpected_extra):
+            e = main[p]
+            print(f"  FC{p[0]:02d} 0x{p[1]:04X} ({p[1]:5d}): {e.get('name')!r}")
+            print(f"    {str(e.get('description'))[:100]}")
+        if args.strict:
+            errors += len(unexpected_extra)
+
+    mismatches = []
+    for p in common:
+        rn = ref[p].get("name")
+        mn = main[p].get("name")
+        if rn and mn and rn != mn:
+            mismatches.append((p, rn, mn))
+
+    print(f"\nName mismatches on common addresses: {len(mismatches)}")
+    if args.show_renames:
+        for p, rn, mn in sorted(mismatches):
+            print(f"  FC{p[0]:02d} 0x{p[1]:04X}: ref={rn!r:45s} -> main={mn!r}")
+
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+### Krok 6b — dodaj test cross-validation
+
+**Plik:** `tests/test_registers_vs_reference.py` (NOWY)
+
+```python
+"""Verify integration registers match the vendor reference (airpack4_modbus.json)."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+REF_PATH = ROOT / "airpack4_modbus.json"
+MAIN_PATH = (
+    ROOT / "custom_components" / "thessla_green_modbus" / "registers"
+    / "thessla_green_registers_full.json"
+)
+
+KNOWN_EXTRA_PREFIXES = ("alarm", "error", "s_", "e_", "f_")
+
+# Non-bitmap extras that need separate justification.
+KNOWN_EXTRA_WHITELIST = {
+    # (function, address): "justification"
+    (4, 0x0017): "heating_temperature TH sensor, present on AirPack4 h/v units",
+    (4, 0x012A): "water_removal_active HEWR procedure flag, series 4",
+}
+
+
+def _fc_num(key: str) -> int:
+    return int(key[2:4])
+
+
+@pytest.fixture(scope="module")
+def reference_pairs() -> dict[tuple[int, int], dict]:
+    data = json.loads(REF_PATH.read_text(encoding="utf-8"))
+    result: dict[tuple[int, int], dict] = {}
+    for key in (
+        "fc01_coils",
+        "fc02_discrete_inputs",
+        "fc03_holding_registers",
+        "fc04_input_registers",
+    ):
+        fn = _fc_num(key)
+        for entry in data[key]["registers"]:
+            addr = entry.get("dec")
+            if addr is None:
+                addr = int(entry["hex"], 16)
+            result[(fn, int(addr))] = entry
+    return result
+
+
+@pytest.fixture(scope="module")
+def main_pairs() -> dict[tuple[int, int], dict]:
+    data = json.loads(MAIN_PATH.read_text(encoding="utf-8"))
+    result: dict[tuple[int, int], dict] = {}
+    for r in data["registers"]:
+        fn = int(str(r["function"]))
+        addr = r.get("address_dec")
+        if addr is None:
+            addr = int(str(r["address_hex"]), 16)
+        result[(fn, int(addr))] = r
+    return result
+
+
+def test_all_reference_registers_present(reference_pairs, main_pairs):
+    """Every (function, address) pair in vendor reference must exist in integration JSON."""
+    missing = set(reference_pairs) - set(main_pairs)
+    assert not missing, (
+        f"Registers in vendor reference but missing from integration: "
+        f"{sorted(missing)}"
+    )
+
+
+def test_extras_are_known(reference_pairs, main_pairs):
+    """Integration may have extras, but they must be either decoded bitmap bits
+    or explicitly whitelisted."""
+    extras = set(main_pairs) - set(reference_pairs)
+    unknown_extras = []
+    for pair in extras:
+        entry = main_pairs[pair]
+        name = entry.get("name") or ""
+        if any(name.startswith(p) for p in KNOWN_EXTRA_PREFIXES):
+            continue
+        if pair in KNOWN_EXTRA_WHITELIST:
+            continue
+        unknown_extras.append((pair, name))
+
+    assert not unknown_extras, (
+        f"Integration has registers not in reference and not whitelisted: "
+        f"{unknown_extras}. Either add to KNOWN_EXTRA_WHITELIST with justification "
+        f"or remove from integration."
+    )
+```
+
+### Krok 6c — dodaj step do CI
+
+**Plik:** `.github/workflows/ci.yaml` — w sekcji `lint` po ruff:
+
+```yaml
+      - name: Compare registers with vendor reference
+        run: python tools/compare_registers_with_reference.py
+```
+
+---
+
+# GRUPA D — Konsolidacje
+
+## Fix #7 — Konsolidacja `scanner_io.py` + `scanner/io.py`
+
+**Pliki:**
+- `custom_components/thessla_green_modbus/scanner_io.py` (~90 linii, utility)
+- `custom_components/thessla_green_modbus/scanner/io.py` (548 linii, nowa struktura)
+
+**Dowód problemu:**
+
+`scanner_io.py:11`:
+```python
+def is_request_cancelled_error(exc: Exception) -> bool:
+    """Return ``True`` when an exception indicates a cancelled Modbus request."""
+    message = str(exc).lower()
+    return "request cancelled outside pymodbus" in message or "cancelled" in message
+```
+
+`scanner/io.py:25`:
+```python
+def is_request_cancelled_error(exc: ModbusIOException) -> bool:
+    """Return True when a modbus IO error indicates a cancelled request."""
+    return bool(_scanner_io.is_request_cancelled_error(exc))
+```
+
+Drugi to thin-wrapper na pierwszy. Czterech użytkowników, część importuje `.scanner_io`, część `.scanner.io`.
+
+### Krok 7a — przenieś definicję do `scanner/io.py`
+
+**Plik:** `custom_components/thessla_green_modbus/scanner/io.py`
+
+#### SZUKAJ
+```python
+from .. import scanner_io as _scanner_io
+```
+
+#### USUŃ tę linię
+
+#### SZUKAJ (linia 25)
+```python
+def is_request_cancelled_error(exc: ModbusIOException) -> bool:
+    """Return True when a modbus IO error indicates a cancelled request."""
+    return bool(_scanner_io.is_request_cancelled_error(exc))
+```
+
+#### ZASTĄP
+```python
+def is_request_cancelled_error(exc: Exception) -> bool:
+    """Return True when an exception indicates a cancelled Modbus request."""
+    message = str(exc).lower()
+    return "request cancelled outside pymodbus" in message or "cancelled" in message
+```
+
+### Krok 7b — `scanner_io.py` staje się re-export shim
+
+**Plik:** `custom_components/thessla_green_modbus/scanner_io.py`
+
+#### ZASTĄP całą zawartość
+```python
+"""Backward compatibility shim — scanner I/O helpers.
+
+The original module content has moved to :mod:`scanner.io`. This shim
+re-exports the public helpers for callers that import the old path.
+"""
+
+from __future__ import annotations
+
+from .scanner.io import is_request_cancelled_error
+
+__all__ = ["is_request_cancelled_error"]
+```
+
+**Uwaga:** sprawdź czy `ensure_pymodbus_client_module` (obecna w `scanner_io.py`) jest używana gdzieś. Jeśli tak — przenieś ją też do `scanner/io.py` i dodaj do re-exportu.
+
+```bash
+grep -rn "ensure_pymodbus_client_module" custom_components/ tests/ --include="*.py"
+```
+
+---
+
+# GRUPA E — Production code detox
+
+**WAŻNE:** Fixy #8-#17 mogą powodować padanie testów. **Każdy padający test to sygnał** że test opierał się na produkcyjnym smell'u. Napraw test (używając `pytest-homeassistant-custom-component` który jest w deps), nie cofaj zmiany w produkcji.
+
+---
+
+## Fix #8 — Usuń `_update_failed_exception` skanujące `sys.modules`
+
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
+
+**Dowód (linie 134-148):**
 ```python
 def _update_failed_exception(message: str) -> Exception:
     """Return an UpdateFailed compatible with patched test helper modules."""
@@ -86,15 +714,9 @@ def _update_failed_exception(message: str) -> Exception:
     return compat_cls(message)
 ```
 
-**Co to robi:** produkcja szuka `tests/conftest.py`, `tests/test_coordinator.py`, `tests/test_services.py` w `sys.modules`. Jeśli któryś z tych plików testowych zdefiniował **własną** klasę `UpdateFailed` (prawdopodobnie żeby uniknąć importu HA), produkcja tworzy *dynamicznie* klasę dziedziczącą po wszystkich znalezionych, żeby testowe `isinstance(exc, TestUpdateFailed)` zwracało True.
+**Co to robi:** produkcja szuka `tests/conftest.py`, `tests/test_coordinator.py`, `tests/test_services.py` w `sys.modules`. Jeśli któryś zdefiniował własną klasę `UpdateFailed`, produkcja tworzy dynamicznie klasę dziedziczącą po wszystkich. **Coordinator zna nazwy plików testowych**.
 
-**To jest nieakceptowalne w produkcji.** Coordinator nie powinien nawet wiedzieć że istnieje folder `tests/`.
-
-**Przyczyna:** w jakimś momencie ktoś napisał test który importuje `UpdateFailed` lokalnie zamiast z `homeassistant.helpers.update_coordinator`. Zamiast naprawić test, dodano **jeden z najgorszych hacków w całym codebasie**.
-
-### Krok 1a — usuń funkcję
-
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
+### Krok 8a — usuń funkcję
 
 #### SZUKAJ (linie 134-148)
 ```python
@@ -117,57 +739,36 @@ def _update_failed_exception(message: str) -> Exception:
 
 #### USUŃ (całość)
 
-### Krok 1b — zastąp wszystkie wywołania
+### Krok 8b — zastąp wszystkie wywołania
 
 ```bash
 grep -rn "_update_failed_exception" custom_components/ tests/ --include="*.py"
 ```
 
-**W każdym miejscu gdzie występuje `_update_failed_exception(msg)` zastąp przez `UpdateFailed(msg)`.**
+W każdym miejscu zastąp `_update_failed_exception(msg)` → `UpdateFailed(msg)`.
 
-W `coordinator.py` prawdopodobnie są to fragmenty w `_handle_update_error` (z poprzedniego audytu) + `_async_update_data`. Upewnij się że `UpdateFailed` jest już zaimportowane z `_compat.py`:
-```bash
-grep -n "UpdateFailed" custom_components/thessla_green_modbus/coordinator.py | head -5
-```
-
-Jeśli brak importu — dodaj:
-```python
-from ._compat import UpdateFailed
-```
-
-### Krok 1c — usuń `cast` import jeśli nieużywany
+### Krok 8c — usuń nieużywane importy
 
 ```bash
-grep -n "cast" custom_components/thessla_green_modbus/coordinator.py | head -5
+grep -n "cast\|import sys" custom_components/thessla_green_modbus/coordinator.py
 ```
 
-Jeśli `cast` był importowany tylko dla `_update_failed_exception`, usuń z importów `from typing import cast`.
+Jeśli `cast` i `sys` są używane tylko w usuniętej funkcji — usuń ich importy.
 
-### Krok 1d — usuń `sys` jeśli nieużywany
+### Krok 8d — napraw testy
 
-```bash
-grep -n "\bsys\." custom_components/thessla_green_modbus/coordinator.py
-```
-
-Jeśli tylko w usuniętej funkcji — usuń `import sys`.
-
-### Krok 1e — napraw testy które to wymuszały
-
-Znajdź testy definiujące własny `UpdateFailed`:
 ```bash
 grep -rn "class UpdateFailed\|UpdateFailed = " tests/ --include="*.py"
 ```
 
-Każdy taki test przepisz żeby używał `homeassistant.helpers.update_coordinator.UpdateFailed` lub `pytest-homeassistant-custom-component` fixtures. Jeśli test mockuje bez HA — dodaj `@pytest.mark.homeassistant` lub użyj `pytest-homeassistant-custom-component` który dostarcza prawdziwy `UpdateFailed`.
-
-### Oczekiwany efekt
-- -15 linii najgorszego kodu w codebase.
-- Coordinator nie wie o istnieniu `tests/`.
-- Jeśli testy zaczną padać: każdy padający test mówi *"I was importing UpdateFailed wrongly"*. Naprawić test.
+Każdy taki test przepisz używając:
+```python
+from homeassistant.helpers.update_coordinator import UpdateFailed
+```
 
 ---
 
-## Fix #2 — Usuń alias `__init__.er` dla testów
+## Fix #9 — Usuń alias `__init__.er` dla testów
 
 **Plik:** `custom_components/thessla_green_modbus/__init__.py`
 
@@ -181,21 +782,9 @@ module_self: Any = sys.modules[__name__]
 module_self.__init__ = _init_alias
 ```
 
-Produkcja rejestruje w `sys.modules` fikcyjny moduł `custom_components.thessla_green_modbus.__init__` (którego Python normalnie **nie tworzy** — `__init__.py` staje się samym pakietem, nie jego submodułem). Potem przypisuje `er` (entity_registry) do tego fikcyjnego modułu, żeby testy mogły robić:
-```python
-monkeypatch.setattr("custom_components.thessla_green_modbus.__init__.er", mock_er)
-```
+Produkcja rejestruje w `sys.modules` fikcyjny moduł `custom_components.thessla_green_modbus.__init__`, żeby testy mogły robić `monkeypatch.setattr("custom_components.thessla_green_modbus.__init__.er", ...)`.
 
-**Prawidłowy sposób** monkey-patching w pytest to:
-```python
-monkeypatch.setattr("custom_components.thessla_green_modbus.er", mock_er)
-# lub
-monkeypatch.setattr(some_module, "er", mock_er)
-```
-
-### Krok 2a — usuń alias
-
-**Plik:** `custom_components/thessla_green_modbus/__init__.py`
+### Krok 9a — usuń alias
 
 #### SZUKAJ (linie 87-92)
 ```python
@@ -209,7 +798,7 @@ module_self.__init__ = _init_alias
 
 #### USUŃ (całość)
 
-### Krok 2b — napraw testy
+### Krok 9b — napraw testy
 
 ```bash
 grep -rn "thessla_green_modbus\.__init__\.\|__init__\.er\b" tests/ --include="*.py"
@@ -220,53 +809,25 @@ Dla każdego znalezionego `monkeypatch.setattr("...__init__.er", ...)` zmień na
 monkeypatch.setattr("custom_components.thessla_green_modbus.er", ...)
 ```
 
-Lub, jeśli test monkey-patchuje przed importem, użyj `pytest-homeassistant-custom-component` fixtures.
-
-### Oczekiwany efekt
-- -6 linii, -1 `sys.modules` hack.
-- Testy używają standardowego monkey-patching.
-
 ---
 
-## Fix #3 — Usuń `entity_mappings.py` shim
+## Fix #10 — Usuń `entity_mappings.py` shim
 
-**Plik:** `custom_components/thessla_green_modbus/entity_mappings.py`
+**Plik:** `custom_components/thessla_green_modbus/entity_mappings.py` (37 linii)
 
-**Dowód (całe 37 linii):**
+**Dowód:**
 ```python
 """Backward-compatible shim for the ``mappings`` package."""
-
-from __future__ import annotations
-
-import sys
-
-from . import mappings as _m
-from .mappings import (
-    BINARY_SENSOR_ENTITY_MAPPINGS,
-    ENTITY_MAPPINGS,
-    # ... itd.
-)
-
+# ...
 # Keep ``entity_mappings`` as an alias of ``mappings`` so existing tests and
 # monkeypatches that mutate module globals continue to affect runtime behavior.
 _m.__file__ = __file__
 sys.modules[__name__] = _m
 ```
 
-**Co to robi:** cały plik istnieje żeby `from .entity_mappings import X` działało identycznie z `from .mappings import X`. Problem — nie przez zwykły re-export, tylko przez **podmianę modułu w sys.modules**. Komentarz wprost: *"so existing tests and monkeypatches that mutate module globals continue to affect runtime behavior"*.
+### Krok 10a — zamień wszystkie importy
 
-**Konsekwencje obecnego stanu:**
-- `entity_mappings` jako moduł **nie istnieje** — `sys.modules["custom_components.thessla_green_modbus.entity_mappings"]` wskazuje na moduł `mappings`.
-- Importy w produkcji (`from .entity_mappings import ENTITY_MAPPINGS`) działają przez przypadek — Python cache'uje.
-- Testy robiące `monkeypatch.setattr("custom_components.thessla_green_modbus.entity_mappings.ENTITY_MAPPINGS", ...)` modyfikują w rzeczywistości `mappings.ENTITY_MAPPINGS` — bo to ten sam obiekt w sys.modules.
-
-### Krok 3a — zamień wszystkie importy
-
-```bash
-grep -rn "from \.entity_mappings\|from \.\.entity_mappings" custom_components/ tests/ --include="*.py"
-```
-
-Wyniki (z poprzedniego skanu):
+Miejsca do zmiany:
 ```
 register_map.py:173     from .entity_mappings import ENTITY_MAPPINGS
 switch.py:19            from .entity_mappings import ENTITY_MAPPINGS
@@ -280,44 +841,31 @@ text.py:22              from .entity_mappings import ENTITY_MAPPINGS
 services.py:32          from .entity_mappings import map_legacy_entity_id
 ```
 
-**Zamień w każdym:** `from .entity_mappings import X` → `from .mappings import X`
+**W każdym pliku zamień:** `from .entity_mappings import X` → `from .mappings import X`
 
-### Krok 3b — usuń plik
+### Krok 10b — usuń plik
 
 ```bash
 rm custom_components/thessla_green_modbus/entity_mappings.py
 ```
 
-### Krok 3c — napraw testy
+### Krok 10c — napraw testy
 
 ```bash
 grep -rn "entity_mappings\b" tests/ --include="*.py"
 ```
 
-W każdym teście użyj `mappings`:
-```python
-# Było:
-monkeypatch.setattr("custom_components.thessla_green_modbus.entity_mappings.ENTITY_MAPPINGS", ...)
-# Ma być:
-monkeypatch.setattr("custom_components.thessla_green_modbus.mappings.ENTITY_MAPPINGS", ...)
-```
-
-### Oczekiwany efekt
-- -37 linii shim.
-- -1 `sys.modules` hack.
-- Czytelniejsze importy — jedno źródło (`mappings`).
+Zmień `entity_mappings` → `mappings` w testach.
 
 ---
 
-## Fix #4 — Usuń `_async_patch_coordinator_compat` + `_PermissiveCapabilities`
+## Fix #11 — Usuń `_async_patch_coordinator_compat` + `_PermissiveCapabilities`
 
 **Plik:** `custom_components/thessla_green_modbus/__init__.py`
 
 **Dowód (linie 384-415):**
 ```python
-def _async_patch_coordinator_compat(
-    coordinator: Any, entry: ConfigEntry
-) -> None:  # pragma: no cover
+def _async_patch_coordinator_compat(coordinator, entry):  # pragma: no cover
     """Add lightweight fallback attributes for test environments."""
     if not hasattr(coordinator, "capabilities"):
 
@@ -328,110 +876,46 @@ def _async_patch_coordinator_compat(
         coordinator.capabilities = _PermissiveCapabilities()
 
     if not hasattr(coordinator, "get_register_map"):
-        empty_maps: dict[str, dict[str, Any]] = {
-            "input_registers": {},
-            "holding_registers": {},
-            "coil_registers": {},
-            "discrete_inputs": {},
-        }
-        coordinator.get_register_map = lambda reg_type: empty_maps.get(reg_type, {})
-
+        # ... dorabia empty register maps
     if not hasattr(coordinator, "available_registers"):
-        coordinator.available_registers = {
-            "input_registers": set(),
-            "holding_registers": set(),
-            "coil_registers": set(),
-            "discrete_inputs": set(),
-        }
-
-    force_full = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
+        # ... dorabia empty sets
     if not hasattr(coordinator, "force_full_register_list"):
-        coordinator.force_full_register_list = bool(force_full)
+        # ...
 ```
 
-**Co to robi:** produkcja sprawdza czy coordinator ma kluczowe atrybuty (`capabilities`, `get_register_map`, `available_registers`, `force_full_register_list`) i je dorabia jeśli brak. `_PermissiveCapabilities` **zwraca `True` dla każdego atrybutu** — to oznacza że *"urządzenie ma każdą funkcję"*.
+**Co to robi:** `_PermissiveCapabilities` zwraca `True` dla każdego atrybutu — *"urządzenie ma każdą funkcję"*. **Wywoływane w każdym setupie**, nie tylko testowym (linia 475).
 
-**W produkcji** `ThesslaGreenModbusCoordinator.__init__` **zawsze** ustawia wszystkie te atrybuty. Więc ta funkcja nigdy nic nie robi w runtime. Jest zawsze no-op… chyba że ktoś podstawi coordinator będący SimpleNamespace (test). Wtedy `_PermissiveCapabilities` zaczyna mówić *"true"* na każde zapytanie o capability, co może maskować błędne testy.
+### Krok 11a — usuń funkcję
 
-### Krok 4a — usuń funkcję
+#### SZUKAJ (linie 384-415) - funkcja `_async_patch_coordinator_compat` w całości
 
-**Plik:** `custom_components/thessla_green_modbus/__init__.py`
+#### USUŃ
 
-#### SZUKAJ (linie 384-415)
-```python
-def _async_patch_coordinator_compat(
-    coordinator: Any, entry: ConfigEntry
-) -> None:  # pragma: no cover
-    """Add lightweight fallback attributes for test environments."""
-    if not hasattr(coordinator, "capabilities"):
+### Krok 11b — usuń wywołanie
 
-        class _PermissiveCapabilities:
-            def __getattr__(self, _name: str) -> bool:
-                return True
-
-        coordinator.capabilities = _PermissiveCapabilities()
-
-    if not hasattr(coordinator, "get_register_map"):
-        empty_maps: dict[str, dict[str, Any]] = {
-            "input_registers": {},
-            "holding_registers": {},
-            "coil_registers": {},
-            "discrete_inputs": {},
-        }
-        coordinator.get_register_map = lambda reg_type: empty_maps.get(reg_type, {})
-
-    if not hasattr(coordinator, "available_registers"):
-        coordinator.available_registers = {
-            "input_registers": set(),
-            "holding_registers": set(),
-            "coil_registers": set(),
-            "discrete_inputs": set(),
-        }
-
-    force_full = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-    if not hasattr(coordinator, "force_full_register_list"):
-        coordinator.force_full_register_list = bool(force_full)
-```
-
-#### USUŃ (całość)
-
-### Krok 4b — usuń wywołanie
-
-Znajdź wywołanie:
 ```bash
 grep -n "_async_patch_coordinator_compat" custom_components/thessla_green_modbus/__init__.py
 ```
 
-Powinno być tylko jedno wywołanie (linia 475). Usuń tę linię całkowicie.
+Usuń wywołanie (linia ~475).
 
-### Krok 4c — napraw testy
+### Krok 11c — napraw testy
 
-```bash
-grep -rn "_async_patch_coordinator_compat\|_PermissiveCapabilities" tests/ --include="*.py"
-```
-
-Jeśli testy referencują tę funkcję — usuń referencje. Jeśli testy polegają na `_PermissiveCapabilities` (SimpleNamespace bez capabilities) — **przepisz test**, użyj prawdziwego coordynatora z `pytest-homeassistant-custom-component`, lub Mock z explicit `capabilities`:
+Jeśli testy polegają na `_PermissiveCapabilities` (SimpleNamespace bez capabilities):
 
 ```python
 # Źle:
 coordinator = SimpleNamespace(host="1.2.3.4", port=502)
-# _PermissiveCapabilities ratowało to w produkcji.
 
 # Dobrze:
-coordinator = MagicMock()
+coordinator = MagicMock(spec=ThesslaGreenModbusCoordinator)
 coordinator.capabilities.basic_control = True
 coordinator.available_registers = {...}
-# Test explicite mówi czego wymaga.
 ```
-
-### Oczekiwany efekt
-- -35 linii niebezpiecznego kodu.
-- Testy jawnie deklarują czego potrzebują od coordynatora.
-- Brak ryzyka że test "przypadkiem" pokaże zieloną ścieżkę bo capability wraca True-by-default.
 
 ---
 
-## Fix #5 — Usuń `_SafeDTUtil` i `_utcnow` defensive wrappers
+## Fix #12 — Usuń `_SafeDTUtil` defensywny wrapper
 
 **Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
@@ -439,49 +923,18 @@ coordinator.available_registers = {...}
 ```python
 class _SafeDTUtil:
     """Wrap dt helpers and always return timezone-aware datetimes."""
-
-    def __init__(self, base: Any) -> None:
-        self._base = base
-
-    @staticmethod
-    def _coerce(value: Any) -> datetime:
-        if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-        return datetime.now(UTC)
-
-    def now(self) -> datetime:
-        func = getattr(self._base, "now", None)
-        if callable(func):
-            return self._coerce(func())
-        return datetime.now(UTC)
-
-    def utcnow(self) -> datetime:
-        func = getattr(self._base, "utcnow", None)
-        if callable(func):
-            return self._coerce(func())
-        return datetime.now(UTC)
-
-
-dt_util = _SafeDTUtil(_base_dt_util)
-
+    # ... defensywnie sprawdza czy base ma now/utcnow, czy są callable, 
+    # czy zwracają datetime, czy mają tzinfo
 
 def _utcnow() -> datetime:
     """Return a timezone-aware UTC datetime."""
     utcnow_callable = getattr(dt_util, "utcnow", None)
-    if callable(utcnow_callable):
-        value = utcnow_callable()
-        if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-    return datetime.now(UTC)
+    # ... jeszcze raz te same sprawdzenia
 ```
 
-**Co to robi:** `_SafeDTUtil` wrapuje `_base_dt_util` (czyli `homeassistant.util.dt`) defensywnie — każde wywołanie `now()` sprawdza czy `base.now` istnieje, czy jest callable, czy zwraca datetime, czy ma tzinfo. `_utcnow()` z kolei wrapuje już `_SafeDTUtil.utcnow` jeszcze raz, z dokładnie tymi samymi sprawdzeniami.
+HA `dt_util.utcnow()` zawsze zwraca `datetime` z `tzinfo=UTC`. Gwarancja od 2022.
 
-**Rzeczywistość:** HA `dt_util.utcnow()` **zawsze** zwraca `datetime` z `tzinfo=UTC`. To jest gwarancja od 2022 roku. Te dwa wrapersy istnieją tylko dla testów które mockują `dt_util` byle czym (SimpleNamespace, lambda, None).
-
-### Krok 5a — usuń klasę i wrapper
-
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
+### Krok 12 — uprość
 
 #### SZUKAJ (linie 84-119)
 ```python
@@ -534,56 +987,43 @@ def _utcnow() -> datetime:
     return dt_util.utcnow()
 ```
 
-### Krok 5b — sprawdź użycia
+### Napraw testy
 
-```bash
-grep -n "dt_util\._base\|_SafeDTUtil" custom_components/ tests/ --include="*.py" -r
+Testy mockujące `dt_util.utcnow = lambda: "2024-01-01"` (string zamiast datetime):
+```python
+# Użyj freezegun:
+from freezegun import freeze_time
+
+@freeze_time("2024-01-01 12:00:00")
+def test_something():
+    ...
 ```
-
-Usuń wszystkie referencje. Jeśli coś jeszcze polega na `_SafeDTUtil` jako klasie — to test, i powinien używać prawdziwego `dt_util`.
-
-### Oczekiwany efekt
-- -36 linii defensywnego kodu.
-- Jedna implementacja `dt_util.utcnow()` zamiast trzech.
-- Testy które mockowały `dt_util` byle czym zaczynają padać — naprawić używając `freezegun` lub HA `dt_util.utcnow` patching.
 
 ---
 
-## Fix #6 — Usuń `super().__init__()` TypeError fallback
+## Fix #13 — Usuń `super().__init__()` TypeError fallback
 
 **Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
 **Dowód (linie 195-207):**
 ```python
-        try:
-            super().__init__(
-                hass,
-                _LOGGER,
-                name=f"{DOMAIN}_{entry.entry_id if entry else name}",
-                update_interval=update_interval,
-            )
-        except TypeError:
-            super().__init__()
-            self.hass = hass
-            self.logger = _LOGGER
-            self.name = f"{DOMAIN}_{entry.entry_id if entry else name}"
-            self.update_interval = update_interval
+try:
+    super().__init__(
+        hass, _LOGGER,
+        name=f"{DOMAIN}_{entry.entry_id if entry else name}",
+        update_interval=update_interval,
+    )
+except TypeError:
+    super().__init__()
+    self.hass = hass
+    self.logger = _LOGGER
+    self.name = f"{DOMAIN}_{entry.entry_id if entry else name}"
+    self.update_interval = update_interval
 ```
 
-**Co to robi:** jeśli `super().__init__()` rzuci `TypeError` (czyli HA `DataUpdateCoordinator.__init__` nie akceptuje tych argumentów — co nigdy nie zdarzy się w produkcji), wywołuje `super().__init__()` bez argumentów i ręcznie przypisuje atrybuty.
+HA `DataUpdateCoordinator.__init__` to stabilne API. `TypeError` path jest dla stubów.
 
-**Kiedy to się zdarzyło w historii:** prawdopodobnie ktoś zrobił:
-```python
-class StubBase:
-    def __init__(self):
-        pass
-
-ThesslaGreenModbusCoordinator.__bases__ = (StubBase, ...)
-```
-
-W teście który nie potrafił zainstalować HA. Zamiast użyć `pytest-homeassistant-custom-component`, coordinator został wygięty.
-
-### Krok 6 — usuń fallback
+### Krok 13 — usuń fallback
 
 #### SZUKAJ
 ```python
@@ -612,84 +1052,77 @@ W teście który nie potrafił zainstalować HA. Zamiast użyć `pytest-homeassi
         )
 ```
 
-### Oczekiwany efekt
-- -8 linii.
-- Coordinator ma jeden sposób inicjalizacji.
-- Jeśli test pada — używa prawdziwego HA `DataUpdateCoordinator`.
-
 ---
 
-## Fix #7 — Wyczyść `config_flow.py` z warstwy test-compat
+## Fix #14 — Cleanup `config_flow.py` test-compat warstwy
 
-**Plik:** `custom_components/thessla_green_modbus/config_flow.py` (**Duża zmiana — rozważyć osobny PR**)
+**Plik:** `custom_components/thessla_green_modbus/config_flow.py`
 
-**Dowód — wiele miejsc:**
+**Kontekst:** 67× `# pragma: no cover` w jednym pliku. Większość na test-compat shimach.
 
-### 7a. DhcpServiceInfo / ZeroconfServiceInfo fallback (linie 24-43)
+### Fix #14a — Usuń `DhcpServiceInfo` / `ZeroconfServiceInfo` fallback
 
+#### SZUKAJ (linie 20-43)
 ```python
-try:
+if TYPE_CHECKING:
     from homeassistant.components.dhcp import DhcpServiceInfo
-except (ImportError, ModuleNotFoundError):
+    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+else:
+    try:  # pragma: no cover - optional HA component
+        from homeassistant.components.dhcp import DhcpServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
 
-    @dataclasses.dataclass
-    class DhcpServiceInfo:
-        """Fallback DHCP service info for minimal test environments."""
-        macaddress: str | None = None
-        ip: str | None = None
+        @dataclasses.dataclass
+        class DhcpServiceInfo:  # pragma: no cover
+            """Fallback DHCP service info for minimal test environments."""
+            macaddress: str | None = None
+            ip: str | None = None
+
+    try:  # pragma: no cover - optional HA component
+        from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
+
+        @dataclasses.dataclass
+        class ZeroconfServiceInfo:  # pragma: no cover
+            """Fallback Zeroconf service info for minimal test environments."""
+            host: str | None = None
 ```
 
-**Rozwiązanie — usuń fallback:**
+#### ZASTĄP
 ```python
 from homeassistant.components.dhcp import DhcpServiceInfo
 from homeassistant.components.zeroconf import ZeroconfServiceInfo
 ```
 
-### 7b. ConfigFlowResult fallback (linia 46-49)
+### Fix #14b — Usuń `ConfigFlowResult` fallback
 
+#### SZUKAJ (linie 46-49)
 ```python
-try:
+try:  # pragma: no cover - available since HA 2023.9
     from homeassistant.config_entries import ConfigFlowResult
-except (ImportError, ModuleNotFoundError):
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
     ConfigFlowResult = dict[str, Any]
 ```
 
-**Rozwiązanie:** `ConfigFlowResult` jest w HA od 2023.9. Manifest wymaga 2026.1.0. Zostaw tylko import:
+#### ZASTĄP
 ```python
 from homeassistant.config_entries import ConfigFlowResult
 ```
 
-### 7c. `_FallbackFlowBase` (linie 123-142)
+### Fix #14c — Usuń `_FallbackFlowBase`
 
-```python
-class _FallbackFlowBase:  # pragma: no cover
-    """Fallback flow base for minimal test environments."""
-
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        return None
-
-    async def async_set_unique_id(self, *args: Any, **kwargs: Any) -> None:
-        return None
-
-    def _abort_if_unique_id_configured(self) -> None:
-        return None
-
-    def async_show_form(self, **kwargs: Any) -> dict[str, Any]:
-        return {"type": "form", **kwargs}
-
-    def async_create_entry(self, **kwargs: Any) -> dict[str, Any]:
-        return {"type": "create_entry", **kwargs}
-
-    def async_abort(self, **kwargs: Any) -> dict[str, Any]:
-        return {"type": "abort", **kwargs}
+Najpierw sprawdź czy nieużywana:
+```bash
+grep -n "_FallbackFlowBase" custom_components/thessla_green_modbus/config_flow.py
 ```
 
-**Co to robi:** klasa udaje `ConfigFlow` dla testów które nie chcą HA. **Nie jest nigdzie używana** (sprawdź: `grep _FallbackFlowBase`). Martwy kod.
+#### SZUKAJ (linie 123-142) - klasa `_FallbackFlowBase` w całości
 
-**Rozwiązanie:** usunąć całą klasę.
+#### USUŃ (klasa w całości, prawdopodobnie nieużywana)
 
-### 7d. Monkey-patch voluptuous (linie 175-186)
+### Fix #14d — Usuń monkey-patch voluptuous
 
+#### SZUKAJ (linie 175-186)
 ```python
 class _VolInvalid(Exception):
     """Fallback voluptuous Invalid-like exception."""
@@ -705,17 +1138,14 @@ if not hasattr(vol, "Invalid"):
     vol.Invalid = VOL_INVALID  # pragma: no cover
 ```
 
-**Co to robi:** **przy imporcie modułu** podmienia `voluptuous.Invalid` jeśli nie istnieje. **Monkey-patch biblioteki**. Voluptuous ma `Invalid` od 2012 roku. `voluptuous>=0.13` jest w `requirements.txt`.
-
-**Rozwiązanie:**
+#### ZASTĄP
 ```python
 from voluptuous import Invalid as VOL_INVALID
 ```
 
-Usuń `_VolInvalid` i blok `if not hasattr`.
+### Fix #14e — Uprość `_schema`
 
-### 7e. `_schema` dodaje `.schema` atrybut (linie 189-194)
-
+#### SZUKAJ (linie 189-194)
 ```python
 def _schema(definition: Any) -> Any:
     """Create voluptuous schema with `.schema` compatibility for tests."""
@@ -725,16 +1155,15 @@ def _schema(definition: Any) -> Any:
     return schema_obj
 ```
 
-**Co to robi:** voluptuous `Schema` obiekt **ma** atrybut `.schema` (to sam definition). Jeśli test mockuje `vol.Schema = lambda x: SomeMock()`, wtedy mock może nie mieć `.schema`. Produkcja dokleja go ręcznie. Smell.
-
-**Rozwiązanie:**
+#### ZASTĄP
 ```python
 def _schema(definition: Any) -> vol.Schema:
     return vol.Schema(definition)
 ```
 
-### 7f. `_required` 7-poziomowy fallback (linie 197-213)
+### Fix #14f — Uprość `_required`
 
+#### SZUKAJ (linie 197-213)
 ```python
 def _required(schema: Any, **kwargs: Any) -> Any:
     """Compat wrapper for voluptuous.Required across test stubs."""
@@ -747,75 +1176,52 @@ def _required(schema: Any, **kwargs: Any) -> Any:
         try:  # pragma: no cover
             return vol.Required(schema, msg, default, description)  # pragma: no cover
         except TypeError:  # pragma: no cover
-            # ... 3 kolejne poziomy fallbacku
+            if default is not ...:  # pragma: no cover
+                try:  # pragma: no cover
+                    return vol.Required(schema, default=default)  # pragma: no cover
+                except TypeError:  # pragma: no cover
+                    return vol.Required(schema)  # pragma: no cover
+            return vol.Required(schema)  # pragma: no cover
 ```
 
-**Co to robi:** próbuje wywołać `vol.Required` z różnymi kombinacjami argumentów. Voluptuous `Required(schema, msg=None, default=UNDEFINED, description=None)` — stabilne API od lat.
-
-**Rozwiązanie:**
+#### ZASTĄP
 ```python
 def _required(schema: Any, **kwargs: Any) -> vol.Required:
     return vol.Required(schema, **kwargs)
 ```
 
-Lub jeszcze lepiej — usuń funkcję, używaj `vol.Required` bezpośrednio. Sprawdź:
+**Lub jeszcze lepiej** — jeśli `_required` wywoływane tylko kilka razy, zamień wywołania na `vol.Required(...)` bezpośrednio:
 ```bash
 grep -n "_required(" custom_components/thessla_green_modbus/config_flow.py
 ```
 
-Jeśli tylko kilka wywołań — zamień na `vol.Required` bez wrappera.
-
-### Krok 7 — wykonanie
-
-Otwórz `config_flow.py` i przeprowadź wszystkie 6 zamian. Po każdej:
-```bash
-ruff check custom_components/thessla_green_modbus/config_flow.py
-mypy custom_components/thessla_green_modbus/config_flow.py
-pytest tests/test_config_flow.py -x -q
-```
-
-Testy prawdopodobnie będą padały. **Każdy padający test to test który nielegalnie mockuje voluptuous lub HA bez używania `pytest-homeassistant-custom-component`.** Fix test, nie cofaj zmiany.
-
-### Oczekiwany efekt
-- -100 do -150 linii, znaczna część z 67 `# pragma: no cover`.
-- `config_flow.py` przestaje być chimera produkcja+test-stubs.
-- Voluptuous nie jest monkey-patchowany przy imporcie integracji.
-
 ---
 
-## Fix #8 — Wywal `except BaseException` + `__class__.__name__` w `__init__.py`
+## Fix #15 — Usuń `except BaseException` + `__class__.__name__` w `__init__.py`
 
 **Plik:** `custom_components/thessla_green_modbus/__init__.py`
 
 **Dowód (linie 322-338 i 363-379, dwa identyczne bloki):**
-
 ```python
     except BaseException as exc:
         if isinstance(exc, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
             raise
-        # Deliberately broad at integration setup boundary: Home Assistant test
-        # stubs and custom coordinator implementations may raise dynamic
-        # exception classes (including test-local subclasses of UpdateFailed).
-        # We convert all such failures into ConfigEntryNotReady/reauth flow.
+        # Deliberately broad at integration setup boundary...
         if (
             isinstance(exc, Exception)
             and (isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed")
             and is_invalid_auth_error(exc)
         ):
-            _LOGGER.error("Authentication failed during setup: %s", exc)
-            await entry.async_start_reauth(hass)
-            return False
-        _LOGGER.error("Failed to setup coordinator: %s", exc)
-        raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
+            # ...
 ```
 
-**Dwa smelle w jednym:**
-1. **`except BaseException`** — łapie też niesystemowe BaseException-descendants, ale po `KeyboardInterrupt | SystemExit | CancelledError` zostaje tylko `Exception`. Czyli to powinno być po prostu `except Exception`.
-2. **`exc.__class__.__name__ == "UpdateFailed"`** — porównanie klasy po **nazwie stringa**. To jest anti-pattern. Jeśli `isinstance(exc, UpdateFailed)` nie zwraca True, to dlatego że test zdefiniował *własną* klasę `UpdateFailed` (patrz Fix #1). Po usunięciu tego hacka, ten warunek też upada.
+**Smelle:**
+1. `except BaseException` zamiast `except Exception` (potem ręcznie wyklucza SystemExit/KeyboardInterrupt/CancelledError).
+2. `exc.__class__.__name__ == "UpdateFailed"` — **porównanie klasy po nazwie stringa**. Po Fix #8 (`_update_failed_exception` usunięte) ten warunek jest bezsensowny.
 
-### Krok 8 — uprość oba bloki
+### Krok 15 — uprość oba bloki
 
-#### SZUKAJ (linia 322, pierwszy blok)
+#### SZUKAJ (pierwszy blok, linia 322)
 ```python
     except BaseException as exc:
         if isinstance(exc, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
@@ -847,20 +1253,13 @@ Testy prawdopodobnie będą padały. **Każdy padający test to test który niel
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
 ```
 
-**Zrób analogicznie z drugim blokiem (linia 363)** — taka sama struktura.
+**Zrób analogicznie z drugim blokiem (linia 363).**
 
-**Uwaga:** `except Exception` jest dalej szerokie, ale:
-- `KeyboardInterrupt`, `SystemExit`, `CancelledError` dziedziczą z `BaseException` (nie `Exception`) — automatycznie wyłączone.
-- Nie ma potrzeby ręcznego `isinstance(exc, KeyboardInterrupt | SystemExit | asyncio.CancelledError): raise`.
-
-### Oczekiwany efekt
-- -10 linii w każdym bloku, razem -20.
-- Czytelniejsza logika.
-- Jedno `isinstance(exc, UpdateFailed)` zamiast dualnego check'a z nazwą stringa.
+`except Exception` automatycznie wyłącza `KeyboardInterrupt`, `SystemExit`, `CancelledError` (dziedziczą z `BaseException`, nie `Exception`).
 
 ---
 
-## Fix #9 — Audit `async_migrate_entry` (czy v1 jeszcze istnieje?)
+## Fix #16 — Audit `async_migrate_entry` (czy v1 jeszcze istnieje?)
 
 **Plik:** `custom_components/thessla_green_modbus/__init__.py`
 
@@ -873,44 +1272,28 @@ async def async_migrate_entry(hass, config_entry) -> bool:
     the runtime imports it dynamically.
     """
     if config_entry.version == 1:
-        # Migrate "unit" to CONF_SLAVE_ID if needed
-        # Add CONF_PORT = LEGACY_DEFAULT_PORT = 8899
-        # Add CONF_SCAN_INTERVAL, CONF_TIMEOUT, CONF_RETRY defaults
-        config_entry.version = 2
-
-    if config_entry.version == 2:
-        if CONF_CONNECTION_TYPE not in new_data:
-            new_data[CONF_CONNECTION_TYPE] = DEFAULT_CONNECTION_TYPE
-        config_entry.version = 3
-
-    if config_entry.version == 3:
-        # ... connection_mode normalization
-        config_entry.version = 4
-    ...
+        # ... migrate "unit" to CONF_SLAVE_ID, add CONF_PORT=8899, etc.
 ```
 
-**Pytanie:** ile instalacji w świecie jest wciąż na `config_entry.version == 1`? Nie wiadomo. Ale jeśli zero — kod obsługujący migrację v1→v2 jest martwy.
+**Pytania:**
+1. Czy ktoś jeszcze używa `config_entry.version == 1`? (config z pre-2.x).
+2. Komentarz o vulture — Fix #3 usuwa vulture, komentarz staje się bezsensowny.
 
-**Sygnaly że v1 to historia:**
-- Komentarz wprost: *"older versions relied on legacy default"* — "older" to historia.
-- `LEGACY_DEFAULT_PORT = 8899` jest pre-v2.
-- HA rekomenduje usuwanie starych migracji po 2-3 wersjach głównych.
+### Krok 16a — zaktualizuj komentarz
 
-### Krok 9a — sprawdź gdzie v1 bywa
+#### SZUKAJ
+```python
+async def async_migrate_entry(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> bool:  # pragma: no cover
+    """Migrate old entry.
 
-```bash
-# W testach — czy testy tworzą entries z version == 1?
-grep -rn "version.*=.*1\|version=1" tests/ --include="*.py" | grep -i "config_entry\|entry\|version" | head -10
+    Home Assistant uses this during upgrades; vulture marks it as unused but
+    the runtime imports it dynamically.
+    """
 ```
 
-### Krok 9b — opcjonalne: usuń gałąź v1
-
-**Decyzja biznesowa:** jeśli Bart zgadza się że po 2+ latach użytkownicy powinni być na v2+, usunąć gałąź `if config_entry.version == 1`. Integracja będzie odmawiać ładowania dla v1, użytkownik musi usunąć i dodać entry od nowa.
-
-**Jeśli nie gotowy:** zostaw migrację, ale usuń komentarz *"vulture marks it as unused"* (Fix nie używa vulture od v2.3.10).
-
-### Krok 9c — zaktualizuj komentarz
-
+#### ZASTĄP
 ```python
 async def async_migrate_entry(
     hass: HomeAssistant, config_entry: ConfigEntry
@@ -921,40 +1304,64 @@ async def async_migrate_entry(
     """
 ```
 
-### Oczekiwany efekt
-- Ewentualnie -40 linii jeśli v1 idzie precz.
-- Czytelniejsza dokumentacja.
+### Krok 16b — opcjonalne: usuń gałąź v1 (decyzja biznesowa)
+
+Jeśli Bart zgadza się że po 2+ latach użytkownicy powinni być na v2+:
+
+#### SZUKAJ
+```python
+    if config_entry.version == 1:
+        # Migrate "unit" to CONF_SLAVE_ID if needed
+        if "unit" in new_data and CONF_SLAVE_ID not in new_data:
+            new_data[CONF_SLAVE_ID] = new_data["unit"]
+            _LOGGER.info("Migrated 'unit' to '%s'", CONF_SLAVE_ID)
+
+        # Ensure port is present; older versions relied on legacy default
+        if CONF_PORT not in new_data:
+            new_data[CONF_PORT] = LEGACY_DEFAULT_PORT
+            _LOGGER.info("Added '%s' with legacy default %s", CONF_PORT, LEGACY_DEFAULT_PORT)
+
+        # Add new fields with defaults if missing
+        if CONF_SCAN_INTERVAL not in new_options:
+            new_options[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
+        if CONF_TIMEOUT not in new_options:
+            new_options[CONF_TIMEOUT] = DEFAULT_TIMEOUT
+        if CONF_RETRY not in new_options:
+            new_options[CONF_RETRY] = DEFAULT_RETRY
+        if CONF_FORCE_FULL_REGISTER_LIST not in new_options:
+            new_options[CONF_FORCE_FULL_REGISTER_LIST] = False
+
+        config_entry.version = 2
+```
+
+#### USUŃ blok i `LEGACY_DEFAULT_PORT = 8899` z góry pliku
+
+**Użytkownicy na pre-v2 będą musieli usunąć i ponownie dodać integrację.** Decyzja biznesowa — można zostawić.
 
 ---
 
-## Fix #10 — Defensywne `getattr` w krytycznych ścieżkach
+## Fix #17 — Defensywne `getattr` w krytycznych ścieżkach
 
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`, `__init__.py`
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
 **Dowód (linia 413):**
 ```python
 start_reauth = getattr(self.entry, "async_start_reauth", None)
 ```
 
-**Co to robi:** sprawdza czy `self.entry` (ConfigEntry) ma metodę `async_start_reauth`. **Ma**, od HA 2023+. Defensywny `getattr` istnieje tylko dla testów z SimpleNamespace.
+HA ConfigEntry ma `async_start_reauth` od 2023. Defensywny `getattr` istnieje tylko dla SimpleNamespace testów.
 
-**Dowód (linie 429, 435):**
-```python
-transport_method = getattr(transport, name, None) if transport is not None else None
-method = getattr(client, name, None) if client is not None else None
+### Krok 17a — cleanup `async_start_reauth`
+
+```bash
+grep -n "async_start_reauth" custom_components/thessla_green_modbus/coordinator.py
 ```
 
-**Kontekst:** `_get_client_method(name)` pobiera dynamicznie metodę Modbus client. **Tutaj getattr jest uzasadniony** — różne klienty (TCP, RTU, raw-rtu-over-tcp) mają lub nie mają niektórych metod (`read_input_registers` vs `read_holding_registers`). Nie zmieniać.
-
-### Krok 10 — wyczyść `async_start_reauth`
-
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`, linia 413
-
-#### SZUKAJ
+#### SZUKAJ (wzorzec podobny do poniższego)
 ```python
         start_reauth = getattr(self.entry, "async_start_reauth", None)
         if callable(start_reauth):
-            # ... call it
+            # ... wywołanie
 ```
 
 #### ZASTĄP
@@ -963,63 +1370,65 @@ method = getattr(client, name, None) if client is not None else None
             self.entry.async_start_reauth(self.hass)
 ```
 
-(zakładając że ten wzorzec jest używany — sprawdź kontekst wokół linii 413).
-
-### Pozostałe getattr — audit
+### Krok 17b — audit pozostałych getattr
 
 ```bash
-grep -rn "getattr(.*, None)" custom_components/thessla_green_modbus/ --include="*.py" | grep -v "scanner\|mappings\|_loaders"
+grep -rn "getattr(.*, None)" custom_components/thessla_green_modbus/ --include="*.py" | \
+    grep -v "scanner\|mappings\|_loaders"
 ```
 
-Dla każdego wystąpienia zadaj pytanie:
+Dla każdego wystąpienia:
 - Czy docelowy atrybut istnieje w prawdziwym HA / PyModbus / voluptuous?
 - Jeśli tak → `getattr` to smell, usunąć.
-- Jeśli nie (np. optional HA component) → zostawić z komentarzem dlaczego.
+- Jeśli nie (np. optional component, dynamic method lookup) → zostawić z komentarzem dlaczego.
 
-### Oczekiwany efekt
-- -5 do -15 linii zależnie od znalezionych getattr-smelli.
-- Każde pozostałe `getattr` ma uzasadnienie.
+**Nie zmieniać:**
+- `getattr(client, name, None) if client is not None else None` w `_get_client_method` (coordinator.py:435) — uzasadnione, różne klienty Modbus mają różne metody.
+- `getattr(response, "exception_code", None)` w scanner/io.py:186 — pymodbus response może nie mieć tego pola.
 
 ---
 
-## Weryfikacja po wszystkich Fixach
+# Weryfikacja końcowa
+
+Po zastosowaniu Fixów #1-#17:
 
 ```bash
 # Baseline:
-ruff check custom_components/ tests/ tools/     # Expected: All checks passed!
-mypy custom_components/thessla_green_modbus/    # Expected: Success
+ruff check custom_components/ tests/ tools/     # Expected: "All checks passed!"
+mypy custom_components/thessla_green_modbus/    # Expected: "Success: no issues found in ~48 source files"
+                                                 # (−4 pliki: 3 mixiny + register_addresses + entity_mappings)
 
-# Testy — tutaj prawdopodobnie będą padały:
+# Testy — tutaj prawdopodobnie część będzie padać po Grupie E:
 pytest tests/ -x -q
 ```
 
-**Co robić z padającymi testami:**
+**Co robić z padającymi testami po Grupie E:**
 
-1. **Test używa SimpleNamespace zamiast HA Mock** → przepisz test na `pytest-homeassistant-custom-component`.
+1. **Test używa SimpleNamespace zamiast HA Mock** → przepisz test na `MagicMock(spec=ThesslaGreenModbusCoordinator)` albo `pytest-homeassistant-custom-component`.
 2. **Test definiuje własny UpdateFailed** → użyj `from homeassistant.helpers.update_coordinator import UpdateFailed`.
-3. **Test patchuje `voluptuous.Invalid` bo go nie zna** → dodaj `voluptuous` do `requirements-dev.txt` (już jest), użyj prawdziwego.
-4. **Test mockuje `dt_util.utcnow = lambda: "2024-01-01"` (string zamiast datetime)** → użyj `freezegun` lub HA `dt_util.utcnow()` patch.
-5. **Test podstawia coordinator jako SimpleNamespace** → użyj `MagicMock(spec=ThesslaGreenModbusCoordinator)`.
+3. **Test patchuje `voluptuous.Invalid`** → użyj prawdziwego voluptuous (już w deps).
+4. **Test mockuje `dt_util.utcnow = lambda: "2024-01-01"` (string)** → użyj `freezegun` albo prawdziwego `datetime`.
+5. **Test używa `entity_mappings` zamiast `mappings`** → zmień import.
 
-**Jeżeli testy prowadzą do mocka który nie ma jakiegoś atrybutu HA:**
-- Błąd nie leży w produkcji (bo `getattr(x, attr, None)` maskował go).
-- Błąd leży w teście który użył niepełnego stuba.
+**Nowy test:**
+```bash
+# Po Fix #6:
+python tools/compare_registers_with_reference.py
+# Expected: 0 exit code (tylko name mismatches, bez missing/unexpected)
+```
 
-**Progres:** jeśli po wszystkich fixach `pytest -x -q` pokazuje że padło np. 30 testów, to znaczy że 30 testów opierało się na jakimś z 10 smelli. Naprawienie testów jest drugim krokiem.
-
----
-
-## Metryki docelowe
+**Metryki docelowe:**
 
 ```
-                          v2.3.9         v2.4.0 (target)
-Linie produkcji:         ~14500         ~13700-14000
-Test-compat code:          ~400           ~0
-sys.modules hacks:            4              0 (minus scanner_core.py shim, który zostaje bo różni się)
-getattr z default w krytycznych ścieżkach:  ~30    ~10
-# pragma: no cover w config_flow:   67    ~15
-Klasy/funkcje istniejące tylko dla testów:  ~8    0
-Test suite pass rate:     ~100%          po napraw testów: 100%
+                                  v2.3.9       v2.4.0 (target)
+Pliki .py w custom_components:     55           48           (−7)
+Linie produkcji:                  ~14500       ~12800-13200  (−1400 do −1700)
+_compat.py:                        144          ~40           (−100)
+Test-compat code:                 ~400          ~0
+sys.modules hacks:                   4            1 (tylko scanner_core.py shim)
+# pragma: no cover w config_flow:   67          ~15
+Klasy/funkcje tylko dla testów:     ~8           0
+Test suite pass rate:              ~100%        po napraw testów: 100%
 ```
 
 ---
@@ -1036,61 +1445,83 @@ Test suite pass rate:     ~100%          po napraw testów: 100%
 version = "2.4.0"
 ```
 
-**Plik:** `CHANGELOG.md`:
+**Plik:** `CHANGELOG.md` — dodaj na górze:
 ```markdown
-## 2.4.0 — Production code detox
+## 2.4.0 — Dead code cleanup and production detox
 
-This release focuses on removing accumulated test-compat hacks from production code.
-No user-facing changes; integration behavior is unchanged. Tests have been rewritten
-to use `pytest-homeassistant-custom-component` properly.
+This release removes accumulated dead code (post-refactor orphans, legacy fallbacks)
+and strips test-compat hacks that had wormed into production code over multiple
+refactors. No user-facing changes; integration behavior is unchanged.
 
-### Removed
-- `_update_failed_exception` in coordinator — no longer scans `sys.modules` for test modules to build compatibility `UpdateFailed` subclasses. Direct `UpdateFailed` is used everywhere.
-- `__init__.py` alias for `custom_components.thessla_green_modbus.__init__.er` registered in `sys.modules`. Tests now use standard `monkeypatch.setattr` paths.
+### Removed — Dead code
+- 3 orphaned scanner mixin modules (`_scanner_capabilities_mixin.py`, `_scanner_registers_mixin.py`, `_scanner_transport_mixin.py`) left over from the `scanner/` package refactor (v2.3.4–v2.3.9). No remaining imports anywhere (1312 lines total).
+- `register_addresses.py` — unused legacy module with hand-defined register address constants that were never imported.
+- `validate.yaml` from repository root — stale CI config in wrong location (GitHub Actions only reads `.github/workflows/`).
+- `vulture` from `requirements-dev.txt` — not used by any CI job.
+- Pyflakes step from `.github/workflows/ci.yaml` — Ruff's `F` rules cover Pyflakes natively.
+
+### Removed — _compat.py cleanup
+- 7 fallback blocks for HA symbols that were only triggered when Home Assistant was not installed. File shrunk from 144 to ~40 lines as a clean re-export module.
+
+### Removed — Production detox
+- `_update_failed_exception` in coordinator — no longer scans `sys.modules` for test modules to build compatibility `UpdateFailed` subclasses. Direct `UpdateFailed` used everywhere.
+- `__init__.py` alias registering `custom_components.thessla_green_modbus.__init__.er` in `sys.modules`. Tests now use standard `monkeypatch.setattr` paths.
 - `entity_mappings.py` shim. All imports updated to `from .mappings import X`.
-- `_async_patch_coordinator_compat` and `_PermissiveCapabilities` fallback class. Coordinator now requires fully-initialized instance; tests use `MagicMock(spec=ThesslaGreenModbusCoordinator)` where needed.
-- `_SafeDTUtil` wrapper class. Direct `homeassistant.util.dt` is re-exported.
+- `_async_patch_coordinator_compat` and `_PermissiveCapabilities` fallback class that returned `True` for every capability access.
+- `_SafeDTUtil` defensive wrapper. Direct `homeassistant.util.dt` is re-exported.
 - `super().__init__()` TypeError fallback in `ThesslaGreenModbusCoordinator.__init__`.
-- `_FallbackFlowBase` in `config_flow.py` — unused class that pretended to be ConfigFlow for test envs.
+- `_FallbackFlowBase` in `config_flow.py` — unused class pretending to be ConfigFlow.
 - `_VolInvalid` + `vol.Invalid = VOL_INVALID` monkey-patch of voluptuous at import time.
 - 7-level fallback in `_required` helper; direct `vol.Required` is used.
-- `getattr(self.entry, "async_start_reauth", None)` defensive access — HA guarantees the method exists.
-- Config entry migration for `version == 1`. Installations must be on `version >= 2` (users upgrading from pre-2021 installations need to reconfigure).
+- `getattr(self.entry, "async_start_reauth", None)` defensive access in coordinator.
 
 ### Changed
-- `except BaseException` with `exc.__class__.__name__ == "UpdateFailed"` string comparison in `__init__.py` replaced with clean `except Exception` + `isinstance(exc, UpdateFailed)`.
-- Config-flow schema/required wrappers consolidated to simple delegates over `voluptuous`.
+- `except BaseException` with `exc.__class__.__name__ == "UpdateFailed"` string comparison replaced with clean `except Exception` + `isinstance(exc, UpdateFailed)`.
+- Consolidated `is_request_cancelled_error` into single definition in `scanner/io.py`. Old `scanner_io.py` module is now re-export shim.
 
-### Fixed
-- Several production code paths that could mask real bugs when test mocks were incomplete — these paths returned True/empty/silent-ok instead of raising. Now any AttributeError from coordinator usage is surfaced instead of being swallowed by defensive `getattr`.
+### Added
+- `tools/compare_registers_with_reference.py` — cross-validates integration register JSON against `airpack4_modbus.json` (vendor reference generated from PDF).
+- `tests/test_registers_vs_reference.py` — automated test ensuring integration's register list matches vendor reference; extras must be bitmap-decoded or whitelisted with justification.
+- CI step running `compare_registers_with_reference.py` on every PR.
 
 ### Migration notes for test writers
 - Do not define `class UpdateFailed(Exception)` in tests. Use `from homeassistant.helpers.update_coordinator import UpdateFailed`.
 - Do not use `SimpleNamespace` as a coordinator stub. Use `MagicMock(spec=ThesslaGreenModbusCoordinator)` or `pytest-homeassistant-custom-component` fixtures.
 - Do not patch `dt_util.utcnow = lambda: "some-string"`. Use `freezegun` or patch to a real datetime.
 - Do not patch `voluptuous.Invalid` or `voluptuous.Required`. These are stable APIs.
+- Import from `.mappings` not `.entity_mappings` (shim removed).
 ```
 
 ---
 
 ## Notatki końcowe
 
-**Dlaczego to jest major (2.4.0):**
-- Formalnie: test API się zmienia, niektóre wewnętrzne symbole znikają.
-- Realnie: integracja z punktu widzenia użytkownika zachowuje się identycznie.
-- HACS / HA nie widzą różnicy. Instalacje nie wymagają rekonfiguracji (poza wyjątkowym przypadkiem entry.version == 1, jeśli zdecydowano się usunąć tę ścieżkę).
+**Dlaczego to jest major bump (2.4.0):**
+- Test API się zmienia (niektóre wewnętrzne symbole znikają).
+- Testy wymagają przepisania na `pytest-homeassistant-custom-component`.
+- Formalnie, integracja z punktu widzenia użytkownika zachowuje się identycznie.
+- HACS / HA nie widzą różnicy. Instalacje nie wymagają rekonfiguracji.
 
-**Ryzyko regresu — średnie.** Nie niskie:
-- Fix #1, #4 — usuwają kod obsługi edge-case'ów, które *mogły* się zdarzać w produkcji (np. testowa klasa UpdateFailed niesubkluje się nigdzie w runtime, ale `_PermissiveCapabilities` mogło podtrzymywać kod który wywoływał capability na coordynatorze przed pełną inicjalizacją).
-- Fix #7 — dotyka najbardziej złożony plik (`config_flow.py`, 1368 linii). Testy config_flow-a są kluczowe. Po refactorze upewnij się że `test_config_flow.py` (73 KB) przechodzi w 100%.
+**Ryzyko regresu — zróżnicowane:**
 
-**Testy padające po fixach:** oczekiwane i pożądane. Każdy padający test to dokumentacja problemu. Nie cofać zmian w produkcji — naprawiać testy.
+- **Grupa A (Fixy #1-#4)** — zero ryzyka. Usuwamy pliki bez importów, martwe CI config.
+- **Grupa B (Fix #5)** — niskie ryzyko. `_compat.py` bez martwych fallbacków, wszystkie symbole re-exported.
+- **Grupa C (Fix #6)** — czysto dodające. Nowe narzędzie i test.
+- **Grupa D (Fix #7)** — niskie ryzyko. Konsolidacja z shimem backward-compat.
+- **Grupa E (Fixy #8-#17)** — **średnie ryzyko**. Oczekuj padających testów. Fix poprzez naprawę testów, nie cofanie produkcji.
 
-**Pomijamy w tym release:**
-- Pełny refactor dataclass `CoordinatorConfig`. Po odtruciu production code łatwiej zaprojektować poprawne API.
-- Dalszy split `scanner/core.py`.
-- `__init__.py` split (1128 linii).
+**Strategia wdrożeniowa:**
 
-Te zostają do v2.5.0.
+Jeśli masz wahania — wdrażaj w podziale:
+- **PR 1:** Grupa A+B+C+D (Fixy #1-#7) — minor bump do 2.3.10.
+- **PR 2:** Grupa E (Fixy #8-#17) — major bump do 2.4.0, po przepisaniu testów.
 
-**Gdy fix staje się niemożliwy:** jeżeli któryś test polega na `_PermissiveCapabilities` i jego przepisanie wymaga znajomości domeny której nie ma, **zostaw komentarz `# TODO(v2.4.0 detox):`** i jedź dalej. Kosmetyczny dług jest lepszy niż martwy kod w produkcji.
+Jeśli chcesz jeden release — commit-by-commit po kolejności 1-17, weryfikacja po każdym, ostateczny tag jako 2.4.0.
+
+**Gdy fix staje się niemożliwy:** jeżeli któryś test polega na smell'u i jego przepisanie wymaga znajomości domeny której nie ma, **zostaw komentarz `# TODO(v2.4.0 detox):`** i jedź dalej. Dług kosmetyczny jest lepszy niż martwy kod w produkcji.
+
+**Co ten release daje:**
+- Bezpośrednio: ~1400-1700 linii mniej kodu produkcyjnego.
+- Pośrednio: kod który testujemy to kod który użytkownik uruchamia. Po odtruciu od test-compat, zieloność testów = jakość kodu. Przed odtruciem, zieloność mogła być osiągana przez *"test go tak ułożył by przechodziło"*.
+- Wykorzystanie `airpack4_modbus.json` — artefakt z PDF wreszcie czegoś broni.
+- Lżejsze CI, mniej plików do czytania przy onboardingu.
