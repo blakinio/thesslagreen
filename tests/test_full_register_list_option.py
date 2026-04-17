@@ -60,16 +60,22 @@ class FakeCoordinator:
         entry=None,
         skip_missing_registers=False,
     ) -> None:
+        class _Capabilities:
+            def __getattr__(self, _name: str) -> bool:
+                return True
+
         self.hass = hass
         self.host = host
         self.port = port
         self.slave_id = slave_id
         self.device_name = name
         self.entry = entry
+        self.force_full_register_list = force_full_register_list
         source = FULL_REGISTERS if force_full_register_list else PARTIAL_REGISTERS
         self.available_registers = {k: set(v) for k, v in source.items()}
         self.data: dict[str, int] = {}
         self.last_update_success = True
+        self.capabilities = _Capabilities()
 
     async def async_setup(self):
         return True

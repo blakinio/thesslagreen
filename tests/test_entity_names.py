@@ -59,7 +59,7 @@ def _entity_names(trans: dict, platform: str) -> dict[str, str]:
 
 @pytest.fixture(scope="module")
 def entity_mappings():
-    from custom_components.thessla_green_modbus.entity_mappings import (
+    from custom_components.thessla_green_modbus.mappings import (
         BINARY_SENSOR_ENTITY_MAPPINGS,
         NUMBER_ENTITY_MAPPINGS,
         SELECT_ENTITY_MAPPINGS,

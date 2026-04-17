@@ -67,7 +67,7 @@ sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
 # Actual test
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.entity_mappings import ENTITY_MAPPINGS
+from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )

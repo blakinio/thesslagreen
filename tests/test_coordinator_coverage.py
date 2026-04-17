@@ -8,11 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
-    _SafeDTUtil,
     _utcnow,
-)
-from custom_components.thessla_green_modbus.coordinator import (
-    dt_util as coordinator_dt_util,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -42,54 +38,13 @@ def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
 
 
 # ---------------------------------------------------------------------------
-# Group A — _SafeDTUtil & _utcnow fallback paths (lines 47-79)
+# Group A — _utcnow behavior
 # ---------------------------------------------------------------------------
 
 
-def test_safe_dt_util_coerce_non_datetime_returns_now():
-    """_SafeDTUtil._coerce returns now() when given non-datetime (covers line 50)."""
-    result = _SafeDTUtil._coerce(None)
-    assert isinstance(result, datetime)
-    assert result.tzinfo is not None
-
-
-def test_safe_dt_util_coerce_naive_datetime_adds_utc():
-    """_SafeDTUtil._coerce adds tzinfo to naive datetime."""
-    naive = datetime(2024, 1, 1, 12, 0, 0)
-    result = _SafeDTUtil._coerce(naive)
-    assert result.tzinfo is not None
-
-
-def test_safe_dt_util_now_no_callable_base():
-    """_SafeDTUtil.now falls back to datetime.now when base has no callable `now` (line 56)."""
-    stub = _SafeDTUtil(object())  # object() has no `now` attribute
-    result = stub.now()
-    assert isinstance(result, datetime)
-    assert result.tzinfo is not None
-
-
-def test_safe_dt_util_utcnow_no_callable_base():
-    """_SafeDTUtil.utcnow falls back to datetime.now when base has no callable `utcnow` (line 62)."""
-    stub = _SafeDTUtil(object())
-    result = stub.utcnow()
-    assert isinstance(result, datetime)
-    assert result.tzinfo is not None
-
-
-def test_safe_dt_util_now_returns_none_from_base():
-    """_SafeDTUtil.now coerces None result to timezone-aware datetime."""
-    from types import SimpleNamespace
-    base = SimpleNamespace(now=lambda: None)
-    stub = _SafeDTUtil(base)
-    result = stub.now()
-    assert isinstance(result, datetime)
-    assert result.tzinfo is not None
-
-
-def test_utcnow_fallback_when_utcnow_returns_non_datetime():
-    """_utcnow returns datetime.now(UTC) when utcnow callable returns non-datetime (line 79)."""
-    with patch.object(coordinator_dt_util, "utcnow", return_value=None):
-        result = _utcnow()
+def test_utcnow_returns_timezone_aware_datetime():
+    """_utcnow should always return timezone-aware datetime."""
+    result = _utcnow()
     assert isinstance(result, datetime)
     assert result.tzinfo is not None
 
@@ -662,23 +617,15 @@ def test_get_diagnostic_data_with_raw_registers():
 
 
 def test_coordinator_init_super_type_error_fallback():
-    """super().__init__ TypeError fallback sets attrs manually (lines 289-294)."""
+    """Coordinator init should propagate TypeError from base __init__."""
     from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-    hass = MagicMock()
-    call_count = [0]
 
     def patched_init(self, *args, **kwargs):
-        call_count[0] += 1
-        if call_count[0] == 1 and args:
-            raise TypeError("unexpected keyword argument")
-        # Second call (fallback with no args) should succeed
+        raise TypeError("unexpected keyword argument")
 
     with patch.object(ThesslaGreenModbusCoordinator.__bases__[0], "__init__", patched_init):
-        coord = ThesslaGreenModbusCoordinator(
-            hass=hass, host="localhost", port=502, slave_id=1
-        )
-    # If TypeError fallback ran, hass should be set
-    assert coord.hass is hass
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            ThesslaGreenModbusCoordinator(hass=MagicMock(), host="localhost", port=502, slave_id=1)
 
 
 def test_coordinator_init_entry_bad_max_registers_per_request():

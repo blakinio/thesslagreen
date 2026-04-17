@@ -7,9 +7,8 @@ import contextlib
 import inspect
 import logging
 import re
-import sys
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from importlib import import_module
 from typing import Any, cast
 
@@ -17,7 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from pymodbus.client import AsyncModbusTcpClient
 
-from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP, UpdateFailed
+from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP, UTC, UpdateFailed
 from ._compat import dt_util as _base_dt_util
 from ._coordinator_capabilities import _CoordinatorCapabilitiesMixin
 from ._coordinator_io import _ModbusIOMixin, _PermanentModbusError  # re-export for backward compat
@@ -81,41 +80,14 @@ from .utils import resolve_connection_settings
 __all__ = ["ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
 
 
-class _SafeDTUtil:
-    """Wrap dt helpers and always return timezone-aware datetimes."""
-
-    def __init__(self, base: Any) -> None:
-        self._base = base
-
-    @staticmethod
-    def _coerce(value: Any) -> datetime:
-        if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-        return datetime.now(UTC)
-
-    def now(self) -> datetime:
-        func = getattr(self._base, "now", None)
-        if callable(func):
-            return self._coerce(func())
-        return datetime.now(UTC)
-
-    def utcnow(self) -> datetime:
-        func = getattr(self._base, "utcnow", None)
-        if callable(func):
-            return self._coerce(func())
-        return datetime.now(UTC)
-
-
-dt_util = _SafeDTUtil(_base_dt_util)
+dt_util = _base_dt_util
 
 
 def _utcnow() -> datetime:
     """Return a timezone-aware UTC datetime."""
-    utcnow_callable = getattr(dt_util, "utcnow", None)
-    if callable(utcnow_callable):
-        value = utcnow_callable()
-        if isinstance(value, datetime):
-            return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    value = dt_util.utcnow()
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
     return datetime.now(UTC)
 
 
@@ -130,22 +102,6 @@ def get_register_definition(name: str) -> RegisterDef:
 
 _LOGGER = logging.getLogger(__name__)
 
-
-def _update_failed_exception(message: str) -> Exception:
-    """Return an UpdateFailed compatible with patched test helper modules."""
-
-    classes: list[type[Exception]] = [UpdateFailed]
-    for mod_name in ("tests.conftest", "tests.test_coordinator", "tests.test_services"):
-        mod = sys.modules.get(mod_name)
-        cls = getattr(mod, "UpdateFailed", None) if mod is not None else None
-        if isinstance(cls, type) and issubclass(cls, Exception) and cls not in classes:
-            classes.append(cls)
-
-    if len(classes) == 1:
-        return classes[0](message)  # pragma: no cover
-
-    compat_cls = cast(type[Exception], type("CompatUpdateFailed", tuple(classes), {}))
-    return compat_cls(message)
 
 
 class ThesslaGreenModbusCoordinator(
@@ -192,19 +148,12 @@ class ThesslaGreenModbusCoordinator(
         update_interval = timedelta(seconds=interval_seconds)
         self.scan_interval = interval_seconds
 
-        try:
-            super().__init__(
-                hass,
-                _LOGGER,
-                name=f"{DOMAIN}_{entry.entry_id if entry else name}",
-                update_interval=update_interval,
-            )
-        except TypeError:
-            super().__init__()
-            self.hass = hass
-            self.logger = _LOGGER
-            self.name = f"{DOMAIN}_{entry.entry_id if entry else name}"
-            self.update_interval = update_interval
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}_{entry.entry_id if entry else name}",
+            update_interval=update_interval,
+        )
 
         self.host = host
         self.port = port
@@ -400,7 +349,7 @@ class ThesslaGreenModbusCoordinator(
         _LOGGER.log(log_level, "%s: %s", message, exc)
         full_message = f"{message}: {exc}"
         if use_helper:
-            return cast(UpdateFailed, _update_failed_exception(full_message))
+            return UpdateFailed(full_message)
         return UpdateFailed(full_message)
 
 
@@ -410,13 +359,9 @@ class ThesslaGreenModbusCoordinator(
         if self._reauth_scheduled or self.entry is None:
             return
 
-        start_reauth = getattr(self.entry, "async_start_reauth", None)
-        if start_reauth is None:
-            return
-
         self._reauth_scheduled = True
         _LOGGER.warning("Starting reauthentication for %s (%s)", self._device_name, reason)
-        self.hass.async_create_task(start_reauth(self.hass))
+        self.hass.async_create_task(self.entry.async_start_reauth(self.hass))
 
     def get_register_map(self, register_type: str) -> dict[str, int]:
         """Return the register map for the given register type."""

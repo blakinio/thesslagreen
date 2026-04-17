@@ -131,7 +131,7 @@ if _ha_const is not None:
 # ---------------------------------------------------------------------------
 
 from custom_components.thessla_green_modbus.binary_sensor import ThesslaGreenBinarySensor
-from custom_components.thessla_green_modbus.entity_mappings import (
+from custom_components.thessla_green_modbus.mappings import (
     BINARY_SENSOR_ENTITY_MAPPINGS,
     ENTITY_MAPPINGS,
 )

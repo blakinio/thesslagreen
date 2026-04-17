@@ -23,7 +23,7 @@ from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 
 # Binary sensor mappings are defined centrally in entity_mappings
-from .entity_mappings import BINARY_SENSOR_ENTITY_MAPPINGS
+from .mappings import BINARY_SENSOR_ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 

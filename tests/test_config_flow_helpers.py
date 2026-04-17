@@ -297,17 +297,17 @@ async def test_build_connection_schema_empty_baud_rates_bad_baud_default():
 
 
 def test_vol_invalid_class():
-    """_VolInvalid with path argument covers lines 150-152."""
+    """VOL_INVALID should expose voluptuous.Invalid-like path/message behavior."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
-    err = cf_mod._VolInvalid("test message", ["field"])
+    err = cf_mod.VOL_INVALID("test message", path=["field"])
     assert err.error_message == "test message"
     assert err.path == ["field"]
 
 
 def test_vol_invalid_no_path():
-    """_VolInvalid without path defaults to empty list."""
+    """VOL_INVALID without explicit path should keep empty path."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
-    err = cf_mod._VolInvalid("error")
+    err = cf_mod.VOL_INVALID("error")
     assert err.path == []
 
 

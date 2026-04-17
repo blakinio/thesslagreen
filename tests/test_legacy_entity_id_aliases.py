@@ -1,4 +1,4 @@
-from custom_components.thessla_green_modbus.entity_mappings import map_legacy_entity_id
+from custom_components.thessla_green_modbus.mappings import map_legacy_entity_id
 
 
 def test_map_legacy_entity_id_for_migrated_domains() -> None:

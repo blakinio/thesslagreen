@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.register_addresses import (
+from custom_components.thessla_green_modbus.registers import (
     REG_TEMPORARY_FLOW_START,
     REG_TEMPORARY_TEMP_START,
 )

@@ -31,7 +31,7 @@ from .const import (
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .entity_mappings import ENTITY_MAPPINGS
+from .mappings import ENTITY_MAPPINGS
 from .registers.loader import get_register_definition
 from .utils import TIME_REGISTER_PREFIXES
 

@@ -313,7 +313,7 @@ async def test_entity_counts_per_platform(
     mock_config_entry: MagicMock,
 ) -> None:
     """Entity counts per platform must match the static register definitions."""
-    from custom_components.thessla_green_modbus.entity_mappings import (
+    from custom_components.thessla_green_modbus.mappings import (
         BINARY_SENSOR_ENTITY_MAPPINGS,
         ENTITY_MAPPINGS,
     )

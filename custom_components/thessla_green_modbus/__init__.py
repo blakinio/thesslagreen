@@ -69,8 +69,8 @@ from .const import (
     migrate_unique_id,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
-from .entity_mappings import async_setup_entity_mappings
 from .errors import is_invalid_auth_error
+from .mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 from .utils import resolve_connection_settings
 
@@ -84,12 +84,6 @@ _LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:  # pragma: no cover - typing only
     ThesslaGreenConfigEntry = ConfigEntry[ThesslaGreenModbusCoordinator]
 
-# Compatibility shim for tests patching "custom_components.thessla_green_modbus.__init__.er".
-_init_alias = sys.modules.setdefault(f"{__name__}.__init__", sys.modules[__name__])
-_init_alias_any: Any = _init_alias
-_init_alias_any.er = er
-module_self: Any = sys.modules[__name__]
-module_self.__init__ = _init_alias
 
 # Legacy default port used before version 2 when explicit port was optional
 LEGACY_DEFAULT_PORT = 8899
@@ -315,22 +309,12 @@ async def _async_start_coordinator(
             _LOGGER.error("Authentication failed during setup: %s", exc)
             await entry.async_start_reauth(hass)
             return False
-        if isinstance(exc, ConfigEntryNotReady) or exc.__class__.__name__ == "ConfigEntryNotReady":
+        if isinstance(exc, ConfigEntryNotReady):
             raise
         _LOGGER.error("Failed to setup coordinator: %s", exc)
         raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
-    except BaseException as exc:
-        if isinstance(exc, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
-            raise
-        # Deliberately broad at integration setup boundary: Home Assistant test
-        # stubs and custom coordinator implementations may raise dynamic
-        # exception classes (including test-local subclasses of UpdateFailed).
-        # We convert all such failures into ConfigEntryNotReady/reauth flow.
-        if (
-            isinstance(exc, Exception)
-            and (isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed")
-            and is_invalid_auth_error(exc)
-        ):
+    except Exception as exc:
+        if is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during setup: %s", exc)
             await entry.async_start_reauth(hass)
             return False
@@ -356,22 +340,12 @@ async def _async_start_coordinator(
             _LOGGER.error("Authentication failed during initial refresh: %s", exc)
             await entry.async_start_reauth(hass)
             return False
-        if isinstance(exc, ConfigEntryNotReady) or exc.__class__.__name__ == "ConfigEntryNotReady":
+        if isinstance(exc, ConfigEntryNotReady):
             raise
         _LOGGER.error("Failed to perform initial data refresh: %s", exc)
         raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
-    except BaseException as exc:
-        if isinstance(exc, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
-            raise
-        # Deliberately broad at integration setup boundary: Home Assistant test
-        # stubs and custom coordinator implementations may raise dynamic
-        # exception classes (including test-local subclasses of UpdateFailed).
-        # We convert all such failures into ConfigEntryNotReady/reauth flow.
-        if (
-            isinstance(exc, Exception)
-            and (isinstance(exc, UpdateFailed) or exc.__class__.__name__ == "UpdateFailed")
-            and is_invalid_auth_error(exc)
-        ):
+    except Exception as exc:
+        if is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during initial refresh: %s", exc)
             await entry.async_start_reauth(hass)
             return False
@@ -380,39 +354,6 @@ async def _async_start_coordinator(
 
     return True
 
-
-def _async_patch_coordinator_compat(
-    coordinator: Any, entry: ConfigEntry
-) -> None:  # pragma: no cover
-    """Add lightweight fallback attributes for test environments."""
-    if not hasattr(coordinator, "capabilities"):
-
-        class _PermissiveCapabilities:
-            def __getattr__(self, _name: str) -> bool:
-                return True
-
-        coordinator.capabilities = _PermissiveCapabilities()
-
-    if not hasattr(coordinator, "get_register_map"):
-        empty_maps: dict[str, dict[str, Any]] = {
-            "input_registers": {},
-            "holding_registers": {},
-            "coil_registers": {},
-            "discrete_inputs": {},
-        }
-        coordinator.get_register_map = lambda reg_type: empty_maps.get(reg_type, {})
-
-    if not hasattr(coordinator, "available_registers"):
-        coordinator.available_registers = {
-            "input_registers": set(),
-            "holding_registers": set(),
-            "coil_registers": set(),
-            "discrete_inputs": set(),
-        }
-
-    force_full = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-    if not hasattr(coordinator, "force_full_register_list"):
-        coordinator.force_full_register_list = bool(force_full)
 
 
 async def _async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
@@ -472,7 +413,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     coordinator = await _async_create_coordinator(hass, entry)
     if not await _async_start_coordinator(hass, entry, coordinator):
         return False
-    _async_patch_coordinator_compat(coordinator, entry)
     entry.runtime_data = coordinator
 
     await _async_cleanup_legacy_fan_entity(hass, coordinator)
@@ -1054,8 +994,7 @@ async def async_migrate_entry(
 ) -> bool:  # pragma: no cover
     """Migrate old entry.
 
-    Home Assistant uses this during upgrades; vulture marks it as unused but
-    the runtime imports it dynamically.
+    Called by Home Assistant during integration upgrades.
     """
     _LOGGER.debug("Migrating ThesslaGreen Modbus from version %s", config_entry.version)
 
